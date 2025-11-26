@@ -1,0 +1,44 @@
+version: '3'
+
+tasks:
+  electron:dev:
+    desc: Start the Electron application in foreground (interactive)
+    cmds:
+      - ./scripts/electron-app.sh dev
+
+  electron:start:
+    desc: Start the Electron application in background
+    cmds:
+      - ./scripts/electron-app.sh start
+
+  electron:stop:
+    desc: Stop the running Electron application
+    cmds:
+      - ./scripts/electron-app.sh stop
+
+  electron:restart:
+    desc: Restart the Electron application
+    cmds:
+      - ./scripts/electron-app.sh restart
+
+  electron:status:
+    desc: Show Electron application status
+    cmds:
+      - ./scripts/electron-app.sh status
+
+  electron:logs:
+    desc: Show and follow Electron application logs
+    cmds:
+      - ./scripts/electron-app.sh logs
+
+  electron:build:
+    desc: Build the Electron application
+    dir: electron-sdd-manager
+    cmds:
+      - npm run build:electron
+
+  electron:test:e2e:
+    desc: Run E2E tests for Electron application
+    dir: electron-sdd-manager
+    cmds:
+      - npm run test:e2e

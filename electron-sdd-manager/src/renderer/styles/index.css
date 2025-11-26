@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* macOS title bar drag region */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Custom animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.slide-in-from-right {
+  animation-name: slide-in-from-right;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* MDEditor overrides */
+.w-md-editor {
+  --color-canvas-default: white !important;
+  --color-fg-default: #1f2937 !important;
+}
+
+.dark .w-md-editor {
+  --color-canvas-default: #1f2937 !important;
+  --color-fg-default: #e5e7eb !important;
+}

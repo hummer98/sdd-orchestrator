@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": false,
+    "outDir": "dist/preload",
+    "declaration": true,
+    "declarationDir": "dist/preload/types"
+  },
+  "include": ["src/preload/**/*.ts"]
+}

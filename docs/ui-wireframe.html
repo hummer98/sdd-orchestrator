@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDD Manager UI - Wireframe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 200px);
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .btn-new {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sidebar-filters {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .filter-row label {
+            color: #6b7280;
+            min-width: 60px;
+        }
+
+        .filter-row select {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .spec-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .spec-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .spec-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 2px 4px rgba(37,99,235,0.1);
+        }
+
+        .spec-item.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .spec-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .spec-icon {
+            font-size: 16px;
+        }
+
+        .spec-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1f2937;
+        }
+
+        .spec-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: auto;
+        }
+
+        .spec-status.completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .spec-status.progress {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .spec-status.pending {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .spec-date {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-left: 24px;
+        }
+
+        .detail-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detail-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .detail-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge.approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge.generated {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge.pending {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .tabs {
+            display: flex;
+            padding: 0 24px;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 4px;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #2563eb;
+        }
+
+        .tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .markdown-content {
+            background: #fafafa;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .markdown-content h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+
+        .markdown-content h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .phase-controls {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .phase-controls h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .phase-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .phase-btn {
+            padding: 10px 16px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .phase-btn:hover:not(:disabled) {
+            background: #eff6ff;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+
+        .phase-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .phase-btn.running {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .auto-approve {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .approval-panel {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .approval-panel h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .approval-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .approval-item:last-child {
+            border-bottom: none;
+        }
+
+        .approval-label {
+            font-size: 13px;
+            color: #374151;
+        }
+
+        .approval-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-approve {
+            padding: 6px 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-reject {
+            padding: 6px 12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .log-panel {
+            border-top: 1px solid #e5e7eb;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .log-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .log-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .log-actions button {
+            padding: 4px 12px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 24px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            background: #1f2937;
+            color: #d1d5db;
+        }
+
+        .log-line {
+            margin-bottom: 2px;
+        }
+
+        .log-line.stderr {
+            color: #fca5a5;
+        }
+
+        .log-footer {
+            padding: 8px 24px;
+            border-top: 1px solid #374151;
+            font-size: 11px;
+            color: #9ca3af;
+            background: #1f2937;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 16px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #1e40af;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>SDD Manager</h1>
+            <button>📁 プロジェクト選択</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>仕様一覧</h2>
+                    <button class="btn-new">+ 新規</button>
+                </div>
+
+                <div class="sidebar-filters">
+                    <div class="filter-row">
+                        <label>ソート:</label>
+                        <select>
+                            <option>更新日時</option>
+                            <option>名前</option>
+                            <option>ステータス</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <label>フィルタ:</label>
+                        <select>
+                            <option>すべて</option>
+                            <option>完了</option>
+                            <option>進行中</option>
+                            <option>保留中</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="spec-list">
+                    <div class="spec-item active">
+                        <div class="spec-item-header">
+                            <span class="spec-icon">✓</span>
+                            <span class="spec-name">sdd-manager-ui</span>
+                            <span class="spec-status completed">完了</span>
+                        </div>
+                        <div class="spec-date">2025-11-24 23:15</div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-item-header">
+                            <span class="spec-icon">⚙</span>
+                            <span class="spec-name">feature-auth</span>
+                            <span class="spec-status progress">進行中</span>
+                        </div>
+                        <div class="spec-date">2025-11-23 14:30</div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-item-header">
+                            <span class="spec-icon">⏸</span>
+                            <span class="spec-name">api-integration</span>
+                            <span class="spec-status pending">保留中</span>
+                        </div>
+                        <div class="spec-date">2025-11-22 10:45</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Panel -->
+            <div class="detail-panel">
+                <div class="detail-header">
+                    <div class="detail-title">sdd-manager-ui</div>
+                    <div class="detail-meta">
+                        <span>フェーズ: tasks-generated</span>
+                        <span>作成: 2025-11-24 04:38</span>
+                        <span>更新: 2025-11-24 23:15</span>
+                    </div>
+                    <div class="detail-badges">
+                        <span class="badge approved">✓ Requirements承認済み</span>
+                        <span class="badge approved">✓ Design承認済み</span>
+                        <span class="badge generated">⚙ Tasks生成済み</span>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active">Requirements</button>
+                    <button class="tab">Design</button>
+                    <button class="tab">Tasks</button>
+                </div>
+
+                <div class="content-area">
+                    <div class="phase-controls">
+                        <h3>フェーズ実行制御</h3>
+                        <div class="phase-buttons">
+                            <button class="phase-btn" disabled>Generate Requirements</button>
+                            <button class="phase-btn" disabled>Generate Design</button>
+                            <button class="phase-btn" disabled>Generate Tasks</button>
+                            <button class="phase-btn">Execute Implementation</button>
+                        </div>
+                        <div class="auto-approve">
+                            <input type="checkbox" id="auto-approve">
+                            <label for="auto-approve">Auto-approve（自動承認）</label>
+                        </div>
+                    </div>
+
+                    <div class="approval-panel">
+                        <h3>承認管理</h3>
+                        <div class="approval-item">
+                            <span class="approval-label">Requirements</span>
+                            <span class="badge approved">✓ 承認済み</span>
+                        </div>
+                        <div class="approval-item">
+                            <span class="approval-label">Design</span>
+                            <span class="badge approved">✓ 承認済み</span>
+                        </div>
+                        <div class="approval-item">
+                            <span class="approval-label">Tasks</span>
+                            <div class="approval-actions">
+                                <button class="btn-approve">承認</button>
+                                <button class="btn-reject">却下</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="markdown-content">
+                        <h1>Requirements Document</h1>
+                        <h2>Project Description</h2>
+                        <p>Tauri + Reactで構築するSDD Managerのデスクトップアプリケーション。<code>.kiro/specs/</code>内の仕様を視覚的に管理し、Spec-Driven Development (SDD)ワークフローを直感的に操作できるUIを提供する。</p>
+
+                        <h2>Requirements</h2>
+                        <h3>1. 仕様一覧表示機能</h3>
+                        <p><strong>目的:</strong> 開発者として、プロジェクト内のすべての仕様を一覧で確認したい。</p>
+
+                        <h3>2. 仕様詳細表示機能</h3>
+                        <p><strong>目的:</strong> 開発者として、選択した仕様の詳細情報を確認したい。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="log-panel">
+            <div class="log-header">
+                <h3>実行ログ</h3>
+                <div class="log-actions">
+                    <button>📋 コピー</button>
+                    <button>🗑️ クリア</button>
+                </div>
+            </div>
+            <div class="log-content">
+                <div class="log-line">[12:34:56] Starting phase execution: requirements</div>
+                <div class="log-line">[12:34:57] Reading .kiro/steering/ files...</div>
+                <div class="log-line">[12:34:58] Generating requirements document...</div>
+                <div class="log-line">[12:35:23] ✓ Requirements generation completed</div>
+                <div class="log-line">[12:35:23] Writing to .kiro/specs/sdd-manager-ui/requirements.md</div>
+            </div>
+            <div class="log-footer">
+                Exit code: 0 | Duration: 27.3s
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h4>📘 このUIについて</h4>
+        <ul>
+            <li><strong>左サイドバー</strong>: 仕様一覧（ソート・フィルタ機能付き）</li>
+            <li><strong>メインパネル</strong>: 選択された仕様の詳細（メタデータ、成果物タブ、フェーズ制御、承認管理）</li>
+            <li><strong>下部ログパネル</strong>: リアルタイムコマンド実行ログ（stdout/stderr）</li>
+            <li><strong>技術スタック</strong>: Tauri 2.x + React 18 + TypeScript 5 + Zustand + TanStack Query + shadcn/ui</li>
+            <li><strong>セキュリティ</strong>: Shell scopeでClaude Code CLIのみ実行許可、File system scopeでプロジェクトディレクトリのみアクセス許可</li>
+        </ul>
+    </div>
+</body>
+</html>

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Japanese-compatible monospace font for log display */
+/* 全角:半角 = 2:1 の比率を保つ日本語対応等幅フォント */
+.font-mono-jp {
+  font-family:
+    "Noto Sans Mono CJK JP",    /* Google Noto (Linux) */
+    "Noto Sans Mono",            /* Google Noto (generic) */
+    "Source Han Code JP",        /* Adobe Source Han */
+    "BIZ UDGothic",              /* Windows 10+ */
+    "Osaka-Mono",                /* macOS classic */
+    "MS Gothic",                 /* Windows fallback */
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+}
+
 /* macOS title bar drag region */
 .titlebar-drag {
   -webkit-app-region: drag;

@@ -173,7 +173,7 @@ export function AgentLogPanel() {
       {/* Log content */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-auto font-mono text-sm"
+        className="flex-1 overflow-auto font-mono-jp text-sm"
       >
         {!selectedAgentId ? (
           <div className="flex items-center justify-center h-full text-gray-500">

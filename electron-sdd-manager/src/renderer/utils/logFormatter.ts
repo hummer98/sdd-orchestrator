@@ -28,11 +28,11 @@ interface ClaudeEvent {
 
 interface ContentBlock {
   type: string;
-  text?: string;
-  tool_use_id?: string;
-  name?: string;
-  input?: Record<string, unknown>;
-  content?: string;
+  text?: string;          // type: "text" の場合のテキスト内容
+  tool_use_id?: string;   // type: "tool_result" の場合のツールID
+  name?: string;          // type: "tool_use" の場合のツール名
+  input?: Record<string, unknown>;  // type: "tool_use" の場合の入力
+  content?: string;       // type: "tool_result" の場合の結果
 }
 
 export interface FormattedLogLine {
@@ -164,6 +164,19 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
                 label: 'ツール結果',
                 content: preview || '(結果あり)',
                 color: 'blue',
+              });
+            } else if (block.type === 'text' && block.text) {
+              // ユーザー入力/プロンプトの表示
+              const normalizedText = block.text.replace(/\\n/g, '\n');
+              const textLines = normalizedText.split('\n');
+              const maxLines = Math.min(10, textLines.length);
+              lines.push({
+                type: 'system',
+                icon: '📝',
+                label: 'プロンプト',
+                content: textLines.slice(0, maxLines).join('\n'),
+                details: textLines.length > maxLines ? `(+${textLines.length - maxLines} 行)` : undefined,
+                color: 'cyan',
               });
             }
           }

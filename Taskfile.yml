@@ -42,3 +42,23 @@ tasks:
     dir: electron-sdd-manager
     cmds:
       - npm run test:e2e
+
+  logs:agent:
+    desc: Show formatted Agent output logs (human-readable)
+    cmds:
+      - npx ts-node scripts/format-logs.ts {{.CLI_ARGS}}
+
+  logs:agent:verbose:
+    desc: Show formatted Agent output logs with details
+    cmds:
+      - npx ts-node scripts/format-logs.ts -v {{.CLI_ARGS}}
+
+  logs:agent:all:
+    desc: Show all Agent output logs
+    cmds:
+      - npx ts-node scripts/format-logs.ts -a {{.CLI_ARGS}}
+
+  logs:main:
+    desc: Show main process logs
+    cmds:
+      - npx ts-node scripts/format-logs.ts -f logs/main.log {{.CLI_ARGS}}

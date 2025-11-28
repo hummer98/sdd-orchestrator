@@ -16,9 +16,10 @@ const isE2ETest = process.argv.includes('--e2e-test');
 
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
-if (process.env.NODE_ENV !== 'production' && !isE2ETest) {
-  app.commandLine.appendSwitch('remote-debugging-port', '9222');
-}
+// Temporarily disabled due to vite-plugin-electron bundling issue
+// if (process.env.NODE_ENV !== 'production' && !isE2ETest) {
+//   app.commandLine.appendSwitch('remote-debugging-port', '9222');
+// }
 
 function createWindow(): void {
   const isDev = !app.isPackaged && !isE2ETest;

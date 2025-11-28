@@ -17,6 +17,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# IMPORTANT: Unset ELECTRON_RUN_AS_NODE to ensure Electron runs as Electron, not as Node.js
+# This is critical when running from Claude Code or other Electron-based IDEs
+unset ELECTRON_RUN_AS_NODE
+
 # ログディレクトリ作成
 mkdir -p "$(dirname "$LOG_FILE")"
 

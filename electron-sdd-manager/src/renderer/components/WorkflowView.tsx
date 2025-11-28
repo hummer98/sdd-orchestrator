@@ -104,6 +104,8 @@ export function WorkflowView() {
         phase,
         specDetail.metadata.name
       );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
       agentStore.selectAgent(newAgent.agentId);
     } finally {
       setExecutingPhase(null);
@@ -145,6 +147,8 @@ export function WorkflowView() {
         type,
         specDetail.metadata.name
       );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
       agentStore.selectAgent(newAgent.agentId);
     } finally {
       setExecutingValidation(null);
@@ -167,6 +171,8 @@ export function WorkflowView() {
       specDetail.metadata.name,
       specDetail.metadata.name
     );
+    // ストアにAgentを追加して選択
+    agentStore.addAgent(specDetail.metadata.name, newAgent);
     agentStore.selectAgent(newAgent.agentId);
   }, [agentStore, specDetail]);
 

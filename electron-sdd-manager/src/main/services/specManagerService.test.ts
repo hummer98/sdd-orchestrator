@@ -374,6 +374,103 @@ describe('SpecManagerService', () => {
     });
   });
 
+  // コマンド構築テスト: --output-format stream-json の確認
+  describe('executePhase', () => {
+    it('should build command with --output-format stream-json', async () => {
+      // startAgentをスパイして引数を確認
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executePhase({
+        specId: 'test-spec',
+        phase: 'requirements',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'claude',
+          args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should include correct slash command in args', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executePhase({
+        specId: 'test-spec',
+        phase: 'design',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['--verbose', '/kiro:spec-design my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
+  describe('executeValidation', () => {
+    it('should build command with --output-format stream-json', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeValidation({
+        specId: 'test-spec',
+        type: 'impl',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'claude',
+          args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should include correct slash command in args', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeValidation({
+        specId: 'test-spec',
+        type: 'gap',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['--verbose', '/kiro:validate-gap my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
+  describe('executeSpecStatus', () => {
+    it('should build command with --verbose and --output-format stream-json', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeSpecStatus('test-spec', 'my-feature');
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'claude',
+          args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
   describe('getAgents / getAllAgents', () => {
     it('should return agents for specific spec', async () => {
       await service.startAgent({

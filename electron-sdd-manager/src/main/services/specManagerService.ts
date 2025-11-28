@@ -459,7 +459,7 @@ export class SpecManagerService {
       specId,
       phase,
       command: 'claude',
-      args: ['-p', `${slashCommand} ${featureName}`],
+      args: ['-p', '--verbose', '--output-format', 'stream-json', `${slashCommand} ${featureName}`],
       group,
     });
   }
@@ -479,7 +479,7 @@ export class SpecManagerService {
       specId,
       phase,
       command: 'claude',
-      args: ['-p', `${slashCommand} ${featureName}`],
+      args: ['-p', '--verbose', '--output-format', 'stream-json', `${slashCommand} ${featureName}`],
       group: 'validate',
     });
   }
@@ -494,7 +494,7 @@ export class SpecManagerService {
       specId,
       phase: 'status',
       command: 'claude',
-      args: ['-p', `/kiro:spec-status ${featureName}`],
+      args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-status ${featureName}`],
       group: 'doc',
     });
   }

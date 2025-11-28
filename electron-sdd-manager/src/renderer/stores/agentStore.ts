@@ -37,6 +37,7 @@ interface AgentActions {
   // Task 29.2: Agent操作アクション
   loadAgents: () => Promise<void>;
   selectAgent: (agentId: string | null) => void;
+  addAgent: (specId: string, agent: AgentInfo) => void;
   startAgent: (
     specId: string,
     phase: string,
@@ -103,6 +104,15 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   selectAgent: (agentId: string | null) => {
     set({ selectedAgentId: agentId });
+  },
+
+  addAgent: (specId: string, agent: AgentInfo) => {
+    set((state) => {
+      const newAgents = new Map(state.agents);
+      const existingAgents = newAgents.get(specId) || [];
+      newAgents.set(specId, [...existingAgents, agent]);
+      return { agents: newAgents };
+    });
   },
 
   startAgent: async (
@@ -235,9 +245,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     // 初期化時にメインプロセスからAgent一覧を取得
     get().loadAgents();
 
+    console.log('[agentStore] Setting up event listeners');
+
     // Agent出力イベントリスナー
     const cleanupOutput = window.electronAPI.onAgentOutput(
       (agentId: string, stream: 'stdout' | 'stderr', data: string) => {
+        console.log('[agentStore] Received agent output', { agentId, stream, dataLength: data.length });
         const entry: LogEntry = {
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           stream,

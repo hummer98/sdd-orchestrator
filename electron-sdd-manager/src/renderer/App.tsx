@@ -3,7 +3,7 @@
  * Requirements: 1.1, 2.1, 3.1, 11.1
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import {
   ProjectSelector,
@@ -60,9 +60,18 @@ export function App() {
   }, []);
 
   // Setup agent event listeners on mount
+  // useRefを使用してStrictModeでの二重実行を防止
+  const eventListenersSetup = useRef(false);
   useEffect(() => {
+    if (eventListenersSetup.current) {
+      return;
+    }
+    eventListenersSetup.current = true;
     const cleanup = setupEventListeners();
-    return cleanup;
+    return () => {
+      eventListenersSetup.current = false;
+      cleanup();
+    };
   }, [setupEventListeners]);
 
   // Handle beforeunload for unsaved changes

@@ -21,7 +21,7 @@ interface SpecState {
 
 interface SpecActions {
   loadSpecs: (projectPath: string) => Promise<void>;
-  selectSpec: (spec: SpecMetadata) => Promise<void>;
+  selectSpec: (spec: SpecMetadata, options?: { silent?: boolean }) => Promise<void>;
   clearSelectedSpec: () => void;
   setSortBy: (sortBy: SpecState['sortBy']) => void;
   setSortOrder: (order: SpecState['sortOrder']) => void;
@@ -73,8 +73,12 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
     }
   },
 
-  selectSpec: async (spec: SpecMetadata) => {
-    set({ selectedSpec: spec, isLoading: true, error: null });
+  selectSpec: async (spec: SpecMetadata, options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
+    if (!silent) {
+      set({ selectedSpec: spec, isLoading: true, error: null });
+    }
 
     try {
       const specJson = await window.electronAPI.readSpecJson(spec.path);
@@ -122,12 +126,20 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         taskProgress,
       };
 
-      set({ specDetail, isLoading: false });
+      if (silent) {
+        set({ selectedSpec: spec, specDetail });
+      } else {
+        set({ specDetail, isLoading: false });
+      }
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : '仕様詳細の読み込みに失敗しました',
-        isLoading: false,
-      });
+      if (!silent) {
+        set({
+          error: error instanceof Error ? error.message : '仕様詳細の読み込みに失敗しました',
+          isLoading: false,
+        });
+      } else {
+        console.error('Failed to refresh spec detail:', error);
+      }
     }
   },
 
@@ -153,6 +165,17 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       try {
         const specs = await window.electronAPI.readSpecs(currentProjectPath);
         set({ specs });
+
+        // Also refresh selected spec detail if one is selected
+        const { selectedSpec } = get();
+        if (selectedSpec) {
+          // Find updated metadata for the selected spec
+          const updatedSpec = specs.find((s) => s.path === selectedSpec.path);
+          if (updatedSpec) {
+            // Re-select to refresh detail pane (silent mode for smoother UX)
+            await get().selectSpec(updatedSpec, { silent: true });
+          }
+        }
       } catch (error) {
         console.error('Failed to refresh specs:', error);
       }

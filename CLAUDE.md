@@ -81,6 +81,8 @@ Report → Analyze → Fix → Verify
 
 ### Electronアプリ制御（多重起動防止機能付き）
 
+Electronアプリの操作には`task`コマンドを使用する。
+
 | コマンド | 説明 |
 |---------|------|
 | `task electron:dev` | フォアグラウンドで起動（インタラクティブ） |

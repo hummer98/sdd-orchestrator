@@ -2,6 +2,14 @@
 
 # Electron App Control Script
 # 多重起動を防止しつつ、起動・停止・再起動を制御するスクリプト
+#
+# NOTE: Do not run this script directly. Use Taskfile instead:
+#   task electron:start   - Start the app
+#   task electron:stop    - Stop the app
+#   task electron:restart - Restart the app
+#   task electron:status  - Check status
+#   task electron:logs    - View logs
+#   task electron:dev     - Start in foreground
 
 set -e
 
@@ -80,16 +88,36 @@ start() {
     echo -e "Use '${YELLOW}task electron:stop${NC}' to stop"
 }
 
+# tree-killでプロセスツリー全体を終了
+kill_process_tree() {
+    local pid=$1
+    local signal=${2:-SIGTERM}
+
+    # tree-killが利用可能か確認
+    if command -v npx > /dev/null && [ -f "$ELECTRON_DIR/node_modules/.bin/tree-kill" ]; then
+        echo "Using tree-kill to terminate process tree (PID: $pid)..."
+        cd "$ELECTRON_DIR"
+        npx tree-kill "$pid" "$signal" 2>/dev/null || true
+    else
+        # フォールバック: 手動で子プロセスを終了
+        echo "tree-kill not available, using manual cleanup..."
+        # 子プロセスを先に終了
+        pkill -"$signal" -P "$pid" 2>/dev/null || true
+        # 親プロセスを終了
+        kill -"$signal" "$pid" 2>/dev/null || true
+    fi
+}
+
 # 停止
 stop() {
     echo -e "${YELLOW}Stopping Electron app...${NC}"
 
     if is_running; then
         local pid=$(cat "$PID_FILE")
-        echo "Stopping process (PID: $pid)..."
+        echo "Stopping process tree (PID: $pid)..."
 
-        # まずSIGTERMで優雅に停止を試みる
-        kill "$pid" 2>/dev/null || true
+        # tree-killでプロセスツリー全体をSIGTERMで終了
+        kill_process_tree "$pid" "SIGTERM"
 
         # 最大5秒待機
         local count=0
@@ -101,10 +129,11 @@ stop() {
             count=$((count + 1))
         done
 
-        # まだ実行中ならSIGKILL
+        # まだ実行中ならSIGKILLでプロセスツリー全体を強制終了
         if ps -p "$pid" > /dev/null 2>&1; then
-            echo "Force killing process..."
-            kill -9 "$pid" 2>/dev/null || true
+            echo "Force killing process tree..."
+            kill_process_tree "$pid" "SIGKILL"
+            sleep 1
         fi
 
         rm -f "$PID_FILE"
@@ -113,13 +142,35 @@ stop() {
         echo -e "${YELLOW}App is not running${NC}"
     fi
 
-    # 残存プロセスのクリーンアップ
-    local remaining=$(find_dev_process)
-    if [ -n "$remaining" ]; then
-        echo "Cleaning up remaining processes..."
-        echo "$remaining" | xargs -r kill 2>/dev/null || true
+    # 残存プロセスのクリーンアップ（Electronプロセスが残っている場合）
+    cleanup_orphaned_processes
+}
+
+# 孤立したプロセスのクリーンアップ
+cleanup_orphaned_processes() {
+    # Vite関連プロセス
+    local vite_pids=$(pgrep -f "vite.*electron-sdd-manager" 2>/dev/null || true)
+    # Electron関連プロセス
+    local electron_pids=$(pgrep -f "Electron.*electron-sdd-manager\|electron-sdd-manager.*Electron" 2>/dev/null || true)
+    # Node/npm関連プロセス
+    local node_pids=$(pgrep -f "node.*electron-sdd-manager" 2>/dev/null || true)
+
+    local all_pids="$vite_pids $electron_pids $node_pids"
+    all_pids=$(echo "$all_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+
+    if [ -n "$all_pids" ]; then
+        echo "Cleaning up orphaned processes: $all_pids"
+        for pid in $all_pids; do
+            if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+                kill -TERM "$pid" 2>/dev/null || true
+            fi
+        done
         sleep 1
-        echo "$remaining" | xargs -r kill -9 2>/dev/null || true
+        for pid in $all_pids; do
+            if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
     fi
 }
 

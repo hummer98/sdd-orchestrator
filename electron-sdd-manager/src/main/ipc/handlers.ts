@@ -483,6 +483,30 @@ export function registerIpcHandlers(): void {
       return result.value;
     }
   );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_TASK_IMPL,
+    async (event, specId: string, featureName: string, taskId: string) => {
+      logger.info('[handlers] EXECUTE_TASK_IMPL called', { specId, featureName, taskId });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeTaskImpl({ specId, featureName, taskId });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeTaskImpl failed', { error: result.error });
+        throw new Error(`Failed to execute task impl: ${result.error.type}`);
+      }
+
+      logger.info('[handlers] executeTaskImpl succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
 }
 
 /**

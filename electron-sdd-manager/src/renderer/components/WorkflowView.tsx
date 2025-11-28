@@ -204,6 +204,20 @@ export function WorkflowView() {
     console.log('Show agent log for phase:', phase);
   }, []);
 
+  const handleExecuteTask = useCallback(async (taskId: string) => {
+    if (!specDetail) return;
+
+    // サービス層でコマンドを構築: /kiro:spec-impl {featureName} {taskId}
+    const newAgent = await window.electronAPI.executeTaskImpl(
+      specDetail.metadata.name,
+      specDetail.metadata.name,
+      taskId
+    );
+    // ストアにAgentを追加して選択
+    agentStore.addAgent(specDetail.metadata.name, newAgent);
+    agentStore.selectAgent(newAgent.agentId);
+  }, [agentStore, specDetail]);
+
   // Validation options positions
   const validationPositions: Record<ValidationType, { after: WorkflowPhase }> = {
     gap: { after: 'requirements' },
@@ -273,7 +287,12 @@ export function WorkflowView() {
             {/* Task Progress (for impl phase) */}
             {phase === 'impl' && specDetail.taskProgress && (
               <div className="mt-2 ml-4">
-                <TaskProgressView tasks={parsedTasks} progress={specDetail.taskProgress} />
+                <TaskProgressView
+                  tasks={parsedTasks}
+                  progress={specDetail.taskProgress}
+                  onExecuteTask={handleExecuteTask}
+                  canExecute={runningPhases.size === 0}
+                />
               </div>
             )}
 

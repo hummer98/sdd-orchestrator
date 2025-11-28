@@ -68,6 +68,12 @@ export interface ExecuteValidationOptions {
   featureName: string;
 }
 
+export interface ExecuteTaskImplOptions {
+  specId: string;
+  featureName: string;
+  taskId: string;
+}
+
 export type AgentError =
   | { type: 'SPAWN_ERROR'; message: string }
   | { type: 'NOT_FOUND'; agentId: string }
@@ -520,6 +526,24 @@ export class SpecManagerService {
       command: 'claude',
       args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-status ${featureName}`],
       group: 'doc',
+    });
+  }
+
+  /**
+   * Execute a specific task implementation
+   * Builds the claude command with task ID: /kiro:spec-impl {featureName} {taskId}
+   */
+  async executeTaskImpl(options: ExecuteTaskImplOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, taskId } = options;
+
+    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId });
+
+    return this.startAgent({
+      specId,
+      phase: `impl-${taskId}`,
+      command: 'claude',
+      args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-impl ${featureName} ${taskId}`],
+      group: 'impl',
     });
   }
 

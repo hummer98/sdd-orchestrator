@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   EXECUTE_PHASE: 'ipc:execute-phase',
   EXECUTE_VALIDATION: 'ipc:execute-validation',
   EXECUTE_SPEC_STATUS: 'ipc:execute-spec-status',
+  EXECUTE_TASK_IMPL: 'ipc:execute-task-impl',
 
   // Agent Events (Task 27.2)
   AGENT_OUTPUT: 'ipc:agent-output',

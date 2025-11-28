@@ -91,6 +91,7 @@ export interface ElectronAPI {
   executePhase(specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo>;
   executeValidation(specId: string, type: ValidationType, featureName: string): Promise<AgentInfo>;
   executeSpecStatus(specId: string, featureName: string): Promise<AgentInfo>;
+  executeTaskImpl(specId: string, featureName: string, taskId: string): Promise<AgentInfo>;
 
   // Agent Events (Task 27.2)
   // Requirements: 9.1-9.10

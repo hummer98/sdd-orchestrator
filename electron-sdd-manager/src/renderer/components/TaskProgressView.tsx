@@ -5,7 +5,7 @@
  */
 
 import { clsx } from 'clsx';
-import { CheckCircle, Circle, Loader2 } from 'lucide-react';
+import { CheckCircle, Circle, Loader2, Play } from 'lucide-react';
 
 // ============================================================
 // Task 5.1, 5.2: TaskProgressView Types
@@ -35,9 +35,13 @@ export interface TaskProgressViewProps {
   tasks: TaskItem[];
   /** 全体進捗 */
   progress: TaskProgress;
+  /** タスク実行コールバック */
+  onExecuteTask?: (taskId: string) => void;
+  /** 実行可能かどうか */
+  canExecute?: boolean;
 }
 
-export function TaskProgressView({ tasks, progress }: TaskProgressViewProps) {
+export function TaskProgressView({ tasks, progress, onExecuteTask, canExecute = true }: TaskProgressViewProps) {
   const isAllCompleted = progress.percentage === 100 && progress.total > 0;
 
   if (tasks.length === 0) {
@@ -96,7 +100,12 @@ export function TaskProgressView({ tasks, progress }: TaskProgressViewProps) {
       {/* Task List */}
       <div className="space-y-1 px-4">
         {tasks.map((task) => (
-          <TaskListItem key={task.id} task={task} />
+          <TaskListItem
+            key={task.id}
+            task={task}
+            onExecute={onExecuteTask}
+            canExecute={canExecute}
+          />
         ))}
       </div>
     </div>
@@ -105,9 +114,20 @@ export function TaskProgressView({ tasks, progress }: TaskProgressViewProps) {
 
 interface TaskListItemProps {
   task: TaskItem;
+  onExecute?: (taskId: string) => void;
+  canExecute?: boolean;
 }
 
-function TaskListItem({ task }: TaskListItemProps) {
+function TaskListItem({ task, onExecute, canExecute = true }: TaskListItemProps) {
+  const handleExecute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onExecute && canExecute && task.status !== 'completed' && task.status !== 'running') {
+      onExecute(task.id);
+    }
+  };
+
+  const showExecuteButton = onExecute && task.status !== 'completed' && task.status !== 'running';
+
   return (
     <div
       className={clsx(
@@ -143,7 +163,7 @@ function TaskListItem({ task }: TaskListItemProps) {
       {/* Task Title */}
       <span
         className={clsx(
-          'truncate',
+          'truncate flex-1',
           task.status === 'completed'
             ? 'text-gray-500 dark:text-gray-400'
             : 'text-gray-700 dark:text-gray-300'
@@ -151,6 +171,24 @@ function TaskListItem({ task }: TaskListItemProps) {
       >
         {task.title}
       </span>
+
+      {/* Execute Button */}
+      {showExecuteButton && (
+        <button
+          onClick={handleExecute}
+          disabled={!canExecute}
+          className={clsx(
+            'p-0.5 rounded transition-colors flex-shrink-0',
+            canExecute
+              ? 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600'
+              : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+          )}
+          title={canExecute ? `タスク ${task.id} を実行` : '他のタスクが実行中です'}
+          aria-label={`タスク ${task.id} を実行`}
+        >
+          <Play className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

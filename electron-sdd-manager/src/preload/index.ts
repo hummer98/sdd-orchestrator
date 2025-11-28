@@ -100,6 +100,9 @@ const electronAPI = {
   executeSpecStatus: (specId: string, featureName: string): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName),
 
+  executeTaskImpl: (specId: string, featureName: string, taskId: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId),
+
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10
   onAgentOutput: (

@@ -30,6 +30,15 @@ export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'insp
 export type ValidationType = 'gap' | 'design' | 'impl';
 
 /**
+ * Specs change event type
+ */
+export interface SpecsChangeEvent {
+  type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
+  path: string;
+  specId?: string;
+}
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -105,6 +114,11 @@ export interface ElectronAPI {
   getAppVersion(): Promise<string>;
   getPlatform(): NodeJS.Platform;
   getInitialProjectPath(): Promise<string | null>;
+
+  // Specs Watcher
+  startSpecsWatcher(): Promise<void>;
+  stopSpecsWatcher(): Promise<void>;
+  onSpecsChanged(callback: (event: SpecsChangeEvent) => void): () => void;
 }
 
 declare global {

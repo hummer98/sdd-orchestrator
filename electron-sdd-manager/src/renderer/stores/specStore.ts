@@ -16,6 +16,7 @@ interface SpecState {
   statusFilter: SpecPhase | 'all';
   isLoading: boolean;
   error: string | null;
+  isWatching: boolean;
 }
 
 interface SpecActions {
@@ -27,12 +28,17 @@ interface SpecActions {
   setStatusFilter: (filter: SpecState['statusFilter']) => void;
   refreshSpecs: () => Promise<void>;
   getSortedFilteredSpecs: () => SpecMetadata[];
+  startWatching: () => Promise<void>;
+  stopWatching: () => Promise<void>;
 }
 
 type SpecStore = SpecState & SpecActions;
 
 // Store the current project path for refresh
 let currentProjectPath: string | null = null;
+
+// Cleanup function for specs watcher
+let watcherCleanup: (() => void) | null = null;
 
 export const useSpecStore = create<SpecStore>((set, get) => ({
   // Initial state
@@ -44,6 +50,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   statusFilter: 'all',
   isLoading: false,
   error: null,
+  isWatching: false,
 
   // Actions
   loadSpecs: async (projectPath: string) => {
@@ -55,6 +62,9 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       await window.electronAPI.setProjectPath(projectPath);
       const specs = await window.electronAPI.readSpecs(projectPath);
       set({ specs, isLoading: false });
+
+      // Start watching for changes automatically
+      await get().startWatching();
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : '仕様の読み込みに失敗しました',
@@ -139,7 +149,53 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
 
   refreshSpecs: async () => {
     if (currentProjectPath) {
-      await get().loadSpecs(currentProjectPath);
+      // Re-read specs without triggering full loading state
+      try {
+        const specs = await window.electronAPI.readSpecs(currentProjectPath);
+        set({ specs });
+      } catch (error) {
+        console.error('Failed to refresh specs:', error);
+      }
+    }
+  },
+
+  startWatching: async () => {
+    // Clean up existing watcher if any
+    if (watcherCleanup) {
+      watcherCleanup();
+      watcherCleanup = null;
+    }
+
+    try {
+      // Start watcher on main process
+      await window.electronAPI.startSpecsWatcher();
+
+      // Subscribe to change events
+      watcherCleanup = window.electronAPI.onSpecsChanged((event) => {
+        console.log('[specStore] Specs changed:', event);
+        // Refresh specs list on any change
+        get().refreshSpecs();
+      });
+
+      set({ isWatching: true });
+      console.log('[specStore] Specs watcher started');
+    } catch (error) {
+      console.error('[specStore] Failed to start specs watcher:', error);
+    }
+  },
+
+  stopWatching: async () => {
+    if (watcherCleanup) {
+      watcherCleanup();
+      watcherCleanup = null;
+    }
+
+    try {
+      await window.electronAPI.stopSpecsWatcher();
+      set({ isWatching: false });
+      console.log('[specStore] Specs watcher stopped');
+    } catch (error) {
+      console.error('[specStore] Failed to stop specs watcher:', error);
     }
   },
 

@@ -50,6 +50,11 @@ export const IPC_CHANNELS = {
   GET_APP_VERSION: 'ipc:get-app-version',
   GET_PLATFORM: 'ipc:get-platform',
   GET_INITIAL_PROJECT_PATH: 'ipc:get-initial-project-path',
+
+  // Specs Watcher
+  START_SPECS_WATCHER: 'ipc:start-specs-watcher',
+  STOP_SPECS_WATCHER: 'ipc:stop-specs-watcher',
+  SPECS_CHANGED: 'ipc:specs-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

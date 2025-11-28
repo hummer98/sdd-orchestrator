@@ -11,6 +11,7 @@ import { getConfigStore } from '../services/configStore';
 import { updateMenu } from '../menu';
 import type { Phase } from '../../renderer/types';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType } from '../services/specManagerService';
+import { SpecsWatcherService } from '../services/specsWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 
@@ -19,10 +20,14 @@ const commandService = new CommandService();
 
 // SpecManagerService instance (lazily initialized with project path)
 let specManagerService: SpecManagerService | null = null;
+// SpecsWatcherService instance
+let specsWatcherService: SpecsWatcherService | null = null;
 // Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
 // Initial project path set from command line arguments
 let initialProjectPath: string | null = null;
+// Current project path
+let currentProjectPath: string | null = null;
 
 /**
  * Set initial project path (called from main process)
@@ -43,6 +48,7 @@ export function getInitialProjectPath(): string | null {
  */
 export async function setProjectPath(projectPath: string): Promise<void> {
   logger.info('[handlers] setProjectPath called', { projectPath });
+  currentProjectPath = projectPath;
   specManagerService = new SpecManagerService(projectPath);
   eventCallbacksRegistered = false; // Reset when service is recreated
 
@@ -52,6 +58,12 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     console.log('[handlers] Agents restored from PID files');
   } catch (error) {
     console.error('[handlers] Failed to restore agents:', error);
+  }
+
+  // Stop existing watcher if any
+  if (specsWatcherService) {
+    await specsWatcherService.stop();
+    specsWatcherService = null;
   }
 }
 
@@ -222,6 +234,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH, async () => {
     return initialProjectPath;
+  });
+
+  // Specs Watcher Handlers
+  ipcMain.handle(IPC_CHANNELS.START_SPECS_WATCHER, async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      startSpecsWatcher(window);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.STOP_SPECS_WATCHER, async () => {
+    await stopSpecsWatcher();
   });
 
   // Agent Management Handlers (Task 27.1)
@@ -474,4 +498,42 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
       window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
     }
   });
+}
+
+/**
+ * Start or restart specs watcher for the current project
+ */
+export function startSpecsWatcher(window: BrowserWindow): void {
+  if (!currentProjectPath) {
+    logger.warn('[handlers] Cannot start specs watcher: no project path set');
+    return;
+  }
+
+  // Stop existing watcher if any
+  if (specsWatcherService) {
+    specsWatcherService.stop();
+  }
+
+  specsWatcherService = new SpecsWatcherService(currentProjectPath);
+
+  specsWatcherService.onChange((event) => {
+    logger.info('[handlers] Specs changed', { event });
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.SPECS_CHANGED, event);
+    }
+  });
+
+  specsWatcherService.start();
+  logger.info('[handlers] Specs watcher started', { projectPath: currentProjectPath });
+}
+
+/**
+ * Stop specs watcher
+ */
+export async function stopSpecsWatcher(): Promise<void> {
+  if (specsWatcherService) {
+    await specsWatcherService.stop();
+    specsWatcherService = null;
+    logger.info('[handlers] Specs watcher stopped');
+  }
 }

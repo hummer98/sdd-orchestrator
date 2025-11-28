@@ -9,6 +9,7 @@ import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, CommandOutputEvent } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
+import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 
 /**
  * Exposed API to renderer process
@@ -159,6 +160,25 @@ const electronAPI = {
 
   getInitialProjectPath: (): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH),
+
+  // Specs Watcher
+  startSpecsWatcher: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.START_SPECS_WATCHER),
+
+  stopSpecsWatcher: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STOP_SPECS_WATCHER),
+
+  onSpecsChanged: (callback: (event: SpecsChangeEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, changeEvent: SpecsChangeEvent) => {
+      callback(changeEvent);
+    };
+    ipcRenderer.on(IPC_CHANNELS.SPECS_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.SPECS_CHANGED, handler);
+    };
+  },
 };
 
 // Expose API to renderer

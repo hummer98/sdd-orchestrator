@@ -9,9 +9,43 @@ import * as crypto from 'crypto';
 import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
 import { createAgentProcess, AgentProcess } from './agentProcess';
 import { PidFileService } from './pidFileService';
+import { LogFileService, LogEntry } from './logFileService';
 import { logger } from './logger';
 
 export type ExecutionGroup = 'doc' | 'validate' | 'impl';
+
+/** ワークフローフェーズ */
+export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+
+/** バリデーションタイプ */
+export type ValidationType = 'gap' | 'design' | 'impl';
+
+/** フェーズ実行コマンドマッピング */
+const PHASE_COMMANDS: Record<WorkflowPhase, string> = {
+  requirements: '/kiro:spec-requirements',
+  design: '/kiro:spec-design',
+  tasks: '/kiro:spec-tasks',
+  impl: '/kiro:spec-impl',
+  inspection: '/kiro:validate-impl',
+  deploy: '/kiro:deployment',
+};
+
+/** バリデーションコマンドマッピング */
+const VALIDATION_COMMANDS: Record<ValidationType, string> = {
+  gap: '/kiro:validate-gap',
+  design: '/kiro:validate-design',
+  impl: '/kiro:validate-impl',
+};
+
+/** フェーズからExecutionGroupへのマッピング */
+const PHASE_GROUPS: Record<WorkflowPhase, ExecutionGroup> = {
+  requirements: 'doc',
+  design: 'doc',
+  tasks: 'doc',
+  impl: 'impl',
+  inspection: 'validate',
+  deploy: 'doc',
+};
 
 export interface StartAgentOptions {
   specId: string;
@@ -20,6 +54,18 @@ export interface StartAgentOptions {
   args: string[];
   group?: ExecutionGroup;
   sessionId?: string;
+}
+
+export interface ExecutePhaseOptions {
+  specId: string;
+  phase: WorkflowPhase;
+  featureName: string;
+}
+
+export interface ExecuteValidationOptions {
+  specId: string;
+  type: ValidationType;
+  featureName: string;
 }
 
 export type AgentError =
@@ -39,6 +85,7 @@ export type Result<T, E> =
 export class SpecManagerService {
   private registry: AgentRegistry;
   private pidService: PidFileService;
+  private logService: LogFileService;
   private processes: Map<string, AgentProcess> = new Map();
   private projectPath: string;
   private outputCallbacks: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void)[] = [];
@@ -49,6 +96,10 @@ export class SpecManagerService {
     this.registry = new AgentRegistry();
     this.pidService = new PidFileService(
       path.join(projectPath, '.kiro', 'runtime', 'agents')
+    );
+    // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
+    this.logService = new LogFileService(
+      path.join(projectPath, '.kiro', 'specs')
     );
   }
 
@@ -170,6 +221,17 @@ export class SpecManagerService {
       process.onOutput((stream, data) => {
         logger.debug('[SpecManagerService] Process output received', { agentId, stream, dataLength: data.length });
         this.registry.updateActivity(agentId);
+
+        // Save log to file
+        const logEntry: LogEntry = {
+          timestamp: new Date().toISOString(),
+          stream,
+          data,
+        };
+        this.logService.appendLog(specId, agentId, logEntry).catch((err) => {
+          logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
+        });
+
         logger.debug('[SpecManagerService] Calling output callbacks', { agentId, callbackCount: this.outputCallbacks.length });
         this.outputCallbacks.forEach((cb) => cb(agentId, stream, data));
       });
@@ -380,5 +442,60 @@ export class SpecManagerService {
    */
   onStatusChange(callback: (agentId: string, status: AgentStatus) => void): void {
     this.statusCallbacks.push(callback);
+  }
+
+  /**
+   * Execute a workflow phase
+   * Builds the claude command internally
+   */
+  async executePhase(options: ExecutePhaseOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, phase, featureName } = options;
+    const slashCommand = PHASE_COMMANDS[phase];
+    const group = PHASE_GROUPS[phase];
+
+    logger.info('[SpecManagerService] executePhase called', { specId, phase, featureName, slashCommand, group });
+
+    return this.startAgent({
+      specId,
+      phase,
+      command: 'claude',
+      args: ['-p', `${slashCommand} ${featureName}`],
+      group,
+    });
+  }
+
+  /**
+   * Execute a validation
+   * Builds the claude command internally
+   */
+  async executeValidation(options: ExecuteValidationOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, type, featureName } = options;
+    const slashCommand = VALIDATION_COMMANDS[type];
+    const phase = `validate-${type}`;
+
+    logger.info('[SpecManagerService] executeValidation called', { specId, type, featureName, slashCommand });
+
+    return this.startAgent({
+      specId,
+      phase,
+      command: 'claude',
+      args: ['-p', `${slashCommand} ${featureName}`],
+      group: 'validate',
+    });
+  }
+
+  /**
+   * Execute spec-status command
+   */
+  async executeSpecStatus(specId: string, featureName: string): Promise<Result<AgentInfo, AgentError>> {
+    logger.info('[SpecManagerService] executeSpecStatus called', { specId, featureName });
+
+    return this.startAgent({
+      specId,
+      phase: 'status',
+      command: 'claude',
+      args: ['-p', `/kiro:spec-status ${featureName}`],
+      group: 'doc',
+    });
   }
 }

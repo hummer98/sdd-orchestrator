@@ -68,3 +68,143 @@
   --color-canvas-default: #1f2937 !important;
   --color-fg-default: #e5e7eb !important;
 }
+
+/* MDEditor dark mode - editor and preview */
+[data-color-mode="dark"] .w-md-editor {
+  --color-canvas-default: #1e293b !important;
+  --color-fg-default: #c9d1d9 !important;
+  --color-border-default: #30363d !important;
+  background-color: #1e293b !important;
+  color: #c9d1d9 !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-text-pre,
+[data-color-mode="dark"] .w-md-editor-text-input,
+[data-color-mode="dark"] .w-md-editor-text {
+  color: #c9d1d9 !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-content {
+  background-color: #1e293b !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-area {
+  background-color: #1e293b !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-input {
+  background-color: #1e293b !important;
+  color: #c9d1d9 !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-toolbar {
+  background-color: #1e293b !important;
+  border-color: #30363d !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-toolbar li > button {
+  color: #8b949e !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-toolbar li > button:hover {
+  color: #c9d1d9 !important;
+  background-color: #374151 !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-preview {
+  background-color: #1e293b !important;
+}
+
+/* MDEditor Markdown preview (dark mode) */
+[data-color-mode="dark"] .wmde-markdown {
+  --color-prettylights-syntax-comment: #8b949e;
+  --color-prettylights-syntax-constant: #79c0ff;
+  --color-prettylights-syntax-entity: #d2a8ff;
+  --color-prettylights-syntax-storage-modifier-import: #c9d1d9;
+  --color-prettylights-syntax-entity-tag: #7ee787;
+  --color-prettylights-syntax-keyword: #ff7b72;
+  --color-prettylights-syntax-string: #a5d6ff;
+  --color-prettylights-syntax-variable: #ffa657;
+  --color-prettylights-syntax-brackethighlighter-unmatched: #f85149;
+  --color-prettylights-syntax-invalid-illegal-text: #f0f6fc;
+  --color-prettylights-syntax-invalid-illegal-bg: #8e1519;
+  --color-prettylights-syntax-carriage-return-text: #f0f6fc;
+  --color-prettylights-syntax-carriage-return-bg: #b62324;
+  --color-prettylights-syntax-string-regexp: #7ee787;
+  --color-prettylights-syntax-markup-list: #f2cc60;
+  --color-prettylights-syntax-markup-heading: #1f6feb;
+  --color-prettylights-syntax-markup-italic: #c9d1d9;
+  --color-prettylights-syntax-markup-bold: #c9d1d9;
+  --color-prettylights-syntax-markup-deleted-text: #ffdcd7;
+  --color-prettylights-syntax-markup-deleted-bg: #67060c;
+  --color-prettylights-syntax-markup-inserted-text: #aff5b4;
+  --color-prettylights-syntax-markup-inserted-bg: #033a16;
+  --color-prettylights-syntax-markup-changed-text: #ffdfb6;
+  --color-prettylights-syntax-markup-changed-bg: #5a1e02;
+  --color-prettylights-syntax-markup-ignored-text: #c9d1d9;
+  --color-prettylights-syntax-markup-ignored-bg: #1158c7;
+  --color-prettylights-syntax-meta-diff-range: #d2a8ff;
+  --color-prettylights-syntax-sublimelinter-gutter-mark: #484f58;
+  --color-fg-default: #c9d1d9;
+  --color-fg-muted: #8b949e;
+  --color-fg-subtle: #6e7681;
+  --color-canvas-default: #0d1117;
+  --color-canvas-subtle: #161b22;
+  --color-border-default: #30363d;
+  --color-border-muted: #21262d;
+  --color-neutral-muted: rgba(110, 118, 129, 0.4);
+  --color-accent-fg: #58a6ff;
+  --color-accent-emphasis: #1f6feb;
+  --color-danger-fg: #f85149;
+  background-color: transparent !important;
+  color: var(--color-fg-default) !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown pre {
+  background-color: #161b22 !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown code {
+  background-color: rgba(110, 118, 129, 0.4) !important;
+  color: #c9d1d9 !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown pre code {
+  background-color: transparent !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown blockquote {
+  border-left-color: #30363d !important;
+  color: #8b949e !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown table th,
+[data-color-mode="dark"] .wmde-markdown table td {
+  border-color: #30363d !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown table tr {
+  background-color: transparent !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown table tr:nth-child(2n) {
+  background-color: #161b22 !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown hr {
+  background-color: #30363d !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown a {
+  color: #58a6ff !important;
+}
+
+[data-color-mode="dark"] .wmde-markdown h1,
+[data-color-mode="dark"] .wmde-markdown h2,
+[data-color-mode="dark"] .wmde-markdown h3,
+[data-color-mode="dark"] .wmde-markdown h4,
+[data-color-mode="dark"] .wmde-markdown h5,
+[data-color-mode="dark"] .wmde-markdown h6 {
+  color: #c9d1d9 !important;
+  border-bottom-color: #21262d !important;
+}

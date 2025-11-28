@@ -7,7 +7,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, CommandOutputEvent } from '../renderer/types';
-import type { ExecutionGroup } from '../main/services/specManagerService';
+import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 
 /**
@@ -87,6 +87,17 @@ const electronAPI = {
 
   sendAgentInput: (agentId: string, input: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SEND_AGENT_INPUT, agentId, input),
+
+  // Phase Execution (high-level commands)
+  // These delegate command building to the service layer
+  executePhase: (specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName),
+
+  executeValidation: (specId: string, type: ValidationType, featureName: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_VALIDATION, specId, type, featureName),
+
+  executeSpecStatus: (specId: string, featureName: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName),
 
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10

@@ -20,6 +20,16 @@ export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'fa
 export type ExecutionGroup = 'doc' | 'validate' | 'impl';
 
 /**
+ * Workflow phase type
+ */
+export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+
+/**
+ * Validation type
+ */
+export type ValidationType = 'gap' | 'design' | 'impl';
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -67,6 +77,11 @@ export interface ElectronAPI {
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;
   sendAgentInput(agentId: string, input: string): Promise<void>;
+
+  // Phase Execution (high-level commands)
+  executePhase(specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo>;
+  executeValidation(specId: string, type: ValidationType, featureName: string): Promise<AgentInfo>;
+  executeSpecStatus(specId: string, featureName: string): Promise<AgentInfo>;
 
   // Agent Events (Task 27.2)
   // Requirements: 9.1-9.10

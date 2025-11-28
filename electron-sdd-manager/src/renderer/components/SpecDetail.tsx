@@ -50,18 +50,9 @@ export function SpecDetail() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-            {metadata.name}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {specJson.feature_name}
-          </p>
-        </div>
-
-        {metadata.readyForImplementation && (
+      {/* Implementation Ready Badge */}
+      {metadata.readyForImplementation && (
+        <div className="flex justify-end">
           <span
             className={clsx(
               'flex items-center gap-1 px-3 py-1.5 rounded-full',
@@ -71,8 +62,8 @@ export function SpecDetail() {
             <Rocket className="w-4 h-4" />
             実装可能
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-4">
@@ -326,7 +317,7 @@ function ArtifactItem({ name, artifact }: ArtifactItemProps) {
       {/* Markdown Content */}
       {isExpanded && content && (
         <div className="border-t border-gray-200 dark:border-gray-700">
-          <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="light">
+          <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="dark">
             <MDEditor.Markdown source={content} />
           </div>
         </div>

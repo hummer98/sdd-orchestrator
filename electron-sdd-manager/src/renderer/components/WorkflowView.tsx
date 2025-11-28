@@ -18,7 +18,6 @@ import {
   WORKFLOW_PHASES,
   PHASE_LABELS,
   VALIDATION_LABELS,
-  PHASE_COMMANDS,
   getPhaseStatus,
   type WorkflowPhase,
   type PhaseStatus,
@@ -40,44 +39,26 @@ export function WorkflowView() {
   const [executingPhase, setExecutingPhase] = useState<WorkflowPhase | null>(null);
   const [executingValidation, setExecutingValidation] = useState<ValidationType | null>(null);
 
-  // Handle empty and loading states
-  if (!selectedSpec) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        仕様を選択してください
-      </div>
-    );
-  }
-
-  if (isLoading || !specDetail) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-gray-400">読み込み中...</div>
-      </div>
-    );
-  }
-
-  const specJson = specDetail.specJson as ExtendedSpecJson;
+  // All hooks must be called before any conditional returns
+  const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
 
   // Calculate phase statuses
   const phaseStatuses = useMemo(() => {
+    if (!specJson) return {} as Record<WorkflowPhase, PhaseStatus>;
     const statuses: Record<WorkflowPhase, PhaseStatus> = {} as Record<WorkflowPhase, PhaseStatus>;
     for (const phase of WORKFLOW_PHASES) {
       statuses[phase] = getPhaseStatus(phase, specJson);
     }
+    // タスク進捗100%の場合、implフェーズをapprovedにする
+    if (specDetail?.taskProgress?.percentage === 100) {
+      statuses.impl = 'approved';
+    }
     return statuses;
-  }, [specJson]);
-
-  // Get previous phase status
-  const getPreviousStatus = (phase: WorkflowPhase): PhaseStatus | null => {
-    const index = WORKFLOW_PHASES.indexOf(phase);
-    if (index <= 0) return null;
-    return phaseStatuses[WORKFLOW_PHASES[index - 1]];
-  };
+  }, [specJson, specDetail?.taskProgress?.percentage]);
 
   // Parse tasks from tasks.md
   const parsedTasks: TaskItem[] = useMemo(() => {
-    const content = specDetail.artifacts.tasks?.content;
+    const content = specDetail?.artifacts.tasks?.content;
     if (!content) return [];
 
     const tasks: TaskItem[] = [];
@@ -102,28 +83,35 @@ export function WorkflowView() {
       }
     }
     return tasks;
-  }, [specDetail.artifacts.tasks?.content]);
+  }, [specDetail?.artifacts.tasks?.content]);
+
+  // Get previous phase status
+  const getPreviousStatus = (phase: WorkflowPhase): PhaseStatus | null => {
+    const index = WORKFLOW_PHASES.indexOf(phase);
+    if (index <= 0) return null;
+    return phaseStatuses[WORKFLOW_PHASES[index - 1]];
+  };
 
   // Handlers
   const handleExecutePhase = useCallback(async (phase: WorkflowPhase) => {
+    if (!specDetail) return;
     setExecutingPhase(phase);
-    const command = PHASE_COMMANDS[phase];
-    const featureName = specDetail.metadata.name;
 
     try {
-      await agentStore.startAgent(
+      // サービス層でコマンドを構築
+      const newAgent = await window.electronAPI.executePhase(
         specDetail.metadata.name,
         phase,
-        command,
-        [featureName],
-        phase === 'impl' ? 'impl' : 'doc'
+        specDetail.metadata.name
       );
+      agentStore.selectAgent(newAgent.agentId);
     } finally {
       setExecutingPhase(null);
     }
   }, [agentStore, specDetail]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
+    if (!specDetail) return;
     // Update approval in spec.json via IPC
     try {
       await window.electronAPI.updateApproval(
@@ -147,18 +135,17 @@ export function WorkflowView() {
   }, [handleApprovePhase, handleExecutePhase]);
 
   const handleExecuteValidation = useCallback(async (type: ValidationType) => {
+    if (!specDetail) return;
     setExecutingValidation(type);
-    const command = `/kiro:validate-${type}`;
-    const featureName = specDetail.metadata.name;
 
     try {
-      await agentStore.startAgent(
+      // サービス層でコマンドを構築
+      const newAgent = await window.electronAPI.executeValidation(
         specDetail.metadata.name,
-        `validate-${type}`,
-        command,
-        [featureName],
-        'validate'
+        type,
+        specDetail.metadata.name
       );
+      agentStore.selectAgent(newAgent.agentId);
     } finally {
       setExecutingValidation(null);
     }
@@ -174,14 +161,13 @@ export function WorkflowView() {
   }, [workflowStore]);
 
   const handleSpecStatus = useCallback(async () => {
-    const featureName = specDetail.metadata.name;
-    await agentStore.startAgent(
+    if (!specDetail) return;
+    // サービス層でコマンドを構築
+    const newAgent = await window.electronAPI.executeSpecStatus(
       specDetail.metadata.name,
-      'status',
-      '/kiro:spec-status',
-      [featureName],
-      'doc'
+      specDetail.metadata.name
     );
+    agentStore.selectAgent(newAgent.agentId);
   }, [agentStore, specDetail]);
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
@@ -195,6 +181,23 @@ export function WorkflowView() {
     design: { after: 'design' },
     impl: { after: 'impl' },
   };
+
+  // Handle empty and loading states (after all hooks)
+  if (!selectedSpec) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        仕様を選択してください
+      </div>
+    );
+  }
+
+  if (isLoading || !specDetail || !specJson) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-pulse text-gray-400">読み込み中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

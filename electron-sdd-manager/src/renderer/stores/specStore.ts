@@ -87,10 +87,11 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       ]);
 
       // Calculate task progress from tasks.md content
+      // Only match tasks at line start (excluding code examples in backticks)
       let taskProgress: TaskProgress | null = null;
       if (tasks?.content) {
-        const completedMatches = tasks.content.match(/- \[x\]/gi) || [];
-        const pendingMatches = tasks.content.match(/- \[ \]/g) || [];
+        const completedMatches = tasks.content.match(/^- \[x\]/gim) || [];
+        const pendingMatches = tasks.content.match(/^- \[ \]/gm) || [];
         const total = completedMatches.length + pendingMatches.length;
         const completed = completedMatches.length;
         taskProgress = {

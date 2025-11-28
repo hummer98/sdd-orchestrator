@@ -152,7 +152,7 @@ export function ArtifactEditor() {
           onChange={(value) => setContent(value || '')}
           preview={mode === 'preview' ? 'preview' : 'edit'}
           height="100%"
-          data-color-mode="light"
+          data-color-mode="dark"
           hideToolbar={mode === 'preview'}
           visibleDragbar={false}
         />

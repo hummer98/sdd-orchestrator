@@ -27,5 +27,6 @@
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/e2e/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

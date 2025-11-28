@@ -129,7 +129,7 @@ function ArtifactItem({ name, artifact, isExpanded, onToggle }: ArtifactItemProp
           data-testid="artifact-content"
           className="border-t border-gray-200 dark:border-gray-700"
         >
-          <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="light">
+          <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="dark">
             <MDEditor.Markdown source={content} />
           </div>
         </div>

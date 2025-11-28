@@ -28,6 +28,11 @@ export const IPC_CHANNELS = {
   GET_ALL_AGENTS: 'ipc:get-all-agents',
   SEND_AGENT_INPUT: 'ipc:send-agent-input',
 
+  // Phase Execution (high-level commands)
+  EXECUTE_PHASE: 'ipc:execute-phase',
+  EXECUTE_VALIDATION: 'ipc:execute-validation',
+  EXECUTE_SPEC_STATUS: 'ipc:execute-spec-status',
+
   // Agent Events (Task 27.2)
   AGENT_OUTPUT: 'ipc:agent-output',
   AGENT_STATUS_CHANGE: 'ipc:agent-status-change',

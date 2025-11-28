@@ -10,7 +10,7 @@ import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu } from '../menu';
 import type { Phase } from '../../renderer/types';
-import { SpecManagerService, ExecutionGroup } from '../services/specManagerService';
+import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType } from '../services/specManagerService';
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 
@@ -354,4 +354,104 @@ export function registerIpcHandlers(): void {
       configStore.setHangThreshold(thresholdMs);
     }
   );
+
+  // Phase Execution Handlers (high-level commands)
+  // These build the claude command internally in the service layer
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_PHASE,
+    async (event, specId: string, phase: WorkflowPhase, featureName: string) => {
+      logger.info('[handlers] EXECUTE_PHASE called', { specId, phase, featureName });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executePhase({ specId, phase, featureName });
+
+      if (!result.ok) {
+        logger.error('[handlers] executePhase failed', { error: result.error });
+        throw new Error(`Failed to execute phase: ${result.error.type}`);
+      }
+
+      logger.info('[handlers] executePhase succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_VALIDATION,
+    async (event, specId: string, type: ValidationType, featureName: string) => {
+      logger.info('[handlers] EXECUTE_VALIDATION called', { specId, type, featureName });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeValidation({ specId, type, featureName });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeValidation failed', { error: result.error });
+        throw new Error(`Failed to execute validation: ${result.error.type}`);
+      }
+
+      logger.info('[handlers] executeValidation succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_SPEC_STATUS,
+    async (event, specId: string, featureName: string) => {
+      logger.info('[handlers] EXECUTE_SPEC_STATUS called', { specId, featureName });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeSpecStatus(specId, featureName);
+
+      if (!result.ok) {
+        logger.error('[handlers] executeSpecStatus failed', { error: result.error });
+        throw new Error(`Failed to execute spec-status: ${result.error.type}`);
+      }
+
+      logger.info('[handlers] executeSpecStatus succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+}
+
+/**
+ * Helper to register event callbacks for a window
+ */
+function registerEventCallbacks(service: SpecManagerService, window: BrowserWindow): void {
+  logger.info('[handlers] Registering event callbacks');
+  eventCallbacksRegistered = true;
+
+  service.onOutput((agentId, stream, data) => {
+    logger.debug('[handlers] Agent output received', { agentId, stream, dataLength: data.length, preview: data.substring(0, 100) });
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.AGENT_OUTPUT, agentId, stream, data);
+      logger.debug('[handlers] Agent output sent to renderer', { agentId });
+    } else {
+      logger.warn('[handlers] Window destroyed, cannot send output', { agentId });
+    }
+  });
+
+  service.onStatusChange((agentId, status) => {
+    logger.info('[handlers] Agent status change', { agentId, status });
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
+    }
+  });
 }

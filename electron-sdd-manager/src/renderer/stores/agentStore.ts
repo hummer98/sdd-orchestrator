@@ -123,15 +123,17 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         sessionId
       );
 
+      const agentId = (newAgent as AgentInfo).agentId;
+
       set((state) => {
         const newAgents = new Map(state.agents);
         const existingAgents = newAgents.get(specId) || [];
         newAgents.set(specId, [...existingAgents, newAgent as AgentInfo]);
 
-        return { agents: newAgents };
+        return { agents: newAgents, selectedAgentId: agentId };
       });
 
-      return (newAgent as AgentInfo).agentId;
+      return agentId;
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Agentの起動に失敗しました',
@@ -230,6 +232,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // Requirements: 9.1, 5.2
 
   setupEventListeners: () => {
+    // 初期化時にメインプロセスからAgent一覧を取得
+    get().loadAgents();
+
     // Agent出力イベントリスナー
     const cleanupOutput = window.electronAPI.onAgentOutput(
       (agentId: string, stream: 'stdout' | 'stderr', data: string) => {

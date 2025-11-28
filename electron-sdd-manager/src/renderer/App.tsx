@@ -8,10 +8,7 @@ import { Plus } from 'lucide-react';
 import {
   ProjectSelector,
   SpecList,
-  SpecDetail,
   CreateSpecDialog,
-  PhaseExecutionPanel,
-  ApprovalPanel,
   ArtifactEditor,
   NotificationProvider,
   UnsavedChangesDialog,
@@ -20,6 +17,8 @@ import {
   AgentListPanel,
   AgentLogPanel,
   AgentInputPanel,
+  // SDD Hybrid Workflow: 右ペインを統合したWorkflowView
+  WorkflowView,
 } from './components';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore } from './stores';
 import { clsx } from 'clsx';
@@ -34,7 +33,7 @@ const BOTTOM_PANE_MAX = 400;
 
 export function App() {
   const { currentProject, kiroValidation } = useProjectStore();
-  const { selectedSpec } = useSpecStore();
+  const { selectedSpec, specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
 
@@ -103,6 +102,18 @@ export function App() {
           <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
             Electron
           </span>
+          {/* Spec title in header */}
+          {specDetail && (
+            <div className="ml-6 flex items-center gap-2">
+              <span className="text-gray-400">/</span>
+              <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                {specDetail.metadata.name}
+              </span>
+              <span className="text-sm text-gray-500">
+                {specDetail.specJson.feature_name}
+              </span>
+            </div>
+          )}
         </header>
 
         {/* Main content */}
@@ -153,17 +164,16 @@ export function App() {
                 {/* Right resize handle */}
                 <ResizeHandle direction="horizontal" onResize={handleRightResize} />
 
-                {/* Right sidebar - Detail & Controls */}
+                {/* Right sidebar - SDD Hybrid Workflow View */}
                 <aside
                   style={{ width: rightPaneWidth }}
-                  className="shrink-0 flex flex-col overflow-y-auto"
+                  className="shrink-0 flex flex-col overflow-hidden"
                 >
-                  <PhaseExecutionPanel />
-                  <ApprovalPanel />
-                  {/* Task 30: Agent list panel */}
+                  {/* Agent list panel */}
                   <AgentListPanel />
-                  <div className="flex-1 overflow-y-auto">
-                    <SpecDetail />
+                  {/* SDD Hybrid Workflow: 6フェーズワークフロービュー */}
+                  <div className="flex-1 overflow-hidden">
+                    <WorkflowView />
                   </div>
                 </aside>
               </div>

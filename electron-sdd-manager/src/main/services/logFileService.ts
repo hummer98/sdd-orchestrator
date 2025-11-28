@@ -15,6 +15,7 @@ export interface LogEntry {
 
 /**
  * Service for managing log files
+ * Log files are stored at: {basePath}/{specId}/logs/{agentId}.log
  */
 export class LogFileService {
   private basePath: string;
@@ -25,9 +26,10 @@ export class LogFileService {
 
   /**
    * Get the file path for a log file
+   * Path: {basePath}/{specId}/logs/{agentId}.log
    */
   private getFilePath(specId: string, agentId: string): string {
-    return path.join(this.basePath, specId, `${agentId}.log`);
+    return path.join(this.basePath, specId, 'logs', `${agentId}.log`);
   }
 
   /**
@@ -35,7 +37,7 @@ export class LogFileService {
    * Requirements: 9.3
    */
   async appendLog(specId: string, agentId: string, entry: LogEntry): Promise<void> {
-    const dirPath = path.join(this.basePath, specId);
+    const dirPath = path.join(this.basePath, specId, 'logs');
     const filePath = this.getFilePath(specId, agentId);
 
     // Ensure directory exists

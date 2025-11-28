@@ -46,7 +46,7 @@ export interface PhaseItemProps {
 }
 
 export function PhaseItem({
-  phase: _phase,
+  phase,
   label,
   status,
   previousStatus,
@@ -167,11 +167,11 @@ export function PhaseItem({
           </>
         )}
 
-        {/* Task 3.1: approved状態 - 承認済ラベル */}
+        {/* Task 3.1: approved状態 - 承認済/完了ラベル */}
         {status === 'approved' && (
           <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
             <CheckCircle className="w-3 h-3" />
-            承認済
+            {phase === 'impl' ? '完了' : '承認済'}
           </span>
         )}
       </div>

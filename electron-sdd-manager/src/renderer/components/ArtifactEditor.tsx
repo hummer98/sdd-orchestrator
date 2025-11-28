@@ -155,6 +155,11 @@ export function ArtifactEditor() {
           data-color-mode="dark"
           hideToolbar={mode === 'preview'}
           visibleDragbar={false}
+          textareaProps={{
+            style: {
+              fontFamily: '"Noto Sans Mono CJK JP", "Noto Sans Mono", "Source Han Code JP", "BIZ UDGothic", "Osaka-Mono", "MS Gothic", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            },
+          }}
         />
       </div>
 

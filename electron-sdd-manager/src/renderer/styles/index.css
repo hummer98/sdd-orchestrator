@@ -82,7 +82,13 @@
   --color-fg-default: #1f2937 !important;
 }
 
-/* MDEditor - Japanese-compatible monospace font */
+/* MDEditor - Japanese-compatible monospace font for editor area */
+.w-md-editor .w-md-editor-text-pre,
+.w-md-editor .w-md-editor-text-pre > code,
+.w-md-editor .w-md-editor-text-input,
+.w-md-editor .w-md-editor-text,
+.w-md-editor .w-md-editor-area,
+.w-md-editor textarea,
 .w-md-editor-text-pre,
 .w-md-editor-text-input,
 .w-md-editor-text,

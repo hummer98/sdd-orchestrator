@@ -4,6 +4,7 @@
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
  */
 
+import { useState } from 'react';
 import {
   FileText,
   Calendar,
@@ -12,10 +13,13 @@ import {
   Circle,
   Rocket,
   ListTodo,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
+import MDEditor from '@uiw/react-md-editor';
 import { useSpecStore } from '../stores';
 import { clsx } from 'clsx';
-import type { Phase } from '../types';
+import type { Phase, ArtifactInfo } from '../types';
 
 const PHASE_LABELS = {
   requirements: '要件定義',
@@ -171,18 +175,15 @@ export function SpecDetail() {
         <div className="space-y-2">
           <ArtifactItem
             name="requirements.md"
-            exists={artifacts.requirements?.exists ?? false}
-            updatedAt={artifacts.requirements?.updatedAt}
+            artifact={artifacts.requirements}
           />
           <ArtifactItem
             name="design.md"
-            exists={artifacts.design?.exists ?? false}
-            updatedAt={artifacts.design?.updatedAt}
+            artifact={artifacts.design}
           />
           <ArtifactItem
             name="tasks.md"
-            exists={artifacts.tasks?.exists ?? false}
-            updatedAt={artifacts.tasks?.updatedAt}
+            artifact={artifacts.tasks}
           />
         </div>
       </div>
@@ -266,41 +267,69 @@ function StatusBadge({ label, active, variant = 'default' }: StatusBadgeProps) {
 
 interface ArtifactItemProps {
   name: string;
-  exists: boolean;
-  updatedAt: string | null | undefined;
+  artifact: ArtifactInfo | null;
 }
 
-function ArtifactItem({ name, exists, updatedAt }: ArtifactItemProps) {
-  return (
-    <div
-      className={clsx(
-        'flex items-center justify-between p-3 rounded-lg',
-        'bg-gray-50 dark:bg-gray-800'
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <FileText
-          className={clsx(
-            'w-4 h-4',
-            exists ? 'text-blue-500' : 'text-gray-300'
-          )}
-        />
-        <span
-          className={clsx(
-            'font-mono text-sm',
-            exists ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
-          )}
-        >
-          {name}
-        </span>
-      </div>
+function ArtifactItem({ name, artifact }: ArtifactItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const exists = artifact?.exists ?? false;
+  const content = artifact?.content;
+  const updatedAt = artifact?.updatedAt;
 
-      {exists ? (
-        <span className="text-xs text-gray-500">
-          {updatedAt ? formatDate(updatedAt) : '存在'}
-        </span>
-      ) : (
-        <span className="text-xs text-gray-400">未作成</span>
+  return (
+    <div className="rounded-lg bg-gray-50 dark:bg-gray-800 overflow-hidden">
+      {/* Header - Clickable */}
+      <button
+        onClick={() => exists && content && setIsExpanded(!isExpanded)}
+        disabled={!exists || !content}
+        className={clsx(
+          'w-full flex items-center justify-between p-3',
+          'transition-colors',
+          exists && content && 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer',
+          !exists && 'cursor-default'
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {exists && content ? (
+            isExpanded ? (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            )
+          ) : (
+            <FileText
+              className={clsx(
+                'w-4 h-4',
+                exists ? 'text-blue-500' : 'text-gray-300'
+              )}
+            />
+          )}
+          <span
+            className={clsx(
+              'font-mono text-sm',
+              exists ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
+            )}
+          >
+            {name}
+          </span>
+        </div>
+
+        {exists ? (
+          <span className="text-xs text-gray-500">
+            {updatedAt ? formatDate(updatedAt) : '存在'}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">未作成</span>
+        )}
+      </button>
+
+      {/* Markdown Content */}
+      {isExpanded && content && (
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="light">
+            <MDEditor.Markdown source={content} />
+          </div>
+        </div>
       )}
     </div>
   );

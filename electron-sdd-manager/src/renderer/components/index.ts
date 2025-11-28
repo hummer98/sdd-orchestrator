@@ -19,3 +19,9 @@ export { ResizeHandle } from './ResizeHandle';
 export { AgentListPanel } from './AgentListPanel';
 export { AgentLogPanel } from './AgentLogPanel';
 export { AgentInputPanel } from './AgentInputPanel';
+// SDD Hybrid Workflow Components
+export { WorkflowView } from './WorkflowView';
+export { PhaseItem } from './PhaseItem';
+export { ValidateOption } from './ValidateOption';
+export { TaskProgressView } from './TaskProgressView';
+export { ArtifactPreview } from './ArtifactPreview';

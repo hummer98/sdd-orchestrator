@@ -1,0 +1,621 @@
+# Design Document
+
+## Overview
+**Purpose**: SDD Manager UIは、Spec-Driven Development (SDD) プロセスを可視化・管理するためのデスクトップアプリケーションを提供します。本システムにより、開発者とプロジェクト管理者は、SpecManagerとSDD Agentの動作をリアルタイムで監視し、複数の仕様を効率的に並列管理できます。
+
+**Users**: 開発者、システム管理者、プロジェクト管理者が、SDDプロセスの監視、ログ分析、仕様管理、Trelloとの連携作業に利用します。
+
+**Impact**: 現在のコマンドライン中心の運用から、GUIベースの統合管理環境へ移行し、プロセス監視の可視性向上と運用効率の改善を実現します。
+
+### Goals
+- リアルタイムプロセス監視とログストリーミングの実現
+- 複数仕様の並列管理と依存関係の可視化
+- Trello連携による統合タスク管理
+- クロスプラットフォーム対応のネイティブデスクトップアプリケーション提供
+
+### Non-Goals
+- Webブラウザベースのアプリケーション対応
+- モバイルデバイス向けUI提供
+- 既存CLI機能の置き換え（補完的なUIとして動作）
+- リモートサーバー上のプロセス監視
+
+## Architecture
+
+### Existing Architecture Analysis
+現在のSDD Managerシステムは、BOOTSTRAP.mdで定義された4層アーキテクチャに基づいています：
+- Layer 0: Human Interface (Trello, Notification)
+- Layer 1: Orchestrator (常駐プロセス)
+- Layer 2: Dependency Coordinator (依存関係管理)
+- Layer 3: Spec Manager (spec単位のライフサイクル)
+- Layer 4: SDD Agent (実行層)
+
+本UIアプリケーションは、Layer 0の拡張として位置付けられ、既存のコマンドライン中心の運用を補完します。
+
+### Architecture Pattern & Boundary Map
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[React UI]
+        ZStore[Zustand Stores]
+        IPC_Client[IPC Client]
+        UI --> ZStore
+        ZStore --> IPC_Client
+    end
+
+    subgraph "Tauri Core Layer"
+        IPC_Handler[IPC Handler]
+        StateManager[State Manager]
+        ProcessMonitor[Process Monitor]
+        LogManager[Log Manager]
+        TrelloSync[Trello Sync]
+        IPC_Handler --> StateManager
+        IPC_Handler --> ProcessMonitor
+        IPC_Handler --> LogManager
+        IPC_Handler --> TrelloSync
+    end
+
+    subgraph "External Systems"
+        Orchestrator[Orchestrator Process]
+        SpecManagers[Spec Managers]
+        SDDAgents[SDD Agents]
+        TrelloAPI[Trello API]
+        FileSystem[File System]
+    end
+
+    IPC_Client <--> IPC_Handler
+    ProcessMonitor --> Orchestrator
+    ProcessMonitor --> SpecManagers
+    ProcessMonitor --> SDDAgents
+    LogManager --> FileSystem
+    TrelloSync <--> TrelloAPI
+    StateManager --> FileSystem
+```
+
+**Architecture Integration**:
+- Selected pattern: レイヤードアーキテクチャ + イベント駆動
+- Domain/feature boundaries: UI層、ビジネスロジック層（Rust）、外部統合層の明確な分離
+- Existing patterns preserved: 既存の4層構造との整合性維持
+- New components rationale: GUIによる可視化と操作性向上のため
+- Steering compliance: モノレポ構造対応、プロセス間通信の標準化
+
+### Technology Stack
+
+| Layer | Choice / Version | Role in Feature | Notes |
+|-------|------------------|-----------------|-------|
+| Frontend / CLI | React 18 + TypeScript 5 | UIコンポーネント実装 | 仮想DOM、型安全性 |
+| UI Framework | Tremor + Tailwind CSS | ダッシュボード・チャート表示 | モダンUI、Recharts統合 |
+| State Management | Zustand 4.5 | ローカル状態管理 | 軽量（1KB）、高速（85ms応答） |
+| Log Viewer | react-lazylog | 仮想スクロールログ表示 | 大量ログの効率的レンダリング |
+| Backend / Services | Rust + Tauri 2.0 | システムAPI、プロセス管理 | sysinfo crate利用 |
+| Data / Storage | ファイルシステム + メモリキャッシュ | ログ永続化、設定保存 | JSONL形式ログ、JSON設定 |
+| Messaging / Events | Tauri IPC (Commands + Events) | Frontend-Backend通信 | 非同期、双方向通信 |
+| External Integration | Trello API (REST + WebSocket) | タスク管理同期 | OAuth 1.0認証、レート制限対応 |
+| Infrastructure / Runtime | Tauri WebView | クロスプラットフォーム対応 | ネイティブWebView（10MB未満） |
+
+## System Flows
+
+### プロセス監視フロー
+
+```mermaid
+sequenceDiagram
+    participant UI as React UI
+    participant Backend as Rust Backend
+    participant Process as External Process
+
+    UI->>Backend: invoke('start_process', config)
+    Backend->>Backend: spawn async task
+    Backend->>Process: execute command
+    Backend-->>UI: emit('process:started', info)
+    UI->>UI: update Zustand store
+
+    loop Every 100ms (batched)
+        Backend->>Process: poll status
+        Process-->>Backend: status + metrics
+        Backend-->>UI: emit('process:updated', batch)
+        UI->>UI: selective re-render
+    end
+
+    Note over Backend: Async log streaming
+    Process->>Backend: stdout/stderr stream
+    Backend->>Backend: buffer & batch
+    Backend-->>UI: emit('log:stream', entries)
+    UI->>UI: virtual scroll update
+```
+
+### Trello同期フロー
+
+```mermaid
+sequenceDiagram
+    participant UI as React UI
+    participant Backend as Rust Backend
+    participant Trello as Trello API
+    participant Webhook as Webhook Server
+
+    UI->>Backend: invoke('connect_trello', credentials)
+    Backend->>Trello: OAuth 1.0 authentication
+    Trello-->>Backend: access token
+
+    par Polling (5min interval)
+        Backend->>Trello: GET /boards/{id}/cards
+        Trello-->>Backend: cards data (max 300/10s)
+        Backend->>Backend: cache & diff
+        Backend-->>UI: emit('trello:synced', delta)
+    and WebSocket listening
+        Trello->>Backend: WebSocket event
+        Backend->>Backend: validate & transform
+        Backend-->>UI: emit('trello:card_updated', card)
+    end
+
+    UI->>UI: update Zustand store
+    UI->>UI: re-render board view
+```
+
+## Requirements Traceability
+
+| Requirement | Summary | Components | Interfaces | Flows |
+|-------------|---------|------------|------------|-------|
+| 1.1, 1.2, 1.3 | Tauriデスクトップアプリ基盤 | AppShell, WindowManager | TauriWindow | - |
+| 1.4, 1.5 | ウィンドウ操作 | WindowControls | WindowAPI | - |
+| 2.1, 2.2, 2.3 | プロセス一覧表示と更新 | ProcessList, ProcessMonitor | ProcessService | プロセス監視 |
+| 2.4, 2.5, 2.6 | プロセス状態監視 | ProcessStatus, ProcessWatcher | MonitoringService | プロセス監視 |
+| 3.1, 3.2 | 標準出力表示とリアルタイム更新 | LogViewer, LogStream | LogService | プロセス監視 |
+| 3.3, 3.4, 3.5 | スクロール機能 | ScrollableLog | - | - |
+| 3.6, 3.7 | テキスト検索 | LogSearch | SearchService | - |
+| 4.1, 4.2, 4.3 | ログ保存と表示 | LogManager, LogStorage | FileService | - |
+| 4.4, 4.5, 4.6 | ログフィルタリング | LogFilter | FilterService | - |
+| 4.7, 4.8 | ログエクスポート | LogExporter | ExportService | - |
+| 5.1, 5.2, 5.3 | 仕様一覧と詳細表示 | SpecList, SpecDetail | SpecService | - |
+| 5.4, 5.5, 5.6 | 進行状況表示 | ProgressTracker | - | - |
+| 5.7, 5.8 | 依存関係と更新 | DependencyGraph | GraphService | - |
+| 6.1, 6.2, 6.3 | Trello接続とカード表示 | TrelloConnector, CardList | TrelloService | Trello同期 |
+| 6.4, 6.5 | カード情報と同期 | CardSync | SyncService | Trello同期 |
+| 6.6, 6.7 | カードと仕様の関連 | CardSpecLink | LinkService | - |
+| 7.1, 7.2 | プロセス起動 | ProcessLauncher | LaunchService | - |
+| 7.3, 7.4, 7.5 | プロセス終了 | ProcessKiller | TerminateService | - |
+| 7.6, 7.7 | プロセス再起動 | ProcessRestarter | RestartService | - |
+| 8.1, 8.2, 8.3 | デスクトップ通知 | NotificationManager | NotifyService | - |
+| 8.4, 8.5, 8.6 | 通知設定と履歴 | NotificationSettings | - | - |
+| 9.1, 9.2 | ダッシュボード表示 | Dashboard, MetricsPanel | MetricsService | - |
+| 9.3, 9.4 | リソース監視 | ResourceMonitor | SystemService | プロセス監視 |
+| 9.5, 9.6 | 統計グラフ | StatsChart | ChartService | - |
+| 10.1, 10.2, 10.3 | 設定画面 | SettingsPanel | ConfigService | - |
+| 10.4, 10.5 | パス設定 | PathConfig | - | - |
+| 10.6, 10.7, 10.8 | 設定の永続化 | ConfigStorage | StorageService | - |
+
+## Components and Interfaces
+
+### UI Layer (React)
+
+#### AppShell
+| Field | Detail |
+|-------|--------|
+| Intent | アプリケーション全体のレイアウトとナビゲーション管理 |
+| Requirements | 1.1, 1.2, 1.4 |
+
+**Responsibilities & Constraints**
+- メインウィンドウのレイアウト構造提供
+- グローバル状態管理（Zustand Stores）の初期化
+- ナビゲーションルーティング管理
+
+**Dependencies**
+- Outbound: WindowManager - ウィンドウ操作 (P0)
+- External: React Router - ルーティング (P0)
+- External: Zustand - 状態管理 (P0)
+
+**Contracts**: State [x]
+
+##### State Management
+- State model: Zustand Stores (processStore, logStore, specStore, trelloStore, settingsStore)
+- Persistence & consistency: ローカルストレージへの選択的永続化
+- Concurrency strategy: Zustand による選択的レンダリング最適化
+
+**Implementation Notes**
+- Integration: Tauri window APIとの統合
+- Validation: 起動時の環境チェック
+- Risks: 初期ロード時のパフォーマンス
+
+#### ProcessList
+| Field | Detail |
+|-------|--------|
+| Intent | 実行中プロセスの一覧表示と状態監視 |
+| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5, 2.6 |
+
+**Responsibilities & Constraints**
+- プロセス情報のリアルタイム表示
+- プロセスステータスの視覚的表現
+- エラー状態の強調表示
+
+**Dependencies**
+- Inbound: ProcessMonitor - プロセス情報提供 (P0)
+- External: Tremor Table - テーブル表示 (P1)
+
+**Contracts**: State [x]
+
+##### State Management
+- State model: ProcessState[] (pid, name, phase, status, startTime)
+- Persistence & consistency: リアルタイムデータ、永続化なし
+- Concurrency strategy: イベント駆動による更新
+
+#### LogViewer
+| Field | Detail |
+|-------|--------|
+| Intent | プロセス標準出力のリアルタイム表示とインタラクション |
+| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7 |
+
+**Responsibilities & Constraints**
+- ストリーミングログの効率的表示
+- 仮想スクロール実装（大量ログ対応）
+- テキスト検索とハイライト
+
+**Dependencies**
+- Inbound: LogStream - ログデータストリーム (P0)
+- External: react-lazylog - 仮想スクロールログビューア (P0)
+
+**Contracts**: State [x] / Event [x]
+
+##### Event Contract
+- Subscribed events: log-stream, log-clear
+- Ordering / delivery guarantees: 順序保証、最新データ優先
+
+##### State Management
+- State model: LogEntry[] (timestamp, level, message, processId)
+- Persistence & consistency: メモリ内キャッシュ（最大10000行）
+- Concurrency strategy: FIFO バッファリング
+
+### Backend Layer (Rust)
+
+#### ProcessMonitor
+| Field | Detail |
+|-------|--------|
+| Intent | システムプロセスの監視と情報収集 |
+| Requirements | 2.1, 2.2, 2.4, 2.5 |
+
+**Responsibilities & Constraints**
+- PIDファイル（.kiro/runtime/spec_managers/）の監視
+- プロセス状態の定期的チェック
+- CPU/メモリ使用状況の収集
+
+**Dependencies**
+- Outbound: IPC Server - フロントエンドへの通知 (P0)
+- External: sysinfo - システム情報取得 (P0)
+- External: tokio - 非同期処理 (P0)
+
+**Contracts**: Service [x] / Event [x]
+
+##### Service Interface
+```rust
+pub trait ProcessMonitorService {
+    async fn start_monitoring(&self, interval: Duration) -> Result<(), MonitorError>;
+    async fn stop_monitoring(&self) -> Result<(), MonitorError>;
+    async fn get_process_info(&self, pid: u32) -> Result<ProcessInfo, MonitorError>;
+    async fn list_active_processes(&self) -> Result<Vec<ProcessInfo>, MonitorError>;
+}
+```
+- Preconditions: 適切な権限でプロセスアクセス可能
+- Postconditions: プロセス情報の正確な取得
+- Invariants: 監視間隔の一定性維持
+
+##### Event Contract
+- Published events: process-update, process-started, process-terminated
+- Ordering / delivery guarantees: イベント発生順序保証
+
+#### LogManager
+| Field | Detail |
+|-------|--------|
+| Intent | ログの収集、フィルタリング、永続化管理 |
+| Requirements | 3.1, 3.2, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 |
+
+**Responsibilities & Constraints**
+- 標準出力/エラー出力のキャプチャ
+- ログレベル別のフィルタリング
+- ファイルへの非同期書き込み
+
+**Dependencies**
+- Inbound: ProcessMonitor - プロセス出力提供 (P0)
+- Outbound: IPC Server - ログストリーミング (P0)
+- External: tracing - 構造化ログ (P1)
+
+**Contracts**: Service [x] / Event [x] / Batch [x]
+
+##### Service Interface
+```rust
+pub trait LogManagerService {
+    async fn start_capture(&self, process_id: u32) -> Result<LogStreamHandle, LogError>;
+    async fn stop_capture(&self, handle: LogStreamHandle) -> Result<(), LogError>;
+    async fn query_logs(&self, filter: LogFilter) -> Result<Vec<LogEntry>, LogError>;
+    async fn export_logs(&self, format: ExportFormat, path: PathBuf) -> Result<(), LogError>;
+}
+```
+
+##### Event Contract
+- Published events: log-stream, log-written
+- Subscribed events: filter-changed, export-requested
+
+##### Batch Contract
+- Trigger: 1分間隔またはバッファサイズ到達時
+- Input / validation: LogEntry検証、タイムスタンプ整合性
+- Output / destination: .kiro/logs/{date}/{process_id}.log
+- Idempotency & recovery: 重複排除、書き込み失敗時リトライ
+
+#### TrelloConnector
+| Field | Detail |
+|-------|--------|
+| Intent | Trello APIとの統合とカード管理 |
+| Requirements | 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7 |
+
+**Responsibilities & Constraints**
+- OAuth 1.0認証フロー実装
+- カード情報の取得と更新
+- Webhook受信とイベント変換
+
+**Dependencies**
+- Outbound: IPC Server - カード更新通知 (P0)
+- External: reqwest - HTTP通信 (P0)
+- External: oauth1 - OAuth認証 (P0)
+
+**Contracts**: Service [x] / API [x] / Event [x]
+
+##### API Contract
+| Method | Endpoint | Request | Response | Errors |
+|--------|----------|---------|----------|--------|
+| GET | /1/boards/{id}/cards | - | Card[] | 401, 429, 500 |
+| POST | /1/cards | CreateCardRequest | Card | 400, 401, 409 |
+| PUT | /1/cards/{id} | UpdateCardRequest | Card | 400, 401, 404 |
+| POST | /1/webhooks | WebhookRequest | Webhook | 400, 401 |
+
+##### Service Interface
+```rust
+pub trait TrelloService {
+    async fn authenticate(&self, api_key: &str, api_secret: &str) -> Result<Token, AuthError>;
+    async fn get_cards(&self, board_id: &str) -> Result<Vec<Card>, TrelloError>;
+    async fn sync_cards(&self) -> Result<SyncResult, TrelloError>;
+    async fn register_webhook(&self, callback_url: &str) -> Result<Webhook, TrelloError>;
+}
+```
+
+#### SpecManager
+| Field | Detail |
+|-------|--------|
+| Intent | 仕様の管理と進行状況追跡 |
+| Requirements | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8 |
+
+**Responsibilities & Constraints**
+- .kiro/specs/ディレクトリの監視
+- spec.json の読み取りと解析
+- 依存関係グラフの構築
+
+**Dependencies**
+- Outbound: FileSystem Handler - ファイル読み取り (P0)
+- Outbound: IPC Server - 状態更新通知 (P0)
+
+**Contracts**: Service [x] / Event [x]
+
+##### Service Interface
+```rust
+pub trait SpecManagerService {
+    async fn list_specs(&self) -> Result<Vec<SpecInfo>, SpecError>;
+    async fn get_spec_detail(&self, spec_id: &str) -> Result<SpecDetail, SpecError>;
+    async fn get_dependencies(&self) -> Result<DependencyGraph, SpecError>;
+    async fn watch_specs(&self) -> Result<WatchHandle, SpecError>;
+}
+```
+
+### Integration Layer
+
+#### IPC Server
+| Field | Detail |
+|-------|--------|
+| Intent | Frontend-Backend間の双方向通信管理 |
+| Requirements | 全要件の通信基盤 |
+
+**Responsibilities & Constraints**
+- Command/Eventパターンの実装
+- メッセージのシリアライゼーション
+- エラーハンドリングと再送制御
+
+**Dependencies**
+- Inbound: 全Backendコンポーネント - データ提供 (P0)
+- Outbound: Tauri Runtime - メッセージ配信 (P0)
+
+**Contracts**: API [x]
+
+##### API Contract
+| Method | Command | Request | Response | Errors |
+|--------|---------|---------|----------|--------|
+| invoke | start_monitoring | MonitoringConfig | void | PERMISSION_DENIED |
+| invoke | get_processes | void | ProcessInfo[] | INTERNAL_ERROR |
+| invoke | launch_process | LaunchRequest | ProcessHandle | LAUNCH_FAILED |
+| emit | process-update | ProcessInfo | - | - |
+| emit | log-stream | LogEntry | - | - |
+
+## Data Models
+
+### Domain Model
+
+```mermaid
+erDiagram
+    Spec ||--o{ Process : manages
+    Process ||--o{ LogEntry : generates
+    Spec ||--o{ Dependency : has
+    TrelloCard ||--|| Spec : links
+
+    Spec {
+        string id PK
+        string name
+        string phase
+        string status
+        json approvals
+        datetime created_at
+        datetime updated_at
+    }
+
+    Process {
+        int pid PK
+        string spec_id FK
+        string name
+        string phase
+        ProcessStatus status
+        datetime started_at
+        datetime last_heartbeat
+    }
+
+    LogEntry {
+        uuid id PK
+        int process_id FK
+        LogLevel level
+        string message
+        datetime timestamp
+    }
+```
+
+### Logical Data Model
+
+**Structure Definition**:
+- Specエンティティ: 仕様のメタデータと承認状態
+- Processエンティティ: 実行中プロセスの状態
+- LogEntryエンティティ: ログメッセージと関連情報
+- TrelloCardエンティティ: 外部タスク管理との連携
+
+**Consistency & Integrity**:
+- Transaction boundaries: 各エンティティ単位でのアトミック更新
+- Cascading rules: プロセス終了時のログ保持、Spec削除時の関連データクリーンアップ
+- Temporal aspects: タイムスタンプによる時系列管理
+
+### Data Contracts & Integration
+
+**API Data Transfer**
+```typescript
+interface ProcessInfo {
+  pid: number;
+  specId: string;
+  name: string;
+  phase: Phase;
+  status: ProcessStatus;
+  cpuUsage?: number;
+  memoryUsage?: number;
+  startedAt: string;
+  lastHeartbeat: string;
+}
+
+interface LogEntry {
+  id: string;
+  processId: number;
+  level: 'INFO' | 'WARNING' | 'ERROR';
+  message: string;
+  timestamp: string;
+}
+
+interface SpecDetail {
+  id: string;
+  name: string;
+  phase: string;
+  status: string;
+  approvals: ApprovalState;
+  blockedBy?: string[];
+  dependsOn?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+**Event Schemas**
+```typescript
+interface ProcessUpdateEvent {
+  type: 'process-update';
+  payload: ProcessInfo;
+}
+
+interface LogStreamEvent {
+  type: 'log-stream';
+  payload: LogEntry;
+}
+
+interface TrelloSyncEvent {
+  type: 'trello-sync';
+  payload: {
+    cards: TrelloCard[];
+    lastSync: string;
+  };
+}
+```
+
+## Error Handling
+
+### Error Strategy
+階層的エラー処理とユーザーフレンドリーなフィードバック提供。
+
+### Error Categories and Responses
+**User Errors** (4xx):
+- 無効な設定 → フィールドレベルのバリデーションメッセージ
+- 認証失敗 → 再認証ガイダンス表示
+- リソース不足 → 代替アクション提案
+
+**System Errors** (5xx):
+- プロセス監視失敗 → 自動リトライと通知
+- ファイルアクセスエラー → 権限チェックと修正ガイド
+- ネットワーク障害 → オフラインモードへのフォールバック
+
+**Business Logic Errors** (422):
+- 依存関係違反 → 依存グラフの表示
+- 状態遷移エラー → 許可された操作の明示
+
+### Monitoring
+- エラーログの自動収集と分類
+- エラー発生率のダッシュボード表示
+- 重大エラー時の通知機能
+
+## Testing Strategy
+
+### Unit Tests
+- ProcessMonitor: プロセス情報取得、状態変更検知
+- LogManager: ログフィルタリング、バッファ管理、ファイル書き込み
+- TrelloConnector: OAuth認証、APIレスポンス解析
+- Zustand Stores: アクション、セレクター、ミドルウェア
+- UI Components: イベントハンドリング、レンダリング
+
+### Integration Tests
+- IPC通信: Command/Event送受信、エラーハンドリング
+- プロセス監視フロー: 起動から終了までのライフサイクル
+- ログストリーミング: リアルタイム更新、バッファオーバーフロー
+- Trello同期: カード取得、Webhook受信、状態同期
+- 設定管理: 保存、読み込み、マイグレーション
+
+### E2E Tests
+- アプリケーション起動と初期設定フロー
+- プロセス監視とログ表示の統合動作
+- 仕様管理と依存関係表示
+- Trello連携の完全フロー
+- エラー状態からの復旧
+
+### Performance Tests
+- 50プロセス同時監視での応答性
+- 100MB/分のログストリーミング処理
+- 1000件のTrelloカード同期
+- メモリ使用量の長時間安定性
+
+## Security Considerations
+- **認証情報管理**: Tauri secure storage APIを使用した暗号化保存
+- **プロセスアクセス権限**: 最小権限原則に基づくプロセス操作
+- **IPC通信**: SubtleCrypto実装によるメッセージ暗号化
+- **外部API通信**: HTTPS必須、証明書検証
+- **ログデータ**: 機密情報のマスキング処理
+
+## Performance & Scalability
+- **目標メトリクス**:
+  - アプリ起動時間: < 3秒（Tauriによる高速起動）
+  - プロセス情報更新: < 100ms（バッチ処理）
+  - ログ表示遅延: < 50ms（仮想スクロール）
+  - 状態更新応答: < 85ms（Zustand実績値）
+  - UI応答性: 60fps維持
+  - メモリ使用量: < 500MB（大量ログ時）
+- **スケーリング戦略**:
+  - react-lazylogによる10万行以上のログ処理
+  - 100プロセス同時監視での動的ポーリング間隔
+  - Trello同期のバッチ処理とレート制限対応
+  - インクリメンタルなデータ同期
+- **最適化技術**:
+  - Zustandの選択的レンダリングによる最適化
+  - Rustバックエンドでのデータ集約とフィルタリング
+  - デバウンス/スロットリングによるイベント制御
+  - メモリキャッシュとファイルローテーション

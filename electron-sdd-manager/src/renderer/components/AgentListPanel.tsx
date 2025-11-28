@@ -5,6 +5,7 @@
  * Requirements: 5.1, 5.2, 5.7, 5.8
  */
 
+import { useState } from 'react';
 import { Bot, PlayCircle, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
@@ -43,6 +44,7 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; ico
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
   const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
   if (!selectedSpec) {
     return null;
@@ -68,9 +70,20 @@ export function AgentListPanel() {
     await resumeAgent(agentId);
   };
 
-  const handleRemove = (agentId: string, e: React.MouseEvent) => {
+  const handleRemoveClick = (agent: AgentInfo, e: React.MouseEvent) => {
     e.stopPropagation();
-    removeAgent(agentId);
+    setConfirmDeleteAgent(agent);
+  };
+
+  const handleConfirmRemove = () => {
+    if (confirmDeleteAgent) {
+      removeAgent(confirmDeleteAgent.agentId);
+      setConfirmDeleteAgent(null);
+    }
+  };
+
+  const handleCancelRemove = () => {
+    setConfirmDeleteAgent(null);
   };
 
   return (
@@ -101,10 +114,38 @@ export function AgentListPanel() {
               onSelect={() => selectAgent(agent.agentId)}
               onStop={(e) => handleStop(agent.agentId, e)}
               onResume={(e) => handleResume(agent.agentId, e)}
-              onRemove={(e) => handleRemove(agent.agentId, e)}
+              onRemove={(e) => handleRemoveClick(agent, e)}
             />
           ))}
         </ul>
+      )}
+
+      {/* 削除確認ダイアログ */}
+      {confirmDeleteAgent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 max-w-sm mx-4">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              セッションを削除しますか？
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              <span className="font-medium">{confirmDeleteAgent.phase}</span> のセッションを削除します。この操作は取り消せません。
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleCancelRemove}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleConfirmRemove}
+                className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                削除
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

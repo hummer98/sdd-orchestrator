@@ -33,6 +33,8 @@ export interface PhaseItemProps {
   autoExecutionPermitted: boolean;
   /** 現在実行中かどうか */
   isExecuting: boolean;
+  /** このフェーズが実行可能かどうか（順序制御・多重実行防止用） */
+  canExecute: boolean;
   /** 実行ボタンハンドラ */
   onExecute: () => void;
   /** 承認ボタンハンドラ */
@@ -52,6 +54,7 @@ export function PhaseItem({
   previousStatus,
   autoExecutionPermitted,
   isExecuting,
+  canExecute,
   onExecute,
   onApprove,
   onApproveAndExecute,
@@ -60,7 +63,7 @@ export function PhaseItem({
 }: PhaseItemProps) {
   // Task 3.2: 承認して実行ボタンの表示条件
   const showApproveAndExecute =
-    previousStatus === 'generated' && status === 'pending' && !isExecuting;
+    previousStatus === 'generated' && status === 'pending' && !isExecuting && canExecute;
 
   return (
     <div
@@ -123,13 +126,25 @@ export function PhaseItem({
                 <Check className="w-4 h-4" />
                 承認して実行
               </button>
-            ) : (
+            ) : canExecute ? (
               <button
                 onClick={onExecute}
                 className={clsx(
                   'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
                   'bg-blue-500 text-white hover:bg-blue-600',
                   'transition-colors'
+                )}
+              >
+                <Play className="w-4 h-4" />
+                実行
+              </button>
+            ) : (
+              <button
+                disabled
+                className={clsx(
+                  'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
+                  'bg-gray-300 text-gray-500 cursor-not-allowed',
+                  'dark:bg-gray-600 dark:text-gray-400'
                 )}
               >
                 <Play className="w-4 h-4" />

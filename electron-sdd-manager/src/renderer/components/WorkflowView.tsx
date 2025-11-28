@@ -4,7 +4,7 @@
  * Requirements: 1.1-1.4, 3.1-3.5, 6.1-6.6, 7.1-7.6, 9.1-9.3
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { ArrowDown, Play, Square, RefreshCw } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
@@ -35,9 +35,6 @@ export function WorkflowView() {
   const workflowStore = useWorkflowStore();
   const agentStore = useAgentStore();
 
-  // Local state for executing phase
-  const [executingPhase, setExecutingPhase] = useState<WorkflowPhase | null>(null);
-  const [executingValidation, setExecutingValidation] = useState<ValidationType | null>(null);
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
@@ -55,6 +52,42 @@ export function WorkflowView() {
     }
     return statuses;
   }, [specJson, specDetail?.taskProgress?.percentage]);
+
+  // 現在のspecで実行中のフェーズ/バリデーションを取得
+  const runningPhases = useMemo(() => {
+    if (!specDetail) return new Set<string>();
+    const agents = agentStore.getAgentsForSpec(specDetail.metadata.name);
+    const running = agents
+      .filter((a) => a.status === 'running')
+      .map((a) => a.phase);
+    return new Set(running);
+  }, [agentStore.agents, specDetail]);
+
+  // バリデーションが実行可能かどうかを判定
+  const canExecuteValidation = useCallback(
+    (_type: ValidationType): boolean => {
+      // 同じspecで既にAgentが実行中なら不可
+      if (runningPhases.size > 0) return false;
+      return true;
+    },
+    [runningPhases]
+  );
+
+  // フェーズが実行可能かどうかを判定
+  const canExecutePhase = useCallback(
+    (phase: WorkflowPhase): boolean => {
+      // 同じspecで既にAgentが実行中なら不可
+      if (runningPhases.size > 0) return false;
+
+      const index = WORKFLOW_PHASES.indexOf(phase);
+      if (index === 0) return true; // requirements は常に実行可能
+
+      // 前のフェーズが approved でなければ不可
+      const prevPhase = WORKFLOW_PHASES[index - 1];
+      return phaseStatuses[prevPhase] === 'approved';
+    },
+    [runningPhases, phaseStatuses]
+  );
 
   // Parse tasks from tasks.md
   const parsedTasks: TaskItem[] = useMemo(() => {
@@ -95,21 +128,16 @@ export function WorkflowView() {
   // Handlers
   const handleExecutePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
-    setExecutingPhase(phase);
 
-    try {
-      // サービス層でコマンドを構築
-      const newAgent = await window.electronAPI.executePhase(
-        specDetail.metadata.name,
-        phase,
-        specDetail.metadata.name
-      );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
-    } finally {
-      setExecutingPhase(null);
-    }
+    // サービス層でコマンドを構築
+    const newAgent = await window.electronAPI.executePhase(
+      specDetail.metadata.name,
+      phase,
+      specDetail.metadata.name
+    );
+    // ストアにAgentを追加して選択
+    agentStore.addAgent(specDetail.metadata.name, newAgent);
+    agentStore.selectAgent(newAgent.agentId);
   }, [agentStore, specDetail]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
@@ -138,21 +166,16 @@ export function WorkflowView() {
 
   const handleExecuteValidation = useCallback(async (type: ValidationType) => {
     if (!specDetail) return;
-    setExecutingValidation(type);
 
-    try {
-      // サービス層でコマンドを構築
-      const newAgent = await window.electronAPI.executeValidation(
-        specDetail.metadata.name,
-        type,
-        specDetail.metadata.name
-      );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
-    } finally {
-      setExecutingValidation(null);
-    }
+    // サービス層でコマンドを構築
+    const newAgent = await window.electronAPI.executeValidation(
+      specDetail.metadata.name,
+      type,
+      specDetail.metadata.name
+    );
+    // ストアにAgentを追加して選択
+    agentStore.addAgent(specDetail.metadata.name, newAgent);
+    agentStore.selectAgent(newAgent.agentId);
   }, [agentStore, specDetail]);
 
   const handleAutoExecution = useCallback(() => {
@@ -218,7 +241,8 @@ export function WorkflowView() {
               status={phaseStatuses[phase]}
               previousStatus={getPreviousStatus(phase)}
               autoExecutionPermitted={workflowStore.autoExecutionPermissions[phase]}
-              isExecuting={executingPhase === phase}
+              isExecuting={runningPhases.has(phase)}
+              canExecute={canExecutePhase(phase)}
               onExecute={() => handleExecutePhase(phase)}
               onApprove={() => handleApprovePhase(phase)}
               onApproveAndExecute={() => handleApproveAndExecutePhase(phase)}
@@ -235,7 +259,8 @@ export function WorkflowView() {
                       type={type as ValidationType}
                       label={VALIDATION_LABELS[type as ValidationType]}
                       enabled={workflowStore.validationOptions[type as ValidationType]}
-                      isExecuting={executingValidation === type}
+                      isExecuting={runningPhases.has(`validate-${type}`)}
+                      canExecute={canExecuteValidation(type as ValidationType)}
                       onToggle={() => workflowStore.toggleValidationOption(type as ValidationType)}
                       onExecute={() => handleExecuteValidation(type as ValidationType)}
                     />

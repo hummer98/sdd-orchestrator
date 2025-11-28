@@ -22,6 +22,8 @@ export interface ValidateOptionProps {
   enabled: boolean;
   /** 実行中フラグ */
   isExecuting: boolean;
+  /** 実行可能かどうか（多重実行防止用） */
+  canExecute: boolean;
   /** チェック変更ハンドラ */
   onToggle: () => void;
   /** 即時実行ハンドラ */
@@ -33,6 +35,7 @@ export function ValidateOption({
   label,
   enabled,
   isExecuting,
+  canExecute,
   onToggle,
   onExecute,
 }: ValidateOptionProps) {
@@ -71,16 +74,26 @@ export function ValidateOption({
           <Loader2 className="w-3 h-3 animate-spin" />
           実行中
         </span>
-      ) : (
+      ) : canExecute ? (
         <button
           onClick={onExecute}
-          disabled={isExecuting}
           className={clsx(
             'flex items-center gap-1 px-2 py-0.5 rounded text-xs',
             'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300',
             'hover:bg-gray-300 dark:hover:bg-gray-500',
-            'transition-colors',
-            isExecuting && 'opacity-50 cursor-not-allowed'
+            'transition-colors'
+          )}
+        >
+          <Play className="w-3 h-3" />
+          実行
+        </button>
+      ) : (
+        <button
+          disabled
+          className={clsx(
+            'flex items-center gap-1 px-2 py-0.5 rounded text-xs',
+            'bg-gray-300 dark:bg-gray-700 text-gray-400 dark:text-gray-500',
+            'cursor-not-allowed'
           )}
         >
           <Play className="w-3 h-3" />

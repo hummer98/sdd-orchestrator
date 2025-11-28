@@ -1,39 +1,90 @@
 /**
  * AgentLogPanel Component
- * Displays logs for the selected SDD Agent with virtual scrolling
+ * Displays logs for the selected SDD Agent
  * Task 31.1-31.2: Agent log display and operations
  * Requirements: 9.1, 9.2, 9.4, 9.7, 9.8, 9.9, 9.10
  */
 
-import { useRef, useEffect } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Terminal, Copy, Trash2, Loader2 } from 'lucide-react';
+import { useRef, useEffect, useMemo, useState } from 'react';
+import { Terminal, Copy, Trash2, Loader2, Code, FileText } from 'lucide-react';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
+import { formatLogData, getColorClass, getBgClass, type FormattedLogLine } from '../utils/logFormatter';
+
+interface DisplayLine {
+  id: string;
+  type: 'raw' | 'formatted';
+  raw?: { data: string; stream: 'stdout' | 'stderr' };
+  formatted?: FormattedLogLine;
+}
 
 export function AgentLogPanel() {
   const { selectedAgentId, clearLogs, getLogsForAgent, getAgentById } = useAgentStore();
+  const [isFormatted, setIsFormatted] = useState(true);
 
   const logs = selectedAgentId ? getLogsForAgent(selectedAgentId) : [];
   const agent = selectedAgentId ? getAgentById(selectedAgentId) : undefined;
   const isRunning = agent?.status === 'running';
 
-  const parentRef = useRef<HTMLDivElement>(null);
+  // Format logs for display
+  const displayLines = useMemo<DisplayLine[]>(() => {
+    if (!isFormatted) {
+      // Raw mode: show original data
+      return logs.map((log, idx) => ({
+        id: `${log.id}-${idx}`,
+        type: 'raw' as const,
+        raw: { data: log.data, stream: log.stream },
+      }));
+    }
 
-  // Virtual scrolling for performance with large logs
-  const virtualizer = useVirtualizer({
-    count: logs.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
-    overscan: 10,
-  });
+    // Formatted mode: parse and format
+    const lines: DisplayLine[] = [];
+    logs.forEach((log, logIdx) => {
+      if (log.stream === 'stderr') {
+        // stderr is always shown as-is with red color
+        lines.push({
+          id: `${log.id}-stderr-${logIdx}`,
+          type: 'formatted',
+          formatted: {
+            type: 'error',
+            icon: '⚠️',
+            label: 'stderr',
+            content: log.data,
+            color: 'red',
+          },
+        });
+      } else {
+        // Parse stdout as Claude stream-json
+        const formatted = formatLogData(log.data);
+        if (formatted.length === 0) {
+          // If no formatted output, show raw
+          lines.push({
+            id: `${log.id}-raw-${logIdx}`,
+            type: 'raw',
+            raw: { data: log.data, stream: log.stream },
+          });
+        } else {
+          formatted.forEach((f, fIdx) => {
+            lines.push({
+              id: `${log.id}-${logIdx}-${fIdx}`,
+              type: 'formatted',
+              formatted: f,
+            });
+          });
+        }
+      }
+    });
+    return lines;
+  }, [logs, isFormatted]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new logs arrive (Task 31.2: 9.10)
   useEffect(() => {
-    if (logs.length > 0 && parentRef.current) {
-      virtualizer.scrollToIndex(logs.length - 1, { align: 'end' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs.length, virtualizer]);
+  }, [displayLines.length]);
 
   // Copy logs to clipboard (Task 31.2: 9.7)
   const handleCopy = () => {
@@ -74,6 +125,23 @@ export function AgentLogPanel() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Format toggle */}
+          <button
+            onClick={() => setIsFormatted(!isFormatted)}
+            className={clsx(
+              'p-1.5 rounded',
+              isFormatted
+                ? 'bg-blue-600 text-white'
+                : 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
+            )}
+            title={isFormatted ? '整形表示中 (クリックでRAW表示)' : 'RAW表示中 (クリックで整形表示)'}
+          >
+            {isFormatted ? (
+              <FileText className="w-4 h-4" />
+            ) : (
+              <Code className="w-4 h-4" />
+            )}
+          </button>
           {/* Actions */}
           <button
             onClick={handleCopy}
@@ -104,52 +172,60 @@ export function AgentLogPanel() {
 
       {/* Log content */}
       <div
-        ref={parentRef}
+        ref={scrollRef}
         className="flex-1 overflow-auto font-mono text-sm"
       >
         {!selectedAgentId ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             Agentを選択してください
           </div>
-        ) : logs.length === 0 ? (
+        ) : displayLines.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             ログがありません
           </div>
         ) : (
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const log = logs[virtualItem.index];
-              return (
-                <div
-                  key={log.id}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: `${virtualItem.size}px`,
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                  className={clsx(
-                    'px-4 py-0.5 whitespace-pre-wrap break-all',
-                    log.stream === 'stderr'
+          <div className="p-2 space-y-1">
+            {displayLines.map((line) => (
+              <div
+                key={line.id}
+                className={clsx(
+                  'px-2 py-1 rounded',
+                  line.type === 'raw'
+                    ? line.raw?.stream === 'stderr'
                       ? 'text-red-400 bg-red-900/20'
                       : 'text-gray-300'
-                  )}
-                >
-                  {log.data}
-                </div>
-              );
-            })}
+                    : getBgClass(line.formatted!.type)
+                )}
+              >
+                {line.type === 'raw' ? (
+                  <span className="whitespace-pre-wrap break-all">
+                    {line.raw?.data}
+                  </span>
+                ) : (
+                  <FormattedLogLineDisplay line={line.formatted!} />
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FormattedLogLineDisplay({ line }: { line: FormattedLogLine }) {
+  return (
+    <div className={clsx('flex items-start gap-2', getColorClass(line.color))}>
+      {line.icon && <span className="shrink-0">{line.icon}</span>}
+      {line.label && (
+        <span className="shrink-0 font-semibold">{line.label}:</span>
+      )}
+      <span className="whitespace-pre-wrap break-all flex-1">
+        {line.content}
+        {line.details && (
+          <span className="text-gray-500 ml-2">{line.details}</span>
+        )}
+      </span>
     </div>
   );
 }

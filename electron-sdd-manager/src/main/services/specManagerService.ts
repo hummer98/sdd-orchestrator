@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
 import { createAgentProcess, AgentProcess } from './agentProcess';
-import { PidFileService } from './pidFileService';
+import { AgentRecordService } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { logger } from './logger';
 
@@ -84,7 +84,7 @@ export type Result<T, E> =
  */
 export class SpecManagerService {
   private registry: AgentRegistry;
-  private pidService: PidFileService;
+  private recordService: AgentRecordService;
   private logService: LogFileService;
   private processes: Map<string, AgentProcess> = new Map();
   private projectPath: string;
@@ -94,7 +94,7 @@ export class SpecManagerService {
   constructor(projectPath: string) {
     this.projectPath = projectPath;
     this.registry = new AgentRegistry();
-    this.pidService = new PidFileService(
+    this.recordService = new AgentRecordService(
       path.join(projectPath, '.kiro', 'runtime', 'agents')
     );
     // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
@@ -204,8 +204,8 @@ export class SpecManagerService {
       this.registry.register(agentInfo);
       this.processes.set(agentId, process);
 
-      // Write PID file
-      await this.pidService.writePidFile({
+      // Write agent record
+      await this.recordService.writeRecord({
         agentId,
         specId,
         phase,
@@ -221,6 +221,11 @@ export class SpecManagerService {
       process.onOutput((stream, data) => {
         logger.debug('[SpecManagerService] Process output received', { agentId, stream, dataLength: data.length });
         this.registry.updateActivity(agentId);
+
+        // Parse sessionId from Claude Code init message
+        if (stream === 'stdout') {
+          this.parseAndUpdateSessionId(agentId, specId, data);
+        }
 
         // Save log to file
         const logEntry: LogEntry = {
@@ -249,12 +254,12 @@ export class SpecManagerService {
         this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
         this.processes.delete(agentId);
 
-        // Update PID file
-        this.pidService.updatePidFile(specId, agentId, {
+        // Update agent record
+        this.recordService.updateRecord(specId, agentId, {
           status: newStatus,
           lastActivityAt: new Date().toISOString(),
         }).catch(() => {
-          // Ignore errors when updating PID file on exit
+          // Ignore errors when updating agent record on exit
         });
       });
 
@@ -262,6 +267,14 @@ export class SpecManagerService {
         this.registry.updateStatus(agentId, 'failed');
         this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
         this.processes.delete(agentId);
+
+        // Update agent record on error
+        this.recordService.updateRecord(specId, agentId, {
+          status: 'failed',
+          lastActivityAt: new Date().toISOString(),
+        }).catch(() => {
+          // Ignore errors when updating agent record on error
+        });
       });
 
       return { ok: true, value: agentInfo };
@@ -299,9 +312,9 @@ export class SpecManagerService {
     this.registry.updateStatus(agentId, 'interrupted');
     this.statusCallbacks.forEach((cb) => cb(agentId, 'interrupted'));
 
-    // Update PID file
+    // Update agent record
     try {
-      await this.pidService.updatePidFile(agent.specId, agentId, {
+      await this.recordService.updateRecord(agent.specId, agentId, {
         status: 'interrupted',
         lastActivityAt: new Date().toISOString(),
       });
@@ -325,36 +338,47 @@ export class SpecManagerService {
   }
 
   /**
-   * Restore agents from PID files after restart
+   * Restore agents from agent records after restart
    * Requirements: 5.6, 5.7
+   * Now also restores completed/failed agents as history
    */
   async restoreAgents(): Promise<void> {
-    const pidFiles = await this.pidService.readAllPidFiles();
+    const records = await this.recordService.readAllRecords();
 
-    for (const pidFile of pidFiles) {
-      const isAlive = this.pidService.checkProcessAlive(pidFile.pid);
+    for (const record of records) {
+      const isAlive = this.recordService.checkProcessAlive(record.pid);
 
-      // If process is dead, delete the PID file and skip registration
-      if (!isAlive) {
-        console.log(`[SpecManagerService] Cleaning up stale PID file for agent: ${pidFile.agentId} (pid: ${pidFile.pid})`);
-        await this.pidService.deletePidFile(pidFile.specId, pidFile.agentId);
-        continue;
+      // Determine the correct status based on process state
+      let status = record.status;
+      if (!isAlive && record.status === 'running') {
+        // Process died unexpectedly while running - mark as interrupted
+        status = 'interrupted';
+        console.log(`[SpecManagerService] Agent process died unexpectedly: ${record.agentId} (pid: ${record.pid}), marking as interrupted`);
+
+        // Update the agent record with the new status
+        await this.recordService.updateRecord(record.specId, record.agentId, {
+          status: 'interrupted',
+          lastActivityAt: new Date().toISOString(),
+        }).catch(() => {
+          // Ignore errors when updating agent record
+        });
       }
 
       const agentInfo: AgentInfo = {
-        agentId: pidFile.agentId,
-        specId: pidFile.specId,
-        phase: pidFile.phase,
-        pid: pidFile.pid,
-        sessionId: pidFile.sessionId,
-        status: pidFile.status,
-        startedAt: pidFile.startedAt,
-        lastActivityAt: pidFile.lastActivityAt,
-        command: pidFile.command,
+        agentId: record.agentId,
+        specId: record.specId,
+        phase: record.phase,
+        pid: record.pid,
+        sessionId: record.sessionId,
+        status,
+        startedAt: record.startedAt,
+        lastActivityAt: record.lastActivityAt,
+        command: record.command,
       };
 
+      // Register all agents (including completed/failed) as history
       this.registry.register(agentInfo);
-      console.log(`[SpecManagerService] Restored agent: ${pidFile.agentId} (pid: ${pidFile.pid}, status: ${pidFile.status})`);
+      console.log(`[SpecManagerService] Restored agent: ${record.agentId} (pid: ${record.pid}, status: ${status}, alive: ${isAlive})`);
     }
   }
 
@@ -497,5 +521,54 @@ export class SpecManagerService {
       args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-status ${featureName}`],
       group: 'doc',
     });
+  }
+
+  /**
+   * Parse sessionId from Claude Code stream-json output
+   * Claude Code outputs session_id in the first "system/init" message
+   */
+  private parseAndUpdateSessionId(agentId: string, specId: string, data: string): void {
+    // Already have sessionId for this agent
+    const agent = this.registry.get(agentId);
+    if (agent?.sessionId) {
+      return;
+    }
+
+    try {
+      // Claude Code outputs JSON lines, try to parse each line
+      const lines = data.split('\n').filter((line) => line.trim());
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          // Check for system/init message with session_id
+          if (parsed.type === 'system' && parsed.subtype === 'init' && parsed.session_id) {
+            logger.info('[SpecManagerService] Extracted sessionId from Claude Code output', {
+              agentId,
+              sessionId: parsed.session_id,
+            });
+
+            // Update registry
+            this.registry.updateSessionId(agentId, parsed.session_id);
+
+            // Update agent record
+            this.recordService.updateRecord(specId, agentId, {
+              sessionId: parsed.session_id,
+            }).catch((err) => {
+              logger.warn('[SpecManagerService] Failed to update agent record with sessionId', {
+                agentId,
+                error: err.message,
+              });
+            });
+
+            return;
+          }
+        } catch {
+          // Not valid JSON, skip this line
+        }
+      }
+    } catch (err) {
+      // Parsing error, ignore
+      logger.debug('[SpecManagerService] Failed to parse output for sessionId', { agentId });
+    }
   }
 }

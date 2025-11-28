@@ -1,5 +1,5 @@
 /**
- * PIDFileService Tests
+ * AgentRecordService Tests
  * Requirements: 5.5, 5.6, 5.7
  */
 
@@ -8,24 +8,24 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import {
-  PidFileService,
-  AgentPidFile,
-  writePidFile,
-  readPidFile,
-  readAllPidFiles,
-  updatePidFile,
+  AgentRecordService,
+  AgentRecord,
+  writeRecord,
+  readRecord,
+  readAllRecords,
+  updateRecord,
   checkProcessAlive,
-} from './pidFileService';
+} from './agentRecordService';
 
-describe('PIDFileService', () => {
+describe('AgentRecordService', () => {
   let testDir: string;
-  let service: PidFileService;
+  let service: AgentRecordService;
 
   beforeEach(async () => {
     // Create a temporary directory for testing
-    testDir = path.join(os.tmpdir(), `pid-test-${Date.now()}`);
+    testDir = path.join(os.tmpdir(), `agent-record-test-${Date.now()}`);
     await fs.mkdir(testDir, { recursive: true });
-    service = new PidFileService(testDir);
+    service = new AgentRecordService(testDir);
   });
 
   afterEach(async () => {
@@ -37,10 +37,10 @@ describe('PIDFileService', () => {
     }
   });
 
-  // Task 22.1: PIDファイル書き込み
-  describe('writePidFile', () => {
-    it('should write PID file to correct location', async () => {
-      const pidFile: AgentPidFile = {
+  // Task 22.1: Agent Record書き込み
+  describe('writeRecord', () => {
+    it('should write agent record to correct location', async () => {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -52,7 +52,7 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
+      await service.writeRecord(record);
 
       // Verify file was created
       const filePath = path.join(testDir, 'spec-a', 'agent-001.json');
@@ -65,7 +65,7 @@ describe('PIDFileService', () => {
     });
 
     it('should create directory structure if not exists', async () => {
-      const pidFile: AgentPidFile = {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'new-spec',
         phase: 'requirements',
@@ -77,7 +77,7 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
+      await service.writeRecord(record);
 
       // Verify directory was created
       const dirPath = path.join(testDir, 'new-spec');
@@ -86,10 +86,10 @@ describe('PIDFileService', () => {
     });
   });
 
-  // Task 22.2: PIDファイル読み込み
-  describe('readPidFile', () => {
-    it('should read PID file', async () => {
-      const pidFile: AgentPidFile = {
+  // Task 22.2: Agent Record読み込み
+  describe('readRecord', () => {
+    it('should read agent record', async () => {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -101,9 +101,9 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
+      await service.writeRecord(record);
 
-      const result = await service.readPidFile('spec-a', 'agent-001');
+      const result = await service.readRecord('spec-a', 'agent-001');
 
       expect(result).not.toBeNull();
       expect(result?.agentId).toBe('agent-001');
@@ -111,14 +111,14 @@ describe('PIDFileService', () => {
     });
 
     it('should return null for non-existent file', async () => {
-      const result = await service.readPidFile('non-existent-spec', 'non-existent-agent');
+      const result = await service.readRecord('non-existent-spec', 'non-existent-agent');
       expect(result).toBeNull();
     });
   });
 
-  describe('readAllPidFiles', () => {
-    it('should read all PID files', async () => {
-      const pidFile1: AgentPidFile = {
+  describe('readAllRecords', () => {
+    it('should read all agent records', async () => {
+      const record1: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -130,7 +130,7 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      const pidFile2: AgentPidFile = {
+      const record2: AgentRecord = {
         agentId: 'agent-002',
         specId: 'spec-a',
         phase: 'design',
@@ -142,7 +142,7 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-design"',
       };
 
-      const pidFile3: AgentPidFile = {
+      const record3: AgentRecord = {
         agentId: 'agent-003',
         specId: 'spec-b',
         phase: 'requirements',
@@ -154,28 +154,28 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile1);
-      await service.writePidFile(pidFile2);
-      await service.writePidFile(pidFile3);
+      await service.writeRecord(record1);
+      await service.writeRecord(record2);
+      await service.writeRecord(record3);
 
-      const allFiles = await service.readAllPidFiles();
+      const allRecords = await service.readAllRecords();
 
-      expect(allFiles).toHaveLength(3);
-      expect(allFiles.map((f) => f.agentId)).toContain('agent-001');
-      expect(allFiles.map((f) => f.agentId)).toContain('agent-002');
-      expect(allFiles.map((f) => f.agentId)).toContain('agent-003');
+      expect(allRecords).toHaveLength(3);
+      expect(allRecords.map((r) => r.agentId)).toContain('agent-001');
+      expect(allRecords.map((r) => r.agentId)).toContain('agent-002');
+      expect(allRecords.map((r) => r.agentId)).toContain('agent-003');
     });
 
     it('should return empty array when no files exist', async () => {
-      const allFiles = await service.readAllPidFiles();
-      expect(allFiles).toHaveLength(0);
+      const allRecords = await service.readAllRecords();
+      expect(allRecords).toHaveLength(0);
     });
   });
 
-  // Task 22.3: PIDファイル更新
-  describe('updatePidFile', () => {
-    it('should update status in PID file', async () => {
-      const pidFile: AgentPidFile = {
+  // Task 22.3: Agent Record更新
+  describe('updateRecord', () => {
+    it('should update status in agent record', async () => {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -187,15 +187,15 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
-      await service.updatePidFile('spec-a', 'agent-001', { status: 'completed' });
+      await service.writeRecord(record);
+      await service.updateRecord('spec-a', 'agent-001', { status: 'completed' });
 
-      const result = await service.readPidFile('spec-a', 'agent-001');
+      const result = await service.readRecord('spec-a', 'agent-001');
       expect(result?.status).toBe('completed');
     });
 
-    it('should update lastActivityAt in PID file', async () => {
-      const pidFile: AgentPidFile = {
+    it('should update lastActivityAt in agent record', async () => {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -207,17 +207,38 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
+      await service.writeRecord(record);
       const newTime = '2025-11-26T10:05:00Z';
-      await service.updatePidFile('spec-a', 'agent-001', { lastActivityAt: newTime });
+      await service.updateRecord('spec-a', 'agent-001', { lastActivityAt: newTime });
 
-      const result = await service.readPidFile('spec-a', 'agent-001');
+      const result = await service.readRecord('spec-a', 'agent-001');
       expect(result?.lastActivityAt).toBe(newTime);
+    });
+
+    it('should update sessionId in agent record', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: '',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+      };
+
+      await service.writeRecord(record);
+      const newSessionId = 'parsed-session-id-uuid';
+      await service.updateRecord('spec-a', 'agent-001', { sessionId: newSessionId });
+
+      const result = await service.readRecord('spec-a', 'agent-001');
+      expect(result?.sessionId).toBe(newSessionId);
     });
 
     it('should throw error for non-existent file', async () => {
       await expect(
-        service.updatePidFile('non-existent', 'non-existent', { status: 'completed' })
+        service.updateRecord('non-existent', 'non-existent', { status: 'completed' })
       ).rejects.toThrow();
     });
   });
@@ -242,9 +263,9 @@ describe('PIDFileService', () => {
     });
   });
 
-  describe('deletePidFile', () => {
-    it('should delete PID file', async () => {
-      const pidFile: AgentPidFile = {
+  describe('deleteRecord', () => {
+    it('should delete agent record', async () => {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -256,16 +277,16 @@ describe('PIDFileService', () => {
         command: 'claude -p "/kiro:spec-requirements"',
       };
 
-      await service.writePidFile(pidFile);
-      await service.deletePidFile('spec-a', 'agent-001');
+      await service.writeRecord(record);
+      await service.deleteRecord('spec-a', 'agent-001');
 
-      const result = await service.readPidFile('spec-a', 'agent-001');
+      const result = await service.readRecord('spec-a', 'agent-001');
       expect(result).toBeNull();
     });
 
     it('should not throw when deleting non-existent file', async () => {
       await expect(
-        service.deletePidFile('non-existent', 'non-existent')
+        service.deleteRecord('non-existent', 'non-existent')
       ).resolves.not.toThrow();
     });
   });

@@ -259,6 +259,32 @@ describe('AgentRegistry', () => {
     });
   });
 
+  describe('updateSessionId', () => {
+    it('should update sessionId', () => {
+      const agent: AgentInfo = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: '',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+      };
+
+      registry.register(agent);
+      registry.updateSessionId('agent-001', 'new-session-id-123');
+
+      const retrieved = registry.get('agent-001');
+      expect(retrieved?.sessionId).toBe('new-session-id-123');
+    });
+
+    it('should not throw when updating non-existent agent', () => {
+      expect(() => registry.updateSessionId('non-existent', 'session-id')).not.toThrow();
+    });
+  });
+
   // Task 20.3: Hang detection functionality
   describe('checkHangAgents', () => {
     it('should return agents that have exceeded threshold', () => {

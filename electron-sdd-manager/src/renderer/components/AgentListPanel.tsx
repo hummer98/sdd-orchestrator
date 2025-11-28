@@ -48,7 +48,15 @@ export function AgentListPanel() {
     return null;
   }
 
-  const agents = getAgentsForSpec(selectedSpec.name);
+  const agents = getAgentsForSpec(selectedSpec.name)
+    // Sort: running first, then by startedAt descending (newest first)
+    .sort((a, b) => {
+      // Running agents first
+      if (a.status === 'running' && b.status !== 'running') return -1;
+      if (a.status !== 'running' && b.status === 'running') return 1;
+      // Then by startedAt descending
+      return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+    });
 
   const handleStop = async (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,7 +84,7 @@ export function AgentListPanel() {
 
       {agents.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-2">
-          実行中のAgentはありません
+          Agentはありません
         </p>
       ) : (
         <ul className="space-y-2">

@@ -87,6 +87,17 @@ export class AgentRegistry {
   }
 
   /**
+   * Update agent's sessionId
+   * Called when sessionId is parsed from Claude Code output
+   */
+  updateSessionId(agentId: string, sessionId: string): void {
+    const agent = this.agents.get(agentId);
+    if (agent) {
+      this.agents.set(agentId, { ...agent, sessionId });
+    }
+  }
+
+  /**
    * Check for agents that have exceeded hang threshold
    * Requirements: 5.3, 5.4
    * @param thresholdMs Time threshold in milliseconds

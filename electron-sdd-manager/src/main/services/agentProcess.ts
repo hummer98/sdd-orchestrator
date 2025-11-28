@@ -48,12 +48,13 @@ class AgentProcessImpl implements AgentProcess {
     logger.info('[AgentProcess] Spawning process', { agentId: this.agentId, command: options.command, args: options.args, cwd: options.cwd });
     // Note: Using shell: false for proper stdio handling
     // The command must be resolvable in PATH
-    // stdin: 'inherit' to avoid hanging issue with claude -p
+    // stdin: 'pipe' and immediately close it to signal EOF
+    // This is required for claude -p which waits for stdin to close
     // stdout/stderr: 'pipe' to capture output
     this.process = spawn(options.command, options.args, {
       cwd: options.cwd,
       shell: false,
-      stdio: ['inherit', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
         // Ensure PATH includes common locations for claude command
@@ -61,6 +62,13 @@ class AgentProcessImpl implements AgentProcess {
       },
     });
     logger.info('[AgentProcess] Process spawned', { agentId: this.agentId, pid: this.process.pid });
+
+    // Close stdin immediately to signal EOF
+    // This allows commands like `claude -p` to proceed without waiting for input
+    if (this.process.stdin) {
+      this.process.stdin.end();
+      logger.debug('[AgentProcess] stdin closed', { agentId: this.agentId });
+    }
 
     this.setupEventHandlers();
   }
@@ -106,9 +114,9 @@ class AgentProcessImpl implements AgentProcess {
   }
 
   writeStdin(input: string): void {
-    // Note: stdin is 'inherit', so writeStdin is not supported
-    // This is a trade-off to avoid hanging issue with claude -p
-    logger.warn('[AgentProcess] writeStdin called but stdin is inherited, input ignored', { agentId: this.agentId, input });
+    // Note: stdin is closed immediately after spawn for claude -p compatibility
+    // writeStdin is not supported in this mode
+    logger.warn('[AgentProcess] writeStdin called but stdin is already closed, input ignored', { agentId: this.agentId, input });
   }
 
   kill(): void {

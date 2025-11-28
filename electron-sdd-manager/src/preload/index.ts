@@ -156,6 +156,9 @@ const electronAPI = {
   getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
 
   getPlatform: (): NodeJS.Platform => process.platform,
+
+  getInitialProjectPath: (): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH),
 };
 
 // Expose API to renderer

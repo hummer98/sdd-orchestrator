@@ -177,6 +177,20 @@ describe('WorkflowView', () => {
   });
 
   // ============================================================
+  // Task 7.7: No header section (removed for cleaner UI)
+  // ============================================================
+  describe('Task 7.7: No header section', () => {
+    it('should NOT display spec name header', () => {
+      render(<WorkflowView />);
+
+      // Header was removed, spec name should not be displayed as h2
+      const headers = document.querySelectorAll('h2');
+      const specNameHeader = Array.from(headers).find(h => h.textContent === 'test-feature');
+      expect(specNameHeader).toBeUndefined();
+    });
+  });
+
+  // ============================================================
   // Loading and empty states
   // ============================================================
   describe('Loading and empty states', () => {

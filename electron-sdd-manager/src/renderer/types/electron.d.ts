@@ -104,6 +104,7 @@ export interface ElectronAPI {
   // App
   getAppVersion(): Promise<string>;
   getPlatform(): NodeJS.Platform;
+  getInitialProjectPath(): Promise<string | null>;
 }
 
 declare global {

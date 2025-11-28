@@ -118,9 +118,11 @@ describe('AgentProcess', () => {
     });
   });
 
-  // Task 21.3: stdin forwarding
-  describe('writeStdin', () => {
-    it('should write to stdin', async () => {
+  // Task 21.3: stdin handling for claude -p compatibility
+  describe('stdin handling', () => {
+    it('should close stdin immediately to allow claude -p to complete', async () => {
+      // This test verifies that stdin is closed after spawn
+      // so that commands like `claude -p` don't hang waiting for input
       const options: AgentProcessOptions = {
         agentId: 'agent-001',
         command: 'cat',
@@ -137,17 +139,40 @@ describe('AgentProcess', () => {
         }
       });
 
-      // Write to stdin
-      process.writeStdin('user input');
+      // With stdin closed immediately, cat should exit quickly (no input = EOF)
+      const exitCode = await new Promise<number>((resolve) => {
+        process.onExit((code) => resolve(code));
+      });
 
-      // Wait a bit for the input to be processed
-      await new Promise((r) => setTimeout(r, 100));
+      // cat with closed stdin should exit with 0
+      expect(exitCode).toBe(0);
+      // No output expected since stdin was closed immediately
+      expect(outputs.length).toBe(0);
+    });
 
-      // Kill the process since cat will wait forever
-      process.kill();
+    it('should capture stdout when stdin is piped and closed', async () => {
+      // Use a command that produces output without needing stdin
+      const options: AgentProcessOptions = {
+        agentId: 'agent-001',
+        command: 'echo',
+        args: ['hello'],
+        cwd: '/tmp',
+      };
 
-      // Check that the input was echoed back
-      expect(outputs.some((o) => o.includes('user input'))).toBe(true);
+      const process = createAgentProcess(options);
+      const outputs: string[] = [];
+
+      process.onOutput((stream, data) => {
+        if (stream === 'stdout') {
+          outputs.push(data);
+        }
+      });
+
+      await new Promise<void>((resolve) => {
+        process.onExit(() => resolve());
+      });
+
+      expect(outputs.some((o) => o.includes('hello'))).toBe(true);
     });
   });
 

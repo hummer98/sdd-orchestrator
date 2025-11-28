@@ -18,6 +18,7 @@ interface ProjectState {
 interface ProjectActions {
   selectProject: (path: string) => Promise<void>;
   loadRecentProjects: () => Promise<void>;
+  loadInitialProject: () => Promise<void>;
   clearProject: () => void;
   clearError: () => void;
 }
@@ -62,6 +63,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ recentProjects: projects });
     } catch (error) {
       console.error('Failed to load recent projects:', error);
+    }
+  },
+
+  loadInitialProject: async () => {
+    try {
+      const initialPath = await window.electronAPI.getInitialProjectPath();
+      if (initialPath) {
+        // If initial project path was provided via command line, select it
+        await get().selectProject(initialPath);
+      }
+    } catch (error) {
+      console.error('Failed to load initial project:', error);
     }
   },
 

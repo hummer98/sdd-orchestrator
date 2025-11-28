@@ -97,12 +97,11 @@ describe('AgentLogPanel - Task 31', () => {
       expect(screen.queryByTestId('running-indicator')).not.toBeInTheDocument();
     });
 
-    it('should have virtual scroll container for logs', () => {
+    it('should have scroll container for logs', () => {
       render(<AgentLogPanel />);
 
-      // Virtual scrolling container should be present with height based on logs
-      // Each log item has estimateSize of 24px
-      const container = document.querySelector('[style*="height: 72px"]');
+      // Log container should be present
+      const container = document.querySelector('.flex-1.overflow-auto');
       expect(container).toBeInTheDocument();
     });
 
@@ -131,6 +130,27 @@ describe('AgentLogPanel - Task 31', () => {
       render(<AgentLogPanel />);
 
       expect(screen.getByText('ログがありません')).toBeInTheDocument();
+    });
+  });
+
+  describe('Task 31.3: ヘッダーにagentId-sessionId表示', () => {
+    it('should display agentId and sessionId in header', () => {
+      render(<AgentLogPanel />);
+
+      expect(screen.getByText('agent-1 - session-1')).toBeInTheDocument();
+    });
+
+    it('should not display agentId-sessionId when no agent is selected', () => {
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        clearLogs: mockClearLogs,
+        getLogsForAgent: mockGetLogsForAgent.mockReturnValue([]),
+        getAgentById: mockGetAgentById.mockReturnValue(undefined),
+      });
+
+      render(<AgentLogPanel />);
+
+      expect(screen.queryByText(/agent-1/)).not.toBeInTheDocument();
     });
   });
 

@@ -207,14 +207,6 @@ export function WorkflowView() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
-          {specDetail.metadata.name}
-        </h2>
-        <p className="text-sm text-gray-500">{specJson.feature_name}</p>
-      </div>
-
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {WORKFLOW_PHASES.map((phase, index) => (

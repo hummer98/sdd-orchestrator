@@ -49,6 +49,7 @@ export const IPC_CHANNELS = {
   // App
   GET_APP_VERSION: 'ipc:get-app-version',
   GET_PLATFORM: 'ipc:get-platform',
+  GET_INITIAL_PROJECT_PATH: 'ipc:get-initial-project-path',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

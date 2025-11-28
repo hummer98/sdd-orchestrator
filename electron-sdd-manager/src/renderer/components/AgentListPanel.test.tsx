@@ -150,7 +150,7 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel />);
 
-      expect(screen.getByText('実行中のAgentはありません')).toBeInTheDocument();
+      expect(screen.getByText('Agentはありません')).toBeInTheDocument();
     });
 
     it('should return null when no spec is selected', () => {
@@ -203,6 +203,61 @@ describe('AgentListPanel - Task 30', () => {
 
       await waitFor(() => {
         expect(mockResumeAgent).toHaveBeenCalledWith('agent-1');
+      });
+    });
+  });
+
+  describe('Task 30.4: タグにtooltipでagentId/sessionId表示', () => {
+    it('should display agentId and sessionId in tooltip', () => {
+      render(<AgentListPanel />);
+
+      const agentItem = screen.getByTestId('agent-item-agent-1');
+      expect(agentItem).toHaveAttribute('title', 'agent-1 / session-1');
+    });
+  });
+
+  describe('Task 30.5: 削除ボタン', () => {
+    it('should show delete button for non-running agent', () => {
+      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+      });
+
+      render(<AgentListPanel />);
+
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument();
+    });
+
+    it('should NOT show delete button for running agent', () => {
+      render(<AgentListPanel />);
+
+      expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument();
+    });
+
+    it('should call removeAgent when delete button is clicked', async () => {
+      const mockRemoveAgent = vi.fn();
+      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: mockRemoveAgent,
+      });
+
+      render(<AgentListPanel />);
+
+      const deleteButton = screen.getByRole('button', { name: '削除' });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(mockRemoveAgent).toHaveBeenCalledWith('agent-1');
       });
     });
   });

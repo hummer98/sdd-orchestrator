@@ -48,6 +48,7 @@ interface AgentActions {
   ) => Promise<string | null>;
   stopAgent: (agentId: string) => Promise<void>;
   resumeAgent: (agentId: string) => Promise<void>;
+  removeAgent: (agentId: string) => void;
   sendInput: (agentId: string, input: string) => Promise<void>;
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
 
@@ -184,6 +185,29 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         error: error instanceof Error ? error.message : 'Agentの再開に失敗しました',
       });
     }
+  },
+
+  removeAgent: (agentId: string) => {
+    set((state) => {
+      const newAgents = new Map(state.agents);
+      const newLogs = new Map(state.logs);
+
+      // 全てのspecから該当するagentを削除
+      for (const [specId, agentList] of newAgents) {
+        const filteredList = agentList.filter((agent) => agent.agentId !== agentId);
+        if (filteredList.length !== agentList.length) {
+          newAgents.set(specId, filteredList);
+        }
+      }
+
+      // ログも削除
+      newLogs.delete(agentId);
+
+      // 選択中のAgentが削除された場合はnullに
+      const newSelectedAgentId = state.selectedAgentId === agentId ? null : state.selectedAgentId;
+
+      return { agents: newAgents, logs: newLogs, selectedAgentId: newSelectedAgentId };
+    });
   },
 
   sendInput: async (agentId: string, input: string) => {

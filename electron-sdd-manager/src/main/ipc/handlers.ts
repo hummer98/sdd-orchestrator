@@ -21,6 +21,22 @@ const commandService = new CommandService();
 let specManagerService: SpecManagerService | null = null;
 // Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
+// Initial project path set from command line arguments
+let initialProjectPath: string | null = null;
+
+/**
+ * Set initial project path (called from main process)
+ */
+export function setInitialProjectPath(path: string | null): void {
+  initialProjectPath = path;
+}
+
+/**
+ * Get initial project path
+ */
+export function getInitialProjectPath(): string | null {
+  return initialProjectPath;
+}
 
 /**
  * Set up SpecManagerService for a project
@@ -202,6 +218,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.GET_PLATFORM, async () => {
     return process.platform;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH, async () => {
+    return initialProjectPath;
   });
 
   // Agent Management Handlers (Task 27.1)

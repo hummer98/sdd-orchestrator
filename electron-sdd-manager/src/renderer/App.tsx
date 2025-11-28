@@ -32,8 +32,8 @@ const BOTTOM_PANE_MIN = 100;
 const BOTTOM_PANE_MAX = 400;
 
 export function App() {
-  const { currentProject, kiroValidation } = useProjectStore();
-  const { selectedSpec, specDetail } = useSpecStore();
+  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects } = useProjectStore();
+  const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
 
@@ -58,6 +58,25 @@ export function App() {
   const handleBottomResize = useCallback((delta: number) => {
     setBottomPaneHeight((prev) => Math.min(BOTTOM_PANE_MAX, Math.max(BOTTOM_PANE_MIN, prev - delta)));
   }, []);
+
+  // Load initial project from command line argument and recent projects on mount
+  const initialProjectLoaded = useRef(false);
+  useEffect(() => {
+    if (initialProjectLoaded.current) {
+      return;
+    }
+    initialProjectLoaded.current = true;
+
+    // Load recent projects first, then check for initial project
+    loadRecentProjects().then(async () => {
+      await loadInitialProject();
+      // After loading initial project, load specs if project path was set
+      const initialPath = await window.electronAPI.getInitialProjectPath();
+      if (initialPath) {
+        await loadSpecs(initialPath);
+      }
+    });
+  }, [loadRecentProjects, loadInitialProject, loadSpecs]);
 
   // Setup agent event listeners on mount
   // useRefを使用してStrictModeでの二重実行を防止

@@ -114,6 +114,10 @@ export function AgentLogPanel() {
               <span className="text-sm text-gray-400">
                 {agent.phase}
               </span>
+              <span className="text-sm text-gray-500">|</span>
+              <span className="text-sm text-gray-500 font-mono">
+                {agent.agentId} - {agent.sessionId}
+              </span>
             </>
           )}
           {isRunning && (

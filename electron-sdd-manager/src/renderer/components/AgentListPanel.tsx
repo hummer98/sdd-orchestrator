@@ -5,7 +5,7 @@
  * Requirements: 5.1, 5.2, 5.7, 5.8
  */
 
-import { Bot, PlayCircle, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Bot, PlayCircle, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { clsx } from 'clsx';
@@ -42,7 +42,7 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; ico
 
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
-  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getAgentsForSpec } = useAgentStore();
+  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
 
   if (!selectedSpec) {
     return null;
@@ -66,6 +66,11 @@ export function AgentListPanel() {
   const handleResume = async (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await resumeAgent(agentId);
+  };
+
+  const handleRemove = (agentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeAgent(agentId);
   };
 
   return (
@@ -96,6 +101,7 @@ export function AgentListPanel() {
               onSelect={() => selectAgent(agent.agentId)}
               onStop={(e) => handleStop(agent.agentId, e)}
               onResume={(e) => handleResume(agent.agentId, e)}
+              onRemove={(e) => handleRemove(agent.agentId, e)}
             />
           ))}
         </ul>
@@ -110,16 +116,19 @@ interface AgentListItemProps {
   onSelect: () => void;
   onStop: (e: React.MouseEvent) => void;
   onResume: (e: React.MouseEvent) => void;
+  onRemove: (e: React.MouseEvent) => void;
 }
 
-function AgentListItem({ agent, isSelected, onSelect, onStop, onResume }: AgentListItemProps) {
+function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove }: AgentListItemProps) {
   const statusConfig = STATUS_CONFIG[agent.status];
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
   const showResumeButton = agent.status === 'interrupted';
+  const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
 
   return (
     <li
       data-testid={`agent-item-${agent.agentId}`}
+      title={`${agent.agentId} / ${agent.sessionId}`}
       onClick={onSelect}
       className={clsx(
         'p-2 rounded-md cursor-pointer transition-colors',
@@ -171,6 +180,20 @@ function AgentListItem({ agent, isSelected, onSelect, onStop, onResume }: AgentL
               aria-label="続けて"
             >
               <PlayCircle className="w-4 h-4" />
+            </button>
+          )}
+
+          {showRemoveButton && (
+            <button
+              onClick={onRemove}
+              className={clsx(
+                'p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700',
+                'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              )}
+              title="削除"
+              aria-label="削除"
+            >
+              <Trash2 className="w-4 h-4" />
             </button>
           )}
         </div>

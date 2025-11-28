@@ -5,14 +5,51 @@
 
 import { app, BrowserWindow } from 'electron';
 import { join } from 'path';
-import { registerIpcHandlers } from './ipc/handlers';
+import { existsSync } from 'fs';
+import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
+import { logger } from './services/logger';
 
 let mainWindow: BrowserWindow | null = null;
 
 // E2E test mode detection via command line argument
 const isE2ETest = process.argv.includes('--e2e-test');
+
+/**
+ * Parse command line arguments to get initial project path
+ * Supports: --project=<path> or --project <path>
+ * Also checks SDD_PROJECT_PATH environment variable
+ */
+function parseProjectPathArg(): string | null {
+  // First check environment variable (works better with vite dev server)
+  const envPath = process.env.SDD_PROJECT_PATH;
+  if (envPath) {
+    return envPath;
+  }
+
+  const args = process.argv.slice(2); // Remove node and app path
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    // --project=<path> format
+    if (arg.startsWith('--project=')) {
+      const path = arg.substring('--project='.length);
+      return path || null;
+    }
+
+    // --project <path> format
+    if (arg === '--project' && i + 1 < args.length) {
+      return args[i + 1];
+    }
+  }
+
+  return null;
+}
+
+// Initial project path from command line or environment variable
+const initialProjectPath = parseProjectPathArg();
 
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
@@ -70,12 +107,36 @@ function createWindow(): void {
 }
 
 // Application lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Register IPC handlers
   registerIpcHandlers();
 
   // Create application menu
   createMenu();
+
+  // Initialize with project path from command line if provided
+  if (initialProjectPath) {
+    logger.info('[main] Initial project path from command line', { initialProjectPath });
+
+    // Validate project path exists
+    if (existsSync(initialProjectPath)) {
+      try {
+        // Set the initial project path for IPC queries from renderer
+        setInitialProjectPath(initialProjectPath);
+
+        await setProjectPath(initialProjectPath);
+        logger.info('[main] SpecManagerService initialized with project path', { initialProjectPath });
+
+        // Add to recent projects
+        const configStore = getConfigStore();
+        configStore.addRecentProject(initialProjectPath);
+      } catch (error) {
+        logger.error('[main] Failed to initialize with project path', { error, initialProjectPath });
+      }
+    } else {
+      logger.warn('[main] Project path does not exist', { initialProjectPath });
+    }
+  }
 
   // Create main window
   createWindow();

@@ -82,6 +82,46 @@
   --color-fg-default: #1f2937 !important;
 }
 
+/* MDEditor - Japanese-compatible monospace font */
+.w-md-editor-text-pre,
+.w-md-editor-text-input,
+.w-md-editor-text,
+.w-md-editor textarea {
+  font-family:
+    "Noto Sans Mono CJK JP",
+    "Noto Sans Mono",
+    "Source Han Code JP",
+    "BIZ UDGothic",
+    "Osaka-Mono",
+    "MS Gothic",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace !important;
+}
+
+/* MDEditor preview - Japanese-compatible monospace font */
+.wmde-markdown,
+.wmde-markdown pre,
+.wmde-markdown code,
+.wmde-markdown table {
+  font-family:
+    "Noto Sans Mono CJK JP",
+    "Noto Sans Mono",
+    "Source Han Code JP",
+    "BIZ UDGothic",
+    "Osaka-Mono",
+    "MS Gothic",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace !important;
+}
+
 .dark .w-md-editor {
   --color-canvas-default: #1f2937 !important;
   --color-fg-default: #e5e7eb !important;

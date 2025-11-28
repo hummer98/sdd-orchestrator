@@ -55,6 +55,9 @@ export const IPC_CHANNELS = {
   START_SPECS_WATCHER: 'ipc:start-specs-watcher',
   STOP_SPECS_WATCHER: 'ipc:stop-specs-watcher',
   SPECS_CHANGED: 'ipc:specs-changed',
+
+  // Agent Record Watcher
+  AGENT_RECORD_CHANGED: 'ipc:agent-record-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

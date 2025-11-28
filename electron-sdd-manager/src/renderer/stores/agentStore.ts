@@ -266,9 +266,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   // Requirements: 9.1, 5.2
 
   setupEventListeners: () => {
-    // 初期化時にメインプロセスからAgent一覧を取得
-    get().loadAgents();
-
     console.log('[agentStore] Setting up event listeners');
 
     // Agent出力イベントリスナー
@@ -292,10 +289,43 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       }
     );
 
+    // Agent Record変更イベントリスナー（ファイル監視）
+    const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
+      (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => {
+        console.log('[agentStore] Agent record changed', { type, agent });
+
+        if (type === 'unlink') {
+          // ファイル削除時はAgentをストアから削除
+          const { agentId, specId } = agent as { agentId?: string; specId?: string };
+          if (agentId && specId) {
+            const state = get();
+            const agents = state.agents.get(specId);
+            if (agents) {
+              const filtered = agents.filter((a) => a.agentId !== agentId);
+              const newAgents = new Map(state.agents);
+              if (filtered.length > 0) {
+                newAgents.set(specId, filtered);
+              } else {
+                newAgents.delete(specId);
+              }
+              set({ agents: newAgents });
+            }
+          }
+        } else {
+          // add/change時はAgentを追加/更新
+          const agentInfo = agent as AgentInfo;
+          if (agentInfo.agentId && agentInfo.specId) {
+            get().addAgent(agentInfo.specId, agentInfo);
+          }
+        }
+      }
+    );
+
     // クリーンアップ関数を返す
     return () => {
       cleanupOutput();
       cleanupStatus();
+      cleanupRecordChanged();
     };
   },
 

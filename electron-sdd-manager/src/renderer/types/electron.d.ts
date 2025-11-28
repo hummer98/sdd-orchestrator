@@ -119,6 +119,11 @@ export interface ElectronAPI {
   startSpecsWatcher(): Promise<void>;
   stopSpecsWatcher(): Promise<void>;
   onSpecsChanged(callback: (event: SpecsChangeEvent) => void): () => void;
+
+  // Agent Record Watcher
+  onAgentRecordChanged(
+    callback: (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void
+  ): () => void;
 }
 
 declare global {

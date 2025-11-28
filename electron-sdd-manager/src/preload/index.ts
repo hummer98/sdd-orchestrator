@@ -179,6 +179,25 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.SPECS_CHANGED, handler);
     };
   },
+
+  // Agent Record Watcher
+  onAgentRecordChanged: (
+    callback: (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      type: 'add' | 'change' | 'unlink',
+      agent: AgentInfo | { agentId?: string; specId?: string }
+    ) => {
+      callback(type, agent);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AGENT_RECORD_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AGENT_RECORD_CHANGED, handler);
+    };
+  },
 };
 
 // Expose API to renderer

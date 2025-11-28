@@ -12,6 +12,7 @@ import { updateMenu } from '../menu';
 import type { Phase } from '../../renderer/types';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
+import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 
@@ -22,6 +23,8 @@ const commandService = new CommandService();
 let specManagerService: SpecManagerService | null = null;
 // SpecsWatcherService instance
 let specsWatcherService: SpecsWatcherService | null = null;
+// AgentRecordWatcherService instance
+let agentRecordWatcherService: AgentRecordWatcherService | null = null;
 // Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
 // Initial project path set from command line arguments
@@ -60,10 +63,14 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     console.error('[handlers] Failed to restore agents:', error);
   }
 
-  // Stop existing watcher if any
+  // Stop existing watchers if any
   if (specsWatcherService) {
     await specsWatcherService.stop();
     specsWatcherService = null;
+  }
+  if (agentRecordWatcherService) {
+    await agentRecordWatcherService.stop();
+    agentRecordWatcherService = null;
   }
 }
 
@@ -241,11 +248,14 @@ export function registerIpcHandlers(): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
       startSpecsWatcher(window);
+      // Also start agent record watcher
+      startAgentRecordWatcher(window);
     }
   });
 
   ipcMain.handle(IPC_CHANNELS.STOP_SPECS_WATCHER, async () => {
     await stopSpecsWatcher();
+    await stopAgentRecordWatcher();
   });
 
   // Agent Management Handlers (Task 27.1)
@@ -535,5 +545,61 @@ export async function stopSpecsWatcher(): Promise<void> {
     await specsWatcherService.stop();
     specsWatcherService = null;
     logger.info('[handlers] Specs watcher stopped');
+  }
+}
+
+/**
+ * Start or restart agent record watcher for the current project
+ */
+export function startAgentRecordWatcher(window: BrowserWindow): void {
+  if (!currentProjectPath) {
+    logger.warn('[handlers] Cannot start agent record watcher: no project path set');
+    return;
+  }
+
+  // Stop existing watcher if any
+  if (agentRecordWatcherService) {
+    agentRecordWatcherService.stop();
+  }
+
+  agentRecordWatcherService = new AgentRecordWatcherService(currentProjectPath);
+
+  agentRecordWatcherService.onChange((event) => {
+    logger.debug('[handlers] Agent record changed', { type: event.type, specId: event.specId, agentId: event.agentId });
+    if (!window.isDestroyed() && event.record) {
+      // Send the full AgentInfo to renderer
+      const agentInfo: AgentInfo = {
+        agentId: event.record.agentId,
+        specId: event.record.specId,
+        phase: event.record.phase,
+        pid: event.record.pid,
+        sessionId: event.record.sessionId,
+        status: event.record.status,
+        startedAt: event.record.startedAt,
+        lastActivityAt: event.record.lastActivityAt,
+        command: event.record.command,
+      };
+      window.webContents.send(IPC_CHANNELS.AGENT_RECORD_CHANGED, event.type, agentInfo);
+    } else if (!window.isDestroyed() && event.type === 'unlink') {
+      // For unlink events, send just the IDs
+      window.webContents.send(IPC_CHANNELS.AGENT_RECORD_CHANGED, event.type, {
+        agentId: event.agentId,
+        specId: event.specId,
+      });
+    }
+  });
+
+  agentRecordWatcherService.start();
+  logger.info('[handlers] Agent record watcher started', { projectPath: currentProjectPath });
+}
+
+/**
+ * Stop agent record watcher
+ */
+export async function stopAgentRecordWatcher(): Promise<void> {
+  if (agentRecordWatcherService) {
+    await agentRecordWatcherService.stop();
+    agentRecordWatcherService = null;
+    logger.info('[handlers] Agent record watcher stopped');
   }
 }

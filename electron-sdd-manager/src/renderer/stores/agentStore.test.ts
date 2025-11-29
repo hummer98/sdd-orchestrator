@@ -162,20 +162,57 @@ describe('useAgentStore', () => {
     });
 
     describe('selectAgent', () => {
-      it('should set selectedAgentId', () => {
-        useAgentStore.getState().selectAgent('agent-1');
+      it('should set selectedAgentId', async () => {
+        await useAgentStore.getState().selectAgent('agent-1');
 
         const state = useAgentStore.getState();
         expect(state.selectedAgentId).toBe('agent-1');
       });
 
-      it('should allow selecting null', () => {
+      it('should allow selecting null', async () => {
         useAgentStore.setState({ selectedAgentId: 'agent-1' });
 
-        useAgentStore.getState().selectAgent(null);
+        await useAgentStore.getState().selectAgent(null);
 
         const state = useAgentStore.getState();
         expect(state.selectedAgentId).toBeNull();
+      });
+
+      it('should load logs when selecting an agent with no cached logs', async () => {
+        // Set up mock
+        const mockLogs = [
+          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout' as const, data: 'test output' },
+        ];
+        window.electronAPI.getAgentLogs = vi.fn().mockResolvedValue(mockLogs);
+
+        // Add agent to state first
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [mockAgentInfo]);
+        useAgentStore.setState({ agents });
+
+        await useAgentStore.getState().selectAgent('agent-1');
+
+        expect(window.electronAPI.getAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-1');
+
+        const state = useAgentStore.getState();
+        const logs = state.logs.get('agent-1');
+        expect(logs).toHaveLength(1);
+        expect(logs?.[0].data).toBe('test output');
+      });
+
+      it('should not load logs if already cached', async () => {
+        window.electronAPI.getAgentLogs = vi.fn().mockResolvedValue([]);
+
+        // Add agent and pre-cached logs to state
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [mockAgentInfo]);
+        const logs = new Map<string, LogEntry[]>();
+        logs.set('agent-1', [{ id: 'log-1', stream: 'stdout', data: 'cached', timestamp: Date.now() }]);
+        useAgentStore.setState({ agents, logs });
+
+        await useAgentStore.getState().selectAgent('agent-1');
+
+        expect(window.electronAPI.getAgentLogs).not.toHaveBeenCalled();
       });
     });
 

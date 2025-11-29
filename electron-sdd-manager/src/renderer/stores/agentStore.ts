@@ -36,7 +36,8 @@ interface AgentState {
 interface AgentActions {
   // Task 29.2: Agent操作アクション
   loadAgents: () => Promise<void>;
-  selectAgent: (agentId: string | null) => void;
+  selectAgent: (agentId: string | null) => Promise<void>;
+  loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
   addAgent: (specId: string, agent: AgentInfo) => void;
   startAgent: (
     specId: string,
@@ -103,8 +104,48 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
   },
 
-  selectAgent: (agentId: string | null) => {
+  selectAgent: async (agentId: string | null) => {
     set({ selectedAgentId: agentId });
+
+    // Load logs for the selected agent if not already loaded
+    if (agentId) {
+      const state = get();
+      const existingLogs = state.logs.get(agentId);
+
+      // If logs are not already loaded, fetch them from the file
+      if (!existingLogs || existingLogs.length === 0) {
+        const agent = state.getAgentById(agentId);
+        if (agent) {
+          await state.loadAgentLogs(agent.specId, agentId);
+        }
+      }
+    }
+  },
+
+  loadAgentLogs: async (specId: string, agentId: string) => {
+    try {
+      console.log('[agentStore] Loading agent logs', { specId, agentId });
+      const logs = await window.electronAPI.getAgentLogs(specId, agentId);
+
+      // Convert file logs to LogEntry format
+      const logEntries: LogEntry[] = logs.map((log, index) => ({
+        id: `${agentId}-${index}-${log.timestamp}`,
+        stream: log.stream,
+        data: log.data,
+        timestamp: new Date(log.timestamp).getTime(),
+      }));
+
+      set((state) => {
+        const newLogs = new Map(state.logs);
+        newLogs.set(agentId, logEntries);
+        return { logs: newLogs };
+      });
+
+      console.log('[agentStore] Loaded agent logs', { specId, agentId, count: logEntries.length });
+    } catch (error) {
+      console.error('[agentStore] Failed to load agent logs', { specId, agentId, error });
+      // Don't set error state - just log the error, as this is a non-critical feature
+    }
   },
 
   addAgent: (specId: string, agent: AgentInfo) => {

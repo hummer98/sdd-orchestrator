@@ -8,7 +8,7 @@ import { IPC_CHANNELS } from './channels';
 import { FileService } from '../services/fileService';
 import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
-import { updateMenu } from '../menu';
+import { updateMenu, setMenuProjectPath } from '../menu';
 import type { Phase } from '../../renderer/types';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
@@ -17,7 +17,9 @@ import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
-import { getDefaultLogFileService } from '../services/logFileService';
+import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
+import { addShellPermissions } from '../services/permissionsService';
+import * as path from 'path';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -59,6 +61,14 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   currentProjectPath = projectPath;
   specManagerService = new SpecManagerService(projectPath);
   eventCallbacksRegistered = false; // Reset when service is recreated
+
+  // Update menu state to enable project-dependent menu items
+  setMenuProjectPath(projectPath);
+
+  // Initialize default LogFileService for agent log reading (Bug fix: agent-log-display-issue)
+  // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
+  initDefaultLogFileService(path.join(projectPath, '.kiro', 'specs'));
+  logger.info('[handlers] LogFileService initialized');
 
   // Restore agents from PID files and cleanup stale ones
   try {
@@ -580,6 +590,19 @@ export function registerIpcHandlers(): void {
       if (!result.ok) {
         throw new Error(`Failed to sync spec phase: ${result.error.type}`);
       }
+    }
+  );
+
+  // Permissions Handler - Add shell permissions to project's settings.local.json
+  ipcMain.handle(
+    IPC_CHANNELS.ADD_SHELL_PERMISSIONS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] ADD_SHELL_PERMISSIONS called', { projectPath });
+      const result = await addShellPermissions(projectPath);
+      if (!result.ok) {
+        throw new Error(`Failed to add shell permissions: ${result.error.type}`);
+      }
+      return result.value;
     }
   );
 }

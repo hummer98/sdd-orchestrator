@@ -141,6 +141,10 @@ export interface ElectronAPI {
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;
   sendAgentInput(agentId: string, input: string): Promise<void>;
+  getAgentLogs(
+    specId: string,
+    agentId: string
+  ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>>;
 
   // Phase Execution (high-level commands)
   executePhase(specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo>;

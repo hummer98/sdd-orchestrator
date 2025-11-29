@@ -27,6 +27,7 @@ export const IPC_CHANNELS = {
   GET_AGENTS: 'ipc:get-agents',
   GET_ALL_AGENTS: 'ipc:get-all-agents',
   SEND_AGENT_INPUT: 'ipc:send-agent-input',
+  GET_AGENT_LOGS: 'ipc:get-agent-logs',
 
   // Phase Execution (high-level commands)
   EXECUTE_PHASE: 'ipc:execute-phase',

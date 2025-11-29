@@ -91,6 +91,12 @@ const electronAPI = {
   sendAgentInput: (agentId: string, input: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SEND_AGENT_INPUT, agentId, input),
 
+  getAgentLogs: (
+    specId: string,
+    agentId: string
+  ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_AGENT_LOGS, specId, agentId),
+
   // Phase Execution (high-level commands)
   // These delegate command building to the service layer
   executePhase: (specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo> =>

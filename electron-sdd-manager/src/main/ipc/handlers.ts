@@ -17,6 +17,7 @@ import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
+import { getDefaultLogFileService } from '../services/logFileService';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -396,6 +397,23 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         throw new Error(`Failed to send input: ${result.error.type}`);
+      }
+    }
+  );
+
+  // Agent Logs Handler (Bug fix: agent-log-display-issue)
+  ipcMain.handle(
+    IPC_CHANNELS.GET_AGENT_LOGS,
+    async (_event, specId: string, agentId: string) => {
+      logger.debug('[handlers] GET_AGENT_LOGS called', { specId, agentId });
+      try {
+        const logFileService = getDefaultLogFileService();
+        const logs = await logFileService.readLog(specId, agentId);
+        logger.debug('[handlers] GET_AGENT_LOGS returned', { specId, agentId, logCount: logs.length });
+        return logs;
+      } catch (error) {
+        logger.error('[handlers] GET_AGENT_LOGS failed', { specId, agentId, error });
+        throw error;
       }
     }
   );

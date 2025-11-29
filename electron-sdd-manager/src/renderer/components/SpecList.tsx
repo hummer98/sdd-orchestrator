@@ -12,19 +12,21 @@ import { clsx } from 'clsx';
 import type { SpecMetadata, SpecPhase } from '../types';
 
 const PHASE_LABELS: Record<SpecPhase, string> = {
-  init: '初期化',
+  initialized: '初期化',
   'requirements-generated': '要件定義済',
   'design-generated': '設計済',
   'tasks-generated': 'タスク済',
-  implementation: '実装中',
+  'implementation-in-progress': '実装中',
+  'implementation-complete': '実装完了',
 };
 
 const PHASE_COLORS: Record<SpecPhase, string> = {
-  init: 'bg-gray-200 text-gray-700',
+  initialized: 'bg-gray-200 text-gray-700',
   'requirements-generated': 'bg-blue-100 text-blue-700',
   'design-generated': 'bg-yellow-100 text-yellow-700',
-  'tasks-generated': 'bg-green-100 text-green-700',
-  implementation: 'bg-purple-100 text-purple-700',
+  'tasks-generated': 'bg-orange-100 text-orange-700',
+  'implementation-in-progress': 'bg-purple-100 text-purple-700',
+  'implementation-complete': 'bg-green-100 text-green-700',
 };
 
 export function SpecList() {
@@ -88,11 +90,12 @@ export function SpecList() {
             )}
           >
             <option value="all">すべて</option>
-            <option value="init">初期化</option>
+            <option value="initialized">初期化</option>
             <option value="requirements-generated">要件定義済</option>
             <option value="design-generated">設計済</option>
             <option value="tasks-generated">タスク済</option>
-            <option value="implementation">実装中</option>
+            <option value="implementation-in-progress">実装中</option>
+            <option value="implementation-complete">実装完了</option>
           </select>
         </div>
       </div>
@@ -168,9 +171,26 @@ interface SpecListItemProps {
 }
 
 function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecListItemProps) {
-  const formattedDate = new Date(spec.updatedAt).toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
+  const updatedDate = new Date(spec.updatedAt);
+  const now = new Date();
+  const isToday = updatedDate.toDateString() === now.toDateString();
+
+  const formattedDate = isToday
+    ? updatedDate.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : updatedDate.toLocaleDateString('ja-JP', {
+        month: 'short',
+        day: 'numeric',
+      });
+
+  const tooltipDate = updatedDate.toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
   return (
@@ -191,11 +211,6 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
             <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
               {spec.name}
             </span>
-            {spec.readyForImplementation && (
-              <span className="px-1.5 py-0.5 text-xs bg-green-500 text-white rounded">
-                Ready
-              </span>
-            )}
             {runningAgentCount > 0 && (
               <span
                 data-testid={`agent-count-${spec.name}`}
@@ -217,7 +232,10 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           {PHASE_LABELS[spec.phase]}
         </span>
 
-        <span className="text-xs text-gray-400 w-16 text-right">
+        <span
+          className="text-xs text-gray-400 w-16 text-right"
+          title={tooltipDate}
+        >
           {formattedDate}
         </span>
       </button>

@@ -39,6 +39,61 @@ export interface SpecsChangeEvent {
 }
 
 /**
+ * File check result for spec-manager files
+ * Requirements: 4.1, 4.2
+ */
+export interface FileCheckResult {
+  readonly allPresent: boolean;
+  readonly missing: readonly string[];
+  readonly present: readonly string[];
+}
+
+/**
+ * Full check result for commands and settings
+ * Requirements: 4.1, 4.2
+ */
+export interface FullCheckResult {
+  readonly commands: FileCheckResult;
+  readonly settings: FileCheckResult;
+  readonly allPresent: boolean;
+}
+
+/**
+ * Install result
+ * Requirements: 4.3, 4.5
+ */
+export interface InstallResult {
+  readonly installed: readonly string[];
+  readonly skipped: readonly string[];
+  readonly overwritten: readonly string[];
+}
+
+/**
+ * Full install result
+ * Requirements: 4.3, 4.5
+ */
+export interface FullInstallResult {
+  readonly commands: InstallResult;
+  readonly settings: InstallResult;
+}
+
+/**
+ * Install error types
+ * Requirements: 4.6
+ */
+export type InstallError =
+  | { type: 'TEMPLATE_NOT_FOUND'; path: string }
+  | { type: 'WRITE_ERROR'; path: string; message: string }
+  | { type: 'PERMISSION_DENIED'; path: string };
+
+/**
+ * Result type for spec-manager operations
+ */
+export type Result<T, E> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -125,6 +180,25 @@ export interface ElectronAPI {
   onAgentRecordChanged(
     callback: (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void
   ): () => void;
+
+  // spec-manager Install (Requirements: 4.1-4.6)
+  checkSpecManagerFiles(projectPath: string): Promise<FullCheckResult>;
+  installSpecManagerCommands(
+    projectPath: string,
+    missingCommands: readonly string[]
+  ): Promise<Result<InstallResult, InstallError>>;
+  installSpecManagerSettings(
+    projectPath: string,
+    missingSettings: readonly string[]
+  ): Promise<Result<InstallResult, InstallError>>;
+  installSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
+  forceReinstallSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
+
+  // Menu Events
+  onMenuForceReinstall(callback: () => void): () => void;
+
+  // Phase Sync - Auto-fix spec.json phase based on task completion
+  syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;
 }
 
 declare global {

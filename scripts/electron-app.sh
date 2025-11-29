@@ -57,7 +57,9 @@ find_dev_process() {
 }
 
 # 起動
+# 引数: $1 = プロジェクトパス (オプション)
 start() {
+    local project_path="$1"
     echo -e "${GREEN}Starting Electron app...${NC}"
 
     if is_running; then
@@ -77,8 +79,13 @@ start() {
 
     cd "$ELECTRON_DIR"
 
-    # バックグラウンドで起動
-    nohup npm run dev > "$LOG_FILE" 2>&1 &
+    # バックグラウンドで起動（環境変数でプロジェクトパスを渡す）
+    if [ -n "$project_path" ]; then
+        echo -e "Project path: ${GREEN}$project_path${NC}"
+        SDD_PROJECT_PATH="$project_path" nohup npm run dev > "$LOG_FILE" 2>&1 &
+    else
+        nohup npm run dev > "$LOG_FILE" 2>&1 &
+    fi
     local pid=$!
     echo "$pid" > "$PID_FILE"
 
@@ -216,7 +223,9 @@ logs() {
 }
 
 # フォアグラウンドで起動（開発用）
+# 引数: $1 = プロジェクトパス (オプション)
 dev() {
+    local project_path="$1"
     echo -e "${GREEN}Starting Electron app in foreground...${NC}"
 
     if is_running; then
@@ -235,29 +244,42 @@ dev() {
     fi
 
     cd "$ELECTRON_DIR"
-    npm run dev
+    if [ -n "$project_path" ]; then
+        echo -e "Project path: ${GREEN}$project_path${NC}"
+        SDD_PROJECT_PATH="$project_path" npm run dev
+    else
+        npm run dev
+    fi
 }
 
 # ヘルプ表示
 help() {
     echo "Electron App Control Script"
     echo ""
-    echo "Usage: $0 <command>"
+    echo "Usage: $0 <command> [project-path]"
     echo ""
     echo "Commands:"
-    echo "  start    - Start the app in background"
-    echo "  stop     - Stop the running app"
-    echo "  restart  - Restart the app"
-    echo "  status   - Show app status"
-    echo "  logs     - Show and follow logs"
-    echo "  dev      - Start in foreground (interactive)"
-    echo "  help     - Show this help"
+    echo "  start [path]  - Start the app in background (optionally with project path)"
+    echo "  stop          - Stop the running app"
+    echo "  restart       - Restart the app"
+    echo "  status        - Show app status"
+    echo "  logs          - Show and follow logs"
+    echo "  dev [path]    - Start in foreground (optionally with project path)"
+    echo "  help          - Show this help"
+    echo ""
+    echo "Examples:"
+    echo "  $0 start                        # Start without project"
+    echo "  $0 start /path/to/project       # Start with project"
+    echo "  $0 dev /path/to/project         # Start in foreground with project"
+    echo ""
+    echo "Environment Variables:"
+    echo "  SDD_PROJECT_PATH  - Project path (alternative to command line argument)"
 }
 
 # メイン処理
 case "${1:-help}" in
     start)
-        start
+        start "$2"
         ;;
     stop)
         stop
@@ -272,7 +294,7 @@ case "${1:-help}" in
         logs
         ;;
     dev)
-        dev
+        dev "$2"
         ;;
     help|--help|-h)
         help

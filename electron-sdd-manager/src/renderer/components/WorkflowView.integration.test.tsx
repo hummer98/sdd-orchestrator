@@ -19,7 +19,7 @@ describe('WorkflowView Integration', () => {
     metadata: {
       name: 'test-feature',
       path: '/test/path',
-      phase: 'init',
+      phase: 'initialized',
       updatedAt: '2024-01-01T00:00:00Z',
       approvals: {
         requirements: { generated: false, approved: false },
@@ -33,7 +33,7 @@ describe('WorkflowView Integration', () => {
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
       language: 'ja',
-      phase: 'init',
+      phase: 'initialized',
       approvals: {
         requirements: { generated: false, approved: false },
         design: { generated: false, approved: false },

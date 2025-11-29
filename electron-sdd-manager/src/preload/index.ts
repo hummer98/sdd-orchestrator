@@ -10,6 +10,8 @@ import type { Phase, CommandOutputEvent } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
+import type { FullCheckResult } from '../main/services/projectChecker';
+import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
 
 /**
  * Exposed API to renderer process
@@ -201,6 +203,45 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.AGENT_RECORD_CHANGED, handler);
     };
   },
+
+  // spec-manager Install (Requirements: 4.1-4.6)
+  checkSpecManagerFiles: (projectPath: string): Promise<FullCheckResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES, projectPath),
+
+  installSpecManagerCommands: (
+    projectPath: string,
+    missingCommands: readonly string[]
+  ): Promise<Result<InstallResult, InstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_SPEC_MANAGER_COMMANDS, projectPath, missingCommands),
+
+  installSpecManagerSettings: (
+    projectPath: string,
+    missingSettings: readonly string[]
+  ): Promise<Result<InstallResult, InstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_SPEC_MANAGER_SETTINGS, projectPath, missingSettings),
+
+  installSpecManagerAll: (projectPath: string): Promise<Result<FullInstallResult, InstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_SPEC_MANAGER_ALL, projectPath),
+
+  forceReinstallSpecManagerAll: (projectPath: string): Promise<Result<FullInstallResult, InstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL, projectPath),
+
+  // Menu Events
+  onMenuForceReinstall: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_FORCE_REINSTALL, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_FORCE_REINSTALL, handler);
+    };
+  },
+
+  // Phase Sync - Auto-fix spec.json phase based on task completion
+  syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase),
 };
 
 // Expose API to renderer

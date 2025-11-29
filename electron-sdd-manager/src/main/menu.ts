@@ -6,6 +6,7 @@
 import { Menu, MenuItem, app, BrowserWindow, dialog } from 'electron';
 import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
+import { IPC_CHANNELS } from './ipc/channels';
 
 const isMac = process.platform === 'darwin';
 
@@ -162,6 +163,34 @@ export function createMenu(): void {
               { role: 'window' as const, label: 'ウィンドウ' },
             ]
           : [{ role: 'close' as const, label: '閉じる' }]),
+      ],
+    },
+
+    // Tools menu
+    {
+      label: 'ツール',
+      submenu: [
+        {
+          label: 'コマンドを再インストール...',
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            const result = await dialog.showMessageBox(window, {
+              type: 'question',
+              buttons: ['キャンセル', '再インストール'],
+              defaultId: 0,
+              cancelId: 0,
+              title: 'コマンドを再インストール',
+              message: 'spec-managerのコマンドと設定を再インストールしますか？',
+              detail: '既存のファイルは上書きされます。プロジェクト固有のカスタマイズがある場合は失われます。',
+            });
+
+            if (result.response === 1) {
+              window.webContents.send(IPC_CHANNELS.MENU_FORCE_REINSTALL);
+            }
+          },
+        },
       ],
     },
 

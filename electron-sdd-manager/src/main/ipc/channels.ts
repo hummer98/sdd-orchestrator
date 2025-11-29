@@ -59,6 +59,19 @@ export const IPC_CHANNELS = {
 
   // Agent Record Watcher
   AGENT_RECORD_CHANGED: 'ipc:agent-record-changed',
+
+  // spec-manager Install (Requirements: 4.1-4.6)
+  CHECK_SPEC_MANAGER_FILES: 'ipc:check-spec-manager-files',
+  INSTALL_SPEC_MANAGER_COMMANDS: 'ipc:install-spec-manager-commands',
+  INSTALL_SPEC_MANAGER_SETTINGS: 'ipc:install-spec-manager-settings',
+  INSTALL_SPEC_MANAGER_ALL: 'ipc:install-spec-manager-all',
+  FORCE_REINSTALL_SPEC_MANAGER_ALL: 'ipc:force-reinstall-spec-manager-all',
+
+  // Menu Events
+  MENU_FORCE_REINSTALL: 'menu:force-reinstall',
+
+  // Phase Sync
+  SYNC_SPEC_PHASE: 'ipc:sync-spec-phase',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

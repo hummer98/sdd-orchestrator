@@ -36,7 +36,7 @@ const mockSpecs: SpecMetadata[] = [
   {
     name: 'feature-c',
     path: '/project/.kiro/specs/feature-c',
-    phase: 'init',
+    phase: 'initialized',
     updatedAt: '2024-01-14T10:00:00Z',
     approvals: {
       requirements: { generated: false, approved: false },
@@ -127,7 +127,7 @@ describe('useSpecStore', () => {
     });
 
     it('should filter by phase', () => {
-      useSpecStore.getState().setStatusFilter('init');
+      useSpecStore.getState().setStatusFilter('initialized');
 
       const filtered = useSpecStore.getState().getSortedFilteredSpecs();
       expect(filtered).toHaveLength(1);

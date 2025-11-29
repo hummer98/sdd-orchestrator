@@ -92,6 +92,23 @@ Electronアプリの操作には`task`コマンドを使用する。
 | `task electron:status` | 状態確認 |
 | `task electron:logs` | ログ表示（tail -f） |
 
+### テスト時のプロジェクト指定
+
+E2Eテストや動作確認時は、以下のディレクトリを起動時引数で指定する：
+
+```bash
+# 起動時にプロジェクトパスを指定（推奨）
+task electron:start PROJECT=/Users/yamamoto/git/sdd-manager
+
+# フォアグラウンドで起動する場合
+task electron:dev PROJECT=/Users/yamamoto/git/sdd-manager
+
+# または npm run dev で直接指定
+cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-manager
+```
+
+これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。
+
 ### ログ表示
 
 | コマンド | 説明 |

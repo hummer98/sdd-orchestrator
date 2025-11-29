@@ -93,6 +93,23 @@ export function App() {
     };
   }, [setupEventListeners]);
 
+  // Setup menu event listeners
+  const { forceReinstallAll } = useProjectStore();
+  const menuListenersSetup = useRef(false);
+  useEffect(() => {
+    if (menuListenersSetup.current) {
+      return;
+    }
+    menuListenersSetup.current = true;
+    const cleanup = window.electronAPI.onMenuForceReinstall(() => {
+      forceReinstallAll();
+    });
+    return () => {
+      menuListenersSetup.current = false;
+      cleanup();
+    };
+  }, [forceReinstallAll]);
+
   // Handle beforeunload for unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

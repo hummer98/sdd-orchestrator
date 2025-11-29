@@ -1,13 +1,13 @@
 /**
  * WorkflowView Component
  * Main workflow view showing 6 phases with controls
- * Requirements: 1.1-1.4, 3.1-3.5, 6.1-6.6, 7.1-7.6, 9.1-9.3
+ * Requirements: 1.1-1.4, 3.1-3.5, 5.2-5.8, 6.1-6.6, 7.1-7.6, 9.1-9.3
  */
 
 import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square, RefreshCw } from 'lucide-react';
-import { useSpecStore } from '../stores/specStore';
+import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
+import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { PhaseItem } from './PhaseItem';
@@ -25,13 +25,16 @@ import {
   type ExtendedSpecJson,
 } from '../types/workflow';
 
+/** Maximum continue retries - should match MAX_CONTINUE_RETRIES in specManagerService */
+const MAX_CONTINUE_RETRIES = 2;
+
 // ============================================================
 // Task 7.1-7.6: WorkflowView Component
 // Requirements: 1.1-1.4, 3.1-3.5, 6.1-6.6, 7.1-7.6, 9.1-9.3
 // ============================================================
 
 export function WorkflowView() {
-  const { specDetail, isLoading, selectedSpec } = useSpecStore();
+  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
   const workflowStore = useWorkflowStore();
   const agentStore = useAgentStore();
 
@@ -308,6 +311,13 @@ export function WorkflowView() {
           </div>
         ))}
 
+        {/* spec-manager Execution Status Display */}
+        {/* Requirements: 5.2-5.8 */}
+        <SpecManagerStatusDisplay
+          execution={specManagerExecution}
+          onClearError={clearSpecManagerError}
+        />
+
         {/* Artifacts Section */}
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -355,6 +365,108 @@ export function WorkflowView() {
           spec-status
         </button>
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// spec-manager Status Display Component
+// Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
+// ============================================================
+
+interface SpecManagerStatusDisplayProps {
+  execution: {
+    isRunning: boolean;
+    currentPhase: string | null;
+    currentSpecId: string | null;
+    lastCheckResult: { completedTasks: readonly string[] } | null;
+    error: string | null;
+    implTaskStatus: ImplTaskStatus | null;
+    retryCount: number;
+    executionMode: 'auto' | 'manual' | null;
+  };
+  onClearError: () => void;
+}
+
+function SpecManagerStatusDisplay({ execution, onClearError }: SpecManagerStatusDisplayProps) {
+  const { isRunning, implTaskStatus, error, retryCount, lastCheckResult } = execution;
+
+  // No status to display
+  if (!isRunning && !implTaskStatus && !error) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      {/* Running State */}
+      {isRunning && implTaskStatus === 'running' && (
+        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>実行中...</span>
+        </div>
+      )}
+
+      {/* Continuing State (Retry) */}
+      {/* Requirements: 5.7 */}
+      {implTaskStatus === 'continuing' && (
+        <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+          <RefreshCcw className="w-4 h-4 animate-spin" />
+          <span>継続処理中...(リトライ {retryCount}/{MAX_CONTINUE_RETRIES})</span>
+        </div>
+      )}
+
+      {/* Success State */}
+      {/* Requirements: 5.4 */}
+      {implTaskStatus === 'success' && lastCheckResult && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+            <CheckCircle className="w-4 h-4" />
+            <span>完了</span>
+          </div>
+          {lastCheckResult.completedTasks.length > 0 && (
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              完了したタスク: {lastCheckResult.completedTasks.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stalled State */}
+      {/* Requirements: 5.8 */}
+      {implTaskStatus === 'stalled' && (
+        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+          <AlertCircle className="w-4 h-4" />
+          <span>完了確認できず - 手動確認が必要</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {/* Requirements: 5.5 */}
+      {(implTaskStatus === 'error' || error) && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertCircle className="w-4 h-4" />
+            <span>エラー</span>
+          </div>
+          {error && (
+            <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+              {error}
+            </div>
+          )}
+          <button
+            onClick={onClearError}
+            className={clsx(
+              'flex items-center gap-2 px-3 py-1 text-sm rounded',
+              'bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50',
+              'text-red-700 dark:text-red-400',
+              'transition-colors'
+            )}
+          >
+            <RefreshCcw className="w-3 h-3" />
+            再実行
+          </button>
+        </div>
+      )}
     </div>
   );
 }

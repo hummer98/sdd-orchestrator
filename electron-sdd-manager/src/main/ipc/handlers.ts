@@ -15,9 +15,13 @@ import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
+import { ProjectChecker } from '../services/projectChecker';
+import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
 
 const fileService = new FileService();
 const commandService = new CommandService();
+const projectChecker = new ProjectChecker();
+const commandInstallerService = new CommandInstallerService(getTemplateDir());
 
 // SpecManagerService instance (lazily initialized with project path)
 let specManagerService: SpecManagerService | null = null;
@@ -505,6 +509,59 @@ export function registerIpcHandlers(): void {
 
       logger.info('[handlers] executeTaskImpl succeeded', { agentId: result.value.agentId });
       return result.value;
+    }
+  );
+
+  // spec-manager Install Handlers (Requirements: 4.1-4.6)
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_SPEC_MANAGER_FILES called', { projectPath });
+      return projectChecker.checkAll(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_SPEC_MANAGER_COMMANDS,
+    async (_event, projectPath: string, missingCommands: string[]) => {
+      logger.info('[handlers] INSTALL_SPEC_MANAGER_COMMANDS called', { projectPath, missingCommands });
+      return commandInstallerService.installCommands(projectPath, missingCommands);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_SPEC_MANAGER_SETTINGS,
+    async (_event, projectPath: string, missingSettings: string[]) => {
+      logger.info('[handlers] INSTALL_SPEC_MANAGER_SETTINGS called', { projectPath, missingSettings });
+      return commandInstallerService.installSettings(projectPath, missingSettings);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_SPEC_MANAGER_ALL,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] INSTALL_SPEC_MANAGER_ALL called', { projectPath });
+      return commandInstallerService.installAll(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] FORCE_REINSTALL_SPEC_MANAGER_ALL called', { projectPath });
+      return commandInstallerService.forceReinstallAll(projectPath);
+    }
+  );
+
+  // Phase Sync Handler - Auto-fix spec.json phase based on task completion
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_SPEC_PHASE,
+    async (_event, specPath: string, completedPhase: 'impl' | 'impl-complete') => {
+      logger.info('[handlers] SYNC_SPEC_PHASE called', { specPath, completedPhase });
+      const result = await fileService.updateSpecJsonFromPhase(specPath, completedPhase);
+      if (!result.ok) {
+        throw new Error(`Failed to sync spec phase: ${result.error.type}`);
+      }
     }
   );
 }

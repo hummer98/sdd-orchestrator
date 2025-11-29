@@ -1,7 +1,7 @@
 /**
  * File Service
  * Handles file system operations with security validation
- * Requirements: 1.1, 1.2, 2.1, 4.5, 7.4-7.6, 13.4, 13.5
+ * Requirements: 1.1, 1.2, 2.1, 4.5, 7.4-7.6, 13.4, 13.5, 3.3-3.5
  */
 
 import { readdir, readFile, writeFile, mkdir, stat, access } from 'fs/promises';
@@ -258,7 +258,7 @@ export class FileService {
         created_at: now,
         updated_at: now,
         language: 'ja',
-        phase: 'init',
+        phase: 'initialized',
         approvals: {
           requirements: { generated: false, approved: false },
           design: { generated: false, approved: false },
@@ -371,6 +371,70 @@ ${description}
       await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
       return { ok: true, value: undefined };
     } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: specPath,
+          message: String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Update spec.json based on completed phase generation
+   * Called when a spec-manager phase completes successfully
+   * Requirements: 3.3-3.5
+   *
+   * @param specPath - Path to the spec directory
+   * @param completedPhase - The phase that was completed ('requirements' | 'design' | 'tasks' | 'impl')
+   */
+  async updateSpecJsonFromPhase(
+    specPath: string,
+    completedPhase: 'requirements' | 'design' | 'tasks' | 'impl' | 'impl-complete'
+  ): Promise<Result<void, FileError>> {
+    try {
+      const specJsonPath = join(specPath, 'spec.json');
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson: SpecJson = JSON.parse(content);
+
+      // Update based on completed phase
+      switch (completedPhase) {
+        case 'requirements':
+          specJson.phase = 'requirements-generated';
+          specJson.approvals.requirements.generated = true;
+          break;
+        case 'design':
+          specJson.phase = 'design-generated';
+          specJson.approvals.design.generated = true;
+          break;
+        case 'tasks':
+          specJson.phase = 'tasks-generated';
+          specJson.approvals.tasks.generated = true;
+          break;
+        case 'impl':
+          // Update phase to implementation-in-progress when impl starts
+          specJson.phase = 'implementation-in-progress';
+          break;
+        case 'impl-complete':
+          // Update phase to implementation-complete when all tasks are done
+          specJson.phase = 'implementation-complete';
+          break;
+      }
+
+      // Update timestamp
+      specJson.updated_at = new Date().toISOString();
+
+      await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+      return { ok: true, value: undefined };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          ok: false,
+          error: { type: 'NOT_FOUND', path: specPath },
+        };
+      }
       return {
         ok: false,
         error: {

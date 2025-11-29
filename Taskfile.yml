@@ -2,14 +2,14 @@ version: '3'
 
 tasks:
   electron:dev:
-    desc: Start the Electron application in foreground (interactive)
+    desc: Start the Electron application in foreground (interactive). Use PROJECT=<path> to specify project.
     cmds:
-      - ./scripts/electron-app.sh dev
+      - ./scripts/electron-app.sh dev "{{.PROJECT}}"
 
   electron:start:
-    desc: Start the Electron application in background
+    desc: Start the Electron application in background. Use PROJECT=<path> to specify project.
     cmds:
-      - ./scripts/electron-app.sh start
+      - ./scripts/electron-app.sh start "{{.PROJECT}}"
 
   electron:stop:
     desc: Stop the running Electron application

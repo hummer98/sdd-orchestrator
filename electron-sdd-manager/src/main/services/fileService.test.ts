@@ -1,11 +1,15 @@
 /**
  * FileService Unit Tests
  * TDD: Testing path validation, directory traversal prevention, spec operations
- * Requirements: 13.4, 13.5
+ * Requirements: 13.4, 13.5, 3.3-3.5
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import { FileService, validatePath, isPathSafe } from './fileService';
+import type { SpecPhase } from '../../renderer/types';
 
 describe('Path Validation', () => {
   describe('isPathSafe', () => {
@@ -88,6 +92,150 @@ describe('FileService', () => {
       expect(fileService.isValidSpecName('my feature')).toBe(false); // space
       expect(fileService.isValidSpecName('../hack')).toBe(false); // directory traversal
       expect(fileService.isValidSpecName('')).toBe(false); // empty
+    });
+  });
+});
+
+describe('FileService - updateSpecJsonFromPhase', () => {
+  let fileService: FileService;
+  let tempDir: string;
+  let specPath: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'fileservice-test-'));
+    specPath = path.join(tempDir, '.kiro', 'specs', 'test-feature');
+    await fs.mkdir(specPath, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * Helper to create a spec.json
+   */
+  async function createSpecJson(phase: SpecPhase, approvals: { requirements: { generated: boolean; approved: boolean }; design: { generated: boolean; approved: boolean }; tasks: { generated: boolean; approved: boolean } }): Promise<void> {
+    const specJson = {
+      feature_name: 'test-feature',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      language: 'ja',
+      phase,
+      approvals,
+      ready_for_implementation: false,
+    };
+    await fs.writeFile(path.join(specPath, 'spec.json'), JSON.stringify(specJson, null, 2), 'utf-8');
+  }
+
+  /**
+   * Helper to read spec.json
+   */
+  async function readSpecJson(): Promise<{ phase: SpecPhase; approvals: { requirements: { generated: boolean }; design: { generated: boolean }; tasks: { generated: boolean } }; updated_at: string }> {
+    const content = await fs.readFile(path.join(specPath, 'spec.json'), 'utf-8');
+    return JSON.parse(content);
+  }
+
+  describe('updateSpecJsonFromPhase', () => {
+    it('should update phase from initialized to requirements-generated', async () => {
+      await createSpecJson('initialized', {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'requirements');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('requirements-generated');
+      expect(specJson.approvals.requirements.generated).toBe(true);
+    });
+
+    it('should update phase from requirements-generated to design-generated', async () => {
+      await createSpecJson('requirements-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'design');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('design-generated');
+      expect(specJson.approvals.design.generated).toBe(true);
+    });
+
+    it('should update phase from design-generated to tasks-generated', async () => {
+      await createSpecJson('design-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: false, approved: false },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'tasks');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('tasks-generated');
+      expect(specJson.approvals.tasks.generated).toBe(true);
+    });
+
+    it('should update updated_at timestamp', async () => {
+      const oldTimestamp = '2025-01-01T00:00:00.000Z';
+      await createSpecJson('initialized', {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      });
+
+      await fileService.updateSpecJsonFromPhase(specPath, 'requirements');
+
+      const specJson = await readSpecJson();
+      expect(specJson.updated_at).not.toBe(oldTimestamp);
+    });
+
+    it('should return error for non-existent spec', async () => {
+      const result = await fileService.updateSpecJsonFromPhase('/nonexistent/path', 'requirements');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('NOT_FOUND');
+      }
+    });
+
+    it('should update phase to implementation-in-progress for impl', async () => {
+      await createSpecJson('tasks-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('implementation-in-progress');
+    });
+
+    it('should update phase to implementation-complete for impl-complete', async () => {
+      await createSpecJson('implementation-in-progress', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('implementation-complete');
     });
   });
 });

@@ -1,11 +1,12 @@
 // Spec-Driven Development Types
 
 export type SpecPhase =
-  | 'init'
+  | 'initialized'
   | 'requirements-generated'
   | 'design-generated'
   | 'tasks-generated'
-  | 'implementation';
+  | 'implementation-in-progress'
+  | 'implementation-complete';
 
 export type Phase = 'requirements' | 'design' | 'tasks';
 

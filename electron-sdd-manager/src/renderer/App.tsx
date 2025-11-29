@@ -144,9 +144,6 @@ export function App() {
           <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
             SDD Orchestrator
           </h1>
-          <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-            Electron
-          </span>
           {/* Spec title in header */}
           {specDetail && (
             <div className="ml-6 flex items-center gap-2">

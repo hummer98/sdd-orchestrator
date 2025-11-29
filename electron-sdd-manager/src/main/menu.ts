@@ -56,17 +56,17 @@ export function createMenu(): void {
     ...(isMac
       ? [
           {
-            label: app.name,
+            label: 'SDD Orchestrator',
             submenu: [
-              { role: 'about' as const, label: 'SDD Managerについて' },
+              { role: 'about' as const, label: 'SDD Orchestratorについて' },
               { type: 'separator' as const },
               { role: 'services' as const, label: 'サービス' },
               { type: 'separator' as const },
-              { role: 'hide' as const, label: 'SDD Managerを隠す' },
+              { role: 'hide' as const, label: 'SDD Orchestratorを隠す' },
               { role: 'hideOthers' as const, label: '他を隠す' },
               { role: 'unhide' as const, label: 'すべてを表示' },
               { type: 'separator' as const },
-              { role: 'quit' as const, label: 'SDD Managerを終了' },
+              { role: 'quit' as const, label: 'SDD Orchestratorを終了' },
             ],
           },
         ]
@@ -171,7 +171,7 @@ export function createMenu(): void {
       label: 'ツール',
       submenu: [
         {
-          label: 'コマンドを再インストール...',
+          label: 'spec-managerコマンドを再インストール...',
           click: async () => {
             const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
             if (!window) return;
@@ -181,7 +181,7 @@ export function createMenu(): void {
               buttons: ['キャンセル', '再インストール'],
               defaultId: 0,
               cancelId: 0,
-              title: 'コマンドを再インストール',
+              title: 'spec-managerコマンドを再インストール',
               message: 'spec-managerのコマンドと設定を再インストールしますか？',
               detail: '既存のファイルは上書きされます。プロジェクト固有のカスタマイズがある場合は失われます。',
             });

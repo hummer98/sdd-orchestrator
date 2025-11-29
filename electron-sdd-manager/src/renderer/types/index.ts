@@ -47,6 +47,7 @@ export interface SpecDetail {
     requirements: ArtifactInfo | null;
     design: ArtifactInfo | null;
     tasks: ArtifactInfo | null;
+    research: ArtifactInfo | null;
   };
   taskProgress: TaskProgress | null;
 }

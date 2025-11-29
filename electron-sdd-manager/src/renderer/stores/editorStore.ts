@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 
-type ArtifactType = 'requirements' | 'design' | 'tasks';
+type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
 
 interface EditorState {
   activeTab: ArtifactType;

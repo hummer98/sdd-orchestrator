@@ -203,7 +203,7 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           'border-b border-gray-100 dark:border-gray-800',
           'hover:bg-gray-50 dark:hover:bg-gray-800/50',
           'transition-colors',
-          isSelected && 'bg-blue-50 dark:bg-blue-900/20'
+          isSelected && 'bg-blue-100 dark:bg-blue-800/40 border-l-4 border-l-blue-500'
         )}
       >
         <div className="flex-1 min-w-0">

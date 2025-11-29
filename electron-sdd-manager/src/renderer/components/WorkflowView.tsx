@@ -13,7 +13,6 @@ import { useAgentStore } from '../stores/agentStore';
 import { PhaseItem } from './PhaseItem';
 import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
-import { ArtifactPreview } from './ArtifactPreview';
 import {
   WORKFLOW_PHASES,
   PHASE_LABELS,
@@ -318,13 +317,6 @@ export function WorkflowView() {
           onClearError={clearSpecManagerError}
         />
 
-        {/* Artifacts Section */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            成果物
-          </h3>
-          <ArtifactPreview artifacts={specDetail.artifacts} />
-        </div>
       </div>
 
       {/* Footer Buttons */}

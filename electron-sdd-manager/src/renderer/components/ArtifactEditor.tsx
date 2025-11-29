@@ -4,22 +4,23 @@
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Save, Eye, Edit, Loader2, Circle } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { useEditorStore, useSpecStore, notify } from '../stores';
 import { clsx } from 'clsx';
 
-type ArtifactType = 'requirements' | 'design' | 'tasks';
+type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
 
-const TABS: { key: ArtifactType; label: string }[] = [
+const ALL_TABS: { key: ArtifactType; label: string }[] = [
   { key: 'requirements', label: 'requirements.md' },
   { key: 'design', label: 'design.md' },
   { key: 'tasks', label: 'tasks.md' },
+  { key: 'research', label: 'research.md' },
 ];
 
 export function ArtifactEditor() {
-  const { selectedSpec } = useSpecStore();
+  const { selectedSpec, specDetail } = useSpecStore();
   const {
     activeTab,
     content,
@@ -44,10 +45,34 @@ export function ArtifactEditor() {
     }
   }, [selectedSpec, activeTab, loadArtifact, clearEditor]);
 
+  // Filter tabs to only show existing artifacts
+  const availableTabs = useMemo(() => {
+    if (!specDetail?.artifacts) return ALL_TABS;
+    return ALL_TABS.filter((tab) => {
+      const artifact = specDetail.artifacts[tab.key];
+      return artifact !== null && artifact.exists;
+    });
+  }, [specDetail?.artifacts]);
+
+  // If current activeTab doesn't exist, switch to first available tab
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.find((t) => t.key === activeTab)) {
+      setActiveTab(availableTabs[0].key);
+    }
+  }, [availableTabs, activeTab, setActiveTab]);
+
   if (!selectedSpec) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
         仕様を選択してエディターを開始
+      </div>
+    );
+  }
+
+  if (availableTabs.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        表示可能なアーティファクトがありません
       </div>
     );
   }
@@ -71,7 +96,7 @@ export function ArtifactEditor() {
     <div className="flex flex-col h-full">
       {/* Tabs */}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
-        {TABS.map((tab) => (
+        {availableTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => handleTabChange(tab.key)}

@@ -105,8 +105,8 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   specs: [],
   selectedSpec: null,
   specDetail: null,
-  sortBy: 'name',
-  sortOrder: 'asc',
+  sortBy: 'updatedAt',
+  sortOrder: 'desc',
   statusFilter: 'all',
   isLoading: false,
   error: null,
@@ -155,10 +155,11 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         }
       };
 
-      const [requirements, design, tasks] = await Promise.all([
+      const [requirements, design, tasks, research] = await Promise.all([
         getArtifactInfo('requirements'),
         getArtifactInfo('design'),
         getArtifactInfo('tasks'),
+        getArtifactInfo('research'),
       ]);
 
       // Calculate task progress from tasks.md content
@@ -211,6 +212,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
           requirements,
           design,
           tasks,
+          research,
         },
         taskProgress,
       };

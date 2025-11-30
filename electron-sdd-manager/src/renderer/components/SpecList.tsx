@@ -144,18 +144,27 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
 
   return (
     <li>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         className={clsx(
           'w-full px-4 py-2.5 text-left',
           'flex flex-col gap-1',
           'border-b border-gray-100 dark:border-gray-800',
           'hover:bg-gray-50 dark:hover:bg-gray-800/50',
-          'transition-colors',
+          'transition-colors cursor-pointer',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset',
           isSelected && 'bg-blue-100 dark:bg-blue-800/40 border-l-4 border-l-blue-500'
         )}
       >
-        {/* 1行目: 名前とコピーボタンとエージェント数 */}
+        {/* 1行目: 名前とコピーボタン */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
             {spec.name}
@@ -180,18 +189,9 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
               <Copy className="w-3.5 h-3.5" />
             )}
           </button>
-          {runningAgentCount > 0 && (
-            <span
-              data-testid={`agent-count-${spec.name}`}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
-            >
-              <Bot className="w-3 h-3" />
-              {runningAgentCount}
-            </span>
-          )}
         </div>
 
-        {/* 2行目: フェーズと更新日時 */}
+        {/* 2行目: フェーズ、エージェント数、更新日時 */}
         <div className="flex items-center gap-2">
           <span
             className={clsx(
@@ -201,6 +201,15 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           >
             {PHASE_LABELS[spec.phase]}
           </span>
+          {runningAgentCount > 0 && (
+            <span
+              data-testid={`agent-count-${spec.name}`}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
+            >
+              <Bot className="w-3 h-3" />
+              {runningAgentCount}
+            </span>
+          )}
           <span
             className="text-xs text-gray-400"
             title={tooltipDate}
@@ -208,7 +217,7 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
             {formattedDate}
           </span>
         </div>
-      </button>
+      </div>
     </li>
   );
 }

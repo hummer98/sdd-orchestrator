@@ -5,7 +5,8 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
  */
 
-import { Filter, Loader2, Bot } from 'lucide-react';
+import { Filter, Loader2, Bot, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
@@ -118,6 +119,7 @@ interface SpecListItemProps {
 }
 
 function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecListItemProps) {
+  const [copied, setCopied] = useState(false);
   const updatedDate = new Date(spec.updatedAt);
   const now = new Date();
   const isToday = updatedDate.toDateString() === now.toDateString();
@@ -153,11 +155,31 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           isSelected && 'bg-blue-100 dark:bg-blue-800/40 border-l-4 border-l-blue-500'
         )}
       >
-        {/* 1行目: 名前とエージェント数 */}
+        {/* 1行目: 名前とコピーボタンとエージェント数 */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
             {spec.name}
           </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(spec.name);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className={clsx(
+              'p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
+              'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+              'transition-colors shrink-0'
+            )}
+            title="仕様名をコピー"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
           {runningAgentCount > 0 && (
             <span
               data-testid={`agent-count-${spec.name}`}

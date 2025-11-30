@@ -182,18 +182,21 @@ export class SpecManagerService {
   }
 
   /**
-   * Get the currently running execution group
+   * Get the currently running execution group for a specific spec
+   * @param specId - The spec ID to check (if null, checks all specs)
    */
-  private getRunningGroup(): ExecutionGroup | null {
-    const allAgents = this.registry.getAll();
-    const runningAgents = allAgents.filter((a) => a.status === 'running');
+  private getRunningGroup(specId?: string): ExecutionGroup | null {
+    const agents = specId
+      ? this.registry.getBySpec(specId)
+      : this.registry.getAll();
+    const runningAgents = agents.filter((a) => a.status === 'running');
 
     for (const agent of runningAgents) {
       // Check agent's phase to determine group
       if (agent.phase.startsWith('validate-')) {
         return 'validate';
       }
-      if (agent.phase.startsWith('impl-')) {
+      if (agent.phase.startsWith('impl-') || agent.phase === 'impl') {
         return 'impl';
       }
       if (['requirement', 'requirements', 'design', 'tasks'].includes(agent.phase)) {
@@ -229,9 +232,9 @@ export class SpecManagerService {
       };
     }
 
-    // Check for group conflicts (validate vs impl)
+    // Check for group conflicts (validate vs impl) within the same spec
     if (group === 'validate' || group === 'impl') {
-      const runningGroup = this.getRunningGroup();
+      const runningGroup = this.getRunningGroup(specId);
       if (runningGroup && runningGroup !== group) {
         if ((runningGroup === 'validate' && group === 'impl') ||
             (runningGroup === 'impl' && group === 'validate')) {

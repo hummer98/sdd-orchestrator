@@ -10,6 +10,7 @@ import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, C
 import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
+import { notify } from '../stores';
 import { PhaseItem } from './PhaseItem';
 import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
@@ -65,21 +66,42 @@ export function WorkflowView() {
     return new Set(running);
   }, [agentStore.agents, specDetail]);
 
+  // 現在のspec内で実行中のグループを取得（validate/implのコンフリクト判定用）
+  type ExecutionGroup = 'doc' | 'validate' | 'impl';
+  const runningGroupInSpec = useMemo((): ExecutionGroup | null => {
+    if (!specDetail) return null;
+    const agents = agentStore.getAgentsForSpec(specDetail.metadata.name);
+    const runningAgents = agents.filter((a) => a.status === 'running');
+
+    // フェーズからグループを判定
+    for (const agent of runningAgents) {
+      if (agent.phase.startsWith('validate-')) return 'validate';
+      if (agent.phase.startsWith('impl') || agent.phase === 'impl') return 'impl';
+      if (['requirements', 'design', 'tasks', 'status'].includes(agent.phase)) return 'doc';
+    }
+    return null;
+  }, [agentStore.agents, specDetail]);
+
   // バリデーションが実行可能かどうかを判定
   const canExecuteValidation = useCallback(
     (_type: ValidationType): boolean => {
-      // 同じspecで既にAgentが実行中なら不可
+      // 同じspec内で既にAgentが実行中なら不可
       if (runningPhases.size > 0) return false;
+      // 同じspec内でimplグループが実行中なら不可（グループコンフリクト）
+      if (runningGroupInSpec === 'impl') return false;
       return true;
     },
-    [runningPhases]
+    [runningPhases, runningGroupInSpec]
   );
 
   // フェーズが実行可能かどうかを判定
   const canExecutePhase = useCallback(
     (phase: WorkflowPhase): boolean => {
-      // 同じspecで既にAgentが実行中なら不可
+      // 同じspec内で既にAgentが実行中なら不可
       if (runningPhases.size > 0) return false;
+
+      // implフェーズの場合、同じspec内でvalidateグループが実行中なら不可
+      if (phase === 'impl' && runningGroupInSpec === 'validate') return false;
 
       const index = WORKFLOW_PHASES.indexOf(phase);
       if (index === 0) return true; // requirements は常に実行可能
@@ -88,7 +110,7 @@ export function WorkflowView() {
       const prevPhase = WORKFLOW_PHASES[index - 1];
       return phaseStatuses[prevPhase] === 'approved';
     },
-    [runningPhases, phaseStatuses]
+    [runningPhases, runningGroupInSpec, phaseStatuses]
   );
 
   // Parse tasks from tasks.md
@@ -131,15 +153,19 @@ export function WorkflowView() {
   const handleExecutePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
 
-    // サービス層でコマンドを構築
-    const newAgent = await window.electronAPI.executePhase(
-      specDetail.metadata.name,
-      phase,
-      specDetail.metadata.name
-    );
-    // ストアにAgentを追加して選択
-    agentStore.addAgent(specDetail.metadata.name, newAgent);
-    agentStore.selectAgent(newAgent.agentId);
+    try {
+      // サービス層でコマンドを構築
+      const newAgent = await window.electronAPI.executePhase(
+        specDetail.metadata.name,
+        phase,
+        specDetail.metadata.name
+      );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
+    }
   }, [agentStore, specDetail]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
@@ -169,15 +195,19 @@ export function WorkflowView() {
   const handleExecuteValidation = useCallback(async (type: ValidationType) => {
     if (!specDetail) return;
 
-    // サービス層でコマンドを構築
-    const newAgent = await window.electronAPI.executeValidation(
-      specDetail.metadata.name,
-      type,
-      specDetail.metadata.name
-    );
-    // ストアにAgentを追加して選択
-    agentStore.addAgent(specDetail.metadata.name, newAgent);
-    agentStore.selectAgent(newAgent.agentId);
+    try {
+      // サービス層でコマンドを構築
+      const newAgent = await window.electronAPI.executeValidation(
+        specDetail.metadata.name,
+        type,
+        specDetail.metadata.name
+      );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'バリデーションの実行に失敗しました');
+    }
   }, [agentStore, specDetail]);
 
   const handleAutoExecution = useCallback(() => {
@@ -191,14 +221,19 @@ export function WorkflowView() {
 
   const handleSpecStatus = useCallback(async () => {
     if (!specDetail) return;
-    // サービス層でコマンドを構築
-    const newAgent = await window.electronAPI.executeSpecStatus(
-      specDetail.metadata.name,
-      specDetail.metadata.name
-    );
-    // ストアにAgentを追加して選択
-    agentStore.addAgent(specDetail.metadata.name, newAgent);
-    agentStore.selectAgent(newAgent.agentId);
+
+    try {
+      // サービス層でコマンドを構築
+      const newAgent = await window.electronAPI.executeSpecStatus(
+        specDetail.metadata.name,
+        specDetail.metadata.name
+      );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'spec-statusの実行に失敗しました');
+    }
   }, [agentStore, specDetail]);
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
@@ -209,15 +244,19 @@ export function WorkflowView() {
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;
 
-    // サービス層でコマンドを構築: /kiro:spec-impl {featureName} {taskId}
-    const newAgent = await window.electronAPI.executeTaskImpl(
-      specDetail.metadata.name,
-      specDetail.metadata.name,
-      taskId
-    );
-    // ストアにAgentを追加して選択
-    agentStore.addAgent(specDetail.metadata.name, newAgent);
-    agentStore.selectAgent(newAgent.agentId);
+    try {
+      // サービス層でコマンドを構築: /kiro:spec-impl {featureName} {taskId}
+      const newAgent = await window.electronAPI.executeTaskImpl(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        taskId
+      );
+      // ストアにAgentを追加して選択
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'タスク実装の実行に失敗しました');
+    }
   }, [agentStore, specDetail]);
 
   // Validation options positions
@@ -293,7 +332,7 @@ export function WorkflowView() {
                   tasks={parsedTasks}
                   progress={specDetail.taskProgress}
                   onExecuteTask={handleExecuteTask}
-                  canExecute={runningPhases.size === 0}
+                  canExecute={runningPhases.size === 0 && runningGroupInSpec !== 'validate'}
                 />
               </div>
             )}

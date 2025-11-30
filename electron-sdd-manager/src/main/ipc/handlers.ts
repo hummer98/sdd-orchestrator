@@ -10,7 +10,7 @@ import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath } from '../menu';
 import type { Phase } from '../../renderer/types';
-import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType } from '../services/specManagerService';
+import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
@@ -38,6 +38,51 @@ let eventCallbacksRegistered = false;
 let initialProjectPath: string | null = null;
 // Current project path
 let currentProjectPath: string | null = null;
+
+/**
+ * Convert AgentError to user-friendly error message
+ */
+function getErrorMessage(error: AgentError): string {
+  const groupLabels: Record<ExecutionGroup, string> = {
+    doc: 'ドキュメント生成',
+    validate: 'バリデーション',
+    impl: '実装',
+  };
+
+  switch (error.type) {
+    case 'SPAWN_ERROR':
+      return `プロセス起動エラー: ${error.message}`;
+    case 'NOT_FOUND':
+      return `エージェントが見つかりません: ${error.agentId}`;
+    case 'ALREADY_RUNNING':
+      return `${error.phase}フェーズは既に実行中です`;
+    case 'SESSION_NOT_FOUND':
+      return `セッションが見つかりません: ${error.agentId}`;
+    case 'GROUP_CONFLICT':
+      return `${groupLabels[error.runningGroup]}が実行中のため、${groupLabels[error.requestedGroup]}を開始できません。先に実行中のAgentを停止してください。`;
+    case 'SPEC_MANAGER_LOCKED':
+      return `spec-managerはロック中です: ${error.lockedBy}`;
+    case 'PARSE_ERROR':
+      return `解析エラー: ${error.message}`;
+    case 'ANALYZE_ERROR': {
+      const analyzeError = error.error;
+      switch (analyzeError.type) {
+        case 'API_ERROR':
+          return `分析API エラー: ${analyzeError.message}`;
+        case 'RATE_LIMITED':
+          return 'API呼び出し制限に達しました。しばらく待ってから再試行してください。';
+        case 'TIMEOUT':
+          return '分析がタイムアウトしました。';
+        case 'INVALID_INPUT':
+          return `入力エラー: ${analyzeError.message}`;
+        default:
+          return '分析エラーが発生しました';
+      }
+    }
+    default:
+      return '不明なエラーが発生しました';
+  }
+}
 
 /**
  * Set initial project path (called from main process)
@@ -460,7 +505,8 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         logger.error('[handlers] executePhase failed', { error: result.error });
-        throw new Error(`Failed to execute phase: ${result.error.type}`);
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
       }
 
       logger.info('[handlers] executePhase succeeded', { agentId: result.value.agentId });
@@ -484,7 +530,8 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         logger.error('[handlers] executeValidation failed', { error: result.error });
-        throw new Error(`Failed to execute validation: ${result.error.type}`);
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
       }
 
       logger.info('[handlers] executeValidation succeeded', { agentId: result.value.agentId });
@@ -508,7 +555,8 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         logger.error('[handlers] executeSpecStatus failed', { error: result.error });
-        throw new Error(`Failed to execute spec-status: ${result.error.type}`);
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
       }
 
       logger.info('[handlers] executeSpecStatus succeeded', { agentId: result.value.agentId });
@@ -532,7 +580,8 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         logger.error('[handlers] executeTaskImpl failed', { error: result.error });
-        throw new Error(`Failed to execute task impl: ${result.error.type}`);
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
       }
 
       logger.info('[handlers] executeTaskImpl succeeded', { agentId: result.value.agentId });

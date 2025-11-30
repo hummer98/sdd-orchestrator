@@ -152,7 +152,19 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set((state) => {
       const newAgents = new Map(state.agents);
       const existingAgents = newAgents.get(specId) || [];
-      newAgents.set(specId, [...existingAgents, agent]);
+
+      // 重複チェック: 既存のagentIdがあれば更新、なければ追加
+      const existingIndex = existingAgents.findIndex((a) => a.agentId === agent.agentId);
+      if (existingIndex >= 0) {
+        // 既存のAgentを更新
+        const updatedAgents = [...existingAgents];
+        updatedAgents[existingIndex] = agent;
+        newAgents.set(specId, updatedAgents);
+      } else {
+        // 新規追加
+        newAgents.set(specId, [...existingAgents, agent]);
+      }
+
       return { agents: newAgents };
     });
   },

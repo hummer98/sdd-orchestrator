@@ -613,5 +613,48 @@ describe('useAgentStore', () => {
         expect(useAgentStore.getState().error).toBeNull();
       });
     });
+
+    describe('addAgent duplicate handling', () => {
+      it('should not create duplicate when adding same agentId twice', () => {
+        // 同じagentIdで2回addAgentを呼び出しても重複しない
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+
+        const state = useAgentStore.getState();
+        const specAgents = state.agents.get('spec-1');
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents?.[0].agentId).toBe('agent-1');
+      });
+
+      it('should update existing agent info when adding same agentId with different data', () => {
+        // 同じagentIdで異なる情報を追加すると更新される
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+
+        const updatedAgent: AgentInfo = {
+          ...mockAgentInfo,
+          status: 'completed' as AgentStatus,
+          lastActivityAt: '2024-01-01T00:10:00Z',
+        };
+        useAgentStore.getState().addAgent('spec-1', updatedAgent);
+
+        const state = useAgentStore.getState();
+        const specAgents = state.agents.get('spec-1');
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents?.[0].status).toBe('completed');
+        expect(specAgents?.[0].lastActivityAt).toBe('2024-01-01T00:10:00Z');
+      });
+
+      it('should add different agents without duplication', () => {
+        // 異なるagentIdは正しく追加される
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo2);
+
+        const state = useAgentStore.getState();
+        const specAgents = state.agents.get('spec-1');
+        expect(specAgents).toHaveLength(2);
+        expect(specAgents?.[0].agentId).toBe('agent-1');
+        expect(specAgents?.[1].agentId).toBe('agent-2');
+      });
+    });
   });
 });

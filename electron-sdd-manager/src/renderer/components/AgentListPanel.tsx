@@ -5,13 +5,38 @@
  * Requirements: 5.1, 5.2, 5.7, 5.8
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bot, PlayCircle, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { clsx } from 'clsx';
 
 type AgentStatus = AgentInfo['status'];
+
+/**
+ * Format ISO date string to "MM/DD HH:mm"
+ */
+function formatDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${month}/${day} ${hours}:${minutes}`;
+}
+
+/**
+ * Format duration in milliseconds to "Xm Ys" or "Xs"
+ */
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${minutes}分${seconds}秒`;
+  }
+  return `${seconds}秒`;
+}
 
 const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; icon: React.ReactNode }> = {
   running: {
@@ -165,6 +190,27 @@ function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
   const showResumeButton = agent.status === 'interrupted';
   const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
+  const isRunning = agent.status === 'running';
+
+  // Dynamic elapsed time for running agents
+  const [elapsed, setElapsed] = useState(() => {
+    return Date.now() - new Date(agent.startedAt).getTime();
+  });
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const interval = setInterval(() => {
+      setElapsed(Date.now() - new Date(agent.startedAt).getTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning, agent.startedAt]);
+
+  // Calculate duration
+  const duration = isRunning
+    ? elapsed
+    : new Date(agent.lastActivityAt).getTime() - new Date(agent.startedAt).getTime();
 
   return (
     <li
@@ -192,6 +238,11 @@ function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove
           >
             {statusConfig.icon}
             {statusConfig.label}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            {formatDateTime(agent.startedAt)}
+            {' '}
+            ({formatDuration(duration)}{isRunning && '...'})
           </span>
         </div>
 

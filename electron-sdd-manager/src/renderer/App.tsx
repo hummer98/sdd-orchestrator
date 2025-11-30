@@ -36,6 +36,9 @@ const RIGHT_PANE_MIN = 250;
 const RIGHT_PANE_MAX = 500;
 const BOTTOM_PANE_MIN = 100;
 const BOTTOM_PANE_MAX = 400;
+// 右ペイン内のAgent一覧パネルの高さ制限
+const AGENT_LIST_MIN = 80;
+const AGENT_LIST_MAX = 400;
 
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects } = useProjectStore();
@@ -54,6 +57,7 @@ export function App() {
   const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
   const [rightPaneWidth, setRightPaneWidth] = useState(320); // w-80 = 20rem = 320px
   const [bottomPaneHeight, setBottomPaneHeight] = useState(192); // h-48 = 12rem = 192px
+  const [agentListHeight, setAgentListHeight] = useState(160); // Agent一覧パネルの高さ
 
   // リサイズハンドラー
   const handleLeftResize = useCallback((delta: number) => {
@@ -66,6 +70,10 @@ export function App() {
 
   const handleBottomResize = useCallback((delta: number) => {
     setBottomPaneHeight((prev) => Math.min(BOTTOM_PANE_MAX, Math.max(BOTTOM_PANE_MIN, prev - delta)));
+  }, []);
+
+  const handleAgentListResize = useCallback((delta: number) => {
+    setAgentListHeight((prev) => Math.min(AGENT_LIST_MAX, Math.max(AGENT_LIST_MIN, prev + delta)));
   }, []);
 
   // Load initial project from command line argument and recent projects on mount
@@ -258,7 +266,11 @@ export function App() {
                   className="shrink-0 flex flex-col overflow-hidden"
                 >
                   {/* Agent list panel */}
-                  <AgentListPanel />
+                  <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
+                    <AgentListPanel />
+                  </div>
+                  {/* Agent一覧とワークフロー間のリサイズハンドル */}
+                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} />
                   {/* SDD Hybrid Workflow: 6フェーズワークフロービュー */}
                   <div className="flex-1 overflow-hidden">
                     <WorkflowView />

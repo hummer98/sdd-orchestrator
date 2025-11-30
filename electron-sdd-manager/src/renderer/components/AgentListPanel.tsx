@@ -112,7 +112,7 @@ export function AgentListPanel() {
   };
 
   return (
-    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="h-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
         <Bot className="w-4 h-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -130,7 +130,7 @@ export function AgentListPanel() {
           Agentはありません
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="flex-1 space-y-2 overflow-y-auto">
           {agents.map((agent) => (
             <AgentListItem
               key={agent.agentId}

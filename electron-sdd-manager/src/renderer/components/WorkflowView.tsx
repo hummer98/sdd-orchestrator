@@ -6,10 +6,9 @@
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle, RotateCcw } from 'lucide-react';
+import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
 import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
-import type { AutoExecutionStatus } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
 import { PhaseItem } from './PhaseItem';

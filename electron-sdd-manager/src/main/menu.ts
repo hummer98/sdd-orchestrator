@@ -8,6 +8,9 @@ import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
 import { IPC_CHANNELS } from './ipc/channels';
 
+// Current project path for menu state management
+let currentProjectPathForMenu: string | null = null;
+
 const isMac = process.platform === 'darwin';
 
 /**
@@ -172,6 +175,7 @@ export function createMenu(): void {
       submenu: [
         {
           label: 'spec-managerコマンドを再インストール...',
+          enabled: currentProjectPathForMenu !== null,
           click: async () => {
             const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
             if (!window) return;
@@ -188,6 +192,28 @@ export function createMenu(): void {
 
             if (result.response === 1) {
               window.webContents.send(IPC_CHANNELS.MENU_FORCE_REINSTALL);
+            }
+          },
+        },
+        {
+          label: 'シェルコマンドの実行許可を追加...',
+          enabled: currentProjectPathForMenu !== null,
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            const result = await dialog.showMessageBox(window, {
+              type: 'question',
+              buttons: ['キャンセル', '追加'],
+              defaultId: 0,
+              cancelId: 0,
+              title: 'シェルコマンドの実行許可を追加',
+              message: '標準的なシェルコマンドの実行許可を追加しますか？',
+              detail: 'プロジェクトの .claude/settings.local.json に一般的なシェルコマンド（git, npm, curl など）の実行許可を追加します。既に許可されているコマンドはスキップされます。',
+            });
+
+            if (result.response === 1) {
+              window.webContents.send(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS);
             }
           },
         },
@@ -219,4 +245,14 @@ export function createMenu(): void {
  */
 export function updateMenu(): void {
   createMenu();
+}
+
+/**
+ * Set current project path for menu state management
+ * Call this when a project is selected or deselected
+ * @param projectPath - Project path or null if no project selected
+ */
+export function setMenuProjectPath(projectPath: string | null): void {
+  currentProjectPathForMenu = projectPath;
+  createMenu(); // Rebuild menu to update enabled states
 }

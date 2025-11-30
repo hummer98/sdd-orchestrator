@@ -50,6 +50,13 @@ interface ProjectState {
   installError: InstallError | null;
 }
 
+/** シェル許可追加結果 */
+export interface AddPermissionsResult {
+  readonly added: readonly string[];
+  readonly alreadyExists: readonly string[];
+  readonly total: number;
+}
+
 interface ProjectActions {
   selectProject: (path: string) => Promise<void>;
   loadRecentProjects: () => Promise<void>;
@@ -63,6 +70,8 @@ interface ProjectActions {
   installAll: () => Promise<void>;
   forceReinstallAll: () => Promise<void>;
   clearInstallResult: () => void;
+  // shell permissions
+  addShellPermissions: () => Promise<AddPermissionsResult | null>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -332,5 +341,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
    */
   clearInstallResult: () => {
     set({ installResult: null, installError: null });
+  },
+
+  // ============================================================
+  // Shell Permissions
+  // ============================================================
+
+  /**
+   * Add standard shell permissions to project's settings.local.json
+   */
+  addShellPermissions: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return null;
+
+    try {
+      const result = await window.electronAPI.addShellPermissions(currentProject);
+      return result;
+    } catch (error) {
+      console.error('[projectStore] Failed to add shell permissions:', error);
+      return null;
+    }
   },
 }));

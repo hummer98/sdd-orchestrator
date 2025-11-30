@@ -94,6 +94,15 @@ export type Result<T, E> =
   | { ok: false; error: E };
 
 /**
+ * Add permissions result
+ */
+export interface AddPermissionsResult {
+  readonly added: readonly string[];
+  readonly alreadyExists: readonly string[];
+  readonly total: number;
+}
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -200,9 +209,13 @@ export interface ElectronAPI {
 
   // Menu Events
   onMenuForceReinstall(callback: () => void): () => void;
+  onMenuAddShellPermissions(callback: () => void): () => void;
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;
+
+  // Permissions - Add shell permissions to project
+  addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
 }
 
 declare global {

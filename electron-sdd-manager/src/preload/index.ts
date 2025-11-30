@@ -12,6 +12,7 @@ import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
+import type { AddPermissionsResult } from '../main/services/permissionsService';
 
 /**
  * Exposed API to renderer process
@@ -248,6 +249,23 @@ const electronAPI = {
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase),
+
+  // Permissions - Add shell permissions to project
+  addShellPermissions: (projectPath: string): Promise<AddPermissionsResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ADD_SHELL_PERMISSIONS, projectPath),
+
+  // Menu Events - Add Shell Permissions
+  onMenuAddShellPermissions: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS, handler);
+    };
+  },
 };
 
 // Expose API to renderer

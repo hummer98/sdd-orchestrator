@@ -73,6 +73,12 @@ export const IPC_CHANNELS = {
 
   // Phase Sync
   SYNC_SPEC_PHASE: 'ipc:sync-spec-phase',
+
+  // Permissions
+  ADD_SHELL_PERMISSIONS: 'ipc:add-shell-permissions',
+
+  // Menu Events - Add Shell Permissions
+  MENU_ADD_SHELL_PERMISSIONS: 'menu:add-shell-permissions',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

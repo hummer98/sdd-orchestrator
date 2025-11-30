@@ -94,21 +94,37 @@ export function App() {
   }, [setupEventListeners]);
 
   // Setup menu event listeners
-  const { forceReinstallAll } = useProjectStore();
+  const { forceReinstallAll, addShellPermissions } = useProjectStore();
   const menuListenersSetup = useRef(false);
   useEffect(() => {
     if (menuListenersSetup.current) {
       return;
     }
     menuListenersSetup.current = true;
-    const cleanup = window.electronAPI.onMenuForceReinstall(() => {
+
+    const cleanupForceReinstall = window.electronAPI.onMenuForceReinstall(() => {
       forceReinstallAll();
     });
+
+    const cleanupAddPermissions = window.electronAPI.onMenuAddShellPermissions(async () => {
+      const result = await addShellPermissions();
+      if (result) {
+        // Show a simple alert with results (could be improved with a notification system)
+        if (result.added.length > 0) {
+          console.log(`[App] Added ${result.added.length} shell permissions`);
+        }
+        if (result.alreadyExists.length > 0) {
+          console.log(`[App] ${result.alreadyExists.length} permissions already existed`);
+        }
+      }
+    });
+
     return () => {
       menuListenersSetup.current = false;
-      cleanup();
+      cleanupForceReinstall();
+      cleanupAddPermissions();
     };
-  }, [forceReinstallAll]);
+  }, [forceReinstallAll, addShellPermissions]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {

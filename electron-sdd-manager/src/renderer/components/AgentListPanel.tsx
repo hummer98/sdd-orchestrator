@@ -38,31 +38,31 @@ function formatDuration(ms: number): string {
   return `${seconds}秒`;
 }
 
-const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode; iconClassName: string }> = {
   running: {
     label: '実行中',
-    className: 'bg-blue-100 text-blue-700',
-    icon: <Loader2 className="w-3 h-3 animate-spin" />,
+    icon: <Loader2 className="w-4 h-4 animate-spin" />,
+    iconClassName: 'text-blue-500',
   },
   completed: {
     label: '完了',
-    className: 'bg-green-100 text-green-700',
-    icon: <CheckCircle className="w-3 h-3" />,
+    icon: <CheckCircle className="w-4 h-4" />,
+    iconClassName: 'text-green-500',
   },
   interrupted: {
     label: '中断',
-    className: 'bg-yellow-100 text-yellow-700',
-    icon: <AlertCircle className="w-3 h-3" />,
+    icon: <AlertCircle className="w-4 h-4" />,
+    iconClassName: 'text-yellow-500',
   },
   hang: {
     label: '応答なし',
-    className: 'bg-red-100 text-red-700',
-    icon: <AlertCircle className="w-3 h-3" />,
+    icon: <AlertCircle className="w-4 h-4" />,
+    iconClassName: 'text-red-500',
   },
   failed: {
     label: '失敗',
-    className: 'bg-red-100 text-red-700',
-    icon: <XCircle className="w-3 h-3" />,
+    icon: <XCircle className="w-4 h-4" />,
+    iconClassName: 'text-red-500',
   },
 };
 
@@ -227,17 +227,11 @@ function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className={clsx('shrink-0', statusConfig.iconClassName)} title={statusConfig.label}>
+            {statusConfig.icon}
+          </span>
           <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
             {agent.phase}
-          </span>
-          <span
-            className={clsx(
-              'flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-full',
-              statusConfig.className
-            )}
-          >
-            {statusConfig.icon}
-            {statusConfig.label}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
             {formatDateTime(agent.startedAt)}

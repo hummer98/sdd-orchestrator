@@ -63,13 +63,13 @@ describe('AgentListPanel - Task 30', () => {
       expect(screen.getByText('requirements')).toBeInTheDocument();
     });
 
-    it('should display agent status badge for running agent', () => {
+    it('should display agent status icon for running agent', () => {
       render(<AgentListPanel />);
 
-      expect(screen.getByText('実行中')).toBeInTheDocument();
+      expect(screen.getByTitle('実行中')).toBeInTheDocument();
     });
 
-    it('should display agent status badge for completed agent', () => {
+    it('should display agent status icon for completed agent', () => {
       mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
@@ -81,10 +81,10 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel />);
 
-      expect(screen.getByText('完了')).toBeInTheDocument();
+      expect(screen.getByTitle('完了')).toBeInTheDocument();
     });
 
-    it('should display agent status badge for interrupted agent', () => {
+    it('should display agent status icon for interrupted agent', () => {
       mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'interrupted' }]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
@@ -96,10 +96,10 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel />);
 
-      expect(screen.getByText('中断')).toBeInTheDocument();
+      expect(screen.getByTitle('中断')).toBeInTheDocument();
     });
 
-    it('should display agent status badge for hang agent', () => {
+    it('should display agent status icon for hang agent', () => {
       mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'hang' }]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
@@ -111,7 +111,7 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel />);
 
-      expect(screen.getByText('応答なし')).toBeInTheDocument();
+      expect(screen.getByTitle('応答なし')).toBeInTheDocument();
     });
 
     it('should highlight selected agent', () => {
@@ -239,7 +239,7 @@ describe('AgentListPanel - Task 30', () => {
       expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument();
     });
 
-    it('should call removeAgent when delete button is clicked', async () => {
+    it('should call removeAgent when delete is confirmed', async () => {
       const mockRemoveAgent = vi.fn();
       mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
       mockUseAgentStore.mockReturnValue({
@@ -253,8 +253,14 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel />);
 
-      const deleteButton = screen.getByRole('button', { name: '削除' });
-      fireEvent.click(deleteButton);
+      // Click the delete button (icon button in list item) to open confirmation dialog
+      const deleteButtons = screen.getAllByRole('button', { name: '削除' });
+      fireEvent.click(deleteButtons[0]);
+
+      // Confirm deletion in the dialog (the second 削除 button which appears in the dialog)
+      const confirmButtons = screen.getAllByRole('button', { name: '削除' });
+      // The last button is the confirm button in the dialog
+      fireEvent.click(confirmButtons[confirmButtons.length - 1]);
 
       await waitFor(() => {
         expect(mockRemoveAgent).toHaveBeenCalledWith('agent-1');

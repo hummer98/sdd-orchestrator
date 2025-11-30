@@ -84,7 +84,21 @@ export interface FullInstallResult {
 export type InstallError =
   | { type: 'TEMPLATE_NOT_FOUND'; path: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
-  | { type: 'PERMISSION_DENIED'; path: string };
+  | { type: 'PERMISSION_DENIED'; path: string }
+  | { type: 'MERGE_ERROR'; message: string };
+
+/**
+ * CLAUDE.md install mode
+ */
+export type ClaudeMdInstallMode = 'overwrite' | 'merge' | 'skip';
+
+/**
+ * CLAUDE.md install result
+ */
+export interface ClaudeMdInstallResult {
+  readonly mode: ClaudeMdInstallMode;
+  readonly existed: boolean;
+}
 
 /**
  * Result type for spec-manager operations
@@ -245,10 +259,15 @@ export interface ElectronAPI {
   installSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
   forceReinstallSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
 
+  // CLAUDE.md Install
+  checkClaudeMdExists(projectPath: string): Promise<boolean>;
+  installClaudeMd(projectPath: string, mode: ClaudeMdInstallMode): Promise<Result<ClaudeMdInstallResult, InstallError>>;
+
   // Menu Events
   onMenuForceReinstall(callback: () => void): () => void;
   onMenuAddShellPermissions(callback: () => void): () => void;
   onMenuOpenProject(callback: (projectPath: string) => void): () => void;
+  onMenuInstallClaudeMd(callback: () => void): () => void;
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;

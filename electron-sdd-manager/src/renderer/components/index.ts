@@ -27,6 +27,8 @@ export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
 // CLI Install
 export { CliInstallDialog } from './CliInstallDialog';
+// CLAUDE.md Install
+export { ClaudeMdInstallDialog } from './ClaudeMdInstallDialog';
 // Task 4.2, 4.3 (sidebar-refactor): グローバルAgent領域
 export { GlobalAgentPanel } from './GlobalAgentPanel';
 // Task 3.1, 3.2 (sidebar-refactor): 仕様一覧ヘッダー

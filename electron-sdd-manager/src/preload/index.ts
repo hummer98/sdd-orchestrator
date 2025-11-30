@@ -11,7 +11,7 @@ import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/serv
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult } from '../main/services/projectChecker';
-import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
+import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';
 import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 
@@ -234,6 +234,13 @@ const electronAPI = {
   forceReinstallSpecManagerAll: (projectPath: string): Promise<Result<FullInstallResult, InstallError>> =>
     ipcRenderer.invoke(IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL, projectPath),
 
+  // CLAUDE.md Install
+  checkClaudeMdExists: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS, projectPath),
+
+  installClaudeMd: (projectPath: string, mode: ClaudeMdInstallMode): Promise<Result<ClaudeMdInstallResult, InstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLAUDE_MD, projectPath, mode),
+
   // Menu Events
   onMenuForceReinstall: (callback: () => void): (() => void) => {
     const handler = () => {
@@ -244,6 +251,19 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_FORCE_REINSTALL, handler);
+    };
+  },
+
+  // Menu Events - Install CLAUDE.md
+  onMenuInstallClaudeMd: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_CLAUDE_MD, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CLAUDE_MD, handler);
     };
   },
 

@@ -32,7 +32,8 @@ export interface InstallResult {
 export type InstallError =
   | { type: 'TEMPLATE_NOT_FOUND'; path: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
-  | { type: 'PERMISSION_DENIED'; path: string };
+  | { type: 'PERMISSION_DENIED'; path: string }
+  | { type: 'MERGE_ERROR'; message: string };
 
 interface ProjectState {
   currentProject: string | null;

@@ -298,7 +298,8 @@ function SpecManagerFilesSection({
             </span>
           </div>
           <div className="text-xs text-red-500 dark:text-red-400">
-            {installError.type}: {installError.path}
+            {installError.type}
+            {'path' in installError && `: ${installError.path}`}
             {'message' in installError && ` - ${installError.message}`}
           </div>
         </div>

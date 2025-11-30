@@ -19,11 +19,14 @@ import {
   WorkflowView,
   // CLI Install
   CliInstallDialog,
+  // CLAUDE.md Install
+  ClaudeMdInstallDialog,
   // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
   SpecListHeader,
   GlobalAgentPanel,
   ErrorBanner,
 } from './components';
+import type { ClaudeMdInstallMode } from './types/electron';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore } from './stores';
 
 // ペイン幅の制限値
@@ -44,6 +47,8 @@ export function App() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [isCliInstallDialogOpen, setIsCliInstallDialogOpen] = useState(false);
+  const [isClaudeMdDialogOpen, setIsClaudeMdDialogOpen] = useState(false);
+  const [claudeMdExists, setClaudeMdExists] = useState(false);
 
   // ペインサイズの状態
   const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
@@ -133,14 +138,23 @@ export function App() {
       setIsCliInstallDialogOpen(true);
     });
 
+    const cleanupClaudeMdInstall = window.electronAPI.onMenuInstallClaudeMd(async () => {
+      if (!currentProject) return;
+      // Check if CLAUDE.md exists
+      const exists = await window.electronAPI.checkClaudeMdExists(currentProject);
+      setClaudeMdExists(exists);
+      setIsClaudeMdDialogOpen(true);
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
       cleanupAddPermissions();
       cleanupOpenProject();
       cleanupCliInstall();
+      cleanupClaudeMdInstall();
     };
-  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs]);
+  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {
@@ -292,6 +306,21 @@ export function App() {
         <CliInstallDialog
           isOpen={isCliInstallDialogOpen}
           onClose={() => setIsCliInstallDialogOpen(false)}
+        />
+
+        <ClaudeMdInstallDialog
+          isOpen={isClaudeMdDialogOpen}
+          claudeMdExists={claudeMdExists}
+          projectPath={currentProject || ''}
+          onClose={() => setIsClaudeMdDialogOpen(false)}
+          onInstall={async (mode: ClaudeMdInstallMode) => {
+            if (!currentProject) return;
+            const result = await window.electronAPI.installClaudeMd(currentProject, mode);
+            if (!result.ok) {
+              throw result.error;
+            }
+            console.log(`[App] CLAUDE.md installed with mode: ${mode}`);
+          }}
         />
       </div>
     </NotificationProvider>

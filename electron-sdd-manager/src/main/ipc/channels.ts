@@ -68,9 +68,14 @@ export const IPC_CHANNELS = {
   INSTALL_SPEC_MANAGER_ALL: 'ipc:install-spec-manager-all',
   FORCE_REINSTALL_SPEC_MANAGER_ALL: 'ipc:force-reinstall-spec-manager-all',
 
+  // CLAUDE.md Install
+  CHECK_CLAUDE_MD_EXISTS: 'ipc:check-claude-md-exists',
+  INSTALL_CLAUDE_MD: 'ipc:install-claude-md',
+
   // Menu Events
   MENU_FORCE_REINSTALL: 'menu:force-reinstall',
   MENU_OPEN_PROJECT: 'menu:open-project',
+  MENU_INSTALL_CLAUDE_MD: 'menu:install-claude-md',
 
   // Phase Sync
   SYNC_SPEC_PHASE: 'ipc:sync-spec-phase',

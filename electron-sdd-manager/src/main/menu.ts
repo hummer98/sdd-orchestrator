@@ -181,6 +181,7 @@ export function createMenu(): void {
             const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
             if (!window) return;
 
+            // First, reinstall commands and settings
             const result = await dialog.showMessageBox(window, {
               type: 'question',
               buttons: ['キャンセル', '再インストール'],
@@ -194,6 +195,17 @@ export function createMenu(): void {
             if (result.response === 1) {
               window.webContents.send(IPC_CHANNELS.MENU_FORCE_REINSTALL);
             }
+          },
+        },
+        {
+          label: 'CLAUDE.mdをインストール...',
+          enabled: currentProjectPathForMenu !== null,
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            // Check if CLAUDE.md exists first by sending to renderer
+            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CLAUDE_MD);
           },
         },
         {

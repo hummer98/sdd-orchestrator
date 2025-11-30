@@ -16,7 +16,7 @@ import { AgentRecordWatcherService } from '../services/agentRecordWatcherService
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 import { ProjectChecker } from '../services/projectChecker';
-import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
+import { CommandInstallerService, getTemplateDir, ClaudeMdInstallMode } from '../services/commandInstallerService';
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
 import { addShellPermissions } from '../services/permissionsService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
@@ -633,6 +633,23 @@ export function registerIpcHandlers(): void {
     async (_event, projectPath: string) => {
       logger.info('[handlers] FORCE_REINSTALL_SPEC_MANAGER_ALL called', { projectPath });
       return commandInstallerService.forceReinstallAll(projectPath);
+    }
+  );
+
+  // CLAUDE.md Install Handlers
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_CLAUDE_MD_EXISTS called', { projectPath });
+      return commandInstallerService.claudeMdExists(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_CLAUDE_MD,
+    async (_event, projectPath: string, mode: ClaudeMdInstallMode) => {
+      logger.info('[handlers] INSTALL_CLAUDE_MD called', { projectPath, mode });
+      return commandInstallerService.installClaudeMd(projectPath, mode);
     }
   );
 

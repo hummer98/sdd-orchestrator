@@ -19,6 +19,7 @@ import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
 import { addShellPermissions } from '../services/permissionsService';
+import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import * as path from 'path';
 
 const fileService = new FileService();
@@ -654,6 +655,21 @@ export function registerIpcHandlers(): void {
       return result.value;
     }
   );
+
+  // CLI Install Handlers
+  ipcMain.handle(IPC_CHANNELS.GET_CLI_INSTALL_STATUS, async () => {
+    logger.info('[handlers] GET_CLI_INSTALL_STATUS called');
+    return getCliInstallStatus();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.INSTALL_CLI_COMMAND, async () => {
+    logger.info('[handlers] INSTALL_CLI_COMMAND called');
+    const result = await installCliCommand();
+    return {
+      ...result,
+      instructions: getManualInstallInstructions(),
+    };
+  });
 }
 
 /**

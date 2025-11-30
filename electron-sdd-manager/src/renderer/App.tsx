@@ -19,6 +19,8 @@ import {
   AgentInputPanel,
   // SDD Hybrid Workflow: 右ペインを統合したWorkflowView
   WorkflowView,
+  // CLI Install
+  CliInstallDialog,
 } from './components';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore } from './stores';
 import { clsx } from 'clsx';
@@ -40,6 +42,7 @@ export function App() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [isCliInstallDialogOpen, setIsCliInstallDialogOpen] = useState(false);
 
   // ペインサイズの状態
   const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
@@ -125,11 +128,16 @@ export function App() {
       await loadSpecs(projectPath);
     });
 
+    const cleanupCliInstall = window.electronAPI.onMenuInstallCliCommand(() => {
+      setIsCliInstallDialogOpen(true);
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
       cleanupAddPermissions();
       cleanupOpenProject();
+      cleanupCliInstall();
     };
   }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs]);
 
@@ -278,6 +286,11 @@ export function App() {
           isOpen={showUnsavedDialog}
           onContinue={handleConfirmNavigation}
           onCancel={handleCancelNavigation}
+        />
+
+        <CliInstallDialog
+          isOpen={isCliInstallDialogOpen}
+          onClose={() => setIsCliInstallDialogOpen(false)}
         />
       </div>
     </NotificationProvider>

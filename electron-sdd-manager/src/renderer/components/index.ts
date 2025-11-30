@@ -25,3 +25,5 @@ export { PhaseItem } from './PhaseItem';
 export { ValidateOption } from './ValidateOption';
 export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
+// CLI Install
+export { CliInstallDialog } from './CliInstallDialog';

@@ -80,6 +80,13 @@ export const IPC_CHANNELS = {
 
   // Menu Events - Add Shell Permissions
   MENU_ADD_SHELL_PERMISSIONS: 'menu:add-shell-permissions',
+
+  // CLI Install
+  INSTALL_CLI_COMMAND: 'ipc:install-cli-command',
+  GET_CLI_INSTALL_STATUS: 'ipc:get-cli-install-status',
+
+  // Menu Events - CLI Install
+  MENU_INSTALL_CLI_COMMAND: 'menu:install-cli-command',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

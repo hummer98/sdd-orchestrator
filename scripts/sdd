@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# SDD Orchestrator CLI
+# Usage: sdd [path]
+#   sdd .           - Open current directory
+#   sdd /path/to   - Open specified path
+#   sdd             - Open without project (project selector)
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ELECTRON_APP_SCRIPT="$PROJECT_DIR/scripts/electron-app.sh"
+
+# IMPORTANT: Unset ELECTRON_RUN_AS_NODE for Electron-based IDEs
+unset ELECTRON_RUN_AS_NODE
+
+# 引数処理
+TARGET_PATH=""
+if [ -n "$1" ]; then
+    # 相対パスを絶対パスに変換
+    if [[ "$1" = /* ]]; then
+        TARGET_PATH="$1"
+    else
+        TARGET_PATH="$(cd "$1" 2>/dev/null && pwd)" || {
+            echo "Error: Directory '$1' does not exist"
+            exit 1
+        }
+    fi
+fi
+
+# electron-app.shを使って起動
+if [ -n "$TARGET_PATH" ]; then
+    exec "$ELECTRON_APP_SCRIPT" dev "$TARGET_PATH"
+else
+    exec "$ELECTRON_APP_SCRIPT" dev
+fi

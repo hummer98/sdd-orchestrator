@@ -217,6 +217,16 @@ export function createMenu(): void {
             }
           },
         },
+        { type: 'separator' as const },
+        {
+          label: '「sdd」コマンドをインストール...',
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND);
+          },
+        },
       ],
     },
 

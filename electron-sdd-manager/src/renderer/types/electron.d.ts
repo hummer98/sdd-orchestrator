@@ -103,6 +103,40 @@ export interface AddPermissionsResult {
 }
 
 /**
+ * CLI install status
+ */
+export interface CliInstallStatus {
+  readonly isInstalled: boolean;
+  readonly symlinkPath: string;
+  readonly scriptPath: string;
+  readonly currentTarget?: string;
+  readonly needsUpdate: boolean;
+}
+
+/**
+ * CLI install result
+ */
+export interface CliInstallResult {
+  readonly success: boolean;
+  readonly message: string;
+  readonly requiresSudo: boolean;
+  readonly command?: string;
+}
+
+/**
+ * CLI install instructions
+ */
+export interface CliInstallInstructions {
+  readonly title: string;
+  readonly steps: readonly string[];
+  readonly command: string;
+  readonly usage: {
+    readonly title: string;
+    readonly examples: ReadonlyArray<{ command: string; description: string }>;
+  };
+}
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -217,6 +251,11 @@ export interface ElectronAPI {
 
   // Permissions - Add shell permissions to project
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
+
+  // CLI Install
+  getCliInstallStatus(): Promise<CliInstallStatus>;
+  installCliCommand(): Promise<CliInstallResult & { instructions: CliInstallInstructions }>;
+  onMenuInstallCliCommand(callback: () => void): () => void;
 }
 
 declare global {

@@ -13,6 +13,7 @@ import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
 import type { AddPermissionsResult } from '../main/services/permissionsService';
+import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 
 /**
  * Exposed API to renderer process
@@ -277,6 +278,36 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_OPEN_PROJECT, handler);
+    };
+  },
+
+  // CLI Install
+  getCliInstallStatus: (): Promise<CliInstallStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_CLI_INSTALL_STATUS),
+
+  installCliCommand: (): Promise<CliInstallResult & {
+    instructions: {
+      title: string;
+      steps: string[];
+      command: string;
+      usage: {
+        title: string;
+        examples: Array<{ command: string; description: string }>;
+      };
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLI_COMMAND),
+
+  // Menu Events - CLI Install
+  onMenuInstallCliCommand: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND, handler);
     };
   },
 };

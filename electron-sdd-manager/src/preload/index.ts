@@ -81,8 +81,8 @@ const electronAPI = {
   stopAgent: (agentId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.STOP_AGENT, agentId),
 
-  resumeAgent: (agentId: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.RESUME_AGENT, agentId),
+  resumeAgent: (agentId: string, prompt?: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESUME_AGENT, agentId, prompt),
 
   getAgents: (specId: string): Promise<AgentInfo[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_AGENTS, specId),
@@ -112,6 +112,12 @@ const electronAPI = {
 
   executeTaskImpl: (specId: string, featureName: string, taskId: string): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId),
+
+  // Task 5.2.2 (sidebar-refactor): spec-manager:init連携
+  // Launch spec-manager:init agent with description only (specId='')
+  // Returns the agentId immediately without waiting for completion
+  executeSpecInit: (projectPath: string, description: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_INIT, projectPath, description),
 
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10

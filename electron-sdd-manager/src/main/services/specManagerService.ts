@@ -459,8 +459,13 @@ export class SpecManagerService {
   /**
    * Resume an interrupted agent
    * Requirements: 5.8
+   * @param agentId - The ID of the agent to resume
+   * @param prompt - Optional custom prompt to send (defaults to '続けて')
    */
-  async resumeAgent(agentId: string): Promise<Result<AgentInfo, AgentError>> {
+  async resumeAgent(
+    agentId: string,
+    prompt?: string
+  ): Promise<Result<AgentInfo, AgentError>> {
     const agent = this.registry.get(agentId);
     if (!agent) {
       return {
@@ -476,14 +481,112 @@ export class SpecManagerService {
       };
     }
 
-    // Start a new agent with resume
-    return this.startAgent({
-      specId: agent.specId,
-      phase: agent.phase,
-      command: 'claude',
-      args: ['-p', '--resume', agent.sessionId, '続けて'],
-      sessionId: agent.sessionId,
-    });
+    // Check if already running
+    if (agent.status === 'running' || agent.status === 'hang') {
+      return {
+        ok: false,
+        error: { type: 'ALREADY_RUNNING', specId: agent.specId, phase: agent.phase },
+      };
+    }
+
+    const resumePrompt = prompt || '続けて';
+    const args = ['-p', '--verbose', '--output-format', 'stream-json', '--resume', agent.sessionId, resumePrompt];
+    const command = 'claude';
+    const now = new Date().toISOString();
+
+    try {
+      logger.info('[SpecManagerService] Resuming agent', { agentId, sessionId: agent.sessionId, prompt: resumePrompt });
+
+      // Create a new process but keep the same agentId
+      const process = createAgentProcess({
+        agentId,
+        command,
+        args,
+        cwd: this.projectPath,
+        sessionId: agent.sessionId,
+      });
+
+      // Update agent info (keep same agentId)
+      const updatedAgentInfo: AgentInfo = {
+        ...agent,
+        pid: process.pid,
+        status: 'running',
+        lastActivityAt: now,
+        command: `${command} ${args.join(' ')}`,
+      };
+
+      // Update registry
+      this.registry.updateStatus(agentId, 'running');
+      this.registry.updateActivity(agentId);
+      this.processes.set(agentId, process);
+
+      // Update agent record
+      await this.recordService.updateRecord(agent.specId, agentId, {
+        pid: process.pid,
+        status: 'running',
+        lastActivityAt: now,
+        command: `${command} ${args.join(' ')}`,
+      });
+
+      // Set up event handlers (same as startAgent)
+      process.onOutput((stream, data) => {
+        this.registry.updateActivity(agentId);
+
+        // Save log to file (append to existing logs)
+        const logEntry: LogEntry = {
+          timestamp: new Date().toISOString(),
+          stream,
+          data,
+        };
+        this.logService.appendLog(agent.specId, agentId, logEntry).catch((err) => {
+          logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
+        });
+
+        this.outputCallbacks.forEach((cb) => cb(agentId, stream, data));
+      });
+
+      process.onExit((code) => {
+        const currentAgent = this.registry.get(agentId);
+        if (currentAgent?.status === 'interrupted') {
+          this.processes.delete(agentId);
+          return;
+        }
+
+        const newStatus: AgentStatus = code === 0 ? 'completed' : 'failed';
+        this.registry.updateStatus(agentId, newStatus);
+        this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
+        this.processes.delete(agentId);
+
+        this.recordService.updateRecord(agent.specId, agentId, {
+          status: newStatus,
+          lastActivityAt: new Date().toISOString(),
+        }).catch(() => {});
+      });
+
+      process.onError(() => {
+        this.registry.updateStatus(agentId, 'failed');
+        this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
+        this.processes.delete(agentId);
+
+        this.recordService.updateRecord(agent.specId, agentId, {
+          status: 'failed',
+          lastActivityAt: new Date().toISOString(),
+        }).catch(() => {});
+      });
+
+      // Notify status change
+      this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
+
+      return { ok: true, value: updatedAgentInfo };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'SPAWN_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      };
+    }
   }
 
   /**

@@ -20,7 +20,7 @@ export interface AgentRecord {
   command: string;
 }
 
-export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId'>>;
+export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;
 
 /**
  * Service for managing Agent record files

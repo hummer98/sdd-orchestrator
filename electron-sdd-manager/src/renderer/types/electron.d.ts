@@ -194,7 +194,7 @@ export interface ElectronAPI {
     sessionId?: string
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
-  resumeAgent(agentId: string): Promise<AgentInfo>;
+  resumeAgent(agentId: string, prompt?: string): Promise<AgentInfo>;
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;
   sendAgentInput(agentId: string, input: string): Promise<void>;
@@ -211,7 +211,8 @@ export interface ElectronAPI {
 
   // Spec Init (Task 5.2 sidebar-refactor)
   // Launch spec-manager:init agent with description only
-  executeSpecInit(projectPath: string, description: string): Promise<string>;
+  // Returns AgentInfo immediately without waiting for completion
+  executeSpecInit(projectPath: string, description: string): Promise<AgentInfo>;
 
   // Agent Events (Task 27.2)
   // Requirements: 9.1-9.10

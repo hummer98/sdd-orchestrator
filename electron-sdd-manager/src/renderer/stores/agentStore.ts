@@ -48,7 +48,7 @@ interface AgentActions {
     sessionId?: string
   ) => Promise<string | null>;
   stopAgent: (agentId: string) => Promise<void>;
-  resumeAgent: (agentId: string) => Promise<void>;
+  resumeAgent: (agentId: string, prompt?: string) => Promise<void>;
   removeAgent: (agentId: string) => void;
   sendInput: (agentId: string, input: string) => Promise<void>;
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
@@ -66,6 +66,9 @@ interface AgentActions {
   getAgentsForSpec: (specId: string) => AgentInfo[];
   getGlobalAgents: () => AgentInfo[];
   clearError: () => void;
+
+  // Task 5.2.4 (sidebar-refactor): グローバルエージェントパネルへの遷移
+  selectForGlobalAgents: () => void;
 }
 
 type AgentStore = AgentState & AgentActions;
@@ -217,9 +220,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
   },
 
-  resumeAgent: async (agentId: string) => {
+  resumeAgent: async (agentId: string, prompt?: string) => {
     try {
-      const resumedAgent = await window.electronAPI.resumeAgent(agentId);
+      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt);
 
       set((state) => {
         const newAgents = new Map(state.agents);
@@ -408,5 +411,13 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  // Task 5.2.4 (sidebar-refactor): グローバルエージェントパネルへの遷移
+  // specId=''のエージェントを選択可能な状態にする
+  selectForGlobalAgents: () => {
+    // グローバルエージェント（specId=''）を選択対象として設定
+    // selectedAgentIdをnullにリセットして、GlobalAgentPanelにフォーカスを移す
+    set({ selectedAgentId: null });
   },
 }));

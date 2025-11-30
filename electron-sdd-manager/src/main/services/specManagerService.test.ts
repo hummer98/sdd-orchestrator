@@ -7,6 +7,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+
+// Mock Electron app module before importing SpecManagerService
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => os.tmpdir()),
+  },
+}));
+
 import { SpecManagerService, ExecutionGroup } from './specManagerService';
 
 describe('SpecManagerService', () => {
@@ -259,6 +268,73 @@ describe('SpecManagerService', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe('SESSION_NOT_FOUND');
+      }
+    });
+
+    it('should use custom prompt when provided', async () => {
+      // Create an interrupted agent with sessionId
+      const specDir = path.join(pidDir, 'spec-a');
+      await fs.mkdir(specDir, { recursive: true });
+
+      const pidFile = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 999999999,
+        sessionId: 'session-abc-123',
+        status: 'interrupted',
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        command: 'test command',
+      };
+
+      await fs.writeFile(
+        path.join(specDir, 'agent-001.json'),
+        JSON.stringify(pidFile)
+      );
+
+      await service.restoreAgents();
+
+      // Resume with custom prompt
+      const result = await service.resumeAgent('agent-001', 'カスタムプロンプト');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.status).toBe('running');
+        expect(result.value.sessionId).toBe('session-abc-123');
+      }
+    });
+
+    it('should use default prompt when not provided', async () => {
+      // Create an interrupted agent with sessionId
+      const specDir = path.join(pidDir, 'spec-a');
+      await fs.mkdir(specDir, { recursive: true });
+
+      const pidFile = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 999999999,
+        sessionId: 'session-abc-123',
+        status: 'interrupted',
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        command: 'test command',
+      };
+
+      await fs.writeFile(
+        path.join(specDir, 'agent-001.json'),
+        JSON.stringify(pidFile)
+      );
+
+      await service.restoreAgents();
+
+      // Resume without prompt (should use default)
+      const result = await service.resumeAgent('agent-001');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.status).toBe('running');
       }
     });
   });

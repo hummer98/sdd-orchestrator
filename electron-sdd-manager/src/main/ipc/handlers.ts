@@ -400,7 +400,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.RESUME_AGENT,
-    async (event, agentId: string) => {
+    async (event, agentId: string, prompt?: string) => {
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -419,7 +419,7 @@ export function registerIpcHandlers(): void {
         });
       }
 
-      const result = await service.resumeAgent(agentId);
+      const result = await service.resumeAgent(agentId, prompt);
 
       if (!result.ok) {
         throw new Error(`Failed to resume agent: ${result.error.type}`);
@@ -591,6 +591,43 @@ export function registerIpcHandlers(): void {
       }
 
       logger.info('[handlers] executeTaskImpl succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  // Task 5.2.3 (sidebar-refactor): spec-manager:init連携
+  // Launch spec-manager:init agent with description only
+  // specId='' for global agent, command: claude -p /spec-manager:init "{description}"
+  // Returns agentId immediately without waiting for completion
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_SPEC_INIT,
+    async (event, projectPath: string, description: string) => {
+      logger.info('[handlers] EXECUTE_SPEC_INIT called', { projectPath, description });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Start agent with specId='' (global agent)
+      // Command: claude -p /spec-manager:init "{description}"
+      const result = await service.startAgent({
+        specId: '', // Empty specId for global agent
+        phase: 'spec-init',
+        command: 'claude',
+        args: ['-p', '--verbose', '--output-format', 'stream-json', `/spec-manager:init "${description}"`],
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeSpecInit failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeSpecInit succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );

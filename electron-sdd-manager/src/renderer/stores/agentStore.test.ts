@@ -614,6 +614,83 @@ describe('useAgentStore', () => {
       });
     });
 
+    // ============================================================
+    // Task 4.1: getGlobalAgents
+    // Requirements: 4.2 (sidebar-refactor)
+    // グローバルエージェント（specIdが空文字、null、undefined）を取得
+    // ============================================================
+    describe('getGlobalAgents', () => {
+      it('should return agents with empty string specId', () => {
+        const globalAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'global-agent-1',
+          specId: '', // 空文字列 = グローバル
+          phase: 'global-task',
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('', [globalAgent]);
+        agents.set('spec-1', [mockAgentInfo]);
+        useAgentStore.setState({ agents });
+
+        const globalAgents = useAgentStore.getState().getGlobalAgents();
+        expect(globalAgents).toHaveLength(1);
+        expect(globalAgents[0].agentId).toBe('global-agent-1');
+      });
+
+      it('should return empty array when no global agents exist', () => {
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [mockAgentInfo]);
+        agents.set('spec-2', [mockAgentInfo3]);
+        useAgentStore.setState({ agents });
+
+        const globalAgents = useAgentStore.getState().getGlobalAgents();
+        expect(globalAgents).toEqual([]);
+      });
+
+      it('should return all global agents from empty specId key', () => {
+        const globalAgent1: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'global-1',
+          specId: '',
+          phase: 'steering',
+        };
+        const globalAgent2: AgentInfo = {
+          ...mockAgentInfo2,
+          agentId: 'global-2',
+          specId: '',
+          phase: 'bug-fix',
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('', [globalAgent1, globalAgent2]);
+        useAgentStore.setState({ agents });
+
+        const globalAgents = useAgentStore.getState().getGlobalAgents();
+        expect(globalAgents).toHaveLength(2);
+        expect(globalAgents[0].agentId).toBe('global-1');
+        expect(globalAgents[1].agentId).toBe('global-2');
+      });
+
+      it('should not include agents with non-empty specId', () => {
+        const globalAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'global-1',
+          specId: '',
+          phase: 'global-task',
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('', [globalAgent]);
+        agents.set('spec-1', [mockAgentInfo]);
+        agents.set('spec-2', [mockAgentInfo3]);
+        useAgentStore.setState({ agents });
+
+        const globalAgents = useAgentStore.getState().getGlobalAgents();
+        expect(globalAgents).toHaveLength(1);
+        // spec-1やspec-2のエージェントは含まれない
+        expect(globalAgents.some(a => a.specId === 'spec-1')).toBe(false);
+        expect(globalAgents.some(a => a.specId === 'spec-2')).toBe(false);
+      });
+    });
+
     describe('addAgent duplicate handling', () => {
       it('should not create duplicate when adding same agentId twice', () => {
         // 同じagentIdで2回addAgentを呼び出しても重複しない

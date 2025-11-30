@@ -64,6 +64,7 @@ interface AgentActions {
   // Helper methods
   getAgentById: (agentId: string) => AgentInfo | undefined;
   getAgentsForSpec: (specId: string) => AgentInfo[];
+  getGlobalAgents: () => AgentInfo[];
   clearError: () => void;
 }
 
@@ -397,6 +398,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   getAgentsForSpec: (specId: string) => {
     return get().agents.get(specId) || [];
+  },
+
+  // Task 4.1 (sidebar-refactor): グローバルエージェント取得
+  // specIdが空文字列のエージェントをグローバルエージェントとして返す
+  getGlobalAgents: () => {
+    return get().agents.get('') || [];
   },
 
   clearError: () => {

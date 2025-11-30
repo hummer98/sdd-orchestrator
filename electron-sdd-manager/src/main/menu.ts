@@ -267,3 +267,21 @@ export function setMenuProjectPath(projectPath: string | null): void {
   currentProjectPathForMenu = projectPath;
   createMenu(); // Rebuild menu to update enabled states
 }
+
+/**
+ * Update window title with project name
+ * Requirements: 1.3 (sidebar-refactor) - Display current project name in window title
+ * @param projectName - Project name or null for default title
+ */
+export function updateWindowTitle(projectName: string | null): void {
+  const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+  if (!window) {
+    return;
+  }
+
+  const isDev = !app.isPackaged;
+  const baseTitle = isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator';
+  const title = projectName ? `${baseTitle} - ${projectName}` : baseTitle;
+
+  window.setTitle(title);
+}

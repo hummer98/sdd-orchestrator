@@ -8,7 +8,7 @@ import { IPC_CHANNELS } from './channels';
 import { FileService } from '../services/fileService';
 import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
-import { updateMenu, setMenuProjectPath } from '../menu';
+import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase } from '../../renderer/types';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
@@ -110,6 +110,11 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Update menu state to enable project-dependent menu items
   setMenuProjectPath(projectPath);
+
+  // Update window title with project name (Task 1.2 - sidebar-refactor)
+  // Requirements: 1.3 - Display current project name in window title
+  const projectName = projectPath.split('/').pop() || projectPath;
+  updateWindowTitle(projectName);
 
   // Initialize default LogFileService for agent log reading (Bug fix: agent-log-display-issue)
   // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log

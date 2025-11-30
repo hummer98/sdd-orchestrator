@@ -1,0 +1,22 @@
+{
+  "feature_name": "sidebar-refactor",
+  "created_at": "2025-11-30T10:00:00.000Z",
+  "updated_at": "2025-11-30T14:36:25.886Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

@@ -27,3 +27,11 @@ export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
 // CLI Install
 export { CliInstallDialog } from './CliInstallDialog';
+// Task 4.2, 4.3 (sidebar-refactor): グローバルAgent領域
+export { GlobalAgentPanel } from './GlobalAgentPanel';
+// Task 3.1, 3.2 (sidebar-refactor): 仕様一覧ヘッダー
+export { SpecListHeader } from './SpecListHeader';
+// Task 2.1, 2.2, 2.3 (sidebar-refactor): エラーバナー
+export { ErrorBanner } from './ErrorBanner';
+// Info Dialog
+export { InfoDialog } from './InfoDialog';

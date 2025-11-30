@@ -4,9 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus } from 'lucide-react';
 import {
-  ProjectSelector,
   SpecList,
   CreateSpecDialog,
   ArtifactEditor,
@@ -21,9 +19,12 @@ import {
   WorkflowView,
   // CLI Install
   CliInstallDialog,
+  // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
+  SpecListHeader,
+  GlobalAgentPanel,
+  ErrorBanner,
 } from './components';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore } from './stores';
-import { clsx } from 'clsx';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -35,7 +36,7 @@ const BOTTOM_PANE_MAX = 400;
 
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects } = useProjectStore();
-  const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
+  const { selectedSpec, specDetail, specs, loadSpecs } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
 
@@ -196,30 +197,30 @@ export function App() {
             style={{ width: leftPaneWidth }}
             className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900"
           >
-            <ProjectSelector />
+            {/* Task 6.1 (sidebar-refactor): 新しいサイドバー構成 */}
+            {/* Task 1.3: ProjectSelector削除済み - プロジェクト選択はメニューバー経由 */}
 
-            {/* New spec button */}
-            {currentProject && kiroValidation?.exists && (
-              <div className="px-4 py-2">
-                <button
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className={clsx(
-                    'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md',
-                    'bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium'
-                  )}
-                >
-                  <Plus className="w-4 h-4" />
-                  新規仕様を作成
-                </button>
-              </div>
+            {/* 1. ErrorBanner (問題がある場合のみ表示) */}
+            <ErrorBanner />
+
+            {/* 3. SpecListHeader (新規作成ボタン付き) */}
+            {currentProject && (
+              <SpecListHeader
+                specCount={specs.length}
+                onCreateClick={() => setIsCreateDialogOpen(true)}
+                disabled={!kiroValidation?.exists}
+              />
             )}
 
-            {/* Spec list */}
+            {/* 4. Spec list (スクロール可能) */}
             {currentProject && kiroValidation?.exists && (
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
                 <SpecList />
               </div>
             )}
+
+            {/* 5. GlobalAgentPanel (下部固定) */}
+            <GlobalAgentPanel />
           </aside>
 
           {/* Left resize handle */}

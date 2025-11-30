@@ -5,7 +5,7 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
  */
 
-import { FileText, ChevronUp, ChevronDown, Filter, Loader2, Bot } from 'lucide-react';
+import { Filter, Loader2, Bot } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
@@ -32,14 +32,10 @@ const PHASE_COLORS: Record<SpecPhase, string> = {
 export function SpecList() {
   const {
     selectedSpec,
-    sortBy,
-    sortOrder,
     statusFilter,
     isLoading,
     error,
     selectSpec,
-    setSortBy,
-    setSortOrder,
     setStatusFilter,
     getSortedFilteredSpecs,
   } = useSpecStore();
@@ -49,34 +45,10 @@ export function SpecList() {
 
   const specs = getSortedFilteredSpecs();
 
-  const handleSort = (field: 'name' | 'updatedAt' | 'phase') => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const SortIcon = sortOrder === 'asc' ? ChevronUp : ChevronDown;
-
   return (
     <div className="flex flex-col h-full">
-      {/* Header with filter */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-gray-500" />
-            <h2 className="font-semibold text-gray-700 dark:text-gray-300">
-              仕様一覧
-            </h2>
-          </div>
-          <span className="text-xs text-gray-500">
-            {specs.length} 件
-          </span>
-        </div>
-
-        {/* Filter */}
+      {/* Filter - ヘッダーはSpecListHeaderに分離済み */}
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
           <select
@@ -98,31 +70,6 @@ export function SpecList() {
             <option value="implementation-complete">実装完了</option>
           </select>
         </div>
-      </div>
-
-      {/* Sort headers */}
-      <div className="flex px-4 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 dark:border-gray-800 gap-3">
-        <button
-          onClick={() => handleSort('name')}
-          className="flex items-center gap-1 hover:text-gray-700"
-        >
-          名前
-          {sortBy === 'name' && <SortIcon className="w-3 h-3" />}
-        </button>
-        <button
-          onClick={() => handleSort('phase')}
-          className="flex items-center gap-1 hover:text-gray-700"
-        >
-          フェーズ
-          {sortBy === 'phase' && <SortIcon className="w-3 h-3" />}
-        </button>
-        <button
-          onClick={() => handleSort('updatedAt')}
-          className="flex items-center gap-1 hover:text-gray-700"
-        >
-          更新
-          {sortBy === 'updatedAt' && <SortIcon className="w-3 h-3" />}
-        </button>
       </div>
 
       {/* List */}

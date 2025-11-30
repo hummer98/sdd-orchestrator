@@ -195,6 +195,10 @@ export interface ElectronAPI {
   executeSpecStatus(specId: string, featureName: string): Promise<AgentInfo>;
   executeTaskImpl(specId: string, featureName: string, taskId: string): Promise<AgentInfo>;
 
+  // Spec Init (Task 5.2 sidebar-refactor)
+  // Launch spec-manager:init agent with description only
+  executeSpecInit(projectPath: string, description: string): Promise<string>;
+
   // Agent Events (Task 27.2)
   // Requirements: 9.1-9.10
   onAgentOutput(

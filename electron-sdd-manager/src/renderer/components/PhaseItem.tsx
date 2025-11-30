@@ -4,6 +4,7 @@
  * Requirements: 2.1-2.5, 5.1, 5.2
  */
 
+import { useState } from 'react';
 import { clsx } from 'clsx';
 import {
   Play,
@@ -12,13 +13,25 @@ import {
   Ban,
   PlayCircle,
   Loader2,
+  Info,
 } from 'lucide-react';
 import type { PhaseStatus, WorkflowPhase } from '../types/workflow';
+import { InfoDialog } from './InfoDialog';
 
 // ============================================================
 // Task 3.1, 3.2, 3.3: PhaseItem Props
 // Requirements: 2.1-2.5, 5.1, 5.2
 // ============================================================
+
+/** フェーズ種別ごとの説明 */
+const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
+  requirements: '機能の要件を定義します。\n\nEARS形式で機能要件・非機能要件を明確化し、受け入れ基準を設定します。\n\n📝 実行するとrequirements.mdが生成され、ステータスが「生成完了」に変わります。',
+  design: '技術設計を作成します。\n\n要件を実現するためのアーキテクチャ、データモデル、APIインターフェースなどを設計します。\n\n📝 実行するとdesign.mdが生成され、ステータスが「生成完了」に変わります。',
+  tasks: '実装タスクを生成します。\n\n設計に基づいて、実装すべき具体的なタスクをTDD方式で分解します。\n\n📝 実行するとtasks.mdが生成され、ステータスが「生成完了」に変わります。',
+  impl: 'タスクを実装します。\n\nテスト駆動開発(TDD)で、タスクごとにテスト→実装→リファクタリングを行います。\n\n📝 実行するとコードが生成・変更され、タスクの進捗が更新されます。',
+  inspection: '品質検査を実施します。\n\n実装が要件・設計を満たしているか、テストカバレッジや品質基準を検証します。\n\n📝 実行するとステータスが「完了」に変わります。',
+  deploy: 'デプロイを実行します。\n\n検査を通過した実装を本番環境にリリースします。\n\n📝 実行するとステータスが「完了」に変わります。',
+};
 
 export interface PhaseItemProps {
   /** フェーズ種別 */
@@ -61,11 +74,14 @@ export function PhaseItem({
   onToggleAutoPermission,
   onShowAgentLog,
 }: PhaseItemProps) {
+  const [showInfo, setShowInfo] = useState(false);
+
   // Task 3.2: 承認して実行ボタンの表示条件
   const showApproveAndExecute =
     previousStatus === 'generated' && status === 'pending' && !isExecuting && canExecute;
 
   return (
+    <>
     <div
       className={clsx(
         'flex items-center justify-between p-3 rounded-lg',
@@ -73,33 +89,47 @@ export function PhaseItem({
         'transition-colors'
       )}
     >
-      {/* 左側: 自動実行許可アイコン + フェーズ名 */}
-      <button
-        data-testid="phase-toggle"
-        onClick={onToggleAutoPermission}
-        className={clsx(
-          'flex items-center gap-2',
-          'hover:bg-gray-100 dark:hover:bg-gray-700',
-          'rounded px-2 py-1 -ml-2',
-          'transition-colors'
-        )}
-      >
-        {/* Task 3.3: 自動実行許可アイコン */}
-        {autoExecutionPermitted ? (
-          <PlayCircle
-            data-testid="auto-permitted-icon"
-            className="w-4 h-4 text-green-500"
-          />
-        ) : (
-          <Ban
-            data-testid="auto-forbidden-icon"
-            className="w-4 h-4 text-gray-400"
-          />
-        )}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
-          {label}
-        </span>
-      </button>
+      {/* 左側: 自動実行許可アイコン + フェーズ名 + infoアイコン */}
+      <div className="flex items-center gap-1">
+        <button
+          data-testid="phase-toggle"
+          onClick={onToggleAutoPermission}
+          className={clsx(
+            'flex items-center gap-2',
+            'hover:bg-gray-100 dark:hover:bg-gray-700',
+            'rounded px-2 py-1 -ml-2',
+            'transition-colors'
+          )}
+        >
+          {/* Task 3.3: 自動実行許可アイコン */}
+          {autoExecutionPermitted ? (
+            <PlayCircle
+              data-testid="auto-permitted-icon"
+              className="w-4 h-4 text-green-500"
+            />
+          ) : (
+            <Ban
+              data-testid="auto-forbidden-icon"
+              className="w-4 h-4 text-gray-400"
+            />
+          )}
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {label}
+          </span>
+        </button>
+        <button
+          onClick={() => setShowInfo(true)}
+          className={clsx(
+            'p-1 rounded',
+            'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+            'hover:bg-gray-200 dark:hover:bg-gray-600',
+            'transition-colors'
+          )}
+          title="詳細を表示"
+        >
+          <Info className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* 右側: 状態表示とアクションボタン */}
       <div className="flex items-center gap-2">
@@ -191,5 +221,14 @@ export function PhaseItem({
         )}
       </div>
     </div>
+
+    {/* Info Dialog */}
+    <InfoDialog
+      isOpen={showInfo}
+      title={label}
+      description={PHASE_DESCRIPTIONS[phase]}
+      onClose={() => setShowInfo(false)}
+    />
+    </>
   );
 }

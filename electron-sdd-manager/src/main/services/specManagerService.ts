@@ -17,6 +17,59 @@ import { logger } from './logger';
 /** Maximum number of continue retries */
 export const MAX_CONTINUE_RETRIES = 2;
 
+// ============================================================
+// Claude CLI Arguments Builder
+// ============================================================
+
+/**
+ * Claude CLI共通フラグ
+ * 全てのClaude CLI実行で必要な基本オプション
+ */
+const CLAUDE_CLI_BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json'] as const;
+
+/**
+ * Claude CLI引数構築オプション
+ */
+export interface ClaudeArgsOptions {
+  /** スラッシュコマンド（例: '/kiro:spec-requirements feature-name'） */
+  command?: string;
+  /** セッションID（resumeモード用） */
+  resumeSessionId?: string;
+  /** resumeモードのプロンプト */
+  resumePrompt?: string;
+}
+
+/**
+ * Claude CLI引数を構築する
+ *
+ * 全てのClaude CLI実行で共通フラグ（-p, --verbose, --output-format stream-json）を保証する
+ *
+ * @example
+ * // 通常のコマンド実行
+ * buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' })
+ * // => ['-p', '--verbose', '--output-format', 'stream-json', '/kiro:spec-requirements my-feature']
+ *
+ * // セッションのresume
+ * buildClaudeArgs({ resumeSessionId: 'session-123', resumePrompt: 'continue' })
+ * // => ['-p', '--verbose', '--output-format', 'stream-json', '--resume', 'session-123', 'continue']
+ */
+export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
+  const args: string[] = [...CLAUDE_CLI_BASE_FLAGS];
+
+  if (options.resumeSessionId) {
+    args.push('--resume', options.resumeSessionId);
+    if (options.resumePrompt) {
+      args.push(options.resumePrompt);
+    }
+  }
+
+  if (options.command) {
+    args.push(options.command);
+  }
+
+  return args;
+}
+
 export type ExecutionGroup = 'doc' | 'validate' | 'impl';
 
 /** ワークフローフェーズ */
@@ -490,7 +543,7 @@ export class SpecManagerService {
     }
 
     const resumePrompt = prompt || '続けて';
-    const args = ['-p', '--verbose', '--output-format', 'stream-json', '--resume', agent.sessionId, resumePrompt];
+    const args = buildClaudeArgs({ resumeSessionId: agent.sessionId, resumePrompt });
     const command = 'claude';
     const now = new Date().toISOString();
 
@@ -660,7 +713,7 @@ export class SpecManagerService {
       specId,
       phase,
       command: 'claude',
-      args: ['-p', '--verbose', '--output-format', 'stream-json', `${slashCommand} ${featureName}`],
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group,
     });
   }
@@ -680,7 +733,7 @@ export class SpecManagerService {
       specId,
       phase,
       command: 'claude',
-      args: ['-p', '--verbose', '--output-format', 'stream-json', `${slashCommand} ${featureName}`],
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'validate',
     });
   }
@@ -695,7 +748,7 @@ export class SpecManagerService {
       specId,
       phase: 'status',
       command: 'claude',
-      args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-status ${featureName}`],
+      args: buildClaudeArgs({ command: `/kiro:spec-status ${featureName}` }),
       group: 'doc',
     });
   }
@@ -713,7 +766,7 @@ export class SpecManagerService {
       specId,
       phase: `impl-${taskId}`,
       command: 'claude',
-      args: ['-p', '--verbose', '--output-format', 'stream-json', `/kiro:spec-impl ${featureName} ${taskId}`],
+      args: buildClaudeArgs({ command: `/kiro:spec-impl ${featureName} ${taskId}` }),
       group: 'impl',
     });
   }
@@ -847,25 +900,10 @@ export class SpecManagerService {
     try {
       // Build command
       const slashCommand = SPEC_MANAGER_COMMANDS[phase];
-      let commandArgs: string[];
-
-      if (phase === 'impl' && taskId) {
-        commandArgs = [
-          '-p',
-          '--verbose',
-          '--output-format',
-          'stream-json',
-          `${slashCommand} ${featureName} ${taskId}`,
-        ];
-      } else {
-        commandArgs = [
-          '-p',
-          '--verbose',
-          '--output-format',
-          'stream-json',
-          `${slashCommand} ${featureName}`,
-        ];
-      }
+      const command = phase === 'impl' && taskId
+        ? `${slashCommand} ${featureName} ${taskId}`
+        : `${slashCommand} ${featureName}`;
+      const commandArgs = buildClaudeArgs({ command });
 
       // Start agent
       const result = await this.startAgent({
@@ -933,7 +971,7 @@ export class SpecManagerService {
       specId: originalAgent.specId,
       phase: originalAgent.phase,
       command: 'claude',
-      args: ['-p', '--resume', sessionId, 'continue'],
+      args: buildClaudeArgs({ resumeSessionId: sessionId, resumePrompt: 'continue' }),
       sessionId,
     });
   }

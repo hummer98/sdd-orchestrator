@@ -16,7 +16,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { SpecManagerService, ExecutionGroup } from './specManagerService';
+import { SpecManagerService, ExecutionGroup, buildClaudeArgs } from './specManagerService';
 
 describe('SpecManagerService', () => {
   let testDir: string;
@@ -588,5 +588,46 @@ describe('SpecManagerService', () => {
       expect(allAgents.get('spec-a')).toHaveLength(1);
       expect(allAgents.get('spec-b')).toHaveLength(1);
     });
+  });
+});
+
+/**
+ * buildClaudeArgs Tests
+ * Claude CLI引数の一元管理
+ */
+describe('buildClaudeArgs', () => {
+  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json'];
+
+  it('should build args with command only', () => {
+    const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
+    expect(args).toEqual([...BASE_FLAGS, '/kiro:spec-requirements my-feature']);
+  });
+
+  it('should build args with resume session and prompt', () => {
+    const args = buildClaudeArgs({
+      resumeSessionId: 'session-123',
+      resumePrompt: 'continue',
+    });
+    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-123', 'continue']);
+  });
+
+  it('should build args with resume session and Japanese prompt', () => {
+    const args = buildClaudeArgs({
+      resumeSessionId: 'session-456',
+      resumePrompt: '続けて',
+    });
+    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-456', '続けて']);
+  });
+
+  it('should include base flags without any options', () => {
+    const args = buildClaudeArgs({});
+    expect(args).toEqual(BASE_FLAGS);
+  });
+
+  it('should handle resume without prompt', () => {
+    const args = buildClaudeArgs({
+      resumeSessionId: 'session-789',
+    });
+    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-789']);
   });
 });

@@ -193,14 +193,12 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             color: 'red',
           });
         } else {
-          const normalizedResult = event.result?.replace(/\\n/g, '\n') || '';
-          const resultLines = normalizedResult.split('\n').slice(0, 5);
+          // 完了ログは常にすべて表示
           lines.push({
             type: 'result',
             icon: '✅',
             label: '完了',
-            content: resultLines.join('\n'),
-            details: normalizedResult.split('\n').length > 5 ? `(+${normalizedResult.split('\n').length - 5} 行)` : undefined,
+            content: event.result?.replace(/\\n/g, '\n') || '',
             color: 'green',
           });
         }

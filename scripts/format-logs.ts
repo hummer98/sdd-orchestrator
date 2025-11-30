@@ -248,9 +248,58 @@ async function processAgentLogFile(filePath: string, options: { verbose: boolean
     lines.push(line);
   }
 
-  const targetLines = options.tail > 0 ? lines.slice(-options.tail) : lines;
+  // result（完了/エラー）イベントは常にすべて表示
+  // 他のイベントはtail制限を適用
+  const resultLines: string[] = [];
+  const otherLines: string[] = [];
 
-  for (const line of targetLines) {
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    try {
+      const entry = JSON.parse(line) as AgentLogEntry;
+      // エントリ内のデータをチェックしてresultイベントか判定
+      const dataLines = entry.data.split('\n').filter(l => l.trim());
+      let isResult = false;
+      for (const dataLine of dataLines) {
+        try {
+          const event = JSON.parse(dataLine) as ClaudeEvent;
+          if (event.type === 'result') {
+            isResult = true;
+            break;
+          }
+        } catch {
+          // JSONでない場合は無視
+        }
+      }
+      if (isResult) {
+        resultLines.push(line);
+      } else {
+        otherLines.push(line);
+      }
+    } catch {
+      // パースできない場合はその他として扱う
+      otherLines.push(line);
+    }
+  }
+
+  // tail制限を適用（result以外のみ）
+  const targetOtherLines = options.tail > 0 ? otherLines.slice(-options.tail) : otherLines;
+
+  // 全行をタイムスタンプでソートして表示
+  const allTargetLines = [...targetOtherLines, ...resultLines];
+
+  // タイムスタンプでソート
+  allTargetLines.sort((a, b) => {
+    try {
+      const entryA = JSON.parse(a) as AgentLogEntry;
+      const entryB = JSON.parse(b) as AgentLogEntry;
+      return new Date(entryA.timestamp).getTime() - new Date(entryB.timestamp).getTime();
+    } catch {
+      return 0;
+    }
+  });
+
+  for (const line of allTargetLines) {
     if (!line.trim()) continue;
 
     try {

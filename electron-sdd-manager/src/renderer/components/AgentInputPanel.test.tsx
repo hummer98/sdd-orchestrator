@@ -61,7 +61,13 @@ describe('AgentInputPanel - Task 32', () => {
     it('should render send button', () => {
       render(<AgentInputPanel />);
 
-      expect(screen.getByRole('button', { name: '続行' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '送信' })).toBeInTheDocument();
+    });
+
+    it('should render continue shortcut button', () => {
+      render(<AgentInputPanel />);
+
+      expect(screen.getByRole('button', { name: '続行を指示' })).toBeInTheDocument();
     });
 
     it('should call resumeAgent when send button is clicked', async () => {
@@ -70,7 +76,7 @@ describe('AgentInputPanel - Task 32', () => {
       const input = screen.getByPlaceholderText('追加の指示を入力...');
       await userEvent.type(input, 'test input');
 
-      const sendButton = screen.getByRole('button', { name: '続行' });
+      const sendButton = screen.getByRole('button', { name: '送信' });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -100,13 +106,24 @@ describe('AgentInputPanel - Task 32', () => {
       });
     });
 
-    it('should not send empty input', async () => {
+    it('should not send empty input via send button', async () => {
       render(<AgentInputPanel />);
 
-      const sendButton = screen.getByRole('button', { name: '続行' });
+      const sendButton = screen.getByRole('button', { name: '送信' });
       fireEvent.click(sendButton);
 
       expect(mockResumeAgent).not.toHaveBeenCalled();
+    });
+
+    it('should call resumeAgent with 続けて when continue shortcut button is clicked', async () => {
+      render(<AgentInputPanel />);
+
+      const continueButton = screen.getByRole('button', { name: '続行を指示' });
+      fireEvent.click(continueButton);
+
+      await waitFor(() => {
+        expect(mockResumeAgent).toHaveBeenCalledWith('agent-1', '続けて');
+      });
     });
 
     it('should disable input when no agent is selected', () => {

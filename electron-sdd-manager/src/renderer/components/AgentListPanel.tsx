@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Bot, PlayCircle, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { clsx } from 'clsx';
@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
 
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
-  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
   if (!selectedSpec) {
@@ -88,11 +88,6 @@ export function AgentListPanel() {
   const handleStop = async (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await stopAgent(agentId);
-  };
-
-  const handleResume = async (agentId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    await resumeAgent(agentId);
   };
 
   const handleRemoveClick = (agent: AgentInfo, e: React.MouseEvent) => {
@@ -138,7 +133,6 @@ export function AgentListPanel() {
               isSelected={selectedAgentId === agent.agentId}
               onSelect={() => selectAgent(agent.agentId)}
               onStop={(e) => handleStop(agent.agentId, e)}
-              onResume={(e) => handleResume(agent.agentId, e)}
               onRemove={(e) => handleRemoveClick(agent, e)}
             />
           ))}
@@ -181,14 +175,12 @@ interface AgentListItemProps {
   isSelected: boolean;
   onSelect: () => void;
   onStop: (e: React.MouseEvent) => void;
-  onResume: (e: React.MouseEvent) => void;
   onRemove: (e: React.MouseEvent) => void;
 }
 
-function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove }: AgentListItemProps) {
+function AgentListItem({ agent, isSelected, onSelect, onStop, onRemove }: AgentListItemProps) {
   const statusConfig = STATUS_CONFIG[agent.status];
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
-  const showResumeButton = agent.status === 'interrupted';
   const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
   const isRunning = agent.status === 'running';
 
@@ -252,20 +244,6 @@ function AgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove
               aria-label="停止"
             >
               <StopCircle className="w-4 h-4" />
-            </button>
-          )}
-
-          {showResumeButton && (
-            <button
-              onClick={onResume}
-              className={clsx(
-                'p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30',
-                'text-green-600 dark:text-green-400'
-              )}
-              title="続けて"
-              aria-label="続けて"
-            >
-              <PlayCircle className="w-4 h-4" />
             </button>
           )}
 

@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { Play, History, Clock } from 'lucide-react';
+import { Send, Play, History, Clock } from 'lucide-react';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
 
@@ -94,13 +94,29 @@ export function AgentInputPanel() {
           className={clsx(
             'flex items-center gap-1 px-3 py-2 rounded-md',
             'text-sm font-medium',
-            'bg-green-500 text-white hover:bg-green-600',
+            'bg-blue-500 text-white hover:bg-blue-600',
             'disabled:bg-gray-300 dark:disabled:bg-gray-700',
             'disabled:cursor-not-allowed disabled:opacity-50'
           )}
         >
+          <Send className="w-4 h-4" />
+          送信
+        </button>
+        <button
+          type="button"
+          disabled={isDisabled}
+          onClick={() => handleSend('続けて')}
+          className={clsx(
+            'flex items-center gap-1 px-3 py-2 rounded-md',
+            'text-sm font-medium',
+            'bg-green-500 text-white hover:bg-green-600',
+            'disabled:bg-gray-300 dark:disabled:bg-gray-700',
+            'disabled:cursor-not-allowed disabled:opacity-50'
+          )}
+          title="「続けて」を送信"
+        >
           <Play className="w-4 h-4" />
-          続行
+          続行を指示
         </button>
       </form>
 

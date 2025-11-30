@@ -164,49 +164,6 @@ describe('AgentListPanel - Task 30', () => {
     });
   });
 
-  describe('Task 30.2: 「続けて」ボタン', () => {
-    it('should show continue button for interrupted agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'interrupted' }]);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: null,
-        stopAgent: mockStopAgent,
-        resumeAgent: mockResumeAgent,
-        selectAgent: mockSelectAgent,
-        getAgentsForSpec: mockGetAgentsForSpec,
-      });
-
-      render(<AgentListPanel />);
-
-      expect(screen.getByRole('button', { name: '続けて' })).toBeInTheDocument();
-    });
-
-    it('should not show continue button for running agent', () => {
-      render(<AgentListPanel />);
-
-      expect(screen.queryByRole('button', { name: '続けて' })).not.toBeInTheDocument();
-    });
-
-    it('should call resumeAgent when continue button is clicked', async () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'interrupted' }]);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: null,
-        stopAgent: mockStopAgent,
-        resumeAgent: mockResumeAgent,
-        selectAgent: mockSelectAgent,
-        getAgentsForSpec: mockGetAgentsForSpec,
-      });
-
-      render(<AgentListPanel />);
-
-      const continueButton = screen.getByRole('button', { name: '続けて' });
-      fireEvent.click(continueButton);
-
-      await waitFor(() => {
-        expect(mockResumeAgent).toHaveBeenCalledWith('agent-1');
-      });
-    });
-  });
-
   describe('Task 30.4: タグにtooltipでagentId/sessionId表示', () => {
     it('should display agentId and sessionId in tooltip', () => {
       render(<AgentListPanel />);

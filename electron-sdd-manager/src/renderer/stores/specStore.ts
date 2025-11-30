@@ -382,13 +382,12 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
 
     try {
       // Call main process to execute spec-manager phase
-      await window.electronAPI.executeSpecManagerPhase({
-        specId,
-        phase,
-        featureName,
-        taskId,
-        executionMode,
-      });
+      // Use existing executePhase API for phase execution
+      if (phase === 'impl' && taskId) {
+        await window.electronAPI.executeTaskImpl(specId, featureName, taskId);
+      } else {
+        await window.electronAPI.executePhase(specId, phase, featureName);
+      }
 
       // Note: Actual completion handling is done via IPC callbacks
       // The running state will be updated when the agent completes

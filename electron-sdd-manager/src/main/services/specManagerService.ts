@@ -12,7 +12,6 @@ import { AgentRecordService } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
-import { FileService } from './fileService';
 import { logger } from './logger';
 
 /** Maximum number of continue retries */
@@ -143,7 +142,6 @@ export class SpecManagerService {
   private recordService: AgentRecordService;
   private logService: LogFileService;
   private logParserService: LogParserService;
-  private fileService: FileService;
   private implAnalyzer: ImplCompletionAnalyzer | null = null;
   private processes: Map<string, AgentProcess> = new Map();
   private projectPath: string;
@@ -152,7 +150,6 @@ export class SpecManagerService {
 
   // Mutex for spec-manager operations
   private specManagerLock: string | null = null;
-  private specManagerLockPromise: Promise<void> | null = null;
   private specManagerLockResolve: (() => void) | null = null;
 
   constructor(projectPath: string) {
@@ -166,7 +163,6 @@ export class SpecManagerService {
       path.join(projectPath, '.kiro', 'specs')
     );
     this.logParserService = new LogParserService();
-    this.fileService = new FileService();
 
     // Initialize ImplCompletionAnalyzer if API key is available
     const analyzerResult = createImplCompletionAnalyzer();
@@ -691,7 +687,8 @@ export class SpecManagerService {
     }
 
     this.specManagerLock = lockId;
-    this.specManagerLockPromise = new Promise((resolve) => {
+    // Store resolve callback for later use when releasing lock
+    new Promise<void>((resolve) => {
       this.specManagerLockResolve = resolve;
     });
 
@@ -710,7 +707,6 @@ export class SpecManagerService {
         this.specManagerLockResolve();
         this.specManagerLockResolve = null;
       }
-      this.specManagerLockPromise = null;
       logger.info('[SpecManagerService] Released spec-manager lock', { lockId });
     }
   }

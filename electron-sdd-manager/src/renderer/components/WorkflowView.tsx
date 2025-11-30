@@ -4,16 +4,19 @@
  * Requirements: 1.1-1.4, 3.1-3.5, 5.2-5.8, 6.1-6.6, 7.1-7.6, 9.1-9.3
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle, RotateCcw } from 'lucide-react';
 import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
+import type { AutoExecutionStatus } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
 import { PhaseItem } from './PhaseItem';
 import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
+import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
+import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
 import {
   WORKFLOW_PHASES,
   PHASE_LABELS,
@@ -37,7 +40,14 @@ export function WorkflowView() {
   const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
   const workflowStore = useWorkflowStore();
   const agentStore = useAgentStore();
+  const autoExecutionServiceRef = useRef(getAutoExecutionService());
 
+  // Cleanup AutoExecutionService on unmount
+  useEffect(() => {
+    return () => {
+      disposeAutoExecutionService();
+    };
+  }, []);
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
@@ -210,14 +220,32 @@ export function WorkflowView() {
     }
   }, [agentStore, specDetail]);
 
+  // Task 10.1: Auto execution button handler
+  // Requirements: 1.1, 1.2
   const handleAutoExecution = useCallback(() => {
+    const service = autoExecutionServiceRef.current;
     if (workflowStore.isAutoExecuting) {
-      workflowStore.stopAutoExecution();
+      service.stop();
     } else {
-      workflowStore.startAutoExecution();
-      // TODO: Implement auto execution loop
+      const started = service.start();
+      if (!started) {
+        notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
+      }
     }
-  }, [workflowStore]);
+  }, [workflowStore.isAutoExecuting]);
+
+  // Task 10.4: Retry handler
+  // Requirements: 8.2, 8.3
+  const handleRetry = useCallback(() => {
+    const service = autoExecutionServiceRef.current;
+    const lastFailedPhase = workflowStore.lastFailedPhase;
+    if (lastFailedPhase) {
+      const retried = service.retryFrom(lastFailedPhase);
+      if (!retried) {
+        notify.error('リトライできませんでした。');
+      }
+    }
+  }, [workflowStore.lastFailedPhase]);
 
   const handleSpecStatus = useCallback(async () => {
     if (!specDetail) return;
@@ -298,6 +326,7 @@ export function WorkflowView() {
               autoExecutionPermitted={workflowStore.autoExecutionPermissions[phase]}
               isExecuting={runningPhases.has(phase)}
               canExecute={canExecutePhase(phase)}
+              isAutoPhase={workflowStore.isAutoExecuting && workflowStore.currentAutoPhase === phase}
               onExecute={() => handleExecutePhase(phase)}
               onApprove={() => handleApprovePhase(phase)}
               onApproveAndExecute={() => handleApproveAndExecutePhase(phase)}
@@ -356,18 +385,32 @@ export function WorkflowView() {
           onClearError={clearSpecManagerError}
         />
 
+        {/* Task 11.2: Auto Execution Status Display */}
+        {/* Requirements: 5.1, 5.5, 8.2 */}
+        <AutoExecutionStatusDisplay
+          status={workflowStore.autoExecutionStatus}
+          currentPhase={workflowStore.currentAutoPhase}
+          lastFailedPhase={workflowStore.lastFailedPhase}
+          retryCount={workflowStore.failedRetryCount}
+          onRetry={handleRetry}
+          onStop={() => autoExecutionServiceRef.current.stop()}
+        />
+
       </div>
 
       {/* Footer Buttons */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
         <button
           onClick={handleAutoExecution}
+          disabled={!workflowStore.isAutoExecuting && runningPhases.size > 0}
           className={clsx(
             'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded',
             'font-medium transition-colors',
             workflowStore.isAutoExecuting
               ? 'bg-red-500 text-white hover:bg-red-600'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
+              : runningPhases.size > 0
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
           )}
         >
           {workflowStore.isAutoExecuting ? (

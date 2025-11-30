@@ -19,7 +19,7 @@ export default defineConfig({
           build: {
             outDir: 'dist/main',
             rollupOptions: {
-              external: ['electron', 'electron-store'],
+              external: ['electron'],
             },
           },
         },

@@ -70,6 +70,7 @@ function createWindow(): void {
     y: savedBounds?.y,
     minWidth: 800,
     minHeight: 600,
+    title: isDev ? 'SDD Orchestrator (dev)' : 'SDD Orchestrator',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -108,6 +109,12 @@ function createWindow(): void {
 
 // Application lifecycle
 app.whenReady().then(async () => {
+  // Set app name with (dev) suffix in development mode
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    app.setName(`${app.name} (dev)`);
+  }
+
   // Register IPC handlers
   registerIpcHandlers();
 

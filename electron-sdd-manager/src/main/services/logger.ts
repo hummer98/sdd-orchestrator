@@ -5,15 +5,25 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { app } from 'electron';
 
 class Logger {
   private logPath: string;
   private stream: fs.WriteStream | null = null;
 
   constructor() {
-    // Use project directory for logs (electron-sdd-manager/logs)
-    const projectRoot = path.resolve(__dirname, '..', '..', '..');
-    const logsDir = path.join(projectRoot, 'logs');
+    // Determine logs directory based on whether app is packaged
+    let logsDir: string;
+
+    if (app.isPackaged) {
+      // Production: Use macOS standard log directory
+      // ~/Library/Logs/SDD Orchestrator/
+      logsDir = path.join(app.getPath('logs'));
+    } else {
+      // Development: Use project directory (electron-sdd-manager/logs)
+      const projectRoot = path.resolve(__dirname, '..', '..', '..');
+      logsDir = path.join(projectRoot, 'logs');
+    }
 
     // Ensure logs directory exists
     if (!fs.existsSync(logsDir)) {

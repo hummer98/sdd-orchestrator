@@ -54,22 +54,23 @@ function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
 
 export function createMenu(): void {
   const isDev = !app.isPackaged;
+  const appName = app.name; // Will be "SDD Orchestrator (dev)" in dev mode
   const template: (Electron.MenuItemConstructorOptions | MenuItem)[] = [
     // macOS app menu
     ...(isMac
       ? [
           {
-            label: 'SDD Orchestrator',
+            label: appName,
             submenu: [
-              { role: 'about' as const, label: 'SDD Orchestratorについて' },
+              { role: 'about' as const, label: `${appName}について` },
               { type: 'separator' as const },
               { role: 'services' as const, label: 'サービス' },
               { type: 'separator' as const },
-              { role: 'hide' as const, label: 'SDD Orchestratorを隠す' },
+              { role: 'hide' as const, label: `${appName}を隠す` },
               { role: 'hideOthers' as const, label: '他を隠す' },
               { role: 'unhide' as const, label: 'すべてを表示' },
               { type: 'separator' as const },
-              { role: 'quit' as const, label: 'SDD Orchestratorを終了' },
+              { role: 'quit' as const, label: `${appName}を終了` },
             ],
           },
         ]

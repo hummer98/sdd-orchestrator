@@ -173,7 +173,7 @@ export function App() {
         {/* Header - draggable for window movement on macOS */}
         <header className="titlebar-drag h-12 flex items-center pl-20 pr-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
           <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
-            SDD Orchestrator
+            SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
           </h1>
           {/* Spec title in header */}
           {specDetail && (

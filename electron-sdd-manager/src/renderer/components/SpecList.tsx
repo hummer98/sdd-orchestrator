@@ -101,24 +101,24 @@ export function SpecList() {
       </div>
 
       {/* Sort headers */}
-      <div className="flex px-4 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex px-4 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 dark:border-gray-800 gap-3">
         <button
           onClick={() => handleSort('name')}
-          className="flex items-center gap-1 hover:text-gray-700 flex-1"
+          className="flex items-center gap-1 hover:text-gray-700"
         >
           名前
           {sortBy === 'name' && <SortIcon className="w-3 h-3" />}
         </button>
         <button
           onClick={() => handleSort('phase')}
-          className="flex items-center gap-1 hover:text-gray-700 w-24"
+          className="flex items-center gap-1 hover:text-gray-700"
         >
           フェーズ
           {sortBy === 'phase' && <SortIcon className="w-3 h-3" />}
         </button>
         <button
           onClick={() => handleSort('updatedAt')}
-          className="flex items-center gap-1 hover:text-gray-700 w-20"
+          className="flex items-center gap-1 hover:text-gray-700"
         >
           更新
           {sortBy === 'updatedAt' && <SortIcon className="w-3 h-3" />}
@@ -198,46 +198,47 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
       <button
         onClick={onSelect}
         className={clsx(
-          'w-full px-4 py-3 text-left',
-          'flex items-center gap-3',
+          'w-full px-4 py-2.5 text-left',
+          'flex flex-col gap-1',
           'border-b border-gray-100 dark:border-gray-800',
           'hover:bg-gray-50 dark:hover:bg-gray-800/50',
           'transition-colors',
           isSelected && 'bg-blue-100 dark:bg-blue-800/40 border-l-4 border-l-blue-500'
         )}
       >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
-              {spec.name}
+        {/* 1行目: 名前とエージェント数 */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
+            {spec.name}
+          </span>
+          {runningAgentCount > 0 && (
+            <span
+              data-testid={`agent-count-${spec.name}`}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
+            >
+              <Bot className="w-3 h-3" />
+              {runningAgentCount}
             </span>
-            {runningAgentCount > 0 && (
-              <span
-                data-testid={`agent-count-${spec.name}`}
-                className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
-              >
-                <Bot className="w-3 h-3" />
-                {runningAgentCount}
-              </span>
-            )}
-          </div>
+          )}
         </div>
 
-        <span
-          className={clsx(
-            'px-2 py-0.5 text-xs rounded-full',
-            PHASE_COLORS[spec.phase]
-          )}
-        >
-          {PHASE_LABELS[spec.phase]}
-        </span>
-
-        <span
-          className="text-xs text-gray-400 w-16 text-right"
-          title={tooltipDate}
-        >
-          {formattedDate}
-        </span>
+        {/* 2行目: フェーズと更新日時 */}
+        <div className="flex items-center gap-2">
+          <span
+            className={clsx(
+              'px-2 py-0.5 text-xs rounded-full',
+              PHASE_COLORS[spec.phase]
+            )}
+          >
+            {PHASE_LABELS[spec.phase]}
+          </span>
+          <span
+            className="text-xs text-gray-400"
+            title={tooltipDate}
+          >
+            {formattedDate}
+          </span>
+        </div>
       </button>
     </li>
   );

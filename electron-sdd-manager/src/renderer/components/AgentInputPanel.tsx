@@ -62,7 +62,7 @@ export function AgentInputPanel() {
   };
 
   return (
-    <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div className="shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
       {/* Input form (Task 32.1) */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <input

@@ -94,7 +94,7 @@ export function App() {
   }, [setupEventListeners]);
 
   // Setup menu event listeners
-  const { forceReinstallAll, addShellPermissions } = useProjectStore();
+  const { forceReinstallAll, addShellPermissions, selectProject } = useProjectStore();
   const menuListenersSetup = useRef(false);
   useEffect(() => {
     if (menuListenersSetup.current) {
@@ -119,12 +119,19 @@ export function App() {
       }
     });
 
+    const cleanupOpenProject = window.electronAPI.onMenuOpenProject(async (projectPath: string) => {
+      console.log(`[App] Opening project from menu: ${projectPath}`);
+      await selectProject(projectPath);
+      await loadSpecs(projectPath);
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
       cleanupAddPermissions();
+      cleanupOpenProject();
     };
-  }, [forceReinstallAll, addShellPermissions]);
+  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {

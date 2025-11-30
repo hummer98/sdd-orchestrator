@@ -30,7 +30,7 @@ function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
     click: () => {
       const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
       if (window) {
-        window.webContents.send('menu:open-project', projectPath);
+        window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
       }
     },
   }));
@@ -91,7 +91,7 @@ export function createMenu(): void {
               });
 
               if (!result.canceled && result.filePaths.length > 0) {
-                window.webContents.send('menu:open-project', result.filePaths[0]);
+                window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
               }
             }
           },

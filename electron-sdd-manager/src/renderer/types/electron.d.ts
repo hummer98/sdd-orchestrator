@@ -210,6 +210,7 @@ export interface ElectronAPI {
   // Menu Events
   onMenuForceReinstall(callback: () => void): () => void;
   onMenuAddShellPermissions(callback: () => void): () => void;
+  onMenuOpenProject(callback: (projectPath: string) => void): () => void;
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;

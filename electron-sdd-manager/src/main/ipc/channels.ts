@@ -70,6 +70,7 @@ export const IPC_CHANNELS = {
 
   // Menu Events
   MENU_FORCE_REINSTALL: 'menu:force-reinstall',
+  MENU_OPEN_PROJECT: 'menu:open-project',
 
   // Phase Sync
   SYNC_SPEC_PHASE: 'ipc:sync-spec-phase',

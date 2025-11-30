@@ -266,6 +266,19 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS, handler);
     };
   },
+
+  // Menu Events - Open Project (from Recent Projects menu)
+  onMenuOpenProject: (callback: (projectPath: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, projectPath: string) => {
+      callback(projectPath);
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_OPEN_PROJECT, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_OPEN_PROJECT, handler);
+    };
+  },
 };
 
 // Expose API to renderer

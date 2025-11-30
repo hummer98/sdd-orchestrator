@@ -99,6 +99,7 @@ export function RejectDialog({
                 'w-full px-3 py-2 rounded-md resize-none',
                 'bg-gray-50 dark:bg-gray-800',
                 'border',
+                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
                 error
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500',

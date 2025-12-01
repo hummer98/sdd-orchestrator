@@ -404,19 +404,9 @@ export function registerIpcHandlers(): void {
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
-      // Set up event forwarding for the resumed agent
-      if (window) {
-        service.onOutput((aId, stream, data) => {
-          if (!window.isDestroyed()) {
-            window.webContents.send(IPC_CHANNELS.AGENT_OUTPUT, aId, stream, data);
-          }
-        });
-
-        service.onStatusChange((aId, status) => {
-          if (!window.isDestroyed()) {
-            window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, aId, status);
-          }
-        });
+      // Ensure event callbacks are registered (may not be if no START_AGENT was called yet)
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
       }
 
       const result = await service.resumeAgent(agentId, prompt);

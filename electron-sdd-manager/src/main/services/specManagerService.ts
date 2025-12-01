@@ -78,22 +78,49 @@ export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'insp
 /** バリデーションタイプ */
 export type ValidationType = 'gap' | 'design' | 'impl';
 
-/** フェーズ実行コマンドマッピング */
-const PHASE_COMMANDS: Record<WorkflowPhase, string> = {
-  requirements: '/kiro:spec-requirements',
-  design: '/kiro:spec-design',
-  tasks: '/kiro:spec-tasks',
-  impl: '/kiro:spec-impl',
-  inspection: '/kiro:validate-impl',
-  deploy: '/kiro:deployment',
+/** コマンドプレフィックス */
+export type CommandPrefix = 'kiro' | 'spec-manager';
+
+/** プレフィックス別フェーズ実行コマンドマッピング */
+const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
+  kiro: {
+    requirements: '/kiro:spec-requirements',
+    design: '/kiro:spec-design',
+    tasks: '/kiro:spec-tasks',
+    impl: '/kiro:spec-impl',
+    inspection: '/kiro:validate-impl',
+    deploy: '/kiro:deployment',
+  },
+  'spec-manager': {
+    requirements: '/spec-manager:requirements',
+    design: '/spec-manager:design',
+    tasks: '/spec-manager:tasks',
+    impl: '/spec-manager:impl',
+    inspection: '/spec-manager:validate-impl',
+    deploy: '/spec-manager:deployment',
+  },
 };
 
-/** バリデーションコマンドマッピング */
-const VALIDATION_COMMANDS: Record<ValidationType, string> = {
-  gap: '/kiro:validate-gap',
-  design: '/kiro:validate-design',
-  impl: '/kiro:validate-impl',
+/** プレフィックス別バリデーションコマンドマッピング */
+const VALIDATION_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<ValidationType, string>> = {
+  kiro: {
+    gap: '/kiro:validate-gap',
+    design: '/kiro:validate-design',
+    impl: '/kiro:validate-impl',
+  },
+  'spec-manager': {
+    gap: '/spec-manager:validate-gap',
+    design: '/spec-manager:validate-design',
+    impl: '/spec-manager:validate-impl',
+  },
 };
+
+/** spec-status コマンドマッピング */
+const SPEC_STATUS_COMMANDS: Record<CommandPrefix, string> = {
+  kiro: '/kiro:spec-status',
+  'spec-manager': '/spec-manager:status',
+};
+
 
 /** フェーズからExecutionGroupへのマッピング */
 const PHASE_GROUPS: Record<WorkflowPhase, ExecutionGroup> = {
@@ -118,18 +145,21 @@ export interface ExecutePhaseOptions {
   specId: string;
   phase: WorkflowPhase;
   featureName: string;
+  commandPrefix?: CommandPrefix;
 }
 
 export interface ExecuteValidationOptions {
   specId: string;
   type: ValidationType;
   featureName: string;
+  commandPrefix?: CommandPrefix;
 }
 
 export interface ExecuteTaskImplOptions {
   specId: string;
   featureName: string;
   taskId: string;
+  commandPrefix?: CommandPrefix;
 }
 
 /** spec-manager用フェーズタイプ */
@@ -703,11 +733,11 @@ export class SpecManagerService {
    * Builds the claude command internally
    */
   async executePhase(options: ExecutePhaseOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, featureName } = options;
-    const slashCommand = PHASE_COMMANDS[phase];
+    const { specId, phase, featureName, commandPrefix = 'kiro' } = options;
+    const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix][phase];
     const group = PHASE_GROUPS[phase];
 
-    logger.info('[SpecManagerService] executePhase called', { specId, phase, featureName, slashCommand, group });
+    logger.info('[SpecManagerService] executePhase called', { specId, phase, featureName, slashCommand, group, commandPrefix });
 
     return this.startAgent({
       specId,
@@ -723,11 +753,11 @@ export class SpecManagerService {
    * Builds the claude command internally
    */
   async executeValidation(options: ExecuteValidationOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, type, featureName } = options;
-    const slashCommand = VALIDATION_COMMANDS[type];
+    const { specId, type, featureName, commandPrefix = 'kiro' } = options;
+    const slashCommand = VALIDATION_COMMANDS_BY_PREFIX[commandPrefix][type];
     const phase = `validate-${type}`;
 
-    logger.info('[SpecManagerService] executeValidation called', { specId, type, featureName, slashCommand });
+    logger.info('[SpecManagerService] executeValidation called', { specId, type, featureName, slashCommand, commandPrefix });
 
     return this.startAgent({
       specId,
@@ -741,32 +771,34 @@ export class SpecManagerService {
   /**
    * Execute spec-status command
    */
-  async executeSpecStatus(specId: string, featureName: string): Promise<Result<AgentInfo, AgentError>> {
-    logger.info('[SpecManagerService] executeSpecStatus called', { specId, featureName });
+  async executeSpecStatus(specId: string, featureName: string, commandPrefix: CommandPrefix = 'kiro'): Promise<Result<AgentInfo, AgentError>> {
+    const slashCommand = SPEC_STATUS_COMMANDS[commandPrefix];
+    logger.info('[SpecManagerService] executeSpecStatus called', { specId, featureName, commandPrefix, slashCommand });
 
     return this.startAgent({
       specId,
       phase: 'status',
       command: 'claude',
-      args: buildClaudeArgs({ command: `/kiro:spec-status ${featureName}` }),
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'doc',
     });
   }
 
   /**
    * Execute a specific task implementation
-   * Builds the claude command with task ID: /kiro:spec-impl {featureName} {taskId}
+   * Builds the claude command with task ID
    */
   async executeTaskImpl(options: ExecuteTaskImplOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, featureName, taskId } = options;
+    const { specId, featureName, taskId, commandPrefix = 'kiro' } = options;
+    const implCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].impl;
 
-    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId });
+    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId, commandPrefix, implCommand });
 
     return this.startAgent({
       specId,
       phase: `impl-${taskId}`,
       command: 'claude',
-      args: buildClaudeArgs({ command: `/kiro:spec-impl ${featureName} ${taskId}` }),
+      args: buildClaudeArgs({ command: `${implCommand} ${featureName} ${taskId}` }),
       group: 'impl',
     });
   }

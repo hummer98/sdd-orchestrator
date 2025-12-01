@@ -163,11 +163,12 @@ export function WorkflowView() {
     if (!specDetail) return;
 
     try {
-      // サービス層でコマンドを構築
+      // サービス層でコマンドを構築（commandPrefixをストアから取得）
       const newAgent = await window.electronAPI.executePhase(
         specDetail.metadata.name,
         phase,
-        specDetail.metadata.name
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
       );
       // ストアにAgentを追加して選択
       agentStore.addAgent(specDetail.metadata.name, newAgent);
@@ -175,7 +176,7 @@ export function WorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
     }
-  }, [agentStore, specDetail]);
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
@@ -205,11 +206,12 @@ export function WorkflowView() {
     if (!specDetail) return;
 
     try {
-      // サービス層でコマンドを構築
+      // サービス層でコマンドを構築（commandPrefixをストアから取得）
       const newAgent = await window.electronAPI.executeValidation(
         specDetail.metadata.name,
         type,
-        specDetail.metadata.name
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
       );
       // ストアにAgentを追加して選択
       agentStore.addAgent(specDetail.metadata.name, newAgent);
@@ -217,7 +219,7 @@ export function WorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'バリデーションの実行に失敗しました');
     }
-  }, [agentStore, specDetail]);
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
 
   // Task 10.1: Auto execution button handler
   // Requirements: 1.1, 1.2
@@ -250,10 +252,11 @@ export function WorkflowView() {
     if (!specDetail) return;
 
     try {
-      // サービス層でコマンドを構築
+      // サービス層でコマンドを構築（commandPrefixをストアから取得）
       const newAgent = await window.electronAPI.executeSpecStatus(
         specDetail.metadata.name,
-        specDetail.metadata.name
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
       );
       // ストアにAgentを追加して選択
       agentStore.addAgent(specDetail.metadata.name, newAgent);
@@ -261,7 +264,7 @@ export function WorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'spec-statusの実行に失敗しました');
     }
-  }, [agentStore, specDetail]);
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
     // TODO: Show agent log for this phase
@@ -272,11 +275,12 @@ export function WorkflowView() {
     if (!specDetail) return;
 
     try {
-      // サービス層でコマンドを構築: /kiro:spec-impl {featureName} {taskId}
+      // サービス層でコマンドを構築（commandPrefixをストアから取得）
       const newAgent = await window.electronAPI.executeTaskImpl(
         specDetail.metadata.name,
         specDetail.metadata.name,
-        taskId
+        taskId,
+        workflowStore.commandPrefix
       );
       // ストアにAgentを追加して選択
       agentStore.addAgent(specDetail.metadata.name, newAgent);
@@ -284,7 +288,7 @@ export function WorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'タスク実装の実行に失敗しました');
     }
-  }, [agentStore, specDetail]);
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
 
   // Validation options positions
   const validationPositions: Record<ValidationType, { after: WorkflowPhase }> = {

@@ -101,17 +101,17 @@ const electronAPI = {
 
   // Phase Execution (high-level commands)
   // These delegate command building to the service layer
-  executePhase: (specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName),
+  executePhase: (specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName, commandPrefix),
 
-  executeValidation: (specId: string, type: ValidationType, featureName: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_VALIDATION, specId, type, featureName),
+  executeValidation: (specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_VALIDATION, specId, type, featureName, commandPrefix),
 
-  executeSpecStatus: (specId: string, featureName: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName),
+  executeSpecStatus: (specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName, commandPrefix),
 
-  executeTaskImpl: (specId: string, featureName: string, taskId: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId),
+  executeTaskImpl: (specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId, commandPrefix),
 
   // Task 5.2.2 (sidebar-refactor): spec-manager:init連携
   // Launch spec-manager:init agent with description only (specId='')
@@ -334,6 +334,19 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND, handler);
+    };
+  },
+
+  // Menu Events - Command Prefix
+  onMenuSetCommandPrefix: (callback: (prefix: 'kiro' | 'spec-manager') => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, prefix: 'kiro' | 'spec-manager') => {
+      callback(prefix);
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, handler);
     };
   },
 };

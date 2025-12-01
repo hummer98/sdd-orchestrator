@@ -87,4 +87,41 @@ describe('Allowed Commands List', () => {
     expect(ALLOWED_COMMANDS).toContain('/kiro:spec-status');
     expect(ALLOWED_COMMANDS).toContain('/kiro:spec-init');
   });
+
+  it('should include all required spec-manager commands', () => {
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:requirements');
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:design');
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:tasks');
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:impl');
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:status');
+    expect(ALLOWED_COMMANDS).toContain('/spec-manager:init');
+  });
+});
+
+describe('spec-manager prefix commands', () => {
+  it('should allow /spec-manager:requirements command', () => {
+    expect(isCommandAllowed('/spec-manager:requirements feature-name')).toBe(true);
+  });
+
+  it('should allow /spec-manager:design command', () => {
+    expect(isCommandAllowed('/spec-manager:design feature-name')).toBe(true);
+    expect(isCommandAllowed('/spec-manager:design feature-name -y')).toBe(true);
+  });
+
+  it('should allow /spec-manager:tasks command', () => {
+    expect(isCommandAllowed('/spec-manager:tasks feature-name')).toBe(true);
+  });
+
+  it('should allow /spec-manager:impl command', () => {
+    expect(isCommandAllowed('/spec-manager:impl feature-name')).toBe(true);
+    expect(isCommandAllowed('/spec-manager:impl feature-name 1.1')).toBe(true);
+  });
+
+  it('should allow /spec-manager:status command', () => {
+    expect(isCommandAllowed('/spec-manager:status feature-name')).toBe(true);
+  });
+
+  it('should allow /spec-manager:init command', () => {
+    expect(isCommandAllowed('/spec-manager:init "description"')).toBe(true);
+  });
 });

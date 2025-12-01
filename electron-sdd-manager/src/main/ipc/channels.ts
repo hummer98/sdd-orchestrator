@@ -34,6 +34,7 @@ export const IPC_CHANNELS = {
   EXECUTE_VALIDATION: 'ipc:execute-validation',
   EXECUTE_SPEC_STATUS: 'ipc:execute-spec-status',
   EXECUTE_TASK_IMPL: 'ipc:execute-task-impl',
+  EXECUTE_SPEC_INIT: 'ipc:execute-spec-init',
 
   // Agent Events (Task 27.2)
   AGENT_OUTPUT: 'ipc:agent-output',
@@ -92,6 +93,9 @@ export const IPC_CHANNELS = {
 
   // Menu Events - CLI Install
   MENU_INSTALL_CLI_COMMAND: 'menu:install-cli-command',
+
+  // Menu Events - Command Prefix
+  MENU_SET_COMMAND_PREFIX: 'menu:set-command-prefix',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

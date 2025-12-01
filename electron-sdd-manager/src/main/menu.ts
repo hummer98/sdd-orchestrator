@@ -11,6 +11,10 @@ import { IPC_CHANNELS } from './ipc/channels';
 // Current project path for menu state management
 let currentProjectPathForMenu: string | null = null;
 
+// Current command prefix for menu state management
+type CommandPrefix = 'kiro' | 'spec-manager';
+let currentCommandPrefix: CommandPrefix = 'kiro';
+
 const isMac = process.platform === 'darwin';
 
 /**
@@ -175,6 +179,34 @@ export function createMenu(): void {
       label: 'ツール',
       submenu: [
         {
+          label: 'コマンドプレフィックス',
+          submenu: [
+            {
+              label: '/kiro:spec-*',
+              type: 'radio' as const,
+              checked: currentCommandPrefix === 'kiro',
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, 'kiro');
+                }
+              },
+            },
+            {
+              label: '/spec-manager:*',
+              type: 'radio' as const,
+              checked: currentCommandPrefix === 'spec-manager',
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, 'spec-manager');
+                }
+              },
+            },
+          ],
+        },
+        { type: 'separator' as const },
+        {
           label: 'spec-managerコマンドを再インストール...',
           enabled: currentProjectPathForMenu !== null,
           click: async () => {
@@ -278,6 +310,16 @@ export function updateMenu(): void {
 export function setMenuProjectPath(projectPath: string | null): void {
   currentProjectPathForMenu = projectPath;
   createMenu(); // Rebuild menu to update enabled states
+}
+
+/**
+ * Set current command prefix for menu state management
+ * Call this when command prefix setting changes
+ * @param prefix - Command prefix ('kiro' or 'spec-manager')
+ */
+export function setMenuCommandPrefix(prefix: CommandPrefix): void {
+  currentCommandPrefix = prefix;
+  createMenu(); // Rebuild menu to update radio button states
 }
 
 /**

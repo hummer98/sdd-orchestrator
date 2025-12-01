@@ -27,7 +27,8 @@ import {
   ErrorBanner,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore } from './stores';
+import type { CommandPrefix } from './stores';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -45,6 +46,7 @@ export function App() {
   const { selectedSpec, specDetail, specs, loadSpecs } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
+  const { setCommandPrefix } = useWorkflowStore();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -154,6 +156,11 @@ export function App() {
       setIsClaudeMdDialogOpen(true);
     });
 
+    const cleanupCommandPrefix = window.electronAPI.onMenuSetCommandPrefix((prefix: CommandPrefix) => {
+      console.log(`[App] Setting command prefix to: ${prefix}`);
+      setCommandPrefix(prefix);
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
@@ -161,8 +168,9 @@ export function App() {
       cleanupOpenProject();
       cleanupCliInstall();
       cleanupClaudeMdInstall();
+      cleanupCommandPrefix();
     };
-  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject]);
+  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {

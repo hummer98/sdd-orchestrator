@@ -497,8 +497,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_PHASE,
-    async (event, specId: string, phase: WorkflowPhase, featureName: string) => {
-      logger.info('[handlers] EXECUTE_PHASE called', { specId, phase, featureName });
+    async (event, specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_PHASE called', { specId, phase, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -507,7 +507,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executePhase({ specId, phase, featureName });
+      const result = await service.executePhase({ specId, phase, featureName, commandPrefix });
 
       if (!result.ok) {
         logger.error('[handlers] executePhase failed', { error: result.error });
@@ -522,8 +522,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_VALIDATION,
-    async (event, specId: string, type: ValidationType, featureName: string) => {
-      logger.info('[handlers] EXECUTE_VALIDATION called', { specId, type, featureName });
+    async (event, specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_VALIDATION called', { specId, type, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -532,7 +532,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeValidation({ specId, type, featureName });
+      const result = await service.executeValidation({ specId, type, featureName, commandPrefix });
 
       if (!result.ok) {
         logger.error('[handlers] executeValidation failed', { error: result.error });
@@ -547,8 +547,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_SPEC_STATUS,
-    async (event, specId: string, featureName: string) => {
-      logger.info('[handlers] EXECUTE_SPEC_STATUS called', { specId, featureName });
+    async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_SPEC_STATUS called', { specId, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -557,7 +557,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeSpecStatus(specId, featureName);
+      const result = await service.executeSpecStatus(specId, featureName, commandPrefix);
 
       if (!result.ok) {
         logger.error('[handlers] executeSpecStatus failed', { error: result.error });
@@ -572,8 +572,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_TASK_IMPL,
-    async (event, specId: string, featureName: string, taskId: string) => {
-      logger.info('[handlers] EXECUTE_TASK_IMPL called', { specId, featureName, taskId });
+    async (event, specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_TASK_IMPL called', { specId, featureName, taskId, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -582,7 +582,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeTaskImpl({ specId, featureName, taskId });
+      const result = await service.executeTaskImpl({ specId, featureName, taskId, commandPrefix });
 
       if (!result.ok) {
         logger.error('[handlers] executeTaskImpl failed', { error: result.error });

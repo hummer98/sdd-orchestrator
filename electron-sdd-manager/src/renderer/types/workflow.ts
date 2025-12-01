@@ -56,12 +56,33 @@ export type PhaseStatus = 'pending' | 'generated' | 'approved';
 /** バリデーション種別 */
 export type ValidationType = 'gap' | 'design' | 'impl';
 
-/** バリデーションコマンドマッピング */
-export const VALIDATION_COMMANDS: Record<ValidationType, string> = {
-  gap: '/kiro:validate-gap',
-  design: '/kiro:validate-design',
-  impl: '/kiro:validate-impl',
+// ============================================================
+// Command Prefix Support
+// ============================================================
+
+export type CommandPrefix = 'kiro' | 'spec-manager';
+
+/** プレフィックス別バリデーションコマンドマッピング */
+const VALIDATION_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<ValidationType, string>> = {
+  kiro: {
+    gap: '/kiro:validate-gap',
+    design: '/kiro:validate-design',
+    impl: '/kiro:validate-impl',
+  },
+  'spec-manager': {
+    gap: '/spec-manager:validate-gap',
+    design: '/spec-manager:validate-design',
+    impl: '/spec-manager:validate-impl',
+  },
 };
+
+/** バリデーションコマンドマッピング（デフォルト: kiro） */
+export const VALIDATION_COMMANDS: Record<ValidationType, string> = VALIDATION_COMMANDS_BY_PREFIX.kiro;
+
+/** プレフィックスに応じたバリデーションコマンドを取得 */
+export function getValidationCommand(type: ValidationType, prefix: CommandPrefix = 'kiro'): string {
+  return VALIDATION_COMMANDS_BY_PREFIX[prefix][type];
+}
 
 /** バリデーション表示名 */
 export const VALIDATION_LABELS: Record<ValidationType, string> = {
@@ -131,12 +152,30 @@ export function getPhaseStatus(
 // Phase Command Mapping
 // ============================================================
 
-/** フェーズ実行コマンドマッピング */
-export const PHASE_COMMANDS: Record<WorkflowPhase, string> = {
-  requirements: '/kiro:spec-requirements',
-  design: '/kiro:spec-design',
-  tasks: '/kiro:spec-tasks',
-  impl: '/kiro:spec-impl',
-  inspection: '/kiro:validate-impl',
-  deploy: '/kiro:deployment',
+/** プレフィックス別フェーズ実行コマンドマッピング */
+const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
+  kiro: {
+    requirements: '/kiro:spec-requirements',
+    design: '/kiro:spec-design',
+    tasks: '/kiro:spec-tasks',
+    impl: '/kiro:spec-impl',
+    inspection: '/kiro:validate-impl',
+    deploy: '/kiro:deployment',
+  },
+  'spec-manager': {
+    requirements: '/spec-manager:requirements',
+    design: '/spec-manager:design',
+    tasks: '/spec-manager:tasks',
+    impl: '/spec-manager:impl',
+    inspection: '/spec-manager:validate-impl',
+    deploy: '/spec-manager:deployment',
+  },
 };
+
+/** フェーズ実行コマンドマッピング（デフォルト: kiro） */
+export const PHASE_COMMANDS: Record<WorkflowPhase, string> = PHASE_COMMANDS_BY_PREFIX.kiro;
+
+/** プレフィックスに応じたフェーズコマンドを取得 */
+export function getPhaseCommand(phase: WorkflowPhase, prefix: CommandPrefix = 'kiro'): string {
+  return PHASE_COMMANDS_BY_PREFIX[prefix][phase];
+}

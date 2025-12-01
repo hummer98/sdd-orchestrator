@@ -204,10 +204,10 @@ export interface ElectronAPI {
   ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>>;
 
   // Phase Execution (high-level commands)
-  executePhase(specId: string, phase: WorkflowPhase, featureName: string): Promise<AgentInfo>;
-  executeValidation(specId: string, type: ValidationType, featureName: string): Promise<AgentInfo>;
-  executeSpecStatus(specId: string, featureName: string): Promise<AgentInfo>;
-  executeTaskImpl(specId: string, featureName: string, taskId: string): Promise<AgentInfo>;
+  executePhase(specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeValidation(specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeSpecStatus(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeTaskImpl(specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
 
   // Spec Init (Task 5.2 sidebar-refactor)
   // Launch spec-manager:init agent with description only
@@ -280,6 +280,9 @@ export interface ElectronAPI {
   getCliInstallStatus(): Promise<CliInstallStatus>;
   installCliCommand(): Promise<CliInstallResult & { instructions: CliInstallInstructions }>;
   onMenuInstallCliCommand(callback: () => void): () => void;
+
+  // Menu Events - Command Prefix
+  onMenuSetCommandPrefix(callback: (prefix: 'kiro' | 'spec-manager') => void): () => void;
 }
 
 declare global {

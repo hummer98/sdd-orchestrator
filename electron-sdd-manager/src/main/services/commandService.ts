@@ -11,9 +11,10 @@ import type { ExecutionResult, CommandError, Result } from '../../renderer/types
 
 /**
  * Allowed commands whitelist
- * Only /kiro:spec-* commands are allowed for security
+ * Both /kiro:spec-* and /spec-manager:* commands are allowed for security
  */
 export const ALLOWED_COMMANDS = [
+  // kiro prefix commands
   '/kiro:spec-requirements',
   '/kiro:spec-design',
   '/kiro:spec-tasks',
@@ -25,6 +26,18 @@ export const ALLOWED_COMMANDS = [
   '/kiro:validate-impl',
   '/kiro:steering',
   '/kiro:steering-custom',
+  '/kiro:deployment',
+  // spec-manager prefix commands
+  '/spec-manager:requirements',
+  '/spec-manager:design',
+  '/spec-manager:tasks',
+  '/spec-manager:impl',
+  '/spec-manager:status',
+  '/spec-manager:init',
+  '/spec-manager:validate-gap',
+  '/spec-manager:validate-design',
+  '/spec-manager:validate-impl',
+  '/spec-manager:deployment',
 ] as const;
 
 /**

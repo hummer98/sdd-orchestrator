@@ -535,4 +535,205 @@ describe('AutoExecutionService', () => {
       expect(result).toBe(false);
     });
   });
+
+  // ============================================================
+  // Task 5.2.1: Auto-approve completed phase
+  // Requirements: 2.5 - Phase should be approved after successful completion
+  // ============================================================
+  describe('Task 5.2.1: autoApproveCompletedPhase on agent completion', () => {
+    it('should call updateApproval when requirements phase agent completes', async () => {
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        },
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecDetail.specJson);
+
+      // Mock selectSpec to prevent errors
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: 'requirements',
+        autoExecutionPermissions: {
+          requirements: true,
+          design: false,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Simulate agent completion by triggering state change
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'requirements',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      // Change agent status to completed
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'requirements',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify updateApproval was called with the completed phase
+      expect(mockElectronAPI.updateApproval).toHaveBeenCalledWith(
+        '/test',
+        'requirements',
+        true
+      );
+    });
+
+    it('should call updateApproval when design phase agent completes', async () => {
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        },
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecDetail.specJson);
+
+      // Mock selectSpec to prevent errors
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: 'design',
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Simulate agent completion
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'design',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'design',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockElectronAPI.updateApproval).toHaveBeenCalledWith(
+        '/test',
+        'design',
+        true
+      );
+    });
+
+    it('should not call updateApproval for impl phase (no approval status)', async () => {
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        },
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecDetail.specJson);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: 'impl',
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: true,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Simulate agent completion
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'impl',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'impl',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // updateApproval should NOT be called for impl phase
+      expect(mockElectronAPI.updateApproval).not.toHaveBeenCalledWith(
+        '/test',
+        'impl',
+        true
+      );
+    });
+  });
 });

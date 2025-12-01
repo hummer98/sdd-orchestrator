@@ -322,19 +322,52 @@ export class AutoExecutionService {
     this.clearTimeout();
     this.executedPhases.push(completedPhase);
 
-    // Check for validation after this phase
-    this.executeValidationIfEnabled(completedPhase).then(() => {
-      // Get next phase
-      const nextPhase = this.getNextPermittedPhase(completedPhase);
+    // Auto-approve the completed phase so next phase doesn't get blocked by prompt checks
+    this.autoApproveCompletedPhase(completedPhase).then(() => {
+      // Check for validation after this phase
+      this.executeValidationIfEnabled(completedPhase).then(() => {
+        // Get next phase
+        const nextPhase = this.getNextPermittedPhase(completedPhase);
 
-      if (nextPhase) {
-        // Continue to next phase
-        this.executePhase(nextPhase);
-      } else {
-        // All phases completed
-        this.completeAutoExecution();
-      }
+        if (nextPhase) {
+          // Continue to next phase
+          this.executePhase(nextPhase);
+        } else {
+          // All phases completed
+          this.completeAutoExecution();
+        }
+      });
     });
+  }
+
+  // ============================================================
+  // Task 5.2.1: Auto-approve completed phase
+  // Requirements: 2.5 - Approve phase immediately after successful completion
+  // ============================================================
+  private async autoApproveCompletedPhase(phase: WorkflowPhase): Promise<void> {
+    // Only requirements, design, tasks phases have approval status
+    if (!['requirements', 'design', 'tasks'].includes(phase)) {
+      return;
+    }
+
+    const specStore = useSpecStore.getState();
+    const specDetail = specStore.specDetail;
+
+    if (!specDetail) return;
+
+    try {
+      console.log(`[AutoExecutionService] Auto-approving completed phase: ${phase}`);
+      await window.electronAPI.updateApproval(
+        specDetail.metadata.path,
+        phase as 'requirements' | 'design' | 'tasks',
+        true
+      );
+      // Refresh spec detail to reflect the updated approval status
+      await specStore.selectSpec(specDetail.metadata);
+    } catch (error) {
+      console.error(`[AutoExecutionService] Failed to auto-approve ${phase}:`, error);
+      // Don't fail the execution, just log the error
+    }
   }
 
   // ============================================================

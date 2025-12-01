@@ -16,6 +16,7 @@ const mockElectronAPI = {
   executePhase: vi.fn(),
   executeValidation: vi.fn(),
   updateApproval: vi.fn(),
+  readSpecJson: vi.fn(),
 };
 
 vi.stubGlobal('window', {
@@ -215,18 +216,20 @@ describe('AutoExecutionService', () => {
     });
 
     it('should return valid for requirements phase', async () => {
-      const mockSpecDetail = {
-        metadata: { name: 'test-spec', path: '/test' },
-        specJson: {
-          feature_name: 'test',
-          approvals: {
-            requirements: { generated: false, approved: false },
-            design: { generated: false, approved: false },
-            tasks: { generated: false, approved: false },
-          },
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
         },
       };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
 
       const result = await service.validatePreconditions('requirements');
 
@@ -235,18 +238,20 @@ describe('AutoExecutionService', () => {
     });
 
     it('should require approval when previous phase is generated but not approved', async () => {
-      const mockSpecDetail = {
-        metadata: { name: 'test-spec', path: '/test' },
-        specJson: {
-          feature_name: 'test',
-          approvals: {
-            requirements: { generated: true, approved: false },
-            design: { generated: false, approved: false },
-            tasks: { generated: false, approved: false },
-          },
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
         },
       };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
 
       const result = await service.validatePreconditions('design');
 
@@ -254,18 +259,20 @@ describe('AutoExecutionService', () => {
     });
 
     it('should be valid when previous phase is approved', async () => {
-      const mockSpecDetail = {
-        metadata: { name: 'test-spec', path: '/test' },
-        specJson: {
-          feature_name: 'test',
-          approvals: {
-            requirements: { generated: true, approved: true },
-            design: { generated: false, approved: false },
-            tasks: { generated: false, approved: false },
-          },
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
         },
       };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
 
       const result = await service.validatePreconditions('design');
 
@@ -274,18 +281,20 @@ describe('AutoExecutionService', () => {
     });
 
     it('should detect running agent for the spec', async () => {
-      const mockSpecDetail = {
-        metadata: { name: 'test-spec', path: '/test' },
-        specJson: {
-          feature_name: 'test',
-          approvals: {
-            requirements: { generated: true, approved: true },
-            design: { generated: false, approved: false },
-            tasks: { generated: false, approved: false },
-          },
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
         },
       };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
 
       // Add running agent
       const agents = new Map();

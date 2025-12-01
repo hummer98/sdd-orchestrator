@@ -91,18 +91,20 @@ export class AutoExecutionService {
     const agentStore = useAgentStore.getState();
 
     // Check specDetail availability
-    if (!specStore.specDetail || !specStore.specDetail.specJson) {
+    if (!specStore.specDetail) {
       return {
         valid: false,
         requiresApproval: false,
         waitingForAgent: false,
         missingSpec: true,
-        error: 'specDetail or specJson is not available',
+        error: 'specDetail is not available',
       };
     }
 
     const specDetail = specStore.specDetail;
-    const specJson = specDetail.specJson;
+
+    // Read spec.json directly to get the latest state (avoid stale cache)
+    const specJson = await window.electronAPI.readSpecJson(specDetail.metadata.path);
 
     // Check for running agents on this spec
     const specAgents = agentStore.getAgentsForSpec(specDetail.metadata.name);

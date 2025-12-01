@@ -9,11 +9,12 @@ import { clsx } from 'clsx';
 import {
   Play,
   Check,
-  CheckCircle,
   Ban,
   PlayCircle,
   Loader2,
   Info,
+  Pause,
+  Bot,
 } from 'lucide-react';
 import type { PhaseStatus, WorkflowPhase } from '../types/workflow';
 import { InfoDialog } from './InfoDialog';
@@ -48,6 +49,8 @@ export interface PhaseItemProps {
   isExecuting: boolean;
   /** このフェーズが実行可能かどうか（順序制御・多重実行防止用） */
   canExecute: boolean;
+  /** 自動実行中のハイライトフェーズかどうか */
+  isAutoPhase?: boolean;
   /** 実行ボタンハンドラ */
   onExecute: () => void;
   /** 承認ボタンハンドラ */
@@ -68,6 +71,7 @@ export function PhaseItem({
   autoExecutionPermitted,
   isExecuting,
   canExecute,
+  isAutoPhase = false,
   onExecute,
   onApprove,
   onApproveAndExecute,
@@ -80,43 +84,80 @@ export function PhaseItem({
   const showApproveAndExecute =
     previousStatus === 'generated' && status === 'pending' && !isExecuting && canExecute;
 
+  // 進捗アイコンのクリックハンドラ
+  const handleProgressIconClick = () => {
+    if (status === 'generated' && onShowAgentLog) {
+      onShowAgentLog();
+    }
+  };
+
+  // 進捗アイコンのレンダリング
+  const renderProgressIcon = () => {
+    if (isExecuting) {
+      return (
+        <Bot
+          data-testid="progress-icon-executing"
+          className="w-4 h-4 text-blue-500 animate-pulse"
+        />
+      );
+    }
+    switch (status) {
+      case 'approved':
+        return (
+          <Check
+            data-testid="progress-icon-approved"
+            className="w-4 h-4 text-green-500"
+          />
+        );
+      case 'generated':
+        return (
+          <Pause
+            data-testid="progress-icon-generated"
+            className="w-4 h-4 text-yellow-500"
+          />
+        );
+      default:
+        return (
+          <Check
+            data-testid="progress-icon-pending"
+            className="w-4 h-4 text-gray-300 dark:text-gray-600"
+          />
+        );
+    }
+  };
+
   return (
     <>
     <div
       className={clsx(
         'flex items-center justify-between p-3 rounded-lg',
         'bg-gray-50 dark:bg-gray-800',
-        'transition-colors'
+        'transition-colors',
+        // Task 10.2: Highlight current auto phase
+        isAutoPhase && 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
       )}
     >
-      {/* 左側: 自動実行許可アイコン + フェーズ名 + infoアイコン */}
-      <div className="flex items-center gap-1">
+      {/* 左側: 進捗アイコン + フェーズ名 + infoアイコン */}
+      <div data-testid="phase-left-side" className="flex items-center gap-2">
+        {/* Task 3.4: 進捗アイコン（左端） */}
         <button
-          data-testid="phase-toggle"
-          onClick={onToggleAutoPermission}
+          onClick={handleProgressIconClick}
           className={clsx(
-            'flex items-center gap-2',
-            'hover:bg-gray-100 dark:hover:bg-gray-700',
-            'rounded px-2 py-1 -ml-2',
-            'transition-colors'
+            'p-1 rounded',
+            status === 'generated' && 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600',
+            status !== 'generated' && 'cursor-default'
           )}
+          title={status === 'generated' ? 'Agentログを表示' : undefined}
         >
-          {/* Task 3.3: 自動実行許可アイコン */}
-          {autoExecutionPermitted ? (
-            <PlayCircle
-              data-testid="auto-permitted-icon"
-              className="w-4 h-4 text-green-500"
-            />
-          ) : (
-            <Ban
-              data-testid="auto-forbidden-icon"
-              className="w-4 h-4 text-gray-400"
-            />
-          )}
-          <span className="font-medium text-gray-700 dark:text-gray-300">
-            {label}
-          </span>
+          {renderProgressIcon()}
         </button>
+
+        {/* フェーズ名 */}
+        <span className="font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </span>
+
+        {/* Infoアイコン */}
         <button
           onClick={() => setShowInfo(true)}
           className={clsx(
@@ -131,8 +172,32 @@ export function PhaseItem({
         </button>
       </div>
 
-      {/* 右側: 状態表示とアクションボタン */}
-      <div className="flex items-center gap-2">
+      {/* 右側: 自動実行許可アイコン + アクションボタン */}
+      <div data-testid="phase-right-side" className="flex items-center gap-2">
+        {/* Task 3.3: 自動実行許可アイコン（右側に移動） */}
+        <button
+          data-testid="auto-permission-toggle"
+          onClick={onToggleAutoPermission}
+          className={clsx(
+            'p-1 rounded',
+            'hover:bg-gray-200 dark:hover:bg-gray-600',
+            'transition-colors'
+          )}
+          title={autoExecutionPermitted ? '自動実行: 許可' : '自動実行: 禁止'}
+        >
+          {autoExecutionPermitted ? (
+            <PlayCircle
+              data-testid="auto-permitted-icon"
+              className="w-4 h-4 text-green-500"
+            />
+          ) : (
+            <Ban
+              data-testid="auto-forbidden-icon"
+              className="w-4 h-4 text-gray-400"
+            />
+          )}
+        </button>
+
         {/* Task 3.1: 実行中表示 */}
         {isExecuting && (
           <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">
@@ -184,40 +249,19 @@ export function PhaseItem({
           </>
         )}
 
-        {/* Task 3.1: generated状態 - 生成完了ラベル + 承認ボタン */}
+        {/* Task 3.1: generated状態 - 承認ボタンのみ（進捗は左アイコンで表示） */}
         {status === 'generated' && !isExecuting && (
-          <>
-            <button
-              onClick={onShowAgentLog}
-              className={clsx(
-                'px-2 py-1 rounded text-xs',
-                'bg-blue-100 text-blue-700',
-                'hover:bg-blue-200 transition-colors',
-                'cursor-pointer'
-              )}
-            >
-              生成完了
-            </button>
-            <button
-              onClick={onApprove}
-              className={clsx(
-                'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
-                'bg-green-500 text-white hover:bg-green-600',
-                'transition-colors'
-              )}
-            >
-              <Check className="w-4 h-4" />
-              承認
-            </button>
-          </>
-        )}
-
-        {/* Task 3.1: approved状態 - 承認済/完了ラベル */}
-        {status === 'approved' && (
-          <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
-            <CheckCircle className="w-3 h-3" />
-            {phase === 'impl' ? '完了' : '承認済'}
-          </span>
+          <button
+            onClick={onApprove}
+            className={clsx(
+              'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
+              'bg-green-500 text-white hover:bg-green-600',
+              'transition-colors'
+            )}
+          >
+            <Check className="w-4 h-4" />
+            承認
+          </button>
         )}
       </div>
     </div>

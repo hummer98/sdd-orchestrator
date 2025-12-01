@@ -56,7 +56,8 @@ export function AgentInputPanel() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // IME変換中（isComposing）はEnterキーを無視
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend(inputValue);
     }
@@ -81,6 +82,7 @@ export function AgentInputPanel() {
           className={clsx(
             'flex-1 px-3 py-2 text-sm rounded-md',
             'bg-white dark:bg-gray-900',
+            'text-gray-900 dark:text-gray-100',
             'border border-gray-300 dark:border-gray-600',
             'focus:outline-none focus:ring-2 focus:ring-blue-500',
             'disabled:bg-gray-100 dark:disabled:bg-gray-800',

@@ -151,6 +151,69 @@ export interface CliInstallInstructions {
 }
 
 /**
+ * Server start result
+ */
+export interface ServerStartResult {
+  readonly port: number;
+  readonly url: string;
+  readonly qrCodeDataUrl: string;
+  readonly localIp: string;
+}
+
+/**
+ * Server status
+ */
+export interface ServerStatus {
+  readonly isRunning: boolean;
+  readonly port: number | null;
+  readonly url: string | null;
+  readonly clientCount: number;
+}
+
+/**
+ * Server error types
+ */
+export type ServerError =
+  | { type: 'NO_AVAILABLE_PORT'; triedPorts: number[] }
+  | { type: 'ALREADY_RUNNING'; port: number }
+  | { type: 'NETWORK_ERROR'; message: string };
+
+/**
+ * Bug Workflow CLAUDE.md update result
+ */
+export interface BugWorkflowClaudeMdResult {
+  readonly action: 'created' | 'merged' | 'skipped';
+  readonly reason?: 'already_exists';
+}
+
+/**
+ * Bug Workflow install result
+ */
+export interface BugWorkflowInstallResult {
+  readonly commands: InstallResult;
+  readonly templates: InstallResult;
+  readonly claudeMd: BugWorkflowClaudeMdResult;
+}
+
+/**
+ * Bug Workflow install status
+ */
+export interface BugWorkflowInstallStatus {
+  readonly commands: {
+    readonly installed: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly templates: {
+    readonly installed: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly claudeMd: {
+    readonly exists: boolean;
+    readonly hasBugSection: boolean;
+  };
+}
+
+/**
  * Agent information interface
  * Requirements: 5.1-5.8
  */
@@ -283,6 +346,21 @@ export interface ElectronAPI {
 
   // Menu Events - Command Prefix
   onMenuSetCommandPrefix(callback: (prefix: 'kiro' | 'spec-manager') => void): () => void;
+
+  // Menu Events - Toggle Remote Server
+  onMenuToggleRemoteServer(callback: () => void): () => void;
+
+  // Remote Access Server
+  startRemoteServer(preferredPort?: number): Promise<Result<ServerStartResult, ServerError>>;
+  stopRemoteServer(): Promise<void>;
+  getRemoteServerStatus(): Promise<ServerStatus>;
+  onRemoteServerStatusChanged(callback: (status: ServerStatus) => void): () => void;
+  onRemoteClientCountChanged(callback: (count: number) => void): () => void;
+
+  // Bug Workflow Install
+  checkBugWorkflowStatus(projectPath: string): Promise<BugWorkflowInstallStatus>;
+  installBugWorkflow(projectPath: string): Promise<Result<BugWorkflowInstallResult, InstallError>>;
+  onMenuInstallBugWorkflow(callback: () => void): () => void;
 }
 
 declare global {

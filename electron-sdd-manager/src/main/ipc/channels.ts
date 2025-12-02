@@ -96,6 +96,23 @@ export const IPC_CHANNELS = {
 
   // Menu Events - Command Prefix
   MENU_SET_COMMAND_PREFIX: 'menu:set-command-prefix',
+
+  // Menu Events - Remote Access
+  MENU_TOGGLE_REMOTE_SERVER: 'menu:toggle-remote-server',
+
+  // Menu Events - Bug Workflow
+  MENU_INSTALL_BUG_WORKFLOW: 'menu:install-bug-workflow',
+
+  // Bug Workflow Install
+  CHECK_BUG_WORKFLOW_STATUS: 'ipc:check-bug-workflow-status',
+  INSTALL_BUG_WORKFLOW: 'ipc:install-bug-workflow',
+
+  // Remote Access Server (Requirements: 1.1, 1.2, 1.6)
+  START_REMOTE_SERVER: 'remote-access:start',
+  STOP_REMOTE_SERVER: 'remote-access:stop',
+  GET_REMOTE_SERVER_STATUS: 'remote-access:get-status',
+  REMOTE_SERVER_STATUS_CHANGED: 'remote-access:status-changed',
+  REMOTE_CLIENT_COUNT_CHANGED: 'remote-access:client-count-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

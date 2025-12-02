@@ -25,9 +25,11 @@ import {
   SpecListHeader,
   GlobalAgentPanel,
   ErrorBanner,
+  // Remote Access Dialog
+  RemoteAccessDialog,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore } from './stores';
 import type { CommandPrefix } from './stores';
 
 // ペイン幅の制限値
@@ -47,6 +49,14 @@ export function App() {
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
+  const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
+  const { addNotification } = useNotificationStore();
+
+  // Use ref to track current remote server state for event handlers
+  const isRemoteServerRunningRef = useRef(isRemoteServerRunning);
+  useEffect(() => {
+    isRemoteServerRunningRef.current = isRemoteServerRunning;
+  }, [isRemoteServerRunning]);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -54,6 +64,7 @@ export function App() {
   const [isCliInstallDialogOpen, setIsCliInstallDialogOpen] = useState(false);
   const [isClaudeMdDialogOpen, setIsClaudeMdDialogOpen] = useState(false);
   const [claudeMdExists, setClaudeMdExists] = useState(false);
+  const [isRemoteAccessDialogOpen, setIsRemoteAccessDialogOpen] = useState(false);
 
   // ペインサイズの状態
   const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
@@ -112,6 +123,16 @@ export function App() {
     };
   }, [setupEventListeners]);
 
+  // Initialize remote access store on mount
+  const remoteAccessInitialized = useRef(false);
+  useEffect(() => {
+    if (remoteAccessInitialized.current) {
+      return;
+    }
+    remoteAccessInitialized.current = true;
+    initializeRemoteAccess();
+  }, [initializeRemoteAccess]);
+
   // Setup menu event listeners
   const { forceReinstallAll, addShellPermissions, selectProject } = useProjectStore();
   const menuListenersSetup = useRef(false);
@@ -161,6 +182,72 @@ export function App() {
       setCommandPrefix(prefix);
     });
 
+    const cleanupToggleRemoteServer = window.electronAPI.onMenuToggleRemoteServer(async () => {
+      // Always check actual server status to handle HMR/reload scenarios
+      const actualStatus = await window.electronAPI.getRemoteServerStatus();
+      console.log(`[App] Toggle remote server, actual status: ${actualStatus.isRunning}, ref state: ${isRemoteServerRunningRef.current}`);
+
+      if (actualStatus.isRunning) {
+        await stopServer();
+        setIsRemoteAccessDialogOpen(false);
+      } else {
+        // Require project to be selected before starting server
+        if (!currentProject) {
+          addNotification({
+            type: 'warning',
+            message: 'リモートアクセスサーバーを起動するにはプロジェクトを選択してください',
+          });
+          return;
+        }
+        await startServer();
+        // Show dialog with QR code and URL when server starts
+        setIsRemoteAccessDialogOpen(true);
+      }
+    });
+
+    const cleanupBugWorkflowInstall = window.electronAPI.onMenuInstallBugWorkflow(async () => {
+      if (!currentProject) return;
+      console.log('[App] Installing Bug Workflow');
+      try {
+        const result = await window.electronAPI.installBugWorkflow(currentProject);
+        if (result.ok) {
+          const { commands, templates, claudeMd } = result.value;
+          const installedCount = commands.installed.length + templates.installed.length;
+          const skippedCount = commands.skipped.length + templates.skipped.length;
+
+          let message = `Bug Workflow をインストールしました: ${installedCount} ファイル`;
+          if (skippedCount > 0) {
+            message += ` (${skippedCount} ファイルはスキップ)`;
+          }
+          if (claudeMd.action === 'merged') {
+            message += '、CLAUDE.md にセクションを追加';
+          } else if (claudeMd.action === 'created') {
+            message += '、CLAUDE.md を作成';
+          } else if (claudeMd.action === 'skipped') {
+            message += '、CLAUDE.md は既に設定済み';
+          }
+
+          addNotification({
+            type: 'success',
+            message,
+          });
+          console.log('[App] Bug Workflow installed successfully', result.value);
+        } else {
+          addNotification({
+            type: 'error',
+            message: `Bug Workflow のインストールに失敗: ${result.error.type}`,
+          });
+          console.error('[App] Bug Workflow installation failed', result.error);
+        }
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: `Bug Workflow のインストールに失敗しました`,
+        });
+        console.error('[App] Bug Workflow installation error', error);
+      }
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
@@ -169,8 +256,10 @@ export function App() {
       cleanupCliInstall();
       cleanupClaudeMdInstall();
       cleanupCommandPrefix();
+      cleanupToggleRemoteServer();
+      cleanupBugWorkflowInstall();
     };
-  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix]);
+  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {
@@ -341,6 +430,11 @@ export function App() {
             }
             console.log(`[App] CLAUDE.md installed with mode: ${mode}`);
           }}
+        />
+
+        <RemoteAccessDialog
+          isOpen={isRemoteAccessDialogOpen}
+          onClose={() => setIsRemoteAccessDialogOpen(false)}
         />
       </div>
     </NotificationProvider>

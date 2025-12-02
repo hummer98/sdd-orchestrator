@@ -14,6 +14,8 @@ import type { FullCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';
 import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
+import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
+import type { BugWorkflowInstallResult, BugWorkflowInstallStatus, InstallError as BugInstallError, Result as BugResult } from '../main/services/bugWorkflowInstaller';
 
 /**
  * Exposed API to renderer process
@@ -347,6 +349,112 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, handler);
+    };
+  },
+
+  // Menu Events - Toggle Remote Server
+  onMenuToggleRemoteServer: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_TOGGLE_REMOTE_SERVER, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_TOGGLE_REMOTE_SERVER, handler);
+    };
+  },
+
+  // ============================================================
+  // Remote Access Server (Requirements: 1.1, 1.2, 1.6)
+  // ============================================================
+
+  /**
+   * Start the remote access server
+   * @param preferredPort Optional preferred port (default: 8765)
+   * @returns Result with server info on success, or error on failure
+   */
+  startRemoteServer: (preferredPort?: number): Promise<Result<ServerStartResult, ServerError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.START_REMOTE_SERVER, preferredPort),
+
+  /**
+   * Stop the remote access server
+   */
+  stopRemoteServer: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STOP_REMOTE_SERVER),
+
+  /**
+   * Get current remote access server status
+   */
+  getRemoteServerStatus: (): Promise<ServerStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_REMOTE_SERVER_STATUS),
+
+  /**
+   * Subscribe to remote server status changes
+   * @param callback Function called when status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onRemoteServerStatusChanged: (callback: (status: ServerStatus) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: ServerStatus) => {
+      callback(status);
+    };
+    ipcRenderer.on(IPC_CHANNELS.REMOTE_SERVER_STATUS_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.REMOTE_SERVER_STATUS_CHANGED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to remote client count changes
+   * @param callback Function called when client count changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onRemoteClientCountChanged: (callback: (count: number) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, count: number) => {
+      callback(count);
+    };
+    ipcRenderer.on(IPC_CHANNELS.REMOTE_CLIENT_COUNT_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.REMOTE_CLIENT_COUNT_CHANGED, handler);
+    };
+  },
+
+  // ============================================================
+  // Bug Workflow Install
+  // ============================================================
+
+  /**
+   * Check bug workflow installation status
+   * @param projectPath Project root path
+   * @returns Installation status for commands, templates, and CLAUDE.md
+   */
+  checkBugWorkflowStatus: (projectPath: string): Promise<BugWorkflowInstallStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_BUG_WORKFLOW_STATUS, projectPath),
+
+  /**
+   * Install bug workflow (commands, templates, CLAUDE.md section)
+   * @param projectPath Project root path
+   * @returns Installation result
+   */
+  installBugWorkflow: (projectPath: string): Promise<BugResult<BugWorkflowInstallResult, BugInstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_BUG_WORKFLOW, projectPath),
+
+  /**
+   * Menu event - Install Bug Workflow
+   */
+  onMenuInstallBugWorkflow: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
     };
   },
 };

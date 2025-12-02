@@ -15,6 +15,9 @@ let currentProjectPathForMenu: string | null = null;
 type CommandPrefix = 'kiro' | 'spec-manager';
 let currentCommandPrefix: CommandPrefix = 'kiro';
 
+// Remote access server state for menu state management
+let isRemoteServerRunning = false;
+
 const isMac = process.platform === 'darwin';
 
 /**
@@ -179,6 +182,17 @@ export function createMenu(): void {
       label: 'ツール',
       submenu: [
         {
+          label: isRemoteServerRunning ? 'リモートアクセスサーバーを停止' : 'リモートアクセスサーバーを起動',
+          enabled: currentProjectPathForMenu !== null || isRemoteServerRunning, // Allow stopping even without project
+          click: () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (window) {
+              window.webContents.send(IPC_CHANNELS.MENU_TOGGLE_REMOTE_SERVER);
+            }
+          },
+        },
+        { type: 'separator' as const },
+        {
           label: 'コマンドプレフィックス',
           submenu: [
             {
@@ -262,9 +276,19 @@ export function createMenu(): void {
             }
           },
         },
+        {
+          label: 'Bug Workflowをインストール...',
+          enabled: currentProjectPathForMenu !== null,
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW);
+          },
+        },
         { type: 'separator' as const },
         {
-          label: '「sdd」コマンドをインストール...',
+          label: 'sdd CLIコマンドをインストール...',
           click: async () => {
             const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
             if (!window) return;
@@ -320,6 +344,16 @@ export function setMenuProjectPath(projectPath: string | null): void {
 export function setMenuCommandPrefix(prefix: CommandPrefix): void {
   currentCommandPrefix = prefix;
   createMenu(); // Rebuild menu to update radio button states
+}
+
+/**
+ * Set remote access server running status for menu state management
+ * Call this when server status changes
+ * @param isRunning - Whether the server is currently running
+ */
+export function setMenuRemoteServerStatus(isRunning: boolean): void {
+  isRemoteServerRunning = isRunning;
+  createMenu(); // Rebuild menu to update label
 }
 
 /**

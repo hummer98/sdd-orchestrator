@@ -20,12 +20,14 @@ import { CommandInstallerService, getTemplateDir, ClaudeMdInstallMode } from '..
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
 import { addShellPermissions } from '../services/permissionsService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
+import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import * as path from 'path';
 
 const fileService = new FileService();
 const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
+const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
 
 // SpecManagerService instance (lazily initialized with project path)
 let specManagerService: SpecManagerService | null = null;
@@ -719,6 +721,23 @@ export function registerIpcHandlers(): void {
       instructions: getManualInstallInstructions(),
     };
   });
+
+  // Bug Workflow Install Handlers
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_BUG_WORKFLOW_STATUS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_BUG_WORKFLOW_STATUS called', { projectPath });
+      return bugWorkflowInstaller.checkInstallStatus(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_BUG_WORKFLOW,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] INSTALL_BUG_WORKFLOW called', { projectPath });
+      return bugWorkflowInstaller.installAll(projectPath);
+    }
+  );
 }
 
 /**

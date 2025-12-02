@@ -1,0 +1,22 @@
+{
+  "feature_name": "mobile-remote-access",
+  "created_at": "2025-12-01T14:30:00+09:00",
+  "updated_at": "2025-12-01T12:06:03.935Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

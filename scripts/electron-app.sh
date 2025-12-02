@@ -69,13 +69,16 @@ start() {
         exit 1
     fi
 
-    # 既存のプロセスがないか確認
+    # 既存のプロセスがないか確認（Vite/nodeプロセス）
     local existing_pid=$(find_dev_process)
     if [ -n "$existing_pid" ]; then
         echo -e "${YELLOW}Found existing process (PID: $existing_pid). Stopping it first...${NC}"
         kill "$existing_pid" 2>/dev/null || true
         sleep 2
     fi
+
+    # 起動前に孤立したElectronプロセスをクリーンアップ
+    cleanup_orphaned_processes
 
     cd "$ELECTRON_DIR"
 
@@ -157,8 +160,11 @@ stop() {
 cleanup_orphaned_processes() {
     # Vite関連プロセス
     local vite_pids=$(pgrep -f "vite.*electron-sdd-manager" 2>/dev/null || true)
-    # Electron関連プロセス
-    local electron_pids=$(pgrep -f "Electron.*electron-sdd-manager\|electron-sdd-manager.*Electron" 2>/dev/null || true)
+
+    # Electron関連プロセス（実際のコマンドラインにマッチするパターン）
+    # 例: /path/to/electron-sdd-manager/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .
+    local electron_pids=$(pgrep -f "electron-sdd-manager/node_modules/electron" 2>/dev/null || true)
+
     # Node/npm関連プロセス
     local node_pids=$(pgrep -f "node.*electron-sdd-manager" 2>/dev/null || true)
 
@@ -169,12 +175,14 @@ cleanup_orphaned_processes() {
         echo "Cleaning up orphaned processes: $all_pids"
         for pid in $all_pids; do
             if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+                echo "  Terminating PID: $pid"
                 kill -TERM "$pid" 2>/dev/null || true
             fi
         done
-        sleep 1
+        sleep 2
         for pid in $all_pids; do
             if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+                echo "  Force killing PID: $pid"
                 kill -9 "$pid" 2>/dev/null || true
             fi
         done
@@ -242,6 +250,9 @@ dev() {
         kill "$existing_pid" 2>/dev/null || true
         sleep 2
     fi
+
+    # 起動前に孤立したElectronプロセスをクリーンアップ
+    cleanup_orphaned_processes
 
     cd "$ELECTRON_DIR"
     if [ -n "$project_path" ]; then

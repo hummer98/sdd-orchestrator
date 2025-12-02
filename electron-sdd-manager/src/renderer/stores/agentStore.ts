@@ -222,6 +222,17 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   resumeAgent: async (agentId: string, prompt?: string) => {
     try {
+      // ユーザー入力をログに追加（API呼び出し前に表示）
+      if (prompt) {
+        const inputLogEntry: LogEntry = {
+          id: `stdin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          stream: 'stdin',
+          data: prompt,
+          timestamp: Date.now(),
+        };
+        get().appendLog(agentId, inputLogEntry);
+      }
+
       const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt);
 
       set((state) => {

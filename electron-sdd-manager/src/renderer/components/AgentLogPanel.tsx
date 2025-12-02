@@ -6,15 +6,16 @@
  */
 
 import { useRef, useEffect, useMemo, useState } from 'react';
-import { Terminal, Copy, Trash2, Loader2, Code, FileText } from 'lucide-react';
+import { Terminal, Copy, Trash2, Loader2, Code, FileText, BarChart3 } from 'lucide-react';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
 import { formatLogData, getColorClass, getBgClass, type FormattedLogLine } from '../utils/logFormatter';
+import { aggregateTokens } from '../utils/tokenAggregator';
 
 interface DisplayLine {
   id: string;
   type: 'raw' | 'formatted';
-  raw?: { data: string; stream: 'stdout' | 'stderr' };
+  raw?: { data: string; stream: 'stdout' | 'stderr' | 'stdin' };
   formatted?: FormattedLogLine;
 }
 
@@ -25,6 +26,9 @@ export function AgentLogPanel() {
   const logs = selectedAgentId ? getLogsForAgent(selectedAgentId) : [];
   const agent = selectedAgentId ? getAgentById(selectedAgentId) : undefined;
   const isRunning = agent?.status === 'running';
+
+  // Aggregate tokens from logs
+  const tokenUsage = useMemo(() => aggregateTokens(logs), [logs]);
 
   // Format logs for display
   const displayLines = useMemo<DisplayLine[]>(() => {
@@ -40,7 +44,20 @@ export function AgentLogPanel() {
     // Formatted mode: parse and format
     const lines: DisplayLine[] = [];
     logs.forEach((log, logIdx) => {
-      if (log.stream === 'stderr') {
+      if (log.stream === 'stdin') {
+        // stdin shows user input with blue color
+        lines.push({
+          id: `${log.id}-stdin-${logIdx}`,
+          type: 'formatted',
+          formatted: {
+            type: 'input',
+            icon: '👤',
+            label: 'ユーザー入力',
+            content: log.data,
+            color: 'blue',
+          },
+        });
+      } else if (log.stream === 'stderr') {
         // stderr is always shown as-is with red color
         lines.push({
           id: `${log.id}-stderr-${logIdx}`,
@@ -126,6 +143,18 @@ export function AgentLogPanel() {
               data-testid="running-indicator"
             />
           )}
+          {/* Token usage display */}
+          {tokenUsage.totalTokens > 0 && (
+            <div
+              className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded bg-gray-700/50 text-xs text-gray-400"
+              data-testid="token-display"
+            >
+              <BarChart3 className="w-3 h-3" />
+              <span>入力: {tokenUsage.inputTokens.toLocaleString()}</span>
+              <span className="text-gray-600">|</span>
+              <span>出力: {tokenUsage.outputTokens.toLocaleString()}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -197,7 +226,9 @@ export function AgentLogPanel() {
                   line.type === 'raw'
                     ? line.raw?.stream === 'stderr'
                       ? 'text-red-400 bg-red-900/20'
-                      : 'text-gray-300'
+                      : line.raw?.stream === 'stdin'
+                        ? 'text-blue-400 bg-blue-900/20'
+                        : 'text-gray-300'
                     : getBgClass(line.formatted!.type)
                 )}
               >

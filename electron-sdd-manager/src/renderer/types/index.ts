@@ -73,7 +73,7 @@ export interface KiroValidation {
 
 export interface LogEntry {
   id: string;
-  stream: 'stdout' | 'stderr';
+  stream: 'stdout' | 'stderr' | 'stdin';
   data: string;
   timestamp: number;
 }

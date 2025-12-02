@@ -215,4 +215,84 @@ describe('AgentLogPanel - Task 31', () => {
       expect(clearButton).toBeDisabled();
     });
   });
+
+  describe('Token aggregation in header', () => {
+    it('should display aggregated tokens in header when logs contain token data', () => {
+      const logsWithTokens: LogEntry[] = [
+        {
+          id: 'log-1',
+          stream: 'stdout',
+          data: '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50}}}',
+          timestamp: Date.now(),
+        },
+        {
+          id: 'log-2',
+          stream: 'stdout',
+          data: '{"type":"assistant","message":{"usage":{"input_tokens":200,"output_tokens":100}}}',
+          timestamp: Date.now(),
+        },
+      ];
+
+      mockGetLogsForAgent.mockReturnValue(logsWithTokens);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'agent-1',
+        clearLogs: mockClearLogs,
+        getLogsForAgent: mockGetLogsForAgent,
+        getAgentById: mockGetAgentById,
+      });
+
+      render(<AgentLogPanel />);
+
+      // Should display aggregated tokens (300 input + 150 output = 450 total)
+      expect(screen.getByText(/300/)).toBeInTheDocument();
+      expect(screen.getByText(/150/)).toBeInTheDocument();
+    });
+
+    it('should not display token info when no token data in logs', () => {
+      const logsWithoutTokens: LogEntry[] = [
+        {
+          id: 'log-1',
+          stream: 'stdout',
+          data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}',
+          timestamp: Date.now(),
+        },
+      ];
+
+      mockGetLogsForAgent.mockReturnValue(logsWithoutTokens);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'agent-1',
+        clearLogs: mockClearLogs,
+        getLogsForAgent: mockGetLogsForAgent,
+        getAgentById: mockGetAgentById,
+      });
+
+      render(<AgentLogPanel />);
+
+      // Token display should not be present when there are no tokens
+      expect(screen.queryByText(/入力:/)).not.toBeInTheDocument();
+    });
+
+    it('should display token icon when tokens are present', () => {
+      const logsWithTokens: LogEntry[] = [
+        {
+          id: 'log-1',
+          stream: 'stdout',
+          data: '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50}}}',
+          timestamp: Date.now(),
+        },
+      ];
+
+      mockGetLogsForAgent.mockReturnValue(logsWithTokens);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'agent-1',
+        clearLogs: mockClearLogs,
+        getLogsForAgent: mockGetLogsForAgent,
+        getAgentById: mockGetAgentById,
+      });
+
+      render(<AgentLogPanel />);
+
+      expect(screen.getByTestId('token-display')).toBeInTheDocument();
+    });
+  });
 });

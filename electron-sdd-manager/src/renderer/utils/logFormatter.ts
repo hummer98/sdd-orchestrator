@@ -36,7 +36,7 @@ interface ContentBlock {
 }
 
 export interface FormattedLogLine {
-  type: 'system' | 'assistant' | 'tool' | 'tool-result' | 'result' | 'text' | 'error';
+  type: 'system' | 'assistant' | 'tool' | 'tool-result' | 'result' | 'text' | 'error' | 'input';
   icon: string;
   label: string;
   content: string;
@@ -134,19 +134,7 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             }
           }
         }
-        // トークン使用量
-        if (event.message?.usage) {
-          const { input_tokens, output_tokens } = event.message.usage;
-          if (input_tokens || output_tokens) {
-            lines.push({
-              type: 'system',
-              icon: '📊',
-              label: 'tokens',
-              content: `入力: ${input_tokens || 0}, 出力: ${output_tokens || 0}`,
-              color: 'gray',
-            });
-          }
-        }
+        // トークン使用量はヘッダーで集計表示するため、ログエリアには表示しない
         break;
 
       case 'user':
@@ -301,6 +289,7 @@ export function getBgClass(type: FormattedLogLine['type']): string {
     result: 'bg-green-900/10',
     text: '',
     error: 'bg-red-900/20',
+    input: 'bg-blue-900/20',
   };
   return bgMap[type] || '';
 }

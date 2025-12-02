@@ -298,7 +298,7 @@ describe('useAgentStore', () => {
 
         await useAgentStore.getState().resumeAgent('agent-1');
 
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1');
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined);
 
         const state = useAgentStore.getState();
         const agent = state.agents.get('spec-1')?.find((a) => a.agentId === 'agent-1');
@@ -315,6 +315,32 @@ describe('useAgentStore', () => {
 
         const state = useAgentStore.getState();
         expect(state.error).toBe('Session not found');
+      });
+
+      it('should append user input to logs when prompt is provided', async () => {
+        const agents = new Map<string, AgentInfo[]>([
+          ['spec-1', [mockAgentInfo]],
+        ]);
+        useAgentStore.setState({ agents, logs: new Map() });
+
+        const resumedAgent: AgentInfo = {
+          ...mockAgentInfo,
+          status: 'running' as AgentStatus,
+        };
+        window.electronAPI.resumeAgent = vi.fn().mockResolvedValue(resumedAgent);
+
+        await useAgentStore.getState().resumeAgent('agent-1', 'カスタムプロンプト');
+
+        // Check that user input was logged as stdin
+        const state = useAgentStore.getState();
+        const logs = state.logs.get('agent-1');
+        expect(logs).toBeDefined();
+        expect(logs?.length).toBe(1);
+        expect(logs?.[0].stream).toBe('stdin');
+        expect(logs?.[0].data).toBe('カスタムプロンプト');
+
+        // Check that API was called with prompt
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');
       });
     });
 

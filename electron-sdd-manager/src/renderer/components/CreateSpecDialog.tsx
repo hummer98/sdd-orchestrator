@@ -7,8 +7,7 @@
 
 import { useState } from 'react';
 import { X, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { useProjectStore, useSpecStore, notify } from '../stores';
-import { descriptionSchema } from '../utils/validation';
+import { useProjectStore, useAgentStore, notify } from '../stores';
 import { clsx } from 'clsx';
 
 interface CreateSpecDialogProps {
@@ -18,7 +17,7 @@ interface CreateSpecDialogProps {
 
 export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const { currentProject } = useProjectStore();
-  const { refreshSpecs } = useSpecStore();
+  const { selectForGlobalAgents, selectAgent, addAgent } = useAgentStore();
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +31,10 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const handleCreate = async () => {
     if (!currentProject) return;
 
-    // Validate description
-    const result = descriptionSchema.safeParse(description);
-    if (!result.success) {
-      setError(result.error.errors[0]?.message || '説明を入力してください');
+    // Validate description: just check if not empty
+    const trimmed = description.trim();
+    if (!trimmed) {
+      setError('説明を入力してください');
       return;
     }
 
@@ -44,13 +43,18 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
 
     try {
       // Call spec-manager:init via IPC
-      await window.electronAPI.executeSpecInit(currentProject, description);
-      await refreshSpecs();
-      notify.success('仕様を作成しました');
+      // Don't wait for completion - just start the agent and close dialog
+      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed);
+
+      // Task 5.2.4: エージェントをストアに追加し、グローバルエージェントパネルに遷移
+      addAgent('', agentInfo);
+      selectForGlobalAgents();
+      selectAgent(agentInfo.agentId);
+
+      notify.success('仕様作成を開始しました（グローバルAgentパネルで進捗を確認できます）');
       handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : '仕様の作成に失敗しました');
-    } finally {
       setIsCreating(false);
     }
   };
@@ -63,8 +67,8 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
 
   if (!isOpen) return null;
 
-  const charCount = [...description].length;
-  const isValid = charCount >= 10;
+  // Validation: just check if description is not empty
+  const isValid = description.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -115,6 +119,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
                 'w-full px-3 py-2 rounded-md resize-none',
                 'bg-gray-50 dark:bg-gray-800',
                 'border',
+                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
                 error
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500',
@@ -122,12 +127,6 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
                 'disabled:opacity-50'
               )}
             />
-            <p className={clsx(
-              'mt-1 text-xs',
-              charCount < 10 ? 'text-gray-500' : 'text-green-600'
-            )}>
-              10文字以上で入力してください（{charCount}/10）
-            </p>
           </div>
 
           {/* Error message */}

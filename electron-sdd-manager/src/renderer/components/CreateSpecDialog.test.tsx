@@ -10,6 +10,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CreateSpecDialog } from './CreateSpecDialog';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
+import { useAgentStore } from '../stores/agentStore';
 
 describe('CreateSpecDialog', () => {
   const mockOnClose = vi.fn();
@@ -27,10 +28,16 @@ describe('CreateSpecDialog', () => {
       selectedSpec: null,
     });
 
+    // Reset agent store
+    useAgentStore.setState({
+      selectedAgent: null,
+      selectedSpecForAgents: null,
+    });
+
     // Mock electronAPI
     window.electronAPI = {
       ...window.electronAPI,
-      executeSpecInit: vi.fn().mockResolvedValue('new-feature'),
+      executeSpecInit: vi.fn().mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'spec-init', status: 'running' }),
       createSpec: vi.fn(),
     };
   });
@@ -62,10 +69,6 @@ describe('CreateSpecDialog', () => {
       expect(screen.getByLabelText('説明')).toBeInTheDocument();
     });
 
-    it('should show character count for description', () => {
-      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
-      expect(screen.getByText(/文字以上で入力してください/)).toBeInTheDocument();
-    });
   });
 
   // ============================================================
@@ -77,7 +80,7 @@ describe('CreateSpecDialog', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。とても重要な機能です。' } });
+      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);
@@ -85,7 +88,7 @@ describe('CreateSpecDialog', () => {
       await waitFor(() => {
         expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
           '/test/project',
-          'これは新しい機能の説明です。とても重要な機能です。'
+          'これは新しい機能の説明です'
         );
       });
     });
@@ -94,7 +97,7 @@ describe('CreateSpecDialog', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。十分な長さがあります。' } });
+      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);
@@ -104,6 +107,86 @@ describe('CreateSpecDialog', () => {
       });
 
       expect(window.electronAPI.createSpec).not.toHaveBeenCalled();
+    });
+
+    // 5.2.4 CreateSpecDialogの修正: ダイアログを閉じてグローバルエージェントパネルに遷移
+    it('should close dialog immediately after starting agent (not wait for completion)', async () => {
+      // Mock a slow response to ensure dialog closes before completion
+      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123', specId: '', phase: 'spec-init', status: 'running' }), 500))
+      );
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      // Wait for dialog to close (should happen after agent starts, not after completion)
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      }, { timeout: 1000 });
+    });
+
+    it('should select global agent panel after creating spec', async () => {
+      const selectForGlobalAgents = vi.fn();
+      useAgentStore.setState({ selectForGlobalAgents });
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        // Should navigate to global agent panel (specId='')
+        expect(selectForGlobalAgents).toHaveBeenCalled();
+      });
+    });
+  });
+
+  // ============================================================
+  // Task 5.2.5: CreateSpecDialogのUI修正
+  // placeholder色修正、10文字バリデーション削除
+  // ============================================================
+  describe('Task 5.2.5: CreateSpecDialog UI improvements', () => {
+    it('should have gray placeholder text (not black)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      // Check that textarea has placeholder:text-gray-400 class
+      expect(textarea.className).toContain('placeholder:text-gray-400');
+    });
+
+    it('should NOT show 10 character validation message', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Should not display character count validation message
+      expect(screen.queryByText(/10文字以上/)).not.toBeInTheDocument();
+    });
+
+    it('should enable create button when description is not empty (regardless of length)', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      // Enter just 3 characters
+      fireEvent.change(textarea, { target: { value: 'abc' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      // Button should be enabled (no 10 character minimum)
+      expect(createButton).not.toBeDisabled();
+    });
+
+    it('should disable create button when description is empty', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      // Button should be disabled when empty
+      expect(createButton).toBeDisabled();
     });
   });
 
@@ -115,13 +198,13 @@ describe('CreateSpecDialog', () => {
     it('should show loading state while creating', async () => {
       // Slow down the mock to see loading state
       window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve('new-feature'), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
       );
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。十分な長さがあります。' } });
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);
@@ -133,12 +216,12 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should close dialog on success', async () => {
-      window.electronAPI.executeSpecInit = vi.fn().mockResolvedValue('new-feature');
+      window.electronAPI.executeSpecInit = vi.fn().mockResolvedValue({ agentId: 'agent-123' });
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。十分な長さがあります。' } });
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);
@@ -154,7 +237,7 @@ describe('CreateSpecDialog', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。十分な長さがあります。' } });
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);
@@ -167,13 +250,13 @@ describe('CreateSpecDialog', () => {
 
     it('should disable create button while loading', async () => {
       window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve('new-feature'), 200))
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 200))
       );
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です。十分な長さがあります。' } });
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
       const createButton = screen.getByRole('button', { name: /作成$/i });
       fireEvent.click(createButton);

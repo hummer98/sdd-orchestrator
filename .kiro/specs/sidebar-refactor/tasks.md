@@ -85,10 +85,21 @@
   - _Requirements: 5.1, 5.2_
 
 - [x] 5.2 spec-manager:init連携の実装
-  - executeSpecInit IPC APIをElectronAPIに追加
-  - メインプロセスでclaude -p /spec-manager:initコマンドを実行
-  - 説明を引数としてspec-manager:initを起動
+  - [x] 5.2.1 IPC_CHANNELSにEXECUTE_SPEC_INITを追加 (`src/main/ipc/channels.ts`)
+  - [x] 5.2.2 preload/index.tsにexecuteSpecInit関数を追加
+  - [x] 5.2.3 handlers.tsにハンドラを実装
+    - specId=''でグローバルエージェントとして起動
+    - コマンド: `claude -p /spec-manager:init "{description}"`
+    - 完了を待たずにagentIdを返す（非同期実行）
+  - [x] 5.2.4 CreateSpecDialogの修正
+    - executeSpecInit呼び出し後、ダイアログを閉じてグローバルエージェントパネルに遷移
+    - 完了待ちではなく、起動確認のみでダイアログを閉じる
+  - [x] 5.2.5 CreateSpecDialogのUI修正
+    - プレースホルダの色を修正（黒色→グレー）`placeholder:text-gray-400`
+    - 10文字バリデーションを削除（説明が空でなければOK）
+    - バリデーションメッセージを削除
   - _Requirements: 5.3_
+  - **テストファイル**: `src/renderer/components/CreateSpecDialog.test.tsx` (17件パス)
 
 - [x] 5.3 ダイアログの状態管理とフィードバック
   - 実行中のローディング状態表示

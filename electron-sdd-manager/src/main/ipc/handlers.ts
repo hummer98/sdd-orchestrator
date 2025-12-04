@@ -21,6 +21,8 @@ import { getDefaultLogFileService, initDefaultLogFileService } from '../services
 import { addShellPermissions } from '../services/permissionsService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
+import { BugService } from '../services/bugService';
+import { BugsWatcherService } from '../services/bugsWatcherService';
 import * as path from 'path';
 
 const fileService = new FileService();
@@ -28,6 +30,7 @@ const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
+const bugService = new BugService();
 
 // SpecManagerService instance (lazily initialized with project path)
 let specManagerService: SpecManagerService | null = null;
@@ -35,6 +38,8 @@ let specManagerService: SpecManagerService | null = null;
 let specsWatcherService: SpecsWatcherService | null = null;
 // AgentRecordWatcherService instance
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
+// BugsWatcherService instance
+let bugsWatcherService: BugsWatcherService | null = null;
 // Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
 // Initial project path set from command line arguments
@@ -139,6 +144,10 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   if (agentRecordWatcherService) {
     await agentRecordWatcherService.stop();
     agentRecordWatcherService = null;
+  }
+  if (bugsWatcherService) {
+    await bugsWatcherService.stop();
+    bugsWatcherService = null;
   }
 }
 
@@ -738,6 +747,44 @@ export function registerIpcHandlers(): void {
       return bugWorkflowInstaller.installAll(projectPath);
     }
   );
+
+  // Bug Management Handlers (Requirements: 3.1, 6.1, 6.3, 6.5)
+  ipcMain.handle(
+    IPC_CHANNELS.READ_BUGS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] READ_BUGS called', { projectPath });
+      const result = await bugService.readBugs(projectPath);
+      if (!result.ok) {
+        throw new Error(`Failed to read bugs: ${result.error.type}`);
+      }
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.READ_BUG_DETAIL,
+    async (_event, bugPath: string) => {
+      logger.info('[handlers] READ_BUG_DETAIL called', { bugPath });
+      const result = await bugService.readBugDetail(bugPath);
+      if (!result.ok) {
+        throw new Error(`Failed to read bug detail: ${result.error.type}`);
+      }
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.START_BUGS_WATCHER, async (event) => {
+    logger.info('[handlers] START_BUGS_WATCHER called');
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      startBugsWatcher(window);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.STOP_BUGS_WATCHER, async () => {
+    logger.info('[handlers] STOP_BUGS_WATCHER called');
+    await stopBugsWatcher();
+  });
 }
 
 /**
@@ -856,5 +903,44 @@ export async function stopAgentRecordWatcher(): Promise<void> {
     await agentRecordWatcherService.stop();
     agentRecordWatcherService = null;
     logger.info('[handlers] Agent record watcher stopped');
+  }
+}
+
+/**
+ * Start or restart bugs watcher for the current project
+ * Requirements: 6.5
+ */
+export function startBugsWatcher(window: BrowserWindow): void {
+  if (!currentProjectPath) {
+    logger.warn('[handlers] Cannot start bugs watcher: no project path set');
+    return;
+  }
+
+  // Stop existing watcher if any
+  if (bugsWatcherService) {
+    bugsWatcherService.stop();
+  }
+
+  bugsWatcherService = new BugsWatcherService(currentProjectPath);
+
+  bugsWatcherService.onChange((event) => {
+    logger.info('[handlers] Bugs changed', { event });
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.BUGS_CHANGED, event);
+    }
+  });
+
+  bugsWatcherService.start();
+  logger.info('[handlers] Bugs watcher started', { projectPath: currentProjectPath });
+}
+
+/**
+ * Stop bugs watcher
+ */
+export async function stopBugsWatcher(): Promise<void> {
+  if (bugsWatcherService) {
+    await bugsWatcherService.stop();
+    bugsWatcherService = null;
+    logger.info('[handlers] Bugs watcher stopped');
   }
 }

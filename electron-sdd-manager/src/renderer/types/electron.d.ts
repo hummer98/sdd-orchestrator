@@ -5,6 +5,9 @@ import type {
   Phase,
   ExecutionResult,
   CommandOutputEvent,
+  BugMetadata,
+  BugDetail,
+  BugsChangeEvent,
 } from './index';
 
 /**
@@ -361,6 +364,17 @@ export interface ElectronAPI {
   checkBugWorkflowStatus(projectPath: string): Promise<BugWorkflowInstallStatus>;
   installBugWorkflow(projectPath: string): Promise<Result<BugWorkflowInstallResult, InstallError>>;
   onMenuInstallBugWorkflow(callback: () => void): () => void;
+
+  // Bug Management
+  // Requirements: 3.1, 6.1, 6.3
+  readBugs(projectPath: string): Promise<BugMetadata[]>;
+  readBugDetail(bugPath: string): Promise<BugDetail>;
+
+  // Bug Watcher
+  // Requirements: 6.5
+  startBugsWatcher(): Promise<void>;
+  stopBugsWatcher(): Promise<void>;
+  onBugsChanged(callback: (event: BugsChangeEvent) => void): () => void;
 }
 
 declare global {

@@ -5,8 +5,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  SpecList,
-  CreateSpecDialog,
   ArtifactEditor,
   NotificationProvider,
   UnsavedChangesDialog,
@@ -22,11 +20,12 @@ import {
   // CLAUDE.md Install
   ClaudeMdInstallDialog,
   // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
-  SpecListHeader,
   GlobalAgentPanel,
   ErrorBanner,
   // Remote Access Dialog
   RemoteAccessDialog,
+  // Bug Workflow UI: DocsTabsでSpecListとBugListを統合
+  DocsTabs,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore } from './stores';
@@ -45,7 +44,7 @@ const AGENT_LIST_MAX = 400;
 
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects } = useProjectStore();
-  const { selectedSpec, specDetail, specs, loadSpecs } = useSpecStore();
+  const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
@@ -58,7 +57,6 @@ export function App() {
     isRemoteServerRunningRef.current = isRemoteServerRunning;
   }, [isRemoteServerRunning]);
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [isCliInstallDialogOpen, setIsCliInstallDialogOpen] = useState(false);
@@ -316,29 +314,18 @@ export function App() {
             style={{ width: leftPaneWidth }}
             className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900"
           >
-            {/* Task 6.1 (sidebar-refactor): 新しいサイドバー構成 */}
-            {/* Task 1.3: ProjectSelector削除済み - プロジェクト選択はメニューバー経由 */}
-
+            {/* Bug Workflow UI: 統合サイドバー構成 */}
             {/* 1. ErrorBanner (問題がある場合のみ表示) */}
             <ErrorBanner />
 
-            {/* 3. SpecListHeader (新規作成ボタン付き) */}
-            {currentProject && (
-              <SpecListHeader
-                specCount={specs.length}
-                onCreateClick={() => setIsCreateDialogOpen(true)}
-                disabled={!kiroValidation?.exists}
-              />
-            )}
-
-            {/* 4. Spec list (スクロール可能) */}
+            {/* 2. DocsTabs (Specs/Bugsタブ切り替え、新規作成ボタン含む) */}
             {currentProject && kiroValidation?.exists && (
-              <div className="flex-1 overflow-y-auto">
-                <SpecList />
+              <div className="flex-1 overflow-hidden">
+                <DocsTabs />
               </div>
             )}
 
-            {/* 5. GlobalAgentPanel (下部固定) */}
+            {/* 3. GlobalAgentPanel (下部固定) */}
             <GlobalAgentPanel />
           </aside>
 
@@ -401,11 +388,6 @@ export function App() {
         </div>
 
         {/* Dialogs */}
-        <CreateSpecDialog
-          isOpen={isCreateDialogOpen}
-          onClose={() => setIsCreateDialogOpen(false)}
-        />
-
         <UnsavedChangesDialog
           isOpen={showUnsavedDialog}
           onContinue={handleConfirmNavigation}

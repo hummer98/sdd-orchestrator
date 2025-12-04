@@ -16,6 +16,7 @@ import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
 import type { BugWorkflowInstallResult, BugWorkflowInstallStatus, InstallError as BugInstallError, Result as BugResult } from '../main/services/bugWorkflowInstaller';
+import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
 
 /**
  * Exposed API to renderer process
@@ -455,6 +456,55 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
+    };
+  },
+
+  // ============================================================
+  // Bug Management (Requirements: 3.1, 6.1, 6.3, 6.5)
+  // ============================================================
+
+  /**
+   * Read bugs from project
+   * @param projectPath Project root path
+   * @returns Array of bug metadata
+   */
+  readBugs: (projectPath: string): Promise<BugMetadata[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_BUGS, projectPath),
+
+  /**
+   * Read bug detail
+   * @param bugPath Bug directory path
+   * @returns Bug detail with artifacts
+   */
+  readBugDetail: (bugPath: string): Promise<BugDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_BUG_DETAIL, bugPath),
+
+  /**
+   * Start bugs watcher
+   */
+  startBugsWatcher: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.START_BUGS_WATCHER),
+
+  /**
+   * Stop bugs watcher
+   */
+  stopBugsWatcher: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STOP_BUGS_WATCHER),
+
+  /**
+   * Subscribe to bugs changes
+   * @param callback Function called when bugs change
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugsChanged: (callback: (event: BugsChangeEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, changeEvent: BugsChangeEvent) => {
+      callback(changeEvent);
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUGS_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUGS_CHANGED, handler);
     };
   },
 };

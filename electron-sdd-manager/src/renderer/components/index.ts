@@ -37,3 +37,13 @@ export { SpecListHeader } from './SpecListHeader';
 export { ErrorBanner } from './ErrorBanner';
 // Info Dialog
 export { InfoDialog } from './InfoDialog';
+// Task 5.1 (mobile-remote-access): Remote Access Control Panel
+export { RemoteAccessPanel } from './RemoteAccessPanel';
+export { RemoteAccessDialog } from './RemoteAccessDialog';
+// Bug Workflow UI Components
+export { BugProgressIndicator, BugPhaseLabel } from './BugProgressIndicator';
+export { BugListItem } from './BugListItem';
+export { BugActionButtons, getNextActionLabel } from './BugActionButtons';
+export { BugList } from './BugList';
+export { CreateBugDialog } from './CreateBugDialog';
+export { DocsTabs } from './DocsTabs';

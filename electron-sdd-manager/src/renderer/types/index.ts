@@ -127,3 +127,6 @@ export interface WindowBounds {
   readonly width: number;
   readonly height: number;
 }
+
+// Bug Workflow Types
+export * from './bug';

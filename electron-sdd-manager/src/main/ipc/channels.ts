@@ -113,6 +113,13 @@ export const IPC_CHANNELS = {
   GET_REMOTE_SERVER_STATUS: 'remote-access:get-status',
   REMOTE_SERVER_STATUS_CHANGED: 'remote-access:status-changed',
   REMOTE_CLIENT_COUNT_CHANGED: 'remote-access:client-count-changed',
+
+  // Bug Management (Requirements: 3.1, 6.1, 6.3, 6.5)
+  READ_BUGS: 'ipc:read-bugs',
+  READ_BUG_DETAIL: 'ipc:read-bug-detail',
+  START_BUGS_WATCHER: 'ipc:start-bugs-watcher',
+  STOP_BUGS_WATCHER: 'ipc:stop-bugs-watcher',
+  BUGS_CHANGED: 'ipc:bugs-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

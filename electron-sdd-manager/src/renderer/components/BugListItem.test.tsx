@@ -1,0 +1,222 @@
+/**
+ * BugListItem Component Tests
+ * Requirements: 2.2, 3.2, 3.3, 3.4
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { BugListItem } from './BugListItem';
+import type { BugMetadata } from '../types';
+
+describe('BugListItem', () => {
+  const mockBug: BugMetadata = {
+    name: 'test-bug',
+    path: '/project/.kiro/bugs/test-bug',
+    phase: 'reported',
+    updatedAt: new Date().toISOString(),
+    reportedAt: new Date().toISOString(),
+  };
+
+  const defaultProps = {
+    bug: mockBug,
+    isSelected: false,
+    onSelect: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Mock clipboard API
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
+  // ============================================================
+  // Bug display
+  // ============================================================
+  describe('bug display', () => {
+    it('should display bug name', () => {
+      render(<BugListItem {...defaultProps} />);
+
+      expect(screen.getByText('test-bug')).toBeInTheDocument();
+    });
+
+    it('should display progress indicator', () => {
+      render(<BugListItem {...defaultProps} />);
+
+      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    });
+
+    it('should display phase label', () => {
+      render(<BugListItem {...defaultProps} bug={{ ...mockBug, phase: 'analyzed' }} />);
+
+      expect(screen.getByText('Analyze')).toBeInTheDocument();
+    });
+
+    it('should display formatted date', () => {
+      // Set a specific date for testing
+      const pastDate = new Date('2024-01-15T10:30:00');
+      render(
+        <BugListItem
+          {...defaultProps}
+          bug={{ ...mockBug, updatedAt: pastDate.toISOString() }}
+        />
+      );
+
+      // Should show short date format (not today)
+      expect(screen.getByText(/1月15日|Jan 15/)).toBeInTheDocument();
+    });
+
+    it('should show time if updated today', () => {
+      const today = new Date();
+      today.setHours(14, 30, 0, 0);
+      render(
+        <BugListItem
+          {...defaultProps}
+          bug={{ ...mockBug, updatedAt: today.toISOString() }}
+        />
+      );
+
+      // Should show time format
+      expect(screen.getByText(/14:30/)).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // Selection
+  // ============================================================
+  describe('selection', () => {
+    it('should apply selected styles when isSelected is true', () => {
+      render(<BugListItem {...defaultProps} isSelected={true} />);
+
+      const item = screen.getByTestId('bug-item-test-bug');
+      expect(item.className).toContain('bg-blue-100');
+      expect(item.className).toContain('border-l-blue-500');
+    });
+
+    it('should not apply selected styles when isSelected is false', () => {
+      render(<BugListItem {...defaultProps} isSelected={false} />);
+
+      const item = screen.getByTestId('bug-item-test-bug');
+      expect(item.className).not.toContain('bg-blue-100');
+    });
+
+    it('should call onSelect when clicked', () => {
+      const onSelect = vi.fn();
+      render(<BugListItem {...defaultProps} onSelect={onSelect} />);
+
+      fireEvent.click(screen.getByTestId('bug-item-test-bug'));
+
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onSelect when Enter key is pressed', () => {
+      const onSelect = vi.fn();
+      render(<BugListItem {...defaultProps} onSelect={onSelect} />);
+
+      fireEvent.keyDown(screen.getByTestId('bug-item-test-bug'), { key: 'Enter' });
+
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onSelect when Space key is pressed', () => {
+      const onSelect = vi.fn();
+      render(<BugListItem {...defaultProps} onSelect={onSelect} />);
+
+      fireEvent.keyDown(screen.getByTestId('bug-item-test-bug'), { key: ' ' });
+
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ============================================================
+  // Copy button
+  // ============================================================
+  describe('copy button', () => {
+    it('should copy bug name when copy button is clicked', async () => {
+      render(<BugListItem {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('copy-button-test-bug'));
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test-bug');
+    });
+
+    it('should not trigger selection when copy button is clicked', () => {
+      const onSelect = vi.fn();
+      render(<BugListItem {...defaultProps} onSelect={onSelect} />);
+
+      fireEvent.click(screen.getByTestId('copy-button-test-bug'));
+
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('should show check icon after copying', async () => {
+      render(<BugListItem {...defaultProps} />);
+
+      expect(screen.getByTestId('copy-icon')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('copy-button-test-bug'));
+
+      expect(screen.getByTestId('copy-check')).toBeInTheDocument();
+      expect(screen.queryByTestId('copy-icon')).not.toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // Progress indicator phases
+  // Requirements: 3.2, 3.3, 3.4
+  // ============================================================
+  describe('progress indicator phases', () => {
+    const phases: Array<{ phase: BugMetadata['phase']; expectedLabel: string }> = [
+      { phase: 'reported', expectedLabel: 'Report' },
+      { phase: 'analyzed', expectedLabel: 'Analyze' },
+      { phase: 'fixed', expectedLabel: 'Fix' },
+      { phase: 'verified', expectedLabel: 'Verify' },
+    ];
+
+    phases.forEach(({ phase, expectedLabel }) => {
+      it(`should display correct label for ${phase} phase`, () => {
+        render(<BugListItem {...defaultProps} bug={{ ...mockBug, phase }} />);
+
+        expect(screen.getByText(expectedLabel)).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ============================================================
+  // Accessibility
+  // ============================================================
+  describe('accessibility', () => {
+    it('should have role="button" on the main container', () => {
+      render(<BugListItem {...defaultProps} />);
+
+      // The main container has role="button", plus there's a copy button
+      const buttons = screen.getAllByRole('button');
+      expect(buttons.length).toBe(2);
+      expect(screen.getByTestId('bug-item-test-bug')).toHaveAttribute('role', 'button');
+    });
+
+    it('should be focusable with tabIndex', () => {
+      render(<BugListItem {...defaultProps} />);
+
+      const item = screen.getByTestId('bug-item-test-bug');
+      expect(item).toHaveAttribute('tabIndex', '0');
+    });
+
+    it('should have tooltip with full date', () => {
+      const pastDate = new Date('2024-01-15T10:30:00');
+      render(
+        <BugListItem
+          {...defaultProps}
+          bug={{ ...mockBug, updatedAt: pastDate.toISOString() }}
+        />
+      );
+
+      const dateElement = screen.getByText(/1月15日|Jan 15/);
+      expect(dateElement).toHaveAttribute('title');
+      expect(dateElement.getAttribute('title')).toContain('2024');
+    });
+  });
+});

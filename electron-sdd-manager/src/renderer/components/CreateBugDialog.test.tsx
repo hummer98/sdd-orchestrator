@@ -67,18 +67,19 @@ describe('CreateBugDialog', () => {
       expect(screen.getByTestId('create-bug-dialog')).toBeInTheDocument();
     });
 
-    it('should display bug name input field', () => {
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      expect(screen.getByTestId('bug-name-input')).toBeInTheDocument();
-      expect(screen.getByLabelText(/バグ名/)).toBeInTheDocument();
-    });
-
-    it('should display description textarea', () => {
+    it('should display description textarea as required field', () => {
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       expect(screen.getByTestId('bug-description-input')).toBeInTheDocument();
-      expect(screen.getByLabelText(/説明/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/バグの説明/)).toBeInTheDocument();
+      // Check required indicator
+      expect(screen.getByText('*')).toBeInTheDocument();
+    });
+
+    it('should not display bug name input field (auto-generated)', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.queryByTestId('bug-name-input')).not.toBeInTheDocument();
     });
 
     it('should display create and cancel buttons', () => {
@@ -123,41 +124,30 @@ describe('CreateBugDialog', () => {
   // Requirements: 4.4
   // ============================================================
   describe('form validation', () => {
-    it('should disable create button when bug name is empty', () => {
+    it('should disable create button when description is empty', () => {
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       expect(screen.getByTestId('create-button')).toBeDisabled();
     });
 
-    it('should enable create button when bug name is provided', () => {
+    it('should enable create button when description is provided', () => {
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description here' },
       });
 
       expect(screen.getByTestId('create-button')).not.toBeDisabled();
     });
 
-    it('should show error when trying to create with empty name', async () => {
+    it('should disable create button when description is whitespace only', () => {
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      // Focus and blur to simulate user interaction
-      const input = screen.getByTestId('bug-name-input');
-      fireEvent.change(input, { target: { value: 'a' } });
-      fireEvent.change(input, { target: { value: '' } });
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: '   ' },
+      });
 
-      // Can't click create since it's disabled, but we can test internal validation
       expect(screen.getByTestId('create-button')).toBeDisabled();
-    });
-
-    it('should sanitize bug name (lowercase, alphanumeric, hyphens)', () => {
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      const input = screen.getByTestId('bug-name-input') as HTMLInputElement;
-      fireEvent.change(input, { target: { value: 'Test Bug Name!' } });
-
-      expect(input.value).toBe('test-bug-name-');
     });
   });
 
@@ -166,12 +156,12 @@ describe('CreateBugDialog', () => {
   // Requirements: 4.4, 4.5, 4.6
   // ============================================================
   describe('bug creation', () => {
-    it('should call startAgent with correct parameters', async () => {
+    it('should call startAgent with auto-generated bug name', async () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description here' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -180,34 +170,29 @@ describe('CreateBugDialog', () => {
           '', // specId
           'bug-create', // phase
           '/kiro:bug-create', // command
-          ['test-bug'], // args
+          expect.arrayContaining([
+            expect.stringMatching(/^bug-\d{8}-\d{6}$/), // auto-generated name
+            '"Bug description here"',
+          ]),
           undefined, // group
           undefined // sessionId
         );
       });
     });
 
-    it('should include description in args when provided', async () => {
+    it('should generate bug name in format bug-YYYYMMDD-HHmmss', async () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
-      });
       fireEvent.change(screen.getByTestId('bug-description-input'), {
-        target: { value: 'Bug description here' },
+        target: { value: 'Test bug' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockStartAgent).toHaveBeenCalledWith(
-          '',
-          'bug-create',
-          '/kiro:bug-create',
-          ['test-bug', '"Bug description here"'],
-          undefined,
-          undefined
-        );
+        const callArgs = mockStartAgent.mock.calls[0];
+        const args = callArgs[3] as string[];
+        expect(args[0]).toMatch(/^bug-\d{8}-\d{6}$/);
       });
     });
 
@@ -215,8 +200,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockImplementation(() => new Promise(() => {}));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -228,8 +213,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -242,8 +227,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -256,8 +241,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -273,8 +258,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -293,8 +278,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockResolvedValue(null);
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -308,8 +293,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockRejectedValue(new Error('Test error'));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -323,8 +308,8 @@ describe('CreateBugDialog', () => {
       mockStartAgent.mockRejectedValue(new Error('Test error'));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
-      fireEvent.change(screen.getByTestId('bug-name-input'), {
-        target: { value: 'test-bug' },
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
       });
       fireEvent.click(screen.getByTestId('create-button'));
 

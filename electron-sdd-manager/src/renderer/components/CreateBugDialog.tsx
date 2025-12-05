@@ -17,41 +17,47 @@ interface CreateBugDialogProps {
 
 /**
  * CreateBugDialog - Dialog for creating new bug reports
- * - Bug name input (required)
- * - Bug description textarea (optional)
+ * - Bug description textarea (required)
  * - Create/Cancel buttons
  * - Loading state during creation
- * - Validation for empty bug name
+ * - Bug name is auto-generated from timestamp
  */
 export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): React.ReactElement | null {
   const { currentProject } = useProjectStore();
   const { startAgent, selectForGlobalAgents, selectAgent } = useAgentStore();
   const { refreshBugs } = useBugStore();
 
-  const [bugName, setBugName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-
-  const handleBugNameChange = (value: string) => {
-    // Sanitize bug name: lowercase, alphanumeric and hyphens only
-    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-');
-    setBugName(sanitized);
-    setError(null);
-  };
 
   const handleDescriptionChange = (value: string) => {
     setDescription(value);
     setError(null);
   };
 
+  /**
+   * Generate bug name from timestamp
+   * Format: bug-YYYYMMDD-HHmmss
+   */
+  const generateBugName = (): string => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `bug-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  };
+
   const handleCreate = async () => {
     if (!currentProject) return;
 
-    // Validate bug name
-    const trimmedName = bugName.trim();
-    if (!trimmedName) {
-      setError('バグ名を入力してください');
+    // Validate description
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription) {
+      setError('バグの説明を入力してください');
       return;
     }
 
@@ -59,14 +65,12 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
     setError(null);
 
     try {
+      // Generate bug name automatically
+      const bugName = generateBugName();
+
       // Build command args for /kiro:bug-create
       const command = '/kiro:bug-create';
-      const args: string[] = [trimmedName];
-
-      // Add description if provided
-      if (description.trim()) {
-        args.push(`"${description.trim()}"`);
-      }
+      const args: string[] = [bugName, `"${trimmedDescription}"`];
 
       // Start agent with bug-create command
       const agentId = await startAgent(
@@ -100,7 +104,6 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
   };
 
   const handleClose = () => {
-    setBugName('');
     setDescription('');
     setError(null);
     setIsCreating(false);
@@ -109,8 +112,8 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
 
   if (!isOpen) return null;
 
-  // Validation
-  const isValid = bugName.trim().length > 0;
+  // Validation: description is required
+  const isValid = description.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" data-testid="create-bug-dialog">
@@ -148,57 +151,31 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
 
         {/* Form */}
         <div className="space-y-4">
-          {/* Bug name field */}
-          <div>
-            <label
-              htmlFor="bug-name"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              バグ名 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="bug-name"
-              value={bugName}
-              onChange={(e) => handleBugNameChange(e.target.value)}
-              placeholder="bug-name (英小文字、数字、ハイフンのみ)"
-              disabled={isCreating}
-              className={clsx(
-                'w-full px-3 py-2 rounded-md',
-                'bg-gray-50 dark:bg-gray-800',
-                'border',
-                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-                error && !bugName.trim()
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500',
-                'focus:outline-none focus:ring-2',
-                'disabled:opacity-50'
-              )}
-              data-testid="bug-name-input"
-            />
-          </div>
-
           {/* Description field */}
           <div>
             <label
               htmlFor="bug-description"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              説明
+              バグの説明 <span className="text-red-500">*</span>
             </label>
             <textarea
               id="bug-description"
               value={description}
               onChange={(e) => handleDescriptionChange(e.target.value)}
-              placeholder="バグの概要を入力してください（任意）..."
+              placeholder="発生した問題や再現手順を入力してください..."
               rows={4}
               disabled={isCreating}
               className={clsx(
                 'w-full px-3 py-2 rounded-md resize-none',
                 'bg-gray-50 dark:bg-gray-800',
-                'border border-gray-200 dark:border-gray-700',
+                'text-gray-900 dark:text-gray-100',
+                'border',
+                error && !description.trim()
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500',
                 'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'focus:outline-none focus:ring-2',
                 'disabled:opacity-50'
               )}
               data-testid="bug-description-input"

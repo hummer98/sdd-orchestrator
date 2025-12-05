@@ -27,8 +27,8 @@ interface TabConfig {
 }
 
 const TAB_CONFIGS: TabConfig[] = [
-  { id: 'specs', label: 'Specs', icon: FileText, createLabel: '+Spec' },
-  { id: 'bugs', label: 'Bugs', icon: Bug, createLabel: '+Bug' },
+  { id: 'specs', label: 'Specs', icon: FileText, createLabel: 'Spec' },
+  { id: 'bugs', label: 'Bugs', icon: Bug, createLabel: 'Bug' },
 ];
 
 /**

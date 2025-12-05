@@ -23,6 +23,8 @@ import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } 
 import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { BugService } from '../services/bugService';
 import { BugsWatcherService } from '../services/bugsWatcherService';
+import { setupStateProvider, setupWorkflowController } from './remoteAccessHandlers';
+import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 
 const fileService = new FileService();
@@ -149,6 +151,31 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     await bugsWatcherService.stop();
     bugsWatcherService = null;
   }
+
+  // Set up StateProvider and WorkflowController for Remote Access Server
+  // This enables mobile remote access to see specs and control workflows
+  const getSpecsForRemote = async (): Promise<SpecInfo[] | null> => {
+    const result = await fileService.readSpecs(projectPath);
+    if (!result.ok) {
+      logger.error('[handlers] Failed to read specs for remote access', { error: result.error });
+      return null;
+    }
+    // Convert SpecMetadata[] to SpecInfo[]
+    // SpecInfo requires: id, name, phase (and allows additional properties)
+    // Note: Mobile UI expects feature_name for display and selection
+    return result.value.map(spec => ({
+      id: spec.name, // Use name as id (spec directory name)
+      name: spec.name,
+      feature_name: spec.name, // Required by mobile UI components
+      phase: spec.phase,
+      path: spec.path,
+      updatedAt: spec.updatedAt,
+    }));
+  };
+
+  setupStateProvider(projectPath, getSpecsForRemote);
+  setupWorkflowController(specManagerService);
+  logger.info('[handlers] Remote Access StateProvider and WorkflowController set up');
 }
 
 /**

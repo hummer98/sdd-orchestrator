@@ -1,0 +1,277 @@
+/**
+ * RemoteAccessPanel Component
+ * Control panel for remote access server
+ * Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 2.2, 8.5
+ * Task 5.1: Remote Access Control Panel
+ */
+
+import { useCallback, useState } from 'react';
+import { clsx } from 'clsx';
+import {
+  Wifi,
+  WifiOff,
+  Loader2,
+  Copy,
+  Check,
+  X,
+  Smartphone,
+  Users,
+} from 'lucide-react';
+import { useRemoteAccessStore } from '../stores/remoteAccessStore';
+
+/**
+ * RemoteAccessPanel Props
+ */
+export interface RemoteAccessPanelProps {
+  /** Additional CSS class names */
+  className?: string;
+}
+
+/**
+ * RemoteAccessPanel Component
+ *
+ * Provides UI controls for the remote access server:
+ * - Server enable/disable checkbox
+ * - Connection URL display with copy functionality
+ * - QR code display for mobile scanning
+ * - Connected client count
+ * - Server status indicator
+ * - Error display
+ *
+ * @example
+ * <RemoteAccessPanel />
+ */
+export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
+  const {
+    isRunning,
+    port,
+    url,
+    qrCodeDataUrl,
+    clientCount,
+    error,
+    localIp,
+    isLoading,
+    startServer,
+    stopServer,
+    clearError,
+  } = useRemoteAccessStore();
+
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Handle checkbox toggle
+  const handleToggle = useCallback(async () => {
+    if (isLoading) return;
+
+    if (isRunning) {
+      await stopServer();
+    } else {
+      await startServer();
+    }
+  }, [isRunning, isLoading, startServer, stopServer]);
+
+  // Handle URL copy
+  const handleCopyUrl = useCallback(async () => {
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('[RemoteAccessPanel] Failed to copy URL:', err);
+    }
+  }, [url]);
+
+  // Handle error dismiss
+  const handleDismissError = useCallback(() => {
+    clearError();
+  }, [clearError]);
+
+  return (
+    <div
+      className={clsx(
+        'p-4 rounded-lg border bg-white dark:bg-gray-800',
+        'border-gray-200 dark:border-gray-700',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+          <Smartphone className="w-5 h-5" />
+          Remote Access
+        </h2>
+
+        {/* Server Status Indicator */}
+        <div data-testid="server-status" className="flex items-center gap-2">
+          {isLoading ? (
+            <>
+              <Loader2
+                data-testid="loading-indicator"
+                className="w-4 h-4 text-blue-500 animate-spin"
+              />
+              <span className="text-sm text-gray-500">Starting...</span>
+            </>
+          ) : isRunning ? (
+            <>
+              <Wifi className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-600 dark:text-green-400">Running</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-500">Stopped</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Enable/Disable Checkbox */}
+      <label className="flex items-center gap-3 mb-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isRunning}
+          onChange={handleToggle}
+          disabled={isLoading}
+          className={clsx(
+            'w-5 h-5 rounded border-gray-300 text-blue-600',
+            'focus:ring-blue-500 focus:ring-offset-0',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          aria-label="Enable remote access server"
+        />
+        <span className="text-gray-700 dark:text-gray-300">
+          Enable remote access
+        </span>
+      </label>
+
+      {/* Error Display */}
+      {error && (
+        <div
+          role="alert"
+          className={clsx(
+            'mb-4 p-3 rounded-lg',
+            'bg-red-50 dark:bg-red-900/20',
+            'border border-red-200 dark:border-red-800',
+            'flex items-start justify-between gap-2'
+          )}
+        >
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          <button
+            onClick={handleDismissError}
+            className="p-1 text-red-500 hover:text-red-700 dark:hover:text-red-300"
+            aria-label="Dismiss error"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Server Details (shown when running) */}
+      {isRunning && (
+        <div className="space-y-4">
+          {/* Connection URL */}
+          {url && (
+            <div data-testid="connection-url">
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Connection URL
+              </label>
+              <div className="flex items-center gap-2">
+                <code
+                  className={clsx(
+                    'flex-1 px-3 py-2 rounded-md text-sm',
+                    'bg-gray-100 dark:bg-gray-900',
+                    'text-gray-800 dark:text-gray-200',
+                    'font-mono overflow-x-auto'
+                  )}
+                >
+                  {url}
+                </code>
+                <button
+                  onClick={handleCopyUrl}
+                  className={clsx(
+                    'p-2 rounded-md transition-colors',
+                    'hover:bg-gray-100 dark:hover:bg-gray-700',
+                    copySuccess
+                      ? 'text-green-500'
+                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  )}
+                  aria-label="Copy URL"
+                >
+                  {copySuccess ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* QR Code */}
+          {qrCodeDataUrl && (
+            <div className="flex flex-col items-center">
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                Scan QR Code
+              </label>
+              <div
+                className={clsx(
+                  'p-3 rounded-lg',
+                  'bg-white border border-gray-200',
+                  'inline-block'
+                )}
+              >
+                <img
+                  data-testid="qr-code"
+                  src={qrCodeDataUrl}
+                  alt="QR Code for mobile connection"
+                  className="w-32 h-32"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Connected Clients */}
+          <div
+            data-testid="client-count"
+            className={clsx(
+              'flex items-center gap-2 p-3 rounded-lg',
+              'bg-gray-50 dark:bg-gray-900/50',
+              'border border-gray-200 dark:border-gray-700'
+            )}
+          >
+            <Users className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Connected clients:
+            </span>
+            <span
+              className={clsx(
+                'text-sm font-semibold',
+                clientCount > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-gray-500'
+              )}
+            >
+              {clientCount}
+            </span>
+          </div>
+
+          {/* Port Info */}
+          {port && (
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Server running on port {port}
+              {localIp && ` (${localIp})`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Instructions when stopped */}
+      {!isRunning && !error && (
+        <p className="text-sm text-gray-500 dark:text-gray-500">
+          Enable remote access to control SDD workflow from your mobile device.
+        </p>
+      )}
+    </div>
+  );
+}

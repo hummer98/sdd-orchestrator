@@ -3,6 +3,43 @@ import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 import { resolve } from 'path';
+import { copyFileSync, mkdirSync, readdirSync, statSync } from 'fs';
+
+/**
+ * Copy remote-ui static files to dist directory
+ */
+function copyRemoteUI() {
+  return {
+    name: 'copy-remote-ui',
+    closeBundle() {
+      const srcDir = resolve(__dirname, 'src/main/remote-ui');
+      const destDir = resolve(__dirname, 'dist/main/remote-ui');
+
+      // Recursively copy directory
+      const copyDir = (src: string, dest: string) => {
+        mkdirSync(dest, { recursive: true });
+        const entries = readdirSync(src);
+        for (const entry of entries) {
+          const srcPath = resolve(src, entry);
+          const destPath = resolve(dest, entry);
+          const stat = statSync(srcPath);
+          if (stat.isDirectory()) {
+            copyDir(srcPath, destPath);
+          } else {
+            copyFileSync(srcPath, destPath);
+          }
+        }
+      };
+
+      try {
+        copyDir(srcDir, destDir);
+        console.log('[copy-remote-ui] Static files copied to dist/main/remote-ui');
+      } catch (error) {
+        console.warn('[copy-remote-ui] Could not copy remote-ui files:', error);
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -22,6 +59,7 @@ export default defineConfig({
               external: ['electron'],
             },
           },
+          plugins: [copyRemoteUI()],
         },
       },
       {

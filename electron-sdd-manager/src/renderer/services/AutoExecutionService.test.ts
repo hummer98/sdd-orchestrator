@@ -101,6 +101,279 @@ describe('AutoExecutionService', () => {
   });
 
   // ============================================================
+  // Bug Fix: getLastCompletedPhase - Resume from current progress
+  // ============================================================
+  describe('Bug Fix: getLastCompletedPhase', () => {
+    it('should return null when no phases are completed', () => {
+      const approvals = {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBeNull();
+    });
+
+    it('should return requirements when requirements is generated', () => {
+      const approvals = {
+        requirements: { generated: true, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBe('requirements');
+    });
+
+    it('should return requirements when requirements is approved', () => {
+      const approvals = {
+        requirements: { generated: true, approved: true },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBe('requirements');
+    });
+
+    it('should return design when design is generated', () => {
+      const approvals = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBe('design');
+    });
+
+    it('should return tasks when tasks is generated', () => {
+      const approvals = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: false },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBe('tasks');
+    });
+
+    it('should return tasks when all phases are approved', () => {
+      const approvals = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      };
+
+      const result = service.getLastCompletedPhase(approvals);
+      expect(result).toBe('tasks');
+    });
+  });
+
+  // ============================================================
+  // Bug Fix: start should resume from current progress
+  // ============================================================
+  describe('Bug Fix: start resumes from current progress', () => {
+    it('should start from design when requirements is already completed', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      const result = service.start();
+
+      expect(result).toBe(true);
+      // Wait for async executePhase call
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'design',
+        'test-spec'
+      );
+    });
+
+    it('should start from tasks when design is already completed', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      const result = service.start();
+
+      expect(result).toBe(true);
+      // Wait for async executePhase call
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'tasks',
+        'test-spec'
+      );
+    });
+
+    it('should start from impl when tasks is already completed', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: true,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      const result = service.start();
+
+      expect(result).toBe(true);
+      // Wait for async executePhase call
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'impl',
+        'test-spec'
+      );
+    });
+
+    it('should auto-approve generated but unapproved phase before proceeding', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: false }, // generated but not approved
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+
+      // Mock selectSpec to prevent errors
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      const result = service.start();
+
+      expect(result).toBe(true);
+      // Wait for async executePhase call (needs more time for auto-approval)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Should start from design (next after requirements)
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'design',
+        'test-spec'
+      );
+    });
+
+    it('should return false when all completed phases have no next permitted phase', () => {
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        },
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+      // Only requirements is permitted, but it's already completed
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: false,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      const result = service.start();
+
+      expect(result).toBe(false);
+    });
+  });
+
+  // ============================================================
   // Task 3.2: Phase order and next phase logic
   // Requirements: 2.1, 2.2
   // ============================================================

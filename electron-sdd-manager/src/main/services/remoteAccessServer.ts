@@ -5,7 +5,7 @@
  */
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 import * as QRCode from 'qrcode';
 import { join } from 'path';
 import { getLocalIP } from '../utils/ipValidator';

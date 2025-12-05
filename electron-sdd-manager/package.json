@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
@@ -20,14 +20,20 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
     "@tanstack/react-virtual": "^3.13.12",
+    "@types/express": "^5.0.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/ws": "^8.18.1",
     "@uiw/react-md-editor": "^4.0.8",
     "chokidar": "^5.0.0",
     "clsx": "^2.1.1",
     "electron-store": "^8.2.0",
+    "express": "^5.1.0",
     "lucide-react": "^0.554.0",
+    "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.4.0",
+    "ws": "^8.18.3",
     "zod": "^3.24.0",
     "zustand": "^5.0.8"
   },
@@ -90,5 +96,9 @@
       ],
       "icon": "public/icon.png"
     }
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.9",
+    "utf-8-validate": "^6.0.5"
   }
 }

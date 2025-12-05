@@ -9,6 +9,7 @@ import { useAgentStore } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { notify } from '../stores/notificationStore';
 import { WORKFLOW_PHASES, type WorkflowPhase, type ValidationType } from '../types/workflow';
+import type { ApprovalStatus } from '../types';
 
 // ============================================================
 // Task 3.1: Service Types
@@ -54,6 +55,19 @@ export class AutoExecutionService {
       this.unsubscribeAgentStore = null;
     }
     this.clearTimeout();
+  }
+
+  // ============================================================
+  // Bug Fix: Get last completed phase from approvals
+  // Determines the starting point for auto-execution based on spec status
+  // ============================================================
+  getLastCompletedPhase(approvals: ApprovalStatus): WorkflowPhase | null {
+    // Check in reverse order: tasks -> design -> requirements
+    // Return the last phase that is either approved OR generated (will be auto-approved)
+    if (approvals.tasks.approved || approvals.tasks.generated) return 'tasks';
+    if (approvals.design.approved || approvals.design.generated) return 'design';
+    if (approvals.requirements.approved || approvals.requirements.generated) return 'requirements';
+    return null;
   }
 
   // ============================================================
@@ -175,6 +189,7 @@ export class AutoExecutionService {
   // ============================================================
   // Task 4.1: Start auto execution
   // Requirements: 1.1, 2.1
+  // Bug Fix: Resume from current spec progress instead of starting from beginning
   // ============================================================
   start(): boolean {
     const specStore = useSpecStore.getState();
@@ -186,12 +201,20 @@ export class AutoExecutionService {
       return false;
     }
 
-    // Get first permitted phase
-    const firstPhase = this.getNextPermittedPhase(null);
+    // Bug Fix: Determine starting phase based on current spec progress
+    // Instead of always starting from null (beginning), check which phases are already completed
+    const approvals = specStore.specDetail.specJson.approvals;
+    const lastCompletedPhase = this.getLastCompletedPhase(approvals);
+
+    // Get next permitted phase after the last completed one
+    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase);
     if (!firstPhase) {
       console.error('[AutoExecutionService] No permitted phases to execute');
       return false;
     }
+
+    console.log(`[AutoExecutionService] Starting from phase: ${firstPhase} (last completed: ${lastCompletedPhase || 'none'})`);
+
 
     // Reset execution tracking
     this.executionStartTime = Date.now();

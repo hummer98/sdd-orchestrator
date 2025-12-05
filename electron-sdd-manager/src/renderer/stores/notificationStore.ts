@@ -1,13 +1,16 @@
 /**
  * Notification Store
  * Manages toast notifications
- * Requirements: 10.1-10.5
+ * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
  */
 
 import { create } from 'zustand';
 import type { Notification } from '../types';
+import type { ExecutionSummary } from './workflowStore';
 
 const DEFAULT_DURATION = 5000;
+const MAX_NOTIFICATIONS = 5;
+const COMPLETION_SUMMARY_DURATION = 10000;
 
 interface NotificationState {
   notifications: Notification[];
@@ -36,9 +39,14 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       duration,
     };
 
-    set((state) => ({
-      notifications: [...state.notifications, newNotification],
-    }));
+    set((state) => {
+      // Task 2.1: Limit notifications to max 5
+      const notifications = [...state.notifications, newNotification];
+      if (notifications.length > MAX_NOTIFICATIONS) {
+        notifications.shift(); // Remove oldest notification
+      }
+      return { notifications };
+    });
 
     // Auto-remove after duration
     if (duration > 0) {
@@ -91,6 +99,30 @@ export const notify = {
       type: 'info',
       message,
       action,
+    });
+  },
+
+  // Task 2.2: Completion summary notification
+  showCompletionSummary: (summary: ExecutionSummary) => {
+    const phaseCount = summary.executedPhases.length;
+    const validationCount = summary.executedValidations.length;
+    const durationSeconds = Math.round(summary.totalDuration / 1000);
+    const hasErrors = summary.errors.length > 0;
+
+    let message = `自動実行完了: ${phaseCount}フェーズ`;
+    if (validationCount > 0) {
+      message += `, ${validationCount}バリデーション`;
+    }
+    message += ` (${durationSeconds}秒)`;
+
+    if (hasErrors) {
+      message += ` - ${summary.errors.length}件のエラー`;
+    }
+
+    useNotificationStore.getState().addNotification({
+      type: hasErrors ? 'warning' : 'success',
+      message,
+      duration: COMPLETION_SUMMARY_DURATION,
     });
   },
 };

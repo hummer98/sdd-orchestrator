@@ -1,11 +1,12 @@
 /**
  * Notification Store Tests
  * TDD: Testing notification state management
- * Requirements: 10.1-10.5
+ * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useNotificationStore } from './notificationStore';
+import { useNotificationStore, notify } from './notificationStore';
+import type { ExecutionSummary } from './workflowStore';
 
 describe('useNotificationStore', () => {
   beforeEach(() => {
@@ -159,6 +160,136 @@ describe('useNotificationStore', () => {
 
       const state = useNotificationStore.getState();
       expect(state.notifications).toHaveLength(0);
+    });
+  });
+
+  // ============================================================
+  // Task 2.1: Basic notification service
+  // Requirements: 5.2, 5.3
+  // ============================================================
+  describe('Task 2.1: notify helper functions', () => {
+    it('should add success notification via notify.success', () => {
+      notify.success('Operation completed');
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('success');
+      expect(state.notifications[0].message).toBe('Operation completed');
+    });
+
+    it('should add error notification via notify.error', () => {
+      notify.error('Operation failed');
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('error');
+      expect(state.notifications[0].message).toBe('Operation failed');
+    });
+
+    it('should add info notification via notify.info', () => {
+      notify.info('Information message');
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('info');
+    });
+
+    it('should add warning notification via notify.warning', () => {
+      notify.warning('Warning message');
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('warning');
+    });
+
+    it('should limit notifications to max 5', () => {
+      for (let i = 0; i < 7; i++) {
+        notify.info(`Message ${i}`);
+      }
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications.length).toBeLessThanOrEqual(5);
+    });
+  });
+
+  // ============================================================
+  // Task 2.2: Completion summary notification
+  // Requirements: 5.4
+  // ============================================================
+  describe('Task 2.2: showCompletionSummary', () => {
+    it('should show completion summary with executed phases', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements', 'design', 'tasks'],
+        executedValidations: [],
+        totalDuration: 5000,
+        errors: [],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('success');
+      expect(state.notifications[0].message).toContain('3');
+    });
+
+    it('should show completion summary with validations', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements', 'design'],
+        executedValidations: ['gap', 'design'],
+        totalDuration: 3000,
+        errors: [],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].message).toContain('2');
+    });
+
+    it('should show completion summary with errors as warning', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements'],
+        executedValidations: [],
+        totalDuration: 2000,
+        errors: ['Design failed', 'Validation error'],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('warning');
+    });
+
+    it('should format duration in seconds', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements'],
+        executedValidations: [],
+        totalDuration: 65000,
+        errors: [],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications[0].message).toContain('65');
+    });
+
+    it('should have longer duration for completion summary', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements'],
+        executedValidations: [],
+        totalDuration: 1000,
+        errors: [],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      const state = useNotificationStore.getState();
+      // Completion summary should stay visible longer (10 seconds)
+      expect(state.notifications[0].duration).toBeGreaterThanOrEqual(10000);
     });
   });
 });

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1f2937" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <title>SDD Manager Remote</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              300: '#93c5fd',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+  <!-- Connection Status Bar -->
+  <header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+    <div class="flex items-center justify-between">
+      <h1 class="text-lg font-semibold">SDD Manager</h1>
+      <div id="connection-status" class="flex items-center gap-2">
+        <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-400"></span>
+        <span id="status-text" class="text-sm text-gray-600 dark:text-gray-400">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="pb-20">
+    <!-- Project Info Section -->
+    <section id="project-section" class="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+        </svg>
+        <span id="project-path" class="truncate">Loading...</span>
+      </div>
+    </section>
+
+    <!-- Spec List Section -->
+    <section id="spec-list-section" class="p-4">
+      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Specifications</h2>
+      <div id="spec-list" class="space-y-2">
+        <!-- Spec items will be rendered here -->
+        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+          <p>Loading specifications...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Spec Detail Panel (Initially Hidden) -->
+    <section id="spec-detail-section" class="hidden fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900">
+      <!-- Header -->
+      <header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div class="flex items-center gap-3">
+          <button id="back-button" class="touch-target p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          <h2 id="spec-detail-title" class="text-lg font-semibold truncate">Spec Name</h2>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="p-4 space-y-4 overflow-y-auto" style="height: calc(100vh - 60px);">
+        <!-- Phase Status -->
+        <div id="phase-status" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Phase Status</h3>
+          <div id="phase-badges" class="flex flex-wrap gap-2">
+            <!-- Phase badges will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Workflow Control Panel -->
+        <div id="workflow-control" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Workflow Control</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <button id="btn-requirements" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              Requirements
+            </button>
+            <button id="btn-design" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              Design
+            </button>
+            <button id="btn-tasks" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              Tasks
+            </button>
+            <button id="btn-implementation" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              Implementation
+            </button>
+          </div>
+          <!-- Stop/Resume Controls -->
+          <div id="agent-controls" class="hidden mt-3 flex gap-3">
+            <button id="btn-stop" class="flex-1 touch-target bg-red-500 hover:bg-red-600 text-white rounded-lg py-3 px-4 font-medium">
+              Stop
+            </button>
+            <button id="btn-resume" class="flex-1 touch-target bg-green-500 hover:bg-green-600 text-white rounded-lg py-3 px-4 font-medium hidden">
+              Resume
+            </button>
+          </div>
+          <!-- Running Indicator -->
+          <div id="running-indicator" class="hidden mt-3 flex items-center justify-center gap-2 text-primary-500">
+            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Running...</span>
+          </div>
+        </div>
+
+        <!-- Log Viewer -->
+        <div id="log-viewer-section" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Agent Output</h3>
+            <div class="flex items-center gap-2">
+              <button id="btn-auto-scroll" class="text-xs px-2 py-1 rounded bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400">
+                Auto-scroll: ON
+              </button>
+              <button id="btn-clear-logs" class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                Clear
+              </button>
+            </div>
+          </div>
+          <div id="log-container" class="h-64 overflow-y-auto p-3 font-mono text-xs bg-gray-50 dark:bg-gray-900">
+            <div id="log-content">
+              <!-- Log entries will be rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reconnect Overlay -->
+    <div id="reconnect-overlay" class="hidden fixed inset-0 z-50 bg-gray-900/80 flex items-center justify-center">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 mx-4 max-w-sm w-full text-center">
+        <div id="reconnect-spinner" class="mb-4">
+          <svg class="animate-spin w-12 h-12 mx-auto text-primary-500" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold mb-2">Connection Lost</h3>
+        <p id="reconnect-message" class="text-gray-600 dark:text-gray-400 mb-4">Reconnecting...</p>
+        <button id="btn-manual-reconnect" class="hidden touch-target w-full bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium">
+          Reconnect
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-20 left-4 right-4 z-50 space-y-2">
+      <!-- Toast notifications will be rendered here -->
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="websocket.js"></script>
+  <script src="components.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+/**
+ * Custom styles for SDD Manager Mobile UI
+ * Complements Tailwind CSS CDN
+ * Requirements: 7.1, 7.3, 7.4, 7.5
+ */
+
+/* Touch target sizing - ensure minimum 44x44px */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* System dark mode detection and auto-switching */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    color-scheme: dark;
+  }
+  html:not(.light) body {
+    @apply bg-gray-900 text-gray-100;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html:not(.dark) {
+    color-scheme: light;
+  }
+}
+
+/* Apply dark class based on system preference */
+:root {
+  color-scheme: light dark;
+}
+
+/* Safe area insets for notched devices */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent text selection on buttons */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active state for touch feedback */
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Log container styles */
+#log-container {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Log entry styles */
+.log-entry {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.log-entry:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .log-entry:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Log type colors */
+.log-info {
+  color: #3b82f6; /* blue-500 */
+}
+
+.log-warning {
+  color: #f59e0b; /* amber-500 */
+}
+
+.log-error {
+  color: #ef4444; /* red-500 */
+}
+
+.log-agent {
+  color: #8b5cf6; /* violet-500 */
+}
+
+.log-stdout {
+  color: inherit;
+}
+
+.log-stderr {
+  color: #ef4444; /* red-500 */
+}
+
+/* Phase badge styles */
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.phase-badge-pending {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #6b7280; /* gray-500 */
+}
+
+.dark .phase-badge-pending {
+  background-color: #374151; /* gray-700 */
+  color: #9ca3af; /* gray-400 */
+}
+
+.phase-badge-generated {
+  background-color: #fef3c7; /* amber-100 */
+  color: #d97706; /* amber-600 */
+}
+
+.dark .phase-badge-generated {
+  background-color: #78350f; /* amber-900 */
+  color: #fbbf24; /* amber-400 */
+}
+
+.phase-badge-approved {
+  background-color: #d1fae5; /* green-100 */
+  color: #059669; /* green-600 */
+}
+
+.dark .phase-badge-approved {
+  background-color: #064e3b; /* green-900 */
+  color: #34d399; /* green-400 */
+}
+
+/* Spec card styles */
+.spec-card {
+  padding: 1rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dark .spec-card {
+  background: #1f2937; /* gray-800 */
+  border-color: #374151; /* gray-700 */
+}
+
+.spec-card:hover {
+  border-color: #3b82f6; /* primary-500 */
+}
+
+.spec-card:active {
+  transform: scale(0.99);
+}
+
+.spec-card-selected {
+  border-color: #3b82f6; /* primary-500 */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Toast notification styles */
+.toast {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  animation: toast-in 0.3s ease-out;
+}
+
+.toast-success {
+  background-color: #d1fae5; /* green-100 */
+  color: #065f46; /* green-800 */
+  border: 1px solid #a7f3d0; /* green-200 */
+}
+
+.dark .toast-success {
+  background-color: #064e3b; /* green-900 */
+  color: #a7f3d0; /* green-200 */
+  border-color: #047857; /* green-700 */
+}
+
+.toast-error {
+  background-color: #fee2e2; /* red-100 */
+  color: #991b1b; /* red-800 */
+  border: 1px solid #fecaca; /* red-200 */
+}
+
+.dark .toast-error {
+  background-color: #7f1d1d; /* red-900 */
+  color: #fecaca; /* red-200 */
+  border-color: #b91c1c; /* red-700 */
+}
+
+.toast-info {
+  background-color: #dbeafe; /* blue-100 */
+  color: #1e40af; /* blue-800 */
+  border: 1px solid #bfdbfe; /* blue-200 */
+}
+
+.dark .toast-info {
+  background-color: #1e3a8a; /* blue-900 */
+  color: #bfdbfe; /* blue-200 */
+  border-color: #1d4ed8; /* blue-700 */
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+}
+
+.toast-exit {
+  animation: toast-out 0.3s ease-in forwards;
+}
+
+/* Workflow button states */
+.workflow-btn {
+  transition: all 0.15s ease;
+}
+
+.workflow-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Connection status indicator */
+.status-connected {
+  background-color: #10b981; /* green-500 */
+}
+
+.status-disconnected {
+  background-color: #ef4444; /* red-500 */
+}
+
+.status-connecting {
+  background-color: #f59e0b; /* amber-500 */
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Empty state styles */
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6b7280; /* gray-500 */
+}
+
+.dark .empty-state {
+  color: #9ca3af; /* gray-400 */
+}
+
+/* Scrollbar styling for log viewer */
+#log-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+#log-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#log-container::-webkit-scrollbar-thumb {
+  background-color: #d1d5db; /* gray-300 */
+  border-radius: 3px;
+}
+
+.dark #log-container::-webkit-scrollbar-thumb {
+  background-color: #4b5563; /* gray-600 */
+}
+
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 640px) {
+  #log-container {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #log-container::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -16,6 +16,7 @@ const mockElectronAPI = {
   executePhase: vi.fn(),
   executeValidation: vi.fn(),
   updateApproval: vi.fn(),
+  readSpecJson: vi.fn(),
 };
 
 vi.stubGlobal('window', {
@@ -45,6 +46,16 @@ describe('AutoExecutionService Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+
+    // Setup default mock return for readSpecJson
+    mockElectronAPI.readSpecJson.mockResolvedValue({
+      feature_name: 'test',
+      approvals: {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      },
+    });
 
     // Reset stores
     useWorkflowStore.setState({
@@ -406,6 +417,16 @@ describe('AutoExecutionService Integration Tests', () => {
       });
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
 
+      // Setup mock for readSpecJson to return the same state
+      mockElectronAPI.readSpecJson.mockResolvedValue({
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      });
+
       const result = await service.validatePreconditions('design');
       expect(result.requiresApproval).toBe(true);
     });
@@ -417,6 +438,16 @@ describe('AutoExecutionService Integration Tests', () => {
       });
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
 
+      // Setup mock for readSpecJson to return the same state
+      mockElectronAPI.readSpecJson.mockResolvedValue({
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      });
+
       const result = await service.validatePreconditions('design');
       expect(result.valid).toBe(true);
       expect(result.requiresApproval).toBe(false);
@@ -427,6 +458,16 @@ describe('AutoExecutionService Integration Tests', () => {
         requirements: { generated: true, approved: true },
       });
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+      // Setup mock for readSpecJson to return the same state
+      mockElectronAPI.readSpecJson.mockResolvedValue({
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      });
 
       // 実行中のAgentを追加
       const agents = new Map();

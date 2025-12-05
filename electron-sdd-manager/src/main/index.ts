@@ -7,6 +7,7 @@ import { app, BrowserWindow } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
+import { registerRemoteAccessHandlers, setupStatusNotifications } from './ipc/remoteAccessHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
@@ -117,6 +118,10 @@ app.whenReady().then(async () => {
 
   // Register IPC handlers
   registerIpcHandlers();
+
+  // Register Remote Access handlers
+  registerRemoteAccessHandlers();
+  setupStatusNotifications();
 
   // Create application menu
   createMenu();

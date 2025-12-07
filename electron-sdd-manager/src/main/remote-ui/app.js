@@ -13,6 +13,7 @@ class App {
     this.projectPath = null;
     this.specs = [];
     this.selectedSpec = null;
+    this.agents = [];
 
     // Components
     this.connectionStatus = new ConnectionStatus();
@@ -81,6 +82,10 @@ class App {
       this.executePhase(specId, phase);
     };
 
+    this.specDetail.onAutoExecute = (specId) => {
+      this.autoExecute(specId);
+    };
+
     this.specDetail.onStop = (agentId) => {
       this.stopWorkflow(agentId);
     };
@@ -93,6 +98,10 @@ class App {
       this.selectedSpec = null;
       this.specList.setSelected(null);
       this.logViewer.clear();
+    };
+
+    this.specDetail.onSendInput = (agentId, text) => {
+      this.sendAgentInput(agentId, text);
     };
 
     // Reconnect overlay callback
@@ -149,6 +158,10 @@ class App {
 
     wsManager.on('AGENT_STATUS', (payload) => {
       this.handleAgentStatus(payload);
+    });
+
+    wsManager.on('AGENT_LIST', (payload) => {
+      this.handleAgentList(payload);
     });
 
     wsManager.on('PHASE_STARTED', (payload) => {
@@ -246,11 +259,22 @@ class App {
    * @param {Object} payload
    */
   handleAgentStatus(payload) {
-    const { agentId, status } = payload || {};
+    const { agentId, status, phase } = payload || {};
 
+    // Update agent in list
+    const existingAgent = this.agents.find(a => a.id === agentId);
+    if (existingAgent) {
+      existingAgent.status = status;
+      if (phase) existingAgent.phase = phase;
+    } else {
+      this.agents.push({ id: agentId, status, phase: phase || 'Unknown' });
+    }
+    this.specDetail.updateAgentList(this.agents);
+
+    // Update running state
     switch (status) {
       case 'running':
-        this.specDetail.setRunning(true, agentId);
+        this.specDetail.setRunning(true, agentId, phase ? `Running ${phase}...` : 'Running...');
         break;
       case 'stopped':
         this.specDetail.setStopped(agentId);
@@ -260,6 +284,16 @@ class App {
         this.specDetail.setRunning(false);
         break;
     }
+  }
+
+  /**
+   * Handle AGENT_LIST message
+   * @param {Object} payload
+   */
+  handleAgentList(payload) {
+    const { agents } = payload || {};
+    this.agents = agents || [];
+    this.specDetail.updateAgentList(this.agents);
   }
 
   /**
@@ -339,6 +373,30 @@ class App {
       payload: { agentId },
     });
     this.toast.info('Resuming workflow...');
+  }
+
+  /**
+   * Auto execute all phases
+   * @param {string} specId
+   */
+  autoExecute(specId) {
+    wsManager.send({
+      type: 'AUTO_EXECUTE',
+      payload: { specId },
+    });
+    this.toast.info('Starting auto execution...');
+  }
+
+  /**
+   * Send input to agent
+   * @param {string} agentId
+   * @param {string} text
+   */
+  sendAgentInput(agentId, text) {
+    wsManager.send({
+      type: 'AGENT_INPUT',
+      payload: { agentId, text },
+    });
   }
 
   /**

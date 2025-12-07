@@ -83,6 +83,10 @@ export interface WorkflowController {
   stopAgent(agentId: string): Promise<WorkflowResult<void>>;
   /** Resume a stopped agent */
   resumeAgent(agentId: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Auto execute all remaining phases */
+  autoExecute?(specId: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Send input to a running agent */
+  sendAgentInput?(agentId: string, text: string): Promise<WorkflowResult<void>>;
 }
 
 /**
@@ -299,6 +303,12 @@ export class WebSocketHandler {
         break;
       case 'RESUME_WORKFLOW':
         await this.handleResumeWorkflow(client, message);
+        break;
+      case 'AUTO_EXECUTE':
+        await this.handleAutoExecute(client, message);
+        break;
+      case 'AGENT_INPUT':
+        await this.handleAgentInput(client, message);
         break;
       default:
         this.send(client.id, {
@@ -631,6 +641,128 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Failed to resume workflow',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle AUTO_EXECUTE message
+   */
+  private async handleAutoExecute(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.autoExecute) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Auto execute not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.autoExecute(specId);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'AUTO_EXECUTE_STARTED',
+        payload: {
+          specId,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Auto execute failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle AGENT_INPUT message
+   */
+  private async handleAgentInput(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.sendAgentInput) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Agent input not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const agentId = payload.agentId as string;
+    const text = payload.text as string;
+
+    if (!agentId || !text) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing agentId or text' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.sendAgentInput(agentId, text);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'AGENT_INPUT_SENT',
+        payload: { agentId },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Failed to send input to agent',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

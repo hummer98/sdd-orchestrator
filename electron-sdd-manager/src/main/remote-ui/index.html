@@ -69,7 +69,7 @@
     </section>
 
     <!-- Spec Detail Panel (Initially Hidden) -->
-    <section id="spec-detail-section" class="hidden fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900">
+    <section id="spec-detail-section" class="hidden fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
       <!-- Header -->
       <header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -78,37 +78,25 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
           </button>
-          <h2 id="spec-detail-title" class="text-lg font-semibold truncate">Spec Name</h2>
+          <h2 id="spec-detail-title" class="text-lg font-semibold truncate flex-1">Spec Name</h2>
+          <!-- Current Phase Tag -->
+          <span id="current-phase-tag" class="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+            Ready
+          </span>
         </div>
       </header>
 
       <!-- Content -->
-      <div class="p-4 space-y-4 overflow-y-auto" style="height: calc(100vh - 60px);">
-        <!-- Phase Status -->
-        <div id="phase-status" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Phase Status</h3>
-          <div id="phase-badges" class="flex flex-wrap gap-2">
-            <!-- Phase badges will be rendered here -->
-          </div>
-        </div>
-
-        <!-- Workflow Control Panel -->
-        <div id="workflow-control" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Workflow Control</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <button id="btn-requirements" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-              Requirements
-            </button>
-            <button id="btn-design" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-              Design
-            </button>
-            <button id="btn-tasks" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-              Tasks
-            </button>
-            <button id="btn-implementation" class="workflow-btn touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-              Implementation
-            </button>
-          </div>
+      <div class="p-4 space-y-4">
+        <!-- Next Action Button -->
+        <div id="next-action-section" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+          <button id="btn-next-action" class="w-full touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-4 px-4 font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            Generate Requirements
+          </button>
+          <!-- Auto Execute Button -->
+          <button id="btn-auto-execute" class="w-full mt-3 touch-target bg-green-500 hover:bg-green-600 text-white rounded-lg py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            🤖 Auto Execute All
+          </button>
           <!-- Stop/Resume Controls -->
           <div id="agent-controls" class="hidden mt-3 flex gap-3">
             <button id="btn-stop" class="flex-1 touch-target bg-red-500 hover:bg-red-600 text-white rounded-lg py-3 px-4 font-medium">
@@ -124,7 +112,18 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>Running...</span>
+            <span id="running-phase-text">Running...</span>
+          </div>
+        </div>
+
+        <!-- Agent List Section -->
+        <div id="agent-list-section" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Agents</h3>
+            <span id="agent-count" class="text-xs text-gray-400">0 agents</span>
+          </div>
+          <div id="agent-list" class="max-h-48 overflow-y-auto">
+            <div class="p-4 text-center text-sm text-gray-400">No agents</div>
           </div>
         </div>
 
@@ -144,6 +143,17 @@
           <div id="log-container" class="h-64 overflow-y-auto p-3 font-mono text-xs bg-gray-50 dark:bg-gray-900">
             <div id="log-content">
               <!-- Log entries will be rendered here -->
+            </div>
+          </div>
+          <!-- Input Section -->
+          <div class="border-t border-gray-200 dark:border-gray-700 p-3">
+            <div class="flex gap-2">
+              <input id="agent-input" type="text" placeholder="Send message to agent..."
+                class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                disabled>
+              <button id="btn-send-input" class="touch-target px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                Send
+              </button>
             </div>
           </div>
         </div>

@@ -134,26 +134,53 @@ class SpecList {
   }
 
   /**
-   * Get phase information from spec
+   * Get phase information from spec for list display
+   * Uses approvals object if available for accurate status
    * @param {Object} spec
    * @returns {{ phase: string, status: string }}
    */
   getPhaseInfo(spec) {
-    const approvals = spec.approvals || {};
-    const phases = ['requirements', 'design', 'tasks'];
+    // If approvals available, find the most advanced phase
+    if (spec.approvals) {
+      const approvals = spec.approvals;
 
-    for (const phase of phases.reverse()) {
-      const approval = approvals[phase];
-      if (approval) {
-        if (approval.approved) {
-          return { phase, status: 'approved' };
-        } else if (approval.generated) {
-          return { phase, status: 'generated' };
-        }
+      // Check from most advanced to least advanced
+      if (approvals.tasks?.approved) {
+        return { phase: 'tasks', status: 'approved' };
       }
+      if (approvals.tasks?.generated) {
+        return { phase: 'tasks', status: 'generated' };
+      }
+      if (approvals.design?.approved) {
+        return { phase: 'design', status: 'approved' };
+      }
+      if (approvals.design?.generated) {
+        return { phase: 'design', status: 'generated' };
+      }
+      if (approvals.requirements?.approved) {
+        return { phase: 'requirements', status: 'approved' };
+      }
+      if (approvals.requirements?.generated) {
+        return { phase: 'requirements', status: 'generated' };
+      }
+      return { phase: 'ready', status: 'pending' };
     }
 
-    return { phase: 'ready', status: 'pending' };
+    // Fallback: use phase string
+    const phase = spec.phase || 'ready';
+    const phaseMap = {
+      'ready': { phase: 'ready', status: 'pending' },
+      'requirements-generated': { phase: 'requirements', status: 'generated' },
+      'requirements-approved': { phase: 'requirements', status: 'approved' },
+      'design-generated': { phase: 'design', status: 'generated' },
+      'design-approved': { phase: 'design', status: 'approved' },
+      'tasks-generated': { phase: 'tasks', status: 'generated' },
+      'tasks-approved': { phase: 'tasks', status: 'approved' },
+      'implementation': { phase: 'implementation', status: 'generated' },
+      'implementation-complete': { phase: 'implementation', status: 'approved' },
+    };
+
+    return phaseMap[phase] || { phase: 'ready', status: 'pending' };
   }
 
   /**
@@ -185,19 +212,29 @@ class SpecDetail {
   constructor() {
     this.sectionEl = document.getElementById('spec-detail-section');
     this.titleEl = document.getElementById('spec-detail-title');
-    this.phaseBadgesEl = document.getElementById('phase-badges');
+    this.phaseTagEl = document.getElementById('current-phase-tag');
+    this.nextActionBtn = document.getElementById('btn-next-action');
+    this.autoExecuteBtn = document.getElementById('btn-auto-execute');
     this.agentControlsEl = document.getElementById('agent-controls');
     this.runningIndicatorEl = document.getElementById('running-indicator');
+    this.runningPhaseTextEl = document.getElementById('running-phase-text');
     this.backButton = document.getElementById('back-button');
+    this.agentListEl = document.getElementById('agent-list');
+    this.agentCountEl = document.getElementById('agent-count');
+    this.agentInputEl = document.getElementById('agent-input');
+    this.sendInputBtn = document.getElementById('btn-send-input');
 
     this.currentSpec = null;
     this.currentAgentId = null;
     this.isRunning = false;
+    this.agents = [];
 
     this.onExecutePhase = null;
+    this.onAutoExecute = null;
     this.onStop = null;
     this.onResume = null;
     this.onBack = null;
+    this.onSendInput = null;
 
     this.setupEventListeners();
   }
@@ -214,16 +251,20 @@ class SpecDetail {
       this.hide();
     });
 
-    // Workflow buttons
-    const phases = ['requirements', 'design', 'tasks', 'implementation'];
-    phases.forEach(phase => {
-      const btn = document.getElementById(`btn-${phase}`);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          if (this.onExecutePhase && this.currentSpec) {
-            this.onExecutePhase(this.currentSpec.feature_name, phase);
-          }
-        });
+    // Next action button
+    this.nextActionBtn.addEventListener('click', () => {
+      if (this.onExecutePhase && this.currentSpec) {
+        const nextPhase = this.getNextPhase(this.currentSpec);
+        if (nextPhase) {
+          this.onExecutePhase(this.currentSpec.feature_name, nextPhase);
+        }
+      }
+    });
+
+    // Auto execute button
+    this.autoExecuteBtn.addEventListener('click', () => {
+      if (this.onAutoExecute && this.currentSpec) {
+        this.onAutoExecute(this.currentSpec.feature_name);
       }
     });
 
@@ -240,6 +281,29 @@ class SpecDetail {
         this.onResume(this.currentAgentId);
       }
     });
+
+    // Send input button
+    this.sendInputBtn.addEventListener('click', () => {
+      this.sendInput();
+    });
+
+    // Enter key in input
+    this.agentInputEl.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.sendInput();
+      }
+    });
+  }
+
+  /**
+   * Send input to agent
+   */
+  sendInput() {
+    const text = this.agentInputEl.value.trim();
+    if (text && this.onSendInput && this.currentAgentId) {
+      this.onSendInput(this.currentAgentId, text);
+      this.agentInputEl.value = '';
+    }
   }
 
   /**
@@ -249,8 +313,8 @@ class SpecDetail {
   show(spec) {
     this.currentSpec = spec;
     this.titleEl.textContent = spec.feature_name;
-    this.renderPhaseBadges(spec);
-    this.updateWorkflowButtons(spec);
+    this.updatePhaseTag(spec);
+    this.updateNextActionButton(spec);
     this.sectionEl.classList.remove('hidden');
   }
 
@@ -271,33 +335,246 @@ class SpecDetail {
   }
 
   /**
-   * Render phase badges
+   * Update current phase tag display
    * @param {Object} spec
    */
-  renderPhaseBadges(spec) {
-    const phases = [
-      { key: 'requirements', label: 'Requirements' },
-      { key: 'design', label: 'Design' },
-      { key: 'tasks', label: 'Tasks' },
-    ];
+  updatePhaseTag(spec) {
+    const phaseInfo = this.getCurrentPhaseInfo(spec);
+    const tagColors = {
+      'ready': 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+      'requirements-pending': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
+      'requirements-done': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+      'design-pending': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
+      'design-done': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+      'tasks-pending': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
+      'tasks-done': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+      'implementation': 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300',
+      'complete': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+    };
 
-    const approvals = spec.approvals || {};
+    this.phaseTagEl.className = `px-3 py-1 text-sm font-medium rounded-full ${tagColors[phaseInfo.colorKey] || tagColors['ready']}`;
+    this.phaseTagEl.textContent = phaseInfo.label;
+  }
 
-    this.phaseBadgesEl.innerHTML = phases.map(({ key, label }) => {
-      const approval = approvals[key] || {};
-      let status = 'pending';
-      let icon = '';
+  /**
+   * Get current phase info for display
+   * @param {Object} spec
+   * @returns {{ label: string, colorKey: string }}
+   */
+  getCurrentPhaseInfo(spec) {
+    const phaseStatus = this.getPhaseStatusFromSpec(spec);
+    const phase = spec.phase || 'ready';
 
-      if (approval.approved) {
-        status = 'approved';
-        icon = '<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>';
-      } else if (approval.generated) {
-        status = 'generated';
-        icon = '<svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>';
-      }
+    // Check for implementation complete
+    if (phase === 'implementation-complete') {
+      return { label: '✓ Complete', colorKey: 'complete' };
+    }
+    if (phase === 'implementation') {
+      return { label: '🔧 Implementing', colorKey: 'implementation' };
+    }
 
-      return `<span class="phase-badge phase-badge-${status}">${icon}${label}</span>`;
+    // Check based on approvals
+    if (phaseStatus.tasks === 'approved') {
+      return { label: '✓ Tasks Approved', colorKey: 'tasks-done' };
+    }
+    if (phaseStatus.tasks === 'generated') {
+      return { label: '⏳ Tasks Pending', colorKey: 'tasks-pending' };
+    }
+    if (phaseStatus.design === 'approved') {
+      return { label: '✓ Design Approved', colorKey: 'design-done' };
+    }
+    if (phaseStatus.design === 'generated') {
+      return { label: '⏳ Design Pending', colorKey: 'design-pending' };
+    }
+    if (phaseStatus.requirements === 'approved') {
+      return { label: '✓ Req Approved', colorKey: 'requirements-done' };
+    }
+    if (phaseStatus.requirements === 'generated') {
+      return { label: '⏳ Req Pending', colorKey: 'requirements-pending' };
+    }
+
+    return { label: 'Ready', colorKey: 'ready' };
+  }
+
+  /**
+   * Get next phase to execute
+   * @param {Object} spec
+   * @returns {string|null}
+   */
+  getNextPhase(spec) {
+    const phaseStatus = this.getPhaseStatusFromSpec(spec);
+    const phase = spec.phase || 'ready';
+
+    if (phase === 'implementation-complete') {
+      return null; // All done
+    }
+
+    if (phaseStatus.tasks === 'approved') {
+      return 'implementation';
+    }
+    if (phaseStatus.design === 'approved') {
+      return 'tasks';
+    }
+    if (phaseStatus.requirements === 'approved') {
+      return 'design';
+    }
+    return 'requirements';
+  }
+
+  /**
+   * Update next action button
+   * @param {Object} spec
+   */
+  updateNextActionButton(spec) {
+    const nextPhase = this.getNextPhase(spec);
+    const phaseLabels = {
+      'requirements': '📝 Generate Requirements',
+      'design': '🎨 Generate Design',
+      'tasks': '📋 Generate Tasks',
+      'implementation': '🚀 Run Implementation',
+    };
+
+    if (!nextPhase || this.isRunning) {
+      this.nextActionBtn.disabled = true;
+      this.nextActionBtn.textContent = nextPhase ? phaseLabels[nextPhase] : '✓ All Complete';
+    } else {
+      this.nextActionBtn.disabled = false;
+      this.nextActionBtn.textContent = phaseLabels[nextPhase];
+    }
+
+    // Auto execute button
+    this.autoExecuteBtn.disabled = !nextPhase || this.isRunning;
+  }
+
+  /**
+   * Update agent list
+   * @param {Array} agents
+   */
+  updateAgentList(agents) {
+    this.agents = agents || [];
+    this.agentCountEl.textContent = `${this.agents.length} agent${this.agents.length !== 1 ? 's' : ''}`;
+
+    if (this.agents.length === 0) {
+      this.agentListEl.innerHTML = '<div class="p-4 text-center text-sm text-gray-400">No agents</div>';
+      return;
+    }
+
+    this.agentListEl.innerHTML = this.agents.map(agent => {
+      const statusColors = {
+        'running': 'bg-green-500',
+        'completed': 'bg-blue-500',
+        'failed': 'bg-red-500',
+        'stopped': 'bg-yellow-500',
+      };
+      const statusColor = statusColors[agent.status] || 'bg-gray-400';
+
+      return `
+        <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700" data-agent-id="${agent.id}">
+          <span class="w-2 h-2 rounded-full ${statusColor}"></span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${agent.phase || 'Unknown'}</div>
+            <div class="text-xs text-gray-400 truncate">${agent.id}</div>
+          </div>
+          <span class="text-xs text-gray-400">${agent.status}</span>
+        </div>
+      `;
     }).join('');
+
+    // Add click handlers to select agent
+    this.agentListEl.querySelectorAll('[data-agent-id]').forEach(el => {
+      el.addEventListener('click', () => {
+        const agentId = el.dataset.agentId;
+        this.selectAgent(agentId);
+      });
+    });
+  }
+
+  /**
+   * Select an agent
+   * @param {string} agentId
+   */
+  selectAgent(agentId) {
+    this.currentAgentId = agentId;
+    const agent = this.agents.find(a => a.id === agentId);
+
+    // Enable input if agent is running
+    const canSendInput = agent && agent.status === 'running';
+    this.agentInputEl.disabled = !canSendInput;
+    this.sendInputBtn.disabled = !canSendInput;
+
+    // Highlight selected agent
+    this.agentListEl.querySelectorAll('[data-agent-id]').forEach(el => {
+      if (el.dataset.agentId === agentId) {
+        el.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+      } else {
+        el.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+      }
+    });
+  }
+
+  /**
+   * Get phase status for each phase from spec
+   * Uses approvals object if available, falls back to phase string
+   * @param {Object} spec
+   * @returns {Object} Status for each phase
+   */
+  getPhaseStatusFromSpec(spec) {
+    const result = {
+      requirements: 'pending',
+      design: 'pending',
+      tasks: 'pending',
+    };
+
+    // If approvals object is available, use it (more accurate)
+    if (spec.approvals) {
+      const approvals = spec.approvals;
+      if (approvals.requirements) {
+        result.requirements = approvals.requirements.approved ? 'approved' :
+                              approvals.requirements.generated ? 'generated' : 'pending';
+      }
+      if (approvals.design) {
+        result.design = approvals.design.approved ? 'approved' :
+                        approvals.design.generated ? 'generated' : 'pending';
+      }
+      if (approvals.tasks) {
+        result.tasks = approvals.tasks.approved ? 'approved' :
+                       approvals.tasks.generated ? 'generated' : 'pending';
+      }
+      return result;
+    }
+
+    // Fallback: derive from phase string
+    const phaseString = spec.phase || 'ready';
+    switch (phaseString) {
+      case 'implementation-complete':
+      case 'implementation':
+      case 'tasks-approved':
+        result.requirements = 'approved';
+        result.design = 'approved';
+        result.tasks = 'approved';
+        break;
+      case 'tasks-generated':
+        result.requirements = 'approved';
+        result.design = 'approved';
+        result.tasks = 'generated';
+        break;
+      case 'design-approved':
+        result.requirements = 'approved';
+        result.design = 'approved';
+        break;
+      case 'design-generated':
+        result.requirements = 'approved';
+        result.design = 'generated';
+        break;
+      case 'requirements-approved':
+        result.requirements = 'approved';
+        break;
+      case 'requirements-generated':
+        result.requirements = 'generated';
+        break;
+    }
+
+    return result;
   }
 
   /**
@@ -305,21 +582,25 @@ class SpecDetail {
    * @param {Object} spec
    */
   updateWorkflowButtons(spec) {
-    const approvals = spec.approvals || {};
+    // Derive phase status from spec (uses approvals if available)
+    const phaseStatus = this.getPhaseStatusFromSpec(spec);
 
-    // Requirements: always available
-    document.getElementById('btn-requirements').disabled = this.isRunning;
+    // Requirements: enabled only if not yet generated/approved
+    const reqCompleted = phaseStatus.requirements !== 'pending';
+    document.getElementById('btn-requirements').disabled = reqCompleted || this.isRunning;
 
-    // Design: requires requirements approved
-    const reqApproved = approvals.requirements?.approved || false;
-    document.getElementById('btn-design').disabled = !reqApproved || this.isRunning;
+    // Design: enabled only if requirements approved AND design not yet done
+    const reqApproved = phaseStatus.requirements === 'approved';
+    const designCompleted = phaseStatus.design !== 'pending';
+    document.getElementById('btn-design').disabled = !reqApproved || designCompleted || this.isRunning;
 
-    // Tasks: requires design approved
-    const designApproved = approvals.design?.approved || false;
-    document.getElementById('btn-tasks').disabled = !designApproved || this.isRunning;
+    // Tasks: enabled only if design approved AND tasks not yet done
+    const designApproved = phaseStatus.design === 'approved';
+    const tasksCompleted = phaseStatus.tasks !== 'pending';
+    document.getElementById('btn-tasks').disabled = !designApproved || tasksCompleted || this.isRunning;
 
-    // Implementation: requires tasks approved
-    const tasksApproved = approvals.tasks?.approved || false;
+    // Implementation: enabled only if tasks approved (can always re-run impl)
+    const tasksApproved = phaseStatus.tasks === 'approved';
     document.getElementById('btn-implementation').disabled = !tasksApproved || this.isRunning;
   }
 
@@ -327,24 +608,34 @@ class SpecDetail {
    * Set running state
    * @param {boolean} running
    * @param {string} [agentId]
+   * @param {string} [phaseText]
    */
-  setRunning(running, agentId = null) {
+  setRunning(running, agentId = null, phaseText = 'Running...') {
     this.isRunning = running;
     this.currentAgentId = agentId;
 
     if (running) {
       this.runningIndicatorEl.classList.remove('hidden');
+      this.runningPhaseTextEl.textContent = phaseText;
       this.agentControlsEl.classList.remove('hidden');
       document.getElementById('btn-stop').classList.remove('hidden');
       document.getElementById('btn-resume').classList.add('hidden');
+
+      // Enable input for running agent
+      this.agentInputEl.disabled = false;
+      this.sendInputBtn.disabled = false;
     } else {
       this.runningIndicatorEl.classList.add('hidden');
       this.agentControlsEl.classList.add('hidden');
+
+      // Disable input when not running
+      this.agentInputEl.disabled = true;
+      this.sendInputBtn.disabled = true;
     }
 
     // Update button states
     if (this.currentSpec) {
-      this.updateWorkflowButtons(this.currentSpec);
+      this.updateNextActionButton(this.currentSpec);
     }
   }
 
@@ -360,8 +651,12 @@ class SpecDetail {
     document.getElementById('btn-stop').classList.add('hidden');
     document.getElementById('btn-resume').classList.remove('hidden');
 
+    // Disable input when stopped
+    this.agentInputEl.disabled = true;
+    this.sendInputBtn.disabled = true;
+
     if (this.currentSpec) {
-      this.updateWorkflowButtons(this.currentSpec);
+      this.updateNextActionButton(this.currentSpec);
     }
   }
 
@@ -372,8 +667,8 @@ class SpecDetail {
   updateSpec(spec) {
     if (this.currentSpec && this.currentSpec.feature_name === spec.feature_name) {
       this.currentSpec = spec;
-      this.renderPhaseBadges(spec);
-      this.updateWorkflowButtons(spec);
+      this.updatePhaseTag(spec);
+      this.updateNextActionButton(spec);
     }
   }
 }

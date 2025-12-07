@@ -23,7 +23,7 @@ import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } 
 import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { BugService } from '../services/bugService';
 import { BugsWatcherService } from '../services/bugsWatcherService';
-import { setupStateProvider, setupWorkflowController } from './remoteAccessHandlers';
+import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 
@@ -163,6 +163,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     // Convert SpecMetadata[] to SpecInfo[]
     // SpecInfo requires: id, name, phase (and allows additional properties)
     // Note: Mobile UI expects feature_name for display and selection
+    // Include approvals for accurate phase status display
     return result.value.map(spec => ({
       id: spec.name, // Use name as id (spec directory name)
       name: spec.name,
@@ -170,6 +171,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
       phase: spec.phase,
       path: spec.path,
       updatedAt: spec.updatedAt,
+      approvals: spec.approvals, // Include approvals for Remote UI
     }));
   };
 
@@ -392,12 +394,27 @@ export function registerIpcHandlers(): void {
           } else {
             logger.warn('[handlers] Window destroyed, cannot send output', { agentId });
           }
+
+          // Broadcast to Remote UI via WebSocket
+          const remoteServer = getRemoteAccessServer();
+          const wsHandler = remoteServer.getWebSocketHandler();
+          if (wsHandler) {
+            const logType = stream === 'stderr' ? 'error' : 'agent';
+            wsHandler.broadcastAgentOutput(agentId, stream, data, logType);
+          }
         });
 
         service.onStatusChange((agentId, status) => {
           logger.info('[handlers] Agent status change', { agentId, status });
           if (!window.isDestroyed()) {
             window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
+          }
+
+          // Broadcast status change to Remote UI via WebSocket
+          const remoteServer = getRemoteAccessServer();
+          const wsHandler = remoteServer.getWebSocketHandler();
+          if (wsHandler) {
+            wsHandler.broadcastAgentStatus(agentId, status);
           }
         });
       } else {
@@ -829,12 +846,27 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
     } else {
       logger.warn('[handlers] Window destroyed, cannot send output', { agentId });
     }
+
+    // Broadcast to Remote UI via WebSocket
+    const remoteServer = getRemoteAccessServer();
+    const wsHandler = remoteServer.getWebSocketHandler();
+    if (wsHandler) {
+      const logType = stream === 'stderr' ? 'error' : 'agent';
+      wsHandler.broadcastAgentOutput(agentId, stream, data, logType);
+    }
   });
 
   service.onStatusChange((agentId, status) => {
     logger.info('[handlers] Agent status change', { agentId, status });
     if (!window.isDestroyed()) {
       window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
+    }
+
+    // Broadcast status change to Remote UI via WebSocket
+    const remoteServer = getRemoteAccessServer();
+    const wsHandler = remoteServer.getWebSocketHandler();
+    if (wsHandler) {
+      wsHandler.broadcastAgentStatus(agentId, status);
     }
   });
 }

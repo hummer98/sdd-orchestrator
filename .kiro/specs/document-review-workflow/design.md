@@ -171,14 +171,17 @@ stateDiagram-v2
 | 5.4 | rounds/statusプロパティ | DocumentReviewState型 | - | - |
 | 5.5 | 初回実行時フィールド初期化 | DocumentReviewService | initializeReviewState | - |
 | 6.1 | ラウンド数/ステータス表示 | DocumentReviewPanel | - | - |
-| 6.2 | レビューファイル閲覧 | ReviewHistoryView | - | - |
-| 6.3 | 履歴時系列表示 | ReviewHistoryView | - | - |
-| 6.4 | 承認ボタン | DocumentReviewPanel | onApprove | - |
-| 6.5 | スキップボタン | DocumentReviewPanel | onSkip | - |
+| 6.2 | レビューファイルタブ表示 | ArtifactEditor | - | - |
+| 6.3 | 全ラウンドタブ表示 | ArtifactEditor | - | - |
+| 6.4 | 進行インジケーター（タイトル左側） | DocumentReviewPanel | - | - |
+| 6.5 | 進行インジケーター4状態 | DocumentReviewPanel | - | - |
+| 6.6 | 自動実行フラグ制御UI（タイトル右側） | DocumentReviewPanel | onAutoExecutionFlagChange | - |
+| 6.7 | 自動実行フラグ3値切替 | DocumentReviewPanel | onAutoExecutionFlagChange | - |
+| 6.8 | レビュー中の他タスク実行禁止 | WorkflowView | runningPhases | - |
 | 7.1 | 自動実行時自動レビュー | AutoExecutionService | executeReviewIfEnabled | - |
 | 7.2 | 自動reply実行 | AutoExecutionService | - | - |
 | 7.3 | スキップフラグ対応 | AutoExecutionService, WorkflowStore | documentReviewSkip | - |
-| 7.4 | スキップオプション設定追加 | WorkflowStore | documentReviewOptions | - |
+| 7.4 | スキップオプション設定追加 | WorkflowStore, DocumentReviewSettingsPanel | documentReviewOptions, onOptionsChange | - |
 | 7.5 | 自動実行完了時確認 | AutoExecutionService | - | - |
 | 8.1 | reviewエージェントエラー通知 | SpecManagerService | onError callback | - |
 | 8.2 | replyエージェントエラーマーク | DocumentReviewService | markRoundIncomplete | - |
@@ -191,7 +194,8 @@ stateDiagram-v2
 |-----------|--------------|--------|--------------|--------------------------|-----------|
 | DocumentReviewService | Service | レビューワークフロー管理 | 1.1-1.4, 4.1-4.5, 5.5, 8.1-8.4 | SpecManagerService (P0) | Service |
 | DocumentReviewPanel | UI | レビュー操作・状態表示 | 6.1, 6.4, 6.5 | DocumentReviewService (P0) | State |
-| ReviewHistoryView | UI | レビュー履歴表示 | 6.2, 6.3 | specStore (P1) | State |
+| ArtifactEditor | UI | レビューファイルタブ表示 | 6.2, 6.3 | specStore (P1) | State |
+| DocumentReviewSettingsPanel | UI | レビューオプション設定 | 7.4 | workflowStore (P0) | State |
 | ExtendedSpecJson | Types | spec.json型拡張 | 5.1-5.4 | - | - |
 | AutoExecutionService拡張 | Service | 自動実行統合 | 7.1-7.5 | DocumentReviewService (P0) | Service |
 
@@ -294,16 +298,34 @@ type ReviewError =
 | Field | Detail |
 |-------|--------|
 | Intent | レビューワークフローの操作UI提供 |
-| Requirements | 6.1, 6.4, 6.5 |
+| Requirements | 6.1, 6.4, 6.5, 6.6, 6.7, 6.8 |
 
 **Responsibilities & Constraints**
-- レビュー状態（ラウンド数、ステータス）の表示
-- レビュー開始/承認/スキップボタンの提供
+- レビュー状態（ラウンド数）の表示
+- レビュー開始ボタンの提供（実行中でなければ有効）
 - 実行中状態の表示
+- 進行インジケーター表示（タイトル左側、要件定義/設計/タスクパネルと同様）
+- 自動実行フラグ制御UI表示（タイトル右側、実行/一時停止/スキップの3値）
+
+**進行インジケーター状態**
+| 状態 | 条件 | 表示 |
+|------|------|------|
+| チェック済 | rounds >= 1 | ✓ アイコン（緑） |
+| チェック無し | rounds === 0 かつ 非実行中 | ○ アイコン（グレー） |
+| 実行中 | isExecuting === true または status === 'in_progress' | スピナー（青） |
+| スキップ予定 | 自動実行フラグが 'skip' | → アイコン（黄） |
+
+**自動実行フラグ3値**
+| 値 | 動作 |
+|----|------|
+| run | 自動実行時にレビューを実行 |
+| pause | タスク終了時に一時停止 |
+| skip | レビューをスキップして実装タスクに進む |
 
 **Dependencies**
 - Inbound: WorkflowView - 親コンポーネントからの表示 (P0)
 - Outbound: DocumentReviewService - レビュー操作 (P0)
+- Outbound: workflowStore - 自動実行フラグ参照・更新 (P0)
 - Outbound: specStore - 状態参照 (P1)
 
 **Contracts**: Service [ ] / API [ ] / Event [ ] / Batch [ ] / State [x]
@@ -311,43 +333,29 @@ type ReviewError =
 ##### State Management
 
 ```typescript
+/** 自動実行フラグの3値 */
+type DocumentReviewAutoExecutionFlag = 'run' | 'pause' | 'skip';
+
 interface DocumentReviewPanelProps {
-  specId: string;
+  /** 現在のレビュー状態 */
   reviewState: DocumentReviewState | null;
-  isRunning: boolean;
-  canStartReview: boolean;
+  /** 実行中か（エージェント実行中） */
+  isExecuting: boolean;
+  /** 自動実行フラグ */
+  autoExecutionFlag?: DocumentReviewAutoExecutionFlag;
+  /** レビュー開始ハンドラ */
   onStartReview: () => void;
-  onApprove: () => void;
-  onSkip: () => void;
+  /** 自動実行フラグ変更ハンドラ */
+  onAutoExecutionFlagChange?: (flag: DocumentReviewAutoExecutionFlag) => void;
 }
 ```
 
 **Implementation Notes**
 - Integration: WorkflowViewのimplフェーズ前（tasksフェーズ後）に配置
-- Validation: ボタン活性状態はcanStartReview, isRunning, reviewStateから算出
+- Validation: レビュー開始ボタンは `!isExecuting` のみで活性判定（承認ボタンは不要）
+- UI: 要件定義/設計/タスクパネルと同様のレイアウト（左に進行インジケーター、右に自動実行フラグ制御）
+- Note: 承認ボタン・履歴ボタンは不要。レビューファイルは中央パネル（ArtifactEditor）のタブとして表示
 - Risks: 状態変更時のUI更新遅延
-
-#### ReviewHistoryView
-
-| Field | Detail |
-|-------|--------|
-| Intent | レビュー履歴の時系列表示 |
-| Requirements | 6.2, 6.3 |
-
-**Responsibilities & Constraints**
-- document-review-{n}.mdとdocument-review-reply-{n}.mdの内容表示
-- ラウンド単位での履歴表示
-- Markdown形式での読み取り専用表示
-
-**Dependencies**
-- Inbound: DocumentReviewPanel - 履歴表示要求 (P0)
-- Outbound: fileService - ファイル読込 (P1)
-
-**Contracts**: Service [ ] / API [ ] / Event [ ] / Batch [ ] / State [x]
-
-**Implementation Notes**
-- Integration: DocsTabs（既存）のタブとして追加、またはモーダル表示
-- Risks: 大量ラウンド時のパフォーマンス
 
 ### Types Layer
 
@@ -428,6 +436,43 @@ interface WorkflowState {
 - Integration: executePhase後のフック処理としてレビュー実行を挿入
 - Validation: documentReviewOptions.skipがtrueの場合はレビューをバイパス
 - Risks: 自動実行中のユーザー介入処理
+
+#### DocumentReviewSettingsPanel
+
+| Field | Detail |
+|-------|--------|
+| Intent | ドキュメントレビューの自動実行オプション設定UI |
+| Requirements | 7.4 |
+
+**Responsibilities & Constraints**
+- DocumentReviewOptionsの設定コントロール提供
+- スキップオプションのチェックボックス
+- 自動リプライオプションのチェックボックス
+- WorkflowStoreとの連携
+
+**Dependencies**
+- Inbound: WorkflowView - 設定パネル表示 (P0)
+- Outbound: workflowStore - 設定値の読み書き (P0)
+
+**Contracts**: Service [ ] / API [ ] / Event [ ] / Batch [ ] / State [x]
+
+##### State Management
+
+```typescript
+interface DocumentReviewSettingsPanelProps {
+  documentReviewOptions: DocumentReviewOptions;
+  onOptionsChange: (options: Partial<DocumentReviewOptions>) => void;
+}
+```
+
+**UI Components**
+- スキップチェックボックス: 「ドキュメントレビューをスキップ」
+- 自動リプライチェックボックス: 「レビュー完了後に自動でリプライを実行」
+
+**Implementation Notes**
+- Integration: WorkflowViewの自動実行設定セクションに配置
+- Validation: チェックボックス変更時にworkflowStore.setDocumentReviewOptionsを呼び出し
+- Risks: 設定変更と実行中状態の競合
 
 ## Data Models
 

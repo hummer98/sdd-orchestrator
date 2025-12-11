@@ -90,10 +90,15 @@ tasks -> impl 間にdocument-review, document-review-replyのワークフロー�
 
 #### Acceptance Criteria
 1. When Specが選択された時, the SDD Manager shall レビューラウンド数と現在のステータスを表示する
-2. The SDD Manager shall document-review-{n}.mdとdocument-review-reply-{n}.mdファイルの内容を閲覧可能にする
-3. When 複数のレビューラウンドが存在する時, the SDD Manager shall 全ラウンドの履歴を時系列で表示する
-4. The SDD Manager shall レビュープロセスの承認ボタンを提供する
-5. Where スキップオプションが有効な場合, the SDD Manager shall スキップボタンを表示する
+2. The SDD Manager shall document-review-{n}.mdとdocument-review-{n}-reply.mdファイルの内容を中央パネルのタブとして閲覧可能にする（tasksタブの右側に数字順で表示）
+3. When 複数のレビューラウンドが存在する時, the SDD Manager shall 全ラウンドのファイルをタブとして表示する
+4. The SDD Manager shall パネルタイトル左側に進行インジケーターを表示する（要件定義/設計/タスクパネルと同様の形式）
+5. The 進行インジケーター shall 以下の4状態を表示する: チェック済（rounds >= 1）、チェック無し（rounds === 0 かつ 非実行中）、実行中（status === 'in_progress' またはエージェント実行中）、スキップ予定（自動実行フラグがスキップ）
+6. The SDD Manager shall パネルタイトル右側に自動実行フラグ制御UIを表示する（要件定義/設計/タスクパネルと同様の形式）
+7. The 自動実行フラグ制御UI shall 実行/一時停止/スキップの3値を切り替え可能にする
+8. When レビューエージェントが実行中の時, the SDD Manager shall 他のフェーズ/タスクの実行を禁止する
+
+**Note**: ドキュメントレビューはブロック要素ではないため（ユーザーが能動的に実行しなければそのまま実装に進める）、手動スキップボタンおよび承認ボタンは不要とする。レビューの完了判定はroundDetails内のステータス（reply_complete）で行う。
 
 ### Requirement 7: 自動実行との統合
 **Objective:** As a 開発者, I want 自動実行モードでもレビューワークフローを制御したい, so that CI/CD環境でも適切にレビューを実行できる

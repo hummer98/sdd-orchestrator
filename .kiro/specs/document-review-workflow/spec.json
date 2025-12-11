@@ -1,9 +1,9 @@
 {
   "feature_name": "document-review-workflow",
   "created_at": "2025-12-11T04:23:27Z",
-  "updated_at": "2025-12-11T06:15:00Z",
+  "updated_at": "2025-12-11T10:24:15.159Z",
   "language": "ja",
-  "phase": "tasks-generated",
+  "phase": "implementation-complete",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -15,8 +15,27 @@
     },
     "tasks": {
       "generated": true,
-      "approved": false
+      "approved": true
+    },
+    "implementation": {
+      "validated": true,
+      "validated_at": "2025-12-11T13:45:00Z",
+      "decision": "GO",
+      "coverage": {
+        "tasks": "8/8",
+        "requirements": "35/35"
+      }
     }
   },
-  "ready_for_implementation": false
+  "ready_for_implementation": true,
+  "documentReview": {
+    "rounds": 1,
+    "status": "pending",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete"
+      }
+    ]
+  }
 }

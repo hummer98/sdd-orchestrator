@@ -280,6 +280,10 @@ const electronAPI = {
   syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase),
 
+  // Document Review Sync - Auto-fix spec.json documentReview based on file system
+  syncDocumentReview: (specPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_DOCUMENT_REVIEW, specPath),
+
   // Permissions - Add shell permissions to project
   addShellPermissions: (projectPath: string): Promise<AddPermissionsResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ADD_SHELL_PERMISSIONS, projectPath),
@@ -507,6 +511,70 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.BUGS_CHANGED, handler);
     };
   },
+
+  // ============================================================
+  // Document Review Execution (Requirements: 6.1 - Document Review Workflow)
+  // ============================================================
+
+  /**
+   * Execute document-review agent
+   * @param specId Spec directory name
+   * @param featureName Feature name for the review command
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeDocumentReview: (
+    specId: string,
+    featureName: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW, specId, featureName, commandPrefix),
+
+  /**
+   * Execute document-review-reply agent
+   * @param specId Spec directory name
+   * @param featureName Feature name for the review reply command
+   * @param reviewNumber Review round number to reply to
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeDocumentReviewReply: (
+    specId: string,
+    featureName: string,
+    reviewNumber: number,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY, specId, featureName, reviewNumber, commandPrefix),
+
+  /**
+   * Execute document-review-reply --fix agent (apply fixes from existing reply)
+   * @param specId Spec directory name
+   * @param featureName Feature name for the fix command
+   * @param reviewNumber Review round number to apply fixes for
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeDocumentReviewFix: (
+    specId: string,
+    featureName: string,
+    reviewNumber: number,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_FIX, specId, featureName, reviewNumber, commandPrefix),
+
+  /**
+   * Approve document review (set status to 'approved')
+   * @param specPath Full path to spec directory
+   */
+  approveDocumentReview: (specPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APPROVE_DOCUMENT_REVIEW, specPath),
+
+  /**
+   * Skip document review (set status to 'skipped')
+   * @param specPath Full path to spec directory
+   */
+  skipDocumentReview: (specPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW, specPath),
 };
 
 // Expose API to renderer

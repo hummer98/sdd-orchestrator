@@ -29,6 +29,18 @@ export interface SpecJson {
   phase: SpecPhase;
   approvals: ApprovalStatus;
   ready_for_implementation: boolean;
+  /** Document review state (optional for backward compatibility) */
+  documentReview?: {
+    rounds: number;
+    status?: string;
+    currentRound?: number;
+    roundDetails?: Array<{
+      roundNumber: number;
+      status: string;
+      reviewCompletedAt?: string;
+      replyCompletedAt?: string;
+    }>;
+  };
 }
 
 export interface SpecMetadata {

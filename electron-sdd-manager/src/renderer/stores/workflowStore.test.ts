@@ -492,4 +492,55 @@ describe('useWorkflowStore', () => {
       expect(options.gap).toBe(false);
     });
   });
+
+  // ============================================================
+  // Task 6.1: Document Review Auto Execution Flag
+  // Requirements: 6.7, 6.8
+  // ============================================================
+  describe('Task 6.1: Document review auto execution flag', () => {
+    describe('initial state', () => {
+      it('should have autoExecutionFlag as run by default', () => {
+        const state = useWorkflowStore.getState();
+        expect(state.documentReviewOptions.autoExecutionFlag).toBe('run');
+      });
+    });
+
+    describe('setDocumentReviewAutoExecutionFlag', () => {
+      it('should set autoExecutionFlag to pause', () => {
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
+        const state = useWorkflowStore.getState();
+        expect(state.documentReviewOptions.autoExecutionFlag).toBe('pause');
+      });
+
+      it('should set autoExecutionFlag to skip', () => {
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
+        const state = useWorkflowStore.getState();
+        expect(state.documentReviewOptions.autoExecutionFlag).toBe('skip');
+      });
+
+      it('should set autoExecutionFlag to run', () => {
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
+        const state = useWorkflowStore.getState();
+        expect(state.documentReviewOptions.autoExecutionFlag).toBe('run');
+      });
+
+      it('should cycle through all flags correctly', () => {
+        // Start with run (default)
+        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('run');
+
+        // Set to pause
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
+        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
+
+        // Set to skip
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
+        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('skip');
+
+        // Back to run
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
+        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('run');
+      });
+    });
+  });
 });

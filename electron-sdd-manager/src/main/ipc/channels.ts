@@ -120,6 +120,16 @@ export const IPC_CHANNELS = {
   START_BUGS_WATCHER: 'ipc:start-bugs-watcher',
   STOP_BUGS_WATCHER: 'ipc:stop-bugs-watcher',
   BUGS_CHANGED: 'ipc:bugs-changed',
+
+  // Document Review Sync
+  SYNC_DOCUMENT_REVIEW: 'ipc:sync-document-review',
+
+  // Document Review Execution (Requirements: 6.1 - Document Review Workflow)
+  EXECUTE_DOCUMENT_REVIEW: 'ipc:execute-document-review',
+  EXECUTE_DOCUMENT_REVIEW_REPLY: 'ipc:execute-document-review-reply',
+  EXECUTE_DOCUMENT_REVIEW_FIX: 'ipc:execute-document-review-fix',
+  APPROVE_DOCUMENT_REVIEW: 'ipc:approve-document-review',
+  SKIP_DOCUMENT_REVIEW: 'ipc:skip-document-review',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

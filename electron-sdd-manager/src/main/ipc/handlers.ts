@@ -760,6 +760,17 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // Document Review Sync Handler - Auto-fix spec.json documentReview based on file system
+  ipcMain.handle(
+    IPC_CHANNELS.SYNC_DOCUMENT_REVIEW,
+    async (_event, specPath: string) => {
+      logger.info('[handlers] SYNC_DOCUMENT_REVIEW called', { specPath });
+      const { DocumentReviewService } = await import('../services/documentReviewService');
+      const service = new DocumentReviewService(currentProjectPath || '');
+      return service.syncReviewState(specPath);
+    }
+  );
+
   // CLI Install Handlers
   ipcMain.handle(IPC_CHANNELS.GET_CLI_INSTALL_STATUS, async () => {
     logger.info('[handlers] GET_CLI_INSTALL_STATUS called');
@@ -829,6 +840,111 @@ export function registerIpcHandlers(): void {
     logger.info('[handlers] STOP_BUGS_WATCHER called');
     await stopBugsWatcher();
   });
+
+  // ============================================================
+  // Document Review Execution Handlers (Requirements: 6.1 - Document Review Workflow)
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW,
+    async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW called', { specId, featureName, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeDocumentReview({ specId, featureName, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeDocumentReview failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeDocumentReview succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY,
+    async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_REPLY called', { specId, featureName, reviewNumber, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeDocumentReviewReply({ specId, featureName, reviewNumber, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeDocumentReviewReply failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeDocumentReviewReply succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_FIX,
+    async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_FIX called', { specId, featureName, reviewNumber, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeDocumentReviewFix({ specId, featureName, reviewNumber, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeDocumentReviewFix failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeDocumentReviewFix succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.APPROVE_DOCUMENT_REVIEW,
+    async (_event, specPath: string) => {
+      logger.info('[handlers] APPROVE_DOCUMENT_REVIEW called', { specPath });
+      const { DocumentReviewService } = await import('../services/documentReviewService');
+      const service = new DocumentReviewService(currentProjectPath || '');
+      const result = await service.approveReview(specPath);
+      if (!result.ok) {
+        throw new Error(`Failed to approve document review: ${result.error.type}`);
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SKIP_DOCUMENT_REVIEW,
+    async (_event, specPath: string) => {
+      logger.info('[handlers] SKIP_DOCUMENT_REVIEW called', { specPath });
+      const { DocumentReviewService } = await import('../services/documentReviewService');
+      const service = new DocumentReviewService(currentProjectPath || '');
+      const result = await service.skipReview(specPath);
+      if (!result.ok) {
+        throw new Error(`Failed to skip document review: ${result.error.type}`);
+      }
+    }
+  );
 }
 
 /**

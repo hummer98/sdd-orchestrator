@@ -312,7 +312,6 @@ export class AutoExecutionService {
       if (!specDetail) return;
 
       const currentPhase = useWorkflowStore.getState().currentAutoPhase;
-      if (!currentPhase) return;
 
       // Get agents for current spec
       const currentAgents = state.agents.get(specDetail.metadata.name) || [];
@@ -324,12 +323,23 @@ export class AutoExecutionService {
 
         // Check if agent just completed
         if (prevAgent?.status === 'running' && agent.status === 'completed') {
-          this.handleAgentCompleted(currentPhase);
+          // Task 7.2: Handle document review agent completion
+          if (agent.phase === 'document-review') {
+            this.handleDocumentReviewCompleted();
+          } else if (agent.phase === 'document-review-reply') {
+            this.handleDocumentReviewReplyCompleted();
+          } else if (currentPhase) {
+            this.handleAgentCompleted(currentPhase);
+          }
         }
 
         // Check if agent failed
         if (prevAgent?.status === 'running' && agent.status === 'failed') {
-          this.handleAgentFailed(currentPhase, 'Agent execution failed');
+          if (agent.phase === 'document-review' || agent.phase === 'document-review-reply') {
+            this.handleDocumentReviewFailed(agent.phase, 'Agent execution failed');
+          } else if (currentPhase) {
+            this.handleAgentFailed(currentPhase, 'Agent execution failed');
+          }
         }
       }
     });
@@ -349,6 +359,12 @@ export class AutoExecutionService {
     this.autoApproveCompletedPhase(completedPhase).then(() => {
       // Check for validation after this phase
       this.executeValidationIfEnabled(completedPhase).then(() => {
+        // Task 7.2: After tasks phase, check if we should execute document review
+        if (completedPhase === 'tasks') {
+          this.handleTasksCompletedForDocumentReview();
+          return;
+        }
+
         // Get next phase
         const nextPhase = this.getNextPermittedPhase(completedPhase);
 
@@ -361,6 +377,187 @@ export class AutoExecutionService {
         }
       });
     });
+  }
+
+  // ============================================================
+  // Task 7.2: Document Review Workflow Integration
+  // Requirements: 7.1, 7.2, 7.3
+  // ============================================================
+
+  /**
+   * Handle tasks phase completion for document review
+   * Executes document review if not skipped, otherwise continues to impl
+   */
+  private async handleTasksCompletedForDocumentReview(): Promise<void> {
+    const workflowStore = useWorkflowStore.getState();
+    const { documentReviewOptions } = workflowStore;
+
+    // Check if document review should be skipped (autoExecutionFlag === 'skip')
+    if (documentReviewOptions.autoExecutionFlag === 'skip') {
+      console.log('[AutoExecutionService] Document review skipped');
+      // Skip document review, continue to next phase
+      const nextPhase = this.getNextPermittedPhase('tasks');
+      if (nextPhase) {
+        this.executePhase(nextPhase);
+      } else {
+        this.completeAutoExecution();
+      }
+      return;
+    }
+
+    // Execute document review
+    await this.executeDocumentReview();
+  }
+
+  /**
+   * Execute document review agent
+   */
+  private async executeDocumentReview(): Promise<void> {
+    const specDetail = useSpecStore.getState().specDetail;
+    const workflowStore = useWorkflowStore.getState();
+
+    if (!specDetail) {
+      this.handleDocumentReviewFailed('document-review', 'specDetail is not available');
+      return;
+    }
+
+    try {
+      console.log('[AutoExecutionService] Executing document review');
+      await window.electronAPI.executeDocumentReview(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
+      );
+    } catch (error) {
+      this.handleDocumentReviewFailed(
+        'document-review',
+        error instanceof Error ? error.message : 'Document review execution failed'
+      );
+    }
+  }
+
+  /**
+   * Handle document-review agent completion
+   * Requirements: 7.2
+   */
+  private async handleDocumentReviewCompleted(): Promise<void> {
+    console.log('[AutoExecutionService] Document review completed');
+
+    this.clearTimeout();
+
+    const workflowStore = useWorkflowStore.getState();
+    const { documentReviewOptions } = workflowStore;
+
+    // If autoExecutionFlag is 'run', auto-execute document-review-reply
+    // If 'pause', wait for user to manually execute reply
+    if (documentReviewOptions.autoExecutionFlag === 'run') {
+      await this.executeDocumentReviewReply();
+    } else {
+      // Pause for user to manually execute reply
+      workflowStore.setAutoExecutionStatus('paused');
+    }
+  }
+
+  /**
+   * Execute document-review-reply agent
+   */
+  private async executeDocumentReviewReply(): Promise<void> {
+    const specDetail = useSpecStore.getState().specDetail;
+    const workflowStore = useWorkflowStore.getState();
+
+    if (!specDetail) {
+      this.handleDocumentReviewFailed('document-review-reply', 'specDetail is not available');
+      return;
+    }
+
+    // Get current round number from spec.json
+    const specJson = await window.electronAPI.readSpecJson(specDetail.metadata.path);
+    const currentRound = (specJson as any).documentReview?.currentRound || 1;
+
+    try {
+      console.log(`[AutoExecutionService] Executing document review reply for round ${currentRound}`);
+      await window.electronAPI.executeDocumentReviewReply(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        currentRound,
+        workflowStore.commandPrefix
+      );
+    } catch (error) {
+      this.handleDocumentReviewFailed(
+        'document-review-reply',
+        error instanceof Error ? error.message : 'Document review reply execution failed'
+      );
+    }
+  }
+
+  /**
+   * Handle document-review-reply agent completion
+   * Requirements: 7.5 - Pause for user confirmation after round completes
+   */
+  private handleDocumentReviewReplyCompleted(): void {
+    console.log('[AutoExecutionService] Document review reply completed');
+
+    this.clearTimeout();
+
+    const workflowStore = useWorkflowStore.getState();
+
+    // Task 7.3: Pause for user confirmation
+    workflowStore.setAutoExecutionStatus('paused');
+    workflowStore.setPendingReviewConfirmation(true);
+  }
+
+  /**
+   * Handle document review failure
+   */
+  private handleDocumentReviewFailed(phase: string, error: string): void {
+    console.error(`[AutoExecutionService] ${phase} failed: ${error}`);
+
+    this.clearTimeout();
+    this.errors.push(error);
+
+    const workflowStore = useWorkflowStore.getState();
+
+    workflowStore.setAutoExecutionStatus('error');
+    notify.error(`${phase}でエラーが発生しました: ${error}`);
+
+    this.generateSummary();
+  }
+
+  /**
+   * Continue to next review round (called by user action)
+   */
+  continueToNextReviewRound(): void {
+    const workflowStore = useWorkflowStore.getState();
+    workflowStore.setPendingReviewConfirmation(false);
+    workflowStore.setAutoExecutionStatus('running');
+
+    this.executeDocumentReview();
+  }
+
+  /**
+   * Approve review and continue to impl phase (called by user action)
+   */
+  async approveReviewAndContinue(): Promise<void> {
+    const specDetail = useSpecStore.getState().specDetail;
+    const workflowStore = useWorkflowStore.getState();
+
+    if (!specDetail) return;
+
+    try {
+      await window.electronAPI.approveDocumentReview(specDetail.metadata.path);
+      workflowStore.setPendingReviewConfirmation(false);
+      workflowStore.setAutoExecutionStatus('running');
+
+      // Continue to next phase (impl)
+      const nextPhase = this.getNextPermittedPhase('tasks');
+      if (nextPhase) {
+        this.executePhase(nextPhase);
+      } else {
+        this.completeAutoExecution();
+      }
+    } catch (error) {
+      notify.error('ドキュメントレビューの承認に失敗しました');
+    }
   }
 
   // ============================================================

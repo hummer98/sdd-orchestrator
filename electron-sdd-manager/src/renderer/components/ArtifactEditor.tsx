@@ -8,11 +8,17 @@ import { useEffect, useMemo } from 'react';
 import { Save, Eye, Edit, Loader2, Circle } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { useEditorStore, useSpecStore, notify } from '../stores';
+import type { ArtifactType } from '../stores/editorStore';
 import { clsx } from 'clsx';
 
-type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+type BaseArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
 
-const ALL_TABS: { key: ArtifactType; label: string }[] = [
+interface TabInfo {
+  key: ArtifactType;
+  label: string;
+}
+
+const BASE_TABS: TabInfo[] = [
   { key: 'requirements', label: 'requirements.md' },
   { key: 'design', label: 'design.md' },
   { key: 'tasks', label: 'tasks.md' },
@@ -45,14 +51,50 @@ export function ArtifactEditor() {
     }
   }, [selectedSpec, activeTab, loadArtifact, clearEditor]);
 
-  // Filter tabs to only show existing artifacts
-  const availableTabs = useMemo(() => {
-    if (!specDetail?.artifacts) return ALL_TABS;
-    return ALL_TABS.filter((tab) => {
-      const artifact = specDetail.artifacts[tab.key];
-      return artifact !== null && artifact.exists;
-    });
-  }, [specDetail?.artifacts]);
+  // Build document review tabs from roundDetails
+  const documentReviewTabs = useMemo((): TabInfo[] => {
+    const reviewState = specDetail?.specJson?.documentReview;
+    if (!reviewState?.roundDetails || reviewState.roundDetails.length === 0) {
+      return [];
+    }
+
+    const tabs: TabInfo[] = [];
+    // Sort by roundNumber and add tabs in order
+    const sortedDetails = [...reviewState.roundDetails].sort(
+      (a, b) => a.roundNumber - b.roundNumber
+    );
+
+    for (const detail of sortedDetails) {
+      const n = detail.roundNumber;
+      // Always add review tab if we have a roundDetail
+      tabs.push({
+        key: `document-review-${n}` as ArtifactType,
+        label: `Review-${n}`,
+      });
+      // Add reply tab if reply is complete
+      if (detail.status === 'reply_complete') {
+        tabs.push({
+          key: `document-review-${n}-reply` as ArtifactType,
+          label: `Reply-${n}`,
+        });
+      }
+    }
+
+    return tabs;
+  }, [specDetail?.specJson?.documentReview]);
+
+  // Filter base tabs to only show existing artifacts, then add review tabs
+  const availableTabs = useMemo((): TabInfo[] => {
+    let baseTabs = BASE_TABS;
+    if (specDetail?.artifacts) {
+      baseTabs = BASE_TABS.filter((tab) => {
+        const artifact = specDetail.artifacts[tab.key as BaseArtifactType];
+        return artifact !== null && artifact.exists;
+      });
+    }
+    // Append document review tabs after tasks
+    return [...baseTabs, ...documentReviewTabs];
+  }, [specDetail?.artifacts, documentReviewTabs]);
 
   // If current activeTab doesn't exist, switch to first available tab
   useEffect(() => {
@@ -90,6 +132,19 @@ export function ArtifactEditor() {
       if (!confirmed) return;
     }
     setActiveTab(tab);
+  };
+
+  // Get display label for current tab in status bar
+  const getTabDisplayName = (tab: ArtifactType): string => {
+    const tabInfo = availableTabs.find((t) => t.key === tab);
+    if (tabInfo) {
+      // For review tabs, append .md
+      if (tab.startsWith('document-review-')) {
+        return `${tab}.md`;
+      }
+      return tabInfo.label;
+    }
+    return `${tab}.md`;
   };
 
   return (
@@ -194,7 +249,7 @@ export function ArtifactEditor() {
           {isDirty && (
             <span className="text-orange-500 mr-2">未保存の変更あり</span>
           )}
-          {activeTab}.md
+          {getTabDisplayName(activeTab)}
         </span>
         <span>
           {content.length} 文字 | {content.split('\n').length} 行

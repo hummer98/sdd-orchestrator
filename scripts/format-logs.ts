@@ -69,6 +69,9 @@ interface ContentBlock {
   content?: string;
 }
 
+// カレントディレクトリ（プロジェクトルート）
+const projectDir = process.cwd();
+
 function formatTime(timestamp: string): string {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('ja-JP', {
@@ -76,6 +79,39 @@ function formatTime(timestamp: string): string {
     minute: '2-digit',
     second: '2-digit',
   });
+}
+
+/**
+ * ファイルパスをプロジェクト相対パスに変換
+ */
+function toRelativePath(filePath: string): string {
+  if (filePath.startsWith(projectDir + '/')) {
+    return filePath.substring(projectDir.length + 1);
+  }
+  return filePath;
+}
+
+/**
+ * ツール入力の簡易表示をフォーマット
+ */
+function formatToolInputSummary(toolName: string, input: Record<string, unknown>): string {
+  // Readツール: ファイルパスのみを表示
+  if (toolName === 'Read' && typeof input.file_path === 'string') {
+    return toRelativePath(input.file_path);
+  }
+
+  // その他のツール: 従来の表示
+  const keys = Object.keys(input);
+  if (keys.length === 0) return '';
+
+  const summary = keys.map(k => {
+    const v = input[k];
+    if (typeof v === 'string') {
+      return `${k}="${truncate(v, 30)}"`;
+    }
+    return `${k}=${typeof v}`;
+  }).join(', ');
+  return truncate(summary, 80);
 }
 
 function truncate(str: string, maxLen: number): string {
@@ -123,16 +159,9 @@ function formatClaudeEvent(event: ClaudeEvent, verbose: boolean): string[] {
               }
             } else if (block.input) {
               // 簡易表示
-              const keys = Object.keys(block.input);
-              if (keys.length > 0) {
-                const summary = keys.map(k => {
-                  const v = block.input![k];
-                  if (typeof v === 'string') {
-                    return `${k}="${truncate(v, 30)}"`;
-                  }
-                  return `${k}=${typeof v}`;
-                }).join(', ');
-                lines.push(`   ${c.dim}${truncate(summary, 80)}${c.reset}`);
+              const summary = formatToolInputSummary(block.name, block.input);
+              if (summary) {
+                lines.push(`   ${c.dim}${summary}${c.reset}`);
               }
             }
           }

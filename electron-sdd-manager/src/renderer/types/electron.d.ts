@@ -339,6 +339,9 @@ export interface ElectronAPI {
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;
 
+  // Document Review Sync - Auto-fix spec.json documentReview based on file system
+  syncDocumentReview(specPath: string): Promise<boolean>;
+
   // Permissions - Add shell permissions to project
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
 
@@ -375,6 +378,14 @@ export interface ElectronAPI {
   startBugsWatcher(): Promise<void>;
   stopBugsWatcher(): Promise<void>;
   onBugsChanged(callback: (event: BugsChangeEvent) => void): () => void;
+
+  // Document Review
+  // Requirements: 6.1 - Document Review Workflow
+  executeDocumentReview(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeDocumentReviewReply(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeDocumentReviewFix(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  approveDocumentReview(specPath: string): Promise<void>;
+  skipDocumentReview(specPath: string): Promise<void>;
 }
 
 declare global {

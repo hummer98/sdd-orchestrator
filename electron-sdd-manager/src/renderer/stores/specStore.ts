@@ -205,6 +205,20 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         }
       }
 
+      // Auto-sync documentReview field with file system state
+      // Detects document-review-*.md files and updates spec.json if needed
+      try {
+        const wasModified = await window.electronAPI.syncDocumentReview(spec.path);
+        if (wasModified) {
+          console.log('[specStore] Auto-synced documentReview state', { spec: spec.name });
+          // Re-read specJson to get updated documentReview field
+          const updatedSpecJson = await window.electronAPI.readSpecJson(spec.path);
+          Object.assign(specJson, updatedSpecJson);
+        }
+      } catch (error) {
+        console.error('[specStore] Failed to sync documentReview:', error);
+      }
+
       const specDetail: SpecDetail = {
         metadata: spec,
         specJson,

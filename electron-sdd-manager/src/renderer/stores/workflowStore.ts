@@ -70,6 +70,23 @@ const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
 };
 
 // ============================================================
+// Task 7.1: Document Review Options
+// Requirements: 7.4
+// ============================================================
+
+/** Auto execution flag for document review (3 values) */
+export type DocumentReviewAutoExecutionFlag = 'run' | 'pause' | 'skip';
+
+export interface DocumentReviewOptions {
+  /** Auto execution flag (run/pause/skip) - Requirements: 6.7, 6.8 */
+  autoExecutionFlag: DocumentReviewAutoExecutionFlag;
+}
+
+const DEFAULT_DOCUMENT_REVIEW_OPTIONS: DocumentReviewOptions = {
+  autoExecutionFlag: 'run',
+};
+
+// ============================================================
 // Task 1.1: Auto Execution Status Types
 // Requirements: 7.4
 // ============================================================
@@ -127,6 +144,16 @@ interface WorkflowState {
   // Command Prefix Configuration
   /** コマンドプレフィックス設定 */
   commandPrefix: CommandPrefix;
+
+  // Task 7.1: Document Review Options
+  // Requirements: 7.4
+  /** ドキュメントレビューオプション */
+  documentReviewOptions: DocumentReviewOptions;
+
+  // Task 7.3: Review Confirmation
+  // Requirements: 7.5
+  /** レビューラウンド完了後の確認待ち状態 */
+  pendingReviewConfirmation: boolean;
 }
 
 interface WorkflowActions {
@@ -162,6 +189,16 @@ interface WorkflowActions {
   // Command Prefix Configuration
   /** コマンドプレフィックスを設定 */
   setCommandPrefix: (prefix: CommandPrefix) => void;
+
+  // Task 6.1: Auto Execution Flag Control
+  // Requirements: 6.7, 6.8
+  /** ドキュメントレビュー自動実行フラグを設定 */
+  setDocumentReviewAutoExecutionFlag: (flag: DocumentReviewAutoExecutionFlag) => void;
+
+  // Task 7.3: Review Confirmation
+  // Requirements: 7.5
+  /** レビュー確認待ち状態を設定 */
+  setPendingReviewConfirmation: (pending: boolean) => void;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -188,6 +225,12 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
       // Command Prefix Configuration - initial state
       commandPrefix: DEFAULT_COMMAND_PREFIX,
+
+      // Task 7.1: Document Review Options - initial state
+      documentReviewOptions: { ...DEFAULT_DOCUMENT_REVIEW_OPTIONS },
+
+      // Task 7.3: Review Confirmation - initial state
+      pendingReviewConfirmation: false,
 
       // Task 2.1: Auto Execution Permissions
       toggleAutoPermission: (phase: WorkflowPhase) => {
@@ -268,6 +311,23 @@ export const useWorkflowStore = create<WorkflowStore>()(
         set({ commandPrefix: prefix });
       },
 
+      // Task 6.1: Auto Execution Flag Control
+      // Requirements: 6.7, 6.8
+      setDocumentReviewAutoExecutionFlag: (flag: DocumentReviewAutoExecutionFlag) => {
+        set((state) => ({
+          documentReviewOptions: {
+            ...state.documentReviewOptions,
+            autoExecutionFlag: flag,
+          },
+        }));
+      },
+
+      // Task 7.3: Review Confirmation
+      // Requirements: 7.5
+      setPendingReviewConfirmation: (pending: boolean) => {
+        set({ pendingReviewConfirmation: pending });
+      },
+
       // Helper methods
       isPhaseAutoPermitted: (phase: WorkflowPhase) => {
         return get().autoExecutionPermissions[phase];
@@ -292,6 +352,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
         autoExecutionPermissions: state.autoExecutionPermissions,
         validationOptions: state.validationOptions,
         commandPrefix: state.commandPrefix,
+        documentReviewOptions: state.documentReviewOptions,
       }),
     }
   )

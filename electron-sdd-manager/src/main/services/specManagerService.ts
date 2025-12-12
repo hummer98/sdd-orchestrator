@@ -162,6 +162,29 @@ export interface ExecuteTaskImplOptions {
   commandPrefix?: CommandPrefix;
 }
 
+/** Document Review execution options (Requirements: 6.1) */
+export interface ExecuteDocumentReviewOptions {
+  specId: string;
+  featureName: string;
+  commandPrefix?: CommandPrefix;
+}
+
+/** Document Review Reply execution options (Requirements: 6.1) */
+export interface ExecuteDocumentReviewReplyOptions {
+  specId: string;
+  featureName: string;
+  reviewNumber: number;
+  commandPrefix?: CommandPrefix;
+}
+
+/** Document Review Fix execution options (apply --fix from existing reply) */
+export interface ExecuteDocumentReviewFixOptions {
+  specId: string;
+  featureName: string;
+  reviewNumber: number;
+  commandPrefix?: CommandPrefix;
+}
+
 /** spec-manager用フェーズタイプ */
 export type SpecManagerPhase = 'requirements' | 'design' | 'tasks' | 'impl';
 
@@ -800,6 +823,67 @@ export class SpecManagerService {
       command: 'claude',
       args: buildClaudeArgs({ command: `${implCommand} ${featureName} ${taskId}` }),
       group: 'impl',
+    });
+  }
+
+  // ============================================================
+  // Document Review Execution (Requirements: 6.1 - Document Review Workflow)
+  // ============================================================
+
+  /**
+   * Execute document-review agent
+   * Requirements: 2.1, 2.2, 2.3, 2.4
+   */
+  async executeDocumentReview(options: ExecuteDocumentReviewOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, commandPrefix = 'kiro' } = options;
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
+
+    logger.info('[SpecManagerService] executeDocumentReview called', { specId, featureName, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'document-review',
+      command: 'claude',
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+      group: 'doc',
+    });
+  }
+
+  /**
+   * Execute document-review-reply agent
+   * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+   */
+  async executeDocumentReviewReply(options: ExecuteDocumentReviewReplyOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, reviewNumber, commandPrefix = 'kiro' } = options;
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review-reply' : '/spec-manager:document-review-reply';
+
+    logger.info('[SpecManagerService] executeDocumentReviewReply called', { specId, featureName, reviewNumber, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'document-review-reply',
+      command: 'claude',
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber}` }),
+      group: 'doc',
+    });
+  }
+
+  /**
+   * Execute document-review-reply --fix agent (apply fixes from existing reply)
+   * This runs document-review-reply with --fix flag to apply modifications without re-evaluating
+   */
+  async executeDocumentReviewFix(options: ExecuteDocumentReviewFixOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, reviewNumber, commandPrefix = 'kiro' } = options;
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review-reply' : '/spec-manager:document-review-reply';
+
+    logger.info('[SpecManagerService] executeDocumentReviewFix called', { specId, featureName, reviewNumber, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'document-review-fix',
+      command: 'claude',
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
+      group: 'doc',
     });
   }
 

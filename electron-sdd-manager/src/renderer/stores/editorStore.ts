@@ -6,7 +6,12 @@
 
 import { create } from 'zustand';
 
-type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+/** Base artifact types */
+type BaseArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+/** Dynamic artifact types for document review files */
+type DynamicArtifactType = `document-review-${number}` | `document-review-${number}-reply`;
+/** All artifact types */
+export type ArtifactType = BaseArtifactType | DynamicArtifactType;
 
 interface EditorState {
   activeTab: ArtifactType;
@@ -92,6 +97,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   loadArtifact: async (specPath: string, artifact: ArtifactType) => {
+    // Handle both base artifacts and dynamic document review files
     const artifactPath = `${specPath}/${artifact}.md`;
 
     set({

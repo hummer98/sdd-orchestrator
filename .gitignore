@@ -1,0 +1,3 @@
+# Kiro runtime and logs
+.kiro/runtime
+.kiro/specs/*/logs

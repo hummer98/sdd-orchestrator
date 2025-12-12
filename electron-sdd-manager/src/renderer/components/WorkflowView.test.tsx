@@ -103,6 +103,10 @@ const mockWorkflowState = {
   lastFailedPhase: null,
   failedRetryCount: 0,
   executionSummary: null,
+  // Document review options
+  documentReviewOptions: {
+    autoExecutionFlag: 'run' as const,
+  },
   toggleAutoPermission: vi.fn(),
   toggleValidationOption: vi.fn(),
   startAutoExecution: vi.fn(),
@@ -117,6 +121,7 @@ const mockWorkflowState = {
   incrementFailedRetryCount: vi.fn(),
   resetFailedRetryCount: vi.fn(),
   setExecutionSummary: vi.fn(),
+  setDocumentReviewAutoExecutionFlag: vi.fn(),
 };
 
 const mockSpecStoreState = {
@@ -171,9 +176,9 @@ describe('WorkflowView', () => {
     it('should display approved status for approved phases', () => {
       render(<WorkflowView />);
 
-      // Requirements, design, tasks should show approved
-      const approvedBadges = screen.getAllByText('承認済');
-      expect(approvedBadges.length).toBeGreaterThanOrEqual(3);
+      // Requirements, design, tasks should show approved via progress icon
+      const approvedIcons = screen.getAllByTestId('progress-icon-approved');
+      expect(approvedIcons.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -209,7 +214,7 @@ describe('WorkflowView', () => {
     it('should display auto-execute button', () => {
       render(<WorkflowView />);
 
-      expect(screen.getByRole('button', { name: /自動実行/i })).toBeInTheDocument();
+      expect(screen.getByTestId('auto-execute-button')).toBeInTheDocument();
     });
 
     it('should display spec-status button', () => {
@@ -236,14 +241,14 @@ describe('WorkflowView', () => {
 
       render(<WorkflowView />);
 
-      const button = screen.getByRole('button', { name: /自動実行/i });
+      const button = screen.getByTestId('auto-execute-button');
       expect(button).toBeDisabled();
     });
 
     it('should enable auto-execute button when no agent is running', () => {
       render(<WorkflowView />);
 
-      const button = screen.getByRole('button', { name: /自動実行/i });
+      const button = screen.getByTestId('auto-execute-button');
       expect(button).not.toBeDisabled();
     });
 

@@ -1009,4 +1009,389 @@ describe('AutoExecutionService', () => {
       );
     });
   });
+
+  // ============================================================
+  // Task 7.2: Document Review Workflow Integration
+  // Requirements: 7.1, 7.2, 7.3
+  // ============================================================
+  describe('Task 7.2: Document Review Workflow Integration', () => {
+    it('should execute document-review after tasks phase completes when autoReply is true', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      (mockElectronAPI as any).executeDocumentReview = vi.fn().mockResolvedValue({
+        agentId: 'review-agent-1',
+        specId: 'test-spec',
+        phase: 'document-review',
+        status: 'running',
+      });
+
+      // Mock selectSpec to prevent errors
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      // Enable document review with autoReply - only tasks is permitted so it will be the starting phase
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: false,
+          design: false,
+          tasks: true,
+          impl: true,
+          inspection: false,
+          deploy: false,
+        },
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+        isAutoExecuting: true,
+        currentAutoPhase: 'tasks',
+      });
+
+      // Simulate tasks phase completion via agent state change
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'tasks',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      // Wait a moment for the listener to register the running state
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'tasks',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should trigger document review execution
+      expect((mockElectronAPI as any).executeDocumentReview).toHaveBeenCalledWith(
+        'test-spec',
+        'test-spec',
+        expect.anything()
+      );
+    });
+
+    it('should skip document-review when skip option is true', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.executePhase.mockResolvedValue(undefined);
+      (mockElectronAPI as any).executeDocumentReview = vi.fn();
+      (mockElectronAPI as any).skipDocumentReview = vi.fn().mockResolvedValue(undefined);
+
+      // Enable document review skip
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: true,
+          inspection: false,
+          deploy: false,
+        },
+        documentReviewOptions: {
+          autoExecutionFlag: 'skip',
+        },
+      });
+
+      service.start();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should skip document review and NOT call executeDocumentReview
+      expect((mockElectronAPI as any).executeDocumentReview).not.toHaveBeenCalled();
+    });
+
+    it('should execute document-review-reply automatically after document-review completes when autoReply is true', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 0,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      (mockElectronAPI as any).executeDocumentReviewReply = vi.fn().mockResolvedValue({
+        agentId: 'reply-agent-1',
+        specId: 'test-spec',
+        phase: 'document-review-reply',
+        status: 'running',
+      });
+
+      // Mock selectSpec
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: null,
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Simulate document-review completion
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'review-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      // Complete document-review
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'review-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should trigger document-review-reply execution
+      expect((mockElectronAPI as any).executeDocumentReviewReply).toHaveBeenCalledWith(
+        'test-spec',
+        'test-spec',
+        1,
+        expect.anything()
+      );
+    });
+
+    it('should not execute document-review-reply when autoReply is false', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 0,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      (mockElectronAPI as any).executeDocumentReviewReply = vi.fn();
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: null,
+        documentReviewOptions: {
+          autoExecutionFlag: 'pause',
+        },
+      });
+
+      // Simulate document-review completion
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'review-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'review-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should NOT trigger document-review-reply
+      expect((mockElectronAPI as any).executeDocumentReviewReply).not.toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // Task 7.3: User Confirmation After Review Round
+  // Requirements: 7.5
+  // ============================================================
+  describe('Task 7.3: User Confirmation After Review Round', () => {
+    it('should pause auto-execution after review round completes for user confirmation', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 0,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: null,
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Simulate document-review-reply completion (full round complete)
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should pause for user confirmation
+      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('paused');
+    });
+
+    it('should set pendingReviewConfirmation flag when review round completes', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'pending',
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+      useWorkflowStore.setState({
+        isAutoExecuting: true,
+        currentAutoPhase: null,
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Simulate document-review-reply completion
+      const agents = new Map();
+      agents.set('test-spec', [
+        {
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'running',
+        },
+      ]);
+      useAgentStore.setState({ agents });
+
+      const completedAgents = new Map();
+      completedAgents.set('test-spec', [
+        {
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        },
+      ]);
+      useAgentStore.setState({ agents: completedAgents });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should set pending confirmation flag
+      expect(useWorkflowStore.getState().pendingReviewConfirmation).toBe(true);
+    });
+  });
 });

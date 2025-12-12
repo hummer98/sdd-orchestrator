@@ -21,9 +21,23 @@ vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
 }));
 
-vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(),
-}));
+// Mock agentStore with subscribe and getState methods for AutoExecutionService
+const mockAgentStoreState = {
+  agents: [],
+  getAgentsForSpec: vi.fn(() => []),
+  selectAgent: vi.fn(),
+  addAgent: vi.fn(),
+};
+
+vi.mock('../stores/agentStore', () => {
+  const mockUseAgentStore = Object.assign(vi.fn(() => mockAgentStoreState), {
+    subscribe: vi.fn(() => vi.fn()), // Returns unsubscribe function
+    getState: vi.fn(() => mockAgentStoreState),
+  });
+  return {
+    useAgentStore: mockUseAgentStore,
+  };
+});
 
 const mockSpecDetail = {
   metadata: {
@@ -78,6 +92,7 @@ const createMockStores = (overrides: any = {}) => {
       retryCount: 0,
       executionMode: null,
     },
+    clearSpecManagerError: vi.fn(),
     ...overrides.specStore,
   };
 
@@ -96,15 +111,33 @@ const createMockStores = (overrides: any = {}) => {
       impl: false,
     },
     isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle' as const,
+    lastFailedPhase: null,
+    failedRetryCount: 0,
+    executionSummary: null,
+    documentReviewOptions: {
+      autoExecutionFlag: 'run' as const,
+    },
     toggleAutoPermission: vi.fn(),
     toggleValidationOption: vi.fn(),
     startAutoExecution: vi.fn(),
     stopAutoExecution: vi.fn(),
+    setCurrentAutoPhase: vi.fn(),
+    resetSettings: vi.fn(),
+    isPhaseAutoPermitted: vi.fn((phase: string) => phase === 'requirements'),
+    getNextAutoPhase: vi.fn(),
+    setAutoExecutionStatus: vi.fn(),
+    setLastFailedPhase: vi.fn(),
+    incrementFailedRetryCount: vi.fn(),
+    resetFailedRetryCount: vi.fn(),
+    setExecutionSummary: vi.fn(),
+    setDocumentReviewAutoExecutionFlag: vi.fn(),
     ...overrides.workflowStore,
   };
 
   const defaultAgentStore = {
-    agents: {},
+    agents: [],
     getAgentsForSpec: vi.fn().mockReturnValue([]),
     addAgent: vi.fn(),
     selectAgent: vi.fn(),
@@ -120,6 +153,9 @@ const createMockStores = (overrides: any = {}) => {
   (useAgentStore as any).mockImplementation((selector: any) =>
     selector ? selector(defaultAgentStore) : defaultAgentStore
   );
+  // Also update the static methods
+  (useAgentStore as any).getState = vi.fn(() => defaultAgentStore);
+  (useAgentStore as any).subscribe = vi.fn(() => vi.fn());
 
   return { defaultSpecStore, defaultWorkflowStore, defaultAgentStore };
 };

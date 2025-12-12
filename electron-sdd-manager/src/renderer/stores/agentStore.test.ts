@@ -512,6 +512,7 @@ describe('useAgentStore', () => {
         const mockCleanup = vi.fn();
         window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(mockCleanup);
         window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
 
         const cleanup = useAgentStore.getState().setupEventListeners();
 
@@ -525,6 +526,7 @@ describe('useAgentStore', () => {
         const mockCleanup = vi.fn();
         window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(vi.fn());
         window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(mockCleanup);
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
 
         const cleanup = useAgentStore.getState().setupEventListeners();
 
@@ -541,6 +543,7 @@ describe('useAgentStore', () => {
           return vi.fn();
         });
         window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
 
         useAgentStore.getState().setupEventListeners();
 
@@ -565,6 +568,7 @@ describe('useAgentStore', () => {
           statusCallback = cb;
           return vi.fn();
         });
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
 
         useAgentStore.getState().setupEventListeners();
 
@@ -581,14 +585,17 @@ describe('useAgentStore', () => {
       it('should call both cleanup functions', () => {
         const cleanupOutput = vi.fn();
         const cleanupStatus = vi.fn();
+        const cleanupRecordChanged = vi.fn();
         window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(cleanupOutput);
         window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(cleanupStatus);
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(cleanupRecordChanged);
 
         const cleanup = useAgentStore.getState().setupEventListeners();
         cleanup();
 
         expect(cleanupOutput).toHaveBeenCalled();
         expect(cleanupStatus).toHaveBeenCalled();
+        expect(cleanupRecordChanged).toHaveBeenCalled();
       });
     });
   });

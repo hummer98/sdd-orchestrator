@@ -41,7 +41,7 @@ describe('LogFileService', () => {
       await service.appendLog('spec-a', 'agent-001', entry);
 
       // Verify file was created
-      const filePath = path.join(testDir, 'spec-a', 'agent-001.log');
+      const filePath = path.join(testDir, 'spec-a', 'logs', 'agent-001.log');
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(content.trim());
 
@@ -67,7 +67,7 @@ describe('LogFileService', () => {
       await service.appendLog('spec-a', 'agent-001', entry2);
 
       // Verify both entries were appended
-      const filePath = path.join(testDir, 'spec-a', 'agent-001.log');
+      const filePath = path.join(testDir, 'spec-a', 'logs', 'agent-001.log');
       const content = await fs.readFile(filePath, 'utf-8');
       const lines = content.trim().split('\n');
 
@@ -86,7 +86,7 @@ describe('LogFileService', () => {
       await service.appendLog('new-spec', 'agent-001', entry);
 
       // Verify directory was created
-      const dirPath = path.join(testDir, 'new-spec');
+      const dirPath = path.join(testDir, 'new-spec', 'logs');
       const stats = await fs.stat(dirPath);
       expect(stats.isDirectory()).toBe(true);
     });
@@ -100,7 +100,7 @@ describe('LogFileService', () => {
 
       await service.appendLog('spec-a', 'agent-001', entry);
 
-      const filePath = path.join(testDir, 'spec-a', 'agent-001.log');
+      const filePath = path.join(testDir, 'spec-a', 'logs', 'agent-001.log');
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(content.trim());
 

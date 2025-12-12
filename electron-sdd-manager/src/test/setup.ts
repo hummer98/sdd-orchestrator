@@ -44,17 +44,34 @@ const mockElectronAPI = {
   addRecentProject: vi.fn(),
   getAppVersion: vi.fn(),
   getPlatform: vi.fn(() => 'darwin'),
+  // Project/Spec Management APIs
+  setProjectPath: vi.fn().mockResolvedValue(undefined),
+  watchSpecs: vi.fn().mockResolvedValue(undefined),
+  unwatchSpecs: vi.fn().mockResolvedValue(undefined),
+  startSpecsWatcher: vi.fn().mockResolvedValue(undefined),
+  stopSpecsWatcher: vi.fn().mockResolvedValue(undefined),
+  onSpecsChanged: vi.fn(() => vi.fn()),
+  executeSpecManagerPhase: vi.fn(),
+  executePhase: vi.fn().mockResolvedValue(undefined),
+  executeValidation: vi.fn().mockResolvedValue(undefined),
+  executeSpecStatus: vi.fn().mockResolvedValue(undefined),
+  executeTaskImpl: vi.fn().mockResolvedValue(undefined),
   // Agent Management APIs (Task 29)
   startAgent: vi.fn(),
   stopAgent: vi.fn(),
   resumeAgent: vi.fn(),
   getAgents: vi.fn(),
   getAllAgents: vi.fn(),
+  getAgentLogs: vi.fn().mockResolvedValue([]),
   sendAgentInput: vi.fn(),
   onAgentOutput: vi.fn(() => vi.fn()),
   onAgentStatusChange: vi.fn(() => vi.fn()),
+  onAgentRecordChanged: vi.fn(() => vi.fn()),
   getHangThreshold: vi.fn(),
   setHangThreshold: vi.fn(),
+  // Phase/Review Sync APIs
+  syncSpecPhase: vi.fn(),
+  syncDocumentReview: vi.fn().mockResolvedValue(false),
 };
 
 Object.defineProperty(window, 'electronAPI', {

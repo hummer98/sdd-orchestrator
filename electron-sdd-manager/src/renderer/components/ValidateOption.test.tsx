@@ -15,6 +15,7 @@ describe('ValidateOption', () => {
     label: 'validate-gap',
     enabled: false,
     isExecuting: false,
+    canExecute: true,
     onToggle: vi.fn(),
     onExecute: vi.fn(),
   };
@@ -96,7 +97,9 @@ describe('ValidateOption', () => {
       it('should hide execute button when executing', () => {
         render(<ValidateOption {...defaultProps} isExecuting={true} />);
 
-        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        // Execute button should be replaced by loading indicator
+        // Note: info button is still present
+        expect(screen.queryByRole('button', { name: /実行/i })).not.toBeInTheDocument();
       });
     });
 

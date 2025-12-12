@@ -15,6 +15,8 @@ import { PhaseItem } from './PhaseItem';
 import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
+import { DocumentReviewPanel } from './DocumentReviewPanel';
+import type { DocumentReviewState } from '../types/documentReview';
 import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
 import {
   WORKFLOW_PHASES,
@@ -50,6 +52,12 @@ export function WorkflowView() {
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
+
+  // Get document review state from spec.json
+  const documentReviewState = useMemo((): DocumentReviewState | null => {
+    const reviewData = (specJson as ExtendedSpecJson & { documentReview?: DocumentReviewState })?.documentReview;
+    return reviewData || null;
+  }, [specJson]);
 
   // Calculate phase statuses
   const phaseStatuses = useMemo(() => {
@@ -271,6 +279,95 @@ export function WorkflowView() {
     console.log('Show agent log for phase:', phase);
   }, []);
 
+  // ============================================================
+  // Task 6.3: Document Review Handlers
+  // Requirements: 6.1
+  // ============================================================
+  const isReviewExecuting = useMemo(() => {
+    return runningPhases.has('document-review') || runningPhases.has('document-review-reply');
+  }, [runningPhases]);
+
+  const handleStartDocumentReview = useCallback(async () => {
+    if (!specDetail) return;
+
+    try {
+      const newAgent = await window.electronAPI.executeDocumentReview(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
+      );
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'ドキュメントレビューの実行に失敗しました');
+    }
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+
+  // Handler for executing document-review-reply manually
+  const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
+    if (!specDetail) return;
+
+    try {
+      const newAgent = await window.electronAPI.executeDocumentReviewReply(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        roundNumber,
+        workflowStore.commandPrefix
+      );
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'レビュー内容判定の実行に失敗しました');
+    }
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+
+  // Handler for applying fixes from document-review-reply (--fix option)
+  const handleApplyDocumentReviewFix = useCallback(async (roundNumber: number) => {
+    if (!specDetail) return;
+
+    try {
+      const newAgent = await window.electronAPI.executeDocumentReviewFix(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        roundNumber,
+        workflowStore.commandPrefix
+      );
+      agentStore.addAgent(specDetail.metadata.name, newAgent);
+      agentStore.selectAgent(newAgent.agentId);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'replyの適用に失敗しました');
+    }
+  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+
+  // Track previous runningPhases for detecting document-review completion
+  const prevRunningPhasesRef = useRef<Set<string>>(new Set());
+
+  // Auto-execute document-review-reply when document-review completes
+  useEffect(() => {
+    if (!specDetail) return;
+
+    const prevRunning = prevRunningPhasesRef.current;
+    const currentRunning = runningPhases;
+
+    // Check if document-review just completed (was running, now not running)
+    const wasReviewRunning = prevRunning.has('document-review');
+    const isReviewRunning = currentRunning.has('document-review');
+
+    if (wasReviewRunning && !isReviewRunning) {
+      // document-review just completed, check if we should auto-execute reply
+      // Get the latest document review round number from documentReviewState
+      const latestRound = documentReviewState?.rounds ?? 0;
+      if (latestRound > 0) {
+        // Auto-execute document-review-reply without --fix (default behavior)
+        console.log('[WorkflowView] document-review completed, auto-executing reply for round', latestRound);
+        handleExecuteDocumentReviewReply(latestRound);
+      }
+    }
+
+    // Update ref for next comparison
+    prevRunningPhasesRef.current = new Set(currentRunning);
+  }, [runningPhases, specDetail, documentReviewState, handleExecuteDocumentReviewReply]);
+
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;
 
@@ -357,6 +454,23 @@ export function WorkflowView() {
               return null;
             })}
 
+            {/* Task 6.3: Document Review Panel (between tasks and impl) */}
+            {/* Task 6.1: Progress indicator and auto execution flag control added */}
+            {/* Requirements: 6.1, 6.4, 6.5, 6.6, 6.7, 6.8 */}
+            {phase === 'tasks' && (
+              <div className="my-3">
+                <DocumentReviewPanel
+                  reviewState={documentReviewState}
+                  isExecuting={isReviewExecuting}
+                  autoExecutionFlag={workflowStore.documentReviewOptions.autoExecutionFlag}
+                  onStartReview={handleStartDocumentReview}
+                  onExecuteReply={handleExecuteDocumentReviewReply}
+                  onApplyFix={handleApplyDocumentReviewFix}
+                  onAutoExecutionFlagChange={workflowStore.setDocumentReviewAutoExecutionFlag}
+                />
+              </div>
+            )}
+
             {/* Task Progress (for impl phase) */}
             {phase === 'impl' && specDetail.taskProgress && (
               <div className="mt-2 ml-4">
@@ -404,6 +518,7 @@ export function WorkflowView() {
       {/* Footer Buttons */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
         <button
+          data-testid="auto-execute-button"
           onClick={handleAutoExecution}
           disabled={!workflowStore.isAutoExecuting && runningPhases.size > 0}
           className={clsx(

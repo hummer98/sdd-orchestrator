@@ -152,7 +152,7 @@ describe('useSpecStore - spec-manager Extensions', () => {
       });
 
       it('should handle impl phase with taskId', async () => {
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockResolvedValue({ ok: true });
+        window.electronAPI.executeTaskImpl = vi.fn().mockResolvedValue(undefined);
 
         await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -162,10 +162,10 @@ describe('useSpecStore - spec-manager Extensions', () => {
           'manual'
         );
 
-        expect(window.electronAPI.executeSpecManagerPhase).toHaveBeenCalledWith(
-          expect.objectContaining({
-            taskId: '1.1',
-          })
+        expect(window.electronAPI.executeTaskImpl).toHaveBeenCalledWith(
+          'test-spec',
+          'test-feature',
+          '1.1'
         );
       });
     });
@@ -270,8 +270,9 @@ describe('useSpecStore - spec-manager Extensions', () => {
 
     describe('exclusive control', () => {
       it('should prevent concurrent spec-manager operations', async () => {
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 1000))
+        // Use the actual API that the implementation calls
+        window.electronAPI.executePhase = vi.fn().mockImplementation(
+          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 1000))
         );
 
         // Start first operation
@@ -283,6 +284,9 @@ describe('useSpecStore - spec-manager Extensions', () => {
           'manual'
         );
 
+        // Check state immediately after starting first operation
+        expect(useSpecStore.getState().specManagerExecution.isRunning).toBe(true);
+
         // Try to start second operation
         const promise2 = useSpecStore.getState().executeSpecManagerGeneration(
           'spec-b',
@@ -292,9 +296,11 @@ describe('useSpecStore - spec-manager Extensions', () => {
           'manual'
         );
 
-        // Second operation should be blocked or rejected
+        // Second operation should be blocked (first operation still has isRunning=true)
+        // The second operation should return early without changing state
         const state = useSpecStore.getState();
-        expect(state.specManagerExecution.isRunning).toBe(true);
+        expect(state.specManagerExecution.currentSpecId).toBe('spec-a');
+        expect(state.specManagerExecution.currentPhase).toBe('requirements');
 
         await Promise.allSettled([promise1, promise2]);
       });

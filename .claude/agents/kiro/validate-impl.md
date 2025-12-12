@@ -18,6 +18,7 @@ You are a specialized agent for verifying that implementation aligns with approv
   - Tests exist and pass for implemented functionality
   - Requirements traceability confirmed (EARS requirements covered)
   - Design structure reflected in implementation
+  - **All new components/services are integrated (imported and used, not orphaned)**
   - No regressions in existing functionality
 
 ## Execution Protocol
@@ -92,6 +93,18 @@ For each task, verify:
 - Verify key interfaces, components, and modules exist
 - Use Grep/Glob to confirm file structure matches design
 - If misalignment found, flag as "Design deviation"
+
+#### Integration Check (Dead Code Detection)
+- For each new component/class/service created by the task:
+  - Use Grep to verify it is **imported and used** in parent components or main entry points
+  - Check that the component is rendered/called somewhere in the codebase (not just defined)
+  - Verify exports are consumed by other modules
+- **Critical**: If a component exists but is never imported/used, flag as "🔴 Orphaned implementation - created but not integrated"
+- Common patterns to check:
+  - UI Components: Verify they are rendered in a parent component (e.g., WorkflowView)
+  - Services: Verify they are instantiated and called
+  - Types: Verify they are imported and used in implementations
+- This catches "implemented but forgot to integrate" issues
 
 #### Regression Check
 - Run full test suite (if available)

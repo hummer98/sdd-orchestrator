@@ -1,0 +1,22 @@
+{
+  "feature_name": "spec-manager-commands",
+  "created_at": "2025-11-29T10:30:00.000Z",
+  "updated_at": "2025-11-29T07:34:20.363Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

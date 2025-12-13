@@ -47,3 +47,9 @@ export { BugActionButtons, getNextActionLabel } from './BugActionButtons';
 export { BugList } from './BugList';
 export { CreateBugDialog } from './CreateBugDialog';
 export { DocsTabs } from './DocsTabs';
+// SSH Remote Project Components
+export { SSHStatusIndicator } from './SSHStatusIndicator';
+export { SSHConnectDialog } from './SSHConnectDialog';
+export { SSHAuthDialog } from './SSHAuthDialog';
+export { RecentRemoteProjects } from './RecentRemoteProjects';
+export { ProjectSwitchConfirmDialog } from './ProjectSwitchConfirmDialog';

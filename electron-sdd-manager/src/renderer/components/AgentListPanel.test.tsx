@@ -225,6 +225,85 @@ describe('AgentListPanel - Task 30', () => {
     });
   });
 
+  describe('Auto-select agent when spec changes', () => {
+    it('should auto-select the first agent when spec is selected and no agent is selected', () => {
+      mockGetAgentsForSpec.mockReturnValue([
+        { ...baseAgentInfo, agentId: 'agent-1' },
+        { ...baseAgentInfo, agentId: 'agent-2' },
+      ]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+      });
+
+      render(<AgentListPanel />);
+
+      // Should auto-select the first agent
+      expect(mockSelectAgent).toHaveBeenCalledWith('agent-1');
+    });
+
+    it('should not auto-select if an agent for this spec is already selected', () => {
+      mockGetAgentsForSpec.mockReturnValue([
+        { ...baseAgentInfo, agentId: 'agent-1' },
+        { ...baseAgentInfo, agentId: 'agent-2' },
+      ]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'agent-1', // Already selected
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+      });
+
+      render(<AgentListPanel />);
+
+      // Should NOT auto-select since agent-1 is already selected
+      expect(mockSelectAgent).not.toHaveBeenCalled();
+    });
+
+    it('should not auto-select when no agents exist for the spec', () => {
+      mockGetAgentsForSpec.mockReturnValue([]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+      });
+
+      render(<AgentListPanel />);
+
+      expect(mockSelectAgent).not.toHaveBeenCalled();
+    });
+
+    it('should prioritize running agent over completed agent in auto-select', () => {
+      const completedAgent = { ...baseAgentInfo, agentId: 'agent-completed', status: 'completed' as const, startedAt: '2025-01-01T00:00:00Z' };
+      const runningAgent = { ...baseAgentInfo, agentId: 'agent-running', status: 'running' as const, startedAt: '2025-01-01T00:00:01Z' };
+
+      // Return in wrong order to test sorting
+      mockGetAgentsForSpec.mockReturnValue([completedAgent, runningAgent]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+      });
+
+      render(<AgentListPanel />);
+
+      // Should auto-select the running agent (prioritized over completed)
+      expect(mockSelectAgent).toHaveBeenCalledWith('agent-running');
+    });
+  });
+
   describe('Task 30.3: 停止ボタン', () => {
     it('should show stop button for running agent', () => {
       render(<AgentListPanel />);

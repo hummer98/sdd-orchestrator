@@ -71,12 +71,9 @@ export function AgentListPanel() {
   const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
-  if (!selectedSpec) {
-    return null;
-  }
-
-  const agents = getAgentsForSpec(selectedSpec.name)
-    // Sort: running first, then by startedAt descending (newest first)
+  // Get agents for this spec (sorted: running first, then by startedAt descending)
+  const specName = selectedSpec?.name || '';
+  const agents = getAgentsForSpec(specName)
     .sort((a, b) => {
       // Running agents first
       if (a.status === 'running' && b.status !== 'running') return -1;
@@ -84,6 +81,33 @@ export function AgentListPanel() {
       // Then by startedAt descending
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
+
+  // Auto-select the most recent agent when spec changes
+  // This improves UX by automatically linking spec selection with agent selection
+  useEffect(() => {
+    if (!selectedSpec) return;
+
+    // Get fresh agents list for the new spec
+    const specAgents = getAgentsForSpec(selectedSpec.name)
+      .sort((a, b) => {
+        if (a.status === 'running' && b.status !== 'running') return -1;
+        if (a.status !== 'running' && b.status === 'running') return 1;
+        return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+      });
+
+    // If an agent is already selected for this spec, don't auto-select
+    const currentSelectedAgent = specAgents.find(a => a.agentId === selectedAgentId);
+    if (currentSelectedAgent) return;
+
+    // Auto-select the first agent (running or most recent)
+    if (specAgents.length > 0) {
+      selectAgent(specAgents[0].agentId);
+    }
+  }, [selectedSpec?.name, selectedAgentId, getAgentsForSpec, selectAgent]);
+
+  if (!selectedSpec) {
+    return null;
+  }
 
   const handleStop = async (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();

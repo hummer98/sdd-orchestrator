@@ -26,9 +26,15 @@ import {
   RemoteAccessDialog,
   // Bug Workflow UI: DocsTabsでSpecListとBugListを統合
   DocsTabs,
+  // SSH Remote Project
+  SSHStatusIndicator,
+  SSHConnectDialog,
+  SSHAuthDialog,
+  RecentRemoteProjects,
+  ProjectSwitchConfirmDialog,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
 import type { CommandPrefix } from './stores';
 
 // ペイン幅の制限値
@@ -50,6 +56,15 @@ export function App() {
   const { setCommandPrefix } = useWorkflowStore();
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
   const { addNotification } = useNotificationStore();
+  const {
+    connectSSH,
+    authDialog,
+    submitAuth,
+    cancelAuth,
+    projectSwitchConfirm,
+    confirmProjectSwitch,
+    cancelProjectSwitch,
+  } = useConnectionStore();
 
   // Use ref to track current remote server state for event handlers
   const isRemoteServerRunningRef = useRef(isRemoteServerRunning);
@@ -63,6 +78,9 @@ export function App() {
   const [isClaudeMdDialogOpen, setIsClaudeMdDialogOpen] = useState(false);
   const [claudeMdExists, setClaudeMdExists] = useState(false);
   const [isRemoteAccessDialogOpen, setIsRemoteAccessDialogOpen] = useState(false);
+  // SSH Remote Project dialogs
+  const [isSSHConnectDialogOpen, setIsSSHConnectDialogOpen] = useState(false);
+  const [isSSHConnecting, setIsSSHConnecting] = useState(false);
 
   // ペインサイズの状態
   const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
@@ -285,26 +303,47 @@ export function App() {
     setPendingNavigation(null);
   };
 
+  // SSH connection handler
+  const handleSSHConnect = async (uri: string) => {
+    setIsSSHConnecting(true);
+    try {
+      await connectSSH(uri);
+      setIsSSHConnectDialogOpen(false);
+    } catch (error) {
+      console.error('[App] SSH connection failed:', error);
+      addNotification({
+        type: 'error',
+        message: `SSH接続に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    } finally {
+      setIsSSHConnecting(false);
+    }
+  };
+
   return (
     <NotificationProvider>
       <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
         {/* Header - draggable for window movement on macOS */}
-        <header className="titlebar-drag h-12 flex items-center pl-20 pr-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-          <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
-            SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
-          </h1>
-          {/* Spec title in header */}
-          {specDetail && (
-            <div className="ml-6 flex items-center gap-2">
-              <span className="text-gray-400">/</span>
-              <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                {specDetail.metadata.name}
-              </span>
-              <span className="text-sm text-gray-500">
-                {specDetail.specJson.feature_name}
-              </span>
-            </div>
-          )}
+        <header className="titlebar-drag h-12 flex items-center justify-between pl-20 pr-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center">
+            <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+              SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
+            </h1>
+            {/* Spec title in header */}
+            {specDetail && (
+              <div className="ml-6 flex items-center gap-2">
+                <span className="text-gray-400">/</span>
+                <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                  {specDetail.metadata.name}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {specDetail.specJson.feature_name}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* SSH Status Indicator */}
+          <SSHStatusIndicator />
         </header>
 
         {/* Main content */}
@@ -318,14 +357,17 @@ export function App() {
             {/* 1. ErrorBanner (問題がある場合のみ表示) */}
             <ErrorBanner />
 
-            {/* 2. DocsTabs (Specs/Bugsタブ切り替え、新規作成ボタン含む) */}
+            {/* 2. Recent Remote Projects (SSH) */}
+            <RecentRemoteProjects />
+
+            {/* 3. DocsTabs (Specs/Bugsタブ切り替え、新規作成ボタン含む) */}
             {currentProject && kiroValidation?.exists && (
               <div className="flex-1 overflow-hidden">
                 <DocsTabs />
               </div>
             )}
 
-            {/* 3. GlobalAgentPanel (下部固定) */}
+            {/* 4. GlobalAgentPanel (下部固定) */}
             <GlobalAgentPanel />
           </aside>
 
@@ -418,6 +460,38 @@ export function App() {
           isOpen={isRemoteAccessDialogOpen}
           onClose={() => setIsRemoteAccessDialogOpen(false)}
         />
+
+        {/* SSH Remote Project Dialogs */}
+        <SSHConnectDialog
+          isOpen={isSSHConnectDialogOpen}
+          onConnect={handleSSHConnect}
+          onCancel={() => setIsSSHConnectDialogOpen(false)}
+          isConnecting={isSSHConnecting}
+        />
+
+        {/* SSH Auth Dialog (password, passphrase, host-key verification) */}
+        <SSHAuthDialog
+          isOpen={authDialog.isOpen}
+          type={authDialog.type}
+          host={authDialog.host}
+          user={authDialog.user}
+          keyPath={authDialog.keyPath}
+          fingerprint={authDialog.fingerprint}
+          isNewHost={authDialog.isNewHost}
+          onSubmit={submitAuth}
+          onCancel={cancelAuth}
+        />
+
+        {/* Project Switch Confirm Dialog */}
+        {projectSwitchConfirm.targetProject && (
+          <ProjectSwitchConfirmDialog
+            isOpen={projectSwitchConfirm.isOpen}
+            runningAgentsCount={projectSwitchConfirm.runningAgentsCount}
+            targetProject={projectSwitchConfirm.targetProject}
+            onConfirm={confirmProjectSwitch}
+            onCancel={cancelProjectSwitch}
+          />
+        )}
       </div>
     </NotificationProvider>
   );

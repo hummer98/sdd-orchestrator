@@ -386,6 +386,16 @@ export interface ElectronAPI {
   executeDocumentReviewFix(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   approveDocumentReview(specPath: string): Promise<void>;
   skipDocumentReview(specPath: string): Promise<void>;
+
+  // SSH Remote Project
+  // Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2
+  sshConnect(uri: string): Promise<Result<void, { type: string; message: string }>>;
+  sshDisconnect(): Promise<void>;
+  getSSHStatus(): Promise<string>;
+  getSSHConnectionInfo(): Promise<{ host: string; port: number; user: string; connectedAt: Date; bytesTransferred: number } | null>;
+  getRecentRemoteProjects(): Promise<Array<{ uri: string; displayName: string; lastConnectedAt: string; connectionSuccessful: boolean }>>;
+  removeRecentRemoteProject(uri: string): Promise<void>;
+  onSSHStatusChanged(callback: (status: string) => void): () => void;
 }
 
 declare global {

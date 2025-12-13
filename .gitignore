@@ -2,3 +2,8 @@
 .kiro/runtime
 .kiro/specs/*/logs
 node_modules
+
+# Security sensitive files
+.mcp.json
+.electron-dev.pid
+logs/

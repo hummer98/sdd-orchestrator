@@ -16,3 +16,6 @@ export type { AutoExecutionPermissions, ValidationOptions, AutoExecutionStatus, 
 export { useRemoteAccessStore, STORAGE_KEY as REMOTE_ACCESS_STORAGE_KEY } from './remoteAccessStore';
 // Bug Workflow Store
 export { useBugStore } from './bugStore';
+// SSH Remote Project Store (Requirements: 6.1, 7.1, 7.2)
+export { useConnectionStore } from './connectionStore';
+export type { ConnectionStatus, ProjectType, ConnectionInfo, RecentRemoteProject, ConnectionState } from './connectionStore';

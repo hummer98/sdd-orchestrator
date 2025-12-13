@@ -421,3 +421,156 @@ describe('Preload API - Type Export', () => {
     expect(preloadModule).toBeDefined();
   });
 });
+
+describe('Preload API - Task 13.1: SSH Remote Project API', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('sshConnect', () => {
+    it('should expose sshConnect function', () => {
+      expect(typeof exposedAPI.sshConnect).toBe('function');
+    });
+
+    it('should invoke ssh:connect with URI', async () => {
+      const mockResult = { ok: true, value: undefined };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const result = await (exposedAPI.sshConnect as Function)('ssh://user@host.com/path');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'ssh:connect',
+        'ssh://user@host.com/path'
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('sshDisconnect', () => {
+    it('should expose sshDisconnect function', () => {
+      expect(typeof exposedAPI.sshDisconnect).toBe('function');
+    });
+
+    it('should invoke ssh:disconnect', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      await (exposedAPI.sshDisconnect as Function)();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('ssh:disconnect');
+    });
+  });
+
+  describe('getSSHStatus', () => {
+    it('should expose getSSHStatus function', () => {
+      expect(typeof exposedAPI.getSSHStatus).toBe('function');
+    });
+
+    it('should invoke ssh:get-status', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue('connected');
+
+      const result = await (exposedAPI.getSSHStatus as Function)();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('ssh:get-status');
+      expect(result).toBe('connected');
+    });
+  });
+
+  describe('getSSHConnectionInfo', () => {
+    it('should expose getSSHConnectionInfo function', () => {
+      expect(typeof exposedAPI.getSSHConnectionInfo).toBe('function');
+    });
+
+    it('should invoke ssh:get-connection-info', async () => {
+      const connectionInfo = {
+        host: 'host.com',
+        port: 22,
+        user: 'user',
+        connectedAt: new Date(),
+        bytesTransferred: 1024,
+      };
+      mockIpcRenderer.invoke.mockResolvedValue(connectionInfo);
+
+      const result = await (exposedAPI.getSSHConnectionInfo as Function)();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('ssh:get-connection-info');
+      expect(result).toEqual(connectionInfo);
+    });
+  });
+
+  describe('getRecentRemoteProjects', () => {
+    it('should expose getRecentRemoteProjects function', () => {
+      expect(typeof exposedAPI.getRecentRemoteProjects).toBe('function');
+    });
+
+    it('should invoke ssh:get-recent-remote-projects', async () => {
+      const projects = [
+        { uri: 'ssh://user@host.com/path', displayName: 'host.com', lastConnectedAt: '2025-01-01', connectionSuccessful: true },
+      ];
+      mockIpcRenderer.invoke.mockResolvedValue(projects);
+
+      const result = await (exposedAPI.getRecentRemoteProjects as Function)();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('ssh:get-recent-remote-projects');
+      expect(result).toEqual(projects);
+    });
+  });
+
+  describe('removeRecentRemoteProject', () => {
+    it('should expose removeRecentRemoteProject function', () => {
+      expect(typeof exposedAPI.removeRecentRemoteProject).toBe('function');
+    });
+
+    it('should invoke ssh:remove-recent-remote-project with URI', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      await (exposedAPI.removeRecentRemoteProject as Function)('ssh://user@host.com/path');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'ssh:remove-recent-remote-project',
+        'ssh://user@host.com/path'
+      );
+    });
+  });
+
+  describe('onSSHStatusChanged', () => {
+    it('should expose onSSHStatusChanged function', () => {
+      expect(typeof exposedAPI.onSSHStatusChanged).toBe('function');
+    });
+
+    it('should register listener for ssh:status-changed', () => {
+      const callback = vi.fn();
+
+      (exposedAPI.onSSHStatusChanged as Function)(callback);
+
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        'ssh:status-changed',
+        expect.any(Function)
+      );
+    });
+
+    it('should return cleanup function that removes listener', () => {
+      const callback = vi.fn();
+
+      const cleanup = (exposedAPI.onSSHStatusChanged as Function)(callback);
+
+      expect(typeof cleanup).toBe('function');
+
+      cleanup();
+
+      expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
+        'ssh:status-changed',
+        expect.any(Function)
+      );
+    });
+  });
+});

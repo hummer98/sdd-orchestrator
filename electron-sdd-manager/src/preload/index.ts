@@ -575,6 +575,76 @@ const electronAPI = {
    */
   skipDocumentReview: (specPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW, specPath),
+
+  // ============================================================
+  // SSH Remote Project (Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2, 8.5)
+  // ============================================================
+
+  /**
+   * Connect to SSH remote project
+   * @param uri SSH URI (ssh://user@host[:port]/path)
+   */
+  sshConnect: (uri: string): Promise<{ ok: true; value: undefined } | { ok: false; error: { type: string; message: string } }> =>
+    ipcRenderer.invoke('ssh:connect', uri),
+
+  /**
+   * Disconnect from SSH remote project
+   */
+  sshDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke('ssh:disconnect'),
+
+  /**
+   * Get current SSH connection status
+   */
+  getSSHStatus: (): Promise<string> =>
+    ipcRenderer.invoke('ssh:get-status'),
+
+  /**
+   * Get SSH connection information
+   */
+  getSSHConnectionInfo: (): Promise<{
+    host: string;
+    port: number;
+    user: string;
+    connectedAt: Date;
+    bytesTransferred: number;
+  } | null> =>
+    ipcRenderer.invoke('ssh:get-connection-info'),
+
+  /**
+   * Get recent remote projects
+   */
+  getRecentRemoteProjects: (): Promise<Array<{
+    uri: string;
+    displayName: string;
+    lastConnectedAt: string;
+    connectionSuccessful: boolean;
+  }>> =>
+    ipcRenderer.invoke('ssh:get-recent-remote-projects'),
+
+  /**
+   * Remove recent remote project
+   * @param uri SSH URI to remove
+   */
+  removeRecentRemoteProject: (uri: string): Promise<void> =>
+    ipcRenderer.invoke('ssh:remove-recent-remote-project', uri),
+
+  /**
+   * Subscribe to SSH status changes
+   * @param callback Function called when status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onSSHStatusChanged: (callback: (status: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: string) => {
+      callback(status);
+    };
+    ipcRenderer.on('ssh:status-changed', handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener('ssh:status-changed', handler);
+    };
+  },
 };
 
 // Expose API to renderer

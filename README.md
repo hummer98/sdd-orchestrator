@@ -1,4 +1,4 @@
-# SDD Manager
+# SDD Orchestrator
 
 A desktop application for managing and executing Spec-Driven Development (SDD) workflows.
 
@@ -6,7 +6,7 @@ Automates and visualizes the software development lifecycle by coordinating with
 
 ## Overview
 
-SDD Manager is a tool for managing the lifecycle of software specifications (Specs).
+SDD Orchestrator is a tool for managing the lifecycle of software specifications (Specs).
 
 - **Requirements**: Define functional requirements in EARS format
 - **Design**: Create technical design documents
@@ -25,7 +25,7 @@ SDD Manager is a tool for managing the lifecycle of software specifications (Spe
 
 ```
 ┌─────────────────────────────────────────┐
-│           SDD Manager GUI               │
+│         SDD Orchestrator GUI            │
 ├─────────────────────────────────────────┤
 │  Spec List │ Editor │ Workflow Status   │
 ├─────────────────────────────────────────┤
@@ -53,8 +53,8 @@ SDD Manager is a tool for managing the lifecycle of software specifications (Spe
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sdd-manager.git
-cd sdd-manager
+git clone https://github.com/hummer98/sdd-orchestrator.git
+cd sdd-orchestrator
 
 # Setup Electron app
 cd electron-sdd-manager
@@ -90,7 +90,7 @@ npm run build:electron
 ## Project Structure
 
 ```
-sdd-manager/
+sdd-orchestrator/
 ├── .kiro/
 │   ├── steering/     # Project settings (product.md, tech.md)
 │   └── specs/        # Specification documents
@@ -131,4 +131,4 @@ sdd-manager/
 
 Yuji Yamamoto (rr.yamamoto@gmail.com)
 
-GitHub: [@humme98](https://github.com/humme98)
+GitHub: [@hummer98](https://github.com/hummer98)

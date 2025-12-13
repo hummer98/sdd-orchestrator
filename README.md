@@ -1,27 +1,27 @@
 # SDD Manager
 
-Spec-Driven Development (SDD) ワークフローを管理・実行するためのデスクトップアプリケーション。
+A desktop application for managing and executing Spec-Driven Development (SDD) workflows.
 
-AIエージェント（Claude Code等）と協調して、仕様駆動開発のライフサイクルを自動化・可視化します。
+Automates and visualizes the software development lifecycle by coordinating with AI agents such as Claude Code.
 
-## 概要
+## Overview
 
-SDD Managerは、ソフトウェア開発における仕様（Spec）のライフサイクルを管理するツールです。
+SDD Manager is a tool for managing the lifecycle of software specifications (Specs).
 
-- **Requirements（要件定義）**: 機能要件をEARS形式で定義
-- **Design（設計）**: 技術設計ドキュメントの作成
-- **Tasks（タスク）**: 実装タスクの生成と管理
-- **Implementation（実装）**: TDD手法による実装実行
+- **Requirements**: Define functional requirements in EARS format
+- **Design**: Create technical design documents
+- **Tasks**: Generate and manage implementation tasks
+- **Implementation**: Execute implementation using TDD methodology
 
-## 主な機能
+## Key Features
 
-- Specライフサイクルの可視化と管理
-- AIエージェントによる自動実行
-- 複数Spec間の依存関係管理
-- 人間-AI協調ワークフロー
-- Kiro形式（`.kiro/specs/`）準拠
+- Visualization and management of Spec lifecycle
+- Automated execution via AI agents
+- Dependency management across multiple Specs
+- Human-AI collaborative workflow
+- Kiro format (`.kiro/specs/`) compliant
 
-## アーキテクチャ
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -35,94 +35,98 @@ SDD Managerは、ソフトウェア開発における仕様（Spec）のライ�
 └─────────────────────────────────────────┘
 ```
 
-## 技術スタック
+## Tech Stack
 
-- **フロントエンド**: React 19 + TypeScript + Tailwind CSS 4
-- **デスクトップ**: Electron 35
-- **状態管理**: Zustand
-- **テスト**: Vitest + WebdriverIO
+- **Frontend**: React 19 + TypeScript + Tailwind CSS 4
+- **Desktop**: Electron 35
+- **State Management**: Zustand
+- **Testing**: Vitest + WebdriverIO
 
-## セットアップ
+## Setup
 
-### 必要環境
+### Prerequisites
 
 - Node.js 20+
-- npm または pnpm
+- npm or pnpm
 
-### インストール
+### Installation
 
 ```bash
-# リポジトリのクローン
+# Clone the repository
 git clone https://github.com/yourusername/sdd-manager.git
 cd sdd-manager
 
-# Electron版のセットアップ
+# Setup Electron app
 cd electron-sdd-manager
 npm install
 ```
 
-### 開発
+### Development
 
 ```bash
-# 開発サーバー起動
+# Start development server
 npm run dev
 
-# Electronアプリ起動（別ターミナル）
+# Launch Electron app (in another terminal)
 npm run dev:electron
 ```
 
-### テスト
+### Testing
 
 ```bash
-# ユニットテスト
+# Unit tests
 npm run test
 
-# E2Eテスト
+# E2E tests
 npm run test:e2e
 ```
 
-### ビルド
+### Build
 
 ```bash
 npm run build:electron
 ```
 
-## プロジェクト構造
+## Project Structure
 
 ```
 sdd-manager/
 ├── .kiro/
-│   ├── steering/     # プロジェクト設定（product.md, tech.md）
-│   └── specs/        # 仕様ドキュメント
-├── electron-sdd-manager/  # Electronアプリ
+│   ├── steering/     # Project settings (product.md, tech.md)
+│   └── specs/        # Specification documents
+├── electron-sdd-manager/  # Electron app
 │   ├── src/
-│   │   ├── renderer/     # Reactフロントエンド
-│   │   └── main/         # Electronメインプロセス
+│   │   ├── renderer/     # React frontend
+│   │   └── main/         # Electron main process
 │   └── test/
-├── docs/             # ドキュメント
-└── scripts/          # ユーティリティスクリプト
+├── docs/             # Documentation
+└── scripts/          # Utility scripts
 ```
 
-## ワークフロー
+## Workflow
 
-### SDDフェーズ
+### SDD Phases
 
-1. **spec-init**: 新規仕様の初期化
-2. **spec-requirements**: 要件定義の生成
-3. **spec-design**: 技術設計の作成
-4. **spec-tasks**: 実装タスクの生成
-5. **spec-impl**: TDDによる実装
+1. **spec-init**: Initialize new specification
+2. **spec-requirements**: Generate requirements definition
+3. **spec-design**: Create technical design
+4. **spec-tasks**: Generate implementation tasks
+5. **spec-impl**: Implement using TDD
 
-### バリデーション
+### Validation
 
-- **validate-gap**: 既存コードベースとのギャップ分析
-- **validate-design**: 設計レビュー
-- **validate-impl**: 実装検証
+- **validate-gap**: Gap analysis against existing codebase
+- **validate-design**: Design review
+- **validate-impl**: Implementation verification
 
-## ライセンス
+## Documentation
+
+- [Japanese README](README-jp.md)
+
+## License
 
 [MIT License](LICENSE.md)
 
-## 作者
+## Author
 
 Yuji Yamamoto

@@ -129,4 +129,6 @@ sdd-manager/
 
 ## Author
 
-Yuji Yamamoto
+Yuji Yamamoto (rr.yamamoto@gmail.com)
+
+GitHub: [@humme98](https://github.com/humme98)

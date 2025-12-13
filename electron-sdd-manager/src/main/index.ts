@@ -8,6 +8,7 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
 import { registerRemoteAccessHandlers, setupStatusNotifications } from './ipc/remoteAccessHandlers';
+import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
@@ -122,6 +123,10 @@ app.whenReady().then(async () => {
   // Register Remote Access handlers
   registerRemoteAccessHandlers();
   setupStatusNotifications();
+
+  // Register SSH handlers
+  registerSSHHandlers();
+  setupSSHStatusNotifications();
 
   // Create application menu
   createMenu();

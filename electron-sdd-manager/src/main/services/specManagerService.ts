@@ -8,11 +8,17 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
 import { createAgentProcess, AgentProcess } from './agentProcess';
+import {
+  createProviderAgentProcess,
+  getProviderTypeFromPath,
+  type AgentProcess as ProviderAgentProcess,
+} from './providerAgentProcess';
 import { AgentRecordService } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
 import { logger } from './logger';
+import type { ProviderType } from './ssh/providerFactory';
 
 /** Maximum number of continue retries */
 export const MAX_CONTINUE_RETRIES = 2;
@@ -139,6 +145,8 @@ export interface StartAgentOptions {
   args: string[];
   group?: ExecutionGroup;
   sessionId?: string;
+  /** Provider type for local/SSH transparency (defaults to 'local') */
+  providerType?: ProviderType;
 }
 
 export interface ExecutePhaseOptions {
@@ -242,6 +250,7 @@ export type Result<T, E> =
 
 /**
  * Service for managing Spec Managers and their SDD Agents
+ * Now supports both local and SSH providers for transparent remote execution
  */
 export class SpecManagerService {
   private registry: AgentRegistry;
@@ -249,10 +258,13 @@ export class SpecManagerService {
   private logService: LogFileService;
   private logParserService: LogParserService;
   private implAnalyzer: ImplCompletionAnalyzer | null = null;
-  private processes: Map<string, AgentProcess> = new Map();
+  private processes: Map<string, AgentProcess | ProviderAgentProcess> = new Map();
   private projectPath: string;
   private outputCallbacks: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void)[] = [];
   private statusCallbacks: ((agentId: string, status: AgentStatus) => void)[] = [];
+
+  // Provider type for local/SSH transparency (defaults to 'local')
+  private providerType: ProviderType = 'local';
 
   // Mutex for spec-manager operations
   private specManagerLock: string | null = null;
@@ -260,6 +272,8 @@ export class SpecManagerService {
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
+    // Determine provider type from project path
+    this.providerType = getProviderTypeFromPath(projectPath);
     this.registry = new AgentRegistry();
     this.recordService = new AgentRecordService(
       path.join(projectPath, '.kiro', 'runtime', 'agents')
@@ -278,6 +292,35 @@ export class SpecManagerService {
     } else {
       logger.warn('[SpecManagerService] ImplCompletionAnalyzer not available', { error: analyzerResult.error });
     }
+  }
+
+  /**
+   * Get the current provider type
+   * Requirements: 3.1, 4.1
+   */
+  getProviderType(): ProviderType {
+    return this.providerType;
+  }
+
+  /**
+   * Set the provider type for process execution
+   * Requirements: 3.1, 4.1, 7.1
+   * @param providerType - 'local' for local filesystem, 'ssh' for SSH remote
+   */
+  setProviderType(providerType: ProviderType): void {
+    logger.info('[SpecManagerService] Provider type changed', {
+      from: this.providerType,
+      to: providerType,
+    });
+    this.providerType = providerType;
+  }
+
+  /**
+   * Check if currently using SSH provider
+   * Requirements: 5.1
+   */
+  isSSHProvider(): boolean {
+    return this.providerType === 'ssh';
   }
 
   /**
@@ -324,10 +367,14 @@ export class SpecManagerService {
   /**
    * Start a new SDD Agent
    * Requirements: 5.1, 6.1
+   * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId } = options;
-    logger.info('[SpecManagerService] startAgent called', { specId, phase, command, args, group, sessionId });
+    const { specId, phase, command, args, group, sessionId, providerType } = options;
+    const effectiveProviderType = providerType ?? this.providerType;
+    logger.info('[SpecManagerService] startAgent called', {
+      specId, phase, command, args, group, sessionId, providerType: effectiveProviderType,
+    });
 
     // Check if phase is already running
     if (this.isPhaseRunning(specId, phase)) {
@@ -356,15 +403,49 @@ export class SpecManagerService {
     const now = new Date().toISOString();
 
     try {
-      logger.info('[SpecManagerService] Creating agent process', { agentId, command, args, cwd: this.projectPath });
-      // Create the agent process
-      const process = createAgentProcess({
-        agentId,
-        command,
-        args,
-        cwd: this.projectPath,
-        sessionId,
+      logger.info('[SpecManagerService] Creating agent process', {
+        agentId, command, args, cwd: this.projectPath, providerType: effectiveProviderType,
       });
+
+      // Create the agent process using provider-aware factory for SSH, or direct for local
+      let process: AgentProcess | ProviderAgentProcess;
+
+      if (effectiveProviderType === 'ssh') {
+        // Use provider-aware process for SSH
+        const providerResult = await createProviderAgentProcess({
+          agentId,
+          command,
+          args,
+          cwd: this.projectPath,
+          sessionId,
+          providerType: 'ssh',
+        });
+
+        if (!providerResult.ok) {
+          logger.error('[SpecManagerService] Provider spawn failed', {
+            agentId,
+            error: providerResult.error,
+          });
+          return {
+            ok: false,
+            error: {
+              type: 'SPAWN_ERROR',
+              message: providerResult.error.message,
+            },
+          };
+        }
+        process = providerResult.value;
+      } else {
+        // Use existing local process for backward compatibility
+        process = createAgentProcess({
+          agentId,
+          command,
+          args,
+          cwd: this.projectPath,
+          sessionId,
+        });
+      }
+
       logger.info('[SpecManagerService] Agent process created', { agentId, pid: process.pid });
 
       // Create agent info

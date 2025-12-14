@@ -7,6 +7,7 @@
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
+import { app } from 'electron';
 import { REQUIRED_COMMANDS, REQUIRED_SETTINGS } from './projectChecker';
 
 /**
@@ -407,7 +408,9 @@ ${existingContent}
  * In development, it's in the project's resources folder
  */
 export function getTemplateDir(): string {
-  // For Electron, we'd use app.getAppPath() or process.resourcesPath
-  // For now, return relative to the current working directory
-  return join(process.cwd(), 'resources', 'templates');
+  // Use app.getAppPath() to get the correct path in both dev and production
+  // In dev: /path/to/electron-sdd-manager
+  // In production: /path/to/app.asar or unpacked resources
+  const appPath = app.getAppPath();
+  return join(appPath, 'resources', 'templates');
 }

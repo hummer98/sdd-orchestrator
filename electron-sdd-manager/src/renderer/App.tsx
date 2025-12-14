@@ -150,7 +150,7 @@ export function App() {
   }, [initializeRemoteAccess]);
 
   // Setup menu event listeners
-  const { forceReinstallAll, addShellPermissions, selectProject } = useProjectStore();
+  const { forceReinstallAll, addShellPermissions } = useProjectStore();
   const menuListenersSetup = useRef(false);
   useEffect(() => {
     if (menuListenersSetup.current) {

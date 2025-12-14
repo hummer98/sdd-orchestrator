@@ -243,11 +243,14 @@ export async function checkRequiredPermissions(
     }
   }
 
-  logger.info('[permissionsService] Permission check complete', {
-    allPresent: missing.length === 0,
-    missing: missing.length,
-    present: present.length,
-  });
+  // Only log if there are missing permissions
+  if (missing.length > 0) {
+    logger.info('[permissionsService] Permission check complete', {
+      allPresent: false,
+      missing: missing.length,
+      present: present.length,
+    });
+  }
 
   return {
     ok: true,

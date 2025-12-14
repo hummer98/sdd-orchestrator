@@ -684,8 +684,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES,
     async (_event, projectPath: string) => {
-      logger.info('[handlers] CHECK_SPEC_MANAGER_FILES called', { projectPath });
-      return projectChecker.checkAll(projectPath);
+      // Only log if there are issues (normal checks are silent)
+      const result = await projectChecker.checkAll(projectPath);
+      const hasIssues = result.missingCommands.length > 0 ||
+                       result.missingSettings.length > 0 ||
+                       !result.claudeMd;
+      if (hasIssues) {
+        logger.info('[handlers] CHECK_SPEC_MANAGER_FILES called', { projectPath });
+      }
+      return result;
     }
   );
 
@@ -767,18 +774,22 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.CHECK_REQUIRED_PERMISSIONS,
     async (_event, projectPath: string) => {
-      logger.info('[handlers] CHECK_REQUIRED_PERMISSIONS called', { projectPath });
       const result = await checkRequiredPermissions(
         projectPath,
         [...REQUIRED_PERMISSIONS]
       );
       if (!result.ok) {
         // If settings.local.json doesn't exist or has errors, return all as missing
+        logger.info('[handlers] CHECK_REQUIRED_PERMISSIONS called', { projectPath, error: result.error });
         return {
           allPresent: false,
           missing: [...REQUIRED_PERMISSIONS],
           present: [],
         };
+      }
+      // Only log if there are missing permissions
+      if (!result.value.allPresent) {
+        logger.info('[handlers] CHECK_REQUIRED_PERMISSIONS called', { projectPath, missing: result.value.missing.length });
       }
       return result.value;
     }

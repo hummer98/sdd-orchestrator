@@ -3,10 +3,23 @@
  * Requirements: 4.1, 4.2, 4.4
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+
+// Mock electron app
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+    getPath: (name: string) => {
+      if (name === 'logs') return '/tmp/test-logs';
+      if (name === 'userData') return '/tmp/test-userdata';
+      return '/tmp/test';
+    },
+  },
+}));
+
 import { ProjectChecker, FileCheckResult, FullCheckResult, REQUIRED_COMMANDS, REQUIRED_SETTINGS } from './projectChecker';
 
 describe('ProjectChecker', () => {
@@ -65,16 +78,16 @@ describe('ProjectChecker', () => {
 
     it('should correctly identify partial installations', async () => {
       // Create only init and requirements commands
-      await createCommandFiles(['spec-manager/init', 'spec-manager/requirements']);
+      await createCommandFiles(['kiro/spec-init', 'kiro/spec-requirements']);
 
       const result = await checker.checkSlashCommands(tempDir);
 
       expect(result.allPresent).toBe(false);
-      expect(result.present).toContain('spec-manager/init');
-      expect(result.present).toContain('spec-manager/requirements');
-      expect(result.missing).toContain('spec-manager/design');
-      expect(result.missing).toContain('spec-manager/tasks');
-      expect(result.missing).toContain('spec-manager/impl');
+      expect(result.present).toContain('kiro/spec-init');
+      expect(result.present).toContain('kiro/spec-requirements');
+      expect(result.missing).toContain('kiro/spec-design');
+      expect(result.missing).toContain('kiro/spec-tasks');
+      expect(result.missing).toContain('kiro/spec-impl');
     });
   });
 
@@ -153,13 +166,22 @@ describe('ProjectChecker', () => {
 });
 
 describe('Constants', () => {
-  it('should have 5 required commands', () => {
+  it('should have 14 required commands for CC-SDD (kiro namespace)', () => {
     expect(REQUIRED_COMMANDS).toEqual([
-      'spec-manager/init',
-      'spec-manager/requirements',
-      'spec-manager/design',
-      'spec-manager/tasks',
-      'spec-manager/impl',
+      'kiro/spec-init',
+      'kiro/spec-requirements',
+      'kiro/spec-design',
+      'kiro/spec-tasks',
+      'kiro/spec-impl',
+      'kiro/spec-status',
+      'kiro/spec-quick',
+      'kiro/validate-gap',
+      'kiro/validate-design',
+      'kiro/validate-impl',
+      'kiro/document-review',
+      'kiro/document-review-reply',
+      'kiro/steering',
+      'kiro/steering-custom',
     ]);
   });
 

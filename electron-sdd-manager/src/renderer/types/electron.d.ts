@@ -151,6 +151,7 @@ export interface CliInstallInstructions {
     readonly title: string;
     readonly examples: ReadonlyArray<{ command: string; description: string }>;
   };
+  readonly pathNote?: string;
 }
 
 /**
@@ -213,6 +214,41 @@ export interface BugWorkflowInstallStatus {
   readonly claudeMd: {
     readonly exists: boolean;
     readonly hasBugSection: boolean;
+  };
+}
+
+/**
+ * CC-SDD Workflow CLAUDE.md update result
+ */
+export interface CcSddWorkflowClaudeMdResult {
+  readonly action: 'created' | 'merged' | 'skipped';
+  readonly reason?: 'already_exists';
+}
+
+/**
+ * CC-SDD Workflow install result
+ */
+export interface CcSddWorkflowInstallResult {
+  readonly commands: InstallResult;
+  readonly agents: InstallResult;
+  readonly claudeMd: CcSddWorkflowClaudeMdResult;
+}
+
+/**
+ * CC-SDD Workflow install status
+ */
+export interface CcSddWorkflowInstallStatus {
+  readonly commands: {
+    readonly installed: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly agents: {
+    readonly installed: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly claudeMd: {
+    readonly exists: boolean;
+    readonly hasCcSddSection: boolean;
   };
 }
 
@@ -346,8 +382,8 @@ export interface ElectronAPI {
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
 
   // CLI Install
-  getCliInstallStatus(): Promise<CliInstallStatus>;
-  installCliCommand(): Promise<CliInstallResult & { instructions: CliInstallInstructions }>;
+  getCliInstallStatus(location?: 'user' | 'system'): Promise<CliInstallStatus>;
+  installCliCommand(location?: 'user' | 'system'): Promise<CliInstallResult & { instructions: CliInstallInstructions }>;
   onMenuInstallCliCommand(callback: () => void): () => void;
 
   // Menu Events - Command Prefix
@@ -367,6 +403,11 @@ export interface ElectronAPI {
   checkBugWorkflowStatus(projectPath: string): Promise<BugWorkflowInstallStatus>;
   installBugWorkflow(projectPath: string): Promise<Result<BugWorkflowInstallResult, InstallError>>;
   onMenuInstallBugWorkflow(callback: () => void): () => void;
+
+  // CC-SDD Workflow Install
+  checkCcSddWorkflowStatus(projectPath: string): Promise<CcSddWorkflowInstallStatus>;
+  installCcSddWorkflow(projectPath: string): Promise<Result<CcSddWorkflowInstallResult, InstallError>>;
+  onMenuInstallCcSddWorkflow(callback: () => void): () => void;
 
   // Bug Management
   // Requirements: 3.1, 6.1, 6.3

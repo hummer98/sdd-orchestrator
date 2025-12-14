@@ -16,23 +16,29 @@ interface CliInstallDialogProps {
 type InstallResult = CliInstallResult & { instructions: CliInstallInstructions };
 
 export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<InstallResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [location, setLocation] = useState<'user' | 'system'>('user');
+
+  const handleInstall = async () => {
+    setIsLoading(true);
+    setCopied(false);
+
+    try {
+      const res = await window.electronAPI.installCliCommand(location);
+      setResult(res);
+    } catch (error) {
+      console.error('CLI install error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setIsLoading(true);
+      setResult(null);
       setCopied(false);
-
-      // Attempt to install the CLI command
-      window.electronAPI.installCliCommand().then((res) => {
-        setResult(res);
-        setIsLoading(false);
-      }).catch((error) => {
-        console.error('CLI install error:', error);
-        setIsLoading(false);
-      });
     }
   }, [isOpen]);
 
@@ -82,11 +88,89 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
         </div>
 
         {/* Content */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+        {!result ? (
+          <div className="space-y-4">
+            {/* Installation location selection */}
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                インストール先を選択してください：
+              </p>
+              <div className="space-y-2">
+                <label
+                  className={clsx(
+                    'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer',
+                    location === 'user'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="location"
+                    value="user"
+                    checked={location === 'user'}
+                    onChange={(e) => setLocation(e.target.value as 'user' | 'system')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-800 dark:text-gray-200">
+                      ユーザーディレクトリ（推奨）
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      ~/.local/bin/sdd - sudoは不要です
+                    </div>
+                  </div>
+                </label>
+                <label
+                  className={clsx(
+                    'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer',
+                    location === 'system'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="location"
+                    value="system"
+                    checked={location === 'system'}
+                    onChange={(e) => setLocation(e.target.value as 'user' | 'system')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-800 dark:text-gray-200">
+                      システム全体
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      /usr/local/bin/sdd - 管理者権限が必要です
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Install button */}
+            <button
+              onClick={handleInstall}
+              disabled={isLoading}
+              className={clsx(
+                'w-full px-4 py-3 rounded-md font-semibold',
+                'bg-blue-500 hover:bg-blue-600',
+                'text-white',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  インストール中...
+                </span>
+              ) : (
+                'インストール'
+              )}
+            </button>
           </div>
-        ) : result ? (
+        ) : (
           <div className="space-y-4">
             {/* Status message */}
             <div
@@ -155,6 +239,15 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
               </div>
             )}
 
+            {/* PATH note for user installation */}
+            {result.instructions.pathNote && (
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  ℹ️ {result.instructions.pathNote}
+                </p>
+              </div>
+            )}
+
             {/* Usage examples */}
             <div className="space-y-3 pt-2">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -180,14 +273,23 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            インストール情報を取得できませんでした
-          </div>
         )}
 
         {/* Actions */}
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end gap-2 mt-6">
+          {result && !result.success && (
+            <button
+              onClick={() => setResult(null)}
+              className={clsx(
+                'px-4 py-2 rounded-md',
+                'bg-blue-100 dark:bg-blue-800',
+                'text-blue-700 dark:text-blue-300',
+                'hover:bg-blue-200 dark:hover:bg-blue-700'
+              )}
+            >
+              もう一度試す
+            </button>
+          )}
           <button
             onClick={onClose}
             className={clsx(

@@ -83,6 +83,7 @@ export const IPC_CHANNELS = {
 
   // Permissions
   ADD_SHELL_PERMISSIONS: 'ipc:add-shell-permissions',
+  CHECK_REQUIRED_PERMISSIONS: 'ipc:check-required-permissions',
 
   // Menu Events - Add Shell Permissions
   MENU_ADD_SHELL_PERMISSIONS: 'menu:add-shell-permissions',
@@ -130,6 +131,13 @@ export const IPC_CHANNELS = {
   EXECUTE_DOCUMENT_REVIEW_FIX: 'ipc:execute-document-review-fix',
   APPROVE_DOCUMENT_REVIEW: 'ipc:approve-document-review',
   SKIP_DOCUMENT_REVIEW: 'ipc:skip-document-review',
+
+  // CC-SDD Workflow Install (cc-sdd-command-installer feature)
+  CHECK_CC_SDD_WORKFLOW_STATUS: 'ipc:check-cc-sdd-workflow-status',
+  INSTALL_CC_SDD_WORKFLOW: 'ipc:install-cc-sdd-workflow',
+
+  // Menu Events - CC-SDD Workflow
+  MENU_INSTALL_CC_SDD_WORKFLOW: 'menu:install-cc-sdd-workflow',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

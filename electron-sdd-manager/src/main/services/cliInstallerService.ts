@@ -3,9 +3,11 @@
  * Manages installation of the 'sdd' CLI command
  */
 
-import { access, constants, symlink, unlink, stat, readlink } from 'fs/promises';
+import { access, constants, symlink, unlink, stat, readlink, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { app } from 'electron';
+import { homedir } from 'os';
+import { getScriptsPath } from '../utils/resourcePaths';
 
 /**
  * CLI install status
@@ -29,22 +31,32 @@ export interface CliInstallResult {
 }
 
 /**
- * Default symlink path for the CLI command
+ * Installation location type
  */
-const DEFAULT_SYMLINK_PATH = '/usr/local/bin/sdd';
+export type InstallLocation = 'system' | 'user';
+
+/**
+ * Default symlink path for the CLI command (system-wide, requires sudo)
+ */
+const SYSTEM_SYMLINK_PATH = '/usr/local/bin/sdd';
+
+/**
+ * User-local symlink path (no sudo required)
+ */
+const USER_SYMLINK_PATH = join(homedir(), '.local', 'bin', 'sdd');
 
 /**
  * Get the path to the sdd script
- * In development: scripts/sdd in the project root (sdd-manager)
+ * In development: scripts/sdd in the project root (sdd-orchestrator)
  * In production: resources/scripts/sdd in the app bundle
  */
 export function getScriptPath(): string {
   if (app.isPackaged) {
-    // Production: script is in resources folder
-    return join(process.resourcesPath, 'scripts', 'sdd');
+    // Production: script is in extraResources
+    return join(getScriptsPath(), 'sdd');
   } else {
     // Development: app.getAppPath() returns electron-sdd-manager directory
-    // Project root (sdd-manager) is one level up
+    // Project root (sdd-orchestrator) is one level up
     const appPath = app.getAppPath();
     const projectRoot = dirname(appPath);
     return join(projectRoot, 'scripts', 'sdd');
@@ -93,11 +105,20 @@ async function getSymlinkTarget(symlinkPath: string): Promise<string | null> {
 }
 
 /**
- * Get CLI install status
+ * Get symlink path based on install location
  */
-export async function getCliInstallStatus(): Promise<CliInstallStatus> {
+function getSymlinkPath(location: InstallLocation): string {
+  return location === 'system' ? SYSTEM_SYMLINK_PATH : USER_SYMLINK_PATH;
+}
+
+/**
+ * Get CLI install status for a specific location
+ */
+export async function getCliInstallStatus(
+  location: InstallLocation = 'user'
+): Promise<CliInstallStatus> {
   const scriptPath = getScriptPath();
-  const symlinkPath = DEFAULT_SYMLINK_PATH;
+  const symlinkPath = getSymlinkPath(location);
 
   const symlinkExists = await fileExists(symlinkPath);
   let currentTarget: string | undefined;
@@ -119,12 +140,29 @@ export async function getCliInstallStatus(): Promise<CliInstallStatus> {
 }
 
 /**
- * Attempt to install the CLI command
- * This may fail if the user doesn't have write permission to /usr/local/bin
+ * Check if CLI is installed in any location
  */
-export async function installCliCommand(): Promise<CliInstallResult> {
+export async function isCliInstalledAnywhere(): Promise<{
+  user: boolean;
+  system: boolean;
+}> {
+  const userStatus = await getCliInstallStatus('user');
+  const systemStatus = await getCliInstallStatus('system');
+
+  return {
+    user: userStatus.isInstalled,
+    system: systemStatus.isInstalled,
+  };
+}
+
+/**
+ * Attempt to install the CLI command
+ */
+export async function installCliCommand(
+  location: InstallLocation = 'user'
+): Promise<CliInstallResult> {
   const scriptPath = getScriptPath();
-  const symlinkPath = DEFAULT_SYMLINK_PATH;
+  const symlinkPath = getSymlinkPath(location);
 
   // Check if script exists
   if (!(await fileExists(scriptPath))) {
@@ -143,13 +181,23 @@ export async function installCliCommand(): Promise<CliInstallResult> {
   if (currentTarget === scriptPath) {
     return {
       success: true,
-      message: '「sdd」コマンドは既にインストールされています。',
+      message: `「sdd」コマンドは既にインストールされています (${location === 'user' ? 'ユーザー' : 'システム'}全体)。`,
       requiresSudo: false,
     };
   }
 
   // Try to create/update symlink
   try {
+    // For user installation, ensure ~/.local/bin exists
+    if (location === 'user') {
+      const binDir = dirname(symlinkPath);
+      try {
+        await mkdir(binDir, { recursive: true });
+      } catch (error) {
+        // Directory might already exist, ignore
+      }
+    }
+
     // Remove existing symlink if it exists
     if (symlinkExists) {
       await unlink(symlinkPath);
@@ -158,9 +206,10 @@ export async function installCliCommand(): Promise<CliInstallResult> {
     // Create new symlink
     await symlink(scriptPath, symlinkPath);
 
+    const locationDesc = location === 'user' ? 'ユーザーディレクトリ' : 'システム全体';
     return {
       success: true,
-      message: '「sdd」コマンドを正常にインストールしました。',
+      message: `「sdd」コマンドを正常にインストールしました (${locationDesc})。`,
       requiresSudo: false,
     };
   } catch (error) {
@@ -190,7 +239,9 @@ export async function installCliCommand(): Promise<CliInstallResult> {
 /**
  * Get the manual install instructions
  */
-export function getManualInstallInstructions(): {
+export function getManualInstallInstructions(
+  location: InstallLocation = 'user'
+): {
   title: string;
   steps: string[];
   command: string;
@@ -198,17 +249,21 @@ export function getManualInstallInstructions(): {
     title: string;
     examples: Array<{ command: string; description: string }>;
   };
+  pathNote?: string;
 } {
   const scriptPath = getScriptPath();
-  const symlinkPath = DEFAULT_SYMLINK_PATH;
+  const symlinkPath = getSymlinkPath(location);
 
-  return {
+  const instructions = {
     title: '「sdd」コマンドのインストール',
-    steps: [
-      'ターミナルを開きます',
-      '以下のコマンドを実行します（管理者パスワードが必要です）',
-    ],
-    command: `sudo ln -sf "${scriptPath}" "${symlinkPath}"`,
+    steps:
+      location === 'user'
+        ? ['ターミナルを開きます', '以下のコマンドを実行します（sudoは不要です）']
+        : ['ターミナルを開きます', '以下のコマンドを実行します（管理者パスワードが必要です）'],
+    command:
+      location === 'user'
+        ? `mkdir -p ~/.local/bin && ln -sf "${scriptPath}" "${symlinkPath}"`
+        : `sudo ln -sf "${scriptPath}" "${symlinkPath}"`,
     usage: {
       title: '使い方',
       examples: [
@@ -218,4 +273,14 @@ export function getManualInstallInstructions(): {
       ],
     },
   };
+
+  // Add PATH note for user installation
+  if (location === 'user') {
+    return {
+      ...instructions,
+      pathNote: '~/.local/bin がPATHに含まれていることを確認してください。',
+    };
+  }
+
+  return instructions;
 }

@@ -8,19 +8,17 @@
 
 set -e
 
-# シンボリックリンクを解決して実際のスクリプトパスを取得
-SOURCE="${BASH_SOURCE[0]}"
-while [ -L "$SOURCE" ]; do
-    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-    SOURCE="$(readlink "$SOURCE")"
-    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-done
-SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ELECTRON_APP_SCRIPT="$PROJECT_DIR/scripts/electron-app.sh"
-
 # IMPORTANT: Unset ELECTRON_RUN_AS_NODE for Electron-based IDEs
 unset ELECTRON_RUN_AS_NODE
+
+# Find the installed app
+APP_PATH="/Applications/SDD Orchestrator.app"
+
+if [ ! -d "$APP_PATH" ]; then
+    echo "Error: SDD Orchestrator.app not found in /Applications/"
+    echo "Please install the app first."
+    exit 1
+fi
 
 # 引数処理
 TARGET_PATH=""
@@ -36,9 +34,10 @@ if [ -n "$1" ]; then
     fi
 fi
 
-# electron-app.shを使って起動
+# アプリを起動
+# macOSのopen -aコマンドでは --args を使って引数を渡す
 if [ -n "$TARGET_PATH" ]; then
-    exec "$ELECTRON_APP_SCRIPT" dev "$TARGET_PATH"
+    open -a "$APP_PATH" --args "$TARGET_PATH"
 else
-    exec "$ELECTRON_APP_SCRIPT" dev
+    open -a "$APP_PATH"
 fi

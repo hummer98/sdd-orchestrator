@@ -16,6 +16,7 @@ import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
 import type { BugWorkflowInstallResult, BugWorkflowInstallStatus, InstallError as BugInstallError, Result as BugResult } from '../main/services/bugWorkflowInstaller';
+import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
 
 /**
@@ -315,10 +316,10 @@ const electronAPI = {
   },
 
   // CLI Install
-  getCliInstallStatus: (): Promise<CliInstallStatus> =>
-    ipcRenderer.invoke(IPC_CHANNELS.GET_CLI_INSTALL_STATUS),
+  getCliInstallStatus: (location?: 'user' | 'system'): Promise<CliInstallStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_CLI_INSTALL_STATUS, location),
 
-  installCliCommand: (): Promise<CliInstallResult & {
+  installCliCommand: (location?: 'user' | 'system'): Promise<CliInstallResult & {
     instructions: {
       title: string;
       steps: string[];
@@ -327,9 +328,10 @@ const electronAPI = {
         title: string;
         examples: Array<{ command: string; description: string }>;
       };
+      pathNote?: string;
     };
   }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLI_COMMAND),
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLI_COMMAND, location),
 
   // Menu Events - CLI Install
   onMenuInstallCliCommand: (callback: () => void): (() => void) => {
@@ -460,6 +462,41 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
+    };
+  },
+
+  // ============================================================
+  // CC-SDD Workflow Install (cc-sdd-command-installer feature)
+  // ============================================================
+
+  /**
+   * Check cc-sdd workflow installation status
+   * @param projectPath Project root path
+   * @returns Installation status for commands, agents, and CLAUDE.md
+   */
+  checkCcSddWorkflowStatus: (projectPath: string): Promise<CcSddWorkflowInstallStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS, projectPath),
+
+  /**
+   * Install cc-sdd workflow (commands, agents, CLAUDE.md section)
+   * @param projectPath Project root path
+   * @returns Installation result
+   */
+  installCcSddWorkflow: (projectPath: string): Promise<CcSddResult<CcSddWorkflowInstallResult, CcSddInstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW, projectPath),
+
+  /**
+   * Menu event - Install CC-SDD Workflow
+   */
+  onMenuInstallCcSddWorkflow: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW, handler);
     };
   },
 

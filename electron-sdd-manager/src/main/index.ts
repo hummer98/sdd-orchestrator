@@ -55,10 +55,9 @@ const initialProjectPath = parseProjectPathArg();
 
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
-// Temporarily disabled due to vite-plugin-electron bundling issue
-// if (process.env.NODE_ENV !== 'production' && !isE2ETest) {
-//   app.commandLine.appendSwitch('remote-debugging-port', '9222');
-// }
+if (!app.isPackaged && !isE2ETest) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222');
+}
 
 function createWindow(): void {
   const isDev = !app.isPackaged && !isE2ETest;
@@ -157,19 +156,25 @@ app.whenReady().then(async () => {
 
   // Create main window
   createWindow();
+});
 
-  // macOS: Re-create window when dock icon is clicked
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+// macOS: Re-create window when dock icon is clicked
+app.on('activate', () => {
+  logger.info('[main] activate event fired', { windowCount: BrowserWindow.getAllWindows().length });
+  if (BrowserWindow.getAllWindows().length === 0) {
+    logger.info('[main] No windows found, creating new window');
+    createWindow();
+  }
 });
 
 // Quit when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {
+  logger.info('[main] window-all-closed event fired', { platform: process.platform });
   if (process.platform !== 'darwin') {
+    logger.info('[main] Not macOS, quitting app');
     app.quit();
+  } else {
+    logger.info('[main] macOS, keeping app running');
   }
 });
 

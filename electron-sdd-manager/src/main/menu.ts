@@ -7,6 +7,7 @@ import { Menu, MenuItem, app, BrowserWindow, dialog } from 'electron';
 import { basename } from 'path';
 import { getConfigStore } from './services/configStore';
 import { IPC_CHANNELS } from './ipc/channels';
+import { createWindow } from './index';
 
 // Current project path for menu state management
 let currentProjectPathForMenu: string | null = null;
@@ -35,9 +36,24 @@ function buildRecentProjectsSubmenu(): Electron.MenuItemConstructorOptions[] {
     label: basename(projectPath),
     sublabel: projectPath,
     click: () => {
-      const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+      let window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+
+      // If no window exists, create one first
+      if (!window) {
+        createWindow();
+        // Get the newly created window
+        window = BrowserWindow.getAllWindows()[0];
+      }
+
       if (window) {
-        window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
+        // Wait for window to be ready before sending event
+        if (window.webContents.isLoading()) {
+          window.webContents.once('did-finish-load', () => {
+            window!.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
+          });
+        } else {
+          window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, projectPath);
+        }
       }
     },
   }));
@@ -91,7 +107,14 @@ export function createMenu(): void {
           label: 'プロジェクトを開く...',
           accelerator: 'CmdOrCtrl+O',
           click: async () => {
-            const window = BrowserWindow.getFocusedWindow();
+            let window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+
+            // If no window exists, create one first
+            if (!window) {
+              createWindow();
+              window = BrowserWindow.getAllWindows()[0];
+            }
+
             if (window) {
               const result = await dialog.showOpenDialog(window, {
                 properties: ['openDirectory'],
@@ -99,7 +122,14 @@ export function createMenu(): void {
               });
 
               if (!result.canceled && result.filePaths.length > 0) {
-                window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
+                // Wait for window to be ready before sending event
+                if (window.webContents.isLoading()) {
+                  window.webContents.once('did-finish-load', () => {
+                    window!.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
+                  });
+                } else {
+                  window.webContents.send(IPC_CHANNELS.MENU_OPEN_PROJECT, result.filePaths[0]);
+                }
               }
             }
           },
@@ -284,6 +314,16 @@ export function createMenu(): void {
             if (!window) return;
 
             window.webContents.send(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW);
+          },
+        },
+        {
+          label: 'CC-SDD Workflowをインストール...',
+          enabled: currentProjectPathForMenu !== null,
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW);
           },
         },
         { type: 'separator' as const },

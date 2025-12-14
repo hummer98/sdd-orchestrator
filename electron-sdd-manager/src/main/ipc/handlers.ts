@@ -18,11 +18,13 @@ import { logger } from '../services/logger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir, ClaudeMdInstallMode } from '../services/commandInstallerService';
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
-import { addShellPermissions } from '../services/permissionsService';
+import { addShellPermissions, checkRequiredPermissions } from '../services/permissionsService';
+import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { BugService } from '../services/bugService';
 import { BugsWatcherService } from '../services/bugsWatcherService';
+import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
@@ -32,6 +34,7 @@ const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
+const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugService = new BugService();
 
 // SpecManagerService instance (lazily initialized with project path)
@@ -760,6 +763,27 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // Permissions Handler - Check required permissions
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_REQUIRED_PERMISSIONS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_REQUIRED_PERMISSIONS called', { projectPath });
+      const result = await checkRequiredPermissions(
+        projectPath,
+        [...REQUIRED_PERMISSIONS]
+      );
+      if (!result.ok) {
+        // If settings.local.json doesn't exist or has errors, return all as missing
+        return {
+          allPresent: false,
+          missing: [...REQUIRED_PERMISSIONS],
+          present: [],
+        };
+      }
+      return result.value;
+    }
+  );
+
   // Document Review Sync Handler - Auto-fix spec.json documentReview based on file system
   ipcMain.handle(
     IPC_CHANNELS.SYNC_DOCUMENT_REVIEW,
@@ -772,17 +796,17 @@ export function registerIpcHandlers(): void {
   );
 
   // CLI Install Handlers
-  ipcMain.handle(IPC_CHANNELS.GET_CLI_INSTALL_STATUS, async () => {
-    logger.info('[handlers] GET_CLI_INSTALL_STATUS called');
-    return getCliInstallStatus();
+  ipcMain.handle(IPC_CHANNELS.GET_CLI_INSTALL_STATUS, async (_event, location: 'user' | 'system' = 'user') => {
+    logger.info(`[handlers] GET_CLI_INSTALL_STATUS called (location: ${location})`);
+    return getCliInstallStatus(location);
   });
 
-  ipcMain.handle(IPC_CHANNELS.INSTALL_CLI_COMMAND, async () => {
-    logger.info('[handlers] INSTALL_CLI_COMMAND called');
-    const result = await installCliCommand();
+  ipcMain.handle(IPC_CHANNELS.INSTALL_CLI_COMMAND, async (_event, location: 'user' | 'system' = 'user') => {
+    logger.info(`[handlers] INSTALL_CLI_COMMAND called (location: ${location})`);
+    const result = await installCliCommand(location);
     return {
       ...result,
-      instructions: getManualInstallInstructions(),
+      instructions: getManualInstallInstructions(location),
     };
   });
 
@@ -943,6 +967,26 @@ export function registerIpcHandlers(): void {
       if (!result.ok) {
         throw new Error(`Failed to skip document review: ${result.error.type}`);
       }
+    }
+  );
+
+  // ============================================================
+  // CC-SDD Workflow Install Handlers (cc-sdd-command-installer feature)
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_CC_SDD_WORKFLOW_STATUS called', { projectPath });
+      return ccSddWorkflowInstaller.checkInstallStatus(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] INSTALL_CC_SDD_WORKFLOW called', { projectPath });
+      return ccSddWorkflowInstaller.installAll(projectPath);
     }
   );
 }

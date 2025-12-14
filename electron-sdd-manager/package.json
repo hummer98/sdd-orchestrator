@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.3.4",
+  "version": "0.5.0",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
@@ -76,6 +76,18 @@
     "files": [
       "dist/**/*",
       "!node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../scripts",
+        "to": "scripts",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "resources",
+        "to": "resources",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "target": [

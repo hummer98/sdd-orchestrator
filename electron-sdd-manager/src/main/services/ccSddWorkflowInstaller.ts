@@ -7,6 +7,8 @@
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
+import { addPermissionsToProject } from './permissionsService';
+import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
  * cc-sdd コマンド一覧（14種類）
@@ -675,6 +677,16 @@ ${existingContent}`;
     const claudeMdResult = await this.updateClaudeMd(projectPath);
     if (!claudeMdResult.ok) {
       return claudeMdResult;
+    }
+
+    // Add required permissions to settings.local.json
+    const permissionsResult = await addPermissionsToProject(
+      projectPath,
+      REQUIRED_PERMISSIONS
+    );
+    if (!permissionsResult.ok) {
+      // Log error but don't fail installation
+      console.warn('[CcSddWorkflowInstaller] Failed to add permissions:', permissionsResult.error);
     }
 
     return {

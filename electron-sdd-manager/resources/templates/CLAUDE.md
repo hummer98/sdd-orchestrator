@@ -21,6 +21,9 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 {{DEV_GUIDELINES}}
 
 ## Minimal Workflow
+
+### Feature Development (Full SDD)
+
 - Phase 0 (optional): `/kiro:steering`, `/kiro:steering-custom`
 - Phase 1 (Specification):
   - `/kiro:spec-init "description"`
@@ -32,6 +35,26 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - Phase 2 (Implementation): `/kiro:spec-impl {feature} [tasks]`
   - `/kiro:validate-impl {feature}` (optional: after implementation)
 - Progress check: `/kiro:spec-status {feature}` (use anytime)
+
+### Bug Fix (Lightweight Workflow)
+
+For small bug fixes, the full SDD process is not required. Use the lightweight workflow:
+
+```
+Report -> Analyze -> Fix -> Verify
+```
+
+| Command | Description |
+|---------|------|
+| `/kiro:bug-create <name> "description"` | Create bug report |
+| `/kiro:bug-analyze [name]` | Investigate root cause |
+| `/kiro:bug-fix [name]` | Implement fix |
+| `/kiro:bug-verify [name]` | Verify fix |
+| `/kiro:bug-status [name]` | Check progress |
+
+**Usage guidelines**:
+- **Small bugs**: Bug Fix workflow (lightweight, fast)
+- **Complex bugs requiring design changes**: Full SDD workflow
 
 ## Development Rules
 - 3-phase approval workflow: Requirements → Design → Tasks → Implementation

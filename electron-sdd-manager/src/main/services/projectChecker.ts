@@ -6,6 +6,7 @@
 
 import { access } from 'fs/promises';
 import { join } from 'path';
+import { checkRequiredPermissions, CheckPermissionsResult } from './permissionsService';
 
 /**
  * Required Slash Command files
@@ -46,6 +47,50 @@ export const REQUIRED_SETTINGS = [
 ] as const;
 
 /**
+ * Required basic permissions for Claude Code tools
+ * Location: {projectRoot}/.claude/settings.local.json
+ */
+export const REQUIRED_BASIC_PERMISSIONS = [
+  'Read(**)',
+  'Edit(**)',
+  'Write(**)',
+  'Glob(**)',
+  'Grep(**)',
+  'WebSearch',
+  'WebFetch',
+  'Bash(**)',
+] as const;
+
+/**
+ * Required permissions for CC-SDD workflow slash commands
+ * Location: {projectRoot}/.claude/settings.local.json
+ */
+export const REQUIRED_SLASH_COMMAND_PERMISSIONS = [
+  'SlashCommand(/kiro:spec-init:*)',
+  'SlashCommand(/kiro:spec-requirements:*)',
+  'SlashCommand(/kiro:spec-design:*)',
+  'SlashCommand(/kiro:spec-tasks:*)',
+  'SlashCommand(/kiro:spec-impl:*)',
+  'SlashCommand(/kiro:spec-status:*)',
+  'SlashCommand(/kiro:spec-quick:*)',
+  'SlashCommand(/kiro:validate-gap:*)',
+  'SlashCommand(/kiro:validate-design:*)',
+  'SlashCommand(/kiro:validate-impl:*)',
+  'SlashCommand(/kiro:document-review:*)',
+  'SlashCommand(/kiro:document-review-reply:*)',
+  'SlashCommand(/kiro:steering:*)',
+  'SlashCommand(/kiro:steering-custom:*)',
+] as const;
+
+/**
+ * All required permissions (basic + slash commands)
+ */
+export const REQUIRED_PERMISSIONS = [
+  ...REQUIRED_BASIC_PERMISSIONS,
+  ...REQUIRED_SLASH_COMMAND_PERMISSIONS,
+] as const;
+
+/**
  * Result of checking file existence
  */
 export interface FileCheckResult {
@@ -60,6 +105,16 @@ export interface FileCheckResult {
 export interface FullCheckResult {
   readonly commands: FileCheckResult;
   readonly settings: FileCheckResult;
+  readonly allPresent: boolean;
+}
+
+/**
+ * Result of checking commands, settings, and permissions
+ */
+export interface CompleteCheckResult {
+  readonly commands: FileCheckResult;
+  readonly settings: FileCheckResult;
+  readonly permissions: CheckPermissionsResult;
   readonly allPresent: boolean;
 }
 
@@ -150,6 +205,52 @@ export class ProjectChecker {
       commands,
       settings,
       allPresent: commands.allPresent && settings.allPresent,
+    };
+  }
+
+  /**
+   * Check permissions in settings.local.json
+   *
+   * @param projectPath - Project root path
+   * @returns Permission check result
+   */
+  async checkPermissions(projectPath: string): Promise<CheckPermissionsResult> {
+    const result = await checkRequiredPermissions(
+      projectPath,
+      [...REQUIRED_PERMISSIONS]
+    );
+
+    if (!result.ok) {
+      // If settings.local.json doesn't exist or has errors, return all as missing
+      return {
+        allPresent: false,
+        missing: [...REQUIRED_PERMISSIONS],
+        present: [],
+      };
+    }
+
+    return result.value;
+  }
+
+  /**
+   * Check Slash Commands, SDD settings, and permissions
+   * Requirements: 4.1, 4.2
+   *
+   * @param projectPath - Project root path
+   * @returns Complete check result
+   */
+  async checkComplete(projectPath: string): Promise<CompleteCheckResult> {
+    const [commands, settings, permissions] = await Promise.all([
+      this.checkSlashCommands(projectPath),
+      this.checkSettings(projectPath),
+      this.checkPermissions(projectPath),
+    ]);
+
+    return {
+      commands,
+      settings,
+      permissions,
+      allPresent: commands.allPresent && settings.allPresent && permissions.allPresent,
     };
   }
 }

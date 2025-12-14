@@ -41,6 +41,8 @@ const createMockStores = (overrides: any = {}) => {
     installCommands: vi.fn(),
     installSettings: vi.fn(),
     clearInstallResult: vi.fn(),
+    // permissions check
+    permissionsCheck: null,
     ...overrides.projectStore,
   };
 
@@ -363,6 +365,53 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
 
         expect(screen.queryByText(/rules\/ears-format.md/)).toBeInTheDocument();
         expect(screen.queryByText(/templates\/specs\/design.md/)).toBeInTheDocument();
+      });
+    });
+
+    describe('permissions check display', () => {
+      it('should display warning when some permissions are missing', () => {
+        createMockStores({
+          projectStore: {
+            permissionsCheck: {
+              allPresent: false,
+              missing: ['Read(**)', 'Write(**)', 'SlashCommand(/kiro:spec-init:*)'],
+              present: ['Edit(**)', 'Glob(**)', 'Grep(**)'],
+            },
+          },
+        });
+
+        render(<ProjectSelector />);
+
+        expect(screen.queryByText(/不足しているパーミッション/)).toBeInTheDocument();
+        expect(screen.queryByText(/Read\(\*\*\)/)).toBeInTheDocument();
+      });
+
+      it('should display success message when all permissions are present', () => {
+        createMockStores({
+          projectStore: {
+            permissionsCheck: {
+              allPresent: true,
+              missing: [],
+              present: ['Read(**)', 'Edit(**)', 'Write(**)', 'SlashCommand(/kiro:spec-init:*)'],
+            },
+          },
+        });
+
+        render(<ProjectSelector />);
+
+        expect(screen.queryByText(/パーミッション: すべて設定済み/)).toBeInTheDocument();
+      });
+
+      it('should not display permissions section when check is null', () => {
+        createMockStores({
+          projectStore: {
+            permissionsCheck: null,
+          },
+        });
+
+        render(<ProjectSelector />);
+
+        expect(screen.queryByText(/パーミッション/)).not.toBeInTheDocument();
       });
     });
   });

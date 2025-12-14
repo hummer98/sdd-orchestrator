@@ -23,6 +23,8 @@ export function ProjectSelector() {
     installCommands,
     installSettings,
     clearInstallResult,
+    // permissions check
+    permissionsCheck,
   } = useProjectStore();
   const { loadSpecs } = useSpecStore();
 
@@ -113,6 +115,11 @@ export function ProjectSelector() {
           onInstallSettings={installSettings}
           onClearResult={clearInstallResult}
         />
+      )}
+
+      {/* Permissions Check */}
+      {permissionsCheck && (
+        <PermissionsCheckSection check={permissionsCheck} />
       )}
     </div>
   );
@@ -304,6 +311,56 @@ function SpecManagerFilesSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// Permissions Check Section Component
+// ============================================================
+
+interface PermissionsCheckSectionProps {
+  check: {
+    allPresent: boolean;
+    missing: readonly string[];
+    present: readonly string[];
+  };
+}
+
+function PermissionsCheckSection({ check }: PermissionsCheckSectionProps) {
+  // All permissions present
+  if (check.allPresent) {
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+          <CheckCircle className="w-4 h-4" />
+          <span>パーミッション: すべて設定済み</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Some permissions missing
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+      <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+        パーミッション
+      </h3>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
+          <FileWarning className="w-4 h-4" />
+          <span>不足しているパーミッション ({check.missing.length})</span>
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 pl-6 space-y-0.5 max-h-40 overflow-y-auto">
+          {check.missing.map((permission) => (
+            <div key={permission}>{permission}</div>
+          ))}
+        </div>
+        <div className="text-xs text-gray-600 dark:text-gray-400 pl-6">
+          CC-SDD WORKFLOWをインストールすると、必要なパーミッションが自動的に追加されます。
+        </div>
+      </div>
     </div>
   );
 }

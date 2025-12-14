@@ -686,9 +686,7 @@ export function registerIpcHandlers(): void {
     async (_event, projectPath: string) => {
       // Only log if there are issues (normal checks are silent)
       const result = await projectChecker.checkAll(projectPath);
-      const hasIssues = result.missingCommands.length > 0 ||
-                       result.missingSettings.length > 0 ||
-                       !result.claudeMd;
+      const hasIssues = !result.allPresent;
       if (hasIssues) {
         logger.info('[handlers] CHECK_SPEC_MANAGER_FILES called', { projectPath });
       }

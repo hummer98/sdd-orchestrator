@@ -9,14 +9,25 @@ import { join } from 'path';
 
 /**
  * Required Slash Command files
- * Location: {projectRoot}/.claude/commands/spec-manager/*.md
+ * Location: {projectRoot}/.claude/commands/kiro/*.md (CC-SDD)
+ * Legacy: {projectRoot}/.claude/commands/spec-manager/*.md
  */
 export const REQUIRED_COMMANDS = [
-  'spec-manager/init',
-  'spec-manager/requirements',
-  'spec-manager/design',
-  'spec-manager/tasks',
-  'spec-manager/impl',
+  // CC-SDD commands (kiro namespace) - 14 commands
+  'kiro/spec-init',
+  'kiro/spec-requirements',
+  'kiro/spec-design',
+  'kiro/spec-tasks',
+  'kiro/spec-impl',
+  'kiro/spec-status',
+  'kiro/spec-quick',
+  'kiro/validate-gap',
+  'kiro/validate-design',
+  'kiro/validate-impl',
+  'kiro/document-review',
+  'kiro/document-review-reply',
+  'kiro/steering',
+  'kiro/steering-custom',
 ] as const;
 
 /**

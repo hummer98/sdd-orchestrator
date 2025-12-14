@@ -85,7 +85,18 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 git push origin master
 ```
 
-### 7. GitHubリリース作成
+### 7. Gitタグの作成＆プッシュ
+
+バージョンタグを作成してリモートにプッシュ：
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+**注意**: タグはコミット後に作成し、GitHubリリース作成前にプッシュする必要があります。
+
+### 8. GitHubリリース作成
 
 リリースノートをCHANGELOGから抽出し、GitHubリリースを作成：
 
@@ -95,7 +106,7 @@ gh release create vX.Y.Z \
   --notes "[CHANGELOGから抽出したリリースノート]"
 ```
 
-### 8. バイナリの添付
+### 9. バイナリの添付
 
 ビルドしたバイナリをリリースに添付：
 
@@ -105,14 +116,14 @@ gh release upload vX.Y.Z \
   "release/SDD Orchestrator-X.Y.Z-arm64-mac.zip"
 ```
 
-### 9. Applicationsフォルダへデプロイ（オプション）
+### 10. Applicationsフォルダへデプロイ（オプション）
 
 ```bash
 rm -rf "/Applications/SDD Orchestrator.app"
 cp -R "release/mac-arm64/SDD Orchestrator.app" /Applications/
 ```
 
-### 10. 完了報告
+### 11. 完了報告
 
 ユーザーに以下を報告：
 - リリースバージョン

@@ -78,41 +78,39 @@ export function RecentRemoteProjects(): JSX.Element {
       ) : (
         <ul className="space-y-1">
           {recentRemoteProjects.map((project) => (
-            <li key={project.uri}>
+            <li key={project.uri} className="group relative">
               <button
                 onClick={() => handleConnect(project.uri)}
                 className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300
                   hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md
-                  flex items-center justify-between group"
+                  flex items-center gap-2"
               >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Server className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <span className="truncate font-medium">{project.displayName}</span>
-                      {!project.connectionSuccessful && (
-                        <AlertCircle
-                          data-testid="connection-failed-indicator"
-                          className="w-3.5 h-3.5 text-red-500 flex-shrink-0"
-                          aria-label="Last connection failed"
-                        />
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {formatRelativeTime(project.lastConnectedAt)}
-                    </div>
+                <Server className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate font-medium">{project.displayName}</span>
+                    {!project.connectionSuccessful && (
+                      <AlertCircle
+                        data-testid="connection-failed-indicator"
+                        className="w-3.5 h-3.5 text-red-500 flex-shrink-0"
+                        aria-label="Last connection failed"
+                      />
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {formatRelativeTime(project.lastConnectedAt)}
                   </div>
                 </div>
+              </button>
 
-                {/* Remove button - visible on hover */}
-                <button
-                  onClick={(e) => handleRemove(e, project.uri)}
-                  className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100
-                    transition-opacity flex-shrink-0"
-                  aria-label="Remove from recent projects"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              {/* Remove button - visible on hover, positioned absolutely */}
+              <button
+                onClick={(e) => handleRemove(e, project.uri)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500
+                  opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove from recent projects"
+              >
+                <X className="w-4 h-4" />
               </button>
             </li>
           ))}

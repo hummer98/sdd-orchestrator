@@ -30,8 +30,8 @@ import {
   SSHStatusIndicator,
   SSHConnectDialog,
   SSHAuthDialog,
-  RecentRemoteProjects,
   ProjectSwitchConfirmDialog,
+  ProjectSelector,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
@@ -49,7 +49,7 @@ const AGENT_LIST_MIN = 80;
 const AGENT_LIST_MAX = 400;
 
 export function App() {
-  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects } = useProjectStore();
+  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject } = useProjectStore();
   const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
@@ -291,6 +291,9 @@ export function App() {
             message,
           });
           console.log('[App] CC-SDD Workflow installed successfully', result.value);
+
+          // Refresh project to update permissions check
+          await selectProject(currentProject);
         } else {
           addNotification({
             type: 'error',
@@ -398,11 +401,11 @@ export function App() {
             className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900"
           >
             {/* Bug Workflow UI: 統合サイドバー構成 */}
-            {/* 1. ErrorBanner (問題がある場合のみ表示) */}
-            <ErrorBanner />
+            {/* 1. ProjectSelector (プロジェクト選択とパーミッションチェック) */}
+            <ProjectSelector />
 
-            {/* 2. Recent Remote Projects (SSH) */}
-            <RecentRemoteProjects />
+            {/* 2. ErrorBanner (問題がある場合のみ表示) */}
+            <ErrorBanner />
 
             {/* 3. DocsTabs (Specs/Bugsタブ切り替え、新規作成ボタン含む) */}
             {currentProject && kiroValidation?.exists && (

@@ -264,6 +264,49 @@ export function App() {
       }
     });
 
+    const cleanupCcSddWorkflowInstall = window.electronAPI.onMenuInstallCcSddWorkflow(async () => {
+      if (!currentProject) return;
+      console.log('[App] Installing CC-SDD Workflow');
+      try {
+        const result = await window.electronAPI.installCcSddWorkflow(currentProject);
+        if (result.ok) {
+          const { commands, agents, claudeMd } = result.value;
+          const installedCount = commands.installed.length + agents.installed.length;
+          const skippedCount = commands.skipped.length + agents.skipped.length;
+
+          let message = `CC-SDD Workflow をインストールしました: ${installedCount} ファイル`;
+          if (skippedCount > 0) {
+            message += ` (${skippedCount} ファイルはスキップ)`;
+          }
+          if (claudeMd.action === 'merged') {
+            message += '、CLAUDE.md にセクションを追加';
+          } else if (claudeMd.action === 'created') {
+            message += '、CLAUDE.md を作成';
+          } else if (claudeMd.action === 'skipped') {
+            message += '、CLAUDE.md は既に設定済み';
+          }
+
+          addNotification({
+            type: 'success',
+            message,
+          });
+          console.log('[App] CC-SDD Workflow installed successfully', result.value);
+        } else {
+          addNotification({
+            type: 'error',
+            message: `CC-SDD Workflow のインストールに失敗: ${result.error.type}`,
+          });
+          console.error('[App] CC-SDD Workflow installation failed', result.error);
+        }
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: `CC-SDD Workflow のインストールに失敗しました`,
+        });
+        console.error('[App] CC-SDD Workflow installation error', error);
+      }
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
@@ -274,6 +317,7 @@ export function App() {
       cleanupCommandPrefix();
       cleanupToggleRemoteServer();
       cleanupBugWorkflowInstall();
+      cleanupCcSddWorkflowInstall();
     };
   }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
 
@@ -330,14 +374,14 @@ export function App() {
               SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
             </h1>
             {/* Spec title in header */}
-            {specDetail && (
+            {specDetail && specDetail.specJson && (
               <div className="ml-6 flex items-center gap-2">
                 <span className="text-gray-400">/</span>
                 <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                   {specDetail.metadata.name}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {specDetail.specJson.feature_name}
+                  {specDetail.specJson.feature_name || ''}
                 </span>
               </div>
             )}

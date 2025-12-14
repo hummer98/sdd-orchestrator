@@ -162,7 +162,11 @@ export class FileService {
     try {
       const specJsonPath = join(specPath, 'spec.json');
       const content = await readFile(specJsonPath, 'utf-8');
-      const specJson: SpecJson = JSON.parse(content);
+      const rawJson = JSON.parse(content);
+
+      // Migrate from old spec-manager format to new CC-SDD format
+      const specJson = this.migrateSpecJson(rawJson);
+
       return { ok: true, value: specJson };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -180,6 +184,68 @@ export class FileService {
         },
       };
     }
+  }
+
+  /**
+   * Migrate spec.json from old spec-manager format to new CC-SDD format
+   */
+  private migrateSpecJson(rawJson: any): SpecJson {
+    // If already in new format, return as is
+    if ('feature_name' in rawJson && 'approvals' in rawJson) {
+      return rawJson as SpecJson;
+    }
+
+    // Old spec-manager format:
+    // {
+    //   "feature": "...",
+    //   "status": { "phase": "requirements", "requirements": "pending", ... },
+    //   "metadata": { "created": "...", "updated": "..." }
+    // }
+
+    // Map old phase to new phase
+    const phaseMap: Record<string, any> = {
+      'requirements': 'requirements-generated',
+      'design': 'design-generated',
+      'tasks': 'tasks-generated',
+      'implementation': 'implementation-in-progress',
+    };
+
+    const oldPhase = rawJson.status?.phase || 'requirements';
+    const newPhase = phaseMap[oldPhase] || 'initialized';
+
+    // Convert status flags to approvals
+    const approvals = {
+      requirements: {
+        generated: ['requirements', 'design', 'tasks', 'implementation'].includes(oldPhase),
+        approved: rawJson.status?.requirements === 'completed' ||
+                  ['design', 'tasks', 'implementation'].includes(oldPhase),
+      },
+      design: {
+        generated: ['design', 'tasks', 'implementation'].includes(oldPhase),
+        approved: rawJson.status?.design === 'completed' ||
+                  ['tasks', 'implementation'].includes(oldPhase),
+      },
+      tasks: {
+        generated: ['tasks', 'implementation'].includes(oldPhase),
+        approved: rawJson.status?.tasks === 'completed' ||
+                  oldPhase === 'implementation',
+      },
+    };
+
+    const ready_for_implementation =
+      approvals.requirements.approved &&
+      approvals.design.approved &&
+      approvals.tasks.approved;
+
+    return {
+      feature_name: rawJson.feature || rawJson.feature_name || 'unknown',
+      created_at: rawJson.metadata?.created || rawJson.created_at || new Date().toISOString(),
+      updated_at: rawJson.metadata?.updated || rawJson.updated_at || new Date().toISOString(),
+      language: rawJson.language || 'ja',
+      phase: newPhase,
+      approvals,
+      ready_for_implementation,
+    };
   }
 
   /**

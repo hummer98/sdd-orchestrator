@@ -48,6 +48,20 @@ export function SpecDetail() {
 
   const { metadata, specJson, artifacts, taskProgress } = specDetail;
 
+  // Validate specJson structure to prevent crashes
+  if (!specJson || !specJson.feature_name) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        <div className="text-center space-y-2">
+          <p>spec.jsonの読み込みに失敗しました</p>
+          <p className="text-sm text-gray-500">
+            spec.jsonの形式が正しくない可能性があります
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Implementation Ready Badge */}

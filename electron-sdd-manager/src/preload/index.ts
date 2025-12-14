@@ -10,7 +10,7 @@ import type { Phase, CommandOutputEvent } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
-import type { FullCheckResult } from '../main/services/projectChecker';
+import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';
 import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';

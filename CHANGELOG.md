@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-15
+
+### Added
+- **Automatic permissions check on project selection**: Project selection now automatically checks for required permissions in `settings.local.json`
+  - New `permissionsCheck` state in `projectStore` to track permission status
+  - Graceful handling when permissions check fails - project selection continues
+  - Three new test cases covering permissions check scenarios
+- **Release automation command**: New `/release` slash command to automate the version release process
+  - Automated version bumping, changelog updates, building, and GitHub release creation
+
+### Changed
+- Enhanced project selection workflow with permissions validation
+- Added `checkRequiredPermissions()` API method to ElectronAPI interface
+
 ## [0.5.0] - 2025-01-15
 
 ### Added

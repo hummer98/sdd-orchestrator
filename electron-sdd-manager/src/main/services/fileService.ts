@@ -10,6 +10,7 @@ import type {
   KiroValidation,
   SpecMetadata,
   SpecJson,
+  SpecPhase,
   Phase,
   FileError,
   Result,
@@ -202,35 +203,49 @@ export class FileService {
     //   "metadata": { "created": "...", "updated": "..." }
     // }
 
-    // Map old phase to new phase
-    const phaseMap: Record<string, any> = {
-      'requirements': 'requirements-generated',
-      'design': 'design-generated',
-      'tasks': 'tasks-generated',
-      'implementation': 'implementation-in-progress',
-    };
-
+    // Determine phase status from old format
     const oldPhase = rawJson.status?.phase || 'requirements';
-    const newPhase = phaseMap[oldPhase] || 'initialized';
+    const oldRequirements = rawJson.status?.requirements || 'pending';
+    const oldDesign = rawJson.status?.design || 'pending';
+    const oldTasks = rawJson.status?.tasks || 'pending';
 
     // Convert status flags to approvals
+    // A phase is "generated" if its status is not "pending"
     const approvals = {
       requirements: {
-        generated: ['requirements', 'design', 'tasks', 'implementation'].includes(oldPhase),
-        approved: rawJson.status?.requirements === 'completed' ||
+        generated: oldRequirements !== 'pending' || ['design', 'tasks', 'implementation'].includes(oldPhase),
+        approved: oldRequirements === 'completed' ||
                   ['design', 'tasks', 'implementation'].includes(oldPhase),
       },
       design: {
-        generated: ['design', 'tasks', 'implementation'].includes(oldPhase),
-        approved: rawJson.status?.design === 'completed' ||
+        generated: oldDesign !== 'pending' || ['tasks', 'implementation'].includes(oldPhase),
+        approved: oldDesign === 'completed' ||
                   ['tasks', 'implementation'].includes(oldPhase),
       },
       tasks: {
-        generated: ['tasks', 'implementation'].includes(oldPhase),
-        approved: rawJson.status?.tasks === 'completed' ||
+        generated: oldTasks !== 'pending' || oldPhase === 'implementation',
+        approved: oldTasks === 'completed' ||
                   oldPhase === 'implementation',
       },
     };
+
+    // Map old phase to new phase based on approvals
+    let newPhase: SpecPhase;
+    if (approvals.tasks.approved) {
+      newPhase = 'implementation-in-progress';
+    } else if (approvals.tasks.generated) {
+      newPhase = 'tasks-generated';
+    } else if (approvals.design.approved) {
+      newPhase = 'design-generated';
+    } else if (approvals.design.generated) {
+      newPhase = 'design-generated';
+    } else if (approvals.requirements.approved) {
+      newPhase = 'requirements-generated';
+    } else if (approvals.requirements.generated) {
+      newPhase = 'requirements-generated';
+    } else {
+      newPhase = 'initialized';
+    }
 
     const ready_for_implementation =
       approvals.requirements.approved &&

@@ -16,6 +16,7 @@ describe('useProjectStore', () => {
       kiroValidation: null,
       isLoading: false,
       error: null,
+      permissionsCheck: null,
     });
     vi.clearAllMocks();
   });
@@ -42,6 +43,17 @@ describe('useProjectStore', () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
       window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
       window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -55,6 +67,17 @@ describe('useProjectStore', () => {
         () => new Promise((resolve) => setTimeout(() => resolve({ exists: true, hasSpecs: true, hasSteering: true }), 100))
       );
       window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
 
       const selectPromise = useProjectStore.getState().selectProject('/test/project');
 
@@ -102,6 +125,80 @@ describe('useProjectStore', () => {
       const state = useProjectStore.getState();
       expect(state.currentProject).toBeNull();
       expect(state.kiroValidation).toBeNull();
+    });
+  });
+
+  describe('permissions check', () => {
+    it('should check permissions after project selection', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      const mockPermissionsCheck = {
+        allPresent: false,
+        missing: ['Bash(task:*)'],
+        present: ['Bash(git:*)', 'Bash(npm:*)'],
+      };
+
+      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
+      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue(mockPermissionsCheck);
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(state.permissionsCheck).toEqual(mockPermissionsCheck);
+      expect(window.electronAPI.checkRequiredPermissions).toHaveBeenCalledWith('/test/project');
+    });
+
+    it('should set allPresent to true when all permissions exist', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      const mockPermissionsCheck = {
+        allPresent: true,
+        missing: [],
+        present: ['Bash(task:*)', 'Bash(git:*)', 'Bash(npm:*)'],
+      };
+
+      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
+      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue(mockPermissionsCheck);
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(state.permissionsCheck?.allPresent).toBe(true);
+      expect(state.permissionsCheck?.missing).toHaveLength(0);
+    });
+
+    it('should handle permissions check failure gracefully', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
+      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockRejectedValue(new Error('Check failed'));
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      // Should still succeed project selection even if permissions check fails
+      expect(state.currentProject).toBe('/test/project');
+      // permissionsCheck should be null on error
+      expect(state.permissionsCheck).toBeNull();
     });
   });
 });

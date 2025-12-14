@@ -35,6 +35,13 @@ export type InstallError =
   | { type: 'PERMISSION_DENIED'; path: string }
   | { type: 'MERGE_ERROR'; message: string };
 
+/** パーミッションチェック結果 */
+export interface PermissionsCheckResult {
+  readonly allPresent: boolean;
+  readonly missing: readonly string[];
+  readonly present: readonly string[];
+}
+
 interface ProjectState {
   currentProject: string | null;
   recentProjects: string[];
@@ -49,6 +56,8 @@ interface ProjectState {
     settings: InstallResult;
   } | null;
   installError: InstallError | null;
+  // permissions check
+  permissionsCheck: PermissionsCheckResult | null;
 }
 
 /** シェル許可追加結果 */
@@ -88,10 +97,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   installLoading: false,
   installResult: null,
   installError: null,
+  permissionsCheck: null,
 
   // Actions
   selectProject: async (path: string) => {
-    set({ isLoading: true, error: null, specManagerCheck: null, installResult: null, installError: null });
+    set({ isLoading: true, error: null, specManagerCheck: null, installResult: null, installError: null, permissionsCheck: null });
 
     try {
       const validation = await window.electronAPI.validateKiroDirectory(path);
@@ -108,6 +118,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
       // Check spec-manager files after project selection
       await get().checkSpecManagerFiles(path);
+
+      // Check required permissions after project selection
+      try {
+        const permissionsCheck = await window.electronAPI.checkRequiredPermissions(path);
+        set({ permissionsCheck });
+      } catch (error) {
+        console.error('[projectStore] Failed to check required permissions:', error);
+        // Don't fail project selection if permissions check fails
+        set({ permissionsCheck: null });
+      }
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'プロジェクトの選択に失敗しました',
@@ -145,6 +165,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       specManagerCheck: null,
       installResult: null,
       installError: null,
+      permissionsCheck: null,
     });
   },
 

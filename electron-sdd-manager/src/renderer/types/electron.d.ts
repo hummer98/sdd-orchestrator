@@ -380,6 +380,8 @@ export interface ElectronAPI {
 
   // Permissions - Add shell permissions to project
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
+  // Permissions - Check required permissions
+  checkRequiredPermissions(projectPath: string): Promise<FileCheckResult>;
 
   // CLI Install
   getCliInstallStatus(location?: 'user' | 'system'): Promise<CliInstallStatus>;

@@ -26,7 +26,6 @@ describe('WorkflowView Integration', () => {
         design: { generated: false, approved: false },
         tasks: { generated: false, approved: false },
       },
-      readyForImplementation: false,
     },
     specJson: {
       feature_name: 'test-feature',
@@ -39,7 +38,6 @@ describe('WorkflowView Integration', () => {
         design: { generated: false, approved: false },
         tasks: { generated: false, approved: false },
       },
-      ready_for_implementation: false,
     } as ExtendedSpecJson,
     artifacts: {
       requirements: null,

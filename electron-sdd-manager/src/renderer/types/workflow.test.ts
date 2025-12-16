@@ -80,7 +80,6 @@ describe('Workflow Types', () => {
         design: { generated: false, approved: false },
         tasks: { generated: false, approved: false },
       },
-      ready_for_implementation: false,
       ...overrides,
     });
 
@@ -142,14 +141,12 @@ describe('Workflow Types', () => {
     describe('impl phase', () => {
       it('should return pending when ready_for_implementation is true', () => {
         const specJson = createMockSpecJson({
-          ready_for_implementation: true,
         });
         expect(getPhaseStatus('impl', specJson)).toBe('pending');
       });
 
       it('should return approved when implementation is completed', () => {
         const specJson = createMockSpecJson({
-          ready_for_implementation: true,
           impl_completed: true,
         });
         expect(getPhaseStatus('impl', specJson)).toBe('approved');

@@ -28,7 +28,6 @@ export interface SpecJson {
   language: 'ja' | 'en';
   phase: SpecPhase;
   approvals: ApprovalStatus;
-  ready_for_implementation: boolean;
   /** Document review state (optional for backward compatibility) */
   documentReview?: {
     rounds: number;
@@ -49,7 +48,6 @@ export interface SpecMetadata {
   readonly phase: SpecPhase;
   readonly updatedAt: string;
   readonly approvals: ApprovalStatus;
-  readonly readyForImplementation: boolean;
 }
 
 export interface SpecDetail {

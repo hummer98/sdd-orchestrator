@@ -39,7 +39,6 @@ describe('PhaseExecutionPanel - Task 33.2', () => {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    ready_for_implementation: true,
   };
 
   const baseSpec: SpecMetadata = {
@@ -48,7 +47,6 @@ describe('PhaseExecutionPanel - Task 33.2', () => {
     phase: 'tasks-generated' as SpecPhase,
     updatedAt: '2025-01-01T00:00:00Z',
     approvals: baseSpecJson.approvals,
-    readyForImplementation: true,
   };
 
   const baseSpecDetail: SpecDetail = {

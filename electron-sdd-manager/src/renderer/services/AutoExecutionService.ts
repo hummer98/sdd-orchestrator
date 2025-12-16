@@ -20,6 +20,7 @@ export interface PreconditionResult {
   readonly valid: boolean;
   readonly requiresApproval: boolean;
   readonly waitingForAgent: boolean;
+  readonly waitingForReview: boolean;
   readonly missingSpec: boolean;
   readonly error: string | null;
 }
@@ -110,6 +111,7 @@ export class AutoExecutionService {
         valid: false,
         requiresApproval: false,
         waitingForAgent: false,
+        waitingForReview: false,
         missingSpec: true,
         error: 'specDetail is not available',
       };
@@ -129,6 +131,7 @@ export class AutoExecutionService {
         valid: false,
         requiresApproval: false,
         waitingForAgent: true,
+        waitingForReview: false,
         missingSpec: false,
         error: null,
       };
@@ -140,6 +143,7 @@ export class AutoExecutionService {
         valid: true,
         requiresApproval: false,
         waitingForAgent: false,
+        waitingForReview: false,
         missingSpec: false,
         error: null,
       };
@@ -157,13 +161,14 @@ export class AutoExecutionService {
           valid: prevApproval.generated, // Can proceed if we auto-approve
           requiresApproval: prevApproval.generated,
           waitingForAgent: false,
+          waitingForReview: false,
           missingSpec: false,
           error: prevApproval.generated ? null : `${prevPhase} is not generated yet`,
         };
       }
     }
 
-    // For impl phase, check tasks approval
+    // For impl phase, check tasks approval and document review status
     if (phase === 'impl') {
       const tasksApproval = specJson.approvals.tasks;
       if (!tasksApproval.approved) {
@@ -171,9 +176,27 @@ export class AutoExecutionService {
           valid: tasksApproval.generated,
           requiresApproval: tasksApproval.generated,
           waitingForAgent: false,
+          waitingForReview: false,
           missingSpec: false,
           error: tasksApproval.generated ? null : 'tasks is not generated yet',
         };
+      }
+
+      // Check document review status (only in auto-execution mode)
+      const { documentReviewOptions } = useWorkflowStore.getState();
+      if (documentReviewOptions.autoExecutionFlag !== 'skip') {
+        // Review is enabled, check if it's approved or skipped
+        const reviewStatus = (specJson as any).documentReview?.status;
+        if (reviewStatus !== 'approved' && reviewStatus !== 'skipped') {
+          return {
+            valid: false,
+            requiresApproval: false,
+            waitingForAgent: false,
+            waitingForReview: true,
+            missingSpec: false,
+            error: 'Waiting for document review approval',
+          };
+        }
       }
     }
 
@@ -181,6 +204,7 @@ export class AutoExecutionService {
       valid: true,
       requiresApproval: false,
       waitingForAgent: false,
+      waitingForReview: false,
       missingSpec: false,
       error: null,
     };

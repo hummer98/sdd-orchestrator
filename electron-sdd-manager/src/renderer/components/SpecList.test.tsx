@@ -36,7 +36,6 @@ describe('SpecList - Task 33.1', () => {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    readyForImplementation: true,
   };
 
   const runningAgent: AgentInfo = {

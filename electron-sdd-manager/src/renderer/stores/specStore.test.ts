@@ -19,7 +19,6 @@ const mockSpecs: SpecMetadata[] = [
       design: { generated: true, approved: false },
       tasks: { generated: false, approved: false },
     },
-    readyForImplementation: false,
   },
   {
     name: 'feature-b',
@@ -31,7 +30,6 @@ const mockSpecs: SpecMetadata[] = [
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    readyForImplementation: true,
   },
   {
     name: 'feature-c',
@@ -43,7 +41,6 @@ const mockSpecs: SpecMetadata[] = [
       design: { generated: false, approved: false },
       tasks: { generated: false, approved: false },
     },
-    readyForImplementation: false,
   },
 ];
 
@@ -151,7 +148,6 @@ describe('useSpecStore', () => {
         language: 'ja',
         phase: 'design-generated',
         approvals: mockSpecs[0].approvals,
-        ready_for_implementation: false,
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);

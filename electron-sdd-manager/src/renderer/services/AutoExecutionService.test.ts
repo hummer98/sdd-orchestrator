@@ -263,6 +263,9 @@ describe('AutoExecutionService', () => {
           design: { generated: true, approved: true },
           tasks: { generated: true, approved: true },
         },
+        documentReview: {
+          status: 'approved',
+        },
       };
       const mockSpecDetail = {
         metadata: { name: 'test-spec', path: '/test' },
@@ -280,6 +283,9 @@ describe('AutoExecutionService', () => {
           impl: true,
           inspection: false,
           deploy: false,
+        },
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
         },
       });
 
@@ -584,6 +590,156 @@ describe('AutoExecutionService', () => {
       const result = await service.validatePreconditions('design');
 
       expect(result.waitingForAgent).toBe(true);
+    });
+
+    // ============================================================
+    // Impl phase preconditions: Document review integration
+    // ============================================================
+    describe('impl phase preconditions', () => {
+      it('should be invalid when tasks is not approved', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: false, approved: false }, // Changed to both false
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+        const result = await service.validatePreconditions('impl');
+
+        expect(result.valid).toBe(false);
+        expect(result.requiresApproval).toBe(false); // Should be false when not generated
+        expect(result.error).toBe('tasks is not generated yet');
+      });
+
+      it('should be valid when tasks is approved and document review is skipped', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+        // Document review is set to skip
+        useWorkflowStore.setState({
+          documentReviewOptions: {
+            autoExecutionFlag: 'skip',
+          },
+        });
+
+        const result = await service.validatePreconditions('impl');
+
+        expect(result.valid).toBe(true);
+      });
+
+      it('should wait for document review when review is enabled and not approved', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+          documentReview: {
+            status: 'in_progress',
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+        // Document review is enabled (not skipped)
+        useWorkflowStore.setState({
+          documentReviewOptions: {
+            autoExecutionFlag: 'run',
+          },
+        });
+
+        const result = await service.validatePreconditions('impl');
+
+        expect(result.valid).toBe(false);
+        expect(result.waitingForReview).toBe(true);
+      });
+
+      it('should be valid when document review is approved', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+          documentReview: {
+            status: 'approved',
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+        // Document review is enabled
+        useWorkflowStore.setState({
+          documentReviewOptions: {
+            autoExecutionFlag: 'run',
+          },
+        });
+
+        const result = await service.validatePreconditions('impl');
+
+        expect(result.valid).toBe(true);
+      });
+
+      it('should be valid when document review is skipped via status', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+          documentReview: {
+            status: 'skipped',
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+
+        // Document review is enabled but status is skipped
+        useWorkflowStore.setState({
+          documentReviewOptions: {
+            autoExecutionFlag: 'run',
+          },
+        });
+
+        const result = await service.validatePreconditions('impl');
+
+        expect(result.valid).toBe(true);
+      });
     });
   });
 

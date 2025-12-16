@@ -136,7 +136,6 @@ export class FileService {
             phase: specJson.phase,
             updatedAt: specJson.updated_at || stats.mtime.toISOString(),
             approvals: specJson.approvals,
-            readyForImplementation: specJson.ready_for_implementation ?? false,
           });
         } catch {
           // Skip specs without valid spec.json
@@ -247,11 +246,6 @@ export class FileService {
       newPhase = 'initialized';
     }
 
-    const ready_for_implementation =
-      approvals.requirements.approved &&
-      approvals.design.approved &&
-      approvals.tasks.approved;
-
     return {
       feature_name: rawJson.feature || rawJson.feature_name || 'unknown',
       created_at: rawJson.metadata?.created || rawJson.created_at || new Date().toISOString(),
@@ -259,7 +253,6 @@ export class FileService {
       language: rawJson.language || 'ja',
       phase: newPhase,
       approvals,
-      ready_for_implementation,
     };
   }
 
@@ -345,7 +338,6 @@ export class FileService {
           design: { generated: false, approved: false },
           tasks: { generated: false, approved: false },
         },
-        ready_for_implementation: false,
       };
 
       await writeFile(
@@ -432,11 +424,6 @@ ${description}
       // Update approval status
       specJson.approvals[phase].approved = approved;
       specJson.updated_at = new Date().toISOString();
-
-      // Update ready_for_implementation
-      if (phase === 'tasks' && approved) {
-        specJson.ready_for_implementation = true;
-      }
 
       // Update phase based on latest approval
       if (approved) {

@@ -63,7 +63,6 @@ const mockSpecDetail: SpecDetail = {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    readyForImplementation: true,
   },
   specJson: {
     feature_name: 'test-feature',
@@ -76,7 +75,6 @@ const mockSpecDetail: SpecDetail = {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    ready_for_implementation: true,
   } as ExtendedSpecJson,
   artifacts: {
     requirements: mockArtifact,

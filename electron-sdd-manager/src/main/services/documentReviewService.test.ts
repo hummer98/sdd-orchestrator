@@ -59,7 +59,6 @@ describe('DocumentReviewService', () => {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-    ready_for_implementation: false,
     ...overrides,
   });
 

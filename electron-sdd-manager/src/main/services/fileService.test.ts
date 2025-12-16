@@ -123,7 +123,6 @@ describe('FileService - updateSpecJsonFromPhase', () => {
       language: 'ja',
       phase,
       approvals,
-      ready_for_implementation: false,
     };
     await fs.writeFile(path.join(specPath, 'spec.json'), JSON.stringify(specJson, null, 2), 'utf-8');
   }

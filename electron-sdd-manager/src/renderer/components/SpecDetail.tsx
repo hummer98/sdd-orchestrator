@@ -62,10 +62,14 @@ export function SpecDetail() {
     );
   }
 
+  const isReadyForImplementation =
+    specJson.documentReview?.status === 'approved' ||
+    specJson.documentReview?.status === 'skipped';
+
   return (
     <div className="p-6 space-y-6">
       {/* Implementation Ready Badge */}
-      {metadata.readyForImplementation && (
+      {isReadyForImplementation && (
         <div className="flex justify-end">
           <span
             className={clsx(

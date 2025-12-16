@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-12-17
+
+### Added
+- **Project name display in header**: Added project name and VSCode launch button to application header
+- **Current directory support for sdd command**: The `sdd` command now opens current directory when no argument is provided
+
+### Changed
+- **Unified workflow terminology**: Integrated Bug Workflow into CC-SDD Workflow with consistent naming
+- **Refactored document review panel**: Removed redundant loading indicators for cleaner UI
+- **Improved auto-execution control**: Replaced `ready_for_implementation` flag with `documentReview.status`-based logic
+  - Auto-execution now properly waits for document review approval before implementation phase
+  - Manual execution via `/kiro:spec-impl` remains flexible (only checks tasks approval)
+  - Removed redundant flag from spec.json schema
+
+### Fixed
+- Implementation phase precondition checking in auto-execution workflow
+
 ## [0.6.1] - 2025-12-15
 
 ### Added

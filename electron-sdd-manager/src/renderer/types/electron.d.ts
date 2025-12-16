@@ -439,6 +439,9 @@ export interface ElectronAPI {
   getRecentRemoteProjects(): Promise<Array<{ uri: string; displayName: string; lastConnectedAt: string; connectionSuccessful: boolean }>>;
   removeRecentRemoteProject(uri: string): Promise<void>;
   onSSHStatusChanged(callback: (status: string) => void): () => void;
+
+  // VSCode Integration
+  openInVSCode(projectPath: string): Promise<void>;
 }
 
 declare global {

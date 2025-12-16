@@ -138,6 +138,9 @@ export const IPC_CHANNELS = {
 
   // Menu Events - CC-SDD Workflow
   MENU_INSTALL_CC_SDD_WORKFLOW: 'menu:install-cc-sdd-workflow',
+
+  // VSCode Integration
+  OPEN_IN_VSCODE: 'ipc:open-in-vscode',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

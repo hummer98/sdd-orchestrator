@@ -28,6 +28,7 @@ import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
+import { spawn } from 'child_process';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -996,6 +997,33 @@ export function registerIpcHandlers(): void {
     async (_event, projectPath: string) => {
       logger.info('[handlers] INSTALL_CC_SDD_WORKFLOW called', { projectPath });
       return ccSddWorkflowInstaller.installAll(projectPath);
+    }
+  );
+
+  // ============================================================
+  // VSCode Integration
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.OPEN_IN_VSCODE,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] OPEN_IN_VSCODE called', { projectPath });
+
+      try {
+        // Spawn VSCode with detached mode to prevent it from being killed when app closes
+        const child = spawn('code', [projectPath], {
+          detached: true,
+          stdio: 'ignore',
+        });
+
+        // Unref to allow parent process to exit independently
+        child.unref();
+
+        logger.info('[handlers] VSCode launched successfully', { projectPath });
+      } catch (error) {
+        logger.error('[handlers] Failed to launch VSCode', { projectPath, error });
+        throw new Error(`VSCodeの起動に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   );
 }

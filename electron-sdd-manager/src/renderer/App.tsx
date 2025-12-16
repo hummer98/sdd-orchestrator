@@ -376,9 +376,18 @@ export function App() {
             <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
               SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
             </h1>
+            {/* Project name in header */}
+            {currentProject && (
+              <div className="ml-6 flex items-center gap-2">
+                <span className="text-gray-400">/</span>
+                <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                  {currentProject.split('/').pop()}
+                </span>
+              </div>
+            )}
             {/* Spec title in header */}
             {specDetail && specDetail.specJson && (
-              <div className="ml-6 flex items-center gap-2">
+              <div className="ml-4 flex items-center gap-2">
                 <span className="text-gray-400">/</span>
                 <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                   {specDetail.metadata.name}
@@ -389,8 +398,28 @@ export function App() {
               </div>
             )}
           </div>
-          {/* SSH Status Indicator */}
-          <SSHStatusIndicator />
+          <div className="flex items-center gap-3">
+            {/* VSCode Open Button */}
+            {currentProject && (
+              <button
+                onClick={async () => {
+                  try {
+                    await window.electronAPI.openInVSCode(currentProject);
+                  } catch (error) {
+                    addNotification({
+                      type: 'error',
+                      message: `VSCodeを起動できませんでした: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    });
+                  }
+                }}
+                className="titlebar-no-drag px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                VSCodeで開く
+              </button>
+            )}
+            {/* SSH Status Indicator */}
+            <SSHStatusIndicator />
+          </div>
         </header>
 
         {/* Main content */}

@@ -686,6 +686,14 @@ const electronAPI = {
       ipcRenderer.removeListener('ssh:status-changed', handler);
     };
   },
+
+  // VSCode Integration
+  /**
+   * Open project folder in VSCode
+   * @param projectPath Project folder path to open
+   */
+  openInVSCode: (projectPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OPEN_IN_VSCODE, projectPath),
 };
 
 // Expose API to renderer

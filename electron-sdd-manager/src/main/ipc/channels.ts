@@ -101,13 +101,6 @@ export const IPC_CHANNELS = {
   // Menu Events - Remote Access
   MENU_TOGGLE_REMOTE_SERVER: 'menu:toggle-remote-server',
 
-  // Menu Events - Bug Workflow
-  MENU_INSTALL_BUG_WORKFLOW: 'menu:install-bug-workflow',
-
-  // Bug Workflow Install
-  CHECK_BUG_WORKFLOW_STATUS: 'ipc:check-bug-workflow-status',
-  INSTALL_BUG_WORKFLOW: 'ipc:install-bug-workflow',
-
   // Remote Access Server (Requirements: 1.1, 1.2, 1.6)
   START_REMOTE_SERVER: 'remote-access:start',
   STOP_REMOTE_SERVER: 'remote-access:stop',
@@ -132,11 +125,11 @@ export const IPC_CHANNELS = {
   APPROVE_DOCUMENT_REVIEW: 'ipc:approve-document-review',
   SKIP_DOCUMENT_REVIEW: 'ipc:skip-document-review',
 
-  // CC-SDD Workflow Install (cc-sdd-command-installer feature)
+  // cc-sdd Workflow Install (cc-sdd-command-installer feature)
   CHECK_CC_SDD_WORKFLOW_STATUS: 'ipc:check-cc-sdd-workflow-status',
   INSTALL_CC_SDD_WORKFLOW: 'ipc:install-cc-sdd-workflow',
 
-  // Menu Events - CC-SDD Workflow
+  // Menu Events - cc-sdd Workflow
   MENU_INSTALL_CC_SDD_WORKFLOW: 'menu:install-cc-sdd-workflow',
 
   // VSCode Integration

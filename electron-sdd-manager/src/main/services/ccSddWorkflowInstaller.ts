@@ -11,7 +11,7 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（14種類）
+ * cc-sdd コマンド一覧（19種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
@@ -33,6 +33,12 @@ export const CC_SDD_COMMANDS = [
   // Steering (2)
   'steering',
   'steering-custom',
+  // Bug Workflow (5)
+  'bug-create',
+  'bug-analyze',
+  'bug-fix',
+  'bug-verify',
+  'bug-status',
 ] as const;
 
 /**
@@ -67,6 +73,11 @@ export const CC_SDD_SETTINGS = [
   'templates/specs/requirements.md',
   'templates/specs/design.md',
   'templates/specs/tasks.md',
+  // Bug Workflow templates
+  'templates/bugs/report.md',
+  'templates/bugs/analysis.md',
+  'templates/bugs/fix.md',
+  'templates/bugs/verification.md',
 ] as const;
 
 /**

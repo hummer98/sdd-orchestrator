@@ -15,7 +15,6 @@ import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdIn
 import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
-import type { BugWorkflowInstallResult, BugWorkflowInstallStatus, InstallError as BugInstallError, Result as BugResult } from '../main/services/bugWorkflowInstaller';
 import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
 
@@ -435,54 +434,20 @@ const electronAPI = {
   },
 
   // ============================================================
-  // Bug Workflow Install
-  // ============================================================
-
-  /**
-   * Check bug workflow installation status
-   * @param projectPath Project root path
-   * @returns Installation status for commands, templates, and CLAUDE.md
-   */
-  checkBugWorkflowStatus: (projectPath: string): Promise<BugWorkflowInstallStatus> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CHECK_BUG_WORKFLOW_STATUS, projectPath),
-
-  /**
-   * Install bug workflow (commands, templates, CLAUDE.md section)
-   * @param projectPath Project root path
-   * @returns Installation result
-   */
-  installBugWorkflow: (projectPath: string): Promise<BugResult<BugWorkflowInstallResult, BugInstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_BUG_WORKFLOW, projectPath),
-
-  /**
-   * Menu event - Install Bug Workflow
-   */
-  onMenuInstallBugWorkflow: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW, handler);
-    };
-  },
-
-  // ============================================================
-  // CC-SDD Workflow Install (cc-sdd-command-installer feature)
+  // cc-sdd Workflow Install (cc-sdd-command-installer feature)
   // ============================================================
 
   /**
    * Check cc-sdd workflow installation status
    * @param projectPath Project root path
-   * @returns Installation status for commands, agents, and CLAUDE.md
+   * @returns Installation status for commands, agents, settings, and CLAUDE.md
    */
   checkCcSddWorkflowStatus: (projectPath: string): Promise<CcSddWorkflowInstallStatus> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS, projectPath),
 
   /**
-   * Install cc-sdd workflow (commands, agents, CLAUDE.md section)
+   * Install cc-sdd workflow (commands, agents, settings, CLAUDE.md section)
+   * Includes Bug Workflow integration
    * @param projectPath Project root path
    * @returns Installation result
    */
@@ -490,7 +455,7 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW, projectPath),
 
   /**
-   * Menu event - Install CC-SDD Workflow
+   * Menu event - Install cc-sdd Workflow
    */
   onMenuInstallCcSddWorkflow: (callback: () => void): (() => void) => {
     const handler = () => {

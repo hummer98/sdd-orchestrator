@@ -21,7 +21,6 @@ import { getDefaultLogFileService, initDefaultLogFileService } from '../services
 import { addShellPermissions, checkRequiredPermissions } from '../services/permissionsService';
 import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
-import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
 import { BugService } from '../services/bugService';
 import { BugsWatcherService } from '../services/bugsWatcherService';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
@@ -34,7 +33,6 @@ const fileService = new FileService();
 const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
-const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugService = new BugService();
 
@@ -820,22 +818,6 @@ export function registerIpcHandlers(): void {
     };
   });
 
-  // Bug Workflow Install Handlers
-  ipcMain.handle(
-    IPC_CHANNELS.CHECK_BUG_WORKFLOW_STATUS,
-    async (_event, projectPath: string) => {
-      logger.info('[handlers] CHECK_BUG_WORKFLOW_STATUS called', { projectPath });
-      return bugWorkflowInstaller.checkInstallStatus(projectPath);
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.INSTALL_BUG_WORKFLOW,
-    async (_event, projectPath: string) => {
-      logger.info('[handlers] INSTALL_BUG_WORKFLOW called', { projectPath });
-      return bugWorkflowInstaller.installAll(projectPath);
-    }
-  );
 
   // Bug Management Handlers (Requirements: 3.1, 6.1, 6.3, 6.5)
   ipcMain.handle(
@@ -981,7 +963,7 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
-  // CC-SDD Workflow Install Handlers (cc-sdd-command-installer feature)
+  // cc-sdd Workflow Install Handlers (cc-sdd-command-installer feature)
   // ============================================================
 
   ipcMain.handle(

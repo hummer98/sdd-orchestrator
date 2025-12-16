@@ -183,42 +183,7 @@ export type ServerError =
   | { type: 'NETWORK_ERROR'; message: string };
 
 /**
- * Bug Workflow CLAUDE.md update result
- */
-export interface BugWorkflowClaudeMdResult {
-  readonly action: 'created' | 'merged' | 'skipped';
-  readonly reason?: 'already_exists';
-}
-
-/**
- * Bug Workflow install result
- */
-export interface BugWorkflowInstallResult {
-  readonly commands: InstallResult;
-  readonly templates: InstallResult;
-  readonly claudeMd: BugWorkflowClaudeMdResult;
-}
-
-/**
- * Bug Workflow install status
- */
-export interface BugWorkflowInstallStatus {
-  readonly commands: {
-    readonly installed: readonly string[];
-    readonly missing: readonly string[];
-  };
-  readonly templates: {
-    readonly installed: readonly string[];
-    readonly missing: readonly string[];
-  };
-  readonly claudeMd: {
-    readonly exists: boolean;
-    readonly hasBugSection: boolean;
-  };
-}
-
-/**
- * CC-SDD Workflow CLAUDE.md update result
+ * cc-sdd Workflow CLAUDE.md update result
  */
 export interface CcSddWorkflowClaudeMdResult {
   readonly action: 'created' | 'merged' | 'skipped';
@@ -226,16 +191,17 @@ export interface CcSddWorkflowClaudeMdResult {
 }
 
 /**
- * CC-SDD Workflow install result
+ * cc-sdd Workflow install result
  */
 export interface CcSddWorkflowInstallResult {
   readonly commands: InstallResult;
   readonly agents: InstallResult;
+  readonly settings: InstallResult;
   readonly claudeMd: CcSddWorkflowClaudeMdResult;
 }
 
 /**
- * CC-SDD Workflow install status
+ * cc-sdd Workflow install status
  */
 export interface CcSddWorkflowInstallStatus {
   readonly commands: {
@@ -243,6 +209,10 @@ export interface CcSddWorkflowInstallStatus {
     readonly missing: readonly string[];
   };
   readonly agents: {
+    readonly installed: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly settings: {
     readonly installed: readonly string[];
     readonly missing: readonly string[];
   };
@@ -401,12 +371,7 @@ export interface ElectronAPI {
   onRemoteServerStatusChanged(callback: (status: ServerStatus) => void): () => void;
   onRemoteClientCountChanged(callback: (count: number) => void): () => void;
 
-  // Bug Workflow Install
-  checkBugWorkflowStatus(projectPath: string): Promise<BugWorkflowInstallStatus>;
-  installBugWorkflow(projectPath: string): Promise<Result<BugWorkflowInstallResult, InstallError>>;
-  onMenuInstallBugWorkflow(callback: () => void): () => void;
-
-  // CC-SDD Workflow Install
+  // cc-sdd Workflow Install
   checkCcSddWorkflowStatus(projectPath: string): Promise<CcSddWorkflowInstallStatus>;
   installCcSddWorkflow(projectPath: string): Promise<Result<CcSddWorkflowInstallResult, InstallError>>;
   onMenuInstallCcSddWorkflow(callback: () => void): () => void;

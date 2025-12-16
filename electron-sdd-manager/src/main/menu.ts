@@ -307,17 +307,7 @@ export function createMenu(): void {
           },
         },
         {
-          label: 'Bug Workflowをインストール...',
-          enabled: currentProjectPathForMenu !== null,
-          click: async () => {
-            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-            if (!window) return;
-
-            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_BUG_WORKFLOW);
-          },
-        },
-        {
-          label: 'CC-SDD Workflowをインストール...',
+          label: 'cc-sdd Workflowをインストール...',
           enabled: currentProjectPathForMenu !== null,
           click: async () => {
             const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];

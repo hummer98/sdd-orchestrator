@@ -221,60 +221,17 @@ export function App() {
       }
     });
 
-    const cleanupBugWorkflowInstall = window.electronAPI.onMenuInstallBugWorkflow(async () => {
-      if (!currentProject) return;
-      console.log('[App] Installing Bug Workflow');
-      try {
-        const result = await window.electronAPI.installBugWorkflow(currentProject);
-        if (result.ok) {
-          const { commands, templates, claudeMd } = result.value;
-          const installedCount = commands.installed.length + templates.installed.length;
-          const skippedCount = commands.skipped.length + templates.skipped.length;
-
-          let message = `Bug Workflow をインストールしました: ${installedCount} ファイル`;
-          if (skippedCount > 0) {
-            message += ` (${skippedCount} ファイルはスキップ)`;
-          }
-          if (claudeMd.action === 'merged') {
-            message += '、CLAUDE.md にセクションを追加';
-          } else if (claudeMd.action === 'created') {
-            message += '、CLAUDE.md を作成';
-          } else if (claudeMd.action === 'skipped') {
-            message += '、CLAUDE.md は既に設定済み';
-          }
-
-          addNotification({
-            type: 'success',
-            message,
-          });
-          console.log('[App] Bug Workflow installed successfully', result.value);
-        } else {
-          addNotification({
-            type: 'error',
-            message: `Bug Workflow のインストールに失敗: ${result.error.type}`,
-          });
-          console.error('[App] Bug Workflow installation failed', result.error);
-        }
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          message: `Bug Workflow のインストールに失敗しました`,
-        });
-        console.error('[App] Bug Workflow installation error', error);
-      }
-    });
-
     const cleanupCcSddWorkflowInstall = window.electronAPI.onMenuInstallCcSddWorkflow(async () => {
       if (!currentProject) return;
       console.log('[App] Installing CC-SDD Workflow');
       try {
         const result = await window.electronAPI.installCcSddWorkflow(currentProject);
         if (result.ok) {
-          const { commands, agents, claudeMd } = result.value;
-          const installedCount = commands.installed.length + agents.installed.length;
-          const skippedCount = commands.skipped.length + agents.skipped.length;
+          const { commands, agents, settings, claudeMd } = result.value;
+          const installedCount = commands.installed.length + agents.installed.length + settings.installed.length;
+          const skippedCount = commands.skipped.length + agents.skipped.length + settings.skipped.length;
 
-          let message = `CC-SDD Workflow をインストールしました: ${installedCount} ファイル`;
+          let message = `cc-sdd Workflow をインストールしました: ${installedCount} ファイル`;
           if (skippedCount > 0) {
             message += ` (${skippedCount} ファイルはスキップ)`;
           }
@@ -290,23 +247,23 @@ export function App() {
             type: 'success',
             message,
           });
-          console.log('[App] CC-SDD Workflow installed successfully', result.value);
+          console.log('[App] cc-sdd Workflow installed successfully', result.value);
 
           // Refresh project to update permissions check
           await selectProject(currentProject);
         } else {
           addNotification({
             type: 'error',
-            message: `CC-SDD Workflow のインストールに失敗: ${result.error.type}`,
+            message: `cc-sdd Workflow のインストールに失敗: ${result.error.type}`,
           });
-          console.error('[App] CC-SDD Workflow installation failed', result.error);
+          console.error('[App] cc-sdd Workflow installation failed', result.error);
         }
       } catch (error) {
         addNotification({
           type: 'error',
-          message: `CC-SDD Workflow のインストールに失敗しました`,
+          message: `cc-sdd Workflow のインストールに失敗しました`,
         });
-        console.error('[App] CC-SDD Workflow installation error', error);
+        console.error('[App] cc-sdd Workflow installation error', error);
       }
     });
 
@@ -319,7 +276,6 @@ export function App() {
       cleanupClaudeMdInstall();
       cleanupCommandPrefix();
       cleanupToggleRemoteServer();
-      cleanupBugWorkflowInstall();
       cleanupCcSddWorkflowInstall();
     };
   }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);

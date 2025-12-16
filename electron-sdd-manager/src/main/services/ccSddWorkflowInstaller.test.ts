@@ -57,13 +57,34 @@ describe('CcSddWorkflowInstaller', () => {
       await fs.writeFile(filePath, `# Agent template for ${agent}\nThis is an agent template file.`, 'utf-8');
     }
 
+    // Create settings templates (including Bug Workflow templates)
+    const settingsTemplates = [
+      'rules/ears-format.md',
+      'rules/tasks-generation.md',
+      'rules/tasks-parallel-analysis.md',
+      'templates/specs/init.json',
+      'templates/specs/requirements-init.md',
+      'templates/specs/requirements.md',
+      'templates/specs/design.md',
+      'templates/specs/tasks.md',
+      'templates/bugs/report.md',
+      'templates/bugs/analysis.md',
+      'templates/bugs/fix.md',
+      'templates/bugs/verification.md',
+    ];
+    for (const template of settingsTemplates) {
+      const filePath = path.join(templateDir, 'settings', template);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `# Template for ${template}\nThis is a settings template file.`, 'utf-8');
+    }
+
     // Create CLAUDE.md template
     const claudeMdPath = path.join(templateDir, 'CLAUDE.md');
     await fs.writeFile(claudeMdPath, `# AI-DLC and Spec-Driven Development\n\n${CC_SDD_WORKFLOW_CLAUDE_MD_SECTION}`, 'utf-8');
   }
 
   describe('Constants', () => {
-    it('should define all cc-sdd commands (14 types)', () => {
+    it('should define all cc-sdd commands (19 types)', () => {
       // Spec Workflow (7)
       expect(CC_SDD_COMMANDS).toContain('spec-init');
       expect(CC_SDD_COMMANDS).toContain('spec-requirements');
@@ -82,8 +103,14 @@ describe('CcSddWorkflowInstaller', () => {
       // Steering (2)
       expect(CC_SDD_COMMANDS).toContain('steering');
       expect(CC_SDD_COMMANDS).toContain('steering-custom');
+      // Bug Workflow (5)
+      expect(CC_SDD_COMMANDS).toContain('bug-create');
+      expect(CC_SDD_COMMANDS).toContain('bug-analyze');
+      expect(CC_SDD_COMMANDS).toContain('bug-fix');
+      expect(CC_SDD_COMMANDS).toContain('bug-verify');
+      expect(CC_SDD_COMMANDS).toContain('bug-status');
       // Total count
-      expect(CC_SDD_COMMANDS.length).toBe(14);
+      expect(CC_SDD_COMMANDS.length).toBe(19);
     });
 
     it('should define all cc-sdd agents (9 types)', () => {

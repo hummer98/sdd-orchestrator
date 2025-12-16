@@ -239,14 +239,6 @@ export function DocumentReviewPanel({
         )}
       </div>
 
-      {/* Executing state indicator */}
-      {isExecuting && (
-        <div className="flex items-center gap-2 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400">
-          <Loader2 className="w-4 h-4 animate-spin" data-testid="review-spinner" />
-          <span className="text-sm">レビュー実行中...</span>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Priority 1: Show "レビュー内容判定" button when there's a pending reply */}

@@ -2,9 +2,9 @@
 
 # SDD Orchestrator CLI
 # Usage: sdd [path]
+#   sdd             - Open current directory
 #   sdd .           - Open current directory
 #   sdd /path/to   - Open specified path
-#   sdd             - Open without project (project selector)
 
 set -e
 
@@ -32,12 +32,11 @@ if [ -n "$1" ]; then
             exit 1
         }
     fi
+else
+    # 引数が指定されていない場合はカレントディレクトリを使用
+    TARGET_PATH="$(pwd)"
 fi
 
 # アプリを起動
 # macOSのopen -aコマンドでは --args を使って引数を渡す
-if [ -n "$TARGET_PATH" ]; then
-    open -a "$APP_PATH" --args "$TARGET_PATH"
-else
-    open -a "$APP_PATH"
-fi
+open -a "$APP_PATH" --args "$TARGET_PATH"

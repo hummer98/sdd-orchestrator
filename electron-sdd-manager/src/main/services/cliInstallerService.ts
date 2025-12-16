@@ -267,9 +267,9 @@ export function getManualInstallInstructions(
     usage: {
       title: '使い方',
       examples: [
+        { command: 'sdd', description: 'カレントディレクトリをプロジェクトとして開く' },
         { command: 'sdd .', description: 'カレントディレクトリをプロジェクトとして開く' },
         { command: 'sdd /path/to/project', description: '指定したディレクトリをプロジェクトとして開く' },
-        { command: 'sdd', description: 'プロジェクト選択画面で起動' },
       ],
     },
   };

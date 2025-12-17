@@ -132,6 +132,13 @@ export const IPC_CHANNELS = {
   // Menu Events - cc-sdd Workflow
   MENU_INSTALL_CC_SDD_WORKFLOW: 'menu:install-cc-sdd-workflow',
 
+  // Menu Events - Unified Commandset Install (Requirement 10)
+  MENU_INSTALL_COMMANDSET: 'menu:install-commandset',
+
+  // Unified Commandset Install (Requirement 11)
+  CHECK_COMMANDSET_STATUS: 'ipc:check-commandset-status',
+  INSTALL_COMMANDSET_BY_PROFILE: 'ipc:install-commandset-by-profile',
+
   // VSCode Integration
   OPEN_IN_VSCODE: 'ipc:open-in-vscode',
 } as const;

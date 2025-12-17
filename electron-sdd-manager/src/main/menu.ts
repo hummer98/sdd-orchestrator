@@ -316,6 +316,16 @@ export function createMenu(): void {
             window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW);
           },
         },
+        {
+          label: 'コマンドセットをインストール...',
+          enabled: currentProjectPathForMenu !== null,
+          click: () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (!window) return;
+
+            window.webContents.send(IPC_CHANNELS.MENU_INSTALL_COMMANDSET);
+          },
+        },
         { type: 'separator' as const },
         {
           label: 'sdd CLIコマンドをインストール...',

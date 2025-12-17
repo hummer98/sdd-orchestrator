@@ -24,6 +24,13 @@ import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } 
 import { BugService } from '../services/bugService';
 import { BugsWatcherService } from '../services/bugsWatcherService';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
+import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
+import {
+  UnifiedCommandsetInstaller,
+  ProfileName,
+  UnifiedInstallResult,
+  UnifiedInstallStatus,
+} from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
@@ -34,6 +41,12 @@ const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
+const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
+const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(
+  ccSddWorkflowInstaller,
+  bugWorkflowInstaller,
+  getTemplateDir()
+);
 const bugService = new BugService();
 
 // SpecManagerService instance (lazily initialized with project path)
@@ -979,6 +992,65 @@ export function registerIpcHandlers(): void {
     async (_event, projectPath: string) => {
       logger.info('[handlers] INSTALL_CC_SDD_WORKFLOW called', { projectPath });
       return ccSddWorkflowInstaller.installAll(projectPath);
+    }
+  );
+
+  // ============================================================
+  // Unified Commandset Install Handlers (commandset-unified-installer feature)
+  // Requirements: 11.1
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_COMMANDSET_STATUS,
+    async (_event, projectPath: string): Promise<UnifiedInstallStatus> => {
+      logger.info('[handlers] CHECK_COMMANDSET_STATUS called', { projectPath });
+      return unifiedCommandsetInstaller.checkAllInstallStatus(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE,
+    async (
+      event,
+      projectPath: string,
+      profileName: ProfileName,
+      options?: { force?: boolean }
+    ): Promise<{ ok: true; value: UnifiedInstallResult } | { ok: false; error: { type: string; message: string } }> => {
+      logger.info('[handlers] INSTALL_COMMANDSET_BY_PROFILE called', { projectPath, profileName, options });
+
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Progress callback to send updates to renderer
+      const progressCallback = (current: number, total: number, currentCommandset: string) => {
+        if (window && !window.isDestroyed()) {
+          // We don't have a dedicated channel for progress, so we just log it
+          logger.debug('[handlers] Install progress', { current, total, currentCommandset });
+        }
+      };
+
+      const result = await unifiedCommandsetInstaller.installByProfile(
+        projectPath,
+        profileName,
+        options,
+        progressCallback
+      );
+
+      if (!result.ok) {
+        logger.error('[handlers] INSTALL_COMMANDSET_BY_PROFILE failed', { error: result.error });
+        return {
+          ok: false,
+          error: { type: result.error.type, message: result.error.path || 'Installation failed' }
+        };
+      }
+
+      logger.info('[handlers] INSTALL_COMMANDSET_BY_PROFILE succeeded', {
+        profileName,
+        totalInstalled: result.value.summary.totalInstalled,
+        totalSkipped: result.value.summary.totalSkipped,
+        totalFailed: result.value.summary.totalFailed
+      });
+
+      return result;
     }
   );
 

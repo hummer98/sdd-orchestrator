@@ -157,7 +157,7 @@ export class BugWorkflowInstaller {
     const { force = false } = options;
 
     for (const cmd of BUG_COMMANDS) {
-      const templatePath = join(this.templateDir, 'commands', 'kiro', `${cmd}.md`);
+      const templatePath = join(this.templateDir, 'commands', 'bug', `${cmd}.md`);
       const targetPath = join(projectPath, '.claude', 'commands', 'kiro', `${cmd}.md`);
 
       // Check if template exists

@@ -43,9 +43,28 @@ describe('CcSddWorkflowInstaller', () => {
    * Helper to create template files in template directory
    */
   async function createTemplateFiles(): Promise<void> {
-    // Create command templates
-    for (const cmd of CC_SDD_COMMANDS) {
-      const filePath = path.join(templateDir, 'commands', 'kiro', `${cmd}.md`);
+    // Define command categories
+    const specCommands = ['spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick'];
+    const validateCommands = ['validate-gap', 'validate-design', 'validate-impl'];
+    const steeringCommands = ['steering', 'steering-custom'];
+    const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status'];
+    const documentReviewCommands = ['document-review', 'document-review-reply'];
+
+    // Create command templates in new structure
+    for (const cmd of [...specCommands, ...validateCommands, ...steeringCommands]) {
+      const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file for cc-sdd command.`, 'utf-8');
+    }
+
+    for (const cmd of bugCommands) {
+      const filePath = path.join(templateDir, 'commands', 'bug', `${cmd}.md`);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file for cc-sdd command.`, 'utf-8');
+    }
+
+    for (const cmd of documentReviewCommands) {
+      const filePath = path.join(templateDir, 'commands', 'document-review', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file for cc-sdd command.`, 'utf-8');
     }
@@ -218,8 +237,8 @@ describe('CcSddWorkflowInstaller', () => {
     });
 
     it('should return TEMPLATE_NOT_FOUND error when template file is missing', async () => {
-      // Remove a template file
-      const templatePath = path.join(templateDir, 'commands', 'kiro', 'spec-init.md');
+      // Remove a template file from new structure
+      const templatePath = path.join(templateDir, 'commands', 'cc-sdd-agent', 'spec-init.md');
       await fs.unlink(templatePath);
 
       const result = await installer.installCommands(tempDir);
@@ -496,9 +515,25 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
     templateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cc-sdd-parallel-templates-'));
     ccSddInstaller = new CcSddWorkflowInstaller(templateDir);
 
-    // Create cc-sdd template files
-    for (const cmd of CC_SDD_COMMANDS) {
-      const filePath = path.join(templateDir, 'commands', 'kiro', `${cmd}.md`);
+    // Create cc-sdd template files in new structure
+    const specCommands = ['spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick'];
+    const validateCommands = ['validate-gap', 'validate-design', 'validate-impl'];
+    const steeringCommands = ['steering', 'steering-custom'];
+    const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status'];
+    const documentReviewCommands = ['document-review', 'document-review-reply'];
+
+    for (const cmd of [...specCommands, ...validateCommands, ...steeringCommands]) {
+      const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `# CC-SDD Command: ${cmd}`, 'utf-8');
+    }
+    for (const cmd of bugCommands) {
+      const filePath = path.join(templateDir, 'commands', 'bug', `${cmd}.md`);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `# CC-SDD Command: ${cmd}`, 'utf-8');
+    }
+    for (const cmd of documentReviewCommands) {
+      const filePath = path.join(templateDir, 'commands', 'document-review', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# CC-SDD Command: ${cmd}`, 'utf-8');
     }
@@ -589,7 +624,7 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
   it('should both installers be able to run on the same project', async () => {
     // Create bug workflow template dir (simulating BugWorkflowInstaller setup)
     const bugTemplateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bug-templates-'));
-    const bugCmdPath = path.join(bugTemplateDir, 'commands', 'kiro', 'bug-create.md');
+    const bugCmdPath = path.join(bugTemplateDir, 'commands', 'bug', 'bug-create.md');
     await fs.mkdir(path.dirname(bugCmdPath), { recursive: true });
     await fs.writeFile(bugCmdPath, '# Bug Create', 'utf-8');
 

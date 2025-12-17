@@ -222,6 +222,23 @@ export class CcSddWorkflowInstaller {
   }
 
   /**
+   * Get template subdirectory for a command
+   * Commands are organized by category:
+   * - cc-sdd-agent: spec-*, validate-*, steering*
+   * - bug: bug-*
+   * - document-review: document-review-*
+   */
+  private getCommandTemplateSubdir(cmd: string): string {
+    if (cmd.startsWith('bug-')) {
+      return 'bug';
+    }
+    if (cmd.startsWith('document-review')) {
+      return 'document-review';
+    }
+    return 'cc-sdd-agent';
+  }
+
+  /**
    * Install cc-sdd commands to project
    * @param projectPath - Project root path
    * @param options - Install options
@@ -237,7 +254,8 @@ export class CcSddWorkflowInstaller {
     const { force = false } = options;
 
     for (const cmd of CC_SDD_COMMANDS) {
-      const templatePath = join(this.templateDir, 'commands', 'kiro', `${cmd}.md`);
+      const templateSubdir = this.getCommandTemplateSubdir(cmd);
+      const templatePath = join(this.templateDir, 'commands', templateSubdir, `${cmd}.md`);
       const targetPath = join(projectPath, '.claude', 'commands', 'kiro', `${cmd}.md`);
 
       // Check if template exists

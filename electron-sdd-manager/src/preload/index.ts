@@ -16,6 +16,7 @@ import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
 import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
+import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '../main/services/unifiedCommandsetInstaller';
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
 
 /**
@@ -468,6 +469,49 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW, handler);
     };
   },
+
+  /**
+   * Menu event - Install Commandset (Unified Installer)
+   * Requirements: 10.1
+   */
+  onMenuInstallCommandset: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_COMMANDSET, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_COMMANDSET, handler);
+    };
+  },
+
+  // ============================================================
+  // Unified Commandset Install (commandset-unified-installer feature)
+  // Requirements: 11.1
+  // ============================================================
+
+  /**
+   * Check unified commandset installation status
+   * @param projectPath Project root path
+   * @returns Installation status for all commandsets
+   */
+  checkCommandsetStatus: (projectPath: string): Promise<UnifiedInstallStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_COMMANDSET_STATUS, projectPath),
+
+  /**
+   * Install commandsets by profile
+   * @param projectPath Project root path
+   * @param profileName Profile name ('minimal', 'standard', 'full', 'lightweight-bug-fix-only')
+   * @param options Install options (force: boolean)
+   * @returns Installation result
+   */
+  installCommandsetByProfile: (
+    projectPath: string,
+    profileName: ProfileName,
+    options?: { force?: boolean }
+  ): Promise<{ ok: true; value: UnifiedInstallResult } | { ok: false; error: { type: string; message: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE, projectPath, profileName, options),
 
   // ============================================================
   // Bug Management (Requirements: 3.1, 6.1, 6.3, 6.5)

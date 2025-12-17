@@ -358,4 +358,66 @@ describe('Menu Module', () => {
       expect(mockLoadingWindow.webContents.send).toHaveBeenCalledWith('menu:open-project', '/selected/project');
     });
   });
+
+  describe('Menu items - Install Commandset', () => {
+    it('should have Install Commandset menu item in Tools menu', () => {
+      // Setup: Project is selected
+      setMenuProjectPath('/path/to/project');
+
+      createMenu();
+
+      // Get the menu template
+      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+      const toolsMenu = menuTemplate.find((item: any) => item.label === 'ツール') as any;
+
+      // Find the install commandset menu item
+      const installCommandsetItem = toolsMenu.submenu.find((item: any) =>
+        item.label === 'コマンドセットをインストール...'
+      );
+
+      expect(installCommandsetItem).toBeDefined();
+      expect(installCommandsetItem.enabled).toBe(true);
+    });
+
+    it('should have Install Commandset menu item disabled when no project is selected', () => {
+      // Setup: No project selected
+      setMenuProjectPath(null);
+
+      createMenu();
+
+      // Get the menu template
+      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+      const toolsMenu = menuTemplate.find((item: any) => item.label === 'ツール') as any;
+
+      // Find the install commandset menu item
+      const installCommandsetItem = toolsMenu.submenu.find((item: any) =>
+        item.label === 'コマンドセットをインストール...'
+      );
+
+      expect(installCommandsetItem).toBeDefined();
+      expect(installCommandsetItem.enabled).toBe(false);
+    });
+
+    it('should send MENU_INSTALL_COMMANDSET event when clicked', () => {
+      // Setup: Project is selected and window exists
+      setMenuProjectPath('/path/to/project');
+      vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue(mockWindow as BrowserWindow);
+      vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow as BrowserWindow]);
+
+      createMenu();
+
+      // Get the menu template
+      const menuTemplate = vi.mocked(Menu.buildFromTemplate).mock.calls[0][0];
+      const toolsMenu = menuTemplate.find((item: any) => item.label === 'ツール') as any;
+      const installCommandsetItem = toolsMenu.submenu.find((item: any) =>
+        item.label === 'コマンドセットをインストール...'
+      );
+
+      // Trigger the click handler
+      installCommandsetItem.click();
+
+      // Verify the correct IPC channel was sent
+      expect(mockWindow.webContents!.send).toHaveBeenCalledWith('menu:install-commandset');
+    });
+  });
 });

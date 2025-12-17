@@ -19,6 +19,8 @@ import {
   CliInstallDialog,
   // CLAUDE.md Install
   ClaudeMdInstallDialog,
+  // Unified Commandset Install
+  CommandsetInstallDialog,
   // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
   GlobalAgentPanel,
   ErrorBanner,
@@ -34,6 +36,7 @@ import {
   ProjectSelector,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
+import type { ProfileName, InstallResultSummary } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
 import type { CommandPrefix } from './stores';
 
@@ -78,6 +81,8 @@ export function App() {
   const [isClaudeMdDialogOpen, setIsClaudeMdDialogOpen] = useState(false);
   const [claudeMdExists, setClaudeMdExists] = useState(false);
   const [isRemoteAccessDialogOpen, setIsRemoteAccessDialogOpen] = useState(false);
+  // Unified Commandset Install dialog
+  const [isCommandsetInstallDialogOpen, setIsCommandsetInstallDialogOpen] = useState(false);
   // SSH Remote Project dialogs
   const [isSSHConnectDialogOpen, setIsSSHConnectDialogOpen] = useState(false);
   const [isSSHConnecting, setIsSSHConnecting] = useState(false);
@@ -267,6 +272,17 @@ export function App() {
       }
     });
 
+    const cleanupCommandsetInstall = window.electronAPI.onMenuInstallCommandset(() => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'コマンドセットをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+      setIsCommandsetInstallDialogOpen(true);
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupForceReinstall();
@@ -277,6 +293,7 @@ export function App() {
       cleanupCommandPrefix();
       cleanupToggleRemoteServer();
       cleanupCcSddWorkflowInstall();
+      cleanupCommandsetInstall();
     };
   }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
 
@@ -491,6 +508,36 @@ export function App() {
         <RemoteAccessDialog
           isOpen={isRemoteAccessDialogOpen}
           onClose={() => setIsRemoteAccessDialogOpen(false)}
+        />
+
+        {/* Unified Commandset Install Dialog */}
+        <CommandsetInstallDialog
+          isOpen={isCommandsetInstallDialogOpen}
+          projectPath={currentProject || ''}
+          onClose={() => setIsCommandsetInstallDialogOpen(false)}
+          onInstall={async (profileName: ProfileName, progressCallback) => {
+            if (!currentProject) return;
+            console.log(`[App] Installing commandset with profile: ${profileName}`);
+
+            const result = await window.electronAPI.installCommandsetByProfile(
+              currentProject,
+              profileName
+            );
+
+            if (!result.ok) {
+              throw new Error(result.error.message || result.error.type);
+            }
+
+            const { summary } = result.value;
+            console.log(`[App] Commandset installed successfully:`, summary);
+
+            // Return summary for the dialog to display
+            return {
+              totalInstalled: summary.totalInstalled,
+              totalSkipped: summary.totalSkipped,
+              totalFailed: summary.totalFailed,
+            };
+          }}
         />
 
         {/* SSH Remote Project Dialogs */}

@@ -37,9 +37,9 @@ describe('BugWorkflowInstaller', () => {
    * Helper to create template files in template directory
    */
   async function createTemplateFiles(): Promise<void> {
-    // Create command templates
+    // Create command templates in new structure (bug commands in commands/bug/)
     for (const cmd of BUG_COMMANDS) {
-      const filePath = path.join(templateDir, 'commands', 'kiro', `${cmd}.md`);
+      const filePath = path.join(templateDir, 'commands', 'bug', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file.`, 'utf-8');
     }

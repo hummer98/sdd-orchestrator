@@ -53,3 +53,6 @@ export { SSHConnectDialog } from './SSHConnectDialog';
 export { SSHAuthDialog } from './SSHAuthDialog';
 export { RecentRemoteProjects } from './RecentRemoteProjects';
 export { ProjectSwitchConfirmDialog } from './ProjectSwitchConfirmDialog';
+// Unified Commandset Install Dialog
+export { CommandsetInstallDialog } from './CommandsetInstallDialog';
+export type { ProfileName } from './CommandsetInstallDialog';

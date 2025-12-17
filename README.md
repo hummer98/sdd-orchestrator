@@ -19,6 +19,7 @@ SDD Orchestrator is a tool for managing the lifecycle of software specifications
 - Automated execution via AI agents
 - Dependency management across multiple Specs
 - Human-AI collaborative workflow
+- Document review system with issue tracking and resolution workflow
 - Kiro format (`.kiro/specs/`) compliant
 
 ## Architecture
@@ -105,6 +106,22 @@ sdd-orchestrator/
 
 ## Workflow
 
+### Setting Up a New Project
+
+To start using SDD Orchestrator with your project:
+
+1. **Install SDD CLI** (recommended):
+   ```bash
+   npm install -g @hummer98/sdd-cli
+   ```
+2. **Launch SDD Orchestrator** and select your project directory
+3. **Install Commands**:
+   - Click "Install Commands" button in the GUI to set up `/kiro:*` slash commands in your project
+4. **Create Your First Spec**:
+   - Run `/kiro:spec-init "feature description"` in Claude Code
+   - This initializes `.kiro/specs/` directory structure
+5. **Start Development**: Follow the SDD Phases below
+
 ### SDD Phases
 
 1. **spec-init**: Initialize new specification
@@ -119,9 +136,33 @@ sdd-orchestrator/
 - **validate-design**: Design review
 - **validate-impl**: Implementation verification
 
+### Document Review
+
+- **document-review**: Review spec documents for consistency and completeness
+- **document-review-reply**: Generate responses to review issues
+- Issue tracking and resolution workflow integrated into GUI
+
+### Bug Fix (Lightweight Workflow)
+
+For small-scale bug fixes without requiring full SDD process:
+
+1. **bug-create**: Create bug report
+2. **bug-analyze**: Investigate root cause
+3. **bug-fix**: Implement fix
+4. **bug-verify**: Verify resolution
+5. **bug-status**: Check progress
+
+**When to use:**
+- **Small bugs**: Bug Fix workflow (lightweight & fast)
+- **Complex bugs requiring design changes**: Full SDD workflow
+
 ## Documentation
 
 - [Japanese README](README-jp.md)
+
+## ToDo
+
+- **エスカレーション機能**: エージェントが処理できない問題を人間にエスカレーションする仕組みの実装
 
 ## License
 

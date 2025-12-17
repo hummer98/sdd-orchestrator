@@ -1,9 +1,9 @@
 {
   "feature_name": "ssh-remote-project",
   "created_at": "2025-12-01T12:00:00.000Z",
-  "updated_at": "2025-12-13T14:30:00.000Z",
+  "updated_at": "2025-12-16T07:53:40.080Z",
   "language": "ja",
-  "phase": "validated",
+  "phase": "implementation-complete",
   "approvals": {
     "requirements": {
       "generated": true,

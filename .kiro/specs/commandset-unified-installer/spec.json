@@ -1,0 +1,47 @@
+{
+  "feature_name": "commandset-unified-installer",
+  "created_at": "2025-12-17T09:30:00Z",
+  "updated_at": "2025-12-17T10:45:00Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "documentReview": {
+    "totalRounds": 1,
+    "roundDetails": [
+      {
+        "round": 1,
+        "reviewDate": "2025-12-17",
+        "replyDate": "2025-12-17",
+        "fixApplied": true
+      }
+    ]
+  },
+  "futureRequirements": {
+    "phase2": [
+      {
+        "requirement": "14",
+        "title": "アップデート機能",
+        "reason": "バージョン管理システムの完全実装は初回リリース後に対応"
+      },
+      {
+        "requirement": "6.5",
+        "title": "設定ファイル競合解決のインタラクティブモード",
+        "reason": "ユーザーインタラクティブな競合解決UIは初回リリース後に対応"
+      }
+    ]
+  }
+}

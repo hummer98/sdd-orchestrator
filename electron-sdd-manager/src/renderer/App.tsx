@@ -17,8 +17,6 @@ import {
   WorkflowView,
   // CLI Install
   CliInstallDialog,
-  // CLAUDE.md Install
-  ClaudeMdInstallDialog,
   // Unified Commandset Install
   CommandsetInstallDialog,
   // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
@@ -35,7 +33,6 @@ import {
   ProjectSwitchConfirmDialog,
   ProjectSelector,
 } from './components';
-import type { ClaudeMdInstallMode } from './types/electron';
 import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
 import type { CommandPrefix } from './stores';
@@ -78,8 +75,6 @@ export function App() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [isCliInstallDialogOpen, setIsCliInstallDialogOpen] = useState(false);
-  const [isClaudeMdDialogOpen, setIsClaudeMdDialogOpen] = useState(false);
-  const [claudeMdExists, setClaudeMdExists] = useState(false);
   const [isRemoteAccessDialogOpen, setIsRemoteAccessDialogOpen] = useState(false);
   // Unified Commandset Install dialog
   const [isCommandsetInstallDialogOpen, setIsCommandsetInstallDialogOpen] = useState(false);
@@ -155,30 +150,12 @@ export function App() {
   }, [initializeRemoteAccess]);
 
   // Setup menu event listeners
-  const { forceReinstallAll, addShellPermissions } = useProjectStore();
   const menuListenersSetup = useRef(false);
   useEffect(() => {
     if (menuListenersSetup.current) {
       return;
     }
     menuListenersSetup.current = true;
-
-    const cleanupForceReinstall = window.electronAPI.onMenuForceReinstall(() => {
-      forceReinstallAll();
-    });
-
-    const cleanupAddPermissions = window.electronAPI.onMenuAddShellPermissions(async () => {
-      const result = await addShellPermissions();
-      if (result) {
-        // Show a simple alert with results (could be improved with a notification system)
-        if (result.added.length > 0) {
-          console.log(`[App] Added ${result.added.length} shell permissions`);
-        }
-        if (result.alreadyExists.length > 0) {
-          console.log(`[App] ${result.alreadyExists.length} permissions already existed`);
-        }
-      }
-    });
 
     const cleanupOpenProject = window.electronAPI.onMenuOpenProject(async (projectPath: string) => {
       console.log(`[App] Opening project from menu: ${projectPath}`);
@@ -188,14 +165,6 @@ export function App() {
 
     const cleanupCliInstall = window.electronAPI.onMenuInstallCliCommand(() => {
       setIsCliInstallDialogOpen(true);
-    });
-
-    const cleanupClaudeMdInstall = window.electronAPI.onMenuInstallClaudeMd(async () => {
-      if (!currentProject) return;
-      // Check if CLAUDE.md exists
-      const exists = await window.electronAPI.checkClaudeMdExists(currentProject);
-      setClaudeMdExists(exists);
-      setIsClaudeMdDialogOpen(true);
     });
 
     const cleanupCommandPrefix = window.electronAPI.onMenuSetCommandPrefix((prefix: CommandPrefix) => {
@@ -226,52 +195,6 @@ export function App() {
       }
     });
 
-    const cleanupCcSddWorkflowInstall = window.electronAPI.onMenuInstallCcSddWorkflow(async () => {
-      if (!currentProject) return;
-      console.log('[App] Installing CC-SDD Workflow');
-      try {
-        const result = await window.electronAPI.installCcSddWorkflow(currentProject);
-        if (result.ok) {
-          const { commands, agents, settings, claudeMd } = result.value;
-          const installedCount = commands.installed.length + agents.installed.length + settings.installed.length;
-          const skippedCount = commands.skipped.length + agents.skipped.length + settings.skipped.length;
-
-          let message = `cc-sdd Workflow をインストールしました: ${installedCount} ファイル`;
-          if (skippedCount > 0) {
-            message += ` (${skippedCount} ファイルはスキップ)`;
-          }
-          if (claudeMd.action === 'merged') {
-            message += '、CLAUDE.md にセクションを追加';
-          } else if (claudeMd.action === 'created') {
-            message += '、CLAUDE.md を作成';
-          } else if (claudeMd.action === 'skipped') {
-            message += '、CLAUDE.md は既に設定済み';
-          }
-
-          addNotification({
-            type: 'success',
-            message,
-          });
-          console.log('[App] cc-sdd Workflow installed successfully', result.value);
-
-          // Refresh project to update permissions check
-          await selectProject(currentProject);
-        } else {
-          addNotification({
-            type: 'error',
-            message: `cc-sdd Workflow のインストールに失敗: ${result.error.type}`,
-          });
-          console.error('[App] cc-sdd Workflow installation failed', result.error);
-        }
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          message: `cc-sdd Workflow のインストールに失敗しました`,
-        });
-        console.error('[App] cc-sdd Workflow installation error', error);
-      }
-    });
-
     const cleanupCommandsetInstall = window.electronAPI.onMenuInstallCommandset(() => {
       if (!currentProject) {
         addNotification({
@@ -285,17 +208,13 @@ export function App() {
 
     return () => {
       menuListenersSetup.current = false;
-      cleanupForceReinstall();
-      cleanupAddPermissions();
       cleanupOpenProject();
       cleanupCliInstall();
-      cleanupClaudeMdInstall();
       cleanupCommandPrefix();
       cleanupToggleRemoteServer();
-      cleanupCcSddWorkflowInstall();
       cleanupCommandsetInstall();
     };
-  }, [forceReinstallAll, addShellPermissions, selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
+  }, [selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {
@@ -488,21 +407,6 @@ export function App() {
         <CliInstallDialog
           isOpen={isCliInstallDialogOpen}
           onClose={() => setIsCliInstallDialogOpen(false)}
-        />
-
-        <ClaudeMdInstallDialog
-          isOpen={isClaudeMdDialogOpen}
-          claudeMdExists={claudeMdExists}
-          projectPath={currentProject || ''}
-          onClose={() => setIsClaudeMdDialogOpen(false)}
-          onInstall={async (mode: ClaudeMdInstallMode) => {
-            if (!currentProject) return;
-            const result = await window.electronAPI.installClaudeMd(currentProject, mode);
-            if (!result.ok) {
-              throw result.error;
-            }
-            console.log(`[App] CLAUDE.md installed with mode: ${mode}`);
-          }}
         />
 
         <RemoteAccessDialog

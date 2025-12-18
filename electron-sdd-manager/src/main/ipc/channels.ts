@@ -74,9 +74,7 @@ export const IPC_CHANNELS = {
   INSTALL_CLAUDE_MD: 'ipc:install-claude-md',
 
   // Menu Events
-  MENU_FORCE_REINSTALL: 'menu:force-reinstall',
   MENU_OPEN_PROJECT: 'menu:open-project',
-  MENU_INSTALL_CLAUDE_MD: 'menu:install-claude-md',
 
   // Phase Sync
   SYNC_SPEC_PHASE: 'ipc:sync-spec-phase',
@@ -84,9 +82,6 @@ export const IPC_CHANNELS = {
   // Permissions
   ADD_SHELL_PERMISSIONS: 'ipc:add-shell-permissions',
   CHECK_REQUIRED_PERMISSIONS: 'ipc:check-required-permissions',
-
-  // Menu Events - Add Shell Permissions
-  MENU_ADD_SHELL_PERMISSIONS: 'menu:add-shell-permissions',
 
   // CLI Install
   INSTALL_CLI_COMMAND: 'ipc:install-cli-command',
@@ -128,9 +123,6 @@ export const IPC_CHANNELS = {
   // cc-sdd Workflow Install (cc-sdd-command-installer feature)
   CHECK_CC_SDD_WORKFLOW_STATUS: 'ipc:check-cc-sdd-workflow-status',
   INSTALL_CC_SDD_WORKFLOW: 'ipc:install-cc-sdd-workflow',
-
-  // Menu Events - cc-sdd Workflow
-  MENU_INSTALL_CC_SDD_WORKFLOW: 'menu:install-cc-sdd-workflow',
 
   // Menu Events - Unified Commandset Install (Requirement 10)
   MENU_INSTALL_COMMANDSET: 'menu:install-commandset',

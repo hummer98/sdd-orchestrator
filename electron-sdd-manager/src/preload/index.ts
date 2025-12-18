@@ -251,32 +251,6 @@ const electronAPI = {
   installClaudeMd: (projectPath: string, mode: ClaudeMdInstallMode): Promise<Result<ClaudeMdInstallResult, InstallError>> =>
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLAUDE_MD, projectPath, mode),
 
-  // Menu Events
-  onMenuForceReinstall: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_FORCE_REINSTALL, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_FORCE_REINSTALL, handler);
-    };
-  },
-
-  // Menu Events - Install CLAUDE.md
-  onMenuInstallClaudeMd: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_CLAUDE_MD, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CLAUDE_MD, handler);
-    };
-  },
-
   // Phase Sync - Auto-fix spec.json phase based on task completion
   syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase),
@@ -292,19 +266,6 @@ const electronAPI = {
   // Permissions - Check required permissions
   checkRequiredPermissions: (projectPath: string): Promise<FileCheckResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_REQUIRED_PERMISSIONS, projectPath),
-
-  // Menu Events - Add Shell Permissions
-  onMenuAddShellPermissions: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_ADD_SHELL_PERMISSIONS, handler);
-    };
-  },
 
   // Menu Events - Open Project (from Recent Projects menu)
   onMenuOpenProject: (callback: (projectPath: string) => void): (() => void) => {
@@ -454,21 +415,6 @@ const electronAPI = {
    */
   installCcSddWorkflow: (projectPath: string): Promise<CcSddResult<CcSddWorkflowInstallResult, CcSddInstallError>> =>
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW, projectPath),
-
-  /**
-   * Menu event - Install cc-sdd Workflow
-   */
-  onMenuInstallCcSddWorkflow: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_CC_SDD_WORKFLOW, handler);
-    };
-  },
 
   /**
    * Menu event - Install Commandset (Unified Installer)

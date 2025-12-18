@@ -276,3 +276,114 @@
 - 7.1と7.2: 7.2は7.1のRollbackManagerクラスを拡張
 - 10.1, 10.2, 10.3: UIコンポーネントの段階的実装（10.1→10.2→10.3の順序）
 - 11.1: 10.3完了後（UIとIPCの統合）
+
+---
+
+## Phase 2: 移行促進（Migration Promotion）
+
+Phase 1（共存期間）完了後、既存のインストーラーUIを統合インストーラーに移行し、ツールメニューを整理する。
+
+### 前提条件
+- Phase 1の全タスクが完了していること
+- 統合インストーラーが正常に動作することが確認されていること
+
+### Task Breakdown
+
+- [x] 15. ツールメニューの統合と整理
+- [x] 15.1 既存インストール系メニュー項目を削除
+  - 「spec-managerコマンドを再インストール...」メニュー項目を削除
+  - 「CLAUDE.mdをインストール...」メニュー項目を削除
+  - 「シェルコマンドの実行許可を追加...」メニュー項目を削除
+  - 「cc-sdd Workflowをインストール...」メニュー項目を削除
+  - menu.tsから該当するメニュー定義を削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: menu.ts (4メニュー項目削除)_
+
+- [ ] 15.2 統合インストーラーダイアログの機能拡張
+  - プロファイル選択に加えて、個別コマンドセット選択モードを追加
+  - 「CLAUDE.mdのみ更新」オプションを追加
+  - 「パーミッションのみ追加」オプションを追加
+  - 既存メニューの機能を統合インストーラーUIでカバー
+  - _Requirements: 10.2, 10.3_
+  - _Note: 将来対応 - 現在はプロファイル選択のみで基本機能は動作_
+
+- [x] 15.3 関連するIPCチャネルを非推奨化
+  - ~~MENU_FORCE_REINSTALLチャネルに非推奨警告ログを追加~~
+  - ~~MENU_INSTALL_CLAUDE_MDチャネルに非推奨警告ログを追加~~
+  - ~~MENU_ADD_SHELL_PERMISSIONSチャネルに非推奨警告ログを追加~~
+  - ~~MENU_INSTALL_CC_SDD_WORKFLOWチャネルに非推奨警告ログを追加~~
+  - ~~channels.tsに@deprecatedコメントを追加~~
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Note: 非推奨化をスキップして直接削除（18.2で実施）_
+
+- [x] 16. レンダラー側のクリーンアップ
+- [x] 16.1 App.tsxから非推奨イベントハンドラーを削除
+  - forceReinstallAll関連のイベントハンドラーを削除
+  - cleanupClaudeMdInstall関連のイベントハンドラーを削除
+  - cleanupAddPermissions関連のイベントハンドラーを削除
+  - cleanupCcSddWorkflowInstall関連のイベントハンドラーを削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: App.tsx (4イベントハンドラー削除)_
+
+- [x] 16.2 未使用のダイアログコンポーネントを削除
+  - ClaudeMdInstallDialogコンポーネントの使用を削除
+  - 関連するstate変数（isClaudeMdDialogOpen, claudeMdExists）を削除
+  - ClaudeMdInstallModeのimportを削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: App.tsx_
+
+- [x] 17. Preload APIのクリーンアップ
+- [x] 17.1 preload/index.tsから非推奨APIを削除
+  - onMenuForceReinstall関連のIPC登録を削除
+  - onMenuInstallClaudeMd関連のIPC登録を削除
+  - onMenuAddShellPermissions関連のIPC登録を削除
+  - onMenuInstallCcSddWorkflow関連のIPC登録を削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: preload/index.ts (4 API削除)_
+
+- [x] 17.2 electron.d.tsの型定義を更新
+  - 削除したAPIの型定義を削除
+  - ElectronAPI interfaceから該当メソッドを削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: electron.d.ts (4メソッド削除)_
+
+- [x] 18. IPCハンドラーのクリーンアップ
+- [x] 18.1 handlers.tsから非推奨ハンドラーを削除
+  - _Note: メニューイベントはメインプロセス→レンダラーの一方向通信のため、handlers.tsにハンドラーは存在しない_
+  - _Requirements: Design Migration Strategy Phase 2_
+
+- [x] 18.2 channels.tsから非推奨チャネル定義を削除
+  - MENU_FORCE_REINSTALLチャネルを削除
+  - MENU_INSTALL_CLAUDE_MDチャネルを削除
+  - MENU_ADD_SHELL_PERMISSIONSチャネルを削除
+  - MENU_INSTALL_CC_SDD_WORKFLOWチャネルを削除
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Implemented: channels.ts (4チャネル削除)_
+
+- [x] 19. テストの更新
+- [x] 19.1 menu.test.tsの更新
+  - _Note: 削除したメニュー項目のテストは元々存在しなかったため、変更不要_
+  - menu.test.ts: 17 tests passed
+  - _Requirements: Design Migration Strategy Phase 2_
+
+- [ ] 19.2 E2Eテストの更新
+  - 削除したメニュー操作のE2Eテストを削除
+  - 統合インストーラーのE2Eテストで既存機能をカバー
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Note: 将来対応_
+
+- [ ] 20. ドキュメントの更新
+- [ ] 20.1 CLAUDE.mdのDevelopment Commandsセクションを更新
+  - 削除したメニュー項目の説明を削除
+  - 統合インストーラーの使用方法を詳細化
+  - マイグレーションノートを追加（旧メニューからの移行方法）
+  - _Requirements: Design Migration Strategy Phase 2_
+  - _Note: 将来対応_
+
+### Phase 2 完了条件
+
+- [x] 既存のインストール系メニュー項目が全て削除されていること
+- [ ] 統合インストーラーで既存メニューの全機能がカバーされていること（15.2: 将来対応）
+- [x] 非推奨IPCチャネルが全て削除されていること
+- [x] menu.test.tsがパスすること（他の既存テスト失敗は本変更とは無関係）
+- [ ] ドキュメントが更新されていること（20.1: 将来対応）

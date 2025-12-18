@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
   START_AGENT: 'ipc:start-agent',
   STOP_AGENT: 'ipc:stop-agent',
   RESUME_AGENT: 'ipc:resume-agent',
+  DELETE_AGENT: 'ipc:delete-agent',
   GET_AGENTS: 'ipc:get-agents',
   GET_ALL_AGENTS: 'ipc:get-all-agents',
   SEND_AGENT_INPUT: 'ipc:send-agent-input',

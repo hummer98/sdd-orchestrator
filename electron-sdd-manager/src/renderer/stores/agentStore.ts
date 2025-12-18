@@ -49,7 +49,7 @@ interface AgentActions {
   ) => Promise<string | null>;
   stopAgent: (agentId: string) => Promise<void>;
   resumeAgent: (agentId: string, prompt?: string) => Promise<void>;
-  removeAgent: (agentId: string) => void;
+  removeAgent: (agentId: string) => Promise<void>;
   sendInput: (agentId: string, input: string) => Promise<void>;
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
 
@@ -255,10 +255,34 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
   },
 
-  removeAgent: (agentId: string) => {
-    set((state) => {
-      const newAgents = new Map(state.agents);
-      const newLogs = new Map(state.logs);
+  removeAgent: async (agentId: string) => {
+    // Find the specId for this agent
+    const state = get();
+    let targetSpecId: string | null = null;
+    for (const [specId, agentList] of state.agents) {
+      const found = agentList.find((a) => a.agentId === agentId);
+      if (found) {
+        targetSpecId = specId;
+        break;
+      }
+    }
+
+    // Delete from file system first (if we found the agent)
+    if (targetSpecId !== null) {
+      try {
+        await window.electronAPI.deleteAgent(targetSpecId, agentId);
+        console.log('[agentStore] Agent record deleted from file system', { specId: targetSpecId, agentId });
+      } catch (error) {
+        console.error('[agentStore] Failed to delete agent record', { agentId, error });
+        // Continue with UI deletion even if file deletion fails
+        // The file watcher will handle cleanup if needed
+      }
+    }
+
+    // Remove from UI state
+    set((currentState) => {
+      const newAgents = new Map(currentState.agents);
+      const newLogs = new Map(currentState.logs);
 
       // 全てのspecから該当するagentを削除
       for (const [specId, agentList] of newAgents) {
@@ -272,7 +296,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       newLogs.delete(agentId);
 
       // 選択中のAgentが削除された場合はnullに
-      const newSelectedAgentId = state.selectedAgentId === agentId ? null : state.selectedAgentId;
+      const newSelectedAgentId = currentState.selectedAgentId === agentId ? null : currentState.selectedAgentId;
 
       return { agents: newAgents, logs: newLogs, selectedAgentId: newSelectedAgentId };
     });

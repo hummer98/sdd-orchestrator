@@ -88,6 +88,9 @@ const electronAPI = {
   resumeAgent: (agentId: string, prompt?: string): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.RESUME_AGENT, agentId, prompt),
 
+  deleteAgent: (specId: string, agentId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DELETE_AGENT, specId, agentId),
+
   getAgents: (specId: string): Promise<AgentInfo[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_AGENTS, specId),
 

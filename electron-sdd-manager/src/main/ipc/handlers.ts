@@ -490,6 +490,19 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.DELETE_AGENT,
+    async (_event, specId: string, agentId: string) => {
+      logger.info('[handlers] DELETE_AGENT called', { specId, agentId });
+      const service = getSpecManagerService();
+      const result = await service.deleteAgent(specId, agentId);
+
+      if (!result.ok) {
+        throw new Error(`Failed to delete agent: ${result.error.type}`);
+      }
+    }
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.GET_AGENTS,
     async (_event, specId: string) => {
       const service = getSpecManagerService();

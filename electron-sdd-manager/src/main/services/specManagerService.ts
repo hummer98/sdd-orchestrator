@@ -667,6 +667,45 @@ export class SpecManagerService {
   }
 
   /**
+   * Delete an agent record and remove from registry
+   * Bug fix: global-agent-display-issues
+   * @param specId - The spec ID (empty string for global agents)
+   * @param agentId - The ID of the agent to delete
+   */
+  async deleteAgent(specId: string, agentId: string): Promise<Result<void, AgentError>> {
+    const agent = this.registry.get(agentId);
+    if (!agent) {
+      return {
+        ok: false,
+        error: { type: 'NOT_FOUND', agentId },
+      };
+    }
+
+    // Don't allow deleting running or hang agents
+    if (agent.status === 'running' || agent.status === 'hang') {
+      return {
+        ok: false,
+        error: { type: 'SPAWN_ERROR', message: 'Cannot delete running or hang agents' },
+      };
+    }
+
+    // Delete the agent record file
+    try {
+      await this.recordService.deleteRecord(specId, agentId);
+      logger.info('[SpecManagerService] Agent record deleted', { specId, agentId });
+    } catch (error) {
+      logger.error('[SpecManagerService] Failed to delete agent record', { specId, agentId, error });
+      // Continue even if file deletion fails (file might not exist)
+    }
+
+    // Remove from registry
+    this.registry.unregister(agentId);
+    logger.info('[SpecManagerService] Agent unregistered', { specId, agentId });
+
+    return { ok: true, value: undefined };
+  }
+
+  /**
    * Restore agents from agent records after restart
    * Requirements: 5.6, 5.7
    * Now also restores completed/failed agents as history

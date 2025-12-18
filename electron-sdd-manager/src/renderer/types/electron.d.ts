@@ -267,6 +267,7 @@ export interface ElectronAPI {
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
   resumeAgent(agentId: string, prompt?: string): Promise<AgentInfo>;
+  deleteAgent(specId: string, agentId: string): Promise<void>;
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;
   sendAgentInput(agentId: string, input: string): Promise<void>;

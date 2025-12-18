@@ -8,7 +8,20 @@
 import { Bot, ChevronDown, ChevronRight, StopCircle, PlayCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { clsx } from 'clsx';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+/**
+ * Format duration in milliseconds to "Xm Ys" or "Xs"
+ */
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${minutes}分${seconds}秒`;
+  }
+  return `${seconds}秒`;
+}
 
 type AgentStatus = AgentInfo['status'];
 
@@ -194,6 +207,27 @@ function GlobalAgentListItem({ agent, isSelected, onSelect, onStop, onResume, on
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
   const showResumeButton = agent.status === 'interrupted';
   const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
+  const isRunning = agent.status === 'running';
+
+  // Dynamic elapsed time for running agents
+  const [elapsed, setElapsed] = useState(() => {
+    return Date.now() - new Date(agent.startedAt).getTime();
+  });
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const interval = setInterval(() => {
+      setElapsed(Date.now() - new Date(agent.startedAt).getTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning, agent.startedAt]);
+
+  // Calculate duration
+  const duration = isRunning
+    ? elapsed
+    : new Date(agent.lastActivityAt).getTime() - new Date(agent.startedAt).getTime();
 
   return (
     <li
@@ -221,6 +255,9 @@ function GlobalAgentListItem({ agent, isSelected, onSelect, onStop, onResume, on
           >
             {statusConfig.icon}
             {statusConfig.label}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            ({formatDuration(duration)}{isRunning && '...'})
           </span>
         </div>
 

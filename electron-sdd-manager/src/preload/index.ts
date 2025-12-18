@@ -117,11 +117,12 @@ const electronAPI = {
   executeTaskImpl: (specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId, commandPrefix),
 
-  // Task 5.2.2 (sidebar-refactor): spec-manager:init連携
-  // Launch spec-manager:init agent with description only (specId='')
+  // Task 5.2.2 (sidebar-refactor): spec-init連携
+  // Launch spec-init agent with description only (specId='')
   // Returns the agentId immediately without waiting for completion
-  executeSpecInit: (projectPath: string, description: string): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_INIT, projectPath, description),
+  // commandPrefix determines the slash command: /kiro:spec-init or /spec-manager:init
+  executeSpecInit: (projectPath: string, description: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_INIT, projectPath, description, commandPrefix),
 
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10

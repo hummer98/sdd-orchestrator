@@ -11,6 +11,7 @@ import { CreateSpecDialog } from './CreateSpecDialog';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
+import { useWorkflowStore } from '../stores/workflowStore';
 
 describe('CreateSpecDialog', () => {
   const mockOnClose = vi.fn();
@@ -32,6 +33,11 @@ describe('CreateSpecDialog', () => {
     useAgentStore.setState({
       selectedAgent: null,
       selectedSpecForAgents: null,
+    });
+
+    // Reset workflow store with default command prefix
+    useWorkflowStore.setState({
+      commandPrefix: 'kiro',
     });
 
     // Mock electronAPI
@@ -76,7 +82,7 @@ describe('CreateSpecDialog', () => {
   // Requirements: 5.3
   // ============================================================
   describe('Task 5.2: spec-manager:init integration', () => {
-    it('should call executeSpecInit when create button is clicked', async () => {
+    it('should call executeSpecInit with commandPrefix when create button is clicked', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
@@ -88,7 +94,31 @@ describe('CreateSpecDialog', () => {
       await waitFor(() => {
         expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
           '/test/project',
-          'これは新しい機能の説明です'
+          'これは新しい機能の説明です',
+          'kiro' // default commandPrefix
+        );
+      });
+    });
+
+    it('should use spec-manager prefix when commandPrefix is spec-manager', async () => {
+      // Set workflow store to use spec-manager prefix
+      useWorkflowStore.setState({
+        commandPrefix: 'spec-manager',
+      });
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
+          '/test/project',
+          'これは新しい機能の説明です',
+          'spec-manager'
         );
       });
     });

@@ -282,9 +282,10 @@ export interface ElectronAPI {
   executeTaskImpl(specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
 
   // Spec Init (Task 5.2 sidebar-refactor)
-  // Launch spec-manager:init agent with description only
+  // Launch spec-init agent with description only
   // Returns AgentInfo immediately without waiting for completion
-  executeSpecInit(projectPath: string, description: string): Promise<AgentInfo>;
+  // commandPrefix determines the slash command: /kiro:spec-init or /spec-manager:init
+  executeSpecInit(projectPath: string, description: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
 
   // Agent Events (Task 27.2)
   // Requirements: 9.1-9.10

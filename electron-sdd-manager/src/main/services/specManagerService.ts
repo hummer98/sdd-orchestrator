@@ -138,6 +138,12 @@ const SPEC_STATUS_COMMANDS: Record<CommandPrefix, string> = {
   'spec-manager': '/spec-manager:status',
 };
 
+/** spec-init コマンドマッピング */
+export const SPEC_INIT_COMMANDS: Record<CommandPrefix, string> = {
+  kiro: '/kiro:spec-init',
+  'spec-manager': '/spec-manager:init',
+};
+
 /**
  * フェーズ別allowed-toolsマッピング
  * スラッシュコマンドのフロントマターで定義されているallowed-toolsと一致させる

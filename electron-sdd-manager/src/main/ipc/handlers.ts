@@ -10,7 +10,7 @@ import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase } from '../../renderer/types';
-import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError } from '../services/specManagerService';
+import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError, SPEC_INIT_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
@@ -655,14 +655,14 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  // Task 5.2.3 (sidebar-refactor): spec-manager:init連携
-  // Launch spec-manager:init agent with description only
-  // specId='' for global agent, command: claude -p /spec-manager:init "{description}"
+  // Task 5.2.3 (sidebar-refactor): spec-init連携
+  // Launch spec-init agent with description only
+  // specId='' for global agent, command: claude -p /kiro:spec-init "{description}" or /spec-manager:init "{description}"
   // Returns agentId immediately without waiting for completion
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_SPEC_INIT,
-    async (event, projectPath: string, description: string) => {
-      logger.info('[handlers] EXECUTE_SPEC_INIT called', { projectPath, description });
+    async (event, projectPath: string, description: string, commandPrefix: CommandPrefix = 'kiro') => {
+      logger.info('[handlers] EXECUTE_SPEC_INIT called', { projectPath, description, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -671,13 +671,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
+      // Get the appropriate slash command based on commandPrefix
+      const slashCommand = SPEC_INIT_COMMANDS[commandPrefix];
+
       // Start agent with specId='' (global agent)
-      // Command: claude -p /spec-manager:init "{description}"
       const result = await service.startAgent({
         specId: '', // Empty specId for global agent
         phase: 'spec-init',
         command: 'claude',
-        args: ['-p', '--verbose', '--output-format', 'stream-json', `/spec-manager:init "${description}"`],
+        args: ['-p', '--verbose', '--output-format', 'stream-json', `${slashCommand} "${description}"`],
         group: 'doc',
       });
 

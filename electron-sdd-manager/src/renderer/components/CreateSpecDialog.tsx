@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { X, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { useProjectStore, useAgentStore, notify } from '../stores';
+import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../stores';
 import { clsx } from 'clsx';
 
 interface CreateSpecDialogProps {
@@ -18,6 +18,7 @@ interface CreateSpecDialogProps {
 export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const { currentProject } = useProjectStore();
   const { selectForGlobalAgents, selectAgent, addAgent } = useAgentStore();
+  const { commandPrefix } = useWorkflowStore();
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +43,9 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
     setError(null);
 
     try {
-      // Call spec-manager:init via IPC
+      // Call spec-init via IPC (uses /kiro:spec-init or /spec-manager:init based on commandPrefix)
       // Don't wait for completion - just start the agent and close dialog
-      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed);
+      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed, commandPrefix);
 
       // Task 5.2.4: エージェントをストアに追加し、グローバルエージェントパネルに遷移
       addAgent('', agentInfo);

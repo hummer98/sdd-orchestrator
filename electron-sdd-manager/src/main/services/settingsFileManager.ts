@@ -8,8 +8,6 @@ import { access } from 'fs/promises';
 import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
-import { CC_SDD_SETTINGS } from './ccSddWorkflowInstaller';
-import { BUG_TEMPLATES } from './bugWorkflowInstaller';
 
 /**
  * Merge strategy types

@@ -1,5 +1,7 @@
 # SDD Orchestrator
 
+[日本語](README-jp.md) | English
+
 A desktop application for managing and executing Spec-Driven Development (SDD) workflows.
 
 Automates and visualizes the software development lifecycle by coordinating with AI agents such as Claude Code.
@@ -43,12 +45,96 @@ SDD Orchestrator is a tool for managing the lifecycle of software specifications
 - **State Management**: Zustand
 - **Testing**: Vitest + WebdriverIO
 
-## Setup
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 20+
-- npm or pnpm
+- macOS (Apple Silicon)
+- Claude Code (AI agent)
+
+### 1. Install SDD Orchestrator
+
+Download the latest `.zip` or `.dmg` from [Releases](https://github.com/hummer98/sdd-orchestrator/releases) and launch the application.
+
+### 2. Open Your Project
+
+Launch SDD Orchestrator and select your project directory.
+
+### 3. Install Command Set
+
+Click the "Install Commands" button in the GUI to install `/kiro:*` slash commands in your project.
+
+What gets installed:
+- **Slash commands**: placed in `.claude/commands/kiro/`
+- **Agents**: placed in `.claude/agents/`
+- **Settings**: merged into `.claude/settings.json`
+
+### 4. Create Your First Spec
+
+Run the following in Claude Code:
+
+```
+/kiro:spec-init "feature description"
+```
+
+## Workflow
+
+### Setting Up a New Project
+
+1. **Launch SDD Orchestrator** and select your project directory
+2. **Install Commands**: Click "Install Commands" button in the GUI
+3. **Create Your First Spec**: Run `/kiro:spec-init "feature description"` in Claude Code
+4. **Start Development**: Follow the SDD Phases below
+
+### SDD Phases
+
+1. **spec-init**: Initialize new specification
+2. **spec-requirements**: Generate requirements definition
+3. **spec-design**: Create technical design
+4. **spec-tasks**: Generate implementation tasks
+5. **spec-impl**: Implement using TDD
+
+### Validation
+
+- **validate-gap**: Gap analysis against existing codebase
+- **validate-design**: Design review
+- **validate-impl**: Implementation verification
+
+### Document Review
+
+- **document-review**: Review spec documents for consistency and completeness
+- **document-review-reply**: Generate responses to review issues
+- Issue tracking and resolution workflow integrated into GUI
+
+### Bug Fix (Lightweight Workflow)
+
+For small-scale bug fixes without requiring full SDD process:
+
+1. **bug-create**: Create bug report
+2. **bug-analyze**: Investigate root cause
+3. **bug-fix**: Implement fix
+4. **bug-verify**: Verify resolution
+5. **bug-status**: Check progress
+
+**When to use:**
+- **Small bugs**: Bug Fix workflow (lightweight & fast)
+- **Complex bugs requiring design changes**: Full SDD workflow
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         SDD Orchestrator GUI            │
+├─────────────────────────────────────────┤
+│  Spec List │ Editor │ Workflow Status   │
+├─────────────────────────────────────────┤
+│         Agent Orchestration             │
+├─────────────────────────────────────────┤
+│  Claude Code / AI Agent Integration     │
+└─────────────────────────────────────────┘
+```
+
+## For Developers
 
 ### Installation
 
@@ -88,7 +174,7 @@ npm run test:e2e
 npm run build:electron
 ```
 
-## Project Structure
+### Project Structure
 
 ```
 sdd-orchestrator/
@@ -103,62 +189,6 @@ sdd-orchestrator/
 ├── docs/             # Documentation
 └── scripts/          # Utility scripts
 ```
-
-## Workflow
-
-### Setting Up a New Project
-
-To start using SDD Orchestrator with your project:
-
-1. **Install SDD CLI** (recommended):
-   ```bash
-   npm install -g @hummer98/sdd-cli
-   ```
-2. **Launch SDD Orchestrator** and select your project directory
-3. **Install Commands**:
-   - Click "Install Commands" button in the GUI to set up `/kiro:*` slash commands in your project
-4. **Create Your First Spec**:
-   - Run `/kiro:spec-init "feature description"` in Claude Code
-   - This initializes `.kiro/specs/` directory structure
-5. **Start Development**: Follow the SDD Phases below
-
-### SDD Phases
-
-1. **spec-init**: Initialize new specification
-2. **spec-requirements**: Generate requirements definition
-3. **spec-design**: Create technical design
-4. **spec-tasks**: Generate implementation tasks
-5. **spec-impl**: Implement using TDD
-
-### Validation
-
-- **validate-gap**: Gap analysis against existing codebase
-- **validate-design**: Design review
-- **validate-impl**: Implementation verification
-
-### Document Review
-
-- **document-review**: Review spec documents for consistency and completeness
-- **document-review-reply**: Generate responses to review issues
-- Issue tracking and resolution workflow integrated into GUI
-
-### Bug Fix (Lightweight Workflow)
-
-For small-scale bug fixes without requiring full SDD process:
-
-1. **bug-create**: Create bug report
-2. **bug-analyze**: Investigate root cause
-3. **bug-fix**: Implement fix
-4. **bug-verify**: Verify resolution
-5. **bug-status**: Check progress
-
-**When to use:**
-- **Small bugs**: Bug Fix workflow (lightweight & fast)
-- **Complex bugs requiring design changes**: Full SDD workflow
-
-## Documentation
-
-- [Japanese README](README-jp.md)
 
 ## ToDo
 

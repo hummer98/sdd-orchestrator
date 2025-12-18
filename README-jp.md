@@ -1,25 +1,120 @@
 # SDD Orchestrator
 
+日本語 | [English](README.md)
+
 Spec-Driven Development (SDD) ワークフローを管理・実行するためのデスクトップアプリケーション。
 
 AIエージェント（Claude Code等）と協調して、仕様駆動開発のライフサイクルを自動化・可視化します。
 
 ## 概要
 
-SDD Orchestratorは、ソフトウェア開発における仕様（Spec）のライフサイクルを管理するツールです。
+SDD Orchestratorは、**Claude Code**と連携してSpec-Driven Development（SDD）を実践するためのデスクトップアプリケーションです。
 
-- **Requirements（要件定義）**: 機能要件をEARS形式で定義
-- **Design（設計）**: 技術設計ドキュメントの作成
-- **Tasks（タスク）**: 実装タスクの生成と管理
-- **Implementation（実装）**: TDD手法による実装実行
+### Spec-Driven Development（SDD）とは
+
+SDDは、AIエージェントと人間が協調してソフトウェアを開発する手法です。実装前に仕様（Spec）を明確に定義し、段階的にレビューを行うことで、AI生成コードの品質と一貫性を確保します。
+
+```
+要件定義 → 設計 → タスク分解 → 実装（TDD）
+    ↑         ↑        ↑          ↑
+  人間レビュー（各フェーズで承認）
+```
+
+### SDDの4つのフェーズ
+
+| フェーズ | 内容 | 成果物 |
+|---------|------|--------|
+| **Requirements** | 機能要件をEARS形式で定義 | `requirements.md` |
+| **Design** | 技術設計・アーキテクチャ決定 | `design.md` |
+| **Tasks** | 実装タスクへの分解 | `tasks.md` |
+| **Implementation** | TDD手法による実装 | ソースコード |
+
+### ドキュメントレビュー
+
+各フェーズの成果物は、AIによる自動レビュー（`document-review`）と人間によるレビューを経て承認されます。課題が発見された場合は、`document-review-reply`で対応を生成し、課題解決までのワークフローをGUIで管理できます。
 
 ## 主な機能
 
-- Specライフサイクルの可視化と管理
-- AIエージェントによる自動実行
-- 複数Spec間の依存関係管理
-- 人間-AI協調ワークフロー
-- Kiro形式（`.kiro/specs/`）準拠
+- **Claude Code連携**: スラッシュコマンドでSDDワークフローを実行
+- **Specライフサイクル管理**: 各フェーズの進捗を可視化
+- **ドキュメントレビュー**: 整合性・完全性の自動チェックと課題追跡
+- **人間-AI協調ワークフロー**: 各フェーズで人間の承認を挟む品質管理
+- **Kiro形式（`.kiro/specs/`）準拠**
+
+## クイックスタート
+
+### 必要環境
+
+- macOS（Apple Silicon）
+- Claude Code（AIエージェント）
+
+### 1. SDD Orchestratorのインストール
+
+[Releases](https://github.com/hummer98/sdd-orchestrator/releases)から最新版の `.zip` または `.dmg` をダウンロードし、アプリケーションを起動します。
+
+### 2. プロジェクトを開く
+
+SDD Orchestratorを起動し、開発対象のプロジェクトディレクトリを選択します。
+
+### 3. コマンドセットのインストール
+
+GUIの「Install Commands」ボタンをクリックして、プロジェクトに `/kiro:*` スラッシュコマンドをインストールします。
+
+インストールされるもの：
+- **スラッシュコマンド**: `.claude/commands/kiro/` 配下に配置
+- **エージェント**: `.claude/agents/` 配下に配置
+- **設定ファイル**: `.claude/settings.json` にマージ
+
+### 4. 最初のSpecを作成
+
+Claude Codeで以下を実行：
+
+```
+/kiro:spec-init "機能の説明"
+```
+
+## ワークフロー
+
+### 新規プロジェクトのセットアップ
+
+1. **SDD Orchestratorを起動**してプロジェクトディレクトリを選択
+2. **コマンドをインストール**: GUIの「Install Commands」ボタンをクリック
+3. **最初のSpecを作成**: Claude Codeで `/kiro:spec-init "機能の説明"` を実行
+4. **開発開始**: 以下のSDDフェーズに従って進める
+
+### SDDフェーズ
+
+1. **spec-init**: 新規仕様の初期化
+2. **spec-requirements**: 要件定義の生成
+3. **spec-design**: 技術設計の作成
+4. **spec-tasks**: 実装タスクの生成
+5. **spec-impl**: TDDによる実装
+
+### バリデーション
+
+- **validate-gap**: 既存コードベースとのギャップ分析
+- **validate-design**: 設計レビュー
+- **validate-impl**: 実装検証
+
+### ドキュメントレビュー
+
+- **document-review**: Specドキュメントの整合性・完全性をレビュー
+- **document-review-reply**: レビュー課題への対応を生成
+- GUIに統合された課題追跡・解決ワークフロー
+
+### バグ修正（軽量ワークフロー）
+
+フルSDDプロセスを必要としない小規模なバグ修正向け：
+
+1. **bug-create**: バグレポート作成
+2. **bug-analyze**: 根本原因の調査
+3. **bug-fix**: 修正の実装
+4. **bug-verify**: 修正の検証
+5. **bug-status**: 進捗確認
+
+**使い分け：**
+- **小規模バグ**: Bug Fixワークフロー（軽量・高速）
+- **設計変更を伴う複雑なバグ**: フルSDDワークフロー
 
 ## アーキテクチャ
 
@@ -42,12 +137,7 @@ SDD Orchestratorは、ソフトウェア開発における仕様（Spec）のラ
 - **状態管理**: Zustand
 - **テスト**: Vitest + WebdriverIO
 
-## セットアップ
-
-### 必要環境
-
-- Node.js 20+
-- npm または pnpm
+## 開発者向け
 
 ### インストール
 
@@ -87,7 +177,7 @@ npm run test:e2e
 npm run build:electron
 ```
 
-## プロジェクト構造
+### プロジェクト構造
 
 ```
 sdd-orchestrator/
@@ -103,25 +193,9 @@ sdd-orchestrator/
 └── scripts/          # ユーティリティスクリプト
 ```
 
-## ワークフロー
+## ToDo
 
-### SDDフェーズ
-
-1. **spec-init**: 新規仕様の初期化
-2. **spec-requirements**: 要件定義の生成
-3. **spec-design**: 技術設計の作成
-4. **spec-tasks**: 実装タスクの生成
-5. **spec-impl**: TDDによる実装
-
-### バリデーション
-
-- **validate-gap**: 既存コードベースとのギャップ分析
-- **validate-design**: 設計レビュー
-- **validate-impl**: 実装検証
-
-## ドキュメント
-
-- [English README](README.md)
+- **エスカレーション機能**: エージェントが処理できない問題を人間にエスカレーションする仕組みの実装
 
 ## ライセンス
 

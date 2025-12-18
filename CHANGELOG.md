@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-12-18
+
+### Added
+- **Commandset Unified Installer**: New unified installer architecture for managing command sets
+  - `UnifiedCommandsetInstaller`: Core installer with dependency resolution
+  - `CommandsetDefinitionManager`: Command set definition management
+  - `DependencyResolver`: Dependency resolution between command sets
+  - `SettingsFileManager`: settings.json read/write operations
+  - `ProfileManager`: Installation profile management
+  - `RollbackManager`: Rollback on installation failure
+  - `UpdateManager`: Command set update detection
+  - `ValidationService`: Pre/post installation validation
+  - `LoggingService`: Operation logging
+  - `CommandsetInstallDialog`: New installation UI component
+- **Command template reorganization**: Restructured command templates into new directory structure
+  - `kiro/` → `bug/`, `cc-sdd-agent/`, `cc-sdd/`, `document-review/`
+  - Added new `cc-sdd/` command set for simplified SDD workflow
+- **Technical documentation**: Added technical note on Claude Code subagent permission inheritance issue
+
+### Changed
+- Updated README with project setup instructions, document review, and bug fix workflow documentation
+- Updated existing installers to use new template paths
+
 ## [0.6.2] - 2025-12-17
 
 ### Added

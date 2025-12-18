@@ -99,7 +99,6 @@ interface Profile {
 export class UnifiedCommandsetInstaller {
   private ccSddInstaller: CcSddWorkflowInstaller;
   private bugInstaller: BugWorkflowInstaller;
-  private templateDir: string;
 
   /**
    * Predefined profiles
@@ -136,11 +135,10 @@ export class UnifiedCommandsetInstaller {
   constructor(
     ccSddInstaller: CcSddWorkflowInstaller,
     bugInstaller: BugWorkflowInstaller,
-    templateDir: string
+    _templateDir: string
   ) {
     this.ccSddInstaller = ccSddInstaller;
     this.bugInstaller = bugInstaller;
-    this.templateDir = templateDir;
   }
 
   /**

@@ -1037,9 +1037,10 @@ export function registerIpcHandlers(): void {
 
       if (!result.ok) {
         logger.error('[handlers] INSTALL_COMMANDSET_BY_PROFILE failed', { error: result.error });
+        const errorMessage = 'path' in result.error ? result.error.path : ('message' in result.error ? result.error.message : 'Installation failed');
         return {
           ok: false,
-          error: { type: result.error.type, message: result.error.path || 'Installation failed' }
+          error: { type: result.error.type, message: errorMessage }
         };
       }
 

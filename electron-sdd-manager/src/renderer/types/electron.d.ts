@@ -376,6 +376,10 @@ export interface ElectronAPI {
   installCcSddWorkflow(projectPath: string): Promise<Result<CcSddWorkflowInstallResult, InstallError>>;
   onMenuInstallCcSddWorkflow(callback: () => void): () => void;
 
+  // Unified Commandset Install
+  onMenuInstallCommandset(callback: () => void): () => void;
+  installCommandsetByProfile(projectPath: string, profileName: string): Promise<Result<{ summary: { totalInstalled: number; totalSkipped: number; totalFailed: number } }, { type: string; message: string }>>;
+
   // Bug Management
   // Requirements: 3.1, 6.1, 6.3
   readBugs(projectPath: string): Promise<BugMetadata[]>;

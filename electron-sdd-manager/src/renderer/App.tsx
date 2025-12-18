@@ -36,7 +36,7 @@ import {
   ProjectSelector,
 } from './components';
 import type { ClaudeMdInstallMode } from './types/electron';
-import type { ProfileName, InstallResultSummary } from './components/CommandsetInstallDialog';
+import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
 import type { CommandPrefix } from './stores';
 
@@ -515,7 +515,7 @@ export function App() {
           isOpen={isCommandsetInstallDialogOpen}
           projectPath={currentProject || ''}
           onClose={() => setIsCommandsetInstallDialogOpen(false)}
-          onInstall={async (profileName: ProfileName, progressCallback) => {
+          onInstall={async (profileName: ProfileName, _progressCallback) => {
             if (!currentProject) return;
             console.log(`[App] Installing commandset with profile: ${profileName}`);
 

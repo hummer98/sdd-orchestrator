@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, Bug, CheckCircle, XCircle } from 'lucide-react';
+import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, Bug, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**

@@ -5,13 +5,13 @@
  */
 
 import { useState } from 'react';
-import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, Bug, CheckCircle } from 'lucide-react';
+import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
  * Profile name type
  */
-export type ProfileName = 'minimal' | 'standard' | 'full' | 'lightweight-bug-fix-only';
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
 
 /**
  * Install progress callback data
@@ -52,32 +52,25 @@ interface Profile {
  */
 const PROFILES: Profile[] = [
   {
-    name: 'minimal',
-    displayName: 'Minimal',
-    description: 'Basic spec-manager commands for minimal setup',
-    icon: <BoxSelect className="w-5 h-5 text-gray-500" />,
-    commandsets: ['cc-sdd (basic)'],
-  },
-  {
-    name: 'standard',
-    displayName: 'Standard',
-    description: 'cc-sdd full commands and bug workflow (recommended)',
+    name: 'cc-sdd',
+    displayName: 'cc-sdd',
+    description: 'cc-sdd workflow commands with bug and document-review',
     icon: <Package className="w-5 h-5 text-blue-500" />,
-    commandsets: ['cc-sdd', 'bug'],
+    commandsets: ['cc-sdd', 'bug', 'document-review'],
   },
   {
-    name: 'full',
-    displayName: 'Full',
-    description: 'All commandsets, agents, and settings',
+    name: 'cc-sdd-agent',
+    displayName: 'cc-sdd-agent',
+    description: 'cc-sdd-agent commands with agents (recommended)',
     icon: <Layers className="w-5 h-5 text-green-500" />,
-    commandsets: ['cc-sdd', 'bug', 'all settings'],
+    commandsets: ['cc-sdd-agent', 'bug', 'document-review', 'agents'],
   },
   {
-    name: 'lightweight-bug-fix-only',
-    displayName: 'Bug Fix Only',
-    description: 'Lightweight bug workflow only',
-    icon: <Bug className="w-5 h-5 text-orange-500" />,
-    commandsets: ['bug'],
+    name: 'spec-manager',
+    displayName: 'spec-manager',
+    description: 'spec-manager commands with bug and document-review',
+    icon: <BoxSelect className="w-5 h-5 text-gray-500" />,
+    commandsets: ['spec-manager', 'bug', 'document-review'],
   },
 ];
 
@@ -99,7 +92,7 @@ export function CommandsetInstallDialog({
   onClose,
   onInstall,
 }: CommandsetInstallDialogProps) {
-  const [selectedProfile, setSelectedProfile] = useState<ProfileName>('standard');
+  const [selectedProfile, setSelectedProfile] = useState<ProfileName>('cc-sdd-agent');
   const [dialogState, setDialogState] = useState<DialogState>('selection');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<InstallProgress | null>(null);
@@ -202,7 +195,7 @@ export function CommandsetInstallDialog({
                       <span className="font-medium text-gray-800 dark:text-gray-200">
                         {profile.displayName}
                       </span>
-                      {profile.name === 'standard' && (
+                      {profile.name === 'cc-sdd-agent' && (
                         <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">
                           推奨
                         </span>

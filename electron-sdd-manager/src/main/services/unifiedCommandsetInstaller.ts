@@ -10,12 +10,12 @@ import { BugWorkflowInstaller } from './bugWorkflowInstaller';
 /**
  * Commandset names
  */
-export type CommandsetName = 'cc-sdd' | 'bug' | 'spec-manager';
+export type CommandsetName = 'cc-sdd' | 'cc-sdd-agent' | 'bug' | 'document-review' | 'spec-manager';
 
 /**
  * Profile names
  */
-export type ProfileName = 'minimal' | 'standard' | 'full' | 'lightweight-bug-fix-only';
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
 
 /**
  * Progress callback
@@ -104,25 +104,20 @@ export class UnifiedCommandsetInstaller {
    * Predefined profiles
    */
   private static readonly PROFILES: Record<ProfileName, Profile> = {
-    'minimal': {
-      name: 'minimal',
-      description: 'Minimal setup with basic spec-manager commands',
-      commandsets: ['cc-sdd'] // Spec-manager basic commands included in cc-sdd
+    'cc-sdd': {
+      name: 'cc-sdd',
+      description: 'cc-sdd workflow commands with bug and document-review',
+      commandsets: ['cc-sdd', 'bug', 'document-review']
     },
-    'standard': {
-      name: 'standard',
-      description: 'Standard setup with cc-sdd full commands and bug workflow',
-      commandsets: ['cc-sdd', 'bug']
+    'cc-sdd-agent': {
+      name: 'cc-sdd-agent',
+      description: 'cc-sdd-agent commands with bug, document-review, and agents',
+      commandsets: ['cc-sdd-agent', 'bug', 'document-review']
     },
-    'full': {
-      name: 'full',
-      description: 'Full setup with all commandsets, agents, and settings',
-      commandsets: ['cc-sdd', 'bug']
-    },
-    'lightweight-bug-fix-only': {
-      name: 'lightweight-bug-fix-only',
-      description: 'Lightweight setup with bug workflow only',
-      commandsets: ['bug']
+    'spec-manager': {
+      name: 'spec-manager',
+      description: 'spec-manager commands with bug and document-review',
+      commandsets: ['spec-manager', 'bug', 'document-review']
     }
   };
 
@@ -155,27 +150,32 @@ export class UnifiedCommandsetInstaller {
   ): Promise<Result<InstallResult, InstallError>> {
     switch (commandsetName) {
       case 'cc-sdd': {
-        const result = await this.ccSddInstaller.installAll(projectPath, options);
+        // Install cc-sdd commands only (no agents)
+        const result = await this.ccSddInstaller.installCommands(projectPath, 'cc-sdd', options);
         if (!result.ok) return result;
-        // Extract only commands from the full result
         return {
           ok: true,
           value: {
-            installed: [
-              ...result.value.commands.installed,
-              ...result.value.agents.installed,
-              ...result.value.settings.installed
-            ],
-            skipped: [
-              ...result.value.commands.skipped,
-              ...result.value.agents.skipped,
-              ...result.value.settings.skipped
-            ],
-            overwritten: [
-              ...result.value.commands.overwritten,
-              ...result.value.agents.overwritten,
-              ...result.value.settings.overwritten
-            ]
+            installed: result.value.installed,
+            skipped: result.value.skipped,
+            overwritten: result.value.overwritten
+          }
+        };
+      }
+      case 'cc-sdd-agent': {
+        // Install cc-sdd-agent commands and agents
+        const commandResult = await this.ccSddInstaller.installCommands(projectPath, 'cc-sdd-agent', options);
+        if (!commandResult.ok) return commandResult;
+
+        const agentResult = await this.ccSddInstaller.installAgents(projectPath, options);
+        if (!agentResult.ok) return agentResult;
+
+        return {
+          ok: true,
+          value: {
+            installed: [...commandResult.value.installed, ...agentResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...agentResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...agentResult.value.overwritten]
           }
         };
       }
@@ -200,9 +200,32 @@ export class UnifiedCommandsetInstaller {
           }
         };
       }
-      case 'spec-manager':
-        // spec-manager is part of cc-sdd
-        return this.installCommandset(projectPath, 'cc-sdd', options);
+      case 'document-review': {
+        // Install document-review commands
+        const result = await this.ccSddInstaller.installCommands(projectPath, 'document-review', options);
+        if (!result.ok) return result;
+        return {
+          ok: true,
+          value: {
+            installed: result.value.installed,
+            skipped: result.value.skipped,
+            overwritten: result.value.overwritten
+          }
+        };
+      }
+      case 'spec-manager': {
+        // Install spec-manager commands only
+        const result = await this.ccSddInstaller.installCommands(projectPath, 'spec-manager', options);
+        if (!result.ok) return result;
+        return {
+          ok: true,
+          value: {
+            installed: result.value.installed,
+            skipped: result.value.skipped,
+            overwritten: result.value.overwritten
+          }
+        };
+      }
       default:
         return {
           ok: false,
@@ -237,7 +260,7 @@ export class UnifiedCommandsetInstaller {
   }
 
   /**
-   * Install all commandsets
+   * Install all commandsets (equivalent to cc-sdd-agent profile with all commandsets)
    * @param projectPath - Project root path
    * @param options - Install options
    * @param progressCallback - Progress callback
@@ -248,7 +271,8 @@ export class UnifiedCommandsetInstaller {
     options?: InstallOptions,
     progressCallback?: ProgressCallback
   ): Promise<Result<UnifiedInstallResult, InstallError>> {
-    const allCommandsets: CommandsetName[] = ['cc-sdd', 'bug'];
+    // Install all unique commandsets from cc-sdd-agent profile (most comprehensive)
+    const allCommandsets: CommandsetName[] = ['cc-sdd-agent', 'bug', 'document-review'];
     return this.installMultiple(projectPath, allCommandsets, options, progressCallback);
   }
 

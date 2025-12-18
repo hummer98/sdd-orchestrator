@@ -9,10 +9,9 @@ import { CommandsetInstallDialog } from './CommandsetInstallDialog';
 
 // Mock data
 const mockProfileDescriptions = {
-  minimal: 'Minimal setup with basic spec-manager commands',
-  standard: 'Standard setup with cc-sdd full commands and bug workflow',
-  full: 'Full setup with all commandsets, agents, and settings',
-  'lightweight-bug-fix-only': 'Lightweight setup with bug workflow only',
+  'cc-sdd': 'cc-sdd workflow commands with bug and document-review',
+  'cc-sdd-agent': 'cc-sdd-agent commands with agents (recommended)',
+  'spec-manager': 'spec-manager commands with bug and document-review',
 };
 
 // Import InstallProgress and InstallResultSummary types
@@ -62,37 +61,35 @@ describe('CommandsetInstallDialog', () => {
     it('should display all profile options', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      expect(screen.getByText('Minimal')).toBeInTheDocument();
-      expect(screen.getByText('Standard')).toBeInTheDocument();
-      expect(screen.getByText('Full')).toBeInTheDocument();
-      expect(screen.getByText('Bug Fix Only')).toBeInTheDocument();
+      // Check that all three radio buttons exist (one for each profile)
+      const radioButtons = screen.getAllByRole('radio');
+      expect(radioButtons.length).toBe(3);
     });
 
     it('should display profile descriptions', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      expect(screen.getByText(/spec-manager/)).toBeInTheDocument();
-      // Multiple elements contain "bug workflow", so use getAllByText
-      const bugWorkflowElements = screen.getAllByText(/bug workflow/i);
-      expect(bugWorkflowElements.length).toBeGreaterThan(0);
+      expect(screen.getByText(/cc-sdd workflow commands/)).toBeInTheDocument();
+      expect(screen.getByText(/cc-sdd-agent commands with agents/)).toBeInTheDocument();
+      expect(screen.getByText(/spec-manager commands/)).toBeInTheDocument();
     });
   });
 
   describe('Profile Selection', () => {
-    it('should have standard profile selected by default', () => {
+    it('should have cc-sdd-agent profile selected by default', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      const standardOption = screen.getByRole('radio', { name: /Standard/ });
-      expect(standardOption).toBeChecked();
+      const ccSddAgentOption = screen.getByRole('radio', { name: /cc-sdd-agent/ });
+      expect(ccSddAgentOption).toBeChecked();
     });
 
     it('should allow selecting different profiles', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      const minimalOption = screen.getByRole('radio', { name: /Minimal/ });
-      fireEvent.click(minimalOption);
+      const ccSddOption = screen.getByRole('radio', { name: /^cc-sdd$/ });
+      fireEvent.click(ccSddOption);
 
-      expect(minimalOption).toBeChecked();
+      expect(ccSddOption).toBeChecked();
     });
   });
 
@@ -106,22 +103,22 @@ describe('CommandsetInstallDialog', () => {
 
       await waitFor(() => {
         // onInstall is called with profile and progressCallback
-        expect(onInstall).toHaveBeenCalledWith('standard', expect.any(Function));
+        expect(onInstall).toHaveBeenCalledWith('cc-sdd-agent', expect.any(Function));
       });
     });
 
-    it('should call onInstall with selected minimal profile', async () => {
+    it('should call onInstall with selected cc-sdd profile', async () => {
       const onInstall = vi.fn().mockResolvedValue(undefined);
       render(<CommandsetInstallDialog {...defaultProps} onInstall={onInstall} />);
 
-      const minimalOption = screen.getByRole('radio', { name: /Minimal/ });
-      fireEvent.click(minimalOption);
+      const ccSddOption = screen.getByRole('radio', { name: /^cc-sdd$/ });
+      fireEvent.click(ccSddOption);
 
       const installButton = screen.getByRole('button', { name: /インストール/ });
       fireEvent.click(installButton);
 
       await waitFor(() => {
-        expect(onInstall).toHaveBeenCalledWith('minimal', expect.any(Function));
+        expect(onInstall).toHaveBeenCalledWith('cc-sdd', expect.any(Function));
       });
     });
 
@@ -283,7 +280,7 @@ describe('CommandsetInstallDialog', () => {
 
       const onInstall = vi.fn().mockImplementation((profile, progressCallback) => {
         if (progressCallback) {
-          progressCallback({ current: 1, total: 2, currentCommandset: 'cc-sdd' });
+          progressCallback({ current: 1, total: 2, currentCommandset: 'cc-sdd-agent' });
         }
         return installPromise;
       });
@@ -294,7 +291,7 @@ describe('CommandsetInstallDialog', () => {
       fireEvent.click(installButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/cc-sdd/)).toBeInTheDocument();
+        expect(screen.getByText(/cc-sdd-agent/)).toBeInTheDocument();
       });
 
       resolveInstall!({ totalInstalled: 10, totalSkipped: 0, totalFailed: 0 });
@@ -376,17 +373,15 @@ describe('CommandsetInstallDialog', () => {
 
   describe('E2E/UI Tests (Task 13.3)', () => {
     describe('Profile selection dialog display and operation', () => {
-      it('should display all four profile options', () => {
+      it('should display all three profile options', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
-        // All profile options should be visible
-        expect(screen.getByText('Minimal')).toBeInTheDocument();
-        expect(screen.getByText('Standard')).toBeInTheDocument();
-        expect(screen.getByText('Full')).toBeInTheDocument();
-        expect(screen.getByText('Bug Fix Only')).toBeInTheDocument();
+        // Check that all three radio buttons exist (one for each profile)
+        const radioButtons = screen.getAllByRole('radio');
+        expect(radioButtons.length).toBe(3);
       });
 
-      it('should show recommended label on Standard profile', () => {
+      it('should show recommended label on cc-sdd-agent profile', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
         expect(screen.getByText('推奨')).toBeInTheDocument();
@@ -401,23 +396,26 @@ describe('CommandsetInstallDialog', () => {
 
         const bugTags = screen.getAllByText(/bug/);
         expect(bugTags.length).toBeGreaterThan(0);
+
+        const documentReviewTags = screen.getAllByText(/document-review/);
+        expect(documentReviewTags.length).toBeGreaterThan(0);
       });
 
       it('should allow switching between profiles', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
-        // Click on Full profile
-        const fullOption = screen.getByRole('radio', { name: /Full/ });
-        fireEvent.click(fullOption);
-        expect(fullOption).toBeChecked();
+        // Click on spec-manager profile
+        const specManagerOption = screen.getByRole('radio', { name: /spec-manager/ });
+        fireEvent.click(specManagerOption);
+        expect(specManagerOption).toBeChecked();
 
-        // Click on Minimal profile
-        const minimalOption = screen.getByRole('radio', { name: /Minimal/ });
-        fireEvent.click(minimalOption);
-        expect(minimalOption).toBeChecked();
+        // Click on cc-sdd profile
+        const ccSddOption = screen.getByRole('radio', { name: /^cc-sdd$/ });
+        fireEvent.click(ccSddOption);
+        expect(ccSddOption).toBeChecked();
 
-        // Full should no longer be checked
-        expect(fullOption).not.toBeChecked();
+        // spec-manager should no longer be checked
+        expect(specManagerOption).not.toBeChecked();
       });
     });
 
@@ -460,7 +458,7 @@ describe('CommandsetInstallDialog', () => {
         const onInstall = vi.fn().mockImplementation((profile, progressCallback) => {
           // Simulate progress update
           if (progressCallback) {
-            progressCallback({ current: 1, total: 3, currentCommandset: 'cc-sdd' });
+            progressCallback({ current: 1, total: 3, currentCommandset: 'cc-sdd-agent' });
           }
           return installPromise;
         });
@@ -472,8 +470,8 @@ describe('CommandsetInstallDialog', () => {
 
         // Progress text should show current commandset and count
         await waitFor(() => {
-          // Match text like "インストール中: cc-sdd (1/3)"
-          expect(screen.getByText(/cc-sdd/)).toBeInTheDocument();
+          // Match text like "インストール中: cc-sdd-agent (1/3)"
+          expect(screen.getByText(/cc-sdd-agent/)).toBeInTheDocument();
           expect(screen.getByText(/1\/3/)).toBeInTheDocument();
         });
 

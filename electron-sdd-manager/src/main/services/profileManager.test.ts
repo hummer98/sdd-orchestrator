@@ -40,62 +40,61 @@ describe('ProfileManager', () => {
   });
 
   describe('getProfile', () => {
-    it('should return minimal profile', () => {
-      const profile = profileManager.getProfile('minimal');
+    it('should return cc-sdd profile', () => {
+      const profile = profileManager.getProfile('cc-sdd');
 
-      expect(profile.name).toBe('minimal');
-      expect(profile.commandsets).toBeDefined();
-      expect(profile.isCustom).toBe(false);
-    });
-
-    it('should return standard profile', () => {
-      const profile = profileManager.getProfile('standard');
-
-      expect(profile.name).toBe('standard');
+      expect(profile.name).toBe('cc-sdd');
       expect(profile.commandsets).toContain('cc-sdd');
       expect(profile.commandsets).toContain('bug');
+      expect(profile.commandsets).toContain('document-review');
       expect(profile.isCustom).toBe(false);
     });
 
-    it('should return full profile', () => {
-      const profile = profileManager.getProfile('full');
+    it('should return cc-sdd-agent profile', () => {
+      const profile = profileManager.getProfile('cc-sdd-agent');
 
-      expect(profile.name).toBe('full');
-      expect(profile.commandsets).toContain('cc-sdd');
+      expect(profile.name).toBe('cc-sdd-agent');
+      expect(profile.commandsets).toContain('cc-sdd-agent');
       expect(profile.commandsets).toContain('bug');
+      expect(profile.commandsets).toContain('document-review');
       expect(profile.isCustom).toBe(false);
     });
 
-    it('should return lightweight-bug-fix-only profile', () => {
-      const profile = profileManager.getProfile('lightweight-bug-fix-only');
+    it('should return spec-manager profile', () => {
+      const profile = profileManager.getProfile('spec-manager');
 
-      expect(profile.name).toBe('lightweight-bug-fix-only');
+      expect(profile.name).toBe('spec-manager');
+      expect(profile.commandsets).toContain('spec-manager');
       expect(profile.commandsets).toContain('bug');
-      expect(profile.commandsets).not.toContain('cc-sdd');
+      expect(profile.commandsets).toContain('document-review');
       expect(profile.isCustom).toBe(false);
     });
   });
 
   describe('getCommandsetsForProfile', () => {
-    it('should return commandsets for minimal profile', () => {
-      const commandsets = profileManager.getCommandsetsForProfile('minimal');
+    it('should return commandsets for cc-sdd profile', () => {
+      const commandsets = profileManager.getCommandsetsForProfile('cc-sdd');
 
       expect(Array.isArray(commandsets)).toBe(true);
-      expect(commandsets.length).toBeGreaterThan(0);
-    });
-
-    it('should return commandsets for standard profile', () => {
-      const commandsets = profileManager.getCommandsetsForProfile('standard');
-
       expect(commandsets).toContain('cc-sdd');
       expect(commandsets).toContain('bug');
+      expect(commandsets).toContain('document-review');
     });
 
-    it('should return commandsets for full profile', () => {
-      const commandsets = profileManager.getCommandsetsForProfile('full');
+    it('should return commandsets for cc-sdd-agent profile', () => {
+      const commandsets = profileManager.getCommandsetsForProfile('cc-sdd-agent');
 
-      expect(commandsets).toContain('cc-sdd');
+      expect(commandsets).toContain('cc-sdd-agent');
       expect(commandsets).toContain('bug');
+      expect(commandsets).toContain('document-review');
+    });
+
+    it('should return commandsets for spec-manager profile', () => {
+      const commandsets = profileManager.getCommandsetsForProfile('spec-manager');
+
+      expect(commandsets).toContain('spec-manager');
+      expect(commandsets).toContain('bug');
+      expect(commandsets).toContain('document-review');
     });
   });
 
@@ -105,6 +104,19 @@ describe('ProfileManager', () => {
         name: 'custom',
         description: 'Custom profile',
         commandsets: ['cc-sdd', 'bug'],
+        isCustom: true,
+      };
+
+      const result = profileManager.validateProfile(profile);
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should validate profile with all commandset types', () => {
+      const profile: Profile = {
+        name: 'custom',
+        description: 'Custom profile',
+        commandsets: ['cc-sdd', 'cc-sdd-agent', 'bug', 'document-review', 'spec-manager'],
         isCustom: true,
       };
 
@@ -209,7 +221,7 @@ describe('ProfileManager', () => {
 
     it('should reject saving profile with built-in name', async () => {
       const profile: Profile = {
-        name: 'minimal', // Built-in name
+        name: 'cc-sdd', // Built-in name
         description: 'Trying to override',
         commandsets: ['cc-sdd'],
         isCustom: true,
@@ -264,18 +276,30 @@ describe('ProfileManager', () => {
     it('should return all built-in profiles', () => {
       const profiles = profileManager.getAllProfiles();
 
-      expect(profiles.has('minimal')).toBe(true);
-      expect(profiles.has('standard')).toBe(true);
-      expect(profiles.has('full')).toBe(true);
-      expect(profiles.has('lightweight-bug-fix-only')).toBe(true);
+      expect(profiles.has('cc-sdd')).toBe(true);
+      expect(profiles.has('cc-sdd-agent')).toBe(true);
+      expect(profiles.has('spec-manager')).toBe(true);
     });
 
     it('should include profile descriptions', () => {
       const profiles = profileManager.getAllProfiles();
-      const minimal = profiles.get('minimal');
+      const ccSdd = profiles.get('cc-sdd');
 
-      expect(minimal?.description).toBeDefined();
-      expect(minimal?.description.length).toBeGreaterThan(0);
+      expect(ccSdd?.description).toBeDefined();
+      expect(ccSdd?.description.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('isBuiltInProfile', () => {
+    it('should return true for built-in profile names', () => {
+      expect(profileManager.isBuiltInProfile('cc-sdd')).toBe(true);
+      expect(profileManager.isBuiltInProfile('cc-sdd-agent')).toBe(true);
+      expect(profileManager.isBuiltInProfile('spec-manager')).toBe(true);
+    });
+
+    it('should return false for custom profile names', () => {
+      expect(profileManager.isBuiltInProfile('custom')).toBe(false);
+      expect(profileManager.isBuiltInProfile('my-profile')).toBe(false);
     });
   });
 });

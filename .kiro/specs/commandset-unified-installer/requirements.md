@@ -95,11 +95,11 @@
 **Objective:** ユーザーとして、使用目的に応じたコマンドセットの組み合わせ（プロファイル）を選択したい。これにより、初心者でも適切なセットアップを簡単に実行できる。
 
 #### Acceptance Criteria
-1. The UnifiedCommandsetInstaller shall 事前定義されたプロファイル（"minimal", "standard", "full", "lightweight-bug-fix-only"）を提供すること
-2. When ユーザーが"minimal"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall spec-manager基本コマンドのみをインストールする
-3. When ユーザーが"standard"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall cc-sdd全コマンド + Bugワークフローをインストールする
-4. When ユーザーが"full"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall 全てのコマンドセット、エージェント、設定ファイルをインストールする
-5. When ユーザーが"lightweight-bug-fix-only"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall Bugワークフローコマンドとテンプレートのみをインストールする
+1. The UnifiedCommandsetInstaller shall 事前定義されたプロファイル（"cc-sdd", "cc-sdd-agent", "spec-manager"）を提供すること
+2. When ユーザーが"cc-sdd"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall cc-sddコマンド + bug + document-reviewをインストールする
+3. When ユーザーが"cc-sdd-agent"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall cc-sdd-agentコマンド + bug + document-review + エージェントをインストールする
+4. When ユーザーが"spec-manager"プロファイルを選択した場合, the UnifiedCommandsetInstaller shall spec-managerコマンド + bug + document-reviewをインストールする
+5. The UnifiedCommandsetInstaller shall 各プロファイルに共通でbug, document-reviewコマンドセットを含めること
 6. The UnifiedCommandsetInstaller shall カスタムプロファイルの定義をサポートし、JSON形式でプロファイルを保存・読み込みできること
 
 ### Requirement 9: ロールバック機能

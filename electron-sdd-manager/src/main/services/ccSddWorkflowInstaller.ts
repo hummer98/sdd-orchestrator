@@ -182,6 +182,7 @@ export interface CcSddWorkflowInstallStatus {
 export type InstallError =
   | { type: 'TEMPLATE_NOT_FOUND'; path: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
+  | { type: 'READ_ERROR'; path: string; message: string }
   | { type: 'PERMISSION_DENIED'; path: string }
   | { type: 'MERGE_ERROR'; message: string }
   | { type: 'TIMEOUT_ERROR'; timeoutMs: number };
@@ -241,11 +242,13 @@ export class CcSddWorkflowInstaller {
   /**
    * Install cc-sdd commands to project
    * @param projectPath - Project root path
+   * @param commandsetDir - Optional commandset directory name (e.g., 'cc-sdd', 'cc-sdd-agent', 'spec-manager', 'document-review')
    * @param options - Install options
    * Requirements: 3.2, 3.3, 3.4, 3.5, 3.6
    */
   async installCommands(
     projectPath: string,
+    commandsetDir?: string,
     options: InstallOptions = {}
   ): Promise<Result<InstallResult, InstallError>> {
     const installed: string[] = [];
@@ -253,6 +256,12 @@ export class CcSddWorkflowInstaller {
     const overwritten: string[] = [];
     const { force = false } = options;
 
+    // If commandsetDir is specified, install all .md files from that directory
+    if (commandsetDir) {
+      return this.installCommandsFromDir(projectPath, commandsetDir, options);
+    }
+
+    // Legacy behavior: install from CC_SDD_COMMANDS list
     for (const cmd of CC_SDD_COMMANDS) {
       const templateSubdir = this.getCommandTemplateSubdir(cmd);
       const templatePath = join(this.templateDir, 'commands', templateSubdir, `${cmd}.md`);
@@ -282,6 +291,87 @@ export class CcSddWorkflowInstaller {
           overwritten.push(cmd);
         } else {
           installed.push(cmd);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('EACCES') || message.includes('EPERM')) {
+          return {
+            ok: false,
+            error: { type: 'PERMISSION_DENIED', path: targetPath },
+          };
+        }
+        return {
+          ok: false,
+          error: { type: 'WRITE_ERROR', path: targetPath, message },
+        };
+      }
+    }
+
+    return { ok: true, value: { installed, skipped, overwritten } };
+  }
+
+  /**
+   * Install commands from a specific directory
+   * @param projectPath - Project root path
+   * @param commandsetDir - Commandset directory name (e.g., 'cc-sdd', 'cc-sdd-agent', 'spec-manager', 'document-review')
+   * @param options - Install options
+   */
+  async installCommandsFromDir(
+    projectPath: string,
+    commandsetDir: string,
+    options: InstallOptions = {}
+  ): Promise<Result<InstallResult, InstallError>> {
+    const installed: string[] = [];
+    const skipped: string[] = [];
+    const overwritten: string[] = [];
+    const { force = false } = options;
+
+    const templateDirPath = join(this.templateDir, 'commands', commandsetDir);
+
+    // Check if template directory exists
+    if (!(await fileExists(templateDirPath))) {
+      return {
+        ok: false,
+        error: { type: 'TEMPLATE_NOT_FOUND', path: templateDirPath },
+      };
+    }
+
+    // Read all .md files from the directory
+    const { readdir } = await import('fs/promises');
+    let files: string[];
+    try {
+      files = await readdir(templateDirPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        error: { type: 'READ_ERROR', path: templateDirPath, message },
+      };
+    }
+
+    const mdFiles = files.filter((f) => f.endsWith('.md'));
+
+    for (const file of mdFiles) {
+      const cmdName = file.replace('.md', '');
+      const templatePath = join(templateDirPath, file);
+      const targetPath = join(projectPath, '.claude', 'commands', 'kiro', file);
+
+      // Check if target already exists
+      const exists = await fileExists(targetPath);
+      if (exists && !force) {
+        skipped.push(cmdName);
+        continue;
+      }
+
+      // Install the file
+      try {
+        const content = await readFile(templatePath, 'utf-8');
+        await mkdir(dirname(targetPath), { recursive: true });
+        await writeFile(targetPath, content, 'utf-8');
+        if (exists) {
+          overwritten.push(cmdName);
+        } else {
+          installed.push(cmdName);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

@@ -13,7 +13,7 @@ import { Result } from './ccSddWorkflowInstaller';
  * Profile name types (built-in profiles)
  * Requirements: 8.1
  */
-export type ProfileName = 'minimal' | 'standard' | 'full' | 'lightweight-bug-fix-only';
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
 
 /**
  * Profile definition
@@ -46,10 +46,9 @@ export type ValidationError = {
  * Built-in profile names
  */
 const BUILT_IN_PROFILE_NAMES: readonly ProfileName[] = [
-  'minimal',
-  'standard',
-  'full',
-  'lightweight-bug-fix-only',
+  'cc-sdd',
+  'cc-sdd-agent',
+  'spec-manager',
 ];
 
 /**
@@ -57,7 +56,9 @@ const BUILT_IN_PROFILE_NAMES: readonly ProfileName[] = [
  */
 const VALID_COMMANDSET_NAMES: readonly CommandsetName[] = [
   'cc-sdd',
+  'cc-sdd-agent',
   'bug',
+  'document-review',
   'spec-manager',
 ];
 
@@ -85,38 +86,29 @@ export class ProfileManager {
    */
   private readonly builtInProfiles: ReadonlyMap<ProfileName, Profile> = new Map([
     [
-      'minimal',
+      'cc-sdd',
       {
-        name: 'minimal',
-        description: 'Minimal setup with basic spec-manager commands',
-        commandsets: ['cc-sdd'],
+        name: 'cc-sdd',
+        description: 'cc-sdd workflow commands with bug and document-review',
+        commandsets: ['cc-sdd', 'bug', 'document-review'],
         isCustom: false,
       },
     ],
     [
-      'standard',
+      'cc-sdd-agent',
       {
-        name: 'standard',
-        description: 'Standard setup with cc-sdd full commands and bug workflow',
-        commandsets: ['cc-sdd', 'bug'],
+        name: 'cc-sdd-agent',
+        description: 'cc-sdd-agent commands with bug, document-review, and agents',
+        commandsets: ['cc-sdd-agent', 'bug', 'document-review'],
         isCustom: false,
       },
     ],
     [
-      'full',
+      'spec-manager',
       {
-        name: 'full',
-        description: 'Full setup with all commandsets, agents, and settings',
-        commandsets: ['cc-sdd', 'bug'],
-        isCustom: false,
-      },
-    ],
-    [
-      'lightweight-bug-fix-only',
-      {
-        name: 'lightweight-bug-fix-only',
-        description: 'Lightweight setup with bug workflow only',
-        commandsets: ['bug'],
+        name: 'spec-manager',
+        description: 'spec-manager commands with bug and document-review',
+        commandsets: ['spec-manager', 'bug', 'document-review'],
         isCustom: false,
       },
     ],
@@ -130,8 +122,8 @@ export class ProfileManager {
   getProfile(profileName: ProfileName): Profile {
     const profile = this.builtInProfiles.get(profileName);
     if (!profile) {
-      // Should not happen for built-in profiles, but return minimal as fallback
-      return this.builtInProfiles.get('minimal')!;
+      // Should not happen for built-in profiles, but return cc-sdd as fallback
+      return this.builtInProfiles.get('cc-sdd')!;
     }
     return profile;
   }

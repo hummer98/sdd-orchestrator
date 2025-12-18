@@ -17,9 +17,9 @@ tasks:
       - ./scripts/electron-app.sh stop
 
   electron:restart:
-    desc: Restart the Electron application
+    desc: Restart the Electron application. Use PROJECT=<path> to specify project.
     cmds:
-      - ./scripts/electron-app.sh restart
+      - ./scripts/electron-app.sh restart "{{.PROJECT}}"
 
   electron:status:
     desc: Show Electron application status

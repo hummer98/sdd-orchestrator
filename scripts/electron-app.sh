@@ -190,11 +190,13 @@ cleanup_orphaned_processes() {
 }
 
 # 再起動
+# 引数: $1 = プロジェクトパス (オプション)
 restart() {
+    local project_path="$1"
     echo -e "${YELLOW}Restarting Electron app...${NC}"
     stop
     sleep 2
-    start
+    start "$project_path"
 }
 
 # 状態確認
@@ -296,7 +298,7 @@ case "${1:-help}" in
         stop
         ;;
     restart)
-        restart
+        restart "$2"
         ;;
     status)
         status

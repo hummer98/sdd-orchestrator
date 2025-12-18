@@ -75,10 +75,9 @@ describe('Mobile UI Static Files', () => {
     });
 
     it('should have workflow control buttons', () => {
-      expect(htmlContent).toContain('btn-requirements');
-      expect(htmlContent).toContain('btn-design');
-      expect(htmlContent).toContain('btn-tasks');
-      expect(htmlContent).toContain('btn-implementation');
+      // UI uses single "next action" button instead of individual phase buttons
+      expect(htmlContent).toContain('btn-next-action');
+      expect(htmlContent).toContain('btn-auto-execute');
     });
 
     it('should have stop/resume buttons', () => {

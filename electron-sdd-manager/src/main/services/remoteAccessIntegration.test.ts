@@ -134,11 +134,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         ]),
       };
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.setStateProvider(stateProvider);
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.setStateProvider(stateProvider);
 
       // Connect a client
       const client = new WebSocket(startResult.value.url);
@@ -171,10 +169,8 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       expect(startResult.ok).toBe(true);
       if (!startResult.ok) return;
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
 
       // Connect and then disconnect a client
       const client = new WebSocket(startResult.value.url);
@@ -184,7 +180,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
-      const countBefore = wsHandler.getClientCount();
+      const countBefore = serverWsHandler.getClientCount();
       expect(countBefore).toBeGreaterThanOrEqual(1);
 
       client.close();
@@ -193,7 +189,7 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Client count should decrease
-      const countAfter = wsHandler.getClientCount();
+      const countAfter = serverWsHandler.getClientCount();
       expect(countAfter).toBeLessThan(countBefore);
     });
   });
@@ -212,11 +208,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         ]),
       };
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.setStateProvider(stateProvider);
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.setStateProvider(stateProvider);
 
       const client = new WebSocket(startResult.value.url);
 
@@ -280,11 +274,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         resumeAgent: vi.fn(),
       };
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.setWorkflowController(workflowController);
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.setWorkflowController(workflowController);
 
       const client = new WebSocket(startResult.value.url);
 
@@ -346,11 +338,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         resumeAgent: vi.fn(),
       };
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.setWorkflowController(workflowController);
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.setWorkflowController(workflowController);
 
       const client = new WebSocket(startResult.value.url);
 
@@ -407,11 +397,9 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         }),
       };
 
-      const wss = server.getWebSocketServer();
-      if (wss) {
-        wsHandler.setWorkflowController(workflowController);
-        wsHandler.initialize(wss);
-      }
+      // Use server's internal WebSocketHandler
+      const serverWsHandler = server.getWebSocketHandler();
+      serverWsHandler.setWorkflowController(workflowController);
 
       const client = new WebSocket(startResult.value.url);
 

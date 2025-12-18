@@ -109,19 +109,19 @@ describe('DocumentReviewPanel', () => {
   // Requirements: 6.5
   // ============================================================
   describe('Task 6.1: Executing state display', () => {
-    it('should show spinner when isExecuting is true', () => {
+    it('should show executing indicator when isExecuting is true', () => {
       render(<DocumentReviewPanel {...defaultProps} isExecuting={true} />);
-      expect(screen.getByTestId('review-spinner')).toBeInTheDocument();
+      expect(screen.getByTestId('progress-indicator-executing')).toBeInTheDocument();
     });
 
-    it('should show progress message during review', () => {
+    it('should show executing indicator during review', () => {
       const reviewState: DocumentReviewState = {
         rounds: 0,
         status: 'in_progress',
         currentRound: 1,
       };
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} isExecuting={true} />);
-      expect(screen.getByText(/レビュー実行中/)).toBeInTheDocument();
+      expect(screen.getByTestId('progress-indicator-executing')).toBeInTheDocument();
     });
   });
 

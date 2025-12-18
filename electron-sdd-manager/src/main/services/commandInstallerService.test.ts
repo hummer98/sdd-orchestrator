@@ -50,37 +50,37 @@ describe('CommandInstallerService', () => {
 
   describe('installCommands', () => {
     it('should install specified commands to project', async () => {
-      const commands = ['spec-manager/init', 'spec-manager/requirements'];
+      const commands = ['kiro/spec-init', 'kiro/spec-requirements'];
 
       const result = await installer.installCommands(tempDir, commands);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed).toContain('spec-manager/init');
-        expect(result.value.installed).toContain('spec-manager/requirements');
+        expect(result.value.installed).toContain('kiro/spec-init');
+        expect(result.value.installed).toContain('kiro/spec-requirements');
         expect(result.value.skipped.length).toBe(0);
       }
 
       // Verify files were created
-      const initPath = path.join(tempDir, '.claude', 'commands', 'spec-manager', 'init.md');
+      const initPath = path.join(tempDir, '.claude', 'commands', 'kiro', 'spec-init.md');
       const content = await fs.readFile(initPath, 'utf-8');
-      expect(content).toContain('Template for spec-manager/init');
+      expect(content).toContain('Template for kiro/spec-init');
     });
 
     it('should skip already existing commands', async () => {
-      // Pre-create init command
-      const existingPath = path.join(tempDir, '.claude', 'commands', 'spec-manager', 'init.md');
+      // Pre-create spec-init command
+      const existingPath = path.join(tempDir, '.claude', 'commands', 'kiro', 'spec-init.md');
       await fs.mkdir(path.dirname(existingPath), { recursive: true });
       await fs.writeFile(existingPath, 'Existing content', 'utf-8');
 
-      const commands = ['spec-manager/init', 'spec-manager/requirements'];
+      const commands = ['kiro/spec-init', 'kiro/spec-requirements'];
 
       const result = await installer.installCommands(tempDir, commands);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed).toContain('spec-manager/requirements');
-        expect(result.value.skipped).toContain('spec-manager/init');
+        expect(result.value.installed).toContain('kiro/spec-requirements');
+        expect(result.value.skipped).toContain('kiro/spec-init');
       }
 
       // Verify existing file was not overwritten
@@ -157,7 +157,7 @@ describe('CommandInstallerService', () => {
 
     it('should skip existing files when installing all', async () => {
       // Pre-create some files
-      const initPath = path.join(tempDir, '.claude', 'commands', 'spec-manager', 'init.md');
+      const initPath = path.join(tempDir, '.claude', 'commands', 'kiro', 'spec-init.md');
       const earsPath = path.join(tempDir, '.kiro', 'settings', 'rules', 'ears-format.md');
       await fs.mkdir(path.dirname(initPath), { recursive: true });
       await fs.mkdir(path.dirname(earsPath), { recursive: true });
@@ -168,7 +168,7 @@ describe('CommandInstallerService', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.commands.skipped).toContain('spec-manager/init');
+        expect(result.value.commands.skipped).toContain('kiro/spec-init');
         expect(result.value.settings.skipped).toContain('rules/ears-format.md');
         expect(result.value.commands.installed.length).toBe(REQUIRED_COMMANDS.length - 1);
         expect(result.value.settings.installed.length).toBe(REQUIRED_SETTINGS.length - 1);

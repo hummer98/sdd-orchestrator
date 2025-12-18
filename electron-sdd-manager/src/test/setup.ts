@@ -1,6 +1,74 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mock electron module for main process tests
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+    name: 'SDD Orchestrator',
+    getPath: vi.fn((name: string) => {
+      if (name === 'logs') return '/tmp/test-logs';
+      if (name === 'userData') return '/tmp/test-userData';
+      return `/tmp/test-${name}`;
+    }),
+    getName: vi.fn(() => 'SDD Orchestrator'),
+    setName: vi.fn(),
+    getVersion: vi.fn(() => '0.0.0-test'),
+    quit: vi.fn(),
+    on: vi.fn(),
+    whenReady: vi.fn(() => Promise.resolve()),
+    commandLine: {
+      getSwitchValue: vi.fn(() => ''),
+      hasSwitch: vi.fn(() => false),
+      appendSwitch: vi.fn(),
+    },
+  },
+  BrowserWindow: vi.fn().mockImplementation(() => ({
+    loadFile: vi.fn(),
+    loadURL: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    close: vi.fn(),
+    destroy: vi.fn(),
+    isDestroyed: vi.fn(() => false),
+    webContents: {
+      send: vi.fn(),
+      on: vi.fn(),
+      openDevTools: vi.fn(),
+    },
+  })),
+  ipcMain: {
+    handle: vi.fn(),
+    on: vi.fn(),
+    removeHandler: vi.fn(),
+  },
+  ipcRenderer: {
+    invoke: vi.fn(),
+    on: vi.fn(),
+    send: vi.fn(),
+  },
+  shell: {
+    openExternal: vi.fn(),
+    openPath: vi.fn(),
+  },
+  dialog: {
+    showOpenDialog: vi.fn(),
+    showSaveDialog: vi.fn(),
+    showMessageBox: vi.fn(),
+  },
+  Menu: {
+    buildFromTemplate: vi.fn(),
+    setApplicationMenu: vi.fn(),
+  },
+  nativeTheme: {
+    shouldUseDarkColors: false,
+    themeSource: 'system',
+    on: vi.fn(),
+  },
+}));
+
 // Mock localStorage for Zustand persist middleware
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};

@@ -7,19 +7,58 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain, BrowserWindow } from 'electron';
 
-// Mock electron
-vi.mock('electron', () => ({
-  ipcMain: {
-    handle: vi.fn(),
+// Mock electron with all required APIs
+vi.mock('electron', () => {
+  const mockBrowserWindow = vi.fn().mockImplementation(() => ({
+    loadFile: vi.fn(),
+    loadURL: vi.fn(),
     on: vi.fn(),
-    removeHandler: vi.fn(),
-    removeListener: vi.fn(),
-  },
-  BrowserWindow: {
-    fromWebContents: vi.fn(),
-    getAllWindows: vi.fn().mockReturnValue([]),
-  },
-}));
+    once: vi.fn(),
+    show: vi.fn(),
+    isDestroyed: vi.fn().mockReturnValue(false),
+    webContents: {
+      send: vi.fn(),
+      on: vi.fn(),
+    },
+  }));
+  (mockBrowserWindow as any).fromWebContents = vi.fn();
+  (mockBrowserWindow as any).getAllWindows = vi.fn().mockReturnValue([]);
+
+  return {
+    app: {
+      isPackaged: false,
+      name: 'SDD Orchestrator',
+      getPath: vi.fn((name: string) => `/tmp/test-${name}`),
+      getName: vi.fn(() => 'SDD Orchestrator'),
+      setName: vi.fn(),
+      getVersion: vi.fn(() => '0.0.0-test'),
+      commandLine: {
+        getSwitchValue: vi.fn(() => ''),
+        hasSwitch: vi.fn(() => false),
+        appendSwitch: vi.fn(),
+      },
+      quit: vi.fn(),
+      on: vi.fn(),
+      whenReady: vi.fn(() => Promise.resolve()),
+    },
+    ipcMain: {
+      handle: vi.fn(),
+      on: vi.fn(),
+      removeHandler: vi.fn(),
+      removeListener: vi.fn(),
+    },
+    BrowserWindow: mockBrowserWindow,
+    Menu: {
+      buildFromTemplate: vi.fn(),
+      setApplicationMenu: vi.fn(),
+    },
+    nativeTheme: {
+      shouldUseDarkColors: false,
+      themeSource: 'system',
+      on: vi.fn(),
+    },
+  };
+});
 
 // Mock RemoteAccessServer
 const mockStart = vi.fn();

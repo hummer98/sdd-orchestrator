@@ -116,7 +116,7 @@ gh release upload vX.Y.Z \
   "release/SDD Orchestrator-X.Y.Z-arm64-mac.zip"
 ```
 
-### 10. Applicationsフォルダへデプロイ（オプション）
+### 10. Applicationsフォルダへデプロイ
 
 ```bash
 rm -rf "/Applications/SDD Orchestrator.app"

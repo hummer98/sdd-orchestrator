@@ -43,6 +43,8 @@ export interface ClaudeArgsOptions {
   resumeSessionId?: string;
   /** resumeモードのプロンプト */
   resumePrompt?: string;
+  /** 許可するツールのリスト（--allowedToolsフラグ用） */
+  allowedTools?: string[];
 }
 
 /**
@@ -58,9 +60,18 @@ export interface ClaudeArgsOptions {
  * // セッションのresume
  * buildClaudeArgs({ resumeSessionId: 'session-123', resumePrompt: 'continue' })
  * // => ['-p', '--verbose', '--output-format', 'stream-json', '--resume', 'session-123', 'continue']
+ *
+ * // resume時にallowedToolsを指定
+ * buildClaudeArgs({ resumeSessionId: 'session-123', resumePrompt: 'continue', allowedTools: ['Read', 'Write'] })
+ * // => ['-p', '--verbose', '--output-format', 'stream-json', '--allowedTools', 'Read', 'Write', '--resume', 'session-123', 'continue']
  */
 export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   const args: string[] = [...CLAUDE_CLI_BASE_FLAGS];
+
+  // allowedToolsは--resumeより前に配置（CLIの引数解析順序を考慮）
+  if (options.allowedTools && options.allowedTools.length > 0) {
+    args.push('--allowedTools', ...options.allowedTools);
+  }
 
   if (options.resumeSessionId) {
     args.push('--resume', options.resumeSessionId);
@@ -127,6 +138,57 @@ const SPEC_STATUS_COMMANDS: Record<CommandPrefix, string> = {
   'spec-manager': '/spec-manager:status',
 };
 
+/**
+ * フェーズ別allowed-toolsマッピング
+ * スラッシュコマンドのフロントマターで定義されているallowed-toolsと一致させる
+ * resume時に--allowedToolsフラグとして渡すために使用
+ */
+const PHASE_ALLOWED_TOOLS: Record<string, string[]> = {
+  // kiro系コマンド
+  'requirements': ['Read', 'Task'],
+  'spec-manager-requirements': ['Read', 'Write', 'Glob'],
+  'design': ['Read', 'Task'],
+  'spec-manager-design': ['Read', 'Write', 'Glob'],
+  'tasks': ['Read', 'Task'],
+  'spec-manager-tasks': ['Read', 'Write', 'Glob'],
+  'impl': ['Read', 'Task'],
+  'spec-manager-impl': ['Read', 'Write', 'Edit', 'Glob', 'Bash'],
+  'inspection': ['Read', 'Task'],
+  'validate-gap': ['Read', 'Task'],
+  'validate-design': ['Read', 'Task'],
+  'validate-impl': ['Read', 'Task'],
+  'status': ['Bash', 'Read', 'Glob', 'Write', 'Edit', 'MultiEdit', 'Update'],
+  // document-review系
+  'document-review': ['Read', 'Write', 'Glob', 'Grep'],
+  'document-review-reply': ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
+  'document-review-fix': ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
+  // bug系
+  'bug-create': ['Bash', 'Read', 'Write', 'Glob'],
+  'bug-analyze': ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'],
+  'bug-fix': ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'],
+  'bug-verify': ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'],
+  'bug-status': ['Read', 'Glob'],
+};
+
+/**
+ * フェーズ名からallowed-toolsを取得する
+ * impl-taskX形式のフェーズ名にも対応
+ */
+export function getAllowedToolsForPhase(phase: string): string[] | undefined {
+  // 完全一致を優先
+  if (PHASE_ALLOWED_TOOLS[phase]) {
+    return PHASE_ALLOWED_TOOLS[phase];
+  }
+  // impl-taskX形式の場合はimplのallowed-toolsを返す
+  if (phase.startsWith('impl-')) {
+    return PHASE_ALLOWED_TOOLS['impl'];
+  }
+  // spec-manager-impl-taskX形式の場合
+  if (phase.startsWith('spec-manager-impl-')) {
+    return PHASE_ALLOWED_TOOLS['spec-manager-impl'];
+  }
+  return undefined;
+}
 
 /** フェーズからExecutionGroupへのマッピング */
 const PHASE_GROUPS: Record<WorkflowPhase, ExecutionGroup> = {
@@ -677,12 +739,24 @@ export class SpecManagerService {
     }
 
     const resumePrompt = prompt || '続けて';
-    const args = buildClaudeArgs({ resumeSessionId: agent.sessionId, resumePrompt });
+    // フェーズに対応するallowed-toolsを取得してresume時にも適用
+    const allowedTools = getAllowedToolsForPhase(agent.phase);
+    const args = buildClaudeArgs({
+      resumeSessionId: agent.sessionId,
+      resumePrompt,
+      allowedTools,
+    });
     const command = 'claude';
     const now = new Date().toISOString();
 
     try {
-      logger.info('[SpecManagerService] Resuming agent', { agentId, sessionId: agent.sessionId, prompt: resumePrompt });
+      logger.info('[SpecManagerService] Resuming agent', {
+        agentId,
+        sessionId: agent.sessionId,
+        prompt: resumePrompt,
+        phase: agent.phase,
+        allowedTools,
+      });
 
       // Create a new process but keep the same agentId
       const process = createAgentProcess({
@@ -1163,12 +1237,23 @@ export class SpecManagerService {
       };
     }
 
+    // フェーズに対応するallowed-toolsを取得してretry時にも適用
+    const allowedTools = getAllowedToolsForPhase(originalAgent.phase);
+    logger.info('[SpecManagerService] retryWithContinue allowedTools', {
+      phase: originalAgent.phase,
+      allowedTools,
+    });
+
     // Start a new agent with session resume and "continue" prompt
     return this.startAgent({
       specId: originalAgent.specId,
       phase: originalAgent.phase,
       command: 'claude',
-      args: buildClaudeArgs({ resumeSessionId: sessionId, resumePrompt: 'continue' }),
+      args: buildClaudeArgs({
+        resumeSessionId: sessionId,
+        resumePrompt: 'continue',
+        allowedTools,
+      }),
       sessionId,
     });
   }

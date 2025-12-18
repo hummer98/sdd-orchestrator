@@ -118,6 +118,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
               className={clsx(
                 'w-full px-3 py-2 rounded-md resize-none',
                 'bg-gray-50 dark:bg-gray-800',
+                'text-gray-900 dark:text-gray-100',
                 'border',
                 'placeholder:text-gray-400 dark:placeholder:text-gray-500',
                 error

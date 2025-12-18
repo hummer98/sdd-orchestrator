@@ -73,20 +73,18 @@ export function ProjectSelector() {
         </div>
       )}
 
-      {kiroValidation && (
+      {/* Show validation only when there are issues */}
+      {kiroValidation && !(kiroValidation.exists && kiroValidation.hasSpecs && kiroValidation.hasSteering) && (
         <div className="mt-3 space-y-1">
-          <ValidationItem
-            valid={kiroValidation.exists}
-            label=".kiro ディレクトリ"
-          />
-          <ValidationItem
-            valid={kiroValidation.hasSpecs}
-            label="specs ディレクトリ"
-          />
-          <ValidationItem
-            valid={kiroValidation.hasSteering}
-            label="steering ディレクトリ"
-          />
+          {!kiroValidation.exists && (
+            <ValidationItem valid={false} label=".kiro ディレクトリ" />
+          )}
+          {!kiroValidation.hasSpecs && (
+            <ValidationItem valid={false} label="specs ディレクトリ" />
+          )}
+          {!kiroValidation.hasSteering && (
+            <ValidationItem valid={false} label="steering ディレクトリ" />
+          )}
 
           {!kiroValidation.exists && (
             <button

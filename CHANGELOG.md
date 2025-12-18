@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-12-18
+
+### Changed
+- **Unified Installer Phase 2**: Consolidated Tools menu by removing legacy installer menu items
+  - Removed: "spec-managerコマンドを再インストール..."
+  - Removed: "CLAUDE.mdをインストール..."
+  - Removed: "シェルコマンドの実行許可を追加..."
+  - Removed: "cc-sdd Workflowをインストール..."
+  - All functionality now accessible through "コマンドセットをインストール..." unified installer
+
+### Fixed
+- **sdd CLI command**: Fixed issue where project path was not passed correctly when launching from command line
+
 ## [0.7.0] - 2025-12-18
 
 ### Added

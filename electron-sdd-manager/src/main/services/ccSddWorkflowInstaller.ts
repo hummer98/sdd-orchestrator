@@ -775,7 +775,7 @@ ${existingContent}`;
     options: InstallOptions = {}
   ): Promise<Result<CcSddWorkflowInstallResult, InstallError>> {
     // Install commands
-    const commandsResult = await this.installCommands(projectPath, options);
+    const commandsResult = await this.installCommands(projectPath, undefined, options);
     if (!commandsResult.ok) {
       return commandsResult;
     }

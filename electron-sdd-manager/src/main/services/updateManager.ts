@@ -66,7 +66,9 @@ const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
  */
 const LATEST_VERSIONS: Record<CommandsetName, string> = {
   'cc-sdd': '1.0.0',
+  'cc-sdd-agent': '1.0.0',
   'bug': '1.0.0',
+  'document-review': '1.0.0',
   'spec-manager': '1.0.0',
 };
 

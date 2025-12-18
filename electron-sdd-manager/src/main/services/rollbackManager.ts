@@ -66,9 +66,17 @@ const COMMANDSET_BACKUP_PATHS: Record<CommandsetName, string[]> = {
     '.claude/agents/kiro',
     '.kiro/settings',
   ],
+  'cc-sdd-agent': [
+    '.claude/commands/kiro',
+    '.claude/agents/kiro',
+    '.kiro/settings',
+  ],
   'bug': [
     '.claude/commands/kiro',
     '.kiro/settings/templates/bugs',
+  ],
+  'document-review': [
+    '.claude/commands/kiro',
   ],
   'spec-manager': [
     '.claude/commands/kiro',

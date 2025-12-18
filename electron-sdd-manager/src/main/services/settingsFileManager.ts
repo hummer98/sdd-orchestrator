@@ -65,12 +65,23 @@ const REQUIRED_SETTINGS: Record<CommandsetName, readonly string[]> = {
     'templates/specs/design.md',
     'templates/specs/tasks.md',
   ],
+  'cc-sdd-agent': [
+    'rules/ears-format.md',
+    'rules/tasks-generation.md',
+    'rules/tasks-parallel-analysis.md',
+    'templates/specs/init.json',
+    'templates/specs/requirements-init.md',
+    'templates/specs/requirements.md',
+    'templates/specs/design.md',
+    'templates/specs/tasks.md',
+  ],
   'bug': [
     'templates/bugs/report.md',
     'templates/bugs/analysis.md',
     'templates/bugs/fix.md',
     'templates/bugs/verification.md',
   ],
+  'document-review': [],
   'spec-manager': [],
 };
 

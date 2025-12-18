@@ -171,16 +171,9 @@ function SpecManagerFilesSection({
   onInstallSettings,
   onClearResult,
 }: SpecManagerFilesSectionProps) {
-  // All files present
+  // All files present - no need to display anything (reduce noise)
   if (check.allPresent) {
-    return (
-      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-          <CheckCircle className="w-4 h-4" />
-          <span>spec-manager: すべてのファイルが揃っています</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -328,16 +321,9 @@ interface PermissionsCheckSectionProps {
 }
 
 function PermissionsCheckSection({ check }: PermissionsCheckSectionProps) {
-  // All permissions present
+  // All permissions present - no need to display anything (reduce noise)
   if (check.allPresent) {
-    return (
-      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-          <CheckCircle className="w-4 h-4" />
-          <span>パーミッション: すべて設定済み</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Some permissions missing

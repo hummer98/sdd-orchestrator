@@ -194,7 +194,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
         expect(screen.queryByText(/設定をインストール/)).toBeInTheDocument();
       });
 
-      it('should not display install button when all files are present', () => {
+      it('should not display anything when all files are present', () => {
         createMockStores({
           projectStore: {
             specManagerCheck: {
@@ -215,6 +215,8 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
 
         render(<ProjectSelector />);
 
+        // 成功時は何も表示しない（ノイズ削減）
+        expect(screen.queryByText(/spec-manager/)).not.toBeInTheDocument();
         expect(screen.queryByText(/インストール/)).not.toBeInTheDocument();
       });
     });
@@ -386,7 +388,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
         expect(screen.queryByText(/Read\(\*\*\)/)).toBeInTheDocument();
       });
 
-      it('should display success message when all permissions are present', () => {
+      it('should not display anything when all permissions are present', () => {
         createMockStores({
           projectStore: {
             permissionsCheck: {
@@ -399,7 +401,8 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
 
         render(<ProjectSelector />);
 
-        expect(screen.queryByText(/パーミッション: すべて設定済み/)).toBeInTheDocument();
+        // 成功時は何も表示しない（ノイズ削減）
+        expect(screen.queryByText(/パーミッション/)).not.toBeInTheDocument();
       });
 
       it('should not display permissions section when check is null', () => {

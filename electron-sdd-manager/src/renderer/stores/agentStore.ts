@@ -365,7 +365,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         if (type === 'unlink') {
           // ファイル削除時はAgentをストアから削除
           const { agentId, specId } = agent as { agentId?: string; specId?: string };
-          if (agentId && specId) {
+          // specId can be empty string for global agents, so check for undefined
+          if (agentId && specId !== undefined) {
             const state = get();
             const agents = state.agents.get(specId);
             if (agents) {
@@ -382,7 +383,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         } else {
           // add/change時はAgentを追加/更新
           const agentInfo = agent as AgentInfo;
-          if (agentInfo.agentId && agentInfo.specId) {
+          // specId can be empty string for global agents, so check for undefined
+          if (agentInfo.agentId && agentInfo.specId !== undefined) {
             get().addAgent(agentInfo.specId, agentInfo);
           }
         }

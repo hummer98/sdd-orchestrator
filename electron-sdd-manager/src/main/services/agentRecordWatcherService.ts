@@ -36,6 +36,7 @@ export class AgentRecordWatcherService {
   /**
    * Extract spec ID and agent ID from file path
    * e.g., /project/.kiro/runtime/agents/my-spec/agent-123.json -> { specId: 'my-spec', agentId: 'agent-123' }
+   * e.g., /project/.kiro/runtime/agents/agent-123.json -> { specId: '', agentId: 'agent-123' } (global agent)
    */
   private extractIds(filePath: string): { specId?: string; agentId?: string } {
     const agentsDir = path.join(this.projectPath, '.kiro', 'runtime', 'agents');
@@ -43,9 +44,16 @@ export class AgentRecordWatcherService {
     const parts = relativePath.split(path.sep);
 
     if (parts.length >= 2 && parts[1].endsWith('.json')) {
+      // Spec-bound agent: {specId}/agent-xxx.json
       return {
         specId: parts[0],
         agentId: parts[1].replace('.json', ''),
+      };
+    } else if (parts.length === 1 && parts[0].endsWith('.json')) {
+      // Global agent: agent-xxx.json (no specId folder)
+      return {
+        specId: '',
+        agentId: parts[0].replace('.json', ''),
       };
     }
     return {};
@@ -109,7 +117,8 @@ export class AgentRecordWatcherService {
     }
 
     const { specId, agentId } = this.extractIds(filePath);
-    if (!specId || !agentId) {
+    // specId can be empty string for global agents, so check for undefined
+    if (specId === undefined || !agentId) {
       return;
     }
 

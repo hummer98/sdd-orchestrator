@@ -22,6 +22,10 @@ const isE2ETest = process.argv.includes('--e2e-test');
  * Parse command line arguments to get initial project path
  * Supports: --project=<path> or --project <path>
  * Also checks SDD_PROJECT_PATH environment variable
+ *
+ * Note: For packaged Electron apps on macOS, process.argv structure differs
+ * from development mode. We use multiple methods to ensure compatibility.
+ * See: https://github.com/electron/electron/issues/4690
  */
 function parseProjectPathArg(): string | null {
   // First check environment variable (works better with vite dev server)
@@ -30,7 +34,16 @@ function parseProjectPathArg(): string | null {
     return envPath;
   }
 
-  const args = process.argv.slice(2); // Remove node and app path
+  // Try app.commandLine.getSwitchValue() for packaged apps
+  // This works reliably for --project=value format
+  const switchValue = app.commandLine.getSwitchValue('project');
+  if (switchValue) {
+    return switchValue;
+  }
+
+  // Fallback: parse process.argv manually
+  // In packaged apps, argv structure may differ (no 'electron' as first arg)
+  const args = app.isPackaged ? process.argv.slice(1) : process.argv.slice(2);
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];

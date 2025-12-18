@@ -38,5 +38,15 @@ else
 fi
 
 # アプリを起動
-# macOSのopen -aコマンドでは --args を使って引数を渡す
-open -a "$APP_PATH" --args "$TARGET_PATH"
+# macOSのopenコマンドはパッケージ版Electronアプリに引数を正しく渡せない問題がある
+# https://github.com/electron/electron/issues/7755
+# 解決策: 直接実行ファイルを呼び出すか、環境変数を使用する
+EXEC_PATH="$APP_PATH/Contents/MacOS/SDD Orchestrator"
+
+if [ -x "$EXEC_PATH" ]; then
+    # 直接実行ファイルを呼び出す（引数が正しく渡される）
+    "$EXEC_PATH" --project="$TARGET_PATH" &
+else
+    # フォールバック: 環境変数経由で渡す
+    SDD_PROJECT_PATH="$TARGET_PATH" open -a "$APP_PATH"
+fi

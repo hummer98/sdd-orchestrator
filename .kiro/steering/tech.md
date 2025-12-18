@@ -2,29 +2,23 @@
 
 ## Architecture
 
-デュアル実装アプローチ: Tauri版とElectron版の2つのデスクトップアプリケーション。
+Electronベースのデスクトップアプリケーション。
 
-### sdd-manager-app (Tauri版)
+### electron-sdd-manager
 - **フロントエンド**: React + TypeScript (Vite)
-- **バックエンド**: Rust (Tauri 2.x)
-- **IPC**: tauri-specta (型安全通信)
-
-### electron-sdd-manager (Electron版)
-- **フロントエンド**: React + TypeScript (Vite)
-- **バックエンド**: Node.js (Electron)
+- **バックエンド**: Node.js (Electron 35)
 - **IPC**: contextBridge + preload
 
 ## Core Technologies
 
-- **Language**: TypeScript 5.8+, Rust (Tauri版のみ)
+- **Language**: TypeScript 5.8+
 - **Framework**: React 19, Vite 5+
-- **Runtime**: Node.js 20+ (Electron), Tauri 2.x
+- **Runtime**: Node.js 20+, Electron 35
 
 ## Key Libraries
 
 ### 状態管理
 - **Zustand**: 軽量ステート管理（stores/に配置）
-- **TanStack Query**: サーバー状態・非同期データ管理 (Tauri版)
 
 ### UI/スタイリング
 - **Tailwind CSS 4**: ユーティリティファーストCSS
@@ -34,22 +28,25 @@
 ### バリデーション
 - **Zod**: スキーマバリデーション
 
-### Tauri プラグイン (sdd-manager-app)
-- `@tauri-apps/plugin-dialog`: ファイルダイアログ
-- `@tauri-apps/plugin-fs`: ファイルシステムアクセス
-- `@tauri-apps/plugin-shell`: シェルコマンド実行
+### 通信・ネットワーク
+- **ssh2**: SSH接続（リモートプロジェクト操作）
+- **ws**: WebSocket（リモートUI通信）
+- **express**: 静的ファイルサーバー
+
+### ファイル監視
+- **chokidar**: ファイルシステム監視
 
 ## Development Standards
 
 ### Type Safety
 - TypeScript strict mode
 - Zod によるランタイムバリデーション
-- 型定義は `types/index.ts` に集約
+- 型定義は `types/index.ts` に集約、ドメイン別ファイルは `types/*.ts`
 
 ### Code Quality
 - Vitest によるユニットテスト
 - WebdriverIO による E2E テスト
-- テストファイルは `*.test.ts(x)` 命名
+- テストファイルは `*.test.ts(x)` 命名（実装と同ディレクトリ）
 
 ### Testing
 ```bash
@@ -62,30 +59,28 @@ npm run test:e2e    # E2Eテスト
 
 ### Required Tools
 - Node.js 20+
-- Rust (Tauri版のビルドに必要)
 - task (Taskfile.yml 実行用)
 
 ### Common Commands
 
 ```bash
-# sdd-manager-app (Tauri版)
-cd sdd-manager-app
-npm run dev          # 開発サーバー
-npm run tauri dev    # Tauri開発モード
-npm run test         # テスト実行
-
-# electron-sdd-manager (Electron版)
 cd electron-sdd-manager
 npm run dev          # 開発サーバー
 npm run dev:electron # Electron起動
 npm run test         # テスト実行
+
+# または task コマンド（ルートから）
+task electron:dev    # フォアグラウンド起動
+task electron:start  # バックグラウンド起動
+task electron:stop   # 停止
 ```
 
 ## Key Technical Decisions
 
-### デュアル実装の理由
-- Tauri: 軽量・高性能だがRust必須
-- Electron: Node.jsエコシステムとの親和性
+### Electron選択の理由
+- Node.jsエコシステムとの親和性
+- プロセス管理・シェル実行が容易
+- デスクトップ統合（メニュー、通知）
 
 ### Zustand選択の理由
 - 軽量、TypeScriptフレンドリー
@@ -96,5 +91,11 @@ npm run test         # テスト実行
 - ユーティリティファースト
 - PostCSSプラグインとして動作
 
+### IPC設計パターン
+- `channels.ts`: チャンネル名定義（型安全）
+- `handlers.ts`: IPCハンドラ実装
+- preload経由でrendererに公開
+
 ---
 _Document standards and patterns, not every dependency_
+_updated_at: 2025-12-19_

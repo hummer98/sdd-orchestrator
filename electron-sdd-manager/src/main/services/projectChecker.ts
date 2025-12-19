@@ -49,6 +49,7 @@ export const REQUIRED_SETTINGS = [
 /**
  * Required basic permissions for Claude Code tools
  * Location: {projectRoot}/.claude/settings.local.json
+ * Note: Bash(**) is not a supported pattern - use individual commands in standard-commands.txt
  */
 export const REQUIRED_BASIC_PERMISSIONS = [
   'Read(**)',
@@ -58,36 +59,29 @@ export const REQUIRED_BASIC_PERMISSIONS = [
   'Grep(**)',
   'WebSearch',
   'WebFetch',
-  'Bash(**)',
 ] as const;
 
 /**
- * Required permissions for CC-SDD workflow slash commands
+ * Required permissions for CC-SDD workflow skills
  * Location: {projectRoot}/.claude/settings.local.json
+ * Note: Uses Skill(kiro:*) wildcard to allow all kiro skills
  */
-export const REQUIRED_SLASH_COMMAND_PERMISSIONS = [
-  'SlashCommand(/kiro:spec-init:*)',
-  'SlashCommand(/kiro:spec-requirements:*)',
-  'SlashCommand(/kiro:spec-design:*)',
-  'SlashCommand(/kiro:spec-tasks:*)',
-  'SlashCommand(/kiro:spec-impl:*)',
-  'SlashCommand(/kiro:spec-status:*)',
-  'SlashCommand(/kiro:spec-quick:*)',
-  'SlashCommand(/kiro:validate-gap:*)',
-  'SlashCommand(/kiro:validate-design:*)',
-  'SlashCommand(/kiro:validate-impl:*)',
-  'SlashCommand(/kiro:document-review:*)',
-  'SlashCommand(/kiro:document-review-reply:*)',
-  'SlashCommand(/kiro:steering:*)',
-  'SlashCommand(/kiro:steering-custom:*)',
+export const REQUIRED_SKILL_PERMISSIONS = [
+  'Skill(kiro:*)',
 ] as const;
 
 /**
- * All required permissions (basic + slash commands)
+ * @deprecated Use REQUIRED_SKILL_PERMISSIONS instead
+ * Kept for backward compatibility during migration
+ */
+export const REQUIRED_SLASH_COMMAND_PERMISSIONS = REQUIRED_SKILL_PERMISSIONS;
+
+/**
+ * All required permissions (basic + skills)
  */
 export const REQUIRED_PERMISSIONS = [
   ...REQUIRED_BASIC_PERMISSIONS,
-  ...REQUIRED_SLASH_COMMAND_PERMISSIONS,
+  ...REQUIRED_SKILL_PERMISSIONS,
 ] as const;
 
 /**

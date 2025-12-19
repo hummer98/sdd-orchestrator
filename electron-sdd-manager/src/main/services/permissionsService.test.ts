@@ -19,7 +19,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { checkRequiredPermissions, addShellPermissions } from './permissionsService';
+import { checkRequiredPermissions, addShellPermissions, sanitizePermissions, addPermissionsToProject } from './permissionsService';
 
 describe('PermissionsService', () => {
   let tempDir: string;
@@ -48,7 +48,7 @@ describe('PermissionsService', () => {
 
   describe('checkRequiredPermissions', () => {
     it('should return PERMISSIONS_FILE_NOT_FOUND when settings.local.json does not exist', async () => {
-      const result = await checkRequiredPermissions(tempDir, ['SlashCommand(/test:*)']);
+      const result = await checkRequiredPermissions(tempDir, ['Skill(kiro:*)']);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -58,8 +58,8 @@ describe('PermissionsService', () => {
 
     it('should return all present when all permissions exist', async () => {
       const requiredPermissions = [
-        'SlashCommand(/kiro:spec-init:*)',
-        'SlashCommand(/kiro:spec-requirements:*)',
+        'Skill(kiro:*)',
+        'Read(**)',
       ];
       await createSettingsFile(requiredPermissions);
 
@@ -74,12 +74,12 @@ describe('PermissionsService', () => {
     });
 
     it('should return missing permissions when some are absent', async () => {
-      await createSettingsFile(['SlashCommand(/kiro:spec-init:*)']);
+      await createSettingsFile(['Skill(kiro:*)']);
 
       const requiredPermissions = [
-        'SlashCommand(/kiro:spec-init:*)',
-        'SlashCommand(/kiro:spec-requirements:*)',
-        'SlashCommand(/kiro:spec-design:*)',
+        'Skill(kiro:*)',
+        'Read(**)',
+        'Edit(**)',
       ];
 
       const result = await checkRequiredPermissions(tempDir, requiredPermissions);
@@ -88,10 +88,10 @@ describe('PermissionsService', () => {
       if (result.ok) {
         expect(result.value.allPresent).toBe(false);
         expect(result.value.missing).toEqual([
-          'SlashCommand(/kiro:spec-requirements:*)',
-          'SlashCommand(/kiro:spec-design:*)',
+          'Read(**)',
+          'Edit(**)',
         ]);
-        expect(result.value.present).toEqual(['SlashCommand(/kiro:spec-init:*)']);
+        expect(result.value.present).toEqual(['Skill(kiro:*)']);
       }
     });
 
@@ -99,8 +99,8 @@ describe('PermissionsService', () => {
       await createSettingsFile([]);
 
       const requiredPermissions = [
-        'SlashCommand(/kiro:spec-init:*)',
-        'SlashCommand(/kiro:spec-requirements:*)',
+        'Skill(kiro:*)',
+        'Read(**)',
       ];
 
       const result = await checkRequiredPermissions(tempDir, requiredPermissions);
@@ -118,12 +118,107 @@ describe('PermissionsService', () => {
       await fs.mkdir(path.dirname(settingsPath), { recursive: true });
       await fs.writeFile(settingsPath, 'invalid json', 'utf-8');
 
-      const result = await checkRequiredPermissions(tempDir, ['SlashCommand(/test:*)']);
+      const result = await checkRequiredPermissions(tempDir, ['Skill(kiro:*)']);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe('PARSE_ERROR');
       }
+    });
+  });
+
+  describe('sanitizePermissions', () => {
+    it('should remove Bash(**) from permissions', () => {
+      const permissions = ['Read(**)', 'Bash(**)', 'Edit(**)', 'Write(**)'];
+      const result = sanitizePermissions(permissions);
+
+      expect(result.sanitized).toEqual(['Read(**)', 'Edit(**)', 'Write(**)']);
+      expect(result.removed).toEqual(['Bash(**)']);
+    });
+
+    it('should remove SlashCommand patterns', () => {
+      const permissions = [
+        'Read(**)',
+        'SlashCommand(/kiro:spec-init:*)',
+        'SlashCommand(/kiro:spec-design:*)',
+        'Skill(kiro:*)',
+      ];
+      const result = sanitizePermissions(permissions);
+
+      expect(result.sanitized).toEqual(['Read(**)', 'Skill(kiro:*)']);
+      expect(result.removed).toEqual([
+        'SlashCommand(/kiro:spec-init:*)',
+        'SlashCommand(/kiro:spec-design:*)',
+      ]);
+    });
+
+    it('should keep valid permissions unchanged', () => {
+      const permissions = [
+        'Read(**)',
+        'Edit(**)',
+        'Bash(git:*)',
+        'Skill(kiro:*)',
+        'mcp__electron',
+      ];
+      const result = sanitizePermissions(permissions);
+
+      expect(result.sanitized).toEqual(permissions);
+      expect(result.removed).toEqual([]);
+    });
+
+    it('should handle empty array', () => {
+      const result = sanitizePermissions([]);
+
+      expect(result.sanitized).toEqual([]);
+      expect(result.removed).toEqual([]);
+    });
+  });
+
+  describe('addPermissionsToProject', () => {
+    it('should sanitize existing deprecated permissions when adding new ones', async () => {
+      // Create settings with deprecated permissions
+      await createSettingsFile([
+        'Read(**)',
+        'Bash(**)',
+        'SlashCommand(/kiro:spec-init:*)',
+      ]);
+
+      const result = await addPermissionsToProject(tempDir, ['Edit(**)']);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.added).toContain('Edit(**)');
+      }
+
+      // Verify deprecated permissions were removed
+      const settingsPath = path.join(tempDir, '.claude', 'settings.local.json');
+      const content = await fs.readFile(settingsPath, 'utf-8');
+      const settings = JSON.parse(content);
+
+      expect(settings.permissions.allow).not.toContain('Bash(**)');
+      expect(settings.permissions.allow).not.toContain('SlashCommand(/kiro:spec-init:*)');
+      expect(settings.permissions.allow).toContain('Read(**)');
+      expect(settings.permissions.allow).toContain('Edit(**)');
+    });
+
+    it('should not add deprecated permissions', async () => {
+      await createSettingsFile(['Read(**)']);
+
+      const result = await addPermissionsToProject(tempDir, ['Bash(**)', 'SlashCommand(/kiro:test:*)', 'Edit(**)']);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Only Edit(**) should be added, deprecated ones should be filtered
+        expect(result.value.added).toEqual(['Edit(**)']);
+      }
+
+      // Verify final state
+      const settingsPath = path.join(tempDir, '.claude', 'settings.local.json');
+      const content = await fs.readFile(settingsPath, 'utf-8');
+      const settings = JSON.parse(content);
+
+      expect(settings.permissions.allow).not.toContain('Bash(**)');
+      expect(settings.permissions.allow).not.toContain('SlashCommand(/kiro:test:*)');
     });
   });
 });

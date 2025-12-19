@@ -63,6 +63,58 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
+ * Deprecated permission patterns that should be removed
+ * These patterns are not supported by Claude Code or have been replaced
+ */
+const DEPRECATED_PERMISSION_PATTERNS = [
+  'Bash(**)',           // Not a valid pattern - use individual commands
+  /^SlashCommand\(/,    // Replaced by Skill()
+];
+
+/**
+ * Sanitize permissions result
+ */
+export interface SanitizePermissionsResult {
+  readonly sanitized: readonly string[];
+  readonly removed: readonly string[];
+}
+
+/**
+ * Sanitize permissions by removing deprecated patterns
+ *
+ * @param permissions - Array of permission strings
+ * @returns Sanitized permissions and list of removed items
+ */
+export function sanitizePermissions(permissions: string[]): SanitizePermissionsResult {
+  const sanitized: string[] = [];
+  const removed: string[] = [];
+
+  for (const permission of permissions) {
+    let isDeprecated = false;
+
+    for (const pattern of DEPRECATED_PERMISSION_PATTERNS) {
+      if (typeof pattern === 'string') {
+        if (permission === pattern) {
+          isDeprecated = true;
+          break;
+        }
+      } else if (pattern.test(permission)) {
+        isDeprecated = true;
+        break;
+      }
+    }
+
+    if (isDeprecated) {
+      removed.push(permission);
+    } else {
+      sanitized.push(permission);
+    }
+  }
+
+  return { sanitized, removed };
+}
+
+/**
  * Get the path to standard-commands.txt
  */
 export function getStandardPermissionsPath(): string {
@@ -264,6 +316,7 @@ export async function checkRequiredPermissions(
 
 /**
  * Add specific permissions to project's settings.local.json
+ * Also sanitizes existing permissions by removing deprecated patterns
  *
  * @param projectPath - Project root path
  * @param permissions - Array of permission strings to add
@@ -299,12 +352,20 @@ export async function addPermissionsToProject(
     settings.permissions.allow = [];
   }
 
+  // Sanitize existing permissions to remove deprecated patterns
+  const sanitizeResult = sanitizePermissions(settings.permissions.allow);
+  if (sanitizeResult.removed.length > 0) {
+    logger.info('[permissionsService] Removed deprecated permissions', { removed: sanitizeResult.removed });
+    settings.permissions.allow = [...sanitizeResult.sanitized];
+  }
+
   const existingPermissions = new Set(settings.permissions.allow);
   const added: string[] = [];
   const alreadyExists: string[] = [];
 
-  // Add new permissions
-  for (const permission of permissions) {
+  // Add new permissions (also sanitize new permissions)
+  const newPermissionsSanitized = sanitizePermissions([...permissions]);
+  for (const permission of newPermissionsSanitized.sanitized) {
     if (existingPermissions.has(permission)) {
       alreadyExists.push(permission);
     } else {

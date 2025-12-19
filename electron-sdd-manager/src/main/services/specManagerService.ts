@@ -674,22 +674,16 @@ export class SpecManagerService {
    */
   async deleteAgent(specId: string, agentId: string): Promise<Result<void, AgentError>> {
     const agent = this.registry.get(agentId);
-    if (!agent) {
-      return {
-        ok: false,
-        error: { type: 'NOT_FOUND', agentId },
-      };
-    }
 
-    // Don't allow deleting running or hang agents
-    if (agent.status === 'running' || agent.status === 'hang') {
+    // Don't allow deleting running or hang agents (only check if agent exists in registry)
+    if (agent && (agent.status === 'running' || agent.status === 'hang')) {
       return {
         ok: false,
         error: { type: 'SPAWN_ERROR', message: 'Cannot delete running or hang agents' },
       };
     }
 
-    // Delete the agent record file
+    // Delete the agent record file (try even if not in registry)
     try {
       await this.recordService.deleteRecord(specId, agentId);
       logger.info('[SpecManagerService] Agent record deleted', { specId, agentId });
@@ -698,9 +692,11 @@ export class SpecManagerService {
       // Continue even if file deletion fails (file might not exist)
     }
 
-    // Remove from registry
-    this.registry.unregister(agentId);
-    logger.info('[SpecManagerService] Agent unregistered', { specId, agentId });
+    // Remove from registry if exists
+    if (agent) {
+      this.registry.unregister(agentId);
+      logger.info('[SpecManagerService] Agent unregistered', { specId, agentId });
+    }
 
     return { ok: true, value: undefined };
   }

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-12-20
+
+### Added
+- **Experimental tools installer**: New menu feature to install experimental slash commands and agents
+  - Plan command (`/plan`) for pre-implementation planning
+  - Debug agent (`@debug`) for systematic troubleshooting
+  - Commit command (`/commit`) for structured commit message generation
+- **Pane layout persistence**: Window pane layout is now saved and restored across sessions
+
+### Fixed
+- **Claude Code permission format**: Updated permission format for compatibility
+- **Profile switching**: Added confirmation dialog for agent folder deletion during profile switch
+- **Global agent display**: Fixed execution time display and deletion functionality for global agents
+
+### Changed
+- **Debug agent integration**: Separated debugging info from CLAUDE.md into dedicated debug agent
+- **Documentation updates**: Updated document-review workflow and steering file sync
+
 ## [0.8.0] - 2025-12-19
 
 ### Added

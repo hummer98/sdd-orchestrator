@@ -8,10 +8,11 @@ import { clsx } from 'clsx';
 
 interface ResizeHandleProps {
   onResize: (delta: number) => void;
+  onResizeEnd?: () => void;
   direction: 'horizontal' | 'vertical';
 }
 
-export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
+export function ResizeHandle({ onResize, onResizeEnd, direction }: ResizeHandleProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -35,6 +36,7 @@ export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      onResizeEnd?.();
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -44,7 +46,7 @@ export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, direction, onResize]);
+  }, [isDragging, direction, onResize, onResizeEnd]);
 
   return (
     <div

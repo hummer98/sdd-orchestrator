@@ -18,6 +18,7 @@ import type { ServerStartResult, ServerStatus, ServerError } from '../main/servi
 import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '../main/services/unifiedCommandsetInstaller';
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
+import type { LayoutValues } from '../main/services/layoutConfigService';
 
 /**
  * Exposed API to renderer process
@@ -673,6 +674,51 @@ const electronAPI = {
    */
   openInVSCode: (projectPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.OPEN_IN_VSCODE, projectPath),
+
+  // ============================================================
+  // Layout Config (pane-layout-persistence feature)
+  // Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2
+  // ============================================================
+
+  /**
+   * Load layout config from project
+   * @param projectPath Project root path
+   * @returns Layout values or null if not found
+   */
+  loadLayoutConfig: (projectPath: string): Promise<LayoutValues | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_LAYOUT_CONFIG, projectPath),
+
+  /**
+   * Save layout config to project
+   * @param projectPath Project root path
+   * @param layout Layout values to save
+   */
+  saveLayoutConfig: (projectPath: string, layout: LayoutValues): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_LAYOUT_CONFIG, projectPath, layout),
+
+  /**
+   * Reset layout config to default values
+   * @param projectPath Project root path
+   */
+  resetLayoutConfig: (projectPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESET_LAYOUT_CONFIG, projectPath),
+
+  /**
+   * Subscribe to menu reset layout event
+   * @param callback Function called when reset layout menu item is clicked
+   * @returns Cleanup function to unsubscribe
+   */
+  onMenuResetLayout: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_RESET_LAYOUT, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_RESET_LAYOUT, handler);
+    };
+  },
 };
 
 // Expose API to renderer

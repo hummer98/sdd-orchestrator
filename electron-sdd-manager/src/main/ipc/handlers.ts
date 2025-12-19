@@ -37,6 +37,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { access, rm } from 'fs/promises';
 import { join } from 'path';
+import { layoutConfigService, type LayoutValues } from '../services/layoutConfigService';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -1131,6 +1132,35 @@ export function registerIpcHandlers(): void {
         logger.error('[handlers] Failed to launch VSCode', { projectPath, error });
         throw new Error(`VSCodeの起動に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
+    }
+  );
+
+  // ============================================================
+  // Layout Config (pane-layout-persistence feature)
+  // Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_LAYOUT_CONFIG,
+    async (_event, projectPath: string): Promise<LayoutValues | null> => {
+      logger.debug('[handlers] LOAD_LAYOUT_CONFIG called', { projectPath });
+      return layoutConfigService.loadLayoutConfig(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_LAYOUT_CONFIG,
+    async (_event, projectPath: string, layout: LayoutValues): Promise<void> => {
+      logger.debug('[handlers] SAVE_LAYOUT_CONFIG called', { projectPath, layout });
+      return layoutConfigService.saveLayoutConfig(projectPath, layout);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.RESET_LAYOUT_CONFIG,
+    async (_event, projectPath: string): Promise<void> => {
+      logger.info('[handlers] RESET_LAYOUT_CONFIG called', { projectPath });
+      return layoutConfigService.resetLayoutConfig(projectPath);
     }
   );
 }

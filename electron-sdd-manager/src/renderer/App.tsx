@@ -48,6 +48,15 @@ const BOTTOM_PANE_MAX = 400;
 const AGENT_LIST_MIN = 80;
 const AGENT_LIST_MAX = 400;
 
+// デフォルトのレイアウト値（pane-layout-persistence feature）
+// layoutConfigService.tsのDEFAULT_LAYOUTと同一の値
+const DEFAULT_LAYOUT = {
+  leftPaneWidth: 288,    // w-72 = 18rem = 288px
+  rightPaneWidth: 320,   // w-80 = 20rem = 320px
+  bottomPaneHeight: 192, // h-48 = 12rem = 192px
+  agentListHeight: 160,  // Agent一覧パネルの高さ
+};
+
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject } = useProjectStore();
   const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
@@ -82,11 +91,11 @@ export function App() {
   const [isSSHConnectDialogOpen, setIsSSHConnectDialogOpen] = useState(false);
   const [isSSHConnecting, setIsSSHConnecting] = useState(false);
 
-  // ペインサイズの状態
-  const [leftPaneWidth, setLeftPaneWidth] = useState(288); // w-72 = 18rem = 288px
-  const [rightPaneWidth, setRightPaneWidth] = useState(320); // w-80 = 20rem = 320px
-  const [bottomPaneHeight, setBottomPaneHeight] = useState(192); // h-48 = 12rem = 192px
-  const [agentListHeight, setAgentListHeight] = useState(160); // Agent一覧パネルの高さ
+  // ペインサイズの状態（pane-layout-persistence feature）
+  const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LAYOUT.leftPaneWidth);
+  const [rightPaneWidth, setRightPaneWidth] = useState(DEFAULT_LAYOUT.rightPaneWidth);
+  const [bottomPaneHeight, setBottomPaneHeight] = useState(DEFAULT_LAYOUT.bottomPaneHeight);
+  const [agentListHeight, setAgentListHeight] = useState(DEFAULT_LAYOUT.agentListHeight);
 
   // リサイズハンドラー
   const handleLeftResize = useCallback((delta: number) => {
@@ -105,6 +114,70 @@ export function App() {
     setAgentListHeight((prev) => Math.min(AGENT_LIST_MAX, Math.max(AGENT_LIST_MIN, prev + delta)));
   }, []);
 
+  // レイアウト保存関数（pane-layout-persistence feature）
+  // 現在のペインサイズをプロジェクトの設定ファイルに保存
+  const saveLayout = useCallback(async () => {
+    if (!currentProject) return;
+    try {
+      await window.electronAPI.saveLayoutConfig(currentProject, {
+        leftPaneWidth,
+        rightPaneWidth,
+        bottomPaneHeight,
+        agentListHeight,
+      });
+      console.log('[App] Layout config saved');
+    } catch (error) {
+      console.error('[App] Failed to save layout config:', error);
+    }
+  }, [currentProject, leftPaneWidth, rightPaneWidth, bottomPaneHeight, agentListHeight]);
+
+  // レイアウト復元関数（pane-layout-persistence feature）
+  // プロジェクトの設定ファイルからペインサイズを読み込む
+  const loadLayout = useCallback(async (projectPath: string) => {
+    try {
+      const config = await window.electronAPI.loadLayoutConfig(projectPath);
+      if (config) {
+        setLeftPaneWidth(config.leftPaneWidth);
+        setRightPaneWidth(config.rightPaneWidth);
+        setBottomPaneHeight(config.bottomPaneHeight);
+        setAgentListHeight(config.agentListHeight);
+        console.log('[App] Layout config loaded:', config);
+      } else {
+        // 設定ファイルが存在しない場合はデフォルト値を使用
+        setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
+        setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
+        setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
+        setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
+        console.log('[App] No layout config found, using defaults');
+      }
+    } catch (error) {
+      console.error('[App] Failed to load layout config:', error);
+      // エラー時もデフォルト値を適用
+      setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
+      setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
+      setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
+      setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
+    }
+  }, []);
+
+  // レイアウトリセット関数（pane-layout-persistence feature）
+  // すべてのペインをデフォルト値に戻し、設定ファイルに保存
+  const resetLayout = useCallback(async () => {
+    setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
+    setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
+    setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
+    setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
+
+    if (currentProject) {
+      try {
+        await window.electronAPI.resetLayoutConfig(currentProject);
+        console.log('[App] Layout config reset to defaults');
+      } catch (error) {
+        console.error('[App] Failed to reset layout config:', error);
+      }
+    }
+  }, [currentProject]);
+
   // Load initial project from command line argument and recent projects on mount
   const initialProjectLoaded = useRef(false);
   useEffect(() => {
@@ -116,13 +189,14 @@ export function App() {
     // Load recent projects first, then check for initial project
     loadRecentProjects().then(async () => {
       await loadInitialProject();
-      // After loading initial project, load specs if project path was set
+      // After loading initial project, load specs and layout config if project path was set
       const initialPath = await window.electronAPI.getInitialProjectPath();
       if (initialPath) {
         await loadSpecs(initialPath);
+        await loadLayout(initialPath);
       }
     });
-  }, [loadRecentProjects, loadInitialProject, loadSpecs]);
+  }, [loadRecentProjects, loadInitialProject, loadSpecs, loadLayout]);
 
   // Setup agent event listeners on mount
   // useRefを使用してStrictModeでの二重実行を防止
@@ -161,6 +235,7 @@ export function App() {
       console.log(`[App] Opening project from menu: ${projectPath}`);
       await selectProject(projectPath);
       await loadSpecs(projectPath);
+      await loadLayout(projectPath);
     });
 
     const cleanupCliInstall = window.electronAPI.onMenuInstallCliCommand(() => {
@@ -206,6 +281,12 @@ export function App() {
       setIsCommandsetInstallDialogOpen(true);
     });
 
+    // レイアウトリセットメニューイベントリスナー（pane-layout-persistence feature）
+    const cleanupResetLayout = window.electronAPI.onMenuResetLayout(() => {
+      console.log('[App] Reset layout from menu');
+      resetLayout();
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupOpenProject();
@@ -213,8 +294,9 @@ export function App() {
       cleanupCommandPrefix();
       cleanupToggleRemoteServer();
       cleanupCommandsetInstall();
+      cleanupResetLayout();
     };
-  }, [selectProject, loadSpecs, currentProject, setCommandPrefix, startServer, stopServer, addNotification]);
+  }, [selectProject, loadSpecs, loadLayout, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {
@@ -340,7 +422,7 @@ export function App() {
           </aside>
 
           {/* Left resize handle */}
-          <ResizeHandle direction="horizontal" onResize={handleLeftResize} />
+          <ResizeHandle direction="horizontal" onResize={handleLeftResize} onResizeEnd={saveLayout} />
 
           {/* Main area */}
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -352,7 +434,7 @@ export function App() {
                 </div>
 
                 {/* Right resize handle */}
-                <ResizeHandle direction="horizontal" onResize={handleRightResize} />
+                <ResizeHandle direction="horizontal" onResize={handleRightResize} onResizeEnd={saveLayout} />
 
                 {/* Right sidebar - SDD Hybrid Workflow View */}
                 <aside
@@ -364,7 +446,7 @@ export function App() {
                     <AgentListPanel />
                   </div>
                   {/* Agent一覧とワークフロー間のリサイズハンドル */}
-                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} />
+                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} onResizeEnd={saveLayout} />
                   {/* SDD Hybrid Workflow: 6フェーズワークフロービュー */}
                   <div className="flex-1 overflow-hidden">
                     <WorkflowView />
@@ -388,7 +470,7 @@ export function App() {
         </div>
 
         {/* Bottom resize handle */}
-        <ResizeHandle direction="vertical" onResize={handleBottomResize} />
+        <ResizeHandle direction="vertical" onResize={handleBottomResize} onResizeEnd={saveLayout} />
 
         {/* Task 33.3: Bottom - Agent Log panel (replaced LogPanel) */}
         <div style={{ height: bottomPaneHeight }} className="shrink-0 flex flex-col">

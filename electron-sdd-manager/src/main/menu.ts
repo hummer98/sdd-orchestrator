@@ -187,6 +187,17 @@ export function createMenu(): void {
         { role: 'zoomOut' as const, label: '縮小' },
         { type: 'separator' as const },
         { role: 'togglefullscreen' as const, label: 'フルスクリーン' },
+        { type: 'separator' as const },
+        {
+          label: 'レイアウトをリセット',
+          enabled: currentProjectPathForMenu !== null,
+          click: () => {
+            const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+            if (window) {
+              window.webContents.send(IPC_CHANNELS.MENU_RESET_LAYOUT);
+            }
+          },
+        },
       ],
     },
 
@@ -282,7 +293,7 @@ export function createMenu(): void {
           label: 'SDDドキュメント',
           click: async () => {
             const { shell } = await import('electron');
-            shell.openExternal('https://github.com/your-repo/sdd-manager');
+            shell.openExternal('https://github.com/hummer98/sdd-orchestrator');
           },
         },
       ],

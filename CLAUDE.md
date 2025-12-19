@@ -116,6 +116,17 @@ Electronアプリの操作には`task`コマンドを使用する。
 | 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業 |
 | Electronアプリが期待通り動作しない | 動作確認・トラブルシューティング |
 
+### MCP Electron操作の制限事項
+
+- **メニュー操作不可**: MCP electronツールではネイティブメニュー（ファイル、編集、表示等）を操作できない
+- **代替手段**: メニュー経由の機能テストにはIPCを直接呼び出す
+  ```javascript
+  // 例: レイアウトリセット
+  window.electronAPI.resetLayoutConfig()
+  // 例: レイアウト読み込み
+  window.electronAPI.loadLayoutConfig()
+  ```
+
 ### 詳細情報
 
 デバッグの詳細手順は `.kiro/steering/debugging.md` を参照。

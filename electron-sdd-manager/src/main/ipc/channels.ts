@@ -138,6 +138,14 @@ export const IPC_CHANNELS = {
 
   // VSCode Integration
   OPEN_IN_VSCODE: 'ipc:open-in-vscode',
+
+  // Layout Config (pane-layout-persistence feature)
+  LOAD_LAYOUT_CONFIG: 'ipc:load-layout-config',
+  SAVE_LAYOUT_CONFIG: 'ipc:save-layout-config',
+  RESET_LAYOUT_CONFIG: 'ipc:reset-layout-config',
+
+  // Menu Events - Layout Reset
+  MENU_RESET_LAYOUT: 'menu:reset-layout',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

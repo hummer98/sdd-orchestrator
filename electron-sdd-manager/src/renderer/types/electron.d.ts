@@ -11,6 +11,17 @@ import type {
 } from './index';
 
 /**
+ * Layout values for pane-layout-persistence feature
+ * Requirements: 1.1-1.4, 4.2-4.4
+ */
+export interface LayoutValues {
+  leftPaneWidth: number;
+  rightPaneWidth: number;
+  bottomPaneHeight: number;
+  agentListHeight: number;
+}
+
+/**
  * Agent status type
  * Requirements: 5.2
  */
@@ -413,6 +424,15 @@ export interface ElectronAPI {
 
   // VSCode Integration
   openInVSCode(projectPath: string): Promise<void>;
+
+  // Layout Config (pane-layout-persistence feature)
+  // Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2
+  loadLayoutConfig(projectPath: string): Promise<LayoutValues | null>;
+  saveLayoutConfig(projectPath: string, layout: LayoutValues): Promise<void>;
+  resetLayoutConfig(projectPath: string): Promise<void>;
+
+  // Menu Events - Layout Reset
+  onMenuResetLayout(callback: () => void): () => void;
 }
 
 declare global {

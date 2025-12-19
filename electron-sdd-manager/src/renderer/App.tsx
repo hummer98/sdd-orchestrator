@@ -442,6 +442,12 @@ export function App() {
               totalFailed: summary.totalFailed,
             };
           }}
+          onCheckAgentFolderExists={async (projectPath: string) => {
+            return window.electronAPI.checkAgentFolderExists(projectPath);
+          }}
+          onDeleteAgentFolder={async (projectPath: string) => {
+            return window.electronAPI.deleteAgentFolder(projectPath);
+          }}
         />
 
         {/* SSH Remote Project Dialogs */}

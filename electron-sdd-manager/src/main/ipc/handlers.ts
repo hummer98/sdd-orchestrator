@@ -35,6 +35,8 @@ import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } fr
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import { access, rm } from 'fs/promises';
+import { join } from 'path';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -1067,6 +1069,41 @@ export function registerIpcHandlers(): void {
       });
 
       return result;
+    }
+  );
+
+  // ============================================================
+  // Agent Folder Management (commandset-profile-agent-cleanup)
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_AGENT_FOLDER_EXISTS,
+    async (_event, projectPath: string): Promise<boolean> => {
+      logger.info('[handlers] CHECK_AGENT_FOLDER_EXISTS called', { projectPath });
+      const agentFolderPath = join(projectPath, '.claude', 'agents', 'kiro');
+      try {
+        await access(agentFolderPath);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DELETE_AGENT_FOLDER,
+    async (_event, projectPath: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      logger.info('[handlers] DELETE_AGENT_FOLDER called', { projectPath });
+      const agentFolderPath = join(projectPath, '.claude', 'agents', 'kiro');
+      try {
+        await rm(agentFolderPath, { recursive: true, force: true });
+        logger.info('[handlers] Agent folder deleted successfully', { agentFolderPath });
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('[handlers] Failed to delete agent folder', { agentFolderPath, error: message });
+        return { ok: false, error: message };
+      }
     }
   );
 

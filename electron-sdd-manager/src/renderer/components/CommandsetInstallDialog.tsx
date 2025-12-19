@@ -4,8 +4,8 @@
  * Requirements: 10.2, 10.3
  */
 
-import { useState } from 'react';
-import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle, Trash2, FolderCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
@@ -77,13 +77,27 @@ const PROFILES: Profile[] = [
 /**
  * Dialog state type
  */
-type DialogState = 'selection' | 'installing' | 'complete';
+type DialogState = 'selection' | 'agent-cleanup-confirm' | 'installing' | 'complete';
+
+/**
+ * Agent cleanup choice type
+ */
+type AgentCleanupChoice = 'keep' | 'delete' | 'cancel';
+
+/**
+ * Check if profile includes agents
+ */
+const profileHasAgents = (profileName: ProfileName): boolean => {
+  return profileName === 'cc-sdd-agent';
+};
 
 interface CommandsetInstallDialogProps {
   isOpen: boolean;
   projectPath: string;
   onClose: () => void;
   onInstall: (profileName: ProfileName, progressCallback?: ProgressCallback) => Promise<InstallResultSummary | void>;
+  onCheckAgentFolderExists?: (projectPath: string) => Promise<boolean>;
+  onDeleteAgentFolder?: (projectPath: string) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 export function CommandsetInstallDialog({
@@ -91,19 +105,78 @@ export function CommandsetInstallDialog({
   projectPath,
   onClose,
   onInstall,
+  onCheckAgentFolderExists,
+  onDeleteAgentFolder,
 }: CommandsetInstallDialogProps) {
   const [selectedProfile, setSelectedProfile] = useState<ProfileName>('cc-sdd-agent');
   const [dialogState, setDialogState] = useState<DialogState>('selection');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<InstallProgress | null>(null);
   const [result, setResult] = useState<InstallResultSummary | null>(null);
+  const [agentFolderExists, setAgentFolderExists] = useState<boolean>(false);
+
+  // Check agent folder existence when dialog opens
+  useEffect(() => {
+    if (isOpen && onCheckAgentFolderExists) {
+      onCheckAgentFolderExists(projectPath).then(setAgentFolderExists);
+    }
+  }, [isOpen, projectPath, onCheckAgentFolderExists]);
 
   if (!isOpen) return null;
 
   const projectName = projectPath.split('/').pop() || projectPath;
   const isLoading = dialogState === 'installing';
 
-  const handleInstall = async () => {
+  /**
+   * Check if agent cleanup confirmation is needed
+   * Required when: switching to a non-agent profile AND agent folder exists
+   */
+  const needsAgentCleanupConfirm = (): boolean => {
+    return !profileHasAgents(selectedProfile) && agentFolderExists;
+  };
+
+  /**
+   * Handle install button click
+   */
+  const handleInstallClick = async () => {
+    // Check if we need to show agent cleanup confirmation
+    if (needsAgentCleanupConfirm()) {
+      setDialogState('agent-cleanup-confirm');
+      return;
+    }
+
+    // Proceed with installation
+    await proceedWithInstall();
+  };
+
+  /**
+   * Handle agent cleanup choice
+   */
+  const handleAgentCleanupChoice = async (choice: AgentCleanupChoice) => {
+    if (choice === 'cancel') {
+      setDialogState('selection');
+      return;
+    }
+
+    if (choice === 'delete' && onDeleteAgentFolder) {
+      const deleteResult = await onDeleteAgentFolder(projectPath);
+      if (!deleteResult.ok) {
+        setError(`エージェントフォルダの削除に失敗しました: ${deleteResult.error}`);
+        setDialogState('selection');
+        return;
+      }
+      // Update state after successful deletion
+      setAgentFolderExists(false);
+    }
+
+    // Proceed with installation (keep or delete both lead to install)
+    await proceedWithInstall();
+  };
+
+  /**
+   * Proceed with actual installation
+   */
+  const proceedWithInstall = async () => {
     setDialogState('installing');
     setError(null);
     setProgress(null);
@@ -143,7 +216,9 @@ export function CommandsetInstallDialog({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-            {dialogState === 'complete' ? 'インストール完了' : 'コマンドセットをインストール'}
+            {dialogState === 'complete' ? 'インストール完了' :
+             dialogState === 'agent-cleanup-confirm' ? 'エージェントフォルダの確認' :
+             'コマンドセットをインストール'}
           </h2>
           <button
             onClick={handleClose}
@@ -217,6 +292,80 @@ export function CommandsetInstallDialog({
                   </div>
                 </label>
               ))}
+            </div>
+          )}
+
+          {/* Agent Cleanup Confirmation (shown when switching from agent profile) */}
+          {dialogState === 'agent-cleanup-confirm' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-300">
+                    エージェントフォルダが存在します
+                  </p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                    選択したプロファイル（{selectedProfile}）はエージェントを含みません。
+                    既存のエージェントフォルダ（.claude/agents/kiro/）をどうしますか？
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleAgentCleanupChoice('keep')}
+                  className={clsx(
+                    'w-full flex items-center gap-3 p-3 rounded-md border transition-colors',
+                    'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  )}
+                >
+                  <FolderCheck className="w-5 h-5 text-blue-500" />
+                  <div className="text-left">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      エージェントを維持
+                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      既存のエージェントファイルを残したままインストールします
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleAgentCleanupChoice('delete')}
+                  className={clsx(
+                    'w-full flex items-center gap-3 p-3 rounded-md border transition-colors',
+                    'border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20'
+                  )}
+                >
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                  <div className="text-left">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      削除する
+                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      エージェントフォルダを削除してからインストールします
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleAgentCleanupChoice('cancel')}
+                  className={clsx(
+                    'w-full flex items-center gap-3 p-3 rounded-md border transition-colors',
+                    'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  )}
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                  <div className="text-left">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      キャンセル
+                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      プロファイル選択に戻ります
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
           )}
 
@@ -334,7 +483,7 @@ export function CommandsetInstallDialog({
                 キャンセル
               </button>
               <button
-                onClick={handleInstall}
+                onClick={handleInstallClick}
                 disabled={isLoading}
                 className={clsx(
                   'px-4 py-2 rounded-md text-sm',

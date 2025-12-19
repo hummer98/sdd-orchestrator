@@ -464,6 +464,26 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE, projectPath, profileName, options),
 
   // ============================================================
+  // Agent Folder Management (commandset-profile-agent-cleanup)
+  // ============================================================
+
+  /**
+   * Check if agent folder exists
+   * @param projectPath Project root path
+   * @returns true if .claude/agents/kiro/ exists
+   */
+  checkAgentFolderExists: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_AGENT_FOLDER_EXISTS, projectPath),
+
+  /**
+   * Delete agent folder
+   * @param projectPath Project root path
+   * @returns Result indicating success or failure
+   */
+  deleteAgentFolder: (projectPath: string): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DELETE_AGENT_FOLDER, projectPath),
+
+  // ============================================================
   // Bug Management (Requirements: 3.1, 6.1, 6.3, 6.5)
   // ============================================================
 

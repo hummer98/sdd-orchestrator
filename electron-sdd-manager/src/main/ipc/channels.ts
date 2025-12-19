@@ -132,6 +132,10 @@ export const IPC_CHANNELS = {
   CHECK_COMMANDSET_STATUS: 'ipc:check-commandset-status',
   INSTALL_COMMANDSET_BY_PROFILE: 'ipc:install-commandset-by-profile',
 
+  // Agent Folder Management (commandset-profile-agent-cleanup)
+  CHECK_AGENT_FOLDER_EXISTS: 'ipc:check-agent-folder-exists',
+  DELETE_AGENT_FOLDER: 'ipc:delete-agent-folder',
+
   // VSCode Integration
   OPEN_IN_VSCODE: 'ipc:open-in-vscode',
 } as const;

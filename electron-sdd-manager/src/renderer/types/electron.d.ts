@@ -378,6 +378,10 @@ export interface ElectronAPI {
   onMenuInstallCommandset(callback: () => void): () => void;
   installCommandsetByProfile(projectPath: string, profileName: string): Promise<Result<{ summary: { totalInstalled: number; totalSkipped: number; totalFailed: number } }, { type: string; message: string }>>;
 
+  // Agent Folder Management (commandset-profile-agent-cleanup)
+  checkAgentFolderExists(projectPath: string): Promise<boolean>;
+  deleteAgentFolder(projectPath: string): Promise<{ ok: true } | { ok: false; error: string }>;
+
   // Bug Management
   // Requirements: 3.1, 6.1, 6.3
   readBugs(projectPath: string): Promise<BugMetadata[]>;

@@ -240,13 +240,14 @@ After review completion, display:
 
 **If Critical Issues Found**:
 
-- Address critical issues before proceeding
+- Run `/kiro:document-review-reply $1` to generate responses to review issues
+- Address critical issues based on the response recommendations
 - Update relevant specification documents
-- Re-run `/document-review $1` to verify fixes
+- Re-run `/kiro:document-review $1` to verify fixes
 
 **If Warnings Only**:
 
-- Consider addressing warnings before implementation
+- Run `/kiro:document-review-reply $1` to review and respond to warnings
 - Or document accepted risks and proceed
 - Run `/kiro:spec-impl $1` when ready
 

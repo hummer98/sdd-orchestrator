@@ -441,7 +441,7 @@ export interface ElectronAPI {
 
   // Unified Commandset Install
   onMenuInstallCommandset(callback: () => void): () => void;
-  installCommandsetByProfile(projectPath: string, profileName: string): Promise<Result<{ summary: { totalInstalled: number; totalSkipped: number; totalFailed: number } }, { type: string; message: string }>>;
+  installCommandsetByProfile(projectPath: string, profileName: string, options?: { force?: boolean }): Promise<Result<{ summary: { totalInstalled: number; totalSkipped: number; totalFailed: number } }, { type: string; message: string }>>;
 
   // Agent Folder Management (commandset-profile-agent-cleanup)
   checkAgentFolderExists(projectPath: string): Promise<boolean>;

@@ -648,7 +648,8 @@ export function App() {
 
             const result = await window.electronAPI.installCommandsetByProfile(
               currentProject,
-              profileName
+              profileName,
+              { force: true }
             );
 
             if (!result.ok) {

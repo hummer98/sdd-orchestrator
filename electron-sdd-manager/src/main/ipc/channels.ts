@@ -162,6 +162,15 @@ export const IPC_CHANNELS = {
   // Unified Project Selection (unified-project-selection feature)
   // Requirements: 1.1, 1.2, 1.6, 5.1-5.4, 6.1-6.4
   SELECT_PROJECT: 'ipc:select-project',
+
+  // Multi-Window Support (Requirements: 1.1-1.5, 2.1-2.4, 3.1-3.4)
+  CREATE_NEW_WINDOW: 'ipc:create-new-window',
+  WINDOW_FOCUS_CHANGED: 'ipc:window-focus-changed',
+  GET_WINDOW_PROJECT: 'ipc:get-window-project',
+  SET_WINDOW_PROJECT: 'ipc:set-window-project',
+
+  // Menu Events - New Window
+  MENU_NEW_WINDOW: 'menu:new-window',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

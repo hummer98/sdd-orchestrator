@@ -104,6 +104,15 @@ export function createMenu(): void {
       label: 'ファイル',
       submenu: [
         {
+          label: '新しいウィンドウ',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => {
+            // Create a new window via createWindow()
+            createWindow();
+          },
+        },
+        { type: 'separator' as const },
+        {
           label: 'プロジェクトを開く...',
           accelerator: 'CmdOrCtrl+O',
           click: async () => {

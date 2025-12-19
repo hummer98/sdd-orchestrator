@@ -176,4 +176,63 @@ describe('ConfigStore', () => {
       expect(mockStore.set).toHaveBeenCalledWith('hangThreshold', 600000);
     });
   });
+
+  // Task 4.1, 4.2: Multi-window state persistence
+  // Requirements: 4.1-4.6
+  describe('multiWindowStates', () => {
+    it('should return empty array when no states stored', async () => {
+      mockStore.get.mockReturnValue(undefined);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const states = store.getMultiWindowStates();
+      expect(states).toEqual([]);
+    });
+
+    it('should return stored multi-window states', async () => {
+      const storedStates = [
+        { projectPath: '/project1', bounds: { x: 0, y: 0, width: 1200, height: 800 }, isMaximized: false, isMinimized: false },
+        { projectPath: '/project2', bounds: { x: 100, y: 100, width: 1200, height: 800 }, isMaximized: true, isMinimized: false },
+      ];
+      mockStore.get.mockReturnValue(storedStates);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const states = store.getMultiWindowStates();
+      expect(states).toEqual(storedStates);
+    });
+
+    it('should set multi-window states', async () => {
+      const states = [
+        { projectPath: '/project1', bounds: { x: 0, y: 0, width: 1200, height: 800 }, isMaximized: false, isMinimized: false },
+      ];
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      store.setMultiWindowStates(states);
+
+      expect(mockStore.set).toHaveBeenCalledWith('multiWindowStates', states);
+    });
+
+    it('should migrate from legacy windowBounds when no multiWindowStates exist', async () => {
+      // First call for multiWindowStates returns undefined
+      // Second call for windowBounds returns legacy bounds
+      mockStore.get
+        .mockReturnValueOnce(undefined) // multiWindowStates
+        .mockReturnValueOnce({ x: 100, y: 100, width: 1200, height: 800 }); // windowBounds
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const states = store.getMultiWindowStates();
+
+      // Should return one state with empty projectPath (for project selection screen)
+      expect(states).toHaveLength(1);
+      expect(states[0].projectPath).toBe('');
+      expect(states[0].bounds.width).toBe(1200);
+    });
+  });
 });

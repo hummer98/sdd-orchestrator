@@ -10,11 +10,23 @@ import type { WindowBounds } from '../../renderer/types';
 const MAX_RECENT_PROJECTS = 10;
 const DEFAULT_HANG_THRESHOLD = 300000; // 5 minutes in milliseconds
 
+/**
+ * Multi-window state for persistence
+ * Requirements: 4.1-4.6
+ */
+export interface MultiWindowState {
+  projectPath: string;
+  bounds: WindowBounds;
+  isMaximized: boolean;
+  isMinimized: boolean;
+}
+
 interface AppConfig {
   recentProjects: string[];
   windowBounds: WindowBounds | null;
   hangThreshold: number;
   version: number;
+  multiWindowStates: MultiWindowState[];
 }
 
 const schema = {
@@ -42,6 +54,27 @@ const schema = {
   version: {
     type: 'number',
     default: 1,
+  },
+  multiWindowStates: {
+    type: 'array',
+    default: [],
+    items: {
+      type: 'object',
+      properties: {
+        projectPath: { type: 'string' },
+        bounds: {
+          type: 'object',
+          properties: {
+            x: { type: 'number' },
+            y: { type: 'number' },
+            width: { type: 'number' },
+            height: { type: 'number' },
+          },
+        },
+        isMaximized: { type: 'boolean' },
+        isMinimized: { type: 'boolean' },
+      },
+    },
   },
 } as const;
 
@@ -113,6 +146,41 @@ export class ConfigStore {
    */
   setHangThreshold(thresholdMs: number): void {
     this.store.set('hangThreshold', thresholdMs);
+  }
+
+  /**
+   * Get multi-window states
+   * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+   */
+  getMultiWindowStates(): MultiWindowState[] {
+    const states = this.store.get('multiWindowStates');
+    if (states && states.length > 0) {
+      return states;
+    }
+
+    // Migration: multiWindowStates doesn't exist yet
+    const legacyBounds = this.store.get('windowBounds');
+    if (legacyBounds) {
+      // Restore single window state from legacy windowBounds
+      // projectPath is empty to show project selection screen
+      return [{
+        projectPath: '',
+        bounds: legacyBounds,
+        isMaximized: false,
+        isMinimized: false,
+      }];
+    }
+
+    // Initial launch or no state file: return empty array
+    return [];
+  }
+
+  /**
+   * Set multi-window states
+   * Requirements: 4.1, 4.5
+   */
+  setMultiWindowStates(states: MultiWindowState[]): void {
+    this.store.set('multiWindowStates', states);
   }
 }
 

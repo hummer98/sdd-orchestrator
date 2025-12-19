@@ -1,0 +1,127 @@
+# Response to Document Review #1
+
+**Feature**: multi-window-support
+**Review Date**: 2025-12-19
+**Reply Date**: 2025-12-19
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 0      | 0            | 0             | 0                |
+| Warning  | 4      | 2            | 2             | 0                |
+| Info     | 5      | 1            | 4             | 0                |
+
+---
+
+## Response to Warnings
+
+### W1: 新規IPCチャネル定義タスクの追加
+
+**Issue**: `NEW_WINDOW_CREATED`, `WINDOW_PROJECT_CHANGED` の実装漏れリスク。Task 5 に新規IPCチャネル定義タスクを追加すべき。
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+Design document（design.md:500-502）で `NEW_WINDOW_CREATED`, `WINDOW_PROJECT_CHANGED` チャネルが「追加チャネル」として記載されているが、これらは**ウィンドウ間同期用の将来的なオプション**として設計されている。
+
+現在のマルチウィンドウ設計では:
+1. ウィンドウ作成時: WindowManagerがメモリ上でウィンドウを追跡（IPC不要）
+2. プロジェクト変更時: WindowManagerが内部状態を更新し、Menu拡張経由でメニューを更新（IPC不要）
+
+これらのIPCチャネルは将来、Renderer間でウィンドウ状態を同期する必要が生じた場合に追加するもので、現在の要件（Requirement 1-5）では不要。
+
+**Action Items**: なし（将来の拡張として記録は維持）
+
+---
+
+### W2: ウィンドウ数上限の明確化
+
+**Issue**: Designで「推奨上限: 10ウィンドウ」と記載されているが、実際に制限を設けるかどうかが曖昧。
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+Design document（design.md:307）では明確に「推奨上限」と記載されている。これは以下の意図:
+- **Hard limit（強制制限）**: 設けない。ユーザーが10以上開くことを禁止しない
+- **Soft limit（推奨）**: パフォーマンス最適化のターゲットとして10ウィンドウを設定
+
+Requirementsにはウィンドウ数制限の要件がなく、これは意図的。ユーザーの自由度を優先する設計方針。
+
+Design文書には既に「推奨上限: 10ウィンドウ」とPerformance & Scalabilityセクション（design.md:564-566）に記載済み。
+
+**Action Items**: なし（現状の記述で十分明確）
+
+---
+
+### W3: メニューバーへのプロジェクト名表示方法の詳細化
+
+**Issue**: Req 2.4「メニューバーに現在アクティブなプロジェクト名を表示する」の具体的な表示位置・方法の記述なし。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+既存コード [menu.ts:338-349](electron-sdd-manager/src/main/menu.ts#L338-L349) で `updateWindowTitle()` が実装されており、ウィンドウタイトルにプロジェクト名を表示する機能は存在する。しかし「メニューバー」への表示方法は明確でない。
+
+macOSではメニューバー自体にプロジェクト名を表示する一般的なパターンがなく、実際にはウィンドウタイトルでの表示が一般的。Requirements 2.4 と Design の整合性を明確にすべき。
+
+**Action Items**:
+- design.md の Menu拡張セクションに「アクティブプロジェクト表示はウィンドウタイトルで行う（既存の`updateWindowTitle()`を活用）」と明記
+
+---
+
+### W4: マイグレーション手順の詳細化
+
+**Issue**: `multiWindowStates` が存在しない旧バージョンからの移行手順の詳細が不足。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+既存の [configStore.ts](electron-sdd-manager/src/main/services/configStore.ts) では `windowBounds` のみを保存しており、`multiWindowStates` フィールドは存在しない。
+
+Design document（design.md:366）では「旧バージョンからのマイグレーション（multiWindowStatesが存在しない場合の初期化）」がRisksとして挙げられているが、具体的な初期化ロジックが未記載。
+
+**Action Items**:
+- design.md の ConfigStore拡張セクションに以下を追記:
+  - `multiWindowStates` が存在しない場合: `windowBounds` を読み取り、単一ウィンドウ状態として `multiWindowStates` を初期化
+  - `windowBounds` も存在しない場合: 空配列で初期化（デフォルトウィンドウ作成）
+
+---
+
+## Response to Info (Low Priority)
+
+| #    | Issue                                      | Judgment      | Reason                                                                                                       |
+| ---- | ------------------------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------ |
+| S1   | ユーザードキュメントの作成タスク追加       | No Fix Needed | 初期リリースでは不要。機能完成後に別タスクとして対応可                                                       |
+| S2   | メモリリーク検出テストの追加               | No Fix Needed | Task 7 のテスト戦略で Performance Tests として記載済み（design.md:549-551）                                  |
+| S3   | グローバル変数参照の事前調査タスク追加     | No Fix Needed | 調査完了: `mainWindow` は index.ts 内のみ、`currentProjectPathForMenu` は menu.ts 内のみで外部参照なし       |
+| S4   | シンボリックリンク対応の将来課題として記録 | No Fix Needed | Research document（research.md）に非対応と明記済み。将来の拡張検討は別途 Issue として管理すべき             |
+| S5   | Task 7.4 のマーカー修正                    | Fix Required  | `- [ ]*  7.4` は誤記。修正が必要                                                                              |
+
+---
+
+## Files to Modify
+
+| File       | Changes                                                                                                                     |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| design.md  | Menu拡張セクションにプロジェクト名表示方法を追記（ウィンドウタイトル活用）                                                 |
+| design.md  | ConfigStore拡張セクションにマイグレーションロジックを追記（windowBounds → multiWindowStates への変換）                      |
+| tasks.md   | `- [ ]*  7.4` → `- [ ] 7.4` に修正                                                                                          |
+
+---
+
+## Conclusion
+
+レビューで指摘された4件のWarningのうち、2件（W1, W2）は現状の設計で十分対応されており修正不要と判断。残り2件（W3, W4）はDesign文書への詳細追記が必要。
+
+Info項目5件のうち、1件（S5）のタスクファイル誤記のみ修正対象。その他は既存の文書やコードで対応済み、または別途管理すべき項目。
+
+**Next Steps**:
+- 修正を適用する場合は `/kiro:document-review-reply multi-window-support --fix` を実行
+- 全ての修正適用後、`/kiro:spec-impl multi-window-support` で実装フェーズへ移行
+
+---
+
+_This reply was generated by the document-review-reply command._

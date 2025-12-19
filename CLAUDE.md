@@ -86,6 +86,7 @@ Report → Analyze → Fix → Verify
 
 - Load entire `.kiro/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
+- **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表（用語定義、UIコンポーネントマッピング）
 - Custom files are supported (managed via `/kiro:steering-custom`)
 
 ## Development Commands

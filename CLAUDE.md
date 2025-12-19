@@ -52,15 +52,16 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 Report → Analyze → Fix → Verify
 ```
 
-| コマンド | 説明 |
-|---------|------|
+| コマンド                                | 説明             |
+| --------------------------------------- | ---------------- |
 | `/kiro:bug-create <name> "description"` | バグレポート作成 |
-| `/kiro:bug-analyze [name]` | 根本原因の調査 |
-| `/kiro:bug-fix [name]` | 修正の実装 |
-| `/kiro:bug-verify [name]` | 修正の検証 |
-| `/kiro:bug-status [name]` | 進捗確認 |
+| `/kiro:bug-analyze [name]`              | 根本原因の調査   |
+| `/kiro:bug-fix [name]`                  | 修正の実装       |
+| `/kiro:bug-verify [name]`               | 修正の検証       |
+| `/kiro:bug-status [name]`               | 進捗確認         |
 
 **使い分け**:
+
 - **小規模バグ**: Bug Fixワークフロー（軽量・高速）
 - **設計変更を伴う複雑なバグ**: Full SDDワークフロー
 
@@ -83,58 +84,39 @@ Report → Analyze → Fix → Verify
 
 Electronアプリの操作には`task`コマンドを使用する。
 
-| コマンド | 説明 |
-|---------|------|
-| `task electron:dev` | フォアグラウンドで起動（インタラクティブ） |
-| `task electron:start` | バックグラウンドで起動 |
-| `task electron:stop` | 停止 |
-| `task electron:restart` | 再起動 |
-| `task electron:status` | 状態確認 |
-| `task electron:logs` | ログ表示（tail -f） |
-
-### テスト時のプロジェクト指定
-
-E2Eテストや動作確認時は、以下のディレクトリを起動時引数で指定する：
-
-```bash
-# 起動時にプロジェクトパスを指定（推奨）
-task electron:start PROJECT=/Users/yamamoto/git/sdd-manager
-
-# フォアグラウンドで起動する場合
-task electron:dev PROJECT=/Users/yamamoto/git/sdd-manager
-
-# または npm run dev で直接指定
-cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-manager
-```
-
-これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。
-
-### ログ表示
-
-| コマンド | 説明 |
-|---------|------|
-| `task logs:agent` | Agent出力を人間が読みやすい形式で表示（最新50件） |
-| `task logs:agent:verbose` | Agent出力を詳細表示（ツール入力含む） |
-| `task logs:agent:all` | 全てのAgent出力を表示 |
-| `task logs:main` | メインプロセスログを表示 |
-
-オプション: `-n 100`（行数指定）、`-v`（詳細）、`-a`（全て）
+| コマンド                | 説明                                       |
+| ----------------------- | ------------------------------------------ |
+| `task electron:dev`     | フォアグラウンドで起動（インタラクティブ） |
+| `task electron:start`   | バックグラウンドで起動                     |
+| `task electron:stop`    | 停止                                       |
+| `task electron:restart` | 再起動                                     |
+| `task electron:status`  | 状態確認                                   |
+| `task electron:logs`    | ログ表示（tail -f）                        |
 
 ### その他
 
-| コマンド | 説明 |
-|---------|------|
-| `task electron:build` | Electronアプリのビルド |
-| `task electron:test:e2e` | E2Eテスト実行 |
+| コマンド                 | 説明                   |
+| ------------------------ | ---------------------- |
+| `task electron:build`    | Electronアプリのビルド |
+| `task electron:test:e2e` | E2Eテスト実行          |
 
-## Troubleshooting
+## Debugging
 
-### ELECTRON_RUN_AS_NODE問題
+デバッグ・動作確認には専用の `debug` agent を使用。
 
-**症状**: Electronアプリ起動時に`TypeError: Cannot read properties of undefined (reading 'whenReady')`エラーが発生
+### 自動起動トリガー
 
-**原因**: Claude CodeなどのElectronベースIDEから実行すると、`ELECTRON_RUN_AS_NODE`環境変数が設定され、ElectronがNode.jsモードで動作してしまう。この状態では`require("electron")`がAPIオブジェクトではなくパス文字列を返す。
+以下の状況では `debug` agent の使用を検討：
 
-**解決策**: `scripts/electron-app.sh`で`unset ELECTRON_RUN_AS_NODE`を実行してから起動する（既に対応済み）。
+| トリガー | 用途 |
+|----------|------|
+| `task electron:*` 実行後にエラー発生 | 環境問題の診断 |
+| MCP electronツール使用時 | UI操作・ログ取得の詳細手順 |
+| E2Eテスト失敗時 | テスト失敗の原因調査 |
+| 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業 |
+| Electronアプリが期待通り動作しない | 動作確認・トラブルシューティング |
 
-**参考**: [GitHub Issue #8200](https://github.com/electron/electron/issues/8200), [Stack Overflow](https://stackoverflow.com/questions/45274548/node-js-require-returns-a-string-instead-of-module-object)
+### 詳細情報
+
+デバッグの詳細手順は `.kiro/steering/debugging.md` を参照。
+Agent定義は `.claude/agents/debug.md` にある。

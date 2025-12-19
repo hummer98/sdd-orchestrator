@@ -38,10 +38,21 @@ import { spawn } from 'child_process';
 import { access, rm } from 'fs/promises';
 import { join } from 'path';
 import { layoutConfigService, type LayoutValues } from '../services/layoutConfigService';
+import {
+  ExperimentalToolsInstallerService,
+  getExperimentalTemplateDir,
+  type ToolType,
+  type InstallOptions as ExperimentalInstallOptions,
+  type InstallResult as ExperimentalInstallResult,
+  type InstallError as ExperimentalInstallError,
+  type CheckResult as ExperimentalCheckResult,
+  type Result as ExperimentalResult,
+} from '../services/experimentalToolsInstallerService';
 
 const fileService = new FileService();
 const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
+const experimentalToolsInstaller = new ExperimentalToolsInstallerService(getExperimentalTemplateDir());
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
@@ -1161,6 +1172,59 @@ export function registerIpcHandlers(): void {
     async (_event, projectPath: string): Promise<void> => {
       logger.info('[handlers] RESET_LAYOUT_CONFIG called', { projectPath });
       return layoutConfigService.resetLayoutConfig(projectPath);
+    }
+  );
+
+  // ============================================================
+  // Experimental Tools Install (experimental-tools-installer feature)
+  // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_EXPERIMENTAL_PLAN,
+    async (
+      _event,
+      projectPath: string,
+      options?: ExperimentalInstallOptions
+    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
+      logger.info('[handlers] INSTALL_EXPERIMENTAL_PLAN called', { projectPath, options });
+      return experimentalToolsInstaller.installPlanCommand(projectPath, options);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_EXPERIMENTAL_DEBUG,
+    async (
+      _event,
+      projectPath: string,
+      options?: ExperimentalInstallOptions
+    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
+      logger.info('[handlers] INSTALL_EXPERIMENTAL_DEBUG called', { projectPath, options });
+      return experimentalToolsInstaller.installDebugAgent(projectPath, options);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_EXPERIMENTAL_COMMIT,
+    async (
+      _event,
+      projectPath: string,
+      options?: ExperimentalInstallOptions
+    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
+      logger.info('[handlers] INSTALL_EXPERIMENTAL_COMMIT called', { projectPath, options });
+      return experimentalToolsInstaller.installCommitCommand(projectPath, options);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_EXPERIMENTAL_TOOL_EXISTS,
+    async (
+      _event,
+      projectPath: string,
+      toolType: ToolType
+    ): Promise<ExperimentalCheckResult> => {
+      logger.info('[handlers] CHECK_EXPERIMENTAL_TOOL_EXISTS called', { projectPath, toolType });
+      return experimentalToolsInstaller.checkTargetExists(projectPath, toolType);
     }
   );
 }

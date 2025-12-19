@@ -22,6 +22,36 @@ export interface LayoutValues {
 }
 
 /**
+ * Experimental tools install result
+ * Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4
+ */
+export interface ExperimentalInstallResult {
+  readonly success: boolean;
+  readonly installedFiles: readonly string[];
+  readonly skippedFiles: readonly string[];
+  readonly overwrittenFiles: readonly string[];
+}
+
+/**
+ * Experimental install error types
+ */
+export type ExperimentalInstallError =
+  | { type: 'TEMPLATE_NOT_FOUND'; path: string }
+  | { type: 'WRITE_ERROR'; path: string; message: string }
+  | { type: 'PERMISSION_DENIED'; path: string }
+  | { type: 'MERGE_ERROR'; message: string }
+  | { type: 'CLAUDE_CLI_NOT_FOUND' }
+  | { type: 'DIRECTORY_CREATE_ERROR'; path: string; message: string };
+
+/**
+ * Experimental check result
+ */
+export interface ExperimentalCheckResult {
+  readonly exists: boolean;
+  readonly path: string;
+}
+
+/**
  * Agent status type
  * Requirements: 5.2
  */
@@ -433,6 +463,18 @@ export interface ElectronAPI {
 
   // Menu Events - Layout Reset
   onMenuResetLayout(callback: () => void): () => void;
+
+  // Experimental Tools Install (experimental-tools-installer feature)
+  // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4
+  installExperimentalPlan(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
+  installExperimentalDebug(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
+  installExperimentalCommit(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
+  checkExperimentalToolExists(projectPath: string, toolType: 'plan' | 'debug' | 'commit'): Promise<ExperimentalCheckResult>;
+
+  // Menu Events - Experimental Tools
+  onMenuInstallExperimentalPlan(callback: () => void): () => void;
+  onMenuInstallExperimentalDebug(callback: () => void): () => void;
+  onMenuInstallExperimentalCommit(callback: () => void): () => void;
 }
 
 declare global {

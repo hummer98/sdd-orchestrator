@@ -100,6 +100,67 @@ Electronアプリの操作には`task`コマンドを使用する。
 | `task electron:build`    | Electronアプリのビルド |
 | `task electron:test:e2e` | E2Eテスト実行          |
 
+## Experimental Tools (実験的ツール)
+
+SDD Orchestratorでは、実験的なslash commands/agentsをメニューからプロジェクトにインストールできます。
+
+### インストール方法
+
+SDD Orchestratorの「ツール」メニュー → 「実験的ツール」から選択。
+
+| メニュー項目 | インストール先 | 用途 |
+|-------------|--------------|------|
+| Planコマンドをインストール (実験的) | `.claude/commands/plan.md` | 実装前のプランニング・設計 |
+| Debugエージェントをインストール (実験的) | `.claude/agents/debug.md` | デバッグ・トラブルシューティング |
+| Commitコマンドをインストール (実験的) | `.claude/commands/commit.md` | 構造化されたコミットメッセージ生成 |
+
+### 各ツールの概要
+
+#### Planコマンド (`/plan`)
+
+実装前に機能の計画・設計を行うためのコマンド。以下を含む構造化された計画を生成：
+- 要件の明確化
+- 技術的アプローチ
+- 実装タスクの分解
+- リスクと対策
+- 成功基準
+
+**使い方**: `/plan [機能の説明]`
+
+#### Debugエージェント
+
+問題の診断と解決に特化したサブエージェント。体系的なトラブルシューティングを実行：
+- ログ分析
+- コード追跡
+- 環境診断
+- テストデバッグ
+
+**起動方法**: `@debug` または Claude Code のAgent選択メニューから
+
+#### Commitコマンド (`/commit`)
+
+Conventional Commits形式に従った構造化されたコミットメッセージを生成：
+- 変更内容の分析
+- type/scopeの提案
+- メッセージの自動生成
+
+**使い方**: `/commit`
+
+### steering-debugコマンド
+
+`/kiro:steering-debug` はプロジェクト情報を収集し、Debugエージェントに必要な `.kiro/steering/debugging.md` を自動生成するコマンド。
+
+**収集する情報**:
+- 起動方法（package.json scripts, Taskfile.yml等）
+- MCP設定
+- E2Eコマンドラインツール
+- ログ参照方法
+- トラブルシューティングノウハウ
+
+**使い方**: `/kiro:steering-debug`
+
+不明点がある場合はユーザーに質問し、情報を補完します。
+
 ## Debugging
 
 デバッグ・動作確認には専用の `debug` agent を使用。

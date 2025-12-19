@@ -1,21 +1,14 @@
 import type { Options } from '@wdio/types';
 import * as path from 'path';
-import * as os from 'os';
-import { mkdirSync, rmSync } from 'fs';
 
 const projectRoot = path.resolve(__dirname);
 
-// Generate unique user data directory for each test run
-const generateUserDataDir = () => {
-  const dir = path.join(
-    os.tmpdir(),
-    `wdio-electron-${Date.now()}-${Math.random().toString(36).substring(7)}`
-  );
-  mkdirSync(dir, { recursive: true });
-  return dir;
-};
-
-const userDataDir = generateUserDataDir();
+// ビルド済みアプリのバイナリパス（macOS）
+// 注意: electron-builderでビルド後に使用可能
+const appBinaryPath = path.join(
+  projectRoot,
+  'release/mac-arm64/SDD Orchestrator.app/Contents/MacOS/SDD Orchestrator'
+);
 
 export const config: Options.Testrunner = {
   runner: 'local',
@@ -37,8 +30,9 @@ export const config: Options.Testrunner = {
       browserName: 'electron',
       maxInstances: 1,
       'wdio:electronServiceOptions': {
-        appEntryPoint: path.join(projectRoot, 'dist/main/index.js'),
-        appArgs: ['--no-sandbox', '--e2e-test', `--user-data-dir=${userDataDir}`],
+        // appBinaryPathを使用（appEntryPointはnode_modules/.bin/electronを使用するため問題あり）
+        appBinaryPath,
+        appArgs: ['--no-sandbox', '--e2e-test'],
       },
       'goog:chromeOptions': {
         args: [
@@ -46,7 +40,6 @@ export const config: Options.Testrunner = {
           '--disable-gpu',
           '--disable-dev-shm-usage',
           '--disable-software-rasterizer',
-          `--user-data-dir=${userDataDir}`,
         ],
       },
     },
@@ -66,14 +59,5 @@ export const config: Options.Testrunner = {
   mochaOpts: {
     ui: 'bdd',
     timeout: 60000,
-  },
-
-  onComplete: () => {
-    // Clean up user data directory after tests
-    try {
-      rmSync(userDataDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
   },
 };

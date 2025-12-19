@@ -287,6 +287,115 @@ export function App() {
       resetLayout();
     });
 
+    // Experimental Tools Install menu event listeners (experimental-tools-installer feature)
+    const cleanupExpPlan = window.electronAPI.onMenuInstallExperimentalPlan(async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // Check if file exists
+      const checkResult = await window.electronAPI.checkExperimentalToolExists(currentProject, 'plan');
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('plan.mdは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Planコマンドのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      const result = await window.electronAPI.installExperimentalPlan(currentProject, { force: shouldInstall && checkResult.exists });
+
+      if (result.ok) {
+        if (result.value.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Planコマンドをインストールしました' });
+        } else if (result.value.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Planコマンドを上書きしました' });
+        } else if (result.value.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Planコマンドは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
+      }
+    });
+
+    const cleanupExpDebug = window.electronAPI.onMenuInstallExperimentalDebug(async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // Check if file exists
+      const checkResult = await window.electronAPI.checkExperimentalToolExists(currentProject, 'debug');
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('debug.mdは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Debugエージェントのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      const result = await window.electronAPI.installExperimentalDebug(currentProject, { force: shouldInstall && checkResult.exists });
+
+      if (result.ok) {
+        if (result.value.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Debugエージェントをインストールしました。CLAUDE.mdへのマージも実行されます。' });
+        } else if (result.value.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Debugエージェントを上書きしました' });
+        } else if (result.value.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Debugエージェントは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
+      }
+    });
+
+    const cleanupExpCommit = window.electronAPI.onMenuInstallExperimentalCommit(async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // Check if file exists
+      const checkResult = await window.electronAPI.checkExperimentalToolExists(currentProject, 'commit');
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('commit.mdは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Commitコマンドのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      const result = await window.electronAPI.installExperimentalCommit(currentProject, { force: shouldInstall && checkResult.exists });
+
+      if (result.ok) {
+        if (result.value.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Commitコマンドをインストールしました' });
+        } else if (result.value.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Commitコマンドを上書きしました' });
+        } else if (result.value.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Commitコマンドは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
+      }
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupOpenProject();
@@ -295,6 +404,9 @@ export function App() {
       cleanupToggleRemoteServer();
       cleanupCommandsetInstall();
       cleanupResetLayout();
+      cleanupExpPlan();
+      cleanupExpDebug();
+      cleanupExpCommit();
     };
   }, [selectProject, loadSpecs, loadLayout, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
 

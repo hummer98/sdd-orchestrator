@@ -70,3 +70,11 @@ export function getPermissionsPath(): string {
 export function getScriptsPath(): string {
   return getResourcePath('scripts');
 }
+
+/**
+ * Get the experimental templates directory path
+ * @returns Absolute path to experimental templates directory
+ */
+export function getExperimentalTemplatesPath(): string {
+  return getResourcePath('resources', 'templates', 'experimental');
+}

@@ -281,6 +281,42 @@ export function createMenu(): void {
             window.webContents.send(IPC_CHANNELS.MENU_INSTALL_CLI_COMMAND);
           },
         },
+        { type: 'separator' as const },
+        {
+          label: '実験的ツール',
+          submenu: [
+            {
+              label: 'Planコマンドをインストール (実験的)',
+              enabled: currentProjectPathForMenu !== null,
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN);
+                }
+              },
+            },
+            {
+              label: 'Debugエージェントをインストール (実験的)',
+              enabled: currentProjectPathForMenu !== null,
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_DEBUG);
+                }
+              },
+            },
+            {
+              label: 'Commitコマンドをインストール (実験的)',
+              enabled: currentProjectPathForMenu !== null,
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_COMMIT);
+                }
+              },
+            },
+          ],
+        },
       ],
     },
 

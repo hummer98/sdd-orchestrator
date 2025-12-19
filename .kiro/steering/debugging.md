@@ -19,11 +19,11 @@ tail -20 logs/electron-dev.log | grep -E "(CHECK_AGENT|DELETE_AGENT)"
 
 ### MCP経由で利用可能なログ関連ツール
 
-| ツール | 用途 |
-|--------|------|
-| `mcp__electron__read_electron_logs` | Electronシステムログ（consoleログのみ実用的） |
-| `mcp__electron__send_command_to_electron` | `console.log`経由でrendererログ取得 |
-| `Read` tool | mainプロセスログファイル直接参照（推奨） |
+| ツール                                    | 用途                                          |
+| ----------------------------------------- | --------------------------------------------- |
+| `mcp__electron__read_electron_logs`       | Electronシステムログ（consoleログのみ実用的） |
+| `mcp__electron__send_command_to_electron` | `console.log`経由でrendererログ取得           |
+| `Read` tool                               | mainプロセスログファイル直接参照（推奨）      |
 
 ## MCP経由でのUI操作
 
@@ -87,7 +87,7 @@ task electron:start PROJECT=/Users/yamamoto/git/sdd-orchestrator
 task electron:dev PROJECT=/Users/yamamoto/git/sdd-orchestrator
 
 # または npm run dev で直接指定
-cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-manager
+cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-orchestrator
 ```
 
 これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。

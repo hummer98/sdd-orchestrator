@@ -297,6 +297,10 @@ const electronAPI = {
   addShellPermissions: (projectPath: string): Promise<AddPermissionsResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ADD_SHELL_PERMISSIONS, projectPath),
 
+  // Permissions - Add specific missing permissions to project
+  addMissingPermissions: (projectPath: string, permissions: string[]): Promise<AddPermissionsResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ADD_MISSING_PERMISSIONS, projectPath, permissions),
+
   // Permissions - Check required permissions
   checkRequiredPermissions: (projectPath: string): Promise<FileCheckResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_REQUIRED_PERMISSIONS, projectPath),

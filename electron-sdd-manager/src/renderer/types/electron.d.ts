@@ -410,6 +410,8 @@ export interface ElectronAPI {
 
   // Permissions - Add shell permissions to project
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
+  // Permissions - Add specific missing permissions to project
+  addMissingPermissions(projectPath: string, permissions: string[]): Promise<AddPermissionsResult>;
   // Permissions - Check required permissions
   checkRequiredPermissions(projectPath: string): Promise<FileCheckResult>;
 

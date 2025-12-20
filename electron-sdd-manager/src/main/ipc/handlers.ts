@@ -18,7 +18,7 @@ import { logger } from '../services/logger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir, ClaudeMdInstallMode } from '../services/commandInstallerService';
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
-import { addShellPermissions, checkRequiredPermissions } from '../services/permissionsService';
+import { addShellPermissions, checkRequiredPermissions, addPermissionsToProject } from '../services/permissionsService';
 import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugService } from '../services/bugService';
@@ -980,6 +980,19 @@ export function registerIpcHandlers(): void {
       const result = await addShellPermissions(projectPath);
       if (!result.ok) {
         throw new Error(`Failed to add shell permissions: ${result.error.type}`);
+      }
+      return result.value;
+    }
+  );
+
+  // Permissions Handler - Add specific missing permissions to project's settings.local.json
+  ipcMain.handle(
+    IPC_CHANNELS.ADD_MISSING_PERMISSIONS,
+    async (_event, projectPath: string, permissions: string[]) => {
+      logger.info('[handlers] ADD_MISSING_PERMISSIONS called', { projectPath, count: permissions.length });
+      const result = await addPermissionsToProject(projectPath, permissions);
+      if (!result.ok) {
+        throw new Error(`Failed to add missing permissions: ${result.error.type}`);
       }
       return result.value;
     }

@@ -82,6 +82,7 @@ export const IPC_CHANNELS = {
 
   // Permissions
   ADD_SHELL_PERMISSIONS: 'ipc:add-shell-permissions',
+  ADD_MISSING_PERMISSIONS: 'ipc:add-missing-permissions',
   CHECK_REQUIRED_PERMISSIONS: 'ipc:check-required-permissions',
 
   // CLI Install

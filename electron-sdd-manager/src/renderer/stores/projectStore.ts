@@ -461,18 +461,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
    * Fix missing permissions by adding them and refreshing the check
    */
   fixPermissions: async () => {
-    const { currentProject } = get();
+    const { currentProject, permissionsCheck } = get();
     if (!currentProject) return;
+    if (!permissionsCheck || permissionsCheck.missing.length === 0) return;
 
     set({ permissionsFixLoading: true });
 
     try {
-      // Add missing permissions
-      await window.electronAPI.addShellPermissions(currentProject);
+      // Add missing permissions directly (not from standard-commands.txt)
+      await window.electronAPI.addMissingPermissions(currentProject, [...permissionsCheck.missing]);
 
       // Refresh permissions check
-      const permissionsCheck = await window.electronAPI.checkRequiredPermissions(currentProject);
-      set({ permissionsCheck, permissionsFixLoading: false });
+      const newPermissionsCheck = await window.electronAPI.checkRequiredPermissions(currentProject);
+      set({ permissionsCheck: newPermissionsCheck, permissionsFixLoading: false });
     } catch (error) {
       console.error('[projectStore] Failed to fix permissions:', error);
       set({ permissionsFixLoading: false });

@@ -8,8 +8,14 @@ import { readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
-import { CC_SDD_COMMANDS, CC_SDD_AGENTS, CC_SDD_SETTINGS } from './ccSddWorkflowInstaller';
-import { BUG_COMMANDS, BUG_TEMPLATES } from './bugWorkflowInstaller';
+import { CC_SDD_AGENTS, CC_SDD_SETTINGS } from './ccSddWorkflowInstaller';
+import { BUG_TEMPLATES } from './bugWorkflowInstaller';
+import {
+  CC_SDD_PROFILE_COMMANDS,
+  CC_SDD_AGENT_PROFILE_COMMANDS,
+  BUG_PROFILE_COMMANDS,
+  DOCUMENT_REVIEW_COMMANDS,
+} from './projectChecker';
 
 /**
  * File types for validation
@@ -90,6 +96,7 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 /**
  * Get required files for each commandset
+ * Now uses profile-specific command lists from projectChecker
  */
 function getRequiredFiles(commandsets: readonly CommandsetName[]): {
   commands: string[];
@@ -105,7 +112,23 @@ function getRequiredFiles(commandsets: readonly CommandsetName[]): {
   for (const commandset of commandsets) {
     switch (commandset) {
       case 'cc-sdd':
-        commands.push(...CC_SDD_COMMANDS);
+        // Use profile-specific command list (without spec-quick)
+        commands.push(...CC_SDD_PROFILE_COMMANDS.map(c => c.replace('kiro/', '')));
+        commands.push(...DOCUMENT_REVIEW_COMMANDS.map(c => c.replace('kiro/', '')));
+        agents.push(...CC_SDD_AGENTS);
+        // Split settings into settings and templates
+        for (const setting of CC_SDD_SETTINGS) {
+          if (setting.startsWith('templates/')) {
+            templates.push(setting);
+          } else {
+            settings.push(setting);
+          }
+        }
+        break;
+      case 'cc-sdd-agent':
+        // Use cc-sdd-agent profile-specific command list (includes spec-quick)
+        commands.push(...CC_SDD_AGENT_PROFILE_COMMANDS.map(c => c.replace('kiro/', '')));
+        commands.push(...DOCUMENT_REVIEW_COMMANDS.map(c => c.replace('kiro/', '')));
         agents.push(...CC_SDD_AGENTS);
         // Split settings into settings and templates
         for (const setting of CC_SDD_SETTINGS) {
@@ -117,11 +140,16 @@ function getRequiredFiles(commandsets: readonly CommandsetName[]): {
         }
         break;
       case 'bug':
-        commands.push(...BUG_COMMANDS);
+        commands.push(...BUG_PROFILE_COMMANDS.map(c => c.replace('kiro/', '')));
         templates.push(...BUG_TEMPLATES.map(t => `templates/bugs/${t}`));
         break;
+      case 'document-review':
+        commands.push(...DOCUMENT_REVIEW_COMMANDS.map(c => c.replace('kiro/', '')));
+        break;
       case 'spec-manager':
-        // spec-manager is part of cc-sdd
+        // spec-manager uses same commands as cc-sdd
+        commands.push(...CC_SDD_PROFILE_COMMANDS.map(c => c.replace('kiro/', '')));
+        commands.push(...DOCUMENT_REVIEW_COMMANDS.map(c => c.replace('kiro/', '')));
         break;
     }
   }

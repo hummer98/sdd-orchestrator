@@ -4,10 +4,12 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 12.1, 12.2, 12.3
  */
 
+import { writeFile, mkdir } from 'fs/promises';
+import { join, dirname } from 'path';
 import { CcSddWorkflowInstaller, InstallOptions, InstallResult, InstallError, Result } from './ccSddWorkflowInstaller';
 import { BugWorkflowInstaller } from './bugWorkflowInstaller';
 import { addPermissionsToProject } from './permissionsService';
-import { REQUIRED_PERMISSIONS } from './projectChecker';
+import { REQUIRED_PERMISSIONS, ProfileConfig } from './projectChecker';
 
 /**
  * Commandset names
@@ -278,7 +280,38 @@ export class UnifiedCommandsetInstaller {
       };
     }
 
-    return this.installMultiple(projectPath, profile.commandsets, options, progressCallback);
+    const result = await this.installMultiple(projectPath, profile.commandsets, options, progressCallback);
+
+    // Save profile configuration after successful installation
+    if (result.ok) {
+      await this.saveProfileConfig(projectPath, profileName);
+    }
+
+    return result;
+  }
+
+  /**
+   * Save profile configuration to .kiro/settings/profile.json
+   * @param projectPath - Project root path
+   * @param profileName - Profile name
+   */
+  private async saveProfileConfig(
+    projectPath: string,
+    profileName: ProfileName
+  ): Promise<void> {
+    const configPath = join(projectPath, '.kiro', 'settings', 'profile.json');
+    const config: ProfileConfig = {
+      profile: profileName,
+      installedAt: new Date().toISOString(),
+    };
+
+    try {
+      await mkdir(dirname(configPath), { recursive: true });
+      await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    } catch (error) {
+      // Log but don't fail installation if profile.json can't be saved
+      console.warn('[UnifiedCommandsetInstaller] Failed to save profile.json:', error);
+    }
   }
 
   /**

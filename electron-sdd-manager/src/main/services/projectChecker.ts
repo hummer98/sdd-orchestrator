@@ -4,17 +4,111 @@
  * Requirements: 4.1, 4.2, 4.4
  */
 
-import { access } from 'fs/promises';
+import { access, readFile } from 'fs/promises';
 import { join } from 'path';
 import { checkRequiredPermissions, CheckPermissionsResult } from './permissionsService';
+
+/**
+ * Supported profile names
+ */
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
+
+/**
+ * Profile configuration stored in .kiro/settings/profile.json
+ */
+export interface ProfileConfig {
+  readonly profile: ProfileName;
+  readonly installedAt: string;
+  readonly version?: string;
+}
+
+/**
+ * Commands included in cc-sdd profile (11 commands)
+ * Note: Does NOT include spec-quick
+ */
+export const CC_SDD_PROFILE_COMMANDS = [
+  'kiro/spec-init',
+  'kiro/spec-requirements',
+  'kiro/spec-design',
+  'kiro/spec-tasks',
+  'kiro/spec-impl',
+  'kiro/spec-status',
+  'kiro/validate-gap',
+  'kiro/validate-design',
+  'kiro/validate-impl',
+  'kiro/steering',
+  'kiro/steering-custom',
+] as const;
+
+/**
+ * Commands included in cc-sdd-agent profile (12 commands)
+ * Includes all cc-sdd commands + spec-quick
+ */
+export const CC_SDD_AGENT_PROFILE_COMMANDS = [
+  'kiro/spec-init',
+  'kiro/spec-requirements',
+  'kiro/spec-design',
+  'kiro/spec-tasks',
+  'kiro/spec-impl',
+  'kiro/spec-status',
+  'kiro/spec-quick',
+  'kiro/validate-gap',
+  'kiro/validate-design',
+  'kiro/validate-impl',
+  'kiro/steering',
+  'kiro/steering-custom',
+] as const;
+
+/**
+ * Bug workflow commands (shared across all profiles)
+ */
+export const BUG_PROFILE_COMMANDS = [
+  'kiro/bug-create',
+  'kiro/bug-analyze',
+  'kiro/bug-fix',
+  'kiro/bug-verify',
+  'kiro/bug-status',
+] as const;
+
+/**
+ * Document review commands (shared across all profiles)
+ */
+export const DOCUMENT_REVIEW_COMMANDS = [
+  'kiro/document-review',
+  'kiro/document-review-reply',
+] as const;
+
+/**
+ * Commands by profile
+ * Each profile includes its base commands + bug + document-review
+ */
+export const COMMANDS_BY_PROFILE: Record<ProfileName, readonly string[]> = {
+  'cc-sdd': [
+    ...CC_SDD_PROFILE_COMMANDS,
+    ...BUG_PROFILE_COMMANDS,
+    ...DOCUMENT_REVIEW_COMMANDS,
+  ],
+  'cc-sdd-agent': [
+    ...CC_SDD_AGENT_PROFILE_COMMANDS,
+    ...BUG_PROFILE_COMMANDS,
+    ...DOCUMENT_REVIEW_COMMANDS,
+  ],
+  'spec-manager': [
+    // spec-manager uses same commands as cc-sdd
+    ...CC_SDD_PROFILE_COMMANDS,
+    ...BUG_PROFILE_COMMANDS,
+    ...DOCUMENT_REVIEW_COMMANDS,
+  ],
+};
 
 /**
  * Required Slash Command files
  * Location: {projectRoot}/.claude/commands/kiro/*.md (CC-SDD)
  * Legacy: {projectRoot}/.claude/commands/spec-manager/*.md
+ * @deprecated Use COMMANDS_BY_PROFILE with getCommandsForProfile() instead
  */
 export const REQUIRED_COMMANDS = [
-  // CC-SDD commands (kiro namespace) - 14 commands
+  // CC-SDD commands (kiro namespace) - 14 commands (cc-sdd-agent superset)
   'kiro/spec-init',
   'kiro/spec-requirements',
   'kiro/spec-design',
@@ -151,12 +245,55 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
+ * Get the profile configuration path
+ */
+function getProfileConfigPath(projectPath: string): string {
+  return join(projectPath, '.kiro', 'settings', 'profile.json');
+}
+
+/**
+ * Read profile configuration from project
+ * Returns null if not found or invalid
+ */
+async function readProfileConfig(projectPath: string): Promise<ProfileConfig | null> {
+  const configPath = getProfileConfigPath(projectPath);
+  try {
+    const content = await readFile(configPath, 'utf-8');
+    const config = JSON.parse(content) as ProfileConfig;
+    // Validate that profile is a known value
+    if (config.profile && COMMANDS_BY_PROFILE[config.profile]) {
+      return config;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get commands for a specific profile
+ */
+export function getCommandsForProfile(profile: ProfileName): readonly string[] {
+  return COMMANDS_BY_PROFILE[profile] || COMMANDS_BY_PROFILE['cc-sdd-agent'];
+}
+
+/**
  * Service for checking project setup
  */
 export class ProjectChecker {
   /**
-   * Check Slash Commands existence
+   * Read the installed profile from project
+   * @param projectPath - Project root path
+   * @returns Profile config or null if not found
+   */
+  async getInstalledProfile(projectPath: string): Promise<ProfileConfig | null> {
+    return readProfileConfig(projectPath);
+  }
+
+  /**
+   * Check Slash Commands existence (legacy - uses fixed list)
    * Requirements: 4.1
+   * @deprecated Use checkSlashCommandsForProfile instead
    *
    * @param projectPath - Project root path
    * @returns Check result with missing and present commands
@@ -166,6 +303,45 @@ export class ProjectChecker {
     const present: string[] = [];
 
     for (const cmd of REQUIRED_COMMANDS) {
+      const cmdPath = join(projectPath, '.claude', 'commands', `${cmd}.md`);
+      if (await fileExists(cmdPath)) {
+        present.push(cmd);
+      } else {
+        missing.push(cmd);
+      }
+    }
+
+    return {
+      allPresent: missing.length === 0,
+      missing,
+      present,
+    };
+  }
+
+  /**
+   * Check Slash Commands existence for a specific profile
+   * Requirements: 4.1
+   *
+   * @param projectPath - Project root path
+   * @param profile - Profile name (optional, auto-detects from project if not provided)
+   * @returns Check result with missing and present commands
+   */
+  async checkSlashCommandsForProfile(
+    projectPath: string,
+    profile?: ProfileName
+  ): Promise<FileCheckResult> {
+    // If profile not specified, try to read from project config
+    let effectiveProfile = profile;
+    if (!effectiveProfile) {
+      const config = await readProfileConfig(projectPath);
+      effectiveProfile = config?.profile || 'cc-sdd-agent'; // fallback to cc-sdd-agent (superset)
+    }
+
+    const requiredCommands = getCommandsForProfile(effectiveProfile);
+    const missing: string[] = [];
+    const present: string[] = [];
+
+    for (const cmd of requiredCommands) {
       const cmdPath = join(projectPath, '.claude', 'commands', `${cmd}.md`);
       if (await fileExists(cmdPath)) {
         present.push(cmd);

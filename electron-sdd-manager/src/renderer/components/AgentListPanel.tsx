@@ -68,12 +68,19 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
 
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
-  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, removeAgent } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, removeAgent, loadAgents, agents } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
+
+  // Load agents when component mounts or when agents map is empty
+  useEffect(() => {
+    if (agents.size === 0) {
+      loadAgents();
+    }
+  }, [agents.size, loadAgents]);
 
   // Get agents for this spec (sorted: running first, then by startedAt descending)
   const specName = selectedSpec?.name || '';
-  const agents = getAgentsForSpec(specName)
+  const specAgents = getAgentsForSpec(specName)
     .sort((a, b) => {
       // Running agents first
       if (a.status === 'running' && b.status !== 'running') return -1;
@@ -137,20 +144,20 @@ export function AgentListPanel() {
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           Agent一覧
         </h3>
-        {agents.length > 0 && (
+        {specAgents.length > 0 && (
           <span className="text-xs text-gray-400">
-            ({agents.length})
+            ({specAgents.length})
           </span>
         )}
       </div>
 
-      {agents.length === 0 ? (
+      {specAgents.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-2">
           Agentはありません
         </p>
       ) : (
         <ul className="flex-1 space-y-2 overflow-y-auto">
-          {agents.map((agent) => (
+          {specAgents.map((agent) => (
             <AgentListItem
               key={agent.agentId}
               agent={agent}

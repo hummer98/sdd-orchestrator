@@ -87,6 +87,9 @@ vi.mock('../services/logger', () => ({
   },
 }));
 
+// Mock the main index to prevent it from running during tests
+vi.mock('../index', () => ({}));
+
 describe('Remote Access IPC Handlers (Task 4.1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

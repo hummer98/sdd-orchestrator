@@ -5,8 +5,23 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createServer } from 'net';
+import { createServer, Server } from 'net';
 import { RemoteAccessServer, ServerError } from './remoteAccessServer';
+
+// Helper to find an available port
+async function findAvailablePort(startPort: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const testServer = createServer();
+    testServer.listen(startPort, () => {
+      const port = (testServer.address() as { port: number }).port;
+      testServer.close(() => resolve(port));
+    });
+    testServer.on('error', () => {
+      // Port is in use, try next
+      findAvailablePort(startPort + 1).then(resolve).catch(reject);
+    });
+  });
+}
 
 describe('RemoteAccessServer', () => {
   let server: RemoteAccessServer;
@@ -25,23 +40,27 @@ describe('RemoteAccessServer', () => {
   });
 
   describe('start', () => {
-    it('should start server on default port 8765', async () => {
+    it('should start server on an available port in range 8765-8775', async () => {
       const result = await server.start();
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.port).toBe(8765);
-        expect(result.value.url).toContain(':8765');
+        // Port should be within the valid range (may not be 8765 if that port is in use)
+        expect(result.value.port).toBeGreaterThanOrEqual(8765);
+        expect(result.value.port).toBeLessThanOrEqual(8775);
+        expect(result.value.url).toContain(`:${result.value.port}`);
       }
     });
 
-    it('should start server on specified port within range', async () => {
+    it('should start server on specified port or next available', async () => {
       const result = await server.start(8770);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.port).toBe(8770);
-        expect(result.value.url).toContain(':8770');
+        // If 8770 is in use, it will use the next available port
+        expect(result.value.port).toBeGreaterThanOrEqual(8770);
+        expect(result.value.port).toBeLessThanOrEqual(8775);
+        expect(result.value.url).toContain(`:${result.value.port}`);
       }
     });
 
@@ -65,19 +84,23 @@ describe('RemoteAccessServer', () => {
     });
 
     it('should auto-select next port if preferred port is in use', async () => {
-      // Start a dummy server on port 8765
+      // Find an available port in range to block
+      const portToBlock = await findAvailablePort(8765);
+
+      // Start a dummy server on that port
       const blockingServer = createServer();
       await new Promise<void>((resolve) => {
-        blockingServer.listen(8765, () => resolve());
+        blockingServer.listen(portToBlock, () => resolve());
       });
 
       try {
-        const result = await server.start(8765);
+        const result = await server.start(portToBlock);
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          // Should use port 8766 since 8765 is blocked
-          expect(result.value.port).toBe(8766);
+          // Should use next available port since portToBlock is blocked
+          expect(result.value.port).toBeGreaterThan(portToBlock);
+          expect(result.value.port).toBeLessThanOrEqual(8775);
         }
       } finally {
         await new Promise<void>((resolve) => {
@@ -88,15 +111,27 @@ describe('RemoteAccessServer', () => {
 
     it('should return error when all ports are in use', async () => {
       // Block ports 8765-8775
-      const blockingServers: ReturnType<typeof createServer>[] = [];
+      const blockingServers: Server[] = [];
+      const blockedPorts: number[] = [];
 
       try {
+        // Try to block all ports in range, skip any that are already in use
         for (let port = 8765; port <= 8775; port++) {
-          const blockingServer = createServer();
-          await new Promise<void>((resolve) => {
-            blockingServer.listen(port, () => resolve());
-          });
-          blockingServers.push(blockingServer);
+          try {
+            const blockingServer = createServer();
+            await new Promise<void>((resolve, reject) => {
+              blockingServer.once('error', reject);
+              blockingServer.listen(port, () => {
+                blockingServer.removeListener('error', reject);
+                resolve();
+              });
+            });
+            blockingServers.push(blockingServer);
+            blockedPorts.push(port);
+          } catch {
+            // Port already in use by another process, that's fine
+            blockedPorts.push(port);
+          }
         }
 
         const result = await server.start();
@@ -113,7 +148,7 @@ describe('RemoteAccessServer', () => {
           });
         }
       }
-    });
+    }, 10000);
 
     it('should return error when already running', async () => {
       // Start the server first
@@ -164,12 +199,15 @@ describe('RemoteAccessServer', () => {
     });
 
     it('should return running status when started', async () => {
-      await server.start(8765);
+      const result = await server.start();
 
-      const status = server.getStatus();
-      expect(status.isRunning).toBe(true);
-      expect(status.port).toBe(8765);
-      expect(status.url).toContain(':8765');
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const status = server.getStatus();
+        expect(status.isRunning).toBe(true);
+        expect(status.port).toBe(result.value.port);
+        expect(status.url).toContain(`:${result.value.port}`);
+      }
     });
   });
 
@@ -226,10 +264,13 @@ describe('RemoteAccessServer', () => {
 
   describe('port range', () => {
     it('should use port range 8765-8775', async () => {
-      // Block port 8765
+      // Find an available port in range to block
+      const portToBlock = await findAvailablePort(8765);
+
+      // Block that port
       const blockingServer = createServer();
       await new Promise<void>((resolve) => {
-        blockingServer.listen(8765, () => resolve());
+        blockingServer.listen(portToBlock, () => resolve());
       });
 
       try {

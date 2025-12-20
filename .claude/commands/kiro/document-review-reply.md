@@ -41,8 +41,15 @@ When `--fix` flag is present:
 1. Read existing `document-review-{n}-reply.md`
 2. Parse the "Files to Modify" section and "Action Items" from each issue
 3. Apply ONLY the items marked as "Fix Required" ✅
-4. Update spec.json to mark this round's fix as applied:
-   - Set `roundDetails[n-1].fixApplied = true`
+4. Update spec.json `documentReview.roundDetails[n-1]` with the following schema:
+   ```json
+   {
+     "roundNumber": n,           // Required: round number (1-indexed)
+     "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
+     "fixApplied": true          // Set to true when fixes are applied
+   }
+   ```
+   **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
 5. Report changes made
 
 **Do NOT**:
@@ -189,8 +196,15 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. Update spec.json to mark this round's fix as applied:
-   - Set `roundDetails[n-1].fixApplied = true`
+2. Update spec.json `documentReview.roundDetails[n-1]` with the following schema:
+   ```json
+   {
+     "roundNumber": n,           // Required: round number (1-indexed)
+     "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
+     "fixApplied": true          // Set to true when fixes are applied
+   }
+   ```
+   **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
 3. Note the changes made in the reply document
 
 #### If no flag is present (default):

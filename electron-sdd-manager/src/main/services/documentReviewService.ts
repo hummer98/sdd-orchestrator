@@ -636,23 +636,60 @@ export class DocumentReviewService {
   }
 
   /**
+   * Normalize a round detail object to ensure it has the correct schema
+   * Handles legacy data with 'round' instead of 'roundNumber' and missing fields
+   */
+  private normalizeRoundDetail(detail: Record<string, unknown>, index: number): RoundDetail | null {
+    // Extract roundNumber from various possible sources
+    const roundNumber = (detail.roundNumber as number) ?? (detail.round as number) ?? (index + 1);
+
+    // Skip entries without a valid roundNumber
+    if (typeof roundNumber !== 'number' || isNaN(roundNumber) || roundNumber < 1) {
+      logger.warn('[DocumentReviewService] Skipping invalid round detail', { detail });
+      return null;
+    }
+
+    // Build normalized RoundDetail
+    const normalized: RoundDetail = {
+      roundNumber,
+      status: (detail.status as RoundStatus) ?? 'incomplete',
+    };
+
+    // Preserve optional fields if they exist
+    if (detail.reviewCompletedAt) {
+      normalized.reviewCompletedAt = detail.reviewCompletedAt as string;
+    }
+    if (detail.replyCompletedAt) {
+      normalized.replyCompletedAt = detail.replyCompletedAt as string;
+    }
+    if (detail.fixApplied !== undefined) {
+      normalized.fixApplied = detail.fixApplied as boolean;
+    }
+
+    return normalized;
+  }
+
+  /**
    * Merge existing round details with detected ones
    */
   private mergeRoundDetails(existing: RoundDetail[], detected: RoundDetail[]): RoundDetail[] {
     const merged = new Map<number, RoundDetail>();
 
-    // Add existing details first
-    for (const detail of existing) {
-      merged.set(detail.roundNumber, detail);
+    // Add existing details first (with normalization)
+    for (let i = 0; i < existing.length; i++) {
+      const normalized = this.normalizeRoundDetail(existing[i] as unknown as Record<string, unknown>, i);
+      if (normalized) {
+        merged.set(normalized.roundNumber, normalized);
+      }
     }
 
     // Override with detected details (file system is source of truth for status)
     for (const detail of detected) {
-      const existing = merged.get(detail.roundNumber);
-      if (existing) {
+      const existingDetail = merged.get(detail.roundNumber);
+      if (existingDetail) {
         // Keep timestamps but update status based on file existence
         merged.set(detail.roundNumber, {
-          ...existing,
+          ...existingDetail,
           status: detail.status,
         });
       } else {

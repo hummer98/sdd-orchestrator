@@ -85,9 +85,6 @@ interface SpecActions {
 
 type SpecStore = SpecState & SpecActions;
 
-// Store the current project path for refresh
-let currentProjectPath: string | null = null;
-
 // Cleanup function for specs watcher
 let watcherCleanup: (() => void) | null = null;
 
@@ -118,7 +115,6 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
 
   // Actions
   loadSpecs: async (projectPath: string) => {
-    currentProjectPath = projectPath;
     set({ isLoading: true, error: null });
 
     try {
@@ -191,6 +187,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
           completed,
           percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
         };
+        console.log('[specStore] Task progress calculated:', { spec: spec.name, taskProgress, silent: options?.silent });
 
         // Auto-fix spec.json phase if task completion doesn't match phase
         if (total > 0) {
@@ -248,8 +245,10 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       };
 
       if (silent) {
+        console.log('[specStore] Setting specDetail (silent):', { spec: spec.name, taskProgress: specDetail.taskProgress });
         set({ selectedSpec: spec, specDetail });
       } else {
+        console.log('[specStore] Setting specDetail:', { spec: spec.name, taskProgress: specDetail.taskProgress });
         set({ specDetail, isLoading: false });
       }
     } catch (error) {
@@ -281,10 +280,15 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   },
 
   refreshSpecs: async () => {
-    if (currentProjectPath) {
+    // SSOT: Get project path from projectStore (single source of truth)
+    // Dynamic import to avoid circular dependency
+    const { useProjectStore } = await import('./projectStore');
+    const currentProject = useProjectStore.getState().currentProject;
+
+    if (currentProject) {
       // Re-read specs without triggering full loading state
       try {
-        const specs = await window.electronAPI.readSpecs(currentProjectPath);
+        const specs = await window.electronAPI.readSpecs(currentProject);
         set({ specs });
 
         // Also refresh selected spec detail if one is selected
@@ -317,7 +321,16 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       // Subscribe to change events
       watcherCleanup = window.electronAPI.onSpecsChanged((event) => {
         console.log('[specStore] Specs changed:', event);
-        // Refresh specs list on any change
+
+        // Check if changed spec is the currently selected one
+        const { selectedSpec } = get();
+        const isSelectedSpecChanged = selectedSpec && event.specId === selectedSpec.name;
+
+        if (isSelectedSpecChanged) {
+          console.log('[specStore] Selected spec changed, refreshing specDetail:', event.specId);
+        }
+
+        // Refresh specs list and detail if selected
         get().refreshSpecs();
       });
 

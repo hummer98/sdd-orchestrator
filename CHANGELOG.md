@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2025-12-20
+
+### Added
+- **GlobalAgentPanel常時表示化**: GlobalAgentPanelを常に表示するように変更し、リサイズ機能を追加
+
+### Fixed
+- **コマンドセットインストールのデフォルト変更**: コマンドセットインストールのデフォルトをcc-sddに変更
+- **コマンドセットインストール時の設定追加**: settingsとパーミッションを自動追加するように修正
+
+### Changed
+- **validate-impl UIの改善**: validate-implオプションをUIから削除し、検査フェーズに統合
+
+### Documentation
+- MCP Server構想ドキュメントを追加
+
+### Testing
+- テストのモックとsettingsリストを更新
+
 ## [0.9.2] - 2025-12-20
 
 ### Added

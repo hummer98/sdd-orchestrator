@@ -19,7 +19,6 @@ import { InfoDialog } from './InfoDialog';
 const VALIDATION_DESCRIPTIONS: Record<ValidationType, string> = {
   gap: '要件と既存コードベース間の実装ギャップを分析します。\n\n新機能を既存のコードベースに統合する際に、要件を満たすために何が必要かを明確にします。\n\n🔍 分析のみ：ステータスは変更されません。',
   design: '技術設計の品質をレビューし、改善点を提案します。\n\n設計ドキュメントが要件を適切に満たしているか、アーキテクチャの妥当性を確認します。\n\n🔍 分析のみ：ステータスは変更されません。',
-  impl: '実装が要件・設計・タスクに準拠しているか検証します。\n\n実装完了後に、仕様との整合性やテストの妥当性を確認します。\n\n🔍 分析のみ：ステータスは変更されません。',
 };
 
 export interface ValidateOptionProps {

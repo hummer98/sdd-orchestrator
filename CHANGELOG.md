@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2025-12-20
+
+### Added
+- **E2E test data-testid attributes**: Added data-testid attributes to components for E2E testing support
+- **E2E test cases**: Added comprehensive E2E tests for SSH connection, layout persistence, and install dialog
+- **ResizeHandle unit tests**: Added unit tests for ResizeHandle component
+- **steering-e2e-testing command**: Added new command for E2E testing steering document generation
+
+### Fixed
+- **E2E session creation error**: Fixed ELECTRON_RUN_AS_NODE environment variable issue causing session creation failures in wdio-electron-service
+
+### Documentation
+- Added technical article on resolving wdio-electron-service session creation errors
+- Added E2E testing standard documentation
+
 ## [0.9.0] - 2025-12-20
 
 ### Added

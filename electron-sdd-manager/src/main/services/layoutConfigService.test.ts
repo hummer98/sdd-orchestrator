@@ -124,9 +124,50 @@ describe('layoutConfigService', () => {
       expect(DEFAULT_LAYOUT.agentListHeight).toBe(160);
     });
 
+    it('globalAgentPanelHeightのデフォルト値が120pxで定義されている', () => {
+      expect(DEFAULT_LAYOUT.globalAgentPanelHeight).toBe(120);
+    });
+
     it('デフォルト値がスキーマで検証可能', () => {
       const result = LayoutValuesSchema.safeParse(DEFAULT_LAYOUT);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('globalAgentPanelHeight (global-agent-panel-always-visible feature)', () => {
+    it('globalAgentPanelHeightを含む設定を検証できる', () => {
+      const validLayout = {
+        leftPaneWidth: 288,
+        rightPaneWidth: 320,
+        bottomPaneHeight: 192,
+        agentListHeight: 160,
+        globalAgentPanelHeight: 120,
+      };
+      const result = LayoutValuesSchema.safeParse(validLayout);
+      expect(result.success).toBe(true);
+    });
+
+    it('globalAgentPanelHeightがない場合も後方互換で検証できる（optional）', () => {
+      const layoutWithoutGlobalAgentPanel = {
+        leftPaneWidth: 288,
+        rightPaneWidth: 320,
+        bottomPaneHeight: 192,
+        agentListHeight: 160,
+      };
+      const result = LayoutValuesSchema.safeParse(layoutWithoutGlobalAgentPanel);
+      expect(result.success).toBe(true);
+    });
+
+    it('globalAgentPanelHeightが負の場合は拒否する', () => {
+      const layout = {
+        leftPaneWidth: 288,
+        rightPaneWidth: 320,
+        bottomPaneHeight: 192,
+        agentListHeight: 160,
+        globalAgentPanelHeight: -10,
+      };
+      const result = LayoutValuesSchema.safeParse(layout);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -281,6 +322,71 @@ describe('layoutConfigService', () => {
       const expectedConfig = {
         version: 1,
         layout: DEFAULT_LAYOUT,
+      };
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        configFilePath,
+        JSON.stringify(expectedConfig, null, 2),
+        'utf-8'
+      );
+    });
+  });
+
+  describe('後方互換性テスト (global-agent-panel-always-visible feature)', () => {
+    it('globalAgentPanelHeightがない古い設定ファイルを読み込める', async () => {
+      const oldConfig = {
+        version: 1,
+        layout: {
+          leftPaneWidth: 350,
+          rightPaneWidth: 400,
+          bottomPaneHeight: 250,
+          agentListHeight: 180,
+          // globalAgentPanelHeight is missing
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(oldConfig));
+
+      const result = await layoutConfigService.loadLayoutConfig(testProjectPath);
+
+      expect(result).toEqual(oldConfig.layout);
+      // globalAgentPanelHeightはundefinedだが、Renderer側でデフォルト値にフォールバック
+      expect(result?.globalAgentPanelHeight).toBeUndefined();
+    });
+
+    it('globalAgentPanelHeightがある新しい設定ファイルを読み込める', async () => {
+      const newConfig = {
+        version: 1,
+        layout: {
+          leftPaneWidth: 350,
+          rightPaneWidth: 400,
+          bottomPaneHeight: 250,
+          agentListHeight: 180,
+          globalAgentPanelHeight: 140,
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(newConfig));
+
+      const result = await layoutConfigService.loadLayoutConfig(testProjectPath);
+
+      expect(result).toEqual(newConfig.layout);
+      expect(result?.globalAgentPanelHeight).toBe(140);
+    });
+
+    it('globalAgentPanelHeightを含む設定を保存できる', async () => {
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const layout: LayoutValues = {
+        leftPaneWidth: 350,
+        rightPaneWidth: 400,
+        bottomPaneHeight: 250,
+        agentListHeight: 180,
+        globalAgentPanelHeight: 150,
+      };
+
+      await layoutConfigService.saveLayoutConfig(testProjectPath, layout);
+
+      const expectedConfig = {
+        version: 1,
+        layout,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,

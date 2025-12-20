@@ -1,0 +1,146 @@
+# Specification Review Report #1
+
+**Feature**: global-agent-panel-always-visible
+**Review Date**: 2025-12-20
+**Documents Reviewed**:
+- `.kiro/specs/global-agent-panel-always-visible/spec.json`
+- `.kiro/specs/global-agent-panel-always-visible/requirements.md`
+- `.kiro/specs/global-agent-panel-always-visible/design.md`
+- `.kiro/specs/global-agent-panel-always-visible/tasks.md`
+- `.kiro/steering/product.md`
+- `.kiro/steering/tech.md`
+- `.kiro/steering/structure.md`
+- `.kiro/steering/debugging.md`
+- `.kiro/steering/e2e-testing.md`
+
+## Executive Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | 0 |
+| Warning | 3 |
+| Info | 2 |
+
+全体として、仕様書は良好な品質で作成されており、要件→設計→タスクの間に大きな矛盾はありません。いくつかの改善点と確認事項があります。
+
+## 1. Document Consistency Analysis
+
+### 1.1 Requirements ↔ Design Alignment
+
+**良好な点**:
+- 全5つの要件（常時表示、空状態メッセージ、リサイズ機能、永続化、既存機能との分離）がDesignで適切にカバーされている
+- 要件IDがDesignのRequirements Traceabilityテーブルで明確にマッピングされている
+- 受け入れ基準（Acceptance Criteria）がDesignの実装詳細と一致
+
+**矛盾・ギャップ**: なし
+
+### 1.2 Design ↔ Tasks Alignment
+
+**良好な点**:
+- Designで定義された3つのコンポーネント拡張（GlobalAgentPanel、App.tsx、layoutConfigService）がすべてTasksに反映
+- 各タスクにRequirements IDが明記されている
+- タスク間の依存関係が適切に定義（Task 1.1完了後にTask 3.x実施など）
+
+**矛盾・ギャップ**: なし
+
+### 1.3 Design ↔ Tasks Completeness
+
+| Category | Design Definition | Task Coverage | Status |
+|----------|-------------------|---------------|--------|
+| UI Components | GlobalAgentPanel空状態メッセージ | Task 2.1 | ✅ |
+| UI Components | ResizeHandle配置 | Task 3.2 | ✅ |
+| Services | layoutConfigService拡張 | Task 1.1 | ✅ |
+| State Management | globalAgentPanelHeight状態 | Task 3.1 | ✅ |
+| Integration | レイアウト保存/復元/リセット | Task 3.3 | ✅ |
+| Testing | ユニットテスト | Task 4.2 | ✅ |
+| Testing | 手動動作確認 | Task 4.1 | ✅ |
+| Testing | E2Eテスト | - | ⚠️ 未定義 |
+
+### 1.4 Cross-Document Contradictions
+
+**検出された矛盾**: なし
+
+## 2. Gap Analysis
+
+### 2.1 Technical Considerations
+
+| Gap | Severity | Description |
+|-----|----------|-------------|
+| E2Eテスト計画の欠如 | Warning | Design.mdのTesting StrategyにE2Eテスト項目があるが、tasks.mdには対応するタスクがない。E2Eテストファイル`layout-persistence.e2e.spec.ts`の更新タスクを追加すべき |
+| preload/index.ts更新の欠如 | Info | layoutConfigServiceにglobalAgentPanelHeightを追加するが、IPC型定義（LayoutValues）の更新がタスクに明記されていない。ただしZodスキーマ拡張で自動的にカバーされる可能性あり |
+
+### 2.2 Operational Considerations
+
+| Gap | Severity | Description |
+|-----|----------|-------------|
+| マイグレーション手順 | Info | 古い設定ファイルからの移行は「デフォルト値にフォールバック」で対応されているが、ユーザーへの通知やログ出力についての記載がない |
+
+## 3. Ambiguities and Unknowns
+
+| Item | Description | Recommendation |
+|------|-------------|----------------|
+| リサイズ方向 | Design.mdで「上方向にリサイズ」と記載されているが、GlobalAgentPanelが左サイドバーの「最下部」にあるため、上方向リサイズが適切。明確だが、tasks.mdでも明示すべき | Task 3.2に「上方向リサイズ」の記載を追加 |
+| 空状態メッセージの文言 | 「グローバルエージェントなし」は確定だが、ユーザーが「次のアクションを理解できる内容」（Req 2.2）についての詳細がない | 実装時に「エージェントは自動で追加されます」等の補足を検討 |
+| 折りたたみ時の最小高さ | パネルが折りたたまれた状態でも最小高さ（80px）が適用されるかの記載がない | 折りたたみ時はヘッダーのみ表示（高さ制限なし）と想定されるが、明確化が望ましい |
+
+## 4. Steering Alignment
+
+### 4.1 Architecture Compatibility
+
+**評価: 良好**
+
+- IPC通信パターン（channels.ts + handlers.ts + preload/index.ts）に準拠
+- Zodによるスキーマバリデーションを使用
+- 既存のResizeHandleコンポーネントを再利用
+- TypeScript strict modeに準拠した型定義
+
+**注意点**:
+- `structure.md`によると、テストファイルは「実装ファイルと同ディレクトリ」に配置すべき。Task 4.2のユニットテスト追加時にこのパターンに従う必要あり
+
+### 4.2 Integration Concerns
+
+| Concern | Risk Level | Mitigation |
+|---------|------------|------------|
+| agentListHeightとの混同 | Low | Design.mdで「右サイドバーのAgentListPanel用」と「左サイドバーのGlobalAgentPanel用」の区別が明確に記載されている |
+| 既存E2Eテストへの影響 | Medium | `layout-persistence.e2e.spec.ts`が存在し、GlobalAgentPanelのリサイズテストを追加する必要がある |
+
+### 4.3 Migration Requirements
+
+**後方互換性**:
+- `globalAgentPanelHeight`がオプショナルとして定義されており、古い設定ファイルでも問題なく動作する設計
+- 既存ユーザーは初回起動時にデフォルト値（120px）が適用される
+
+**必要なマイグレーション**: なし
+
+## 5. Recommendations
+
+### Critical Issues (Must Fix)
+
+なし
+
+### Warnings (Should Address)
+
+| # | Issue | Recommended Action | Affected Documents |
+|---|-------|-------------------|-------------------|
+| W1 | E2Eテストタスクの欠如 | Task 4にE2Eテスト追加タスク（4.3）を追加する。`layout-persistence.e2e.spec.ts`にGlobalAgentPanelのリサイズテストを追加 | tasks.md |
+| W2 | 空状態メッセージの詳細不足 | Requirement 2.2の「ユーザーが次のアクションを理解できる内容」の具体的な文言をDesignまたはTasksに追加 | design.md, tasks.md |
+| W3 | 折りたたみ時の挙動未定義 | パネル折りたたみ時の高さ制限（最小高さは適用されないことを明記）をDesignに追加 | design.md |
+
+### Suggestions (Nice to Have)
+
+| # | Issue | Recommended Action | Affected Documents |
+|---|-------|-------------------|-------------------|
+| S1 | preload型定義の明示 | タスクに「IPC型定義の確認」ステップを追加（Zodスキーマから自動生成されるため必須ではない） | tasks.md |
+| S2 | デバッグログ追加 | 設定ファイルからの復元時（特にフォールバック時）にデバッグログを出力する記載をDesignに追加 | design.md |
+
+## 6. Action Items
+
+| Priority | Issue | Recommended Action | Affected Documents |
+|----------|-------|-------------------|-------------------|
+| Medium | E2Eテストタスク欠如 | Task 4.3を追加: 「E2Eテストを追加する - GlobalAgentPanelリサイズ、永続化テストを layout-persistence.e2e.spec.ts に追加」 | tasks.md |
+| Low | 空状態メッセージ詳細化 | Task 2.1の説明に「必要に応じてヘルプテキストを追加」と記載 | tasks.md |
+| Low | 折りたたみ時挙動 | Design.mdのConstraintsに「折りたたみ時は高さ制限を適用しない」を追加 | design.md |
+
+---
+
+_This review was generated by the document-review command._

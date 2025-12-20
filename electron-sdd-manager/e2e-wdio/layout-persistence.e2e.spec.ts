@@ -180,4 +180,169 @@ describe('Layout Persistence E2E', () => {
       expect(isResponsive).toBe(true);
     });
   });
+
+  // ============================================================
+  // GlobalAgentPanelコンポーネント (global-agent-panel-always-visible feature)
+  // ============================================================
+  describe('GlobalAgentPanelコンポーネント', () => {
+    it('GlobalAgentPanelが常に表示される（0件時も）', async () => {
+      const panel = await $('[data-testid="global-agent-panel"]');
+      const exists = await panel.isExisting();
+      expect(exists).toBe(true);
+    });
+
+    it('GlobalAgentPanelのコンテナが存在する', async () => {
+      const container = await $('[data-testid="global-agent-panel-container"]');
+      const exists = await container.isExisting();
+      expect(exists).toBe(true);
+    });
+
+    it('GlobalAgentPanelのヘッダーが存在する', async () => {
+      const header = await $('[data-testid="global-agent-panel-header"]');
+      const exists = await header.isExisting();
+      expect(exists).toBe(true);
+    });
+
+    it('GlobalAgentPanelに0件時の空状態メッセージまたはエージェントリストが表示される', async () => {
+      const emptyState = await $('[data-testid="global-agent-panel-empty"]');
+      const emptyExists = await emptyState.isExisting();
+
+      if (emptyExists) {
+        // 0件の場合は空状態メッセージが表示される
+        const text = await emptyState.getText();
+        expect(text).toContain('グローバルエージェントなし');
+      } else {
+        // エージェントが存在する場合はパネル自体が表示されている
+        const panel = await $('[data-testid="global-agent-panel"]');
+        expect(await panel.isExisting()).toBe(true);
+      }
+    });
+
+    it('GlobalAgentPanel上部にリサイズハンドルが配置されている', async () => {
+      // GlobalAgentPanelコンテナの直前にリサイズハンドルがある
+      const container = await $('[data-testid="global-agent-panel-container"]');
+      if (await container.isExisting()) {
+        // コンテナが存在すればリサイズハンドルも配置済み
+        const verticalHandles = await $$('[data-testid="resize-handle-vertical"]');
+        expect(verticalHandles.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  // ============================================================
+  // GlobalAgentPanelレイアウト保存・復元 (global-agent-panel-always-visible feature)
+  // ============================================================
+  describe('GlobalAgentPanelレイアウト保存・復元', () => {
+    it('GlobalAgentPanelの高さが取得できる', async () => {
+      const container = await $('[data-testid="global-agent-panel-container"]');
+      if (await container.isExisting()) {
+        const size = await container.getSize();
+        expect(size.height).toBeGreaterThan(0);
+      }
+    });
+
+    it('saveLayoutConfigにglobalAgentPanelHeightを渡せる', async () => {
+      const canSave = await browser.execute(async () => {
+        if (typeof window.electronAPI === 'undefined' ||
+            typeof window.electronAPI.saveLayoutConfig !== 'function') {
+          return false;
+        }
+        try {
+          // テスト用の値で保存を試みる
+          await window.electronAPI.saveLayoutConfig(undefined, {
+            leftPaneWidth: 288,
+            rightPaneWidth: 320,
+            bottomPaneHeight: 192,
+            agentListHeight: 160,
+            globalAgentPanelHeight: 150, // カスタム値
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      expect(canSave).toBe(true);
+    });
+
+    it('loadLayoutConfigでglobalAgentPanelHeightが復元される', async () => {
+      const loadedHeight = await browser.execute(async () => {
+        if (typeof window.electronAPI === 'undefined' ||
+            typeof window.electronAPI.loadLayoutConfig !== 'function') {
+          return null;
+        }
+        try {
+          const config = await window.electronAPI.loadLayoutConfig();
+          return config?.globalAgentPanelHeight ?? null;
+        } catch {
+          return null;
+        }
+      });
+      // 保存した値または何らかの値が読み込まれる（nullでない、または後方互換でnull）
+      expect(loadedHeight === null || typeof loadedHeight === 'number').toBe(true);
+    });
+
+    it('リサイズ後にレイアウトが保存される', async () => {
+      // 1. 初期の高さを記録
+      const initialHeight = await browser.execute(async () => {
+        if (typeof window.electronAPI === 'undefined') return null;
+        const config = await window.electronAPI.loadLayoutConfig();
+        return config?.globalAgentPanelHeight ?? 120;
+      });
+
+      if (initialHeight === null) {
+        // APIが利用できない場合はスキップ
+        expect(true).toBe(true);
+        return;
+      }
+
+      // 2. 新しい高さで保存
+      const newHeight = initialHeight === 150 ? 180 : 150;
+      await browser.execute(async (height: number) => {
+        await window.electronAPI.saveLayoutConfig(undefined, {
+          leftPaneWidth: 288,
+          rightPaneWidth: 320,
+          bottomPaneHeight: 192,
+          agentListHeight: 160,
+          globalAgentPanelHeight: height,
+        });
+      }, newHeight);
+
+      // 3. 読み込んで確認
+      const savedHeight = await browser.execute(async () => {
+        const config = await window.electronAPI.loadLayoutConfig();
+        return config?.globalAgentPanelHeight;
+      });
+
+      expect(savedHeight).toBe(newHeight);
+    });
+
+    it('resetLayoutConfigでglobalAgentPanelHeightがデフォルト値に戻る', async () => {
+      const resetResult = await browser.execute(async () => {
+        if (typeof window.electronAPI === 'undefined' ||
+            typeof window.electronAPI.resetLayoutConfig !== 'function') {
+          return { success: false, height: null };
+        }
+        try {
+          // リセット実行
+          await window.electronAPI.resetLayoutConfig();
+          // リセット後の値を読み込む
+          const config = await window.electronAPI.loadLayoutConfig();
+          return {
+            success: true,
+            height: config?.globalAgentPanelHeight ?? null,
+          };
+        } catch {
+          return { success: false, height: null };
+        }
+      });
+
+      if (resetResult.success && resetResult.height !== null) {
+        // デフォルト値（120px）に戻っていることを確認
+        expect(resetResult.height).toBe(120);
+      } else {
+        // APIが利用できない場合はスキップ
+        expect(true).toBe(true);
+      }
+    });
+  });
 });

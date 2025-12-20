@@ -14,12 +14,14 @@ import type {
 /**
  * Layout values for pane-layout-persistence feature
  * Requirements: 1.1-1.4, 4.2-4.4
+ * globalAgentPanelHeight: global-agent-panel-always-visible feature (optional for backward compatibility)
  */
 export interface LayoutValues {
   leftPaneWidth: number;
   rightPaneWidth: number;
   bottomPaneHeight: number;
   agentListHeight: number;
+  globalAgentPanelHeight?: number;
 }
 
 /**

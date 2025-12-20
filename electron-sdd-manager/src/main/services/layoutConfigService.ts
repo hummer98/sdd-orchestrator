@@ -11,12 +11,14 @@ import * as path from 'path';
 /**
  * レイアウト値のスキーマ
  * 各ペインのサイズを0以上の数値として検証
+ * globalAgentPanelHeightは後方互換のためoptional
  */
 export const LayoutValuesSchema = z.object({
   leftPaneWidth: z.number().min(0),
   rightPaneWidth: z.number().min(0),
   bottomPaneHeight: z.number().min(0),
   agentListHeight: z.number().min(0),
+  globalAgentPanelHeight: z.number().min(0).optional(),
 });
 
 export type LayoutValues = z.infer<typeof LayoutValuesSchema>;
@@ -40,7 +42,8 @@ export const DEFAULT_LAYOUT: LayoutValues = {
   leftPaneWidth: 288,    // w-72 = 18rem = 288px
   rightPaneWidth: 320,   // w-80 = 20rem = 320px
   bottomPaneHeight: 192, // h-48 = 12rem = 192px
-  agentListHeight: 160,  // Agent一覧パネルの高さ
+  agentListHeight: 160,  // Agent一覧パネルの高さ（右サイドバー）
+  globalAgentPanelHeight: 120, // GlobalAgentPanelの高さ（左サイドバー）
 };
 
 /**

@@ -75,10 +75,7 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
 
-  // グローバルエージェントが0件の場合は非表示
-  if (globalAgents.length === 0) {
-    return null;
-  }
+  // global-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
 
   const isCollapsed = collapsed !== undefined ? collapsed : internalCollapsed;
 
@@ -145,21 +142,30 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
         </span>
       </div>
 
-      {/* Agent List */}
+      {/* Agent List or Empty State */}
       {!isCollapsed && (
-        <ul className="px-2 pb-2 space-y-1">
-          {globalAgents.map((agent) => (
-            <GlobalAgentListItem
-              key={agent.agentId}
-              agent={agent}
-              isSelected={selectedAgentId === agent.agentId}
-              onSelect={() => selectAgent(agent.agentId)}
-              onStop={(e) => handleStop(agent.agentId, e)}
-              onResume={(e) => handleResume(agent.agentId, e)}
-              onRemove={(e) => handleRemoveClick(agent, e)}
-            />
-          ))}
-        </ul>
+        globalAgents.length === 0 ? (
+          <div
+            data-testid="global-agent-panel-empty"
+            className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+          >
+            グローバルエージェントなし
+          </div>
+        ) : (
+          <ul className="px-2 pb-2 space-y-1">
+            {globalAgents.map((agent) => (
+              <GlobalAgentListItem
+                key={agent.agentId}
+                agent={agent}
+                isSelected={selectedAgentId === agent.agentId}
+                onSelect={() => selectAgent(agent.agentId)}
+                onStop={(e) => handleStop(agent.agentId, e)}
+                onResume={(e) => handleResume(agent.agentId, e)}
+                onRemove={(e) => handleRemoveClick(agent, e)}
+              />
+            ))}
+          </ul>
+        )
       )}
 
       {/* 削除確認ダイアログ */}

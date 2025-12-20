@@ -74,10 +74,32 @@ describe('GlobalAgentPanel', () => {
       expect(screen.getByText('Global Agent')).toBeInTheDocument();
     });
 
-    it('should not render when no global agents exist', () => {
-      const { container } = render(<GlobalAgentPanel />);
-      // グローバルエージェントが0件の場合、パネルは非表示
-      expect(container.querySelector('[data-testid="global-agent-panel"]')).toBeNull();
+    it('should render panel even when no global agents exist (always visible)', () => {
+      // global-agent-panel-always-visible feature: 0件でもパネルを表示
+      render(<GlobalAgentPanel />);
+      expect(screen.getByTestId('global-agent-panel')).toBeInTheDocument();
+    });
+
+    it('should display empty state message when no global agents exist', () => {
+      // global-agent-panel-always-visible feature: 0件時に空状態メッセージを表示
+      render(<GlobalAgentPanel />);
+      expect(screen.getByText('グローバルエージェントなし')).toBeInTheDocument();
+    });
+
+    it('should hide empty state message when agents exist', () => {
+      // global-agent-panel-always-visible feature: エージェントがある場合は空状態メッセージを非表示
+      const agents = new Map<string, AgentInfo[]>();
+      agents.set('', [mockGlobalAgent1]);
+      useAgentStore.setState({ agents });
+
+      render(<GlobalAgentPanel />);
+      expect(screen.queryByText('グローバルエージェントなし')).not.toBeInTheDocument();
+    });
+
+    it('should hide empty state message when collapsed', () => {
+      // global-agent-panel-always-visible feature: 折りたたみ時は空状態メッセージも非表示
+      render(<GlobalAgentPanel collapsed={true} />);
+      expect(screen.queryByText('グローバルエージェントなし')).not.toBeInTheDocument();
     });
 
     it('should render panel when global agents exist', () => {

@@ -9,8 +9,8 @@ import { CommandsetInstallDialog } from './CommandsetInstallDialog';
 
 // Mock data
 const mockProfileDescriptions = {
-  'cc-sdd': 'cc-sdd workflow commands with bug and document-review',
-  'cc-sdd-agent': 'cc-sdd-agent commands with agents (recommended)',
+  'cc-sdd': 'cc-sdd workflow commands with bug and document-review (recommended)',
+  'cc-sdd-agent': 'cc-sdd-agent commands with agents',
   'spec-manager': 'spec-manager commands with bug and document-review',
 };
 
@@ -76,11 +76,11 @@ describe('CommandsetInstallDialog', () => {
   });
 
   describe('Profile Selection', () => {
-    it('should have cc-sdd-agent profile selected by default', () => {
+    it('should have cc-sdd profile selected by default', () => {
       render(<CommandsetInstallDialog {...defaultProps} />);
 
-      const ccSddAgentOption = screen.getByRole('radio', { name: /cc-sdd-agent/ });
-      expect(ccSddAgentOption).toBeChecked();
+      const ccSddOption = screen.getByRole('radio', { name: /^cc-sdd$/ });
+      expect(ccSddOption).toBeChecked();
     });
 
     it('should allow selecting different profiles', () => {
@@ -103,7 +103,7 @@ describe('CommandsetInstallDialog', () => {
 
       await waitFor(() => {
         // onInstall is called with profile and progressCallback
-        expect(onInstall).toHaveBeenCalledWith('cc-sdd-agent', expect.any(Function));
+        expect(onInstall).toHaveBeenCalledWith('cc-sdd', expect.any(Function));
       });
     });
 
@@ -381,7 +381,7 @@ describe('CommandsetInstallDialog', () => {
         expect(radioButtons.length).toBe(3);
       });
 
-      it('should show recommended label on cc-sdd-agent profile', () => {
+      it('should show recommended label on cc-sdd profile', () => {
         render(<CommandsetInstallDialog {...defaultProps} />);
 
         expect(screen.getByText('推奨')).toBeInTheDocument();

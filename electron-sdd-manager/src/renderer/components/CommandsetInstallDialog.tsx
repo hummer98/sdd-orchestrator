@@ -54,14 +54,14 @@ const PROFILES: Profile[] = [
   {
     name: 'cc-sdd',
     displayName: 'cc-sdd',
-    description: 'cc-sdd workflow commands with bug and document-review',
+    description: 'cc-sdd workflow commands with bug and document-review (recommended)',
     icon: <Package className="w-5 h-5 text-blue-500" />,
     commandsets: ['cc-sdd', 'bug', 'document-review'],
   },
   {
     name: 'cc-sdd-agent',
     displayName: 'cc-sdd-agent',
-    description: 'cc-sdd-agent commands with agents (recommended)',
+    description: 'cc-sdd-agent commands with agents',
     icon: <Layers className="w-5 h-5 text-green-500" />,
     commandsets: ['cc-sdd-agent', 'bug', 'document-review', 'agents'],
   },
@@ -108,7 +108,7 @@ export function CommandsetInstallDialog({
   onCheckAgentFolderExists,
   onDeleteAgentFolder,
 }: CommandsetInstallDialogProps) {
-  const [selectedProfile, setSelectedProfile] = useState<ProfileName>('cc-sdd-agent');
+  const [selectedProfile, setSelectedProfile] = useState<ProfileName>('cc-sdd');
   const [dialogState, setDialogState] = useState<DialogState>('selection');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<InstallProgress | null>(null);
@@ -270,7 +270,7 @@ export function CommandsetInstallDialog({
                       <span className="font-medium text-gray-800 dark:text-gray-200">
                         {profile.displayName}
                       </span>
-                      {profile.name === 'cc-sdd-agent' && (
+                      {profile.name === 'cc-sdd' && (
                         <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">
                           推奨
                         </span>

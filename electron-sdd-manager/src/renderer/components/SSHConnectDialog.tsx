@@ -122,8 +122,8 @@ export function SSHConnectDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" data-testid="ssh-connect-dialog-backdrop">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" data-testid="ssh-connect-dialog">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -136,6 +136,7 @@ export function SSHConnectDialog({
             onClick={onCancel}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             disabled={isConnecting}
+            data-testid="ssh-connect-close-button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -161,9 +162,10 @@ export function SSHConnectDialog({
                 focus:outline-none focus:ring-2 focus:ring-blue-500`}
               disabled={isConnecting}
               autoFocus
+              data-testid="ssh-uri-input"
             />
             {error && (
-              <p className="mt-1 text-sm text-red-500">{error}</p>
+              <p className="mt-1 text-sm text-red-500" data-testid="ssh-uri-error">{error}</p>
             )}
           </div>
 
@@ -178,6 +180,7 @@ export function SSHConnectDialog({
               onClick={onCancel}
               className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
               disabled={isConnecting}
+              data-testid="ssh-connect-cancel-button"
             >
               Cancel
             </button>
@@ -188,6 +191,7 @@ export function SSHConnectDialog({
                 ${!uri || isConnecting
                   ? 'bg-blue-400 cursor-not-allowed'
                   : 'bg-blue-500 hover:bg-blue-600'}`}
+              data-testid="ssh-connect-submit-button"
             >
               {isConnecting ? (
                 <>

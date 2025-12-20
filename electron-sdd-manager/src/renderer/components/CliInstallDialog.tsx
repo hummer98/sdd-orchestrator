@@ -57,7 +57,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" data-testid="cli-install-dialog-backdrop">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
@@ -70,6 +70,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
           'relative z-10 w-full max-w-lg p-6 rounded-lg shadow-xl',
           'bg-white dark:bg-gray-900'
         )}
+        data-testid="cli-install-dialog"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -82,6 +83,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+            data-testid="cli-install-close-button"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -103,6 +105,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
                   )}
+                  data-testid="cli-install-location-user"
                 >
                   <input
                     type="radio"
@@ -128,6 +131,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
                   )}
+                  data-testid="cli-install-location-system"
                 >
                   <input
                     type="radio"
@@ -159,6 +163,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
                 'text-white',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
+              data-testid="cli-install-submit-button"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -182,6 +187,7 @@ export function CliInstallDialog({ isOpen, onClose }: CliInstallDialogProps) {
                     ? 'bg-yellow-50 dark:bg-yellow-900/20'
                     : 'bg-red-50 dark:bg-red-900/20'
               )}
+              data-testid="cli-install-result"
             >
               {result.success ? (
                 <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />

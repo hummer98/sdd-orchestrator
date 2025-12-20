@@ -47,8 +47,8 @@ export function ClaudeMdInstallDialog({
   const projectName = projectPath.split('/').pop() || projectPath;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" data-testid="claudemd-install-dialog-backdrop">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" data-testid="claudemd-install-dialog">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
@@ -58,6 +58,7 @@ export function ClaudeMdInstallDialog({
             onClick={onClose}
             disabled={isLoading}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            data-testid="claudemd-install-close-button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -89,6 +90,7 @@ export function ClaudeMdInstallDialog({
                     'hover:bg-gray-50 dark:hover:bg-gray-700',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
+                  data-testid="claudemd-install-overwrite-button"
                 >
                   <div className="flex items-center gap-3">
                     {loadingMode === 'overwrite' ? (
@@ -117,6 +119,7 @@ export function ClaudeMdInstallDialog({
                     'hover:bg-gray-50 dark:hover:bg-gray-700',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
+                  data-testid="claudemd-install-merge-button"
                 >
                   <div className="flex items-center gap-3">
                     {loadingMode === 'merge' ? (
@@ -145,6 +148,7 @@ export function ClaudeMdInstallDialog({
                     'hover:bg-gray-50 dark:hover:bg-gray-700',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
+                  data-testid="claudemd-install-cancel-button"
                 >
                   <div className="flex items-center gap-3">
                     <Ban className="w-5 h-5 text-gray-500" />
@@ -176,6 +180,7 @@ export function ClaudeMdInstallDialog({
                     'hover:bg-gray-100 dark:hover:bg-gray-700',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
+                  data-testid="claudemd-install-new-cancel-button"
                 >
                   キャンセル
                 </button>
@@ -188,6 +193,7 @@ export function ClaudeMdInstallDialog({
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                     'flex items-center gap-2'
                   )}
+                  data-testid="claudemd-install-submit-button"
                 >
                   {isLoading ? (
                     <>
@@ -204,7 +210,7 @@ export function ClaudeMdInstallDialog({
 
           {/* Error display */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-md" data-testid="claudemd-install-error">
               <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4" />
                 <span>

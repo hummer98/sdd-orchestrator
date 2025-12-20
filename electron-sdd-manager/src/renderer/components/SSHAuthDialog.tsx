@@ -61,8 +61,8 @@ export function SSHAuthDialog({
   // Render host key verification dialog
   if (type === 'host-key') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" data-testid="ssh-auth-dialog-backdrop">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" data-testid="ssh-auth-hostkey-dialog">
           {/* Header */}
           <div className={`flex items-center justify-between px-4 py-3 border-b rounded-t-lg
             ${isNewHost ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
@@ -79,6 +79,7 @@ export function SSHAuthDialog({
             <button
               onClick={onCancel}
               className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              data-testid="ssh-auth-close-button"
             >
               <X className="w-5 h-5" />
             </button>
@@ -87,7 +88,7 @@ export function SSHAuthDialog({
           {/* Content */}
           <div className="p-4">
             <div className="mb-4">
-              <p className={`text-sm ${isNewHost ? 'text-gray-700 dark:text-gray-300' : 'text-red-700 dark:text-red-300'}`}>
+              <p className={`text-sm ${isNewHost ? 'text-gray-700 dark:text-gray-300' : 'text-red-700 dark:text-red-300'}`} data-testid="ssh-auth-message">
                 {isNewHost ? (
                   <>
                     This is the first time connecting to <strong>{host}</strong>.
@@ -103,7 +104,7 @@ export function SSHAuthDialog({
               </p>
             </div>
 
-            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md mb-4 font-mono text-sm break-all">
+            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md mb-4 font-mono text-sm break-all" data-testid="ssh-auth-fingerprint">
               {fingerprint}
             </div>
 
@@ -121,6 +122,7 @@ export function SSHAuthDialog({
                 type="button"
                 onClick={onCancel}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                data-testid="ssh-auth-cancel-button"
               >
                 Cancel
               </button>
@@ -128,6 +130,7 @@ export function SSHAuthDialog({
                 onClick={handleSubmit}
                 className={`px-4 py-2 rounded-md text-white
                   ${isNewHost ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="ssh-auth-accept-button"
               >
                 {isNewHost ? 'Trust & Accept' : 'Accept Anyway'}
               </button>
@@ -148,8 +151,8 @@ export function SSHAuthDialog({
   const keyFilename = keyPath ? keyPath.split('/').pop() : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" data-testid="ssh-auth-dialog-backdrop">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" data-testid="ssh-auth-password-dialog">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -161,6 +164,7 @@ export function SSHAuthDialog({
           <button
             onClick={onCancel}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            data-testid="ssh-auth-close-button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -199,6 +203,7 @@ export function SSHAuthDialog({
                 text-gray-900 dark:text-white bg-white dark:bg-gray-700
                 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
+              data-testid="ssh-auth-input"
             />
           </div>
 
@@ -208,6 +213,7 @@ export function SSHAuthDialog({
               type="button"
               onClick={onCancel}
               className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+              data-testid="ssh-auth-cancel-button"
             >
               Cancel
             </button>
@@ -218,6 +224,7 @@ export function SSHAuthDialog({
                 ${!inputValue
                   ? 'bg-blue-400 cursor-not-allowed'
                   : 'bg-blue-500 hover:bg-blue-600'}`}
+              data-testid="ssh-auth-submit-button"
             >
               OK
             </button>

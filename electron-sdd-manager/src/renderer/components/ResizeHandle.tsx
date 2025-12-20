@@ -56,6 +56,7 @@ export function ResizeHandle({ onResize, onResizeEnd, direction }: ResizeHandleP
         direction === 'horizontal' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize',
         isDragging && 'bg-blue-500 dark:bg-blue-500'
       )}
+      data-testid={`resize-handle-${direction}`}
     />
   );
 }

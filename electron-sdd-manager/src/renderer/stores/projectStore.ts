@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { KiroValidation, SpecMetadata, BugMetadata, SelectProjectResult } from '../types';
+import type { KiroValidation, SelectProjectResult } from '../types';
 import { useSpecStore } from './specStore';
 import { useBugStore } from './bugStore';
 
@@ -52,8 +52,7 @@ interface ProjectState {
   error: string | null;
   // Unified project selection results (unified-project-selection feature)
   lastSelectResult: SelectProjectResult | null;
-  specs: SpecMetadata[];
-  bugs: BugMetadata[];
+  // Note: specs/bugs are managed by specStore/bugStore (SSOT)
   // spec-manager extensions
   specManagerCheck: SpecManagerCheckResult | null;
   installLoading: boolean;
@@ -102,8 +101,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   isLoading: false,
   error: null,
   lastSelectResult: null,
-  specs: [],
-  bugs: [],
+  // Note: specs/bugs are managed by specStore/bugStore (SSOT)
   specManagerCheck: null,
   installLoading: false,
   installResult: null,
@@ -163,11 +161,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       }
 
       // Success: update store with results
+      // Note: specs/bugs are delegated to specStore/bugStore (SSOT)
       set({
         currentProject: result.projectPath,
         kiroValidation: result.kiroValidation,
-        specs: result.specs,
-        bugs: result.bugs,
         isLoading: false,
         lastSelectResult: result,
       });
@@ -236,8 +233,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       kiroValidation: null,
       error: null,
       lastSelectResult: null,
-      specs: [],
-      bugs: [],
+      // Note: specs/bugs are managed by specStore/bugStore (SSOT)
       specManagerCheck: null,
       installResult: null,
       installError: null,

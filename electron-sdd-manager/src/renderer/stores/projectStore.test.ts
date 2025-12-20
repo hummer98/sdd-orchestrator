@@ -6,6 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProjectStore } from './projectStore';
+import { useSpecStore } from './specStore';
+import { useBugStore } from './bugStore';
 
 describe('useProjectStore', () => {
   beforeEach(() => {
@@ -18,9 +20,11 @@ describe('useProjectStore', () => {
       error: null,
       permissionsCheck: null,
       lastSelectResult: null,
-      specs: [],
-      bugs: [],
+      // Note: specs/bugs are now managed by specStore/bugStore (SSOT)
     });
+    // Reset specStore and bugStore
+    useSpecStore.setState({ specs: [], selectedSpec: null, specDetail: null });
+    useBugStore.setState({ bugs: [], selectedBug: null, bugDetail: null });
     vi.clearAllMocks();
   });
 
@@ -71,8 +75,9 @@ describe('useProjectStore', () => {
       const state = useProjectStore.getState();
       expect(state.currentProject).toBe('/test/project');
       expect(state.kiroValidation).toEqual(mockValidation);
-      expect(state.specs).toEqual(mockSpecs);
-      expect(state.bugs).toEqual(mockBugs);
+      // specs/bugs are delegated to specStore/bugStore (SSOT)
+      expect(useSpecStore.getState().specs).toEqual(mockSpecs);
+      expect(useBugStore.getState().bugs).toEqual(mockBugs);
     });
 
     it('should set isLoading during selection', async () => {

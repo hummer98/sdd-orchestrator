@@ -202,9 +202,10 @@ describe('WorkflowView Integration', () => {
   // ============================================================
   // Task 8.2: Command result reception and state update
   // Requirements: 11.2, 11.3
+  // Note: File as SSOT - agent store is updated via file watcher events
   // ============================================================
   describe('Task 8.2: Command result reception', () => {
-    it('should update agent store when agent starts', async () => {
+    it('should call executePhase IPC and update store via file watcher', async () => {
       const mockAgent = {
         agentId: 'agent-1',
         specId: 'test-feature',
@@ -230,10 +231,24 @@ describe('WorkflowView Integration', () => {
         fireEvent.click(executeButton);
       }
 
+      // Verify executePhase was called
       await waitFor(() => {
-        const agents = useAgentStore.getState().agents;
-        expect(agents.get('test-feature')).toBeDefined();
+        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
+          'test-feature',
+          'requirements',
+          'test-feature',
+          'kiro'
+        );
       });
+
+      // Simulate file watcher updating the store (File as SSOT architecture)
+      // In production, this happens via onAgentRecordChanged IPC event
+      useAgentStore.getState().addAgent(mockAgent.specId, mockAgent);
+
+      // Verify store was updated
+      const agents = useAgentStore.getState().agents;
+      expect(agents.get('test-feature')).toBeDefined();
+      expect(agents.get('test-feature')![0].agentId).toBe('agent-1');
     });
   });
 

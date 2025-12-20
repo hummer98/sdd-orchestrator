@@ -410,6 +410,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           // specId can be empty string for global agents, so check for undefined
           if (agentInfo.agentId && agentInfo.specId !== undefined) {
             get().addAgent(agentInfo.specId, agentInfo);
+            // 新規追加時のみ自動選択（File as SSOT: WorkflowViewからの直接呼び出しを廃止）
+            if (type === 'add') {
+              get().selectAgent(agentInfo.agentId);
+            }
           }
         }
       }

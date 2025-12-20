@@ -21,30 +21,34 @@ vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
 }));
 
+// セレクタをサポートするモック状態（テスト内で上書き可能）
+let mockAgentStoreState = {
+  agents: new Map(),
+  getAgentsForSpec: vi.fn(() => []),
+  selectAgent: vi.fn(),
+  addAgent: vi.fn(),
+};
+
 vi.mock('../stores/agentStore', () => {
-  const mockAgentStoreState = {
-    agents: [],
-    getAgentsForSpec: vi.fn(() => []),
-    selectAgent: vi.fn(),
-    addAgent: vi.fn(),
-  };
-  const mockUseAgentStore = Object.assign(vi.fn(() => mockAgentStoreState), {
-    subscribe: vi.fn(() => vi.fn()), // Returns unsubscribe function
-    getState: vi.fn(() => mockAgentStoreState),
-  });
+  // セレクタ関数をサポート：selector(state)を実行して返す
+  const mockUseAgentStore = Object.assign(
+    vi.fn((selector?: (state: typeof mockAgentStoreState) => unknown) => {
+      if (selector) {
+        return selector(mockAgentStoreState);
+      }
+      return mockAgentStoreState;
+    }),
+    {
+      subscribe: vi.fn(() => vi.fn()), // Returns unsubscribe function
+      getState: vi.fn(() => mockAgentStoreState),
+    }
+  );
   return {
     useAgentStore: mockUseAgentStore,
   };
 });
 
 import { useAgentStore } from '../stores/agentStore';
-
-const mockAgentStoreState = {
-  agents: [],
-  getAgentsForSpec: vi.fn(() => []),
-  selectAgent: vi.fn(),
-  addAgent: vi.fn(),
-};
 
 const mockArtifact: ArtifactInfo = {
   exists: true,
@@ -144,7 +148,13 @@ describe('WorkflowView', () => {
     vi.clearAllMocks();
     (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSpecStoreState);
     (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockWorkflowState);
-    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockAgentStoreState);
+    // モック状態をリセット（セレクタ対応済みのモックなので直接状態を変更）
+    mockAgentStoreState = {
+      agents: new Map(),
+      getAgentsForSpec: vi.fn(() => []),
+      selectAgent: vi.fn(),
+      addAgent: vi.fn(),
+    };
   });
 
   // ============================================================
@@ -224,13 +234,18 @@ describe('WorkflowView', () => {
     });
 
     it('should disable auto-execute button when an agent is running in the spec', () => {
-      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      // セレクタ対応モックのため状態を直接変更
+      const agentsMap = new Map();
+      agentsMap.set('test-feature', [
+        { agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' },
+      ]);
+      mockAgentStoreState = {
         ...mockAgentStoreState,
-        agents: [{ agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' }],
+        agents: agentsMap,
         getAgentsForSpec: vi.fn(() => [
           { agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' },
         ]),
-      });
+      };
 
       render(<WorkflowView />);
 
@@ -250,13 +265,18 @@ describe('WorkflowView', () => {
         ...mockWorkflowState,
         isAutoExecuting: true,
       });
-      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      // セレクタ対応モックのため状態を直接変更
+      const agentsMap = new Map();
+      agentsMap.set('test-feature', [
+        { agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' },
+      ]);
+      mockAgentStoreState = {
         ...mockAgentStoreState,
-        agents: [{ agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' }],
+        agents: agentsMap,
         getAgentsForSpec: vi.fn(() => [
           { agentId: 'agent-1', specId: 'test-feature', phase: 'requirements', status: 'running' },
         ]),
-      });
+      };
 
       render(<WorkflowView />);
 

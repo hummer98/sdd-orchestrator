@@ -181,6 +181,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         useBugStore.getState().setBugs(result.bugs);
       }
 
+      // Start file watchers for specs and agents (File as SSOT)
+      // This also starts AgentRecordWatcher via START_SPECS_WATCHER IPC
+      await useSpecStore.getState().startWatching();
+      await useBugStore.getState().startWatching();
+
       // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();
 

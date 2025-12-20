@@ -40,7 +40,9 @@ const MAX_CONTINUE_RETRIES = 2;
 export function WorkflowView() {
   const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
   const workflowStore = useWorkflowStore();
-  const agentStore = useAgentStore();
+  // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
+  const agents = useAgentStore((state) => state.agents);
+  const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
   const autoExecutionServiceRef = useRef(getAutoExecutionService());
 
   // Cleanup AutoExecutionService on unmount
@@ -76,19 +78,19 @@ export function WorkflowView() {
   // 現在のspecで実行中のフェーズ/バリデーションを取得
   const runningPhases = useMemo(() => {
     if (!specDetail) return new Set<string>();
-    const agents = agentStore.getAgentsForSpec(specDetail.metadata.name);
-    const running = agents
+    const specAgents = getAgentsForSpec(specDetail.metadata.name);
+    const running = specAgents
       .filter((a) => a.status === 'running')
       .map((a) => a.phase);
     return new Set(running);
-  }, [agentStore.agents, specDetail]);
+  }, [agents, specDetail, getAgentsForSpec]);
 
   // 現在のspec内で実行中のグループを取得（validate/implのコンフリクト判定用）
   type ExecutionGroup = 'doc' | 'validate' | 'impl';
   const runningGroupInSpec = useMemo((): ExecutionGroup | null => {
     if (!specDetail) return null;
-    const agents = agentStore.getAgentsForSpec(specDetail.metadata.name);
-    const runningAgents = agents.filter((a) => a.status === 'running');
+    const specAgents = getAgentsForSpec(specDetail.metadata.name);
+    const runningAgents = specAgents.filter((a) => a.status === 'running');
 
     // フェーズからグループを判定
     for (const agent of runningAgents) {
@@ -97,7 +99,7 @@ export function WorkflowView() {
       if (['requirements', 'design', 'tasks', 'status'].includes(agent.phase)) return 'doc';
     }
     return null;
-  }, [agentStore.agents, specDetail]);
+  }, [agents, specDetail, getAgentsForSpec]);
 
   // バリデーションが実行可能かどうかを判定
   const canExecuteValidation = useCallback(
@@ -172,19 +174,17 @@ export function WorkflowView() {
 
     try {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      const newAgent = await window.electronAPI.executePhase(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executePhase(
         specDetail.metadata.name,
         phase,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
@@ -215,19 +215,17 @@ export function WorkflowView() {
 
     try {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      const newAgent = await window.electronAPI.executeValidation(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeValidation(
         specDetail.metadata.name,
         type,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'バリデーションの実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   // Task 10.1: Auto execution button handler
   // Requirements: 1.1, 1.2
@@ -261,18 +259,16 @@ export function WorkflowView() {
 
     try {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      const newAgent = await window.electronAPI.executeSpecStatus(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeSpecStatus(
         specDetail.metadata.name,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'spec-statusの実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
     // TODO: Show agent log for this phase
@@ -291,53 +287,50 @@ export function WorkflowView() {
     if (!specDetail) return;
 
     try {
-      const newAgent = await window.electronAPI.executeDocumentReview(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeDocumentReview(
         specDetail.metadata.name,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'ドキュメントレビューの実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   // Handler for executing document-review-reply manually
   const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
     try {
-      const newAgent = await window.electronAPI.executeDocumentReviewReply(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeDocumentReviewReply(
         specDetail.metadata.name,
         specDetail.metadata.name,
         roundNumber,
         workflowStore.commandPrefix
       );
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'レビュー内容判定の実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   // Handler for applying fixes from document-review-reply (--fix option)
   const handleApplyDocumentReviewFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
     try {
-      const newAgent = await window.electronAPI.executeDocumentReviewFix(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeDocumentReviewFix(
         specDetail.metadata.name,
         specDetail.metadata.name,
         roundNumber,
         workflowStore.commandPrefix
       );
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'replyの適用に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   // Track previous runningPhases for detecting document-review completion
   const prevRunningPhasesRef = useRef<Set<string>>(new Set());
@@ -373,19 +366,17 @@ export function WorkflowView() {
 
     try {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      const newAgent = await window.electronAPI.executeTaskImpl(
+      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
+      await window.electronAPI.executeTaskImpl(
         specDetail.metadata.name,
         specDetail.metadata.name,
         taskId,
         workflowStore.commandPrefix
       );
-      // ストアにAgentを追加して選択
-      agentStore.addAgent(specDetail.metadata.name, newAgent);
-      agentStore.selectAgent(newAgent.agentId);
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'タスク実装の実行に失敗しました');
     }
-  }, [agentStore, specDetail, workflowStore.commandPrefix]);
+  }, [specDetail, workflowStore.commandPrefix]);
 
   // Validation options positions
   // Note: validate-impl is executed as inspection phase, not as validation option

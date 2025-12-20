@@ -49,6 +49,61 @@ function truncate(str: string, maxLen: number): string {
   return str.substring(0, maxLen - 3) + '...';
 }
 
+// ツール別アイコンマッピング
+const TOOL_ICONS: Record<string, string> = {
+  Read: '📖',
+  Edit: '✏️',
+  Write: '📝',
+  MultiEdit: '✏️',
+  Bash: '💻',
+  Glob: '🔍',
+  Grep: '🔎',
+  Task: '📋',
+  TaskOutput: '📋',
+  WebFetch: '🌐',
+  WebSearch: '🔎',
+  TodoWrite: '✅',
+  NotebookEdit: '📓',
+};
+
+function getToolIcon(toolName: string): string {
+  return TOOL_ICONS[toolName] || '🔧';
+}
+
+/**
+ * Format tool content based on tool type
+ * Read/Edit/Write: show full file path
+ * Bash: show description + command
+ * Others: use generic formatting
+ */
+function formatToolContent(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case 'Read':
+    case 'Write':
+      return (input.file_path as string) || '';
+    case 'Edit':
+    case 'MultiEdit':
+      return (input.file_path as string) || '';
+    case 'Bash': {
+      const cmd = (input.command as string) || '';
+      const desc = (input.description as string) || '';
+      if (desc) {
+        return `${desc}`;
+      }
+      // descriptionがない場合はコマンドを短縮表示
+      return truncate(cmd, 80);
+    }
+    case 'Glob':
+      return (input.pattern as string) || '';
+    case 'Grep':
+      return (input.pattern as string) || '';
+    case 'Task':
+      return (input.description as string) || '';
+    default:
+      return formatToolInput(input);
+  }
+}
+
 function getFirstMeaningfulLine(content: string, maxLen: number = 100): string {
   // エスケープされた改行を実際の改行に変換
   const normalized = content.replace(/\\n/g, '\n');
@@ -126,9 +181,9 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             } else if (block.type === 'tool_use' && block.name) {
               lines.push({
                 type: 'tool',
-                icon: '🔧',
+                icon: getToolIcon(block.name),
                 label: block.name,
-                content: block.input ? formatToolInput(block.input) : '',
+                content: block.input ? formatToolContent(block.name, block.input) : '',
                 color: 'yellow',
               });
             }
@@ -218,14 +273,29 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
     if (trimmed) {
       // 不完全なJSONの場合、意味のある部分だけ抽出
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        // 不完全なJSONは省略表示
-        lines.push({
-          type: 'text',
-          icon: '📄',
-          label: 'データ',
-          content: truncate(trimmed.replace(/\\n/g, ' ').replace(/\s+/g, ' '), 100),
-          color: 'gray',
-        });
+        // tool_resultパターンを検出
+        const toolResultMatch = trimmed.match(/"type"\s*:\s*"tool_result"/);
+        if (toolResultMatch) {
+          // tool_result行: ファイル情報を抽出
+          const fileMatch = trimmed.match(/"filePath"\s*:\s*"([^"]+)"/);
+          const fileName = fileMatch ? fileMatch[1].split('/').pop() : null;
+          lines.push({
+            type: 'tool-result',
+            icon: '📤',
+            label: 'ツール結果',
+            content: fileName ? `${fileName} の内容` : '(結果あり)',
+            color: 'blue',
+          });
+        } else {
+          // その他の不完全なJSON
+          lines.push({
+            type: 'text',
+            icon: '📄',
+            label: 'データ',
+            content: truncate(trimmed.replace(/\\n/g, ' ').replace(/\s+/g, ' '), 100),
+            color: 'gray',
+          });
+        }
       } else {
         // プレーンテキスト：最初の意味のある部分を表示
         const preview = getFirstMeaningfulLine(trimmed, 100);

@@ -17,6 +17,9 @@ describe('useProjectStore', () => {
       isLoading: false,
       error: null,
       permissionsCheck: null,
+      lastSelectResult: null,
+      specs: [],
+      bugs: [],
     });
     vi.clearAllMocks();
   });
@@ -41,8 +44,16 @@ describe('useProjectStore', () => {
   describe('selectProject', () => {
     it('should set currentProject when valid path selected', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
-      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
-      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      const mockSpecs = [{ name: 'test-spec', path: '/test/spec', phase: 'initialized', updatedAt: '2024-01-01', approvals: { requirements: { generated: false, approved: false }, design: { generated: false, approved: false }, tasks: { generated: false, approved: false } } }];
+      const mockBugs = [{ name: 'test-bug', path: '/test/bug', phase: 'reported', updatedAt: '2024-01-01' }];
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: mockSpecs,
+        bugs: mockBugs,
+      });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
@@ -60,13 +71,20 @@ describe('useProjectStore', () => {
       const state = useProjectStore.getState();
       expect(state.currentProject).toBe('/test/project');
       expect(state.kiroValidation).toEqual(mockValidation);
+      expect(state.specs).toEqual(mockSpecs);
+      expect(state.bugs).toEqual(mockBugs);
     });
 
     it('should set isLoading during selection', async () => {
-      window.electronAPI.validateKiroDirectory = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ exists: true, hasSpecs: true, hasSteering: true }), 100))
+      window.electronAPI.selectProject = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({
+          success: true,
+          projectPath: '/test/project',
+          kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+          specs: [],
+          bugs: [],
+        }), 100))
       );
-      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
@@ -90,13 +108,21 @@ describe('useProjectStore', () => {
       expect(useProjectStore.getState().isLoading).toBe(false);
     });
 
-    it('should set error on validation failure', async () => {
-      window.electronAPI.validateKiroDirectory = vi.fn().mockRejectedValue(new Error('Validation failed'));
+    it('should set error on selection failure', async () => {
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: false,
+        projectPath: '/invalid/path',
+        kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+        specs: [],
+        bugs: [],
+        error: { type: 'PATH_NOT_EXISTS', path: '/invalid/path' },
+      });
 
       await useProjectStore.getState().selectProject('/invalid/path');
 
       const state = useProjectStore.getState();
       expect(state.error).toBeTruthy();
+      expect(state.error).toContain('パスが存在しません');
     });
   });
 
@@ -137,8 +163,13 @@ describe('useProjectStore', () => {
         present: ['Bash(git:*)', 'Bash(npm:*)'],
       };
 
-      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
-      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+      });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
@@ -162,8 +193,13 @@ describe('useProjectStore', () => {
         present: ['Bash(task:*)', 'Bash(git:*)', 'Bash(npm:*)'],
       };
 
-      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
-      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+      });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },
@@ -182,8 +218,13 @@ describe('useProjectStore', () => {
     it('should handle permissions check failure gracefully', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
 
-      window.electronAPI.validateKiroDirectory = vi.fn().mockResolvedValue(mockValidation);
-      window.electronAPI.addRecentProject = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+      });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
         commands: { allPresent: true, missing: [], present: [] },

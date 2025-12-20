@@ -67,6 +67,9 @@ interface SpecActions {
   getSortedFilteredSpecs: () => SpecMetadata[];
   startWatching: () => Promise<void>;
   stopWatching: () => Promise<void>;
+  // Unified project selection support (unified-project-selection feature)
+  // Requirements: 3.1
+  setSpecs: (specs: SpecMetadata[]) => void;
   // spec-manager extensions
   executeSpecManagerGeneration: (
     specId: string,
@@ -119,8 +122,8 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Initialize SpecManagerService on main process
-      await window.electronAPI.setProjectPath(projectPath);
+      // Read specs directly without calling setProjectPath
+      // Note: setProjectPath is now handled by unified selectProject IPC
       const specs = await window.electronAPI.readSpecs(projectPath);
       set({ specs, isLoading: false });
 
@@ -132,6 +135,19 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         isLoading: false,
       });
     }
+  },
+
+  // ============================================================
+  // Unified Project Selection Support (unified-project-selection feature)
+  // Requirements: 3.1
+  // ============================================================
+
+  /**
+   * Set specs directly from IPC result
+   * Used by projectStore.selectProject to update specs without re-fetching
+   */
+  setSpecs: (specs: SpecMetadata[]) => {
+    set({ specs, isLoading: false, error: null });
   },
 
   selectSpec: async (spec: SpecMetadata, options?: { silent?: boolean }) => {

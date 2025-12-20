@@ -8,6 +8,7 @@ import type {
   BugMetadata,
   BugDetail,
   BugsChangeEvent,
+  SelectProjectResult,
 } from './index';
 
 /**
@@ -283,7 +284,26 @@ export interface ElectronAPI {
   // File System
   showOpenDialog(): Promise<string | null>;
   validateKiroDirectory(path: string): Promise<KiroValidation>;
+  /**
+   * @deprecated Use selectProject instead for unified project selection
+   */
   setProjectPath(projectPath: string): Promise<void>;
+
+  // ============================================================
+  // Unified Project Selection (unified-project-selection feature)
+  // Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
+  // ============================================================
+
+  /**
+   * Select a project using unified selection mechanism
+   * This is the recommended API for project selection.
+   * Handles path validation, kiro directory detection, specs/bugs loading,
+   * and file watcher initialization in a single call.
+   *
+   * @param projectPath - Absolute path to the project directory
+   * @returns SelectProjectResult with project data or error information
+   */
+  selectProject(projectPath: string): Promise<SelectProjectResult>;
   readSpecs(projectPath: string): Promise<SpecMetadata[]>;
   readSpecJson(specPath: string): Promise<SpecJson>;
   readArtifact(artifactPath: string): Promise<string>;

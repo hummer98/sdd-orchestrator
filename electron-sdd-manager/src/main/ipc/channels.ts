@@ -157,6 +157,10 @@ export const IPC_CHANNELS = {
   MENU_INSTALL_EXPERIMENTAL_PLAN: 'menu:install-experimental-plan',
   MENU_INSTALL_EXPERIMENTAL_DEBUG: 'menu:install-experimental-debug',
   MENU_INSTALL_EXPERIMENTAL_COMMIT: 'menu:install-experimental-commit',
+
+  // Unified Project Selection (unified-project-selection feature)
+  // Requirements: 1.1, 1.2, 1.6, 5.1-5.4, 6.1-6.4
+  SELECT_PROJECT: 'ipc:select-project',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

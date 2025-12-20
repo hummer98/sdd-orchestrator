@@ -5,7 +5,9 @@
  */
 
 import { create } from 'zustand';
-import type { KiroValidation } from '../types';
+import type { KiroValidation, SpecMetadata, BugMetadata, SelectProjectResult } from '../types';
+import { useSpecStore } from './specStore';
+import { useBugStore } from './bugStore';
 
 /** spec-managerファイルチェック結果 */
 export interface FileCheckResult {
@@ -48,6 +50,10 @@ interface ProjectState {
   kiroValidation: KiroValidation | null;
   isLoading: boolean;
   error: string | null;
+  // Unified project selection results (unified-project-selection feature)
+  lastSelectResult: SelectProjectResult | null;
+  specs: SpecMetadata[];
+  bugs: BugMetadata[];
   // spec-manager extensions
   specManagerCheck: SpecManagerCheckResult | null;
   installLoading: boolean;
@@ -93,6 +99,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   kiroValidation: null,
   isLoading: false,
   error: null,
+  lastSelectResult: null,
+  specs: [],
+  bugs: [],
   specManagerCheck: null,
   installLoading: false,
   installResult: null,
@@ -100,20 +109,76 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   permissionsCheck: null,
 
   // Actions
+  // ============================================================
+  // Unified Project Selection (unified-project-selection feature)
+  // Requirements: 2.1-2.3
+  // ============================================================
   selectProject: async (path: string) => {
-    set({ isLoading: true, error: null, specManagerCheck: null, installResult: null, installError: null, permissionsCheck: null });
+    set({
+      isLoading: true,
+      error: null,
+      specManagerCheck: null,
+      installResult: null,
+      installError: null,
+      permissionsCheck: null,
+      lastSelectResult: null,
+    });
 
     try {
-      const validation = await window.electronAPI.validateKiroDirectory(path);
+      // Use new unified selectProject IPC
+      const result = await window.electronAPI.selectProject(path);
 
+      if (!result.success) {
+        // Convert error to user-friendly message
+        let errorMessage = 'プロジェクトの選択に失敗しました';
+        if (result.error) {
+          switch (result.error.type) {
+            case 'PATH_NOT_EXISTS':
+              errorMessage = `パスが存在しません: ${result.error.path}`;
+              break;
+            case 'NOT_A_DIRECTORY':
+              errorMessage = `ディレクトリではありません: ${result.error.path}`;
+              break;
+            case 'PERMISSION_DENIED':
+              errorMessage = `アクセス権限がありません: ${result.error.path}`;
+              break;
+            case 'SELECTION_IN_PROGRESS':
+              errorMessage = '別のプロジェクト選択が進行中です';
+              break;
+            case 'INTERNAL_ERROR':
+              errorMessage = result.error.message;
+              break;
+          }
+        }
+
+        set({
+          error: errorMessage,
+          isLoading: false,
+          lastSelectResult: result,
+        });
+        return;
+      }
+
+      // Success: update store with results
       set({
-        currentProject: path,
-        kiroValidation: validation,
+        currentProject: result.projectPath,
+        kiroValidation: result.kiroValidation,
+        specs: result.specs,
+        bugs: result.bugs,
         isLoading: false,
+        lastSelectResult: result,
       });
 
-      // Add to recent projects
-      await window.electronAPI.addRecentProject(path);
+      // Sync specs/bugs to their dedicated stores (unified-project-selection: Task 4.1)
+      // This ensures specStore and bugStore are updated for components that use them
+      if (result.specs) {
+        useSpecStore.getState().setSpecs(result.specs);
+      }
+      if (result.bugs) {
+        useBugStore.getState().setBugs(result.bugs);
+      }
+
+      // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();
 
       // Check spec-manager files after project selection
@@ -162,6 +227,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       currentProject: null,
       kiroValidation: null,
       error: null,
+      lastSelectResult: null,
+      specs: [],
+      bugs: [],
       specManagerCheck: null,
       installResult: null,
       installError: null,

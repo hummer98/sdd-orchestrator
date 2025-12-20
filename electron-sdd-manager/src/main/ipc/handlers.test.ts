@@ -199,3 +199,132 @@ describe('IPC Channel Constants', () => {
     expect(IPC_CHANNELS.SET_HANG_THRESHOLD).toBe('ipc:set-hang-threshold');
   });
 });
+
+// ============================================================
+// Unified Project Selection (unified-project-selection feature)
+// Requirements: 1.1, 1.2, 1.6, 5.1-5.4, 6.1-6.4
+// ============================================================
+
+describe('IPC Handlers - Unified Project Selection (Task 1.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('SELECT_PROJECT channel', () => {
+    it('should define SELECT_PROJECT channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.SELECT_PROJECT).toBe('ipc:select-project');
+    });
+
+    it('should register select-project handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasSelectProject = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:select-project'
+      );
+      expect(hasSelectProject).toBe(true);
+    });
+  });
+});
+
+describe('Project Path Validation (Task 1.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should validate path exists before selection', async () => {
+    // This test verifies that selectProject returns PATH_NOT_EXISTS error
+    // when the specified path does not exist on the filesystem
+    const { validateProjectPath } = await import('./handlers');
+    const result = await validateProjectPath('/nonexistent/path');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe('PATH_NOT_EXISTS');
+    }
+  });
+
+  it('should validate path is a directory', async () => {
+    // This test verifies that selectProject returns NOT_A_DIRECTORY error
+    // when the specified path is a file, not a directory
+    const { validateProjectPath } = await import('./handlers');
+    // Use a known file path for testing
+    const result = await validateProjectPath('/etc/hosts');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe('NOT_A_DIRECTORY');
+    }
+  });
+
+  it('should return success for valid directory path', async () => {
+    const { validateProjectPath } = await import('./handlers');
+    // Use a known directory path
+    const result = await validateProjectPath('/tmp');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe('/tmp');
+    }
+  });
+});
+
+describe('Project Initialization (Task 1.3)', () => {
+  it('should export selectProject function', async () => {
+    const { selectProject } = await import('./handlers');
+    expect(typeof selectProject).toBe('function');
+  });
+
+  it('should return SelectProjectResult type with all required fields', async () => {
+    // The selectProject function should return a result with projectPath, kiroValidation, specs, bugs
+    const { selectProject } = await import('./handlers');
+    const result = await selectProject('/tmp');
+
+    // Check required fields exist
+    expect(result).toHaveProperty('success');
+    expect(result).toHaveProperty('projectPath');
+    expect(result).toHaveProperty('kiroValidation');
+    expect(result).toHaveProperty('specs');
+    expect(result).toHaveProperty('bugs');
+  });
+
+  it('should return error result for non-existent path', async () => {
+    const { selectProject } = await import('./handlers');
+    const result = await selectProject('/nonexistent/path');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error?.type).toBe('PATH_NOT_EXISTS');
+  });
+});
+
+describe('Exclusive Control (Task 1.5)', () => {
+  it('should export isProjectSelectionInProgress function', async () => {
+    const { isProjectSelectionInProgress } = await import('./handlers');
+    expect(typeof isProjectSelectionInProgress).toBe('function');
+  });
+
+  it('should return false when no selection is in progress', async () => {
+    const { isProjectSelectionInProgress, resetProjectSelectionLock } = await import('./handlers');
+    resetProjectSelectionLock(); // Reset for clean state
+    expect(isProjectSelectionInProgress()).toBe(false);
+  });
+
+  it('should prevent concurrent project selections', async () => {
+    const { selectProject, isProjectSelectionInProgress, setProjectSelectionLock, resetProjectSelectionLock } = await import('./handlers');
+    resetProjectSelectionLock(); // Reset for clean state
+
+    // Simulate a lock being held
+    setProjectSelectionLock(true);
+
+    // Attempt another selection - should fail with SELECTION_IN_PROGRESS
+    const result = await selectProject('/tmp');
+
+    expect(result.success).toBe(false);
+    expect(result.error?.type).toBe('SELECTION_IN_PROGRESS');
+
+    resetProjectSelectionLock(); // Cleanup
+  });
+});

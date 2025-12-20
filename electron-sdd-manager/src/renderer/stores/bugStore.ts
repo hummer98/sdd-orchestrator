@@ -33,6 +33,13 @@ interface BugActions {
    * @param phase - Phase to filter by, or 'all' for all bugs
    */
   getBugsByPhase: (phase: BugPhase | 'all') => BugMetadata[];
+  // Unified project selection support (unified-project-selection feature)
+  // Requirements: 3.2
+  /**
+   * Set bugs directly from IPC result
+   * Used by projectStore.selectProject to update bugs without re-fetching
+   */
+  setBugs: (bugs: BugMetadata[]) => void;
 }
 
 type BugStore = BugState & BugActions;
@@ -69,6 +76,19 @@ export const useBugStore = create<BugStore>((set, get) => ({
         isLoading: false,
       });
     }
+  },
+
+  // ============================================================
+  // Unified Project Selection Support (unified-project-selection feature)
+  // Requirements: 3.2
+  // ============================================================
+
+  /**
+   * Set bugs directly from IPC result
+   * Used by projectStore.selectProject to update bugs without re-fetching
+   */
+  setBugs: (bugs: BugMetadata[]) => {
+    set({ bugs, isLoading: false, error: null });
   },
 
   selectBug: async (bug: BugMetadata, options?: { silent?: boolean }) => {

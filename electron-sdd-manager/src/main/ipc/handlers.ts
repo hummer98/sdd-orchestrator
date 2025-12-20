@@ -9,7 +9,7 @@ import { FileService } from '../services/fileService';
 import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
-import type { Phase } from '../../renderer/types';
+import type { Phase, SelectProjectResult, SelectProjectError } from '../../renderer/types';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError, SPEC_INIT_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
@@ -35,7 +35,7 @@ import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } fr
 import type { SpecInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import { access, rm } from 'fs/promises';
+import { access, rm, stat, readdir } from 'fs/promises';
 import { join } from 'path';
 import { layoutConfigService, type LayoutValues } from '../services/layoutConfigService';
 import {
@@ -137,6 +137,182 @@ export function getInitialProjectPath(): string | null {
   return initialProjectPath;
 }
 
+// ============================================================
+// Exclusive Control for Project Selection
+// Requirements: 6.2, 6.3, 6.4
+// ============================================================
+
+/** Lock state for project selection */
+let projectSelectionInProgress = false;
+
+/**
+ * Check if project selection is in progress
+ */
+export function isProjectSelectionInProgress(): boolean {
+  return projectSelectionInProgress;
+}
+
+/**
+ * Set project selection lock
+ * For testing purposes
+ */
+export function setProjectSelectionLock(locked: boolean): void {
+  projectSelectionInProgress = locked;
+}
+
+/**
+ * Reset project selection lock
+ * For testing purposes
+ */
+export function resetProjectSelectionLock(): void {
+  projectSelectionInProgress = false;
+}
+
+/**
+ * Validate project path
+ * Checks if path exists, is a directory, and has read permission
+ * Requirements: 1.2, 5.1-5.4
+ *
+ * @param projectPath - The project path to validate
+ * @returns Result with path on success, or SelectProjectError on failure
+ */
+export async function validateProjectPath(
+  projectPath: string
+): Promise<{ ok: true; value: string } | { ok: false; error: SelectProjectError }> {
+  try {
+    // Check if path exists
+    await access(projectPath);
+  } catch {
+    return {
+      ok: false,
+      error: { type: 'PATH_NOT_EXISTS', path: projectPath },
+    };
+  }
+
+  try {
+    // Check if path is a directory
+    const stats = await stat(projectPath);
+    if (!stats.isDirectory()) {
+      return {
+        ok: false,
+        error: { type: 'NOT_A_DIRECTORY', path: projectPath },
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: { type: 'PERMISSION_DENIED', path: projectPath },
+    };
+  }
+
+  try {
+    // Check read permission by trying to read the directory
+    await readdir(projectPath);
+  } catch {
+    return {
+      ok: false,
+      error: { type: 'PERMISSION_DENIED', path: projectPath },
+    };
+  }
+
+  return { ok: true, value: projectPath };
+}
+
+/**
+ * Unified project selection handler
+ * This is the single entry point for all project selection operations
+ * Requirements: 1.1-1.6, 5.1-5.4, 6.1-6.4
+ *
+ * @param projectPath - The project path to select
+ * @returns SelectProjectResult with project data or error
+ */
+export async function selectProject(projectPath: string): Promise<SelectProjectResult> {
+  logger.info('[handlers] selectProject called', { projectPath });
+
+  // Check for exclusive lock
+  if (projectSelectionInProgress) {
+    logger.warn('[handlers] selectProject blocked - selection already in progress', { projectPath });
+    return {
+      success: false,
+      projectPath,
+      kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+      specs: [],
+      bugs: [],
+      error: { type: 'SELECTION_IN_PROGRESS' },
+    };
+  }
+
+  // Acquire lock
+  projectSelectionInProgress = true;
+  logger.debug('[handlers] selectProject acquired lock', { projectPath });
+
+  try {
+    // Validate path first
+    const validationResult = await validateProjectPath(projectPath);
+    if (!validationResult.ok) {
+      logger.warn('[handlers] selectProject path validation failed', { projectPath, error: validationResult.error });
+      return {
+        success: false,
+        projectPath,
+        kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+        specs: [],
+        bugs: [],
+        error: validationResult.error,
+      };
+    }
+
+    // Initialize the project
+    await setProjectPath(projectPath);
+
+    // Read kiro validation
+    const kiroValidation = await fileService.validateKiroDirectory(projectPath);
+
+    // Read specs
+    const specsResult = await fileService.readSpecs(projectPath);
+    const specs = specsResult.ok ? specsResult.value : [];
+
+    // Read bugs
+    const bugsResult = await bugService.readBugs(projectPath);
+    const bugs = bugsResult.ok ? bugsResult.value : [];
+
+    // Update configStore
+    const configStore = getConfigStore();
+    configStore.addRecentProject(projectPath);
+
+    logger.info('[handlers] selectProject completed successfully', {
+      projectPath,
+      specsCount: specs.length,
+      bugsCount: bugs.length,
+      kiroExists: kiroValidation.exists,
+    });
+
+    return {
+      success: true,
+      projectPath,
+      kiroValidation,
+      specs,
+      bugs,
+    };
+  } catch (error) {
+    logger.error('[handlers] selectProject failed', { projectPath, error });
+    return {
+      success: false,
+      projectPath,
+      kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+      specs: [],
+      bugs: [],
+      error: {
+        type: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+    };
+  } finally {
+    // Always release the lock
+    projectSelectionInProgress = false;
+    logger.debug('[handlers] selectProject released lock', { projectPath });
+  }
+}
+
 /**
  * Set up SpecManagerService for a project
  */
@@ -162,9 +338,9 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Restore agents from PID files and cleanup stale ones
   try {
     await specManagerService.restoreAgents();
-    console.log('[handlers] Agents restored from PID files');
+    logger.info('[handlers] Agents restored from PID files');
   } catch (error) {
-    console.error('[handlers] Failed to restore agents:', error);
+    logger.error('[handlers] Failed to restore agents:', error);
   }
 
   // Stop existing watchers if any
@@ -1225,6 +1401,22 @@ export function registerIpcHandlers(): void {
     ): Promise<ExperimentalCheckResult> => {
       logger.info('[handlers] CHECK_EXPERIMENTAL_TOOL_EXISTS called', { projectPath, toolType });
       return experimentalToolsInstaller.checkTargetExists(projectPath, toolType);
+    }
+  );
+
+  // ============================================================
+  // Unified Project Selection (unified-project-selection feature)
+  // Requirements: 1.1-1.6, 5.1-5.4, 6.1-6.4
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.SELECT_PROJECT,
+    async (
+      _event,
+      projectPath: string
+    ): Promise<SelectProjectResult> => {
+      logger.info('[handlers] SELECT_PROJECT called', { projectPath });
+      return selectProject(projectPath);
     }
   );
 }

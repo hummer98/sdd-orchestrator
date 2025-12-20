@@ -140,3 +140,27 @@ export interface WindowBounds {
 
 // Bug Workflow Types
 export * from './bug';
+import type { BugMetadata } from './bug';
+
+// ============================================================
+// Unified Project Selection Types (unified-project-selection feature)
+// Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
+// ============================================================
+
+/** プロジェクト選択エラー型 */
+export type SelectProjectError =
+  | { type: 'PATH_NOT_EXISTS'; path: string }
+  | { type: 'NOT_A_DIRECTORY'; path: string }
+  | { type: 'PERMISSION_DENIED'; path: string }
+  | { type: 'SELECTION_IN_PROGRESS' }
+  | { type: 'INTERNAL_ERROR'; message: string };
+
+/** プロジェクト選択結果 */
+export interface SelectProjectResult {
+  readonly success: boolean;
+  readonly projectPath: string;
+  readonly kiroValidation: KiroValidation;
+  readonly specs: SpecMetadata[];
+  readonly bugs: BugMetadata[];
+  readonly error?: SelectProjectError;
+}

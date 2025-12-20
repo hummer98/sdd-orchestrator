@@ -6,7 +6,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
-import type { Phase, CommandOutputEvent } from '../renderer/types';
+import type { Phase, CommandOutputEvent, SelectProjectResult } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
@@ -40,8 +40,29 @@ const electronAPI = {
   validateKiroDirectory: (path: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.VALIDATE_KIRO_DIRECTORY, path),
 
+  /**
+   * Set project path (legacy API)
+   * @deprecated Use selectProject instead for unified project selection
+   */
   setProjectPath: (projectPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SET_PROJECT_PATH, projectPath),
+
+  // ============================================================
+  // Unified Project Selection (unified-project-selection feature)
+  // Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
+  // ============================================================
+
+  /**
+   * Select a project using unified selection mechanism
+   * This is the recommended API for project selection.
+   * Handles path validation, kiro directory detection, specs/bugs loading,
+   * and file watcher initialization in a single call.
+   *
+   * @param projectPath - Absolute path to the project directory
+   * @returns SelectProjectResult with project data or error information
+   */
+  selectProject: (projectPath: string): Promise<SelectProjectResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SELECT_PROJECT, projectPath),
 
   readSpecs: (projectPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.READ_SPECS, projectPath),

@@ -59,7 +59,7 @@ const DEFAULT_LAYOUT = {
 
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject } = useProjectStore();
-  const { selectedSpec, specDetail, loadSpecs } = useSpecStore();
+  const { selectedSpec, specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
@@ -189,14 +189,14 @@ export function App() {
     // Load recent projects first, then check for initial project
     loadRecentProjects().then(async () => {
       await loadInitialProject();
-      // After loading initial project, load specs and layout config if project path was set
+      // After loading initial project, load layout config if project path was set
+      // Note: loadSpecs is no longer needed here - loadInitialProject calls selectProject which syncs specs
       const initialPath = await window.electronAPI.getInitialProjectPath();
       if (initialPath) {
-        await loadSpecs(initialPath);
         await loadLayout(initialPath);
       }
     });
-  }, [loadRecentProjects, loadInitialProject, loadSpecs, loadLayout]);
+  }, [loadRecentProjects, loadInitialProject, loadLayout]);
 
   // Setup agent event listeners on mount
   // useRefを使用してStrictModeでの二重実行を防止
@@ -234,7 +234,7 @@ export function App() {
     const cleanupOpenProject = window.electronAPI.onMenuOpenProject(async (projectPath: string) => {
       console.log(`[App] Opening project from menu: ${projectPath}`);
       await selectProject(projectPath);
-      await loadSpecs(projectPath);
+      // Note: loadSpecs is no longer needed here - selectProject now syncs specs to specStore
       await loadLayout(projectPath);
     });
 
@@ -408,7 +408,7 @@ export function App() {
       cleanupExpDebug();
       cleanupExpCommit();
     };
-  }, [selectProject, loadSpecs, loadLayout, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
+  }, [selectProject, loadLayout, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {

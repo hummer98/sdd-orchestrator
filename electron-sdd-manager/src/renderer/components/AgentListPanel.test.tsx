@@ -48,6 +48,9 @@ describe('AgentListPanel - Task 30', () => {
       resumeAgent: mockResumeAgent,
       selectAgent: mockSelectAgent,
       getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([baseAgentInfo]),
+      removeAgent: vi.fn(),
+      loadAgents: vi.fn(),
+      agents: new Map([['agent-1', baseAgentInfo]]),
     });
   });
 
@@ -70,13 +73,17 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should display agent status icon for completed agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
+      mockGetAgentsForSpec.mockReturnValue([completedAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', completedAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -85,13 +92,17 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should display agent status icon for interrupted agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'interrupted' }]);
+      const interruptedAgent = { ...baseAgentInfo, status: 'interrupted' as const };
+      mockGetAgentsForSpec.mockReturnValue([interruptedAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', interruptedAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -100,13 +111,17 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should display agent status icon for hang agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'hang' }]);
+      const hangAgent = { ...baseAgentInfo, status: 'hang' as const };
+      mockGetAgentsForSpec.mockReturnValue([hangAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', hangAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -121,6 +136,9 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', baseAgentInfo]]),
       });
 
       render(<AgentListPanel />);
@@ -146,6 +164,9 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map(),
       });
 
       render(<AgentListPanel />);
@@ -175,7 +196,8 @@ describe('AgentListPanel - Task 30', () => {
 
   describe('Task 30.5: 削除ボタン', () => {
     it('should show delete button for non-running agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
+      mockGetAgentsForSpec.mockReturnValue([completedAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
@@ -183,6 +205,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', completedAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -198,7 +222,8 @@ describe('AgentListPanel - Task 30', () => {
 
     it('should call removeAgent when delete is confirmed', async () => {
       const mockRemoveAgent = vi.fn();
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
+      mockGetAgentsForSpec.mockReturnValue([completedAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
@@ -206,6 +231,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: mockRemoveAgent,
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', completedAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -227,10 +254,9 @@ describe('AgentListPanel - Task 30', () => {
 
   describe('Auto-select agent when spec changes', () => {
     it('should auto-select the first agent when spec is selected and no agent is selected', () => {
-      mockGetAgentsForSpec.mockReturnValue([
-        { ...baseAgentInfo, agentId: 'agent-1' },
-        { ...baseAgentInfo, agentId: 'agent-2' },
-      ]);
+      const agent1 = { ...baseAgentInfo, agentId: 'agent-1' };
+      const agent2 = { ...baseAgentInfo, agentId: 'agent-2' };
+      mockGetAgentsForSpec.mockReturnValue([agent1, agent2]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
@@ -238,6 +264,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
       });
 
       render(<AgentListPanel />);
@@ -247,10 +275,9 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should not auto-select if an agent for this spec is already selected', () => {
-      mockGetAgentsForSpec.mockReturnValue([
-        { ...baseAgentInfo, agentId: 'agent-1' },
-        { ...baseAgentInfo, agentId: 'agent-2' },
-      ]);
+      const agent1 = { ...baseAgentInfo, agentId: 'agent-1' };
+      const agent2 = { ...baseAgentInfo, agentId: 'agent-2' };
+      mockGetAgentsForSpec.mockReturnValue([agent1, agent2]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: 'agent-1', // Already selected
         stopAgent: mockStopAgent,
@@ -258,6 +285,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
       });
 
       render(<AgentListPanel />);
@@ -275,6 +304,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map(),
       });
 
       render(<AgentListPanel />);
@@ -295,6 +326,8 @@ describe('AgentListPanel - Task 30', () => {
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
         removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-completed', completedAgent], ['agent-running', runningAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -312,13 +345,17 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should not show stop button for completed agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'completed' }]);
+      const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
+      mockGetAgentsForSpec.mockReturnValue([completedAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', completedAgent]]),
       });
 
       render(<AgentListPanel />);
@@ -338,13 +375,17 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should show stop button for hang agent', () => {
-      mockGetAgentsForSpec.mockReturnValue([{ ...baseAgentInfo, status: 'hang' }]);
+      const hangAgent = { ...baseAgentInfo, status: 'hang' as const };
+      mockGetAgentsForSpec.mockReturnValue([hangAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', hangAgent]]),
       });
 
       render(<AgentListPanel />);

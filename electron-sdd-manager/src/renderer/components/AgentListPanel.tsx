@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
 
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
-  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, removeAgent, loadAgents, agents } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
   // Load agents when component mounts or when agents map is empty
@@ -94,6 +94,13 @@ export function AgentListPanel() {
   useEffect(() => {
     if (!selectedSpec) return;
 
+    // Skip auto-select if a global agent is currently selected
+    // (Global agents have specId === '')
+    if (selectedAgentId) {
+      const currentAgent = getAgentById(selectedAgentId);
+      if (currentAgent && currentAgent.specId === '') return;
+    }
+
     // Get fresh agents list for the new spec
     const specAgents = getAgentsForSpec(selectedSpec.name)
       .sort((a, b) => {
@@ -110,7 +117,7 @@ export function AgentListPanel() {
     if (specAgents.length > 0) {
       selectAgent(specAgents[0].agentId);
     }
-  }, [selectedSpec?.name, selectedAgentId, getAgentsForSpec, selectAgent]);
+  }, [selectedSpec?.name, selectedAgentId, getAgentsForSpec, getAgentById, selectAgent]);
 
   if (!selectedSpec) {
     return null;

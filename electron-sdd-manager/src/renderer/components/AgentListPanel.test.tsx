@@ -35,11 +35,18 @@ describe('AgentListPanel - Task 30', () => {
     command: 'claude -p "/kiro:spec-requirements"',
   };
 
+  const mockGetAgentById = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockUseSpecStore.mockReturnValue({
       selectedSpec: { name: 'spec-1', path: '/path/to/spec-1' },
+    });
+
+    mockGetAgentById.mockImplementation((agentId: string) => {
+      if (agentId === 'agent-1') return baseAgentInfo;
+      return undefined;
     });
 
     mockUseAgentStore.mockReturnValue({
@@ -48,6 +55,7 @@ describe('AgentListPanel - Task 30', () => {
       resumeAgent: mockResumeAgent,
       selectAgent: mockSelectAgent,
       getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([baseAgentInfo]),
+      getAgentById: mockGetAgentById,
       removeAgent: vi.fn(),
       loadAgents: vi.fn(),
       agents: new Map([['agent-1', baseAgentInfo]]),
@@ -81,6 +89,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', completedAgent]]),
@@ -100,6 +109,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', interruptedAgent]]),
@@ -119,6 +129,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', hangAgent]]),
@@ -136,6 +147,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', baseAgentInfo]]),
@@ -164,6 +176,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map(),
@@ -204,6 +217,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', completedAgent]]),
@@ -230,6 +244,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: mockRemoveAgent,
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', completedAgent]]),
@@ -263,6 +278,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
@@ -284,6 +300,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
@@ -303,6 +320,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map(),
@@ -325,6 +343,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-completed', completedAgent], ['agent-running', runningAgent]]),
@@ -334,6 +353,33 @@ describe('AgentListPanel - Task 30', () => {
 
       // Should auto-select the running agent (prioritized over completed)
       expect(mockSelectAgent).toHaveBeenCalledWith('agent-running');
+    });
+
+    it('should not auto-select if a global agent is currently selected', () => {
+      const globalAgent = { ...baseAgentInfo, agentId: 'global-agent-1', specId: '' };
+      const specAgent = { ...baseAgentInfo, agentId: 'spec-agent-1', specId: 'spec-1' };
+      mockGetAgentsForSpec.mockReturnValue([specAgent]);
+      mockGetAgentById.mockImplementation((agentId: string) => {
+        if (agentId === 'global-agent-1') return globalAgent;
+        if (agentId === 'spec-agent-1') return specAgent;
+        return undefined;
+      });
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'global-agent-1', // Global agent is selected
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['global-agent-1', globalAgent], ['spec-agent-1', specAgent]]),
+      });
+
+      render(<AgentListPanel />);
+
+      // Should NOT auto-select because a global agent is selected
+      expect(mockSelectAgent).not.toHaveBeenCalled();
     });
   });
 
@@ -353,6 +399,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', completedAgent]]),
@@ -383,6 +430,7 @@ describe('AgentListPanel - Task 30', () => {
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
         getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
         agents: new Map([['agent-1', hangAgent]]),

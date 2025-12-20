@@ -7,7 +7,7 @@
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
-import { REQUIRED_COMMANDS, REQUIRED_SETTINGS } from './projectChecker';
+import { REQUIRED_SETTINGS, COMMANDS_BY_PROFILE, ProfileName } from './projectChecker';
 import { getTemplatesPath } from '../utils/resourcePaths';
 
 /**
@@ -227,13 +227,16 @@ export class CommandInstallerService {
    *
    * @param projectPath - Project root path
    * @param options - Install options (force: overwrite existing files)
+   * @param profile - Profile name (defaults to cc-sdd-agent for backward compatibility)
    * @returns Full install result
    */
   async installAll(
     projectPath: string,
-    options: InstallOptions = {}
+    options: InstallOptions = {},
+    profile: ProfileName = 'cc-sdd-agent'
   ): Promise<Result<FullInstallResult, InstallError>> {
-    const commandsResult = await this.installCommands(projectPath, REQUIRED_COMMANDS, options);
+    const requiredCommands = COMMANDS_BY_PROFILE[profile];
+    const commandsResult = await this.installCommands(projectPath, requiredCommands, options);
     if (!commandsResult.ok) {
       return commandsResult;
     }

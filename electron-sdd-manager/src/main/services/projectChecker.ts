@@ -102,30 +102,6 @@ export const COMMANDS_BY_PROFILE: Record<ProfileName, readonly string[]> = {
 };
 
 /**
- * Required Slash Command files
- * Location: {projectRoot}/.claude/commands/kiro/*.md (CC-SDD)
- * Legacy: {projectRoot}/.claude/commands/spec-manager/*.md
- * @deprecated Use COMMANDS_BY_PROFILE with getCommandsForProfile() instead
- */
-export const REQUIRED_COMMANDS = [
-  // CC-SDD commands (kiro namespace) - 14 commands (cc-sdd-agent superset)
-  'kiro/spec-init',
-  'kiro/spec-requirements',
-  'kiro/spec-design',
-  'kiro/spec-tasks',
-  'kiro/spec-impl',
-  'kiro/spec-status',
-  'kiro/spec-quick',
-  'kiro/validate-gap',
-  'kiro/validate-design',
-  'kiro/validate-impl',
-  'kiro/document-review',
-  'kiro/document-review-reply',
-  'kiro/steering',
-  'kiro/steering-custom',
-] as const;
-
-/**
  * Required SDD settings files
  * Location: {projectRoot}/.kiro/settings/
  */
@@ -291,34 +267,6 @@ export class ProjectChecker {
   }
 
   /**
-   * Check Slash Commands existence (legacy - uses fixed list)
-   * Requirements: 4.1
-   * @deprecated Use checkSlashCommandsForProfile instead
-   *
-   * @param projectPath - Project root path
-   * @returns Check result with missing and present commands
-   */
-  async checkSlashCommands(projectPath: string): Promise<FileCheckResult> {
-    const missing: string[] = [];
-    const present: string[] = [];
-
-    for (const cmd of REQUIRED_COMMANDS) {
-      const cmdPath = join(projectPath, '.claude', 'commands', `${cmd}.md`);
-      if (await fileExists(cmdPath)) {
-        present.push(cmd);
-      } else {
-        missing.push(cmd);
-      }
-    }
-
-    return {
-      allPresent: missing.length === 0,
-      missing,
-      present,
-    };
-  }
-
-  /**
    * Check Slash Commands existence for a specific profile
    * Requirements: 4.1
    *
@@ -389,11 +337,12 @@ export class ProjectChecker {
    * Requirements: 4.1, 4.2
    *
    * @param projectPath - Project root path
+   * @param profile - Profile name (optional, auto-detects from project if not provided)
    * @returns Full check result
    */
-  async checkAll(projectPath: string): Promise<FullCheckResult> {
+  async checkAll(projectPath: string, profile?: ProfileName): Promise<FullCheckResult> {
     const [commands, settings] = await Promise.all([
-      this.checkSlashCommands(projectPath),
+      this.checkSlashCommandsForProfile(projectPath, profile),
       this.checkSettings(projectPath),
     ]);
 
@@ -433,11 +382,12 @@ export class ProjectChecker {
    * Requirements: 4.1, 4.2
    *
    * @param projectPath - Project root path
+   * @param profile - Profile name (optional, auto-detects from project if not provided)
    * @returns Complete check result
    */
-  async checkComplete(projectPath: string): Promise<CompleteCheckResult> {
+  async checkComplete(projectPath: string, profile?: ProfileName): Promise<CompleteCheckResult> {
     const [commands, settings, permissions] = await Promise.all([
-      this.checkSlashCommands(projectPath),
+      this.checkSlashCommandsForProfile(projectPath, profile),
       this.checkSettings(projectPath),
       this.checkPermissions(projectPath),
     ]);

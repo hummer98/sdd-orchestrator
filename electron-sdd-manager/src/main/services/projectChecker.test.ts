@@ -20,7 +20,14 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { ProjectChecker, FileCheckResult, FullCheckResult, REQUIRED_COMMANDS, REQUIRED_SETTINGS } from './projectChecker';
+import {
+  ProjectChecker,
+  REQUIRED_SETTINGS,
+  CC_SDD_PROFILE_COMMANDS,
+  CC_SDD_AGENT_PROFILE_COMMANDS,
+  COMMANDS_BY_PROFILE,
+  getCommandsForProfile,
+} from './projectChecker';
 
 describe('ProjectChecker', () => {
   let checker: ProjectChecker;
@@ -38,7 +45,7 @@ describe('ProjectChecker', () => {
   /**
    * Helper to create command files
    */
-  async function createCommandFiles(commands: string[]): Promise<void> {
+  async function createCommandFiles(commands: readonly string[]): Promise<void> {
     for (const cmd of commands) {
       const filePath = path.join(tempDir, '.claude', 'commands', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -49,7 +56,7 @@ describe('ProjectChecker', () => {
   /**
    * Helper to create settings files
    */
-  async function createSettingsFiles(settings: string[]): Promise<void> {
+  async function createSettingsFiles(settings: readonly string[]): Promise<void> {
     for (const setting of settings) {
       const filePath = path.join(tempDir, '.kiro', 'settings', setting);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -57,30 +64,53 @@ describe('ProjectChecker', () => {
     }
   }
 
-  describe('checkSlashCommands', () => {
+  /**
+   * Helper to create profile.json
+   */
+  async function createProfileConfig(profile: 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager'): Promise<void> {
+    const filePath = path.join(tempDir, '.kiro', 'settings', 'profile.json');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify({ profile, installedAt: new Date().toISOString() }), 'utf-8');
+  }
+
+  describe('checkSlashCommandsForProfile', () => {
     it('should return all missing when no commands exist', async () => {
-      const result = await checker.checkSlashCommands(tempDir);
+      await createProfileConfig('cc-sdd');
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
 
       expect(result.allPresent).toBe(false);
-      expect(result.missing.length).toBe(REQUIRED_COMMANDS.length);
+      expect(result.missing.length).toBe(COMMANDS_BY_PROFILE['cc-sdd'].length);
       expect(result.present.length).toBe(0);
     });
 
-    it('should return all present when all commands exist', async () => {
-      await createCommandFiles(REQUIRED_COMMANDS);
+    it('should return all present when all cc-sdd commands exist', async () => {
+      await createProfileConfig('cc-sdd');
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd']);
 
-      const result = await checker.checkSlashCommands(tempDir);
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
 
       expect(result.allPresent).toBe(true);
       expect(result.missing.length).toBe(0);
-      expect(result.present.length).toBe(REQUIRED_COMMANDS.length);
+      expect(result.present.length).toBe(COMMANDS_BY_PROFILE['cc-sdd'].length);
+    });
+
+    it('should return all present when all cc-sdd-agent commands exist', async () => {
+      await createProfileConfig('cc-sdd-agent');
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd-agent']);
+
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
+
+      expect(result.allPresent).toBe(true);
+      expect(result.missing.length).toBe(0);
+      expect(result.present.length).toBe(COMMANDS_BY_PROFILE['cc-sdd-agent'].length);
     });
 
     it('should correctly identify partial installations', async () => {
+      await createProfileConfig('cc-sdd');
       // Create only init and requirements commands
       await createCommandFiles(['kiro/spec-init', 'kiro/spec-requirements']);
 
-      const result = await checker.checkSlashCommands(tempDir);
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
 
       expect(result.allPresent).toBe(false);
       expect(result.present).toContain('kiro/spec-init');
@@ -88,6 +118,39 @@ describe('ProjectChecker', () => {
       expect(result.missing).toContain('kiro/spec-design');
       expect(result.missing).toContain('kiro/spec-tasks');
       expect(result.missing).toContain('kiro/spec-impl');
+    });
+
+    it('should use explicit profile when provided', async () => {
+      // No profile.json, but explicit profile provided
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd']);
+
+      const result = await checker.checkSlashCommandsForProfile(tempDir, 'cc-sdd');
+
+      expect(result.allPresent).toBe(true);
+    });
+
+    it('should fallback to cc-sdd-agent when no profile specified or found', async () => {
+      // No profile.json, no explicit profile
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
+
+      // Should expect cc-sdd-agent commands (superset)
+      expect(result.missing.length).toBe(COMMANDS_BY_PROFILE['cc-sdd-agent'].length);
+    });
+
+    it('cc-sdd profile should NOT require spec-quick', async () => {
+      await createProfileConfig('cc-sdd');
+
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
+
+      expect(result.missing).not.toContain('kiro/spec-quick');
+    });
+
+    it('cc-sdd-agent profile should require spec-quick', async () => {
+      await createProfileConfig('cc-sdd-agent');
+
+      const result = await checker.checkSlashCommandsForProfile(tempDir);
+
+      expect(result.missing).toContain('kiro/spec-quick');
     });
   });
 
@@ -125,6 +188,7 @@ describe('ProjectChecker', () => {
 
   describe('checkAll', () => {
     it('should return false for allPresent when neither commands nor settings exist', async () => {
+      await createProfileConfig('cc-sdd');
       const result = await checker.checkAll(tempDir);
 
       expect(result.allPresent).toBe(false);
@@ -132,8 +196,21 @@ describe('ProjectChecker', () => {
       expect(result.settings.allPresent).toBe(false);
     });
 
-    it('should return true for allPresent when both commands and settings exist', async () => {
-      await createCommandFiles(REQUIRED_COMMANDS);
+    it('should return true for allPresent when both commands and settings exist for cc-sdd', async () => {
+      await createProfileConfig('cc-sdd');
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd']);
+      await createSettingsFiles(REQUIRED_SETTINGS);
+
+      const result = await checker.checkAll(tempDir);
+
+      expect(result.allPresent).toBe(true);
+      expect(result.commands.allPresent).toBe(true);
+      expect(result.settings.allPresent).toBe(true);
+    });
+
+    it('should return true for allPresent when both commands and settings exist for cc-sdd-agent', async () => {
+      await createProfileConfig('cc-sdd-agent');
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd-agent']);
       await createSettingsFiles(REQUIRED_SETTINGS);
 
       const result = await checker.checkAll(tempDir);
@@ -144,7 +221,8 @@ describe('ProjectChecker', () => {
     });
 
     it('should return false when only commands exist', async () => {
-      await createCommandFiles(REQUIRED_COMMANDS);
+      await createProfileConfig('cc-sdd');
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd']);
 
       const result = await checker.checkAll(tempDir);
 
@@ -154,6 +232,7 @@ describe('ProjectChecker', () => {
     });
 
     it('should return false when only settings exist', async () => {
+      await createProfileConfig('cc-sdd');
       await createSettingsFiles(REQUIRED_SETTINGS);
 
       const result = await checker.checkAll(tempDir);
@@ -162,27 +241,60 @@ describe('ProjectChecker', () => {
       expect(result.commands.allPresent).toBe(false);
       expect(result.settings.allPresent).toBe(true);
     });
+
+    it('should use explicit profile parameter', async () => {
+      // No profile.json
+      await createCommandFiles(COMMANDS_BY_PROFILE['cc-sdd']);
+      await createSettingsFiles(REQUIRED_SETTINGS);
+
+      const result = await checker.checkAll(tempDir, 'cc-sdd');
+
+      expect(result.allPresent).toBe(true);
+    });
+  });
+
+  describe('getInstalledProfile', () => {
+    it('should return null when profile.json does not exist', async () => {
+      const result = await checker.getInstalledProfile(tempDir);
+      expect(result).toBeNull();
+    });
+
+    it('should return profile config when profile.json exists', async () => {
+      await createProfileConfig('cc-sdd');
+
+      const result = await checker.getInstalledProfile(tempDir);
+
+      expect(result).not.toBeNull();
+      expect(result?.profile).toBe('cc-sdd');
+    });
   });
 });
 
 describe('Constants', () => {
-  it('should have 14 required commands for CC-SDD (kiro namespace)', () => {
-    expect(REQUIRED_COMMANDS).toEqual([
-      'kiro/spec-init',
-      'kiro/spec-requirements',
-      'kiro/spec-design',
-      'kiro/spec-tasks',
-      'kiro/spec-impl',
-      'kiro/spec-status',
-      'kiro/spec-quick',
-      'kiro/validate-gap',
-      'kiro/validate-design',
-      'kiro/validate-impl',
-      'kiro/document-review',
-      'kiro/document-review-reply',
-      'kiro/steering',
-      'kiro/steering-custom',
-    ]);
+  it('cc-sdd profile should have 18 commands (11 base + 5 bug + 2 doc-review)', () => {
+    expect(COMMANDS_BY_PROFILE['cc-sdd'].length).toBe(18);
+    expect(COMMANDS_BY_PROFILE['cc-sdd']).not.toContain('kiro/spec-quick');
+  });
+
+  it('cc-sdd-agent profile should have 19 commands (12 base + 5 bug + 2 doc-review)', () => {
+    expect(COMMANDS_BY_PROFILE['cc-sdd-agent'].length).toBe(19);
+    expect(COMMANDS_BY_PROFILE['cc-sdd-agent']).toContain('kiro/spec-quick');
+  });
+
+  it('CC_SDD_PROFILE_COMMANDS should have 11 base commands (without spec-quick)', () => {
+    expect(CC_SDD_PROFILE_COMMANDS.length).toBe(11);
+    expect(CC_SDD_PROFILE_COMMANDS).not.toContain('kiro/spec-quick');
+  });
+
+  it('CC_SDD_AGENT_PROFILE_COMMANDS should have 12 base commands (with spec-quick)', () => {
+    expect(CC_SDD_AGENT_PROFILE_COMMANDS.length).toBe(12);
+    expect(CC_SDD_AGENT_PROFILE_COMMANDS).toContain('kiro/spec-quick');
+  });
+
+  it('getCommandsForProfile should return correct commands for each profile', () => {
+    expect(getCommandsForProfile('cc-sdd')).toEqual(COMMANDS_BY_PROFILE['cc-sdd']);
+    expect(getCommandsForProfile('cc-sdd-agent')).toEqual(COMMANDS_BY_PROFILE['cc-sdd-agent']);
+    expect(getCommandsForProfile('spec-manager')).toEqual(COMMANDS_BY_PROFILE['spec-manager']);
   });
 
   it('should have all required settings files', () => {

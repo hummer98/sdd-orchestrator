@@ -3,17 +3,21 @@
  * Requirements: 4.3, 4.5, 4.6
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { CommandInstallerService, InstallResult, InstallError, FullInstallResult } from './commandInstallerService';
-import { REQUIRED_COMMANDS, REQUIRED_SETTINGS } from './projectChecker';
+import { CommandInstallerService } from './commandInstallerService';
+import { REQUIRED_SETTINGS, COMMANDS_BY_PROFILE } from './projectChecker';
 
 describe('CommandInstallerService', () => {
   let installer: CommandInstallerService;
   let tempDir: string;
   let templateDir: string;
+
+  // Use cc-sdd-agent as default test profile (has spec-quick)
+  const TEST_PROFILE = 'cc-sdd-agent' as const;
+  const TEST_COMMANDS = COMMANDS_BY_PROFILE[TEST_PROFILE];
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'installer-test-'));
@@ -33,8 +37,8 @@ describe('CommandInstallerService', () => {
    * Helper to create template files in template directory
    */
   async function createTemplateFiles(): Promise<void> {
-    // Create command templates
-    for (const cmd of REQUIRED_COMMANDS) {
+    // Create command templates for all profiles
+    for (const cmd of TEST_COMMANDS) {
       const filePath = path.join(templateDir, 'commands', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file.`, 'utf-8');
@@ -99,11 +103,11 @@ describe('CommandInstallerService', () => {
     });
 
     it('should install all commands when called with full list', async () => {
-      const result = await installer.installCommands(tempDir, [...REQUIRED_COMMANDS]);
+      const result = await installer.installCommands(tempDir, [...TEST_COMMANDS]);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed.length).toBe(REQUIRED_COMMANDS.length);
+        expect(result.value.installed.length).toBe(TEST_COMMANDS.length);
       }
     });
   });
@@ -145,13 +149,32 @@ describe('CommandInstallerService', () => {
   });
 
   describe('installAll', () => {
-    it('should install all commands and settings', async () => {
-      const result = await installer.installAll(tempDir);
+    it('should install all commands and settings for cc-sdd-agent profile', async () => {
+      const result = await installer.installAll(tempDir, {}, 'cc-sdd-agent');
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.commands.installed.length).toBe(REQUIRED_COMMANDS.length);
+        expect(result.value.commands.installed.length).toBe(COMMANDS_BY_PROFILE['cc-sdd-agent'].length);
         expect(result.value.settings.installed.length).toBe(REQUIRED_SETTINGS.length);
+      }
+    });
+
+    it('should install all commands and settings for cc-sdd profile', async () => {
+      // Also create templates for cc-sdd profile commands
+      for (const cmd of COMMANDS_BY_PROFILE['cc-sdd']) {
+        const filePath = path.join(templateDir, 'commands', `${cmd}.md`);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file.`, 'utf-8');
+      }
+
+      const result = await installer.installAll(tempDir, {}, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.commands.installed.length).toBe(COMMANDS_BY_PROFILE['cc-sdd'].length);
+        expect(result.value.settings.installed.length).toBe(REQUIRED_SETTINGS.length);
+        // cc-sdd should NOT include spec-quick
+        expect(result.value.commands.installed).not.toContain('kiro/spec-quick');
       }
     });
 
@@ -164,14 +187,23 @@ describe('CommandInstallerService', () => {
       await fs.writeFile(initPath, 'Existing', 'utf-8');
       await fs.writeFile(earsPath, 'Existing', 'utf-8');
 
-      const result = await installer.installAll(tempDir);
+      const result = await installer.installAll(tempDir, {}, 'cc-sdd-agent');
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.commands.skipped).toContain('kiro/spec-init');
         expect(result.value.settings.skipped).toContain('rules/ears-format.md');
-        expect(result.value.commands.installed.length).toBe(REQUIRED_COMMANDS.length - 1);
+        expect(result.value.commands.installed.length).toBe(COMMANDS_BY_PROFILE['cc-sdd-agent'].length - 1);
         expect(result.value.settings.installed.length).toBe(REQUIRED_SETTINGS.length - 1);
+      }
+    });
+
+    it('should default to cc-sdd-agent profile when not specified', async () => {
+      const result = await installer.installAll(tempDir);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.commands.installed.length).toBe(COMMANDS_BY_PROFILE['cc-sdd-agent'].length);
       }
     });
   });

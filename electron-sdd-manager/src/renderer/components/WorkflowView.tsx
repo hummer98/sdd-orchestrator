@@ -38,7 +38,7 @@ const MAX_CONTINUE_RETRIES = 2;
 // ============================================================
 
 export function WorkflowView() {
-  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
+  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs } = useSpecStore();
   const workflowStore = useWorkflowStore();
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
@@ -280,7 +280,7 @@ export function WorkflowView() {
   // Requirements: 6.1
   // ============================================================
   const isReviewExecuting = useMemo(() => {
-    return runningPhases.has('document-review') || runningPhases.has('document-review-reply');
+    return runningPhases.has('document-review') || runningPhases.has('document-review-reply') || runningPhases.has('document-review-fix');
   }, [runningPhases]);
 
   const handleStartDocumentReview = useCallback(async () => {
@@ -332,10 +332,11 @@ export function WorkflowView() {
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
-  // Track previous runningPhases for detecting document-review completion
+  // Track previous runningPhases for detecting phase completion
   const prevRunningPhasesRef = useRef<Set<string>>(new Set());
 
   // Auto-execute document-review-reply when document-review completes
+  // Also refresh specDetail when any agent phase completes
   useEffect(() => {
     if (!specDetail) return;
 
@@ -357,9 +358,22 @@ export function WorkflowView() {
       }
     }
 
+    // Check if any phase just completed - refresh specDetail to update UI
+    // This handles spec.json updates from any agent (document-review, phases, validations, etc.)
+    for (const phase of prevRunning) {
+      if (!currentRunning.has(phase)) {
+        console.log('[WorkflowView] Agent phase completed, refreshing specDetail', { phase });
+        // Delay refresh slightly to allow file system operations to complete
+        setTimeout(() => {
+          refreshSpecs();
+        }, 500);
+        break; // Only need to refresh once
+      }
+    }
+
     // Update ref for next comparison
     prevRunningPhasesRef.current = new Set(currentRunning);
-  }, [runningPhases, specDetail, documentReviewState, handleExecuteDocumentReviewReply]);
+  }, [runningPhases, specDetail, documentReviewState, handleExecuteDocumentReviewReply, refreshSpecs]);
 
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;

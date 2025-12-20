@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2025-12-20
+
+### Added
+- **Permission fix button**: Added "Fix" button to permission warning area for one-click permission repair
+
+### Fixed
+- **addMissingPermissions API**: Added new API to correctly apply missing permission fixes
+- **Reply-undefined tab display**: Fixed issue where tabs displayed as "Reply-undefined"
+- **Agent list initial load**: Fixed issue where agent list was not loaded on first display
+- **Agent log parser tool display**: Improved tool display in agent log parser
+
+### Testing
+- **RemoteAccessServer port conflict**: Fixed port conflict issue in RemoteAccessServer tests
+
+### Documentation
+- Added bug report for validate-impl-send-button-disabled issue
+
 ## [0.9.1] - 2025-12-20
 
 ### Added

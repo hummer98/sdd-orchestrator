@@ -6,6 +6,8 @@
 
 import { CcSddWorkflowInstaller, InstallOptions, InstallResult, InstallError, Result } from './ccSddWorkflowInstaller';
 import { BugWorkflowInstaller } from './bugWorkflowInstaller';
+import { addPermissionsToProject } from './permissionsService';
+import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
  * Commandset names
@@ -150,32 +152,45 @@ export class UnifiedCommandsetInstaller {
   ): Promise<Result<InstallResult, InstallError>> {
     switch (commandsetName) {
       case 'cc-sdd': {
-        // Install cc-sdd commands only (no agents)
-        const result = await this.ccSddInstaller.installCommands(projectPath, 'cc-sdd', options);
-        if (!result.ok) return result;
+        // Install cc-sdd commands and settings
+        const commandResult = await this.ccSddInstaller.installCommands(projectPath, 'cc-sdd', options);
+        if (!commandResult.ok) return commandResult;
+
+        const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
+        if (!settingsResult.ok) return settingsResult;
+
+        // Add required permissions
+        await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
+
         return {
           ok: true,
           value: {
-            installed: result.value.installed,
-            skipped: result.value.skipped,
-            overwritten: result.value.overwritten
+            installed: [...commandResult.value.installed, ...settingsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten]
           }
         };
       }
       case 'cc-sdd-agent': {
-        // Install cc-sdd-agent commands and agents
+        // Install cc-sdd-agent commands, agents, and settings
         const commandResult = await this.ccSddInstaller.installCommands(projectPath, 'cc-sdd-agent', options);
         if (!commandResult.ok) return commandResult;
 
         const agentResult = await this.ccSddInstaller.installAgents(projectPath, options);
         if (!agentResult.ok) return agentResult;
 
+        const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
+        if (!settingsResult.ok) return settingsResult;
+
+        // Add required permissions
+        await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
+
         return {
           ok: true,
           value: {
-            installed: [...commandResult.value.installed, ...agentResult.value.installed],
-            skipped: [...commandResult.value.skipped, ...agentResult.value.skipped],
-            overwritten: [...commandResult.value.overwritten, ...agentResult.value.overwritten]
+            installed: [...commandResult.value.installed, ...agentResult.value.installed, ...settingsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...agentResult.value.skipped, ...settingsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...agentResult.value.overwritten, ...settingsResult.value.overwritten]
           }
         };
       }
@@ -214,15 +229,22 @@ export class UnifiedCommandsetInstaller {
         };
       }
       case 'spec-manager': {
-        // Install spec-manager commands only
-        const result = await this.ccSddInstaller.installCommands(projectPath, 'spec-manager', options);
-        if (!result.ok) return result;
+        // Install spec-manager commands and settings
+        const commandResult = await this.ccSddInstaller.installCommands(projectPath, 'spec-manager', options);
+        if (!commandResult.ok) return commandResult;
+
+        const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
+        if (!settingsResult.ok) return settingsResult;
+
+        // Add required permissions
+        await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
+
         return {
           ok: true,
           value: {
-            installed: result.value.installed,
-            skipped: result.value.skipped,
-            overwritten: result.value.overwritten
+            installed: [...commandResult.value.installed, ...settingsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten]
           }
         };
       }

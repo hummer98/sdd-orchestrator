@@ -36,14 +36,40 @@ export const REQUIRED_COMMANDS = [
  * Location: {projectRoot}/.kiro/settings/
  */
 export const REQUIRED_SETTINGS = [
+  // Rules
   'rules/ears-format.md',
   'rules/tasks-generation.md',
   'rules/tasks-parallel-analysis.md',
+  'rules/design-discovery-full.md',
+  'rules/design-discovery-light.md',
+  'rules/design-principles.md',
+  'rules/design-review.md',
+  'rules/gap-analysis.md',
+  'rules/steering-principles.md',
+  // Spec templates
   'templates/specs/init.json',
   'templates/specs/requirements-init.md',
   'templates/specs/requirements.md',
   'templates/specs/design.md',
   'templates/specs/tasks.md',
+  'templates/specs/research.md',
+  // Steering templates
+  'templates/steering/product.md',
+  'templates/steering/structure.md',
+  'templates/steering/tech.md',
+  // Steering-custom templates
+  'templates/steering-custom/api-standards.md',
+  'templates/steering-custom/authentication.md',
+  'templates/steering-custom/database.md',
+  'templates/steering-custom/deployment.md',
+  'templates/steering-custom/error-handling.md',
+  'templates/steering-custom/security.md',
+  'templates/steering-custom/testing.md',
+  // Bug Workflow templates
+  'templates/bugs/report.md',
+  'templates/bugs/analysis.md',
+  'templates/bugs/fix.md',
+  'templates/bugs/verification.md',
 ] as const;
 
 /**

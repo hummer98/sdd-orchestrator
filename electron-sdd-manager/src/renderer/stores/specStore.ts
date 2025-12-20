@@ -308,15 +308,16 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   },
 
   startWatching: async () => {
-    // Clean up existing watcher if any
+    // Clean up existing listener if any
     if (watcherCleanup) {
       watcherCleanup();
       watcherCleanup = null;
     }
 
     try {
-      // Start watcher on main process
-      await window.electronAPI.startSpecsWatcher();
+      // Note: Watcher is now started by Main process in SELECT_PROJECT IPC handler
+      // (unified-project-selection Task 1.4)
+      // Here we only register the event listener
 
       // Subscribe to change events
       watcherCleanup = window.electronAPI.onSpecsChanged((event) => {
@@ -335,9 +336,9 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       });
 
       set({ isWatching: true });
-      console.log('[specStore] Specs watcher started');
+      console.log('[specStore] Specs change listener registered');
     } catch (error) {
-      console.error('[specStore] Failed to start specs watcher:', error);
+      console.error('[specStore] Failed to register specs change listener:', error);
     }
   },
 

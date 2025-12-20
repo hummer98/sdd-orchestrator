@@ -178,8 +178,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         useBugStore.getState().setBugs(result.bugs);
       }
 
-      // Start file watchers for specs and agents (File as SSOT)
-      // This also starts AgentRecordWatcher via START_SPECS_WATCHER IPC
+      // Register event listeners for file watchers (File as SSOT)
+      // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler
+      // Here we only register the event listeners on Renderer side
       await useSpecStore.getState().startWatching();
       await useBugStore.getState().startWatching();
 

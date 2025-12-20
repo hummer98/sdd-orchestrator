@@ -218,11 +218,12 @@ describe('BugList + bugStore Integration', () => {
   // ============================================================
   describe('file change auto-update', () => {
     it('should register watcher callback via startWatching', async () => {
+      // Note: Watcher is now started by Main process in SELECT_PROJECT IPC
+      // startWatching only registers the event listener
       await act(async () => {
         await useBugStore.getState().startWatching();
       });
 
-      expect(mockStartBugsWatcher).toHaveBeenCalled();
       expect(mockOnBugsChanged).toHaveBeenCalled();
     });
 

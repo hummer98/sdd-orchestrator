@@ -1425,11 +1425,25 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.SELECT_PROJECT,
     async (
-      _event,
+      event,
       projectPath: string
     ): Promise<SelectProjectResult> => {
       logger.info('[handlers] SELECT_PROJECT called', { projectPath });
-      return selectProject(projectPath);
+      const result = await selectProject(projectPath);
+
+      // Start file watchers on successful project selection
+      // Design: unified-project-selection Task 1.4
+      if (result.success) {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (window) {
+          startSpecsWatcher(window);
+          startAgentRecordWatcher(window);
+          startBugsWatcher(window);
+          logger.info('[handlers] File watchers started for project', { projectPath });
+        }
+      }
+
+      return result;
     }
   );
 }

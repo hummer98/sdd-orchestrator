@@ -56,6 +56,16 @@ Report -> Analyze -> Fix -> Verify
 - **Small bugs**: Bug Fix workflow (lightweight, fast)
 - **Complex bugs requiring design changes**: Full SDD workflow
 
+## Design Principles
+
+Follow these principles during design and implementation:
+
+- **DRY** (Don't Repeat Yourself): Avoid duplication, extract common logic
+- **SSOT** (Single Source of Truth): Manage state/data from a single source
+- **KISS** (Keep It Simple): Prefer simple solutions
+- **YAGNI** (You Aren't Gonna Need It): Don't implement features not currently needed
+- **Separation of Concerns**: Each module should have a single responsibility
+
 ## Development Rules
 - 3-phase approval workflow: Requirements → Design → Tasks → Implementation
 - Human review required each phase; use `-y` only for intentional fast-track

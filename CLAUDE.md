@@ -65,6 +65,16 @@ Report → Analyze → Fix → Verify
 - **小規模バグ**: Bug Fixワークフロー（軽量・高速）
 - **設計変更を伴う複雑なバグ**: Full SDDワークフロー
 
+## Design Principles
+
+設計・実装時は以下の原則を遵守：
+
+- **DRY** (Don't Repeat Yourself): 重複を避け、共通ロジックは抽出
+- **SSOT** (Single Source of Truth): 状態・データは単一ソースで管理
+- **KISS** (Keep It Simple): シンプルな解決策を優先
+- **YAGNI** (You Aren't Gonna Need It): 現時点で不要な機能は実装しない
+- **関心の分離**: 各モジュールは単一の責務を持つ
+
 ## Development Rules
 
 - 3-phase approval workflow: Requirements → Design → Tasks → Implementation

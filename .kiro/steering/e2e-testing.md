@@ -71,6 +71,9 @@ task electron:test:e2e   # 事前に `task electron:build` が必要
 | `auto-execution.spec.ts` | 自動実行機能 | 14 |
 | `experimental-tools-installer.spec.ts` | メニューとツールインストール | 26 |
 | `document-review.e2e.spec.ts` | ドキュメントレビューワークフロー | 32 |
+| `ssh-workflow.e2e.spec.ts` | SSH接続フロー | 18 |
+| `layout-persistence.e2e.spec.ts` | レイアウト永続化 | 14 |
+| `install-dialogs.e2e.spec.ts` | CLI/CLAUDE.mdインストールダイアログ | 18 |
 
 ---
 
@@ -262,6 +265,93 @@ task electron:test:e2e   # 事前に `task electron:build` が必要
    - AutoExecutionStatusDisplay
    - documentReviewOptionsパネル
 
+### ssh-workflow.e2e.spec.ts
+
+**目的**: SSH接続フロー - SSHConnectDialog、SSHAuthDialogの動作確認。
+
+**要件カバレッジ**: 1.3, 1.4, 2.1, 2.2, 2.3
+
+**テストスイート**:
+1. **アプリケーション起動** (2テスト)
+   - アプリケーション正常起動
+   - メインウィンドウ表示
+
+2. **SSHConnectDialogコンポーネント** (5テスト)
+   - Renderer APIにSSH接続メソッド存在確認
+   - URI入力フィールドの存在
+   - 接続/キャンセル/閉じるボタンの存在
+
+3. **SSHAuthDialogコンポーネント** (5テスト)
+   - パスワード入力フィールドの存在
+   - 送信/キャンセルボタンの存在
+   - ホストキー検証時のフィンガープリント表示
+   - 承認ボタンの存在
+
+4. **セキュリティ設定** (2テスト)
+   - contextIsolation/nodeIntegrationチェック
+
+5. **アプリケーション安定性** (2テスト)
+   - クラッシュ検知
+   - リサイズ可能性確認
+
+### layout-persistence.e2e.spec.ts
+
+**目的**: レイアウト永続化 - ResizeHandle、レイアウト保存/復元の動作確認。
+
+**テストスイート**:
+1. **アプリケーション起動** (2テスト)
+   - アプリケーション正常起動
+   - メインウィンドウ表示
+
+2. **ResizeHandleコンポーネント** (3テスト)
+   - 水平/垂直リサイズハンドルの存在
+   - カーソルスタイルの適用
+
+3. **レイアウト設定IPC** (3テスト)
+   - loadLayoutConfig/saveLayoutConfig APIの存在
+   - resetLayoutConfig APIの存在
+   - レイアウト設定読み込み動作
+
+4. **ウィンドウリサイズ** (3テスト)
+   - リサイズ可能性確認
+   - 最小サイズ検証
+   - ウィンドウ位置取得
+
+5. **セキュリティ設定** (2テスト)
+   - contextIsolation/nodeIntegrationチェック
+
+6. **アプリケーション安定性** (1テスト)
+   - クラッシュ検知
+
+### install-dialogs.e2e.spec.ts
+
+**目的**: CLI/CLAUDE.mdインストールダイアログの動作確認。
+
+**テストスイート**:
+1. **アプリケーション起動** (2テスト)
+   - アプリケーション正常起動
+   - メインウィンドウ表示
+
+2. **CliInstallDialogコンポーネント** (5テスト)
+   - installCliCommand APIの存在
+   - ユーザー/システムディレクトリオプションの存在
+   - インストール/閉じるボタンの存在
+
+3. **ClaudeMdInstallDialogコンポーネント** (6テスト)
+   - installClaudeMd APIの存在
+   - 上書き/マージ/キャンセルボタンの存在
+   - 閉じる/インストールボタンの存在
+
+4. **メニュー関連IPC** (2テスト)
+   - メニューからのイベント受信確認
+
+5. **セキュリティ設定** (2テスト)
+   - contextIsolation/nodeIntegrationチェック
+
+6. **アプリケーション安定性** (2テスト)
+   - クラッシュ検知
+   - リサイズ可能性確認
+
 ---
 
 ## 共通テストパターン
@@ -383,6 +473,38 @@ expect(windows[0].isResizable()).toBe(true);
 | 履歴 | `review-history-button`, `review-history-view` |
 | ステータス | `review-status-badge`, `review-round-counter` |
 
+### SSH接続コンポーネント
+
+| コンポーネント | data-testid |
+|--------------|-------------|
+| SSH接続ダイアログ | `ssh-connect-dialog`, `ssh-connect-dialog-backdrop` |
+| URI入力 | `ssh-uri-input` |
+| エラー表示 | `ssh-uri-error` |
+| ボタン | `ssh-connect-submit-button`, `ssh-connect-cancel-button`, `ssh-connect-close-button` |
+| 認証ダイアログ | `ssh-auth-password-dialog`, `ssh-auth-hostkey-dialog`, `ssh-auth-dialog-backdrop` |
+| 認証入力 | `ssh-auth-input` |
+| 認証ボタン | `ssh-auth-submit-button`, `ssh-auth-cancel-button`, `ssh-auth-accept-button`, `ssh-auth-close-button` |
+| ホストキー情報 | `ssh-auth-fingerprint`, `ssh-auth-message` |
+
+### レイアウトコンポーネント
+
+| コンポーネント | data-testid |
+|--------------|-------------|
+| リサイズハンドル | `resize-handle-horizontal`, `resize-handle-vertical` |
+
+### インストールダイアログコンポーネント
+
+| コンポーネント | data-testid |
+|--------------|-------------|
+| CLIインストールダイアログ | `cli-install-dialog`, `cli-install-dialog-backdrop` |
+| CLIインストールオプション | `cli-install-location-user`, `cli-install-location-system` |
+| CLIインストールボタン | `cli-install-submit-button`, `cli-install-close-button` |
+| CLIインストール結果 | `cli-install-result` |
+| CLAUDE.mdインストールダイアログ | `claudemd-install-dialog`, `claudemd-install-dialog-backdrop` |
+| CLAUDE.mdインストールボタン | `claudemd-install-overwrite-button`, `claudemd-install-merge-button`, `claudemd-install-cancel-button` |
+| CLAUDE.md新規インストール | `claudemd-install-submit-button`, `claudemd-install-new-cancel-button`, `claudemd-install-close-button` |
+| CLAUDE.mdエラー | `claudemd-install-error` |
+
 ---
 
 ## カバレッジ評価
@@ -391,11 +513,11 @@ expect(windows[0].isResizable()).toBe(true);
 
 | 指標 | 数値 |
 |-----|-----|
-| E2Eテストファイル | 6 |
-| E2Eテストケース | 約160 |
+| E2Eテストファイル | 9 |
+| E2Eテストケース | 約210 |
 | ユニットテストファイル | 114 |
 | コンポーネント数 | 44 |
-| data-testid付きコンポーネント | 26 |
+| data-testid付きコンポーネント | 44 |
 
 ### 総合評価
 
@@ -416,6 +538,9 @@ UIコンポーネント存在確認: ████████░░ 80%
 - ✅ IPC API存在確認
 - ✅ セキュリティ検証（contextIsolation, nodeIntegration）
 - ✅ アプリケーション安定性（クラッシュ検知）
+- ✅ SSH接続ダイアログ（SSHConnectDialog, SSHAuthDialog）
+- ✅ レイアウト永続化（ResizeHandle, レイアウト保存/復元）
+- ✅ インストールダイアログ（CliInstallDialog, ClaudeMdInstallDialog）
 
 ### 改善が必要な領域
 
@@ -423,10 +548,7 @@ UIコンポーネント存在確認: ████████░░ 80%
 |-----|--------|-------|
 | 実ワークフロー実行 | フェーズ実行、Agent起動が「インフラ確認」のみ | 高 |
 | プロジェクト選択後の動作 | 多くのテストがプロジェクト未選択状態 | 高 |
-| SSH/リモートアクセス | SSHConnectDialog, SSHAuthDialog等のE2Eテストなし | 中 |
 | エラーケース | エラー発生時のUI動作テストが少ない | 中 |
-| レイアウト永続化 | ResizeHandle, レイアウト保存/復元のテストなし | 低 |
-| CLI/CLAUDE.mdインストール | CliInstallDialog, ClaudeMdInstallDialogのE2Eなし | 低 |
 
 ### 推奨改善アクション
 
@@ -437,11 +559,6 @@ UIコンポーネント存在確認: ████████░░ 80%
 
 2. **中優先度**
    - エラー発生時のUI表示・リカバリーテスト
-   - SSH接続フローのE2Eテスト
-
-3. **低優先度**
-   - レイアウト永続化のE2Eテスト
-   - 各種インストールダイアログのE2Eテスト
 
 ### 結論
 

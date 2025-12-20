@@ -73,10 +73,12 @@ describe('ウィンドウ動作', () => {
     expect(hasMenu).toBe(true);
   });
 
-  it('アプリケーションはパッケージされていない（E2Eテストモード）', async () => {
+  it('アプリケーションはビルド済みバイナリで実行されている', async () => {
+    // appBinaryPathを使用してビルド済みアプリをテストしているため
+    // app.isPackagedはtrueになる
     const isPackaged = await browser.electron.execute((electron) => {
       return electron.app.isPackaged;
     });
-    expect(isPackaged).toBe(false);
+    expect(isPackaged).toBe(true);
   });
 });

@@ -88,7 +88,8 @@ describe('自動実行機能 E2E', () => {
       const isPackaged = await browser.electron.execute((electron) => {
         return electron.app.isPackaged;
       });
-      expect(isPackaged).toBe(false);
+      // ビルド済みアプリを使用しているためisPackaged=true
+      expect(isPackaged).toBe(true);
     });
 
     it('メニューが存在する', async () => {

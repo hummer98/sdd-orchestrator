@@ -206,7 +206,8 @@ describe('Experimental Tools Installer E2E', () => {
       const isPackaged = await browser.electron.execute((electron) => {
         return electron.app.isPackaged;
       });
-      expect(isPackaged).toBe(false);
+      // ビルド済みアプリを使用しているためisPackaged=true
+      expect(isPackaged).toBe(true);
     });
   });
 
@@ -293,7 +294,8 @@ describe('インストールフロー（インフラ確認）', () => {
       const isPackaged = await browser.electron.execute((electron) => {
         return electron.app.isPackaged;
       });
-      expect(isPackaged).toBe(false);
+      // ビルド済みアプリを使用しているためisPackaged=true
+      expect(isPackaged).toBe(true);
     });
   });
 });

@@ -498,8 +498,8 @@ describe('ワークフロー実行（インフラ確認）', () => {
     const isPackaged = await browser.electron.execute((electron) => {
       return electron.app.isPackaged;
     });
-    // E2Eテストモードではパッケージされていない
-    expect(isPackaged).toBe(false);
+    // ビルド済みアプリを使用しているためisPackaged=true
+    expect(isPackaged).toBe(true);
   });
 
   it('メニューが存在する', async () => {

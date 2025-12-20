@@ -467,6 +467,8 @@ export function WorkflowView() {
                 <DocumentReviewPanel
                   reviewState={documentReviewState}
                   isExecuting={isReviewExecuting}
+                  isAutoExecuting={workflowStore.isAutoExecuting}
+                  hasTasks={!!specDetail?.artifacts.tasks?.content}
                   autoExecutionFlag={workflowStore.documentReviewOptions.autoExecutionFlag}
                   onStartReview={handleStartDocumentReview}
                   onExecuteReply={handleExecuteDocumentReviewReply}

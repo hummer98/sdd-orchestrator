@@ -26,6 +26,10 @@ export interface DocumentReviewPanelProps {
   reviewState: DocumentReviewState | null;
   /** Whether review is currently executing (Agent running) */
   isExecuting: boolean;
+  /** Whether auto execution is running (global workflow auto execution) */
+  isAutoExecuting?: boolean;
+  /** Whether tasks.md exists and has content */
+  hasTasks?: boolean;
   /** Auto execution flag (run/pause/skip) */
   autoExecutionFlag?: DocumentReviewAutoExecutionFlag;
   /** Handler for starting a new review round */
@@ -163,6 +167,8 @@ function getAutoExecutionFlagTooltip(flag: DocumentReviewAutoExecutionFlag): str
 export function DocumentReviewPanel({
   reviewState,
   isExecuting,
+  isAutoExecuting = false,
+  hasTasks = true,
   autoExecutionFlag = 'run',
   onStartReview,
   onExecuteReply,
@@ -170,8 +176,11 @@ export function DocumentReviewPanel({
   onAutoExecutionFlagChange,
 }: DocumentReviewPanelProps) {
   const rounds = reviewState?.rounds ?? 0;
-  // Review start button is enabled when not executing
-  const canStartReview = !isExecuting;
+  // Review start button is enabled when:
+  // - Not currently executing (document review agent running)
+  // - Not in auto execution mode (global workflow auto execution)
+  // - tasks.md exists
+  const canStartReview = !isExecuting && !isAutoExecuting && hasTasks;
 
   // Check if there's a review without a reply (review_complete but not reply_complete)
   const pendingReplyRound = reviewState?.roundDetails?.find(

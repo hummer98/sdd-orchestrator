@@ -16,7 +16,6 @@ describe('useWorkflowStore', () => {
       validationOptions: {
         gap: false,
         design: false,
-        impl: false,
       },
       isAutoExecuting: false,
       currentAutoPhase: null,
@@ -85,7 +84,6 @@ describe('useWorkflowStore', () => {
         const state = useWorkflowStore.getState();
         expect(state.validationOptions.gap).toBe(false);
         expect(state.validationOptions.design).toBe(false);
-        expect(state.validationOptions.impl).toBe(false);
       });
     });
 
@@ -102,13 +100,6 @@ describe('useWorkflowStore', () => {
 
         const state = useWorkflowStore.getState();
         expect(state.validationOptions.design).toBe(true);
-      });
-
-      it('should toggle impl validation option', () => {
-        useWorkflowStore.getState().toggleValidationOption('impl');
-
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.impl).toBe(true);
       });
 
       it('should toggle option back to false', () => {
@@ -218,7 +209,6 @@ describe('useWorkflowStore', () => {
           validationOptions: {
             gap: true,
             design: true,
-            impl: true,
           },
         });
 
@@ -227,7 +217,6 @@ describe('useWorkflowStore', () => {
         const state = useWorkflowStore.getState();
         expect(state.validationOptions.gap).toBe(false);
         expect(state.validationOptions.design).toBe(false);
-        expect(state.validationOptions.impl).toBe(false);
       });
 
       it('should stop auto execution', () => {

@@ -60,13 +60,11 @@ export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
 export interface ValidationOptions {
   gap: boolean;
   design: boolean;
-  impl: boolean;
 }
 
 const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
   gap: false,
   design: false,
-  impl: false,
 };
 
 // ============================================================

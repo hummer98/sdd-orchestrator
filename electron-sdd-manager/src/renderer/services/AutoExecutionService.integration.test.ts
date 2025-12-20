@@ -60,7 +60,7 @@ describe('AutoExecutionService Integration Tests', () => {
     // Reset stores
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
-      validationOptions: { gap: false, design: false, impl: false },
+      validationOptions: { gap: false, design: false },
       isAutoExecuting: false,
       currentAutoPhase: null,
       autoExecutionStatus: 'idle',
@@ -359,7 +359,7 @@ describe('AutoExecutionService Integration Tests', () => {
   describe('バリデーション有効時の挿入実行', () => {
     it('gapバリデーションが有効な場合はrequirements後に実行判定される', () => {
       useWorkflowStore.setState({
-        validationOptions: { gap: true, design: false, impl: false },
+        validationOptions: { gap: true, design: false },
       });
 
       const state = useWorkflowStore.getState();
@@ -369,31 +369,21 @@ describe('AutoExecutionService Integration Tests', () => {
 
     it('designバリデーションが有効な場合はdesign後に実行判定される', () => {
       useWorkflowStore.setState({
-        validationOptions: { gap: false, design: true, impl: false },
+        validationOptions: { gap: false, design: true },
       });
 
       const state = useWorkflowStore.getState();
       expect(state.validationOptions.design).toBe(true);
     });
 
-    it('implバリデーションが有効な場合はimpl後に実行判定される', () => {
-      useWorkflowStore.setState({
-        validationOptions: { gap: false, design: false, impl: true },
-      });
-
-      const state = useWorkflowStore.getState();
-      expect(state.validationOptions.impl).toBe(true);
-    });
-
     it('複数のバリデーションを同時に有効にできる', () => {
       useWorkflowStore.setState({
-        validationOptions: { gap: true, design: true, impl: true },
+        validationOptions: { gap: true, design: true },
       });
 
       const state = useWorkflowStore.getState();
       expect(state.validationOptions.gap).toBe(true);
       expect(state.validationOptions.design).toBe(true);
-      expect(state.validationOptions.impl).toBe(true);
     });
   });
 

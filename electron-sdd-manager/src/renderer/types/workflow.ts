@@ -54,7 +54,7 @@ export type PhaseStatus = 'pending' | 'generated' | 'approved';
 // ============================================================
 
 /** バリデーション種別 */
-export type ValidationType = 'gap' | 'design' | 'impl';
+export type ValidationType = 'gap' | 'design';
 
 // ============================================================
 // Command Prefix Support
@@ -67,12 +67,10 @@ const VALIDATION_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<ValidationType
   kiro: {
     gap: '/kiro:validate-gap',
     design: '/kiro:validate-design',
-    impl: '/kiro:validate-impl',
   },
   'spec-manager': {
     gap: '/spec-manager:validate-gap',
     design: '/spec-manager:validate-design',
-    impl: '/spec-manager:validate-impl',
   },
 };
 
@@ -88,7 +86,6 @@ export function getValidationCommand(type: ValidationType, prefix: CommandPrefix
 export const VALIDATION_LABELS: Record<ValidationType, string> = {
   gap: 'validate-gap',
   design: 'validate-design',
-  impl: 'validate-impl',
 };
 
 // ============================================================

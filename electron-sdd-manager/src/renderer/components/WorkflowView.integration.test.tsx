@@ -64,7 +64,7 @@ describe('WorkflowView Integration', () => {
 
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
-      validationOptions: { gap: false, design: false, impl: false },
+      validationOptions: { gap: false, design: false },
       isAutoExecuting: false,
       currentAutoPhase: null,
       commandPrefix: 'kiro',

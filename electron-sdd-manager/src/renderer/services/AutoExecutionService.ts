@@ -688,12 +688,11 @@ export class AutoExecutionService {
     let validationType: ValidationType | null = null;
 
     // Determine which validation to run based on completed phase
+    // Note: validate-impl is executed as inspection phase, not as validation option
     if (phase === 'requirements' && validationOptions.gap) {
       validationType = 'gap';
     } else if (phase === 'design' && validationOptions.design) {
       validationType = 'design';
-    } else if (phase === 'impl' && validationOptions.impl) {
-      validationType = 'impl';
     }
 
     if (validationType) {

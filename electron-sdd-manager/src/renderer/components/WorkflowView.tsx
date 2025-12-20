@@ -388,10 +388,10 @@ export function WorkflowView() {
   }, [agentStore, specDetail, workflowStore.commandPrefix]);
 
   // Validation options positions
+  // Note: validate-impl is executed as inspection phase, not as validation option
   const validationPositions: Record<ValidationType, { after: WorkflowPhase }> = {
     gap: { after: 'requirements' },
     design: { after: 'design' },
-    impl: { after: 'impl' },
   };
 
   // Handle empty and loading states (after all hooks)

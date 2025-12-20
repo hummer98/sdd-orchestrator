@@ -54,10 +54,9 @@ describe('Workflow Types', () => {
     });
 
     describe('ValidationType', () => {
-      it('should have validation commands for gap, design, impl', () => {
+      it('should have validation commands for gap and design', () => {
         expect(VALIDATION_COMMANDS.gap).toBe('/kiro:validate-gap');
         expect(VALIDATION_COMMANDS.design).toBe('/kiro:validate-design');
-        expect(VALIDATION_COMMANDS.impl).toBe('/kiro:validate-impl');
       });
     });
   });

@@ -93,7 +93,7 @@ const mockWorkflowState = {
     inspection: false,
     deploy: false,
   },
-  validationOptions: { gap: false, design: false, impl: false },
+  validationOptions: { gap: false, design: false },
   isAutoExecuting: false,
   currentAutoPhase: null,
   // Task 1.1: Auto execution state extension
@@ -182,7 +182,8 @@ describe('WorkflowView', () => {
 
   // ============================================================
   // Task 7.2: Validation options placement
-  // Requirements: 4.1, 4.2, 4.3
+  // Requirements: 4.1, 4.2
+  // Note: validate-impl is executed as inspection phase, not as validation option
   // ============================================================
   describe('Task 7.2: Validation options placement', () => {
     it('should display validate-gap option between requirements and design', () => {
@@ -195,12 +196,6 @@ describe('WorkflowView', () => {
       render(<WorkflowView />);
 
       expect(screen.getByText('validate-design')).toBeInTheDocument();
-    });
-
-    it('should display validate-impl option between impl and inspection', () => {
-      render(<WorkflowView />);
-
-      expect(screen.getByText('validate-impl')).toBeInTheDocument();
     });
   });
 

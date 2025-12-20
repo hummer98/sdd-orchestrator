@@ -64,6 +64,7 @@ interface ProjectState {
   installError: InstallError | null;
   // permissions check
   permissionsCheck: PermissionsCheckResult | null;
+  permissionsFixLoading: boolean;
 }
 
 /** シェル許可追加結果 */
@@ -88,6 +89,7 @@ interface ProjectActions {
   clearInstallResult: () => void;
   // shell permissions
   addShellPermissions: () => Promise<AddPermissionsResult | null>;
+  fixPermissions: () => Promise<void>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -107,6 +109,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   installResult: null,
   installError: null,
   permissionsCheck: null,
+  permissionsFixLoading: false,
 
   // Actions
   // ============================================================
@@ -234,6 +237,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       installResult: null,
       installError: null,
       permissionsCheck: null,
+      permissionsFixLoading: false,
     });
   },
 
@@ -450,6 +454,28 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       console.error('[projectStore] Failed to add shell permissions:', error);
       return null;
+    }
+  },
+
+  /**
+   * Fix missing permissions by adding them and refreshing the check
+   */
+  fixPermissions: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    set({ permissionsFixLoading: true });
+
+    try {
+      // Add missing permissions
+      await window.electronAPI.addShellPermissions(currentProject);
+
+      // Refresh permissions check
+      const permissionsCheck = await window.electronAPI.checkRequiredPermissions(currentProject);
+      set({ permissionsCheck, permissionsFixLoading: false });
+    } catch (error) {
+      console.error('[projectStore] Failed to fix permissions:', error);
+      set({ permissionsFixLoading: false });
     }
   },
 }));

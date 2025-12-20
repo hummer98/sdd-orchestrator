@@ -25,6 +25,8 @@ export function ProjectSelector() {
     clearInstallResult,
     // permissions check
     permissionsCheck,
+    permissionsFixLoading,
+    fixPermissions,
   } = useProjectStore();
   const { loadSpecs } = useSpecStore();
 
@@ -117,7 +119,11 @@ export function ProjectSelector() {
 
       {/* Permissions Check */}
       {permissionsCheck && (
-        <PermissionsCheckSection check={permissionsCheck} />
+        <PermissionsCheckSection
+          check={permissionsCheck}
+          loading={permissionsFixLoading}
+          onFix={fixPermissions}
+        />
       )}
     </div>
   );
@@ -316,9 +322,11 @@ interface PermissionsCheckSectionProps {
     missing: readonly string[];
     present: readonly string[];
   };
+  loading: boolean;
+  onFix: () => void;
 }
 
-function PermissionsCheckSection({ check }: PermissionsCheckSectionProps) {
+function PermissionsCheckSection({ check, loading, onFix }: PermissionsCheckSectionProps) {
   // All permissions present - no need to display anything (reduce noise)
   if (check.allPresent) {
     return null;
@@ -341,9 +349,29 @@ function PermissionsCheckSection({ check }: PermissionsCheckSectionProps) {
             <div key={permission}>{permission}</div>
           ))}
         </div>
-        <div className="text-xs text-gray-600 dark:text-gray-400 pl-6">
-          CC-SDD WORKFLOWをインストールすると、必要なパーミッションが自動的に追加されます。
-        </div>
+        <button
+          onClick={onFix}
+          disabled={loading}
+          className={clsx(
+            'w-full px-3 py-2 rounded-md text-xs',
+            'bg-blue-500 hover:bg-blue-600 text-white',
+            'flex items-center justify-center gap-2',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          aria-label="パーミッションを追加"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              追加中...
+            </>
+          ) : (
+            <>
+              <Download className="w-3 h-3" />
+              パーミッションを追加
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

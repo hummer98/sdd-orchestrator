@@ -1,6 +1,11 @@
 import type { Options } from '@wdio/types';
 import * as path from 'path';
 
+// ELECTRON_RUN_AS_NODEが設定されていると、ElectronがNode.jsモードで動作し
+// Chromedriverのコマンドラインオプションを認識できなくなる問題を回避
+// 参考: https://www.electronjs.org/blog/statement-run-as-node-cves
+delete process.env.ELECTRON_RUN_AS_NODE;
+
 const projectRoot = path.resolve(__dirname);
 
 // ビルド済みアプリのバイナリパス（macOS）
@@ -30,17 +35,9 @@ export const config: Options.Testrunner = {
       browserName: 'electron',
       maxInstances: 1,
       'wdio:electronServiceOptions': {
-        // appBinaryPathを使用（appEntryPointはnode_modules/.bin/electronを使用するため問題あり）
         appBinaryPath,
-        appArgs: ['--no-sandbox', '--e2e-test'],
-      },
-      'goog:chromeOptions': {
-        args: [
-          '--no-sandbox',
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--disable-software-rasterizer',
-        ],
+        // E2Eテストモードを示すカスタム引数のみ
+        appArgs: ['--e2e-test'],
       },
     },
   ],

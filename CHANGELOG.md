@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2025-12-20
+
+### Fixed
+- **SSOTアーキテクチャへの統一**: projectStoreからspecs/bugsの二重管理を削除し、File as Single Source of Truthアーキテクチャに統一
+- **Agent完了時のUI自動更新**: Agent完了時にspecDetailを自動更新し、UIを最新状態に維持
+- **Agent状態の二重管理解消**: File as SSOTアーキテクチャにより状態管理を一元化
+- **プロファイル別バリデーション統一**: レガシーREQUIRED_COMMANDSを削除し、プロファイル別バリデーションに統一
+
+### Documentation
+- Design Principlesセクションを追加（DRY, SSOT, KISS, YAGNI, 関心の分離）
+
 ## [0.9.4] - 2025-12-20
 
 ### Fixed

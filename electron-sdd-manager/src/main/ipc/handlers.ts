@@ -963,9 +963,9 @@ export function registerIpcHandlers(): void {
   // Phase Sync Handler - Auto-fix spec.json phase based on task completion
   ipcMain.handle(
     IPC_CHANNELS.SYNC_SPEC_PHASE,
-    async (_event, specPath: string, completedPhase: 'impl' | 'impl-complete') => {
-      logger.info('[handlers] SYNC_SPEC_PHASE called', { specPath, completedPhase });
-      const result = await fileService.updateSpecJsonFromPhase(specPath, completedPhase);
+    async (_event, specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }) => {
+      logger.info('[handlers] SYNC_SPEC_PHASE called', { specPath, completedPhase, options });
+      const result = await fileService.updateSpecJsonFromPhase(specPath, completedPhase, options);
       if (!result.ok) {
         throw new Error(`Failed to sync spec phase: ${result.error.type}`);
       }
@@ -1446,6 +1446,11 @@ export function registerIpcHandlers(): void {
       return result;
     }
   );
+
+  // E2E Test Mode Handler
+  ipcMain.handle(IPC_CHANNELS.GET_IS_E2E_TEST, () => {
+    return process.argv.includes('--e2e-test');
+  });
 }
 
 /**

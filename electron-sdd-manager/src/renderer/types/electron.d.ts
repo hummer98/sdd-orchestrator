@@ -408,7 +408,8 @@ export interface ElectronAPI {
   onMenuOpenProject(callback: (projectPath: string) => void): () => void;
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
-  syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void>;
+  // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
+  syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void>;
 
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview(specPath: string): Promise<boolean>;

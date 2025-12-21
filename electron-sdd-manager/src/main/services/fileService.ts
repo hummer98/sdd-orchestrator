@@ -457,10 +457,13 @@ ${description}
    *
    * @param specPath - Path to the spec directory
    * @param completedPhase - The phase that was completed ('requirements' | 'design' | 'tasks' | 'impl')
+   * @param options - Options for the update
+   * @param options.skipTimestamp - If true, do not update updated_at (used for UI auto-correction)
    */
   async updateSpecJsonFromPhase(
     specPath: string,
-    completedPhase: 'requirements' | 'design' | 'tasks' | 'impl' | 'impl-complete'
+    completedPhase: 'requirements' | 'design' | 'tasks' | 'impl' | 'impl-complete',
+    options?: { skipTimestamp?: boolean }
   ): Promise<Result<void, FileError>> {
     try {
       const specJsonPath = join(specPath, 'spec.json');
@@ -491,8 +494,10 @@ ${description}
           break;
       }
 
-      // Update timestamp
-      specJson.updated_at = new Date().toISOString();
+      // Update timestamp (unless skipTimestamp is true)
+      if (!options?.skipTimestamp) {
+        specJson.updated_at = new Date().toISOString();
+      }
 
       await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
       return { ok: true, value: undefined };

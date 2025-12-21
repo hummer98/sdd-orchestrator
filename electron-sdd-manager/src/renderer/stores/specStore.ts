@@ -190,6 +190,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         console.log('[specStore] Task progress calculated:', { spec: spec.name, taskProgress, silent: options?.silent });
 
         // Auto-fix spec.json phase if task completion doesn't match phase
+        // Note: skipTimestamp: true to avoid updating updated_at for UI auto-correction
         if (total > 0) {
           const currentPhase = specJson.phase;
           const isAllComplete = completed === total;
@@ -199,7 +200,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
           if (isAllComplete && currentPhase !== 'implementation-complete') {
             console.log('[specStore] Auto-fixing phase to implementation-complete', { spec: spec.name, currentPhase });
             try {
-              await window.electronAPI.syncSpecPhase(spec.path, 'impl-complete');
+              await window.electronAPI.syncSpecPhase(spec.path, 'impl-complete', { skipTimestamp: true });
               specJson.phase = 'implementation-complete';
             } catch (error) {
               console.error('[specStore] Failed to auto-fix phase:', error);
@@ -209,7 +210,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
           else if (hasStartedImpl && !isAllComplete && currentPhase === 'tasks-generated') {
             console.log('[specStore] Auto-fixing phase to implementation-in-progress', { spec: spec.name, currentPhase });
             try {
-              await window.electronAPI.syncSpecPhase(spec.path, 'impl');
+              await window.electronAPI.syncSpecPhase(spec.path, 'impl', { skipTimestamp: true });
               specJson.phase = 'implementation-in-progress';
             } catch (error) {
               console.error('[specStore] Failed to auto-fix phase:', error);

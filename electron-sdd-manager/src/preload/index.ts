@@ -286,8 +286,9 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLAUDE_MD, projectPath, mode),
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
-  syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete'): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase),
+  // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
+  syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase, options),
 
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview: (specPath: string): Promise<boolean> =>
@@ -857,6 +858,17 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_COMMIT, handler);
     };
   },
+
+  // ============================================================
+  // E2E Test Mode (for exposing stores in E2E tests)
+  // ============================================================
+
+  /**
+   * Check if app is running in E2E test mode
+   * @returns true if --e2e-test flag was passed
+   */
+  isE2ETest: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_IS_E2E_TEST),
 };
 
 // Expose API to renderer

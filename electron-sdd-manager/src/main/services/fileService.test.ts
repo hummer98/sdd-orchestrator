@@ -236,5 +236,56 @@ describe('FileService - updateSpecJsonFromPhase', () => {
       const specJson = await readSpecJson();
       expect(specJson.phase).toBe('implementation-complete');
     });
+
+    it('should NOT update updated_at when skipTimestamp is true', async () => {
+      const oldTimestamp = '2025-01-01T00:00:00.000Z';
+      await createSpecJson('tasks-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl', { skipTimestamp: true });
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.updated_at).toBe(oldTimestamp);
+    });
+
+    it('should update updated_at when skipTimestamp is false', async () => {
+      const oldTimestamp = '2025-01-01T00:00:00.000Z';
+      await createSpecJson('tasks-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl', { skipTimestamp: false });
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.updated_at).not.toBe(oldTimestamp);
+    });
+
+    it('should update updated_at when options is undefined (default behavior)', async () => {
+      const oldTimestamp = '2025-01-01T00:00:00.000Z';
+      await createSpecJson('tasks-generated', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.updated_at).not.toBe(oldTimestamp);
+    });
   });
 });

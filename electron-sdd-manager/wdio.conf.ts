@@ -8,6 +8,12 @@ delete process.env.ELECTRON_RUN_AS_NODE;
 
 const projectRoot = path.resolve(__dirname);
 
+// Mock Claude CLI for E2E testing
+// This allows workflow tests to run without actual Claude API calls
+const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude.sh');
+process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
+process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
+
 // ビルド済みアプリのバイナリパス（macOS）
 // 注意: electron-builderでビルド後に使用可能
 const appBinaryPath = path.join(
@@ -55,6 +61,6 @@ export const config: Options.Testrunner = {
 
   mochaOpts: {
     ui: 'bdd',
-    timeout: 60000,
+    timeout: 120000, // 2 minutes for workflow tests
   },
 };

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-12-21
+
+### Added
+- **マルチウィンドウ機能**: WindowManagerサービスと状態永続化を実装し、複数ウィンドウの管理が可能に
+- **マルチウィンドウE2Eテスト**: マルチウィンドウ機能のE2Eテストを追加
+- **symbol-semantic-map.md**: コードシンボルとドメイン概念の対応表ドキュメントを追加
+
+### Changed
+- **GlobalAgentをProjectAgentにリネーム**: より明確な命名に変更
+- **profile設定の統合**: profile設定をsdd-orchestrator.jsonに統合
+
+### Fixed
+- **コマンドセットインストール**: 既存ファイルを強制上書きするよう変更
+- **Global Agentのファイル削除**: レジストリ未登録時に失敗する問題を修正
+- **specファイル監視**: プロジェクト選択時に起動しない問題を修正
+- **DocumentReviewPanel**: レビュー開始ボタンを適切に無効化
+- **GlobalAgentPanel**: クリック時にAgentログが切り替わらない問題を修正
+
 ## [0.9.6] - 2025-12-21
 
 ### Fixed

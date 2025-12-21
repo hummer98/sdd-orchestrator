@@ -43,19 +43,37 @@ export class AutoExecutionService {
   private executedValidations: ValidationType[] = [];
   private errors: string[] = [];
 
+  // ============================================================
+  // Task 1.1, 2.1: IPC Direct Subscription and AgentId Tracking
+  // Requirements: 1.1, 2.1, 2.4
+  // ============================================================
+  private unsubscribeIPC: (() => void) | null = null;
+  private trackedAgentIds: Set<string> = new Set();
+  private pendingEvents: Map<string, string> = new Map(); // agentId -> status
+
   constructor() {
+    this.setupDirectIPCListener();
     this.setupAgentListener();
   }
 
   // ============================================================
-  // Task 3.1: Cleanup
+  // Task 3.1, 1.2: Cleanup (with IPC subscription cleanup)
+  // Requirements: 1.5
   // ============================================================
   dispose(): void {
     if (this.unsubscribeAgentStore) {
       this.unsubscribeAgentStore();
       this.unsubscribeAgentStore = null;
     }
+    // Task 1.2: Clean up IPC subscription
+    if (this.unsubscribeIPC) {
+      this.unsubscribeIPC();
+      this.unsubscribeIPC = null;
+    }
     this.clearTimeout();
+    // Task 2.3: Clear tracked agentIds on dispose
+    this.trackedAgentIds.clear();
+    this.pendingEvents.clear();
   }
 
   // ============================================================
@@ -261,12 +279,17 @@ export class AutoExecutionService {
 
   // ============================================================
   // Task 4.2: Stop auto execution
-  // Requirements: 1.2
+  // Requirements: 1.2, 5.2
+  // Task 2.3: Clear tracked agentIds on stop
   // ============================================================
   async stop(): Promise<void> {
     const workflowStore = useWorkflowStore.getState();
 
     this.clearTimeout();
+
+    // Task 2.3: Clear tracked agentIds to prevent stale event handling
+    this.trackedAgentIds.clear();
+    this.pendingEvents.clear();
 
     // Generate summary if we executed anything
     if (this.executedPhases.length > 0) {
@@ -323,49 +346,80 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 5.1: Agent state monitoring
+  // Task 1.1: IPC Direct Subscription Setup
+  // Requirements: 1.1, 1.2, 1.3, 1.4, 2.3, 3.1, 3.2, 3.3
+  // ============================================================
+  private setupDirectIPCListener(): void {
+    // IPC direct subscription for agent status changes
+    this.unsubscribeIPC = window.electronAPI.onAgentStatusChange(
+      (agentId: string, status: string) => {
+        this.handleDirectStatusChange(agentId, status);
+      }
+    );
+  }
+
+  // ============================================================
+  // Task 3.1: Direct Status Change Handler
+  // Requirements: 1.2, 1.3, 1.4, 2.3, 3.1, 3.2, 3.3
+  // ============================================================
+  private handleDirectStatusChange(agentId: string, status: string): void {
+    // Task 3.4: Only process if auto-executing
+    if (!useWorkflowStore.getState().isAutoExecuting) return;
+
+    // Race condition fix: Always buffer events for unknown agentIds
+    // They will be processed after executePhase returns with the agentId
+    if (!this.trackedAgentIds.has(agentId)) {
+      this.pendingEvents.set(agentId, status);
+      return;
+    }
+
+    const currentPhase = useWorkflowStore.getState().currentAutoPhase;
+
+    // Task 3.1, 3.2: Status-based completion detection (not state-transition based)
+    if (status === 'completed') {
+      // Get agent info to determine the phase
+      const agent = useAgentStore.getState().getAgentById(agentId);
+      if (agent?.phase === 'document-review') {
+        this.handleDocumentReviewCompleted();
+      } else if (agent?.phase === 'document-review-reply') {
+        this.handleDocumentReviewReplyCompleted();
+      } else if (currentPhase) {
+        // Only proceed with regular phase completion if currentPhase is set
+        this.handleAgentCompleted(currentPhase);
+      }
+    } else if (status === 'error' || status === 'failed') {
+      // Task 3.3: Error handling
+      const agent = useAgentStore.getState().getAgentById(agentId);
+      if (agent?.phase === 'document-review' || agent?.phase === 'document-review-reply') {
+        this.handleDocumentReviewFailed(agent.phase, 'Agent execution failed');
+      } else if (currentPhase) {
+        this.handleAgentFailed(currentPhase, 'Agent execution failed');
+      }
+    }
+    // Task 3.4: running, interrupted, hang are ignored (UI update is handled by AgentStore)
+  }
+
+  // ============================================================
+  // Task 2.1: AgentId Tracking - Public method for testing
+  // Requirements: 2.1, 2.3
+  // ============================================================
+  isTrackedAgent(agentId: string): boolean {
+    return this.trackedAgentIds.has(agentId);
+  }
+
+  // ============================================================
+  // Task 5.1: Agent state monitoring (DEPRECATED)
   // Requirements: 6.1, 6.3
+  // Note: Completion detection has been moved to setupDirectIPCListener
+  //       This method is now empty and kept for backward compatibility
+  //       The UI updates are handled by AgentStore's onAgentStatusChange
   // ============================================================
   private setupAgentListener(): void {
-    // Subscribe to agent store changes
-    this.unsubscribeAgentStore = useAgentStore.subscribe((state, prevState) => {
-      // Only process if auto-executing
-      if (!useWorkflowStore.getState().isAutoExecuting) return;
-
-      const specDetail = useSpecStore.getState().specDetail;
-      if (!specDetail) return;
-
-      const currentPhase = useWorkflowStore.getState().currentAutoPhase;
-
-      // Get agents for current spec
-      const currentAgents = state.agents.get(specDetail.metadata.name) || [];
-      const prevAgents = prevState.agents.get(specDetail.metadata.name) || [];
-
-      // Find agent status changes
-      for (const agent of currentAgents) {
-        const prevAgent = prevAgents.find((a) => a.agentId === agent.agentId);
-
-        // Check if agent just completed
-        if (prevAgent?.status === 'running' && agent.status === 'completed') {
-          // Task 7.2: Handle document review agent completion
-          if (agent.phase === 'document-review') {
-            this.handleDocumentReviewCompleted();
-          } else if (agent.phase === 'document-review-reply') {
-            this.handleDocumentReviewReplyCompleted();
-          } else if (currentPhase) {
-            this.handleAgentCompleted(currentPhase);
-          }
-        }
-
-        // Check if agent failed
-        if (prevAgent?.status === 'running' && agent.status === 'failed') {
-          if (agent.phase === 'document-review' || agent.phase === 'document-review-reply') {
-            this.handleDocumentReviewFailed(agent.phase, 'Agent execution failed');
-          } else if (currentPhase) {
-            this.handleAgentFailed(currentPhase, 'Agent execution failed');
-          }
-        }
-      }
+    // DEPRECATED: Completion detection now uses IPC direct subscription
+    // See setupDirectIPCListener() for the new implementation
+    // This empty subscription is kept to maintain the unsubscribe pattern
+    this.unsubscribeAgentStore = useAgentStore.subscribe(() => {
+      // No-op: Completion detection moved to IPC direct subscription
     });
   }
 
@@ -767,6 +821,8 @@ export class AutoExecutionService {
 
   // ============================================================
   // Private: Execute a phase
+  // Task 2.2, 4.3: AgentId tracking and race condition prevention
+  // Requirements: 2.1, 4.3
   // ============================================================
   private async executePhase(phase: WorkflowPhase): Promise<void> {
     const workflowStore = useWorkflowStore.getState();
@@ -813,12 +869,26 @@ export class AutoExecutionService {
     this.setupTimeout(phase);
 
     try {
-      // Execute the phase
-      await window.electronAPI.executePhase(
+      // Execute the phase and get agent info with agentId
+      const agentInfo = await window.electronAPI.executePhase(
         specDetail.metadata.name,
         phase,
         specDetail.metadata.name
       );
+
+      // Task 2.2: Add agentId to tracked set immediately after getting the response
+      if (agentInfo && agentInfo.agentId) {
+        this.trackedAgentIds.add(agentInfo.agentId);
+
+        // Race condition fix: Process any buffered events for this agentId
+        // Events may have arrived before we knew the agentId
+        const bufferedStatus = this.pendingEvents.get(agentInfo.agentId);
+        if (bufferedStatus) {
+          this.pendingEvents.delete(agentInfo.agentId);
+          // Process immediately since trackedAgentIds now contains this agentId
+          this.handleDirectStatusChange(agentInfo.agentId, bufferedStatus);
+        }
+      }
     } catch (error) {
       this.handleAgentFailed(
         phase,

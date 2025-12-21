@@ -1,0 +1,22 @@
+{
+  "name": "simple-feature",
+  "description": "E2Eテスト用のシンプルな機能",
+  "phase": "initialized",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": false,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

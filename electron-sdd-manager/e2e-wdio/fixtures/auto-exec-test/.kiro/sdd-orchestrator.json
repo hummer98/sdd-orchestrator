@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "layout": {
+    "leftPaneWidth": 288,
+    "rightPaneWidth": 320,
+    "bottomPaneHeight": 284,
+    "agentListHeight": 160,
+    "projectAgentPanelHeight": 120
+  }
+}

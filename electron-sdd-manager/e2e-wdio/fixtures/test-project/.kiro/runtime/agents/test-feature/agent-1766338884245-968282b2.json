@@ -1,0 +1,11 @@
+{
+  "agentId": "agent-1766338884245-968282b2",
+  "specId": "test-feature",
+  "phase": "requirements",
+  "pid": 38286,
+  "sessionId": "mock-session-1766338884-38286",
+  "status": "completed",
+  "startedAt": "2025-12-21T17:41:24.245Z",
+  "lastActivityAt": "2025-12-21T17:41:24.563Z",
+  "command": "/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements test-feature"
+}

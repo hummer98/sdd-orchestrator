@@ -171,6 +171,9 @@ export const IPC_CHANNELS = {
 
   // Menu Events - New Window
   MENU_NEW_WINDOW: 'menu:new-window',
+
+  // E2E Test Mode
+  GET_IS_E2E_TEST: 'ipc:get-is-e2e-test',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

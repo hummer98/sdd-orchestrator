@@ -41,11 +41,11 @@ vi.mock('./CreateBugDialog', () => ({
 vi.mock('../stores/agentStore', () => ({
   useAgentStore: vi.fn(() => ({
     startAgent: vi.fn().mockResolvedValue('agent-123'),
-    selectForGlobalAgents: vi.fn(),
+    selectForProjectAgents: vi.fn(),
     selectAgent: vi.fn(),
     getAgentsForSpec: vi.fn().mockReturnValue([]),
     agents: [],
-    globalAgents: [],
+    projectAgents: [],
   })),
 }));
 

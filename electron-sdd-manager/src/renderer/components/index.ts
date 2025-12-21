@@ -29,8 +29,8 @@ export { ArtifactPreview } from './ArtifactPreview';
 export { CliInstallDialog } from './CliInstallDialog';
 // CLAUDE.md Install
 export { ClaudeMdInstallDialog } from './ClaudeMdInstallDialog';
-// Task 4.2, 4.3 (sidebar-refactor): グローバルAgent領域
-export { GlobalAgentPanel } from './GlobalAgentPanel';
+// Task 4.2, 4.3 (sidebar-refactor): プロジェクトAgent領域
+export { ProjectAgentPanel } from './ProjectAgentPanel';
 // Task 3.1, 3.2 (sidebar-refactor): 仕様一覧ヘッダー
 export { SpecListHeader } from './SpecListHeader';
 // Task 2.1, 2.2, 2.3 (sidebar-refactor): エラーバナー

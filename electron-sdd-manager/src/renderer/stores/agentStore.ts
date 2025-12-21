@@ -64,11 +64,11 @@ interface AgentActions {
   // Helper methods
   getAgentById: (agentId: string) => AgentInfo | undefined;
   getAgentsForSpec: (specId: string) => AgentInfo[];
-  getGlobalAgents: () => AgentInfo[];
+  getProjectAgents: () => AgentInfo[];
   clearError: () => void;
 
-  // Task 5.2.4 (sidebar-refactor): グローバルエージェントパネルへの遷移
-  selectForGlobalAgents: () => void;
+  // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
+  selectForProjectAgents: () => void;
 }
 
 type AgentStore = AgentState & AgentActions;
@@ -444,9 +444,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     return get().agents.get(specId) || [];
   },
 
-  // Task 4.1 (sidebar-refactor): グローバルエージェント取得
-  // specIdが空文字列のエージェントをグローバルエージェントとして返す
-  getGlobalAgents: () => {
+  // Task 4.1 (sidebar-refactor): プロジェクトエージェント取得
+  // specIdが空文字列のエージェントをプロジェクトエージェントとして返す
+  getProjectAgents: () => {
     return get().agents.get('') || [];
   },
 
@@ -454,11 +454,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set({ error: null });
   },
 
-  // Task 5.2.4 (sidebar-refactor): グローバルエージェントパネルへの遷移
+  // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
   // specId=''のエージェントを選択可能な状態にする
-  selectForGlobalAgents: () => {
-    // グローバルエージェント（specId=''）を選択対象として設定
-    // selectedAgentIdをnullにリセットして、GlobalAgentPanelにフォーカスを移す
+  selectForProjectAgents: () => {
+    // プロジェクトエージェント（specId=''）を選択対象として設定
+    // selectedAgentIdをnullにリセットして、ProjectAgentPanelにフォーカスを移す
     set({ selectedAgentId: null });
   },
 }));

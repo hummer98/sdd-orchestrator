@@ -20,7 +20,7 @@ import {
   // Unified Commandset Install
   CommandsetInstallDialog,
   // Task 3, 4 (sidebar-refactor): サイドバー改善コンポーネント
-  GlobalAgentPanel,
+  ProjectAgentPanel,
   ErrorBanner,
   // Remote Access Dialog
   RemoteAccessDialog,
@@ -47,9 +47,9 @@ const BOTTOM_PANE_MAX = 400;
 // 右ペイン内のAgent一覧パネルの高さ制限
 const AGENT_LIST_MIN = 80;
 const AGENT_LIST_MAX = 400;
-// 左ペイン内のGlobalAgentPanelの高さ制限（global-agent-panel-always-visible feature）
-const GLOBAL_AGENT_PANEL_MIN = 80;
-const GLOBAL_AGENT_PANEL_MAX = 300;
+// 左ペイン内のProjectAgentPanelの高さ制限（project-agent-panel-always-visible feature）
+const PROJECT_AGENT_PANEL_MIN = 80;
+const PROJECT_AGENT_PANEL_MAX = 300;
 
 // デフォルトのレイアウト値（pane-layout-persistence feature）
 // layoutConfigService.tsのDEFAULT_LAYOUTと同一の値
@@ -58,7 +58,7 @@ const DEFAULT_LAYOUT = {
   rightPaneWidth: 320,   // w-80 = 20rem = 320px
   bottomPaneHeight: 192, // h-48 = 12rem = 192px
   agentListHeight: 160,  // Agent一覧パネルの高さ（右サイドバー）
-  globalAgentPanelHeight: 120, // GlobalAgentPanelの高さ（左サイドバー）
+  projectAgentPanelHeight: 120, // ProjectAgentPanelの高さ（左サイドバー）
 };
 
 export function App() {
@@ -100,8 +100,8 @@ export function App() {
   const [rightPaneWidth, setRightPaneWidth] = useState(DEFAULT_LAYOUT.rightPaneWidth);
   const [bottomPaneHeight, setBottomPaneHeight] = useState(DEFAULT_LAYOUT.bottomPaneHeight);
   const [agentListHeight, setAgentListHeight] = useState(DEFAULT_LAYOUT.agentListHeight);
-  // global-agent-panel-always-visible feature: GlobalAgentPanelの高さ状態
-  const [globalAgentPanelHeight, setGlobalAgentPanelHeight] = useState(DEFAULT_LAYOUT.globalAgentPanelHeight);
+  // project-agent-panel-always-visible feature: ProjectAgentPanelの高さ状態
+  const [projectAgentPanelHeight, setProjectAgentPanelHeight] = useState(DEFAULT_LAYOUT.projectAgentPanelHeight);
 
   // リサイズハンドラー
   const handleLeftResize = useCallback((delta: number) => {
@@ -120,11 +120,11 @@ export function App() {
     setAgentListHeight((prev) => Math.min(AGENT_LIST_MAX, Math.max(AGENT_LIST_MIN, prev + delta)));
   }, []);
 
-  // global-agent-panel-always-visible feature: GlobalAgentPanelリサイズハンドラー
+  // project-agent-panel-always-visible feature: ProjectAgentPanelリサイズハンドラー
   // パネルは上方向にリサイズするため、deltaを負に（上へドラッグするとパネルが大きくなる）
-  const handleGlobalAgentPanelResize = useCallback((delta: number) => {
-    setGlobalAgentPanelHeight((prev) =>
-      Math.min(GLOBAL_AGENT_PANEL_MAX, Math.max(GLOBAL_AGENT_PANEL_MIN, prev - delta))
+  const handleProjectAgentPanelResize = useCallback((delta: number) => {
+    setProjectAgentPanelHeight((prev) =>
+      Math.min(PROJECT_AGENT_PANEL_MAX, Math.max(PROJECT_AGENT_PANEL_MIN, prev - delta))
     );
   }, []);
 
@@ -138,13 +138,13 @@ export function App() {
         rightPaneWidth,
         bottomPaneHeight,
         agentListHeight,
-        globalAgentPanelHeight, // global-agent-panel-always-visible feature
+        projectAgentPanelHeight, // project-agent-panel-always-visible feature
       });
       console.log('[App] Layout config saved');
     } catch (error) {
       console.error('[App] Failed to save layout config:', error);
     }
-  }, [currentProject, leftPaneWidth, rightPaneWidth, bottomPaneHeight, agentListHeight, globalAgentPanelHeight]);
+  }, [currentProject, leftPaneWidth, rightPaneWidth, bottomPaneHeight, agentListHeight, projectAgentPanelHeight]);
 
   // レイアウト復元関数（pane-layout-persistence feature）
   // プロジェクトの設定ファイルからペインサイズを読み込む
@@ -156,8 +156,8 @@ export function App() {
         setRightPaneWidth(config.rightPaneWidth);
         setBottomPaneHeight(config.bottomPaneHeight);
         setAgentListHeight(config.agentListHeight);
-        // global-agent-panel-always-visible feature: 後方互換性（存在しない場合はデフォルト値）
-        setGlobalAgentPanelHeight(config.globalAgentPanelHeight ?? DEFAULT_LAYOUT.globalAgentPanelHeight);
+        // project-agent-panel-always-visible feature: 後方互換性（存在しない場合はデフォルト値）
+        setProjectAgentPanelHeight(config.projectAgentPanelHeight ?? DEFAULT_LAYOUT.projectAgentPanelHeight);
         console.log('[App] Layout config loaded:', config);
       } else {
         // 設定ファイルが存在しない場合はデフォルト値を使用
@@ -165,7 +165,7 @@ export function App() {
         setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
         setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
         setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-        setGlobalAgentPanelHeight(DEFAULT_LAYOUT.globalAgentPanelHeight);
+        setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
         console.log('[App] No layout config found, using defaults');
       }
     } catch (error) {
@@ -175,7 +175,7 @@ export function App() {
       setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
       setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
       setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-      setGlobalAgentPanelHeight(DEFAULT_LAYOUT.globalAgentPanelHeight);
+      setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
     }
   }, []);
 
@@ -186,7 +186,7 @@ export function App() {
     setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
     setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
     setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-    setGlobalAgentPanelHeight(DEFAULT_LAYOUT.globalAgentPanelHeight); // global-agent-panel-always-visible feature
+    setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight); // project-agent-panel-always-visible feature
 
     if (currentProject) {
       try {
@@ -549,16 +549,16 @@ export function App() {
               </div>
             )}
 
-            {/* 4. GlobalAgentPanel用リサイズハンドル（上方向にリサイズ） */}
-            <ResizeHandle direction="vertical" onResize={handleGlobalAgentPanelResize} onResizeEnd={saveLayout} />
+            {/* 4. ProjectAgentPanel用リサイズハンドル（上方向にリサイズ） */}
+            <ResizeHandle direction="vertical" onResize={handleProjectAgentPanelResize} onResizeEnd={saveLayout} />
 
-            {/* 5. GlobalAgentPanel (下部固定、リサイズ可能) */}
+            {/* 5. ProjectAgentPanel (下部固定、リサイズ可能) */}
             <div
-              style={{ height: globalAgentPanelHeight }}
+              style={{ height: projectAgentPanelHeight }}
               className="shrink-0 overflow-hidden"
-              data-testid="global-agent-panel-container"
+              data-testid="project-agent-panel-container"
             >
-              <GlobalAgentPanel />
+              <ProjectAgentPanel />
             </div>
           </aside>
 

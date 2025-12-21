@@ -24,7 +24,7 @@ interface CreateBugDialogProps {
  */
 export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): React.ReactElement | null {
   const { currentProject } = useProjectStore();
-  const { startAgent, selectForGlobalAgents, selectAgent } = useAgentStore();
+  const { startAgent, selectForProjectAgents, selectAgent } = useAgentStore();
   const { refreshBugs } = useBugStore();
 
   const [description, setDescription] = useState('');
@@ -83,8 +83,8 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
       );
 
       if (agentId) {
-        // Switch to global agents panel
-        selectForGlobalAgents();
+        // Switch to project agents panel
+        selectForProjectAgents();
         selectAgent(agentId);
 
         notify.success('バグレポート作成を開始しました');

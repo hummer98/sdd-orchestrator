@@ -25,7 +25,7 @@ vi.mock('../stores/bugStore', () => ({
 
 describe('CreateBugDialog', () => {
   const mockStartAgent = vi.fn();
-  const mockSelectForGlobalAgents = vi.fn();
+  const mockSelectForProjectAgents = vi.fn();
   const mockSelectAgent = vi.fn();
   const mockAddAgent = vi.fn();
   const mockRefreshBugs = vi.fn();
@@ -40,7 +40,7 @@ describe('CreateBugDialog', () => {
 
     (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       startAgent: mockStartAgent,
-      selectForGlobalAgents: mockSelectForGlobalAgents,
+      selectForProjectAgents: mockSelectForProjectAgents,
       selectAgent: mockSelectAgent,
       addAgent: mockAddAgent,
     });
@@ -254,7 +254,7 @@ describe('CreateBugDialog', () => {
       // and the agent flow completing successfully
     });
 
-    it('should switch to global agents panel on creation', async () => {
+    it('should switch to project agents panel on creation', async () => {
       mockStartAgent.mockResolvedValue('agent-123');
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
@@ -264,7 +264,7 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockSelectForGlobalAgents).toHaveBeenCalled();
+        expect(mockSelectForProjectAgents).toHaveBeenCalled();
         expect(mockSelectAgent).toHaveBeenCalledWith('agent-123');
       });
     });

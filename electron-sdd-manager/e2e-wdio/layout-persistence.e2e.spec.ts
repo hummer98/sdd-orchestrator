@@ -182,45 +182,45 @@ describe('Layout Persistence E2E', () => {
   });
 
   // ============================================================
-  // GlobalAgentPanelコンポーネント (global-agent-panel-always-visible feature)
+  // ProjectAgentPanelコンポーネント (project-agent-panel-always-visible feature)
   // ============================================================
-  describe('GlobalAgentPanelコンポーネント', () => {
-    it('GlobalAgentPanelが常に表示される（0件時も）', async () => {
-      const panel = await $('[data-testid="global-agent-panel"]');
+  describe('ProjectAgentPanelコンポーネント', () => {
+    it('ProjectAgentPanelが常に表示される（0件時も）', async () => {
+      const panel = await $('[data-testid="project-agent-panel"]');
       const exists = await panel.isExisting();
       expect(exists).toBe(true);
     });
 
-    it('GlobalAgentPanelのコンテナが存在する', async () => {
-      const container = await $('[data-testid="global-agent-panel-container"]');
+    it('ProjectAgentPanelのコンテナが存在する', async () => {
+      const container = await $('[data-testid="project-agent-panel-container"]');
       const exists = await container.isExisting();
       expect(exists).toBe(true);
     });
 
-    it('GlobalAgentPanelのヘッダーが存在する', async () => {
-      const header = await $('[data-testid="global-agent-panel-header"]');
+    it('ProjectAgentPanelのヘッダーが存在する', async () => {
+      const header = await $('[data-testid="project-agent-panel-header"]');
       const exists = await header.isExisting();
       expect(exists).toBe(true);
     });
 
-    it('GlobalAgentPanelに0件時の空状態メッセージまたはエージェントリストが表示される', async () => {
-      const emptyState = await $('[data-testid="global-agent-panel-empty"]');
+    it('ProjectAgentPanelに0件時の空状態メッセージまたはエージェントリストが表示される', async () => {
+      const emptyState = await $('[data-testid="project-agent-panel-empty"]');
       const emptyExists = await emptyState.isExisting();
 
       if (emptyExists) {
         // 0件の場合は空状態メッセージが表示される
         const text = await emptyState.getText();
-        expect(text).toContain('グローバルエージェントなし');
+        expect(text).toContain('プロジェクトエージェントなし');
       } else {
         // エージェントが存在する場合はパネル自体が表示されている
-        const panel = await $('[data-testid="global-agent-panel"]');
+        const panel = await $('[data-testid="project-agent-panel"]');
         expect(await panel.isExisting()).toBe(true);
       }
     });
 
-    it('GlobalAgentPanel上部にリサイズハンドルが配置されている', async () => {
-      // GlobalAgentPanelコンテナの直前にリサイズハンドルがある
-      const container = await $('[data-testid="global-agent-panel-container"]');
+    it('ProjectAgentPanel上部にリサイズハンドルが配置されている', async () => {
+      // ProjectAgentPanelコンテナの直前にリサイズハンドルがある
+      const container = await $('[data-testid="project-agent-panel-container"]');
       if (await container.isExisting()) {
         // コンテナが存在すればリサイズハンドルも配置済み
         const verticalHandles = await $$('[data-testid="resize-handle-vertical"]');
@@ -230,18 +230,18 @@ describe('Layout Persistence E2E', () => {
   });
 
   // ============================================================
-  // GlobalAgentPanelレイアウト保存・復元 (global-agent-panel-always-visible feature)
+  // ProjectAgentPanelレイアウト保存・復元 (project-agent-panel-always-visible feature)
   // ============================================================
-  describe('GlobalAgentPanelレイアウト保存・復元', () => {
-    it('GlobalAgentPanelの高さが取得できる', async () => {
-      const container = await $('[data-testid="global-agent-panel-container"]');
+  describe('ProjectAgentPanelレイアウト保存・復元', () => {
+    it('ProjectAgentPanelの高さが取得できる', async () => {
+      const container = await $('[data-testid="project-agent-panel-container"]');
       if (await container.isExisting()) {
         const size = await container.getSize();
         expect(size.height).toBeGreaterThan(0);
       }
     });
 
-    it('saveLayoutConfigにglobalAgentPanelHeightを渡せる', async () => {
+    it('saveLayoutConfigにprojectAgentPanelHeightを渡せる', async () => {
       const canSave = await browser.execute(async () => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.saveLayoutConfig !== 'function') {
@@ -254,7 +254,7 @@ describe('Layout Persistence E2E', () => {
             rightPaneWidth: 320,
             bottomPaneHeight: 192,
             agentListHeight: 160,
-            globalAgentPanelHeight: 150, // カスタム値
+            projectAgentPanelHeight: 150, // カスタム値
           });
           return true;
         } catch {
@@ -264,7 +264,7 @@ describe('Layout Persistence E2E', () => {
       expect(canSave).toBe(true);
     });
 
-    it('loadLayoutConfigでglobalAgentPanelHeightが復元される', async () => {
+    it('loadLayoutConfigでprojectAgentPanelHeightが復元される', async () => {
       const loadedHeight = await browser.execute(async () => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.loadLayoutConfig !== 'function') {
@@ -272,7 +272,7 @@ describe('Layout Persistence E2E', () => {
         }
         try {
           const config = await window.electronAPI.loadLayoutConfig();
-          return config?.globalAgentPanelHeight ?? null;
+          return config?.projectAgentPanelHeight ?? null;
         } catch {
           return null;
         }
@@ -286,7 +286,7 @@ describe('Layout Persistence E2E', () => {
       const initialHeight = await browser.execute(async () => {
         if (typeof window.electronAPI === 'undefined') return null;
         const config = await window.electronAPI.loadLayoutConfig();
-        return config?.globalAgentPanelHeight ?? 120;
+        return config?.projectAgentPanelHeight ?? 120;
       });
 
       if (initialHeight === null) {
@@ -303,20 +303,20 @@ describe('Layout Persistence E2E', () => {
           rightPaneWidth: 320,
           bottomPaneHeight: 192,
           agentListHeight: 160,
-          globalAgentPanelHeight: height,
+          projectAgentPanelHeight: height,
         });
       }, newHeight);
 
       // 3. 読み込んで確認
       const savedHeight = await browser.execute(async () => {
         const config = await window.electronAPI.loadLayoutConfig();
-        return config?.globalAgentPanelHeight;
+        return config?.projectAgentPanelHeight;
       });
 
       expect(savedHeight).toBe(newHeight);
     });
 
-    it('resetLayoutConfigでglobalAgentPanelHeightがデフォルト値に戻る', async () => {
+    it('resetLayoutConfigでprojectAgentPanelHeightがデフォルト値に戻る', async () => {
       const resetResult = await browser.execute(async () => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.resetLayoutConfig !== 'function') {
@@ -329,7 +329,7 @@ describe('Layout Persistence E2E', () => {
           const config = await window.electronAPI.loadLayoutConfig();
           return {
             success: true,
-            height: config?.globalAgentPanelHeight ?? null,
+            height: config?.projectAgentPanelHeight ?? null,
           };
         } catch {
           return { success: false, height: null };

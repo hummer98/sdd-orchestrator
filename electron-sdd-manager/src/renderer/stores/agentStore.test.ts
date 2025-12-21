@@ -648,79 +648,79 @@ describe('useAgentStore', () => {
     });
 
     // ============================================================
-    // Task 4.1: getGlobalAgents
+    // Task 4.1: getProjectAgents
     // Requirements: 4.2 (sidebar-refactor)
-    // グローバルエージェント（specIdが空文字、null、undefined）を取得
+    // プロジェクトエージェント（specIdが空文字、null、undefined）を取得
     // ============================================================
-    describe('getGlobalAgents', () => {
+    describe('getProjectAgents', () => {
       it('should return agents with empty string specId', () => {
-        const globalAgent: AgentInfo = {
+        const projectAgent: AgentInfo = {
           ...mockAgentInfo,
-          agentId: 'global-agent-1',
-          specId: '', // 空文字列 = グローバル
-          phase: 'global-task',
+          agentId: 'project-agent-1',
+          specId: '', // 空文字列 = プロジェクトエージェント
+          phase: 'project-task',
         };
         const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [globalAgent]);
+        agents.set('', [projectAgent]);
         agents.set('spec-1', [mockAgentInfo]);
         useAgentStore.setState({ agents });
 
-        const globalAgents = useAgentStore.getState().getGlobalAgents();
-        expect(globalAgents).toHaveLength(1);
-        expect(globalAgents[0].agentId).toBe('global-agent-1');
+        const projectAgents = useAgentStore.getState().getProjectAgents();
+        expect(projectAgents).toHaveLength(1);
+        expect(projectAgents[0].agentId).toBe('project-agent-1');
       });
 
-      it('should return empty array when no global agents exist', () => {
+      it('should return empty array when no project agents exist', () => {
         const agents = new Map<string, AgentInfo[]>();
         agents.set('spec-1', [mockAgentInfo]);
         agents.set('spec-2', [mockAgentInfo3]);
         useAgentStore.setState({ agents });
 
-        const globalAgents = useAgentStore.getState().getGlobalAgents();
-        expect(globalAgents).toEqual([]);
+        const projectAgents = useAgentStore.getState().getProjectAgents();
+        expect(projectAgents).toEqual([]);
       });
 
-      it('should return all global agents from empty specId key', () => {
-        const globalAgent1: AgentInfo = {
+      it('should return all project agents from empty specId key', () => {
+        const projectAgent1: AgentInfo = {
           ...mockAgentInfo,
-          agentId: 'global-1',
+          agentId: 'project-1',
           specId: '',
           phase: 'steering',
         };
-        const globalAgent2: AgentInfo = {
+        const projectAgent2: AgentInfo = {
           ...mockAgentInfo2,
-          agentId: 'global-2',
+          agentId: 'project-2',
           specId: '',
           phase: 'bug-fix',
         };
         const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [globalAgent1, globalAgent2]);
+        agents.set('', [projectAgent1, projectAgent2]);
         useAgentStore.setState({ agents });
 
-        const globalAgents = useAgentStore.getState().getGlobalAgents();
-        expect(globalAgents).toHaveLength(2);
-        expect(globalAgents[0].agentId).toBe('global-1');
-        expect(globalAgents[1].agentId).toBe('global-2');
+        const projectAgents = useAgentStore.getState().getProjectAgents();
+        expect(projectAgents).toHaveLength(2);
+        expect(projectAgents[0].agentId).toBe('project-1');
+        expect(projectAgents[1].agentId).toBe('project-2');
       });
 
       it('should not include agents with non-empty specId', () => {
-        const globalAgent: AgentInfo = {
+        const projectAgent: AgentInfo = {
           ...mockAgentInfo,
-          agentId: 'global-1',
+          agentId: 'project-1',
           specId: '',
-          phase: 'global-task',
+          phase: 'project-task',
         };
         const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [globalAgent]);
+        agents.set('', [projectAgent]);
         agents.set('spec-1', [mockAgentInfo]);
         agents.set('spec-2', [mockAgentInfo3]);
         useAgentStore.setState({ agents });
 
-        const globalAgents = useAgentStore.getState().getGlobalAgents();
-        expect(globalAgents).toHaveLength(1);
+        const projectAgents = useAgentStore.getState().getProjectAgents();
+        expect(projectAgents).toHaveLength(1);
         // spec-1やspec-2のエージェントは含まれない
-        expect(globalAgents.some(a => a.specId === 'spec-1')).toBe(false);
-        expect(globalAgents.some(a => a.specId === 'spec-2')).toBe(false);
+        expect(projectAgents.some(a => a.specId === 'spec-1')).toBe(false);
+        expect(projectAgents.some(a => a.specId === 'spec-2')).toBe(false);
       });
     });
 

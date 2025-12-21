@@ -355,17 +355,17 @@ describe('AgentListPanel - Task 30', () => {
       expect(mockSelectAgent).toHaveBeenCalledWith('agent-running');
     });
 
-    it('should not auto-select if a global agent is currently selected', () => {
-      const globalAgent = { ...baseAgentInfo, agentId: 'global-agent-1', specId: '' };
+    it('should not auto-select if a project agent is currently selected', () => {
+      const projectAgent = { ...baseAgentInfo, agentId: 'project-agent-1', specId: '' };
       const specAgent = { ...baseAgentInfo, agentId: 'spec-agent-1', specId: 'spec-1' };
       mockGetAgentsForSpec.mockReturnValue([specAgent]);
       mockGetAgentById.mockImplementation((agentId: string) => {
-        if (agentId === 'global-agent-1') return globalAgent;
+        if (agentId === 'project-agent-1') return projectAgent;
         if (agentId === 'spec-agent-1') return specAgent;
         return undefined;
       });
       mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'global-agent-1', // Global agent is selected
+        selectedAgentId: 'project-agent-1', // Project agent is selected
         stopAgent: mockStopAgent,
         resumeAgent: mockResumeAgent,
         selectAgent: mockSelectAgent,
@@ -373,12 +373,12 @@ describe('AgentListPanel - Task 30', () => {
         getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
-        agents: new Map([['global-agent-1', globalAgent], ['spec-agent-1', specAgent]]),
+        agents: new Map([['project-agent-1', projectAgent], ['spec-agent-1', specAgent]]),
       });
 
       render(<AgentListPanel />);
 
-      // Should NOT auto-select because a global agent is selected
+      // Should NOT auto-select because a project agent is selected
       expect(mockSelectAgent).not.toHaveBeenCalled();
     });
   });

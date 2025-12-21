@@ -94,8 +94,8 @@ export function AgentListPanel() {
   useEffect(() => {
     if (!selectedSpec) return;
 
-    // Skip auto-select if a global agent is currently selected
-    // (Global agents have specId === '')
+    // Skip auto-select if a project agent is currently selected
+    // (Project agents have specId === '')
     if (selectedAgentId) {
       const currentAgent = getAgentById(selectedAgentId);
       if (currentAgent && currentAgent.specId === '') return;

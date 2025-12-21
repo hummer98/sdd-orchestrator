@@ -1,6 +1,6 @@
 /**
- * GlobalAgentPanel Component
- * Displays list of global SDD Agents (agents not bound to a specific spec)
+ * ProjectAgentPanel Component
+ * Displays list of project-level SDD Agents (agents not bound to a specific spec)
  * Task 4.2, 4.3 (sidebar-refactor)
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
  */
@@ -53,19 +53,19 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; ico
   },
 };
 
-interface GlobalAgentPanelProps {
+interface ProjectAgentPanelProps {
   /** 折りたたみ状態 */
   collapsed?: boolean;
   /** 折りたたみ状態変更コールバック */
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPanelProps) {
-  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getGlobalAgents, removeAgent } = useAgentStore();
+export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgentPanelProps) {
+  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getProjectAgents, removeAgent } = useAgentStore();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
-  const globalAgents = getGlobalAgents()
+  const projectAgents = getProjectAgents()
     // Sort: running first, then by startedAt descending (newest first)
     .sort((a, b) => {
       // Running agents first
@@ -75,7 +75,7 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
 
-  // global-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
+  // project-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
 
   const isCollapsed = collapsed !== undefined ? collapsed : internalCollapsed;
 
@@ -116,12 +116,12 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
 
   return (
     <div
-      data-testid="global-agent-panel"
+      data-testid="project-agent-panel"
       className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
     >
       {/* Header */}
       <div
-        data-testid="global-agent-panel-header"
+        data-testid="project-agent-panel-header"
         onClick={handleToggleCollapse}
         className={clsx(
           'flex items-center gap-2 px-4 py-2 cursor-pointer',
@@ -135,26 +135,26 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
         )}
         <Bot className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Global Agent
+          Project Agent
         </span>
         <span className="text-xs text-gray-400">
-          ({globalAgents.length})
+          ({projectAgents.length})
         </span>
       </div>
 
       {/* Agent List or Empty State */}
       {!isCollapsed && (
-        globalAgents.length === 0 ? (
+        projectAgents.length === 0 ? (
           <div
-            data-testid="global-agent-panel-empty"
+            data-testid="project-agent-panel-empty"
             className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
           >
-            グローバルエージェントなし
+            プロジェクトエージェントなし
           </div>
         ) : (
           <ul className="px-2 pb-2 space-y-1">
-            {globalAgents.map((agent) => (
-              <GlobalAgentListItem
+            {projectAgents.map((agent) => (
+              <ProjectAgentListItem
                 key={agent.agentId}
                 agent={agent}
                 isSelected={selectedAgentId === agent.agentId}
@@ -199,7 +199,7 @@ export function GlobalAgentPanel({ collapsed, onCollapsedChange }: GlobalAgentPa
   );
 }
 
-interface GlobalAgentListItemProps {
+interface ProjectAgentListItemProps {
   agent: AgentInfo;
   isSelected: boolean;
   onSelect: () => void;
@@ -208,7 +208,7 @@ interface GlobalAgentListItemProps {
   onRemove: (e: React.MouseEvent) => void;
 }
 
-function GlobalAgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove }: GlobalAgentListItemProps) {
+function ProjectAgentListItem({ agent, isSelected, onSelect, onStop, onResume, onRemove }: ProjectAgentListItemProps) {
   const statusConfig = STATUS_CONFIG[agent.status];
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
   const showResumeButton = agent.status === 'interrupted';
@@ -237,7 +237,7 @@ function GlobalAgentListItem({ agent, isSelected, onSelect, onStop, onResume, on
 
   return (
     <li
-      data-testid={`global-agent-item-${agent.agentId}`}
+      data-testid={`project-agent-item-${agent.agentId}`}
       title={`${agent.agentId} / ${agent.sessionId}`}
       onClick={onSelect}
       className={clsx(

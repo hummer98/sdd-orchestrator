@@ -17,7 +17,7 @@ interface CreateSpecDialogProps {
 
 export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const { currentProject } = useProjectStore();
-  const { selectForGlobalAgents, selectAgent, addAgent } = useAgentStore();
+  const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
   const { commandPrefix } = useWorkflowStore();
 
   const [description, setDescription] = useState('');
@@ -47,12 +47,12 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
       // Don't wait for completion - just start the agent and close dialog
       const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed, commandPrefix);
 
-      // Task 5.2.4: エージェントをストアに追加し、グローバルエージェントパネルに遷移
+      // Task 5.2.4: エージェントをストアに追加し、プロジェクトエージェントパネルに遷移
       addAgent('', agentInfo);
-      selectForGlobalAgents();
+      selectForProjectAgents();
       selectAgent(agentInfo.agentId);
 
-      notify.success('仕様作成を開始しました（グローバルAgentパネルで進捗を確認できます）');
+      notify.success('仕様作成を開始しました（プロジェクトAgentパネルで進捗を確認できます）');
       handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : '仕様の作成に失敗しました');

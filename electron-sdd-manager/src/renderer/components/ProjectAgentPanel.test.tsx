@@ -1,18 +1,18 @@
 /**
- * GlobalAgentPanel Component Tests
- * TDD: Testing global agent panel display and interactions
+ * ProjectAgentPanel Component Tests
+ * TDD: Testing project agent panel display and interactions
  * Task 4.2, 4.3 (sidebar-refactor)
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { GlobalAgentPanel } from './GlobalAgentPanel';
+import { ProjectAgentPanel } from './ProjectAgentPanel';
 import { useAgentStore, type AgentInfo, type AgentStatus } from '../stores/agentStore';
 
 // Mock agent data
-const mockGlobalAgent1: AgentInfo = {
-  agentId: 'global-1',
+const mockProjectAgent1: AgentInfo = {
+  agentId: 'project-1',
   specId: '',
   phase: 'steering',
   pid: 12345,
@@ -23,8 +23,8 @@ const mockGlobalAgent1: AgentInfo = {
   command: 'claude',
 };
 
-const mockGlobalAgent2: AgentInfo = {
-  agentId: 'global-2',
+const mockProjectAgent2: AgentInfo = {
+  agentId: 'project-2',
   specId: '',
   phase: 'bug-fix',
   pid: 12346,
@@ -35,8 +35,8 @@ const mockGlobalAgent2: AgentInfo = {
   command: 'claude',
 };
 
-const mockGlobalAgent3: AgentInfo = {
-  agentId: 'global-3',
+const mockProjectAgent3: AgentInfo = {
+  agentId: 'project-3',
   specId: '',
   phase: 'failed-task',
   pid: 12347,
@@ -47,7 +47,7 @@ const mockGlobalAgent3: AgentInfo = {
   command: 'claude',
 };
 
-describe('GlobalAgentPanel', () => {
+describe('ProjectAgentPanel', () => {
   beforeEach(() => {
     // Reset store state
     useAgentStore.setState({
@@ -61,148 +61,148 @@ describe('GlobalAgentPanel', () => {
   });
 
   // ============================================================
-  // Task 4.2: グローバルエージェント一覧表示
+  // Task 4.2: プロジェクトエージェント一覧表示
   // Requirements: 4.1, 4.3, 4.5
   // ============================================================
-  describe('Task 4.2: Global agent list display', () => {
-    it('should render header with "Global Agent" title when agents exist', () => {
+  describe('Task 4.2: Project agent list display', () => {
+    it('should render header with "Project Agent" title when agents exist', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
-      expect(screen.getByText('Global Agent')).toBeInTheDocument();
+      render(<ProjectAgentPanel />);
+      expect(screen.getByText('Project Agent')).toBeInTheDocument();
     });
 
-    it('should render panel even when no global agents exist (always visible)', () => {
-      // global-agent-panel-always-visible feature: 0件でもパネルを表示
-      render(<GlobalAgentPanel />);
-      expect(screen.getByTestId('global-agent-panel')).toBeInTheDocument();
+    it('should render panel even when no project agents exist (always visible)', () => {
+      // project-agent-panel-always-visible feature: 0件でもパネルを表示
+      render(<ProjectAgentPanel />);
+      expect(screen.getByTestId('project-agent-panel')).toBeInTheDocument();
     });
 
-    it('should display empty state message when no global agents exist', () => {
-      // global-agent-panel-always-visible feature: 0件時に空状態メッセージを表示
-      render(<GlobalAgentPanel />);
-      expect(screen.getByText('グローバルエージェントなし')).toBeInTheDocument();
+    it('should display empty state message when no project agents exist', () => {
+      // project-agent-panel-always-visible feature: 0件時に空状態メッセージを表示
+      render(<ProjectAgentPanel />);
+      expect(screen.getByText('プロジェクトエージェントなし')).toBeInTheDocument();
     });
 
     it('should hide empty state message when agents exist', () => {
-      // global-agent-panel-always-visible feature: エージェントがある場合は空状態メッセージを非表示
+      // project-agent-panel-always-visible feature: エージェントがある場合は空状態メッセージを非表示
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
-      expect(screen.queryByText('グローバルエージェントなし')).not.toBeInTheDocument();
+      render(<ProjectAgentPanel />);
+      expect(screen.queryByText('プロジェクトエージェントなし')).not.toBeInTheDocument();
     });
 
     it('should hide empty state message when collapsed', () => {
-      // global-agent-panel-always-visible feature: 折りたたみ時は空状態メッセージも非表示
-      render(<GlobalAgentPanel collapsed={true} />);
-      expect(screen.queryByText('グローバルエージェントなし')).not.toBeInTheDocument();
+      // project-agent-panel-always-visible feature: 折りたたみ時は空状態メッセージも非表示
+      render(<ProjectAgentPanel collapsed={true} />);
+      expect(screen.queryByText('プロジェクトエージェントなし')).not.toBeInTheDocument();
     });
 
-    it('should render panel when global agents exist', () => {
+    it('should render panel when project agents exist', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
-      expect(screen.getByTestId('global-agent-panel')).toBeInTheDocument();
+      render(<ProjectAgentPanel />);
+      expect(screen.getByTestId('project-agent-panel')).toBeInTheDocument();
     });
 
-    it('should display all global agents', () => {
+    it('should display all project agents', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1, mockGlobalAgent2]);
+      agents.set('', [mockProjectAgent1, mockProjectAgent2]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByText('steering')).toBeInTheDocument();
       expect(screen.getByText('bug-fix')).toBeInTheDocument();
     });
 
     it('should display agent count badge', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1, mockGlobalAgent2, mockGlobalAgent3]);
+      agents.set('', [mockProjectAgent1, mockProjectAgent2, mockProjectAgent3]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByText('(3)')).toBeInTheDocument();
     });
 
     it('should display status icon for running agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]); // status: running
+      agents.set('', [mockProjectAgent1]); // status: running
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByText('実行中')).toBeInTheDocument();
     });
 
     it('should display status icon for completed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent2]); // status: completed
+      agents.set('', [mockProjectAgent2]); // status: completed
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByText('完了')).toBeInTheDocument();
     });
 
     it('should display status icon for failed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent3]); // status: failed
+      agents.set('', [mockProjectAgent3]); // status: failed
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByText('失敗')).toBeInTheDocument();
     });
   });
 
   // ============================================================
-  // Task 4.3: グローバルエージェントの操作機能
+  // Task 4.3: プロジェクトエージェントの操作機能
   // Requirements: 4.4, 4.6
   // ============================================================
-  describe('Task 4.3: Global agent interactions', () => {
+  describe('Task 4.3: Project agent interactions', () => {
     it('should select agent when clicked', async () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
 
-      const agentItem = screen.getByTestId('global-agent-item-global-1');
+      const agentItem = screen.getByTestId('project-agent-item-project-1');
       fireEvent.click(agentItem);
 
       // selectAgentが呼ばれて、selectedAgentIdが更新される
-      expect(useAgentStore.getState().selectedAgentId).toBe('global-1');
+      expect(useAgentStore.getState().selectedAgentId).toBe('project-1');
     });
 
     it('should highlight selected agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1, mockGlobalAgent2]);
-      useAgentStore.setState({ agents, selectedAgentId: 'global-1' });
+      agents.set('', [mockProjectAgent1, mockProjectAgent2]);
+      useAgentStore.setState({ agents, selectedAgentId: 'project-1' });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
 
-      const selectedItem = screen.getByTestId('global-agent-item-global-1');
+      const selectedItem = screen.getByTestId('project-agent-item-project-1');
       expect(selectedItem).toHaveClass('bg-blue-50');
     });
 
     it('should show stop button for running agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]); // status: running
+      agents.set('', [mockProjectAgent1]); // status: running
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.getByRole('button', { name: /停止/i })).toBeInTheDocument();
     });
 
     it('should not show stop button for completed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent2]); // status: completed
+      agents.set('', [mockProjectAgent2]); // status: completed
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel />);
+      render(<ProjectAgentPanel />);
       expect(screen.queryByRole('button', { name: /停止/i })).not.toBeInTheDocument();
     });
   });
@@ -213,10 +213,10 @@ describe('GlobalAgentPanel', () => {
   describe('Collapse functionality', () => {
     it('should allow collapsing the panel', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel collapsed={false} />);
+      render(<ProjectAgentPanel collapsed={false} />);
 
       // Initially expanded, agents visible
       expect(screen.getByText('steering')).toBeInTheDocument();
@@ -224,10 +224,10 @@ describe('GlobalAgentPanel', () => {
 
     it('should hide agent list when collapsed', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
-      render(<GlobalAgentPanel collapsed={true} />);
+      render(<ProjectAgentPanel collapsed={true} />);
 
       // When collapsed, agent list is hidden
       expect(screen.queryByText('steering')).not.toBeInTheDocument();
@@ -235,13 +235,13 @@ describe('GlobalAgentPanel', () => {
 
     it('should call onCollapsedChange when header is clicked', () => {
       const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockGlobalAgent1]);
+      agents.set('', [mockProjectAgent1]);
       useAgentStore.setState({ agents });
 
       const onCollapsedChange = vi.fn();
-      render(<GlobalAgentPanel collapsed={false} onCollapsedChange={onCollapsedChange} />);
+      render(<ProjectAgentPanel collapsed={false} onCollapsedChange={onCollapsedChange} />);
 
-      const header = screen.getByTestId('global-agent-panel-header');
+      const header = screen.getByTestId('project-agent-panel-header');
       fireEvent.click(header);
 
       expect(onCollapsedChange).toHaveBeenCalledWith(true);

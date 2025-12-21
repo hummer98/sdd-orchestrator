@@ -139,7 +139,7 @@ describe('CreateSpecDialog', () => {
       expect(window.electronAPI.createSpec).not.toHaveBeenCalled();
     });
 
-    // 5.2.4 CreateSpecDialogの修正: ダイアログを閉じてグローバルエージェントパネルに遷移
+    // 5.2.4 CreateSpecDialogの修正: ダイアログを閉じてプロジェクトエージェントパネルに遷移
     it('should close dialog immediately after starting agent (not wait for completion)', async () => {
       // Mock a slow response to ensure dialog closes before completion
       window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
@@ -160,9 +160,9 @@ describe('CreateSpecDialog', () => {
       }, { timeout: 1000 });
     });
 
-    it('should select global agent panel after creating spec', async () => {
-      const selectForGlobalAgents = vi.fn();
-      useAgentStore.setState({ selectForGlobalAgents });
+    it('should select project agent panel after creating spec', async () => {
+      const selectForProjectAgents = vi.fn();
+      useAgentStore.setState({ selectForProjectAgents });
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
@@ -173,8 +173,8 @@ describe('CreateSpecDialog', () => {
       fireEvent.click(createButton);
 
       await waitFor(() => {
-        // Should navigate to global agent panel (specId='')
-        expect(selectForGlobalAgents).toHaveBeenCalled();
+        // Should navigate to project agent panel (specId='')
+        expect(selectForProjectAgents).toHaveBeenCalled();
       });
     });
   });

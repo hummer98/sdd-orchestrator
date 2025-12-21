@@ -43,7 +43,8 @@ When `--fix` flag is present:
 1. Read existing `document-review-{n}-reply.md`
 2. Parse the "Files to Modify" section and "Action Items" from each issue
 3. Apply ONLY the items marked as "Fix Required" ✅
-4. Report changes made
+4. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
+5. Report changes made
 
 **Do NOT**:
 - Re-evaluate issues
@@ -190,7 +191,7 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. Note the changes made in the reply document
+2. **Append "Applied Fixes" section** to the reply document (see format below)
 
 #### If no flag is present (default):
 
@@ -217,6 +218,58 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 - DO NOT include next step guidance in spec documents
 - Focus purely on generating reply and optionally applying fixes
 - Keep reply document self-contained
+
+---
+
+## Applied Fixes Section Format
+
+When `--fix` or `--autofix` applies modifications, append the following section to the end of `document-review-{n}-reply.md`:
+
+```markdown
+---
+
+## Applied Fixes
+
+**Applied Date**: {YYYY-MM-DD}
+**Applied By**: {--fix | --autofix}
+
+### Summary
+
+| File | Changes Applied |
+| ---- | --------------- |
+| {file} | {brief description of changes} |
+
+### Details
+
+#### {file1}
+
+**Issue(s) Addressed**: C{n}, W{n}, ...
+
+**Changes**:
+- {specific change 1}
+- {specific change 2}
+
+**Diff Summary**:
+```diff
+- {old content}
++ {new content}
+```
+
+#### {file2}
+
+...
+
+---
+
+_Fixes applied by document-review-reply command._
+```
+
+**Important**:
+- Include actual diff snippets showing what was changed
+- Reference which issue(s) each change addresses
+- Keep descriptions concise but specific
+
+---
 
 ## Output Summary
 

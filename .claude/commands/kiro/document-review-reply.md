@@ -50,7 +50,8 @@ When `--fix` flag is present:
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
-5. Report changes made
+5. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
+6. Report changes made
 
 **Do NOT**:
 - Re-evaluate issues
@@ -205,7 +206,7 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
-3. Note the changes made in the reply document
+3. **Append "Applied Fixes" section** to the reply document (see format below)
 
 #### If no flag is present (default):
 
@@ -223,6 +224,56 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 - List items marked as Needs Discussion
 - Suggest what additional information is needed
+
+---
+
+## Applied Fixes Section Format
+
+When `--fix` or `--autofix` applies modifications, append the following section to the end of `document-review-{n}-reply.md`:
+
+```markdown
+---
+
+## Applied Fixes
+
+**Applied Date**: {YYYY-MM-DD}
+**Applied By**: {--fix | --autofix}
+
+### Summary
+
+| File | Changes Applied |
+| ---- | --------------- |
+| {file} | {brief description of changes} |
+
+### Details
+
+#### {file1}
+
+**Issue(s) Addressed**: C{n}, W{n}, ...
+
+**Changes**:
+- {specific change 1}
+- {specific change 2}
+
+**Diff Summary**:
+```diff
+- {old content}
++ {new content}
+```
+
+#### {file2}
+
+...
+
+---
+
+_Fixes applied by document-review-reply command._
+```
+
+**Important**:
+- Include actual diff snippets showing what was changed
+- Reference which issue(s) each change addresses
+- Keep descriptions concise but specific
 
 ---
 

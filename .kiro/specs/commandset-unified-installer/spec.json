@@ -1,7 +1,7 @@
 {
   "feature_name": "commandset-unified-installer",
   "created_at": "2025-12-17T09:30:00Z",
-  "updated_at": "2025-12-18T15:21:27.424Z",
+  "updated_at": "2025-12-21T17:27:13.839Z",
   "language": "ja",
   "phase": "implementation-in-progress",
   "approvals": {
@@ -22,12 +22,6 @@
   "documentReview": {
     "totalRounds": 1,
     "roundDetails": [
-      {
-        "round": 1,
-        "reviewDate": "2025-12-17",
-        "replyDate": "2025-12-17",
-        "fixApplied": true
-      },
       {
         "roundNumber": 1,
         "status": "reply_complete"

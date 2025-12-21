@@ -93,6 +93,7 @@ class WebSocketManager {
 
   /**
    * Handle WebSocket open event
+   * Task 4.1: Include GET_BUGS in initial state request
    */
   handleOpen() {
     console.log('[WS] Connected');
@@ -103,8 +104,9 @@ class WebSocketManager {
 
     this.emit('connected');
 
-    // Request initial state
+    // Request initial state (specs and bugs)
     this.send({ type: 'GET_SPECS' });
+    this.send({ type: 'GET_BUGS' });
   }
 
   /**
@@ -283,6 +285,52 @@ class WebSocketManager {
       isReconnecting: this.isReconnecting,
       reconnectAttempts: this.reconnectAttempts,
     };
+  }
+
+  // ============================================================
+  // Task 4.2: New message sending functions for bug/validation/review
+  // ============================================================
+
+  /**
+   * Request bugs list from server
+   */
+  requestBugs() {
+    return this.send({ type: 'GET_BUGS' });
+  }
+
+  /**
+   * Execute a bug phase (analyze/fix/verify)
+   * @param {string} bugName - Name of the bug
+   * @param {string} phase - Phase to execute ('analyze' | 'fix' | 'verify')
+   */
+  executeBugPhase(bugName, phase) {
+    return this.send({
+      type: 'EXECUTE_BUG_PHASE',
+      payload: { bugName, phase },
+    });
+  }
+
+  /**
+   * Execute validation (gap/design)
+   * @param {string} specId - Spec ID
+   * @param {string} type - Validation type ('gap' | 'design')
+   */
+  executeValidation(specId, type) {
+    return this.send({
+      type: 'EXECUTE_VALIDATION',
+      payload: { specId, type },
+    });
+  }
+
+  /**
+   * Execute document review
+   * @param {string} specId - Spec ID
+   */
+  executeDocumentReview(specId) {
+    return this.send({
+      type: 'EXECUTE_DOCUMENT_REVIEW',
+      payload: { specId },
+    });
   }
 }
 

@@ -7,7 +7,7 @@
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
-import { createAgentProcess, AgentProcess } from './agentProcess';
+import { createAgentProcess, AgentProcess, getClaudeCommand } from './agentProcess';
 import {
   createProviderAgentProcess,
   getProviderTypeFromPath,
@@ -787,7 +787,7 @@ export class SpecManagerService {
       resumePrompt,
       allowedTools,
     });
-    const command = 'claude';
+    const command = getClaudeCommand();
     const now = new Date().toISOString();
 
     try {
@@ -961,7 +961,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase,
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group,
     });
@@ -981,7 +981,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase,
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'validate',
     });
@@ -997,7 +997,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'status',
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'doc',
     });
@@ -1016,7 +1016,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: `impl-${taskId}`,
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${implCommand} ${featureName} ${taskId}` }),
       group: 'impl',
     });
@@ -1039,7 +1039,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'document-review',
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'doc',
     });
@@ -1058,7 +1058,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'document-review-reply',
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber}` }),
       group: 'doc',
     });
@@ -1077,7 +1077,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'document-review-fix',
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
       group: 'doc',
     });
@@ -1221,7 +1221,7 @@ export class SpecManagerService {
       const result = await this.startAgent({
         specId,
         phase: phase === 'impl' && taskId ? `spec-manager-impl-${taskId}` : `spec-manager-${phase}`,
-        command: 'claude',
+        command: getClaudeCommand(),
         args: commandArgs,
         group: phase === 'impl' ? 'impl' : 'doc',
       });
@@ -1289,7 +1289,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId: originalAgent.specId,
       phase: originalAgent.phase,
-      command: 'claude',
+      command: getClaudeCommand(),
       args: buildClaudeArgs({
         resumeSessionId: sessionId,
         resumePrompt: 'continue',

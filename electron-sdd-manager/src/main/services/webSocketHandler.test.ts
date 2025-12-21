@@ -1012,3 +1012,679 @@ describe('WebSocketHandler - Real-time Log Distribution (Task 3.5)', () => {
     });
   });
 });
+
+// ============================================================
+// Task 1.1 & 1.2: StateProvider.getBugs() Tests (internal-webserver-sync feature)
+// Requirements: 1.1, 5.5, 6.1
+// ============================================================
+
+describe('WebSocketHandler - StateProvider.getBugs() (Task 1.1 & 1.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('StateProvider getBugs interface', () => {
+    it('should allow setting a state provider with getBugs method', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+
+      const stateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([
+          { name: 'bug-1', phase: 'reported', updatedAt: '2025-01-01T00:00:00Z' },
+        ]),
+      };
+
+      // Should not throw
+      expect(() => handler.setStateProvider(stateProvider)).not.toThrow();
+    });
+  });
+
+  describe('INIT message with bugs', () => {
+    it('should include bugs in INIT message when getBugs is provided', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const { LogBuffer } = await import('./logBuffer');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const mockLogBuffer = new LogBuffer({ maxEntries: 100 });
+
+      const handler = new WebSocketHandler({
+        rateLimiter: mockRateLimiter,
+        logBuffer: mockLogBuffer,
+      });
+
+      const stateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([
+          { name: 'bug-1', phase: 'reported', updatedAt: '2025-01-01T00:00:00Z' },
+          { name: 'bug-2', phase: 'analyzed', updatedAt: '2025-01-02T00:00:00Z' },
+        ]),
+      };
+      handler.setStateProvider(stateProvider);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"INIT"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugs"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('bug-1')
+      );
+    });
+
+    it('should include empty bugs array when getBugs is not provided', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const { LogBuffer } = await import('./logBuffer');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const mockLogBuffer = new LogBuffer({ maxEntries: 100 });
+
+      const handler = new WebSocketHandler({
+        rateLimiter: mockRateLimiter,
+        logBuffer: mockLogBuffer,
+      });
+
+      // StateProvider without getBugs
+      const stateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+      };
+      handler.setStateProvider(stateProvider);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      await vi.runAllTimersAsync();
+
+      // Should still have bugs field with empty array
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugs":[]')
+      );
+    });
+  });
+
+  describe('GET_BUGS message handling', () => {
+    it('should respond with bugs list when receiving GET_BUGS', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const stateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([
+          { name: 'bug-1', phase: 'reported', updatedAt: '2025-01-01T00:00:00Z' },
+        ]),
+      };
+      handler.setStateProvider(stateProvider);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUGS',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(stateProvider.getBugs).toHaveBeenCalled();
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUGS_UPDATED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('bug-1')
+      );
+    });
+
+    it('should return empty bugs array when getBugs is not provided', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // StateProvider without getBugs
+      const stateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+      };
+      handler.setStateProvider(stateProvider);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUGS',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUGS_UPDATED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugs":[]')
+      );
+    });
+  });
+
+  describe('broadcastBugsUpdated', () => {
+    it('should broadcast BUGS_UPDATED to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // Connect multiple clients
+      const mockWs1 = createMockWebSocket();
+      const mockWs2 = createMockWebSocket();
+      connectionHandler!(mockWs1, createMockRequest('192.168.1.1'));
+      connectionHandler!(mockWs2, createMockRequest('192.168.1.2'));
+
+      mockWs1.send.mockClear();
+      mockWs2.send.mockClear();
+
+      const bugs = [
+        { name: 'bug-1', phase: 'reported' as const, updatedAt: '2025-01-01T00:00:00Z', path: '/test/bug-1', reportedAt: '2025-01-01T00:00:00Z' },
+      ];
+      handler.broadcastBugsUpdated(bugs);
+
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUGS_UPDATED"')
+      );
+      expect(mockWs2.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUGS_UPDATED"')
+      );
+    });
+  });
+});
+
+// ============================================================
+// Task 3.1.2: EXECUTE_BUG_PHASE Message Handler Tests
+// Requirements: 6.2 (internal-webserver-sync)
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_BUG_PHASE Handler (Task 3.1.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('EXECUTE_BUG_PHASE message handling', () => {
+    it('should execute bug phase and send BUG_PHASE_STARTED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeBugPhase: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-123' } }),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_BUG_PHASE',
+        payload: { bugName: 'my-bug', phase: 'analyze' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(workflowController.executeBugPhase).toHaveBeenCalledWith('my-bug', 'analyze');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_PHASE_STARTED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"agentId":"agent-bug-123"')
+      );
+    });
+
+    it('should send ERROR when executeBugPhase is not supported', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // WorkflowController without executeBugPhase
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_BUG_PHASE',
+        payload: { bugName: 'my-bug', phase: 'analyze' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+
+    it('should send ERROR on bug phase execution failure', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeBugPhase: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn bug agent' },
+        }),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_BUG_PHASE',
+        payload: { bugName: 'my-bug', phase: 'fix' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"SPAWN_ERROR"')
+      );
+    });
+  });
+});
+
+// ============================================================
+// Task 3.2: EXECUTE_VALIDATION Message Handler Tests
+// Requirements: 6.3 (internal-webserver-sync)
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_VALIDATION Handler (Task 3.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('EXECUTE_VALIDATION message handling', () => {
+    it('should execute validation and send VALIDATION_STARTED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-validate-123' } }),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_VALIDATION',
+        payload: { specId: 'my-spec', type: 'gap' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(workflowController.executeValidation).toHaveBeenCalledWith('my-spec', 'gap');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"VALIDATION_STARTED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"agentId":"agent-validate-123"')
+      );
+    });
+
+    it('should send ERROR when executeValidation is not supported', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_VALIDATION',
+        payload: { specId: 'my-spec', type: 'design' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+  });
+});
+
+// ============================================================
+// Task 3.3: EXECUTE_DOCUMENT_REVIEW Message Handler Tests
+// Requirements: 6.4 (internal-webserver-sync)
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_DOCUMENT_REVIEW Handler (Task 3.3)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('EXECUTE_DOCUMENT_REVIEW message handling', () => {
+    it('should execute document review and send DOCUMENT_REVIEW_STARTED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_DOCUMENT_REVIEW',
+        payload: { specId: 'my-spec' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(workflowController.executeDocumentReview).toHaveBeenCalledWith('my-spec');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"DOCUMENT_REVIEW_STARTED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"agentId":"agent-review-123"')
+      );
+    });
+
+    it('should send ERROR when executeDocumentReview is not supported', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'EXECUTE_DOCUMENT_REVIEW',
+        payload: { specId: 'my-spec' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+  });
+});
+
+// ============================================================
+// Task 3.4: Broadcast Methods Tests
+// Requirements: 6.5, 6.6 (internal-webserver-sync)
+// ============================================================
+
+describe('WebSocketHandler - Broadcast Methods (Task 3.4)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('broadcastTaskProgress', () => {
+    it('should broadcast TASK_PROGRESS to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs1 = createMockWebSocket();
+      const mockWs2 = createMockWebSocket();
+      connectionHandler!(mockWs1, createMockRequest('192.168.1.1'));
+      connectionHandler!(mockWs2, createMockRequest('192.168.1.2'));
+
+      mockWs1.send.mockClear();
+      mockWs2.send.mockClear();
+
+      handler.broadcastTaskProgress('spec-1', '1.1', 'completed');
+
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"TASK_PROGRESS"')
+      );
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"specId":"spec-1"')
+      );
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"taskId":"1.1"')
+      );
+      expect(mockWs2.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"TASK_PROGRESS"')
+      );
+    });
+  });
+
+  describe('broadcastSpecUpdated', () => {
+    it('should broadcast SPEC_UPDATED to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      handler.broadcastSpecUpdated('spec-1', { phase: 'design', status: 'completed' });
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"SPEC_UPDATED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"specId":"spec-1"')
+      );
+    });
+  });
+});

@@ -1,0 +1,35 @@
+{
+  "feature_name": "internal-webserver-sync",
+  "created_at": "2025-12-21T11:25:01Z",
+  "updated_at": "2025-12-21T17:19:14.225Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "documentReview": {
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
+        "status": "review_complete"
+      }
+    ]
+  }
+}

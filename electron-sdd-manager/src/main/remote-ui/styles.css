@@ -170,6 +170,121 @@ html {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+/* Bug card styles (Task 3.1, 3.2: Bug list UI) */
+.bug-card {
+  padding: 1rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dark .bug-card {
+  background: #1f2937; /* gray-800 */
+  border-color: #374151; /* gray-700 */
+}
+
+.bug-card:hover {
+  border-color: #f59e0b; /* amber-500 */
+}
+
+.bug-card:active {
+  transform: scale(0.99);
+}
+
+.bug-card-selected {
+  border-color: #f59e0b; /* amber-500 */
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* Bug badge styles (Task 3.1: Bug phase indicators) */
+.bug-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.bug-badge-reported {
+  background-color: #fee2e2; /* red-100 */
+  color: #dc2626; /* red-600 */
+}
+
+.dark .bug-badge-reported {
+  background-color: #7f1d1d; /* red-900 */
+  color: #fca5a5; /* red-300 */
+}
+
+.bug-badge-analyzed {
+  background-color: #fef3c7; /* amber-100 */
+  color: #d97706; /* amber-600 */
+}
+
+.dark .bug-badge-analyzed {
+  background-color: #78350f; /* amber-900 */
+  color: #fbbf24; /* amber-400 */
+}
+
+.bug-badge-fixed {
+  background-color: #dbeafe; /* blue-100 */
+  color: #2563eb; /* blue-600 */
+}
+
+.dark .bug-badge-fixed {
+  background-color: #1e3a8a; /* blue-900 */
+  color: #93c5fd; /* blue-300 */
+}
+
+.bug-badge-verified {
+  background-color: #d1fae5; /* green-100 */
+  color: #059669; /* green-600 */
+}
+
+.dark .bug-badge-verified {
+  background-color: #064e3b; /* green-900 */
+  color: #34d399; /* green-400 */
+}
+
+/* Docs Tabs styles (Task 5.1: DocsTabsコンポーネント) */
+.docs-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280; /* gray-500 */
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.dark .docs-tab {
+  color: #9ca3af; /* gray-400 */
+}
+
+.docs-tab:hover {
+  color: #3b82f6; /* primary-500 */
+}
+
+.docs-tab-active {
+  color: #3b82f6; /* primary-500 */
+  border-bottom-color: #3b82f6; /* primary-500 */
+}
+
+.dark .docs-tab-active {
+  color: #60a5fa; /* primary-400 */
+  border-bottom-color: #60a5fa; /* primary-400 */
+}
+
 /* Toast notification styles */
 .toast {
   padding: 0.75rem 1rem;

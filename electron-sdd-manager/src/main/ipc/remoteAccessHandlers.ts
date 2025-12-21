@@ -10,8 +10,10 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, SpecInfo } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, SpecInfo, BugInfo, BugAction, ValidationType } from '../services/webSocketHandler';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
+import { buildClaudeArgs } from '../services/specManagerService';
+import { getClaudeCommand } from '../services/agentProcess';
 
 // Singleton instance of RemoteAccessServer
 let remoteAccessServer: RemoteAccessServer | null = null;
@@ -29,14 +31,16 @@ export function getRemoteAccessServer(): RemoteAccessServer {
 
 /**
  * Create a StateProvider for WebSocketHandler
- * Requirements: 3.1, 3.2, 3.3
+ * Requirements: 1.1, 3.1, 3.2, 3.3, 5.5, 6.1 (internal-webserver-sync)
  *
  * @param projectPath - Current project path
  * @param getSpecs - Function to retrieve specs from the project
+ * @param getBugs - Function to retrieve bugs from the project (optional)
  */
 export function createStateProvider(
   projectPath: string,
-  getSpecs: () => Promise<SpecInfo[] | null>
+  getSpecs: () => Promise<SpecInfo[] | null>,
+  getBugs?: () => Promise<BugInfo[] | null>
 ): StateProvider {
   return {
     getProjectPath: () => projectPath,
@@ -44,25 +48,32 @@ export function createStateProvider(
       const specs = await getSpecs();
       return specs || [];
     },
+    getBugs: async () => {
+      if (!getBugs) return [];
+      const bugs = await getBugs();
+      return bugs || [];
+    },
   };
 }
 
 /**
  * Set up StateProvider on the WebSocketHandler
- * Requirements: 3.1, 3.2, 3.3
+ * Requirements: 1.1, 3.1, 3.2, 3.3, 5.5, 6.1 (internal-webserver-sync)
  *
  * @param projectPath - Current project path
  * @param getSpecs - Function to retrieve specs from the project
+ * @param getBugs - Function to retrieve bugs from the project (optional)
  */
 export function setupStateProvider(
   projectPath: string,
-  getSpecs: () => Promise<SpecInfo[] | null>
+  getSpecs: () => Promise<SpecInfo[] | null>,
+  getBugs?: () => Promise<BugInfo[] | null>
 ): void {
   const server = getRemoteAccessServer();
   const wsHandler = server.getWebSocketHandler();
 
   if (wsHandler) {
-    const stateProvider = createStateProvider(projectPath, getSpecs);
+    const stateProvider = createStateProvider(projectPath, getSpecs, getBugs);
     wsHandler.setStateProvider(stateProvider);
     logger.info('[remoteAccessHandlers] StateProvider set up successfully', { projectPath });
   }
@@ -121,6 +132,108 @@ export function createWorkflowController(
 
     resumeAgent: async (agentId: string): Promise<WorkflowResult<AgentInfo>> => {
       const result = await specManagerService.resumeAgent(agentId);
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    /**
+     * Execute a bug workflow phase
+     * Requirements: 6.2, 6.7 (internal-webserver-sync Task 2.1)
+     *
+     * @param bugName - Bug name/identifier
+     * @param phase - Bug phase (analyze/fix/verify)
+     */
+    executeBugPhase: async (bugName: string, phase: BugAction): Promise<WorkflowResult<AgentInfo>> => {
+      const bugCommandMap: Record<BugAction, string> = {
+        analyze: '/kiro:bug-analyze',
+        fix: '/kiro:bug-fix',
+        verify: '/kiro:bug-verify',
+      };
+
+      const slashCommand = bugCommandMap[phase];
+      const result = await specManagerService.startAgent({
+        specId: '',
+        phase: `bug-${phase}`,
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command: `${slashCommand} ${bugName}` }),
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    /**
+     * Execute validation
+     * Requirements: 6.3, 6.7 (internal-webserver-sync Task 2.2)
+     *
+     * @param specId - Specification identifier
+     * @param type - Validation type (gap/design)
+     */
+    executeValidation: async (specId: string, type: ValidationType): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.executeValidation({
+        specId,
+        type,
+        featureName: specId,
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    /**
+     * Execute document review
+     * Requirements: 6.4, 6.7 (internal-webserver-sync Task 2.3)
+     *
+     * @param specId - Specification identifier
+     */
+    executeDocumentReview: async (specId: string): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.executeDocumentReview({
+        specId,
+        featureName: specId,
+      });
 
       if (result.ok) {
         return {

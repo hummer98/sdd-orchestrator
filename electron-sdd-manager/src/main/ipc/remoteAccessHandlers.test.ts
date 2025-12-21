@@ -413,6 +413,73 @@ describe('StateProvider Integration (Task 8.2)', () => {
 // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
 // ============================================================
 
+// ============================================================
+// Task 1.1: StateProvider.getBugs() Tests (internal-webserver-sync feature)
+// Requirements: 1.1, 5.5, 6.1
+// ============================================================
+
+describe('StateProvider.getBugs() Integration (Task 1.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('createStateProvider with getBugs', () => {
+    it('should create a StateProvider with getBugs method', async () => {
+      const { createStateProvider } = await import('./remoteAccessHandlers');
+
+      const mockProjectPath = '/test/project';
+      const mockGetSpecs = vi.fn().mockResolvedValue([]);
+      const mockGetBugs = vi.fn().mockResolvedValue([
+        { name: 'bug-1', phase: 'reported', updatedAt: '2025-01-01T00:00:00Z' },
+      ]);
+
+      const stateProvider = createStateProvider(mockProjectPath, mockGetSpecs, mockGetBugs);
+
+      expect(stateProvider.getBugs).toBeDefined();
+    });
+
+    it('should return bugs from getBugs getter', async () => {
+      const { createStateProvider } = await import('./remoteAccessHandlers');
+
+      const mockBugs = [
+        { name: 'bug-1', phase: 'reported', updatedAt: '2025-01-01T00:00:00Z' },
+        { name: 'bug-2', phase: 'analyzed', updatedAt: '2025-01-02T00:00:00Z' },
+      ];
+      const mockGetBugs = vi.fn().mockResolvedValue(mockBugs);
+
+      const stateProvider = createStateProvider('/test', vi.fn().mockResolvedValue([]), mockGetBugs);
+
+      const bugs = await stateProvider.getBugs();
+
+      expect(mockGetBugs).toHaveBeenCalled();
+      expect(bugs).toEqual(mockBugs);
+    });
+
+    it('should return empty array when getBugs returns null', async () => {
+      const { createStateProvider } = await import('./remoteAccessHandlers');
+
+      const mockGetBugs = vi.fn().mockResolvedValue(null);
+
+      const stateProvider = createStateProvider('/test', vi.fn().mockResolvedValue([]), mockGetBugs);
+
+      const bugs = await stateProvider.getBugs();
+
+      expect(bugs).toEqual([]);
+    });
+
+    it('should return empty array when getBugs is not provided', async () => {
+      const { createStateProvider } = await import('./remoteAccessHandlers');
+
+      // createStateProvider without getBugs parameter
+      const stateProvider = createStateProvider('/test', vi.fn().mockResolvedValue([]));
+
+      const bugs = await stateProvider.getBugs();
+
+      expect(bugs).toEqual([]);
+    });
+  });
+});
+
 describe('WorkflowController Integration (Task 8.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -525,6 +592,264 @@ describe('WorkflowController Integration (Task 8.3)', () => {
           resumeAgent: expect.any(Function),
         })
       );
+    });
+  });
+});
+
+// ============================================================
+// Task 2.1: WorkflowController.executeBugPhase() Tests
+// Requirements: 6.2, 6.7 (internal-webserver-sync)
+// ============================================================
+
+describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('executeBugPhase', () => {
+    it('should execute bug analyze phase successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-123' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      expect(controller.executeBugPhase).toBeDefined();
+
+      const result = await controller.executeBugPhase!('my-bug', 'analyze');
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith(expect.objectContaining({
+        specId: '',
+        phase: 'bug-analyze',
+      }));
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-bug-123');
+      }
+    });
+
+    it('should execute bug fix phase successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-456' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeBugPhase!('my-bug', 'fix');
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith(expect.objectContaining({
+        specId: '',
+        phase: 'bug-fix',
+      }));
+      expect(result.ok).toBe(true);
+    });
+
+    it('should execute bug verify phase successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-789' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeBugPhase!('my-bug', 'verify');
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith(expect.objectContaining({
+        specId: '',
+        phase: 'bug-verify',
+      }));
+      expect(result.ok).toBe(true);
+    });
+
+    it('should handle executeBugPhase errors', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn bug agent' },
+        }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeBugPhase!('my-bug', 'analyze');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPAWN_ERROR');
+      }
+    });
+  });
+});
+
+// ============================================================
+// Task 2.2: WorkflowController.executeValidation() Tests
+// Requirements: 6.3, 6.7 (internal-webserver-sync)
+// ============================================================
+
+describe('WorkflowController.executeValidation() (Task 2.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('executeValidation', () => {
+    it('should execute gap validation successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-validate-123' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      expect(controller.executeValidation).toBeDefined();
+
+      const result = await controller.executeValidation!('my-spec', 'gap');
+
+      expect(mockSpecManagerService.executeValidation).toHaveBeenCalledWith({
+        specId: 'my-spec',
+        type: 'gap',
+        featureName: 'my-spec',
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-validate-123');
+      }
+    });
+
+    it('should execute design validation successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-validate-456' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeValidation!('my-spec', 'design');
+
+      expect(mockSpecManagerService.executeValidation).toHaveBeenCalledWith({
+        specId: 'my-spec',
+        type: 'design',
+        featureName: 'my-spec',
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it('should handle executeValidation errors', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        executeValidation: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn validation agent' },
+        }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeValidation!('my-spec', 'gap');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPAWN_ERROR');
+      }
+    });
+  });
+});
+
+// ============================================================
+// Task 2.3: WorkflowController.executeDocumentReview() Tests
+// Requirements: 6.4, 6.7 (internal-webserver-sync)
+// ============================================================
+
+describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('executeDocumentReview', () => {
+    it('should execute document review successfully', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        executeValidation: vi.fn(),
+        executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      expect(controller.executeDocumentReview).toBeDefined();
+
+      const result = await controller.executeDocumentReview!('my-spec');
+
+      expect(mockSpecManagerService.executeDocumentReview).toHaveBeenCalledWith({
+        specId: 'my-spec',
+        featureName: 'my-spec',
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-review-123');
+      }
+    });
+
+    it('should handle executeDocumentReview errors', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        executeValidation: vi.fn(),
+        executeDocumentReview: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn review agent' },
+        }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeDocumentReview!('my-spec');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPAWN_ERROR');
+      }
     });
   });
 });

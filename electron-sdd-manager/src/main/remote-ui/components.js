@@ -1,7 +1,88 @@
 /**
  * UI Components for SDD Manager Mobile
  * Requirements: 6.1, 6.2, 6.3, 6.4, 7.6, 4.3, 4.4, 4.5
+ * Task 5.1, 6.1, 7.1, 8.1, 9.1, 10.1 (internal-webserver-sync)
  */
+
+/**
+ * Docs Tabs Component
+ * Displays tabs for switching between Specs and Bugs
+ * Requirements: 7.7 (Task 5.1 - DocsTabsコンポーネント)
+ */
+class DocsTabs {
+  constructor() {
+    this.containerEl = document.getElementById('docs-tabs');
+    this.activeTab = 'specs';
+    this.onTabChange = null;
+  }
+
+  /**
+   * Set active tab
+   * @param {'specs'|'bugs'} tab
+   */
+  setActiveTab(tab) {
+    this.activeTab = tab;
+    this.render();
+    if (this.onTabChange) {
+      this.onTabChange(tab);
+    }
+  }
+
+  /**
+   * Get active tab
+   * @returns {'specs'|'bugs'}
+   */
+  getActiveTab() {
+    return this.activeTab;
+  }
+
+  /**
+   * Render tabs
+   */
+  render() {
+    if (!this.containerEl) return;
+
+    const specsActive = this.activeTab === 'specs';
+    const bugsActive = this.activeTab === 'bugs';
+
+    this.containerEl.innerHTML = `
+      <div class="flex border-b border-gray-200 dark:border-gray-700">
+        <button
+          class="docs-tab ${specsActive ? 'docs-tab-active' : ''}"
+          data-tab="specs"
+          aria-selected="${specsActive}"
+          role="tab"
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Specs
+        </button>
+        <button
+          class="docs-tab ${bugsActive ? 'docs-tab-active' : ''}"
+          data-tab="bugs"
+          aria-selected="${bugsActive}"
+          role="tab"
+        >
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          Bugs
+        </button>
+      </div>
+    `;
+
+    // Add click handlers
+    this.containerEl.querySelectorAll('.docs-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        if (tabName !== this.activeTab) {
+          this.setActiveTab(tabName);
+        }
+      });
+    });
+  }
+}
 
 /**
  * Connection Status Component
@@ -200,6 +281,304 @@ class SpecList {
     };
 
     return `<span class="phase-badge ${statusClass}">${labels[phase] || phase}</span>`;
+  }
+}
+
+/**
+ * Bug List Component
+ * Displays list of bugs with phase indicators
+ * Requirements: 1.1 (Task 3.1, 3.2 - BugList component)
+ */
+class BugList {
+  constructor() {
+    this.containerEl = document.getElementById('bug-list');
+    this.bugs = [];
+    this.selectedBugName = null;
+    this.onSelect = null;
+  }
+
+  /**
+   * Update bugs list
+   * @param {Array} bugs
+   */
+  update(bugs) {
+    this.bugs = bugs || [];
+    this.render();
+  }
+
+  /**
+   * Set selected bug
+   * @param {string} bugName
+   */
+  setSelected(bugName) {
+    this.selectedBugName = bugName;
+    this.render();
+  }
+
+  /**
+   * Render bugs list
+   */
+  render() {
+    if (!this.containerEl) return;
+
+    if (this.bugs.length === 0) {
+      this.containerEl.innerHTML = `
+        <div class="empty-state">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <p>No bugs found</p>
+        </div>
+      `;
+      return;
+    }
+
+    this.containerEl.innerHTML = this.bugs.map(bug => this.renderBugCard(bug)).join('');
+
+    // Add click handlers
+    this.containerEl.querySelectorAll('.bug-card').forEach((card, index) => {
+      card.addEventListener('click', () => {
+        const bug = this.bugs[index];
+        if (this.onSelect) {
+          this.onSelect(bug);
+        }
+      });
+    });
+  }
+
+  /**
+   * Render single bug card
+   * @param {Object} bug
+   * @returns {string}
+   */
+  renderBugCard(bug) {
+    const isSelected = bug.name === this.selectedBugName;
+    const selectedClass = isSelected ? 'bug-card-selected' : '';
+
+    return `
+      <div class="bug-card ${selectedClass}" data-bug-name="${bug.name}">
+        <div class="flex items-start justify-between">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-medium truncate">${bug.name}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${this.formatDate(bug.updatedAt)}</p>
+          </div>
+          <div class="flex-shrink-0 ml-3">
+            ${this.renderPhaseBadge(bug.phase)}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Format date for display
+   * @param {string} dateStr
+   * @returns {string}
+   */
+  formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString();
+  }
+
+  /**
+   * Render phase badge for bug
+   * @param {string} phase
+   * @returns {string}
+   */
+  renderPhaseBadge(phase) {
+    const phaseColors = {
+      reported: 'bug-badge-reported',
+      analyzed: 'bug-badge-analyzed',
+      fixed: 'bug-badge-fixed',
+      verified: 'bug-badge-verified',
+    };
+    const phaseLabels = {
+      reported: 'Reported',
+      analyzed: 'Analyzed',
+      fixed: 'Fixed',
+      verified: 'Verified',
+    };
+
+    const colorClass = phaseColors[phase] || 'bug-badge-reported';
+    const label = phaseLabels[phase] || phase;
+
+    return `<span class="bug-badge ${colorClass}">${label}</span>`;
+  }
+}
+
+/**
+ * Bug Detail Component
+ * Shows detailed bug info and action buttons
+ * Requirements: 1.3, 1.4, 1.5, 1.6, 7.2 (Task 7.1 - BugDetailコンポーネント)
+ */
+class BugDetail {
+  constructor() {
+    this.sectionEl = document.getElementById('bug-detail-section');
+    this.titleEl = document.getElementById('bug-detail-title');
+    this.phaseTagEl = document.getElementById('bug-phase-tag');
+    this.actionBtn = document.getElementById('btn-bug-action');
+    this.backButton = document.getElementById('bug-back-button');
+    this.loadingEl = document.getElementById('bug-loading-indicator');
+
+    this.currentBug = null;
+    this.isRunning = false;
+
+    this.onExecutePhase = null;
+    this.onBack = null;
+
+    this.setupEventListeners();
+  }
+
+  /**
+   * Setup event listeners for buttons
+   */
+  setupEventListeners() {
+    if (this.backButton) {
+      this.backButton.addEventListener('click', () => {
+        if (this.onBack) {
+          this.onBack();
+        }
+        this.hide();
+      });
+    }
+
+    if (this.actionBtn) {
+      this.actionBtn.addEventListener('click', () => {
+        if (this.onExecutePhase && this.currentBug) {
+          const nextPhase = this.getNextPhase(this.currentBug.phase);
+          if (nextPhase) {
+            this.onExecutePhase(this.currentBug.name, nextPhase);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Show bug detail panel
+   * @param {Object} bug
+   */
+  show(bug) {
+    if (!this.sectionEl) return;
+
+    this.currentBug = bug;
+    if (this.titleEl) this.titleEl.textContent = bug.name;
+    this.updatePhaseTag(bug.phase);
+    this.updateActionButton(bug.phase);
+    this.sectionEl.classList.remove('hidden');
+  }
+
+  /**
+   * Hide bug detail panel
+   */
+  hide() {
+    if (this.sectionEl) {
+      this.sectionEl.classList.add('hidden');
+    }
+    this.currentBug = null;
+  }
+
+  /**
+   * Check if panel is visible
+   * @returns {boolean}
+   */
+  isVisible() {
+    return this.sectionEl && !this.sectionEl.classList.contains('hidden');
+  }
+
+  /**
+   * Update phase tag display
+   * @param {string} phase
+   */
+  updatePhaseTag(phase) {
+    if (!this.phaseTagEl) return;
+
+    const phaseColors = {
+      reported: 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300',
+      analyzed: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300',
+      fixed: 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300',
+      verified: 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300',
+    };
+    const phaseLabels = {
+      reported: 'Reported',
+      analyzed: 'Analyzed',
+      fixed: 'Fixed',
+      verified: 'Verified',
+    };
+
+    this.phaseTagEl.className = `px-3 py-1 text-sm font-medium rounded-full ${phaseColors[phase] || phaseColors.reported}`;
+    this.phaseTagEl.textContent = phaseLabels[phase] || phase;
+  }
+
+  /**
+   * Get next phase for bug
+   * @param {string} currentPhase
+   * @returns {string|null}
+   */
+  getNextPhase(currentPhase) {
+    const phaseOrder = ['reported', 'analyzed', 'fixed', 'verified'];
+    const nextPhaseMap = {
+      reported: 'analyze',
+      analyzed: 'fix',
+      fixed: 'verify',
+    };
+    return nextPhaseMap[currentPhase] || null;
+  }
+
+  /**
+   * Update action button
+   * @param {string} phase
+   */
+  updateActionButton(phase) {
+    if (!this.actionBtn) return;
+
+    const nextPhase = this.getNextPhase(phase);
+    const buttonLabels = {
+      analyze: 'Analyze Bug',
+      fix: 'Fix Bug',
+      verify: 'Verify Fix',
+    };
+
+    if (!nextPhase || this.isRunning) {
+      this.actionBtn.disabled = true;
+      this.actionBtn.textContent = nextPhase ? buttonLabels[nextPhase] : 'Completed';
+    } else {
+      this.actionBtn.disabled = false;
+      this.actionBtn.textContent = buttonLabels[nextPhase];
+    }
+  }
+
+  /**
+   * Set running state
+   * @param {boolean} running
+   */
+  setRunning(running) {
+    this.isRunning = running;
+
+    if (this.loadingEl) {
+      if (running) {
+        this.loadingEl.classList.remove('hidden');
+      } else {
+        this.loadingEl.classList.add('hidden');
+      }
+    }
+
+    if (this.currentBug) {
+      this.updateActionButton(this.currentBug.phase);
+    }
+  }
+
+  /**
+   * Update bug data
+   * @param {Object} bug
+   */
+  updateBug(bug) {
+    if (this.currentBug && this.currentBug.name === bug.name) {
+      this.currentBug = bug;
+      this.updatePhaseTag(bug.phase);
+      this.updateActionButton(bug.phase);
+    }
   }
 }
 
@@ -671,6 +1050,253 @@ class SpecDetail {
       this.updateNextActionButton(spec);
     }
   }
+
+  // ============================================================
+  // Task 8.1: Review State Display and Start Button
+  // Requirements: 6.4 (internal-webserver-sync)
+  // ============================================================
+
+  /**
+   * Execute document review
+   */
+  executeDocumentReview() {
+    if (this.currentSpec) {
+      wsManager.executeDocumentReview(this.currentSpec.feature_name);
+      this.setRunning(true, null, 'Running document review...');
+    }
+  }
+
+  /**
+   * Get review state for spec
+   * @param {Object} spec
+   * @returns {{ hasReview: boolean, reviewCount: number }}
+   */
+  getReviewState(spec) {
+    // Check for review files in spec (would come from server)
+    const reviewCount = spec.reviewCount || 0;
+    return {
+      hasReview: reviewCount > 0,
+      reviewCount: reviewCount,
+    };
+  }
+
+  /**
+   * Render review button in detail panel
+   * @returns {string}
+   */
+  renderReviewButton() {
+    if (!this.currentSpec) return '';
+
+    const reviewState = this.getReviewState(this.currentSpec);
+    const buttonText = reviewState.hasReview
+      ? `Start New Review (${reviewState.reviewCount} existing)`
+      : 'Start Document Review';
+
+    return `
+      <button
+        id="btn-document-review"
+        class="btn-primary w-full mt-2"
+        ${this.isRunning ? 'disabled' : ''}
+      >
+        ${buttonText}
+      </button>
+    `;
+  }
+
+  // ============================================================
+  // Task 9.1: Validation Execution Buttons
+  // Requirements: 6.3 (internal-webserver-sync)
+  // ============================================================
+
+  /**
+   * Execute gap validation
+   */
+  executeGapValidation() {
+    if (this.currentSpec) {
+      wsManager.executeValidation(this.currentSpec.feature_name, 'gap');
+      this.setRunning(true, null, 'Running gap validation...');
+    }
+  }
+
+  /**
+   * Execute design validation
+   */
+  executeDesignValidation() {
+    if (this.currentSpec) {
+      wsManager.executeValidation(this.currentSpec.feature_name, 'design');
+      this.setRunning(true, null, 'Running design validation...');
+    }
+  }
+
+  /**
+   * Check if gap validation is available
+   * @param {Object} spec
+   * @returns {boolean}
+   */
+  isGapValidationAvailable(spec) {
+    const phaseStatus = this.getPhaseStatusFromSpec(spec);
+    // Gap validation available after requirements generated
+    return phaseStatus.requirements === 'generated' || phaseStatus.requirements === 'approved';
+  }
+
+  /**
+   * Check if design validation is available
+   * @param {Object} spec
+   * @returns {boolean}
+   */
+  isDesignValidationAvailable(spec) {
+    const phaseStatus = this.getPhaseStatusFromSpec(spec);
+    // Design validation available after design generated
+    return phaseStatus.design === 'generated' || phaseStatus.design === 'approved';
+  }
+
+  /**
+   * Render validation buttons
+   * @returns {string}
+   */
+  renderValidationButtons() {
+    if (!this.currentSpec) return '';
+
+    const gapAvailable = this.isGapValidationAvailable(this.currentSpec);
+    const designAvailable = this.isDesignValidationAvailable(this.currentSpec);
+
+    return `
+      <div class="flex gap-2 mt-2">
+        <button
+          id="btn-gap-validation"
+          class="btn-secondary flex-1"
+          ${!gapAvailable || this.isRunning ? 'disabled' : ''}
+        >
+          Gap Validation
+        </button>
+        <button
+          id="btn-design-validation"
+          class="btn-secondary flex-1"
+          ${!designAvailable || this.isRunning ? 'disabled' : ''}
+        >
+          Design Validation
+        </button>
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // Task 10.1: Task Progress Display
+  // Requirements: 6.5 (internal-webserver-sync)
+  // ============================================================
+
+  /**
+   * Update task progress
+   * @param {string} taskId
+   * @param {string} status
+   */
+  updateTaskProgress(taskId, status) {
+    // Find and update the task element
+    const taskEl = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskEl) {
+      const statusBadge = taskEl.querySelector('.task-status');
+      if (statusBadge) {
+        statusBadge.textContent = status;
+        statusBadge.className = `task-status task-status-${status}`;
+      }
+    }
+
+    // If we have task progress data, update the progress bar
+    this.updateTaskProgressBar();
+  }
+
+  /**
+   * Update task progress bar
+   */
+  updateTaskProgressBar() {
+    const progressBar = document.getElementById('task-progress-bar');
+    const progressText = document.getElementById('task-progress-text');
+
+    if (!this.currentSpec || !this.currentSpec.tasks) return;
+
+    const tasks = this.currentSpec.tasks;
+    const completedCount = tasks.filter(t => t.status === 'completed').length;
+    const totalCount = tasks.length;
+    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    if (progressBar) {
+      progressBar.style.width = `${percentage}%`;
+    }
+    if (progressText) {
+      progressText.textContent = `${completedCount}/${totalCount} tasks completed`;
+    }
+  }
+
+  /**
+   * Get task progress summary
+   * @param {Object} spec
+   * @returns {{ completed: number, total: number, percentage: number }}
+   */
+  getTaskProgress(spec) {
+    if (!spec.tasks || !Array.isArray(spec.tasks)) {
+      return { completed: 0, total: 0, percentage: 0 };
+    }
+
+    const completed = spec.tasks.filter(t => t.status === 'completed').length;
+    const total = spec.tasks.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, percentage };
+  }
+
+  /**
+   * Render task progress section
+   * @returns {string}
+   */
+  renderTaskProgress() {
+    if (!this.currentSpec) return '';
+
+    const progress = this.getTaskProgress(this.currentSpec);
+
+    if (progress.total === 0) {
+      return '';
+    }
+
+    return `
+      <div class="task-progress-section mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Task Progress</span>
+          <span id="task-progress-text" class="text-sm text-gray-500 dark:text-gray-400">
+            ${progress.completed}/${progress.total} tasks completed
+          </span>
+        </div>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div
+            id="task-progress-bar"
+            class="bg-primary-500 h-2 rounded-full transition-all duration-300"
+            style="width: ${progress.percentage}%"
+          ></div>
+        </div>
+        ${this.currentSpec.tasks ? this.renderTaskList() : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Render task list
+   * @returns {string}
+   */
+  renderTaskList() {
+    if (!this.currentSpec || !this.currentSpec.tasks) return '';
+
+    return `
+      <div class="task-list mt-3 space-y-1 max-h-32 overflow-y-auto">
+        ${this.currentSpec.tasks.map(task => `
+          <div class="task-item flex items-center justify-between text-sm" data-task-id="${task.id}">
+            <span class="truncate flex-1 text-gray-600 dark:text-gray-400">${task.name || task.id}</span>
+            <span class="task-status task-status-${task.status || 'pending'} ml-2 px-2 py-0.5 text-xs rounded">
+              ${task.status || 'pending'}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
 }
 
 /**
@@ -974,8 +1600,11 @@ class ReconnectOverlay {
 }
 
 // Export components
+window.DocsTabs = DocsTabs;
 window.ConnectionStatus = ConnectionStatus;
 window.SpecList = SpecList;
+window.BugList = BugList;
+window.BugDetail = BugDetail;
 window.SpecDetail = SpecDetail;
 window.LogViewer = LogViewer;
 window.Toast = Toast;

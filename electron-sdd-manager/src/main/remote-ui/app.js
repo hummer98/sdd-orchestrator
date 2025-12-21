@@ -2,6 +2,7 @@
  * SDD Manager Mobile App
  * Main application logic
  * Requirements: 6.1-6.4, 7.1-7.6, 8.1-8.4
+ * Task 3.3, 3.4 (internal-webserver-sync): Bug state management
  */
 
 /**
@@ -12,16 +13,25 @@ class App {
     // State
     this.projectPath = null;
     this.specs = [];
+    this.bugs = [];
     this.selectedSpec = null;
+    this.selectedBug = null;
     this.agents = [];
 
     // Components
+    this.docsTabs = new DocsTabs();
     this.connectionStatus = new ConnectionStatus();
     this.specList = new SpecList();
+    this.bugList = new BugList();
+    this.bugDetail = new BugDetail();
     this.specDetail = new SpecDetail();
     this.logViewer = new LogViewer();
     this.toast = new Toast();
     this.reconnectOverlay = new ReconnectOverlay();
+
+    // DOM references for tab sections
+    this.specListSection = document.getElementById('spec-list-section');
+    this.bugListSection = document.getElementById('bug-list-section');
 
     // DOM references
     this.projectPathEl = document.getElementById('project-path');
@@ -62,8 +72,36 @@ class App {
 
   /**
    * Setup component callbacks
+   * Task 11.1: Integrate new components
    */
   setupComponents() {
+    // Initialize and render DocsTabs
+    this.docsTabs.render();
+
+    // DocsTabs tab change handler (Task 5.1, 11.1)
+    this.docsTabs.onTabChange = (tab) => {
+      this.handleTabChange(tab);
+    };
+
+    // Bug list selection handler (Task 7.1)
+    this.bugList.onSelect = (bug) => {
+      this.selectedBug = bug;
+      this.bugList.setSelected(bug.name);
+      this.bugDetail.show(bug);
+    };
+
+    // Bug detail callbacks (Task 7.1)
+    this.bugDetail.onExecutePhase = (bugName, phase) => {
+      wsManager.executeBugPhase(bugName, phase);
+      this.bugDetail.setRunning(true);
+      this.toast.info(`Starting ${phase}...`);
+    };
+
+    this.bugDetail.onBack = () => {
+      this.selectedBug = null;
+      this.bugList.setSelected(null);
+    };
+
     // Spec list selection handler
     this.specList.onSelect = (spec) => {
       this.selectedSpec = spec;
@@ -180,6 +218,31 @@ class App {
       this.handleRateLimited(payload);
     });
 
+    wsManager.on('BUGS_UPDATED', (payload) => {
+      this.handleBugsUpdated(payload);
+    });
+
+    // Task 4.1: New message type handlers (internal-webserver-sync)
+    wsManager.on('BUG_PHASE_STARTED', (payload) => {
+      this.handleBugPhaseStarted(payload);
+    });
+
+    wsManager.on('VALIDATION_STARTED', (payload) => {
+      this.handleValidationStarted(payload);
+    });
+
+    wsManager.on('DOCUMENT_REVIEW_STARTED', (payload) => {
+      this.handleDocumentReviewStarted(payload);
+    });
+
+    wsManager.on('TASK_PROGRESS', (payload) => {
+      this.handleTaskProgress(payload);
+    });
+
+    wsManager.on('SPEC_UPDATED', (payload) => {
+      this.handleSpecUpdated(payload);
+    });
+
     // Connect
     this.connectionStatus.update('connecting');
     wsManager.connect();
@@ -187,10 +250,11 @@ class App {
 
   /**
    * Handle INIT message
+   * Task 3.3: Include bugs in INIT handling
    * @param {Object} payload
    */
   handleInit(payload) {
-    const { project, specs, logs } = payload || {};
+    const { project, specs, bugs, logs } = payload || {};
 
     // Update project path
     if (project) {
@@ -202,6 +266,12 @@ class App {
     if (specs) {
       this.specs = specs;
       this.specList.update(specs);
+    }
+
+    // Update bugs (Task 3.3)
+    if (bugs) {
+      this.bugs = bugs;
+      this.bugList.update(bugs);
     }
 
     // Load initial logs
@@ -337,6 +407,135 @@ class App {
   handleRateLimited(payload) {
     const { retryAfter } = payload || {};
     this.toast.error(`Rate limited. Try again in ${retryAfter || 60} seconds.`);
+  }
+
+  /**
+   * Handle BUGS_UPDATED message
+   * Task 3.4: BUGS_UPDATED message handler
+   * @param {Object} payload
+   */
+  handleBugsUpdated(payload) {
+    const { bugs } = payload || {};
+    if (bugs) {
+      this.bugs = bugs;
+      this.bugList.update(bugs);
+
+      // Update BugDetail if showing a bug
+      if (this.selectedBug) {
+        const updatedBug = bugs.find(b => b.name === this.selectedBug.name);
+        if (updatedBug) {
+          this.bugDetail.updateBug(updatedBug);
+          this.bugDetail.setRunning(false);
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // Task 4.1: New Message Handlers (internal-webserver-sync)
+  // ============================================================
+
+  /**
+   * Handle BUG_PHASE_STARTED message
+   * Task 4.1: Handle bug phase execution started
+   * @param {Object} payload
+   */
+  handleBugPhaseStarted(payload) {
+    const { bugName, phase, agentId } = payload || {};
+    this.toast.info(`Bug ${phase} started for ${bugName}`);
+
+    // Update BugDetail if showing this bug
+    if (this.selectedBug && this.selectedBug.name === bugName) {
+      this.bugDetail.setRunning(true, agentId);
+    }
+  }
+
+  /**
+   * Handle VALIDATION_STARTED message
+   * Task 4.1: Handle validation execution started
+   * @param {Object} payload
+   */
+  handleValidationStarted(payload) {
+    const { specId, type, agentId } = payload || {};
+    this.toast.info(`${type} validation started for ${specId}`);
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.setRunning(true, agentId, `Running ${type} validation...`);
+    }
+  }
+
+  /**
+   * Handle DOCUMENT_REVIEW_STARTED message
+   * Task 4.1: Handle document review execution started
+   * @param {Object} payload
+   */
+  handleDocumentReviewStarted(payload) {
+    const { specId, agentId } = payload || {};
+    this.toast.info(`Document review started for ${specId}`);
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.setRunning(true, agentId, 'Running document review...');
+    }
+  }
+
+  /**
+   * Handle TASK_PROGRESS message
+   * Task 4.1: Handle task progress update
+   * @param {Object} payload
+   */
+  handleTaskProgress(payload) {
+    const { specId, taskId, status } = payload || {};
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.updateTaskProgress(taskId, status);
+    }
+
+    // Show toast for important status changes
+    if (status === 'completed') {
+      this.toast.success(`Task ${taskId} completed`);
+    } else if (status === 'error') {
+      this.toast.error(`Task ${taskId} failed`);
+    }
+  }
+
+  /**
+   * Handle SPEC_UPDATED message
+   * Task 4.1: Handle spec update notification
+   * @param {Object} payload
+   */
+  handleSpecUpdated(payload) {
+    const { specId, ...updates } = payload || {};
+
+    // Update in specs array
+    const index = this.specs.findIndex(s => s.feature_name === specId);
+    if (index !== -1) {
+      this.specs[index] = { ...this.specs[index], ...updates };
+      this.specList.update(this.specs);
+    }
+
+    // Update detail panel if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.selectedSpec = { ...this.selectedSpec, ...updates };
+      this.specDetail.updateSpec(this.selectedSpec);
+    }
+  }
+
+  /**
+   * Handle tab change between Specs and Bugs
+   * Task 5.1, 11.1: Tab switching logic
+   * @param {'specs'|'bugs'} tab
+   */
+  handleTabChange(tab) {
+    if (tab === 'specs') {
+      this.specListSection.classList.remove('hidden');
+      this.bugListSection.classList.add('hidden');
+    } else {
+      this.specListSection.classList.add('hidden');
+      this.bugListSection.classList.remove('hidden');
+    }
   }
 
   /**

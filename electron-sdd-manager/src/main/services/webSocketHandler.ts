@@ -49,13 +49,34 @@ export interface SpecInfo {
 }
 
 /**
- * State provider interface for retrieving project/spec information
+ * Bug phase type for bug workflow
+ * Requirements: 1.2 (Task 1.2 - BugInfo interface)
+ */
+export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified';
+
+/**
+ * Bug information for state distribution
+ * Requirements: 1.2 (Task 1.2 - BugInfo interface)
+ */
+export interface BugInfo {
+  readonly name: string;
+  readonly path: string;
+  readonly phase: BugPhase;
+  readonly updatedAt: string;
+  readonly reportedAt: string;
+}
+
+/**
+ * State provider interface for retrieving project/spec/bug information
+ * Requirements: 1.1, 5.5 (Task 1.1 - StateProvider.getBugs())
  */
 export interface StateProvider {
   /** Get the current project path */
   getProjectPath(): string;
   /** Get all specs in the project */
   getSpecs(): Promise<SpecInfo[]>;
+  /** Get all bugs in the project (optional for backward compatibility) */
+  getBugs?(): Promise<BugInfo[]>;
 }
 
 /**
@@ -74,7 +95,20 @@ export type WorkflowResult<T> =
   | { ok: false; error: { type: string; message?: string } };
 
 /**
+ * Bug action type for bug workflow
+ * Requirements: 6.2 (internal-webserver-sync Task 2.1)
+ */
+export type BugAction = 'analyze' | 'fix' | 'verify';
+
+/**
+ * Validation type for validation workflow
+ * Requirements: 6.3 (internal-webserver-sync Task 2.2)
+ */
+export type ValidationType = 'gap' | 'design';
+
+/**
  * Workflow controller interface for executing workflow operations
+ * Requirements: 6.2, 6.3, 6.4 (internal-webserver-sync Tasks 2.1, 2.2, 2.3)
  */
 export interface WorkflowController {
   /** Execute a workflow phase */
@@ -87,6 +121,14 @@ export interface WorkflowController {
   autoExecute?(specId: string): Promise<WorkflowResult<AgentInfo>>;
   /** Send input to a running agent */
   sendAgentInput?(agentId: string, text: string): Promise<WorkflowResult<void>>;
+
+  // New methods for internal-webserver-sync feature
+  /** Execute a bug workflow phase (analyze/fix/verify) */
+  executeBugPhase?(bugName: string, phase: BugAction): Promise<WorkflowResult<AgentInfo>>;
+  /** Execute validation (gap/design) */
+  executeValidation?(specId: string, type: ValidationType): Promise<WorkflowResult<AgentInfo>>;
+  /** Execute document review */
+  executeDocumentReview?(specId: string): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -216,10 +258,12 @@ export class WebSocketHandler {
 
   /**
    * Send INIT message to a newly connected client
+   * Requirements: 2.1 (Task 2.1 - INIT message with bugs)
    */
   private async sendInitMessage(client: ClientInfo): Promise<void> {
     const project = this.stateProvider?.getProjectPath() || '';
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
+    const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
     const logs = this.config.logBuffer.getAll();
 
     this.send(client.id, {
@@ -227,6 +271,7 @@ export class WebSocketHandler {
       payload: {
         project,
         specs,
+        bugs,
         logs,
       },
       timestamp: Date.now(),
@@ -292,6 +337,9 @@ export class WebSocketHandler {
       case 'GET_SPECS':
         await this.handleGetSpecs(client, message);
         break;
+      case 'GET_BUGS':
+        await this.handleGetBugs(client, message);
+        break;
       case 'SELECT_SPEC':
         await this.handleSelectSpec(client, message);
         break;
@@ -309,6 +357,15 @@ export class WebSocketHandler {
         break;
       case 'AGENT_INPUT':
         await this.handleAgentInput(client, message);
+        break;
+      case 'EXECUTE_BUG_PHASE':
+        await this.handleExecuteBugPhase(client, message);
+        break;
+      case 'EXECUTE_VALIDATION':
+        await this.handleExecuteValidation(client, message);
+        break;
+      case 'EXECUTE_DOCUMENT_REVIEW':
+        await this.handleExecuteDocumentReview(client, message);
         break;
       default:
         this.send(client.id, {
@@ -471,6 +528,20 @@ export class WebSocketHandler {
     });
   }
 
+  /**
+   * Broadcast bugs updated to all connected clients
+   * Requirements: 2.3 (Task 2.3 - BUGS_UPDATED broadcast)
+   *
+   * @param bugs Updated list of bugs
+   */
+  broadcastBugsUpdated(bugs: BugInfo[]): void {
+    this.broadcast({
+      type: 'BUGS_UPDATED',
+      payload: { bugs },
+      timestamp: Date.now(),
+    });
+  }
+
   // ============================================================
   // Message Handlers (stubs for now, will be implemented in 3.3-3.5)
   // ============================================================
@@ -484,6 +555,21 @@ export class WebSocketHandler {
     this.send(client.id, {
       type: 'SPECS_UPDATED',
       payload: { specs },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Handle GET_BUGS message
+   * Requirements: 2.2 (Task 2.2 - GET_BUGS message handler)
+   */
+  private async handleGetBugs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
+
+    this.send(client.id, {
+      type: 'BUGS_UPDATED',
+      payload: { bugs },
       requestId: message.requestId,
       timestamp: Date.now(),
     });
@@ -768,5 +854,237 @@ export class WebSocketHandler {
         timestamp: Date.now(),
       });
     }
+  }
+
+  // ============================================================
+  // Bug/Validation/Review Handlers (internal-webserver-sync Tasks 3.1.2, 3.2, 3.3)
+  // ============================================================
+
+  /**
+   * Handle EXECUTE_BUG_PHASE message
+   * Requirements: 6.2 (internal-webserver-sync Task 3.1.2)
+   */
+  private async handleExecuteBugPhase(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeBugPhase) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Bug phase execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const bugName = payload.bugName as string;
+    const phase = payload.phase as BugAction;
+
+    if (!bugName || !phase) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugName or phase' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeBugPhase(bugName, phase);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'BUG_PHASE_STARTED',
+        payload: {
+          bugName,
+          phase,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Bug phase execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle EXECUTE_VALIDATION message
+   * Requirements: 6.3 (internal-webserver-sync Task 3.2)
+   */
+  private async handleExecuteValidation(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeValidation) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Validation execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const type = payload.type as ValidationType;
+
+    if (!specId || !type) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or type' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeValidation(specId, type);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'VALIDATION_STARTED',
+        payload: {
+          specId,
+          type,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Validation execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle EXECUTE_DOCUMENT_REVIEW message
+   * Requirements: 6.4 (internal-webserver-sync Task 3.3)
+   */
+  private async handleExecuteDocumentReview(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeDocumentReview) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Document review execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeDocumentReview(specId);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'DOCUMENT_REVIEW_STARTED',
+        payload: {
+          specId,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Document review execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Broadcast Methods for Task Progress and Spec Updates (internal-webserver-sync Task 3.4)
+  // ============================================================
+
+  /**
+   * Broadcast task progress to all connected clients
+   * Requirements: 6.5 (internal-webserver-sync Task 3.4)
+   *
+   * @param specId Specification identifier
+   * @param taskId Task identifier
+   * @param status Task status
+   */
+  broadcastTaskProgress(specId: string, taskId: string, status: string): void {
+    this.broadcast({
+      type: 'TASK_PROGRESS',
+      payload: { specId, taskId, status },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast spec updated to all connected clients
+   * Requirements: 6.6 (internal-webserver-sync Task 3.4)
+   *
+   * @param specId Specification identifier
+   * @param updates Updated spec data
+   */
+  broadcastSpecUpdated(specId: string, updates: Record<string, unknown>): void {
+    this.broadcast({
+      type: 'SPEC_UPDATED',
+      payload: { specId, ...updates },
+      timestamp: Date.now(),
+    });
   }
 }

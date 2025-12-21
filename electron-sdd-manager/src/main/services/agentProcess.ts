@@ -7,6 +7,16 @@
 import { spawn, ChildProcess } from 'child_process';
 import { logger } from './logger';
 
+/**
+ * Get the command to use for Claude CLI
+ * Supports E2E testing by allowing mock command via environment variable
+ *
+ * @returns The command path (default: 'claude', or E2E_MOCK_CLAUDE_COMMAND if set)
+ */
+export function getClaudeCommand(): string {
+  return process.env.E2E_MOCK_CLAUDE_COMMAND || 'claude';
+}
+
 export interface AgentProcessOptions {
   readonly agentId: string;
   readonly command: string;

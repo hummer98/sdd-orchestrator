@@ -74,6 +74,88 @@ task electron:test:e2e   # 事前に `task electron:build` が必要
 | `ssh-workflow.e2e.spec.ts` | SSH接続フロー | 18 |
 | `layout-persistence.e2e.spec.ts` | レイアウト永続化 | 14 |
 | `install-dialogs.e2e.spec.ts` | CLI/CLAUDE.mdインストールダイアログ | 18 |
+| `multi-window.e2e.spec.ts` | マルチウィンドウ機能 | 30 |
+| `workflow-integration.e2e.spec.ts` | **ワークフロー統合テスト（Mock Claude使用）** | 25 |
+| `auto-execution-flow.e2e.spec.ts` | **自動実行フロー全通テスト（Mock Claude使用）** | 21 |
+
+---
+
+## Mock Claude CLI
+
+E2Eテストでは実際のClaude APIを呼び出さず、Mock Claude CLIを使用してワークフローをテストできます。
+
+### 設定
+
+`wdio.conf.ts` で自動的に設定されます：
+
+```typescript
+// Mock Claude CLI for E2E testing
+const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude.sh');
+process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
+process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';  // 応答遅延（秒）
+```
+
+### Mock Claudeの動作
+
+`scripts/e2e-mock/mock-claude.sh` は以下を行います：
+
+1. コマンド引数からフェーズを判定（requirements, design, tasks, impl等）
+2. `stream-json`形式でモックレスポンスを出力
+3. session_idを含むinitメッセージを返却
+4. フェーズに応じた成功レスポンスを生成
+5. **requirements/design/tasksフェーズでは実際のMarkdownファイルを生成**
+6. **spec.jsonのapprovals.{phase}.generatedフラグとphaseを自動更新**
+
+### ファイル生成機能（v2.0）
+
+Mock Claudeはrequirements/design/tasksフェーズ実行時に、以下のファイルを自動生成します：
+
+| フェーズ | 生成ファイル | spec.json更新 |
+|---------|------------|---------------|
+| requirements | `requirements.md` | `phase: "requirements-generated"`, `approvals.requirements.generated: true` |
+| design | `design.md` | `phase: "design-generated"`, `approvals.design.generated: true` |
+| tasks | `tasks.md` | `phase: "tasks-generated"`, `approvals.tasks.generated: true` |
+
+これにより、自動実行フローの全通テストで以下が可能になります：
+- spec.jsonの状態遷移を検証
+- UIがspec.json変更に追従するかを検証
+- 生成されたドキュメントがArtifactPreviewに表示されるかを検証
+
+### 対応フェーズ
+
+- `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`, `/kiro:spec-impl`
+- `/kiro:validate-gap`, `/kiro:validate-design`, `/kiro:validate-impl`
+- `/kiro:spec-status`, `/kiro:document-review`, `/kiro:document-review-reply`
+
+---
+
+## テスト用Fixture
+
+### 配置場所
+
+```
+e2e-wdio/fixtures/test-project/
+└── .kiro/
+    └── specs/
+        └── test-feature/
+            ├── spec.json        # Spec設定
+            ├── requirements.md  # 要件定義
+            ├── design.md        # 技術設計
+            └── tasks.md         # 実装タスク
+```
+
+### 使用方法
+
+テスト内でプロジェクトを開く：
+
+```typescript
+const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
+
+// IPC経由でプロジェクトを開く
+const result = await browser.execute(async (projectPath) => {
+  return await window.electronAPI.selectProject(projectPath);
+}, FIXTURE_PROJECT_PATH);
+```
 
 ---
 
@@ -352,6 +434,100 @@ task electron:test:e2e   # 事前に `task electron:build` が必要
    - クラッシュ検知
    - リサイズ可能性確認
 
+### workflow-integration.e2e.spec.ts
+
+**目的**: Mock Claude CLIを使用した実ワークフロー統合テスト。
+
+**前提条件**:
+- Mock Claude CLI が `wdio.conf.ts` で設定済み
+- テスト用Fixture が `e2e-wdio/fixtures/test-project/` に配置
+
+**テストスイート**:
+1. **Mock Environment Setup** (3テスト)
+   - E2E_MOCK_CLAUDE_COMMAND環境変数の確認
+   - アプリケーションウィンドウの確認
+   - Fixtureプロジェクトの存在確認
+
+2. **Project Selection** (2テスト)
+   - IPC経由でのプロジェクト選択
+   - SpecListへのSpec表示確認
+
+3. **UI Elements for Workflow** (6テスト)
+   - SpecListコンポーネント表示
+   - WorkflowView表示
+   - フェーズ実行パネル表示
+   - 全フェーズアイテム表示
+   - requirementsフェーズボタン
+   - 自動実行ボタン
+
+4. **Phase Execution Flow** (3テスト)
+   - Mock Claudeでのrequirementsフェーズ実行
+   - 実行中インジケータ表示
+   - 実行完了の確認
+
+5. **Agent Status Display** (2テスト)
+   - ProjectAgentPanel表示
+   - エージェントアイテム表示
+
+6. **Multi-Phase Workflow** (2テスト)
+   - 全フェーズボタンの正順表示
+   - フェーズコネクタの表示
+
+7. **Security Settings** (2テスト)
+   - contextIsolation有効確認
+   - nodeIntegration無効確認
+
+8. **Application Stability** (3テスト)
+   - クラッシュなし確認
+   - 応答性確認
+   - ウィンドウ表示確認
+
+### auto-execution-flow.e2e.spec.ts
+
+**目的**: 自動実行フローの全通テスト - 許可設定に基づく停止、spec.json更新、UI追従。
+
+**前提条件**:
+- Mock Claude CLI が `wdio.conf.ts` で設定済み（ファイル生成機能付き）
+- テスト用Fixture が `e2e-wdio/fixtures/test-project/` に配置
+
+**テスト観点**:
+1. 自動実行設定に応じた停止位置
+2. specドキュメント生成時のメインパネル更新
+3. エージェント完了時のspec.json更新とUI追従
+4. エージェント実行中のUI disable
+5. 自動実行完了時のUIと内部ステート更新
+
+**テストスイート**:
+1. **Auto-execution Permission Control** (3テスト)
+   - requirementsのみ許可時、requirementsで停止
+   - requirements+design許可時、両方実行して停止
+   - requirements+design+tasks許可時、全て実行して停止
+
+2. **Document Generation and Panel Updates** (2テスト)
+   - requirements.md生成後のパネル更新確認
+   - 生成ファイルのArtifactPreview表示確認
+
+3. **spec.json Update and UI Sync** (3テスト)
+   - approvals.requirements.generated更新確認
+   - generated状態での承認ボタン表示確認
+   - 前フェーズ自動承認と次フェーズ継続の確認
+
+4. **UI Disable During Execution** (3テスト)
+   - 実行中の自動実行ボタン状態変化（→停止ボタン）
+   - 実行中の他フェーズボタン無効化
+   - 実行中インジケータ表示
+
+5. **Completion State Updates** (4テスト)
+   - autoExecutionStatus→completed設定確認
+   - isAutoExecuting→false設定確認
+   - 完了後の自動実行ボタン再有効化
+   - 完了した全フェーズのUI表示確認
+
+6. **Security and Stability** (3テスト)
+   - contextIsolation有効確認
+   - nodeIntegration無効確認
+   - 自動実行中のクラッシュなし確認
+
 ---
 
 ## 共通テストパターン
@@ -447,7 +623,7 @@ expect(windows[0].isResizable()).toBe(true);
 
 | コンポーネント | data-testid |
 |--------------|-------------|
-| Specリスト | `spec-list`, `spec-list-items` |
+| Specリスト | `spec-list`, `spec-list-items`, `spec-item-{name}` |
 | Bugリスト | `bug-list`, `bug-list-items` |
 | タブ | `tab-specs`, `tab-bugs`, `docs-tabs` |
 | パネル | `tabpanel-specs`, `tabpanel-bugs` |
@@ -460,8 +636,12 @@ expect(windows[0].isResizable()).toBe(true);
 |--------------|-------------|
 | ワークフロービュー | `workflow-view` |
 | フェーズパネル | `phase-execution-panel` |
-| フェーズボタン | `phase-button-requirements`, `-design`, `-tasks`, `-impl` |
-| 自動実行 | `auto-execution-button` |
+| フェーズアイテム | `phase-item-{phase}` (例: `phase-item-requirements`) |
+| フェーズボタン | `phase-button-{phase}` (例: `phase-button-requirements`) |
+| 承認して実行ボタン | `phase-button-approve-and-execute-{phase}` |
+| 自動実行 | `auto-execute-button` |
+| フェーズコネクタ | `phase-connector` |
+| 進捗アイコン | `progress-icon-executing`, `-generated`, `-approved`, `-pending` |
 | エージェントパネル | `agent-list-panel`, `agent-log-panel`, `agent-input-panel` |
 
 ### レビューコンポーネント
@@ -513,20 +693,20 @@ expect(windows[0].isResizable()).toBe(true);
 
 | 指標 | 数値 |
 |-----|-----|
-| E2Eテストファイル | 9 |
-| E2Eテストケース | 約210 |
+| E2Eテストファイル | 11 |
+| E2Eテストケース | 約265 |
 | ユニットテストファイル | 114 |
 | コンポーネント数 | 44 |
-| data-testid付きコンポーネント | 44 |
+| data-testid付きコンポーネント | 46 |
 
 ### 総合評価
 
-**現状: 「スモークテストレベル - 基盤は整っているが実動作テストが不足」**
+**現状: 「統合テストレベル - Mock Claudeによる実ワークフローテストを追加」**
 
 ```
 UIコンポーネント存在確認: ████████░░ 80%
 セキュリティ/安定性:     ██████████ 100%
-実ワークフロー動作:      ██░░░░░░░░ 20%
+実ワークフロー動作:      █████░░░░░ 50%
 エラーハンドリング:      ███░░░░░░░ 30%
 ```
 
@@ -541,35 +721,33 @@ UIコンポーネント存在確認: ████████░░ 80%
 - ✅ SSH接続ダイアログ（SSHConnectDialog, SSHAuthDialog）
 - ✅ レイアウト永続化（ResizeHandle, レイアウト保存/復元）
 - ✅ インストールダイアログ（CliInstallDialog, ClaudeMdInstallDialog）
+- ✅ マルチウィンドウ機能（ウィンドウ管理、状態取得）
+- ✅ **ワークフロー統合テスト（Mock Claude使用）**
 
 ### 改善が必要な領域
 
 | 領域 | 問題点 | 優先度 |
 |-----|--------|-------|
-| 実ワークフロー実行 | フェーズ実行、Agent起動が「インフラ確認」のみ | 高 |
-| プロジェクト選択後の動作 | 多くのテストがプロジェクト未選択状態 | 高 |
+| ~~実ワークフロー実行~~ | ~~フェーズ実行、Agent起動が「インフラ確認」のみ~~ | ~~高~~ → 対応済み |
+| ~~プロジェクト選択後の動作~~ | ~~多くのテストがプロジェクト未選択状態~~ | ~~高~~ → 対応済み |
 | エラーケース | エラー発生時のUI動作テストが少ない | 中 |
+| 複数フェーズ連続実行 | requirements→design→tasks の連続実行テスト | 中 |
 
 ### 推奨改善アクション
 
-1. **高優先度**
-   - プロジェクトを開いた状態でのワークフロー実行テスト追加
-   - Spec/Bug作成→保存→表示の一連フローテスト
-   - フェーズボタンクリック→Agent起動→完了の動作確認
-
-2. **中優先度**
+1. **中優先度**
    - エラー発生時のUI表示・リカバリーテスト
+   - 複数フェーズの連続実行テスト
+   - 自動実行（Auto Execution）の完全なフローテスト
 
 ### 結論
 
-現在のE2Eテストは**リリース前の最低限の品質保証（スモークテスト）**としては機能するが、
-**本番品質保証**や**リグレッション防止**には実ワークフローのテスト追加が必要。
-
-特に以下のシナリオがテストされていない:
-- 実際のプロジェクトを開いてSpecを作成・編集する一連の流れ
-- Agentを起動して成果物を生成するワークフロー
-- エラー発生時のユーザーへのフィードバック
+Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずにワークフローの動作検証**が可能になった。
+これにより：
+- CI/CDでのE2Eテスト実行が可能
+- テストの再現性が向上
+- API課金なしでのテスト実行
 
 ---
 
-_更新日: 2025-12-20_
+_更新日: 2025-12-22_

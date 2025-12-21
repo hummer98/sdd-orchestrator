@@ -1,0 +1,38 @@
+{
+  "feature_name": "auto-execution-completion-detection",
+  "created_at": "2025-12-22T10:00:00.000Z",
+  "updated_at": "2025-12-21T22:14:48.653Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": false,
+  "documentReview": {
+    "rounds": 2,
+    "status": "review_complete",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixApplied": true
+      }
+    ]
+  }
+}

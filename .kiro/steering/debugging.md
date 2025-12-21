@@ -3,6 +3,46 @@
 このドキュメントはデバッグ・動作確認時に参照する詳細情報を含みます。
 通常の開発時には不要なコンテキストであり、`debug` agentから参照されます。
 
+## ログ保存場所
+
+### 環境別ログパス
+
+| ログ種別 | 開発環境 | 本番環境 (macOS) |
+|----------|----------|------------------|
+| メインプロセスログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/sdd-orchestrator/main.log` |
+| アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
+| エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左（プロジェクト内） |
+| SSH接続ログ | メモリ内バッファ（最大1000エントリ） | 同左 |
+
+### ログフォーマット
+
+- **形式**: `[ISO8601タイムスタンプ] [LEVEL] message data`
+- **ログレベル**: DEBUG, INFO, WARN, ERROR
+- **エージェントログ**: JSONL形式（JSON Lines）
+
+### 本番環境でのログ確認
+
+```bash
+# ログファイルを確認
+cat ~/Library/Logs/sdd-orchestrator/main.log
+
+# リアルタイムで監視
+tail -f ~/Library/Logs/sdd-orchestrator/main.log
+
+# エラーのみ抽出
+grep "\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main.log
+
+# 最新100行を確認
+tail -100 ~/Library/Logs/sdd-orchestrator/main.log
+```
+
+### ログ実装詳細
+
+- **ロガー実装**: カスタム実装（electron-log未使用）
+- **ソース**: [logger.ts](electron-sdd-manager/src/main/services/logger.ts)
+- **本番判定**: `app.isPackaged` でパッケージ版かを判定
+- **ログローテーション**: 未実装（単一ファイルに追記）
+
 ## MCP経由でのログ参照
 
 Electron MCPツールでは`mcp__electron__read_electron_logs`が利用可能だが、これはシステム全体のElectronプロセスログを取得するため、アプリ固有のログは取得できない。
@@ -91,3 +131,52 @@ cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-orchestrator
 ```
 
 これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。
+
+## MCP経由でのプロジェクト選択
+
+### 重要：正しい方法
+
+MCP `send_command_to_electron` の `eval` コマンドで `selectProject` APIを呼び出す。
+
+```javascript
+// ✅ 正しい方法：.then()でPromiseをチェーン
+command: "eval"
+args: { "code": "window.electronAPI.selectProject('/path/to/project').then(r => JSON.stringify(r))" }
+```
+
+**動作確認済みの例**:
+```javascript
+command: "eval"
+args: { "code": "window.electronAPI.selectProject('/Users/yamamoto/git/sdd-orchestrator').then(r => JSON.stringify(r))" }
+```
+
+### よくある誤解
+
+| 誤解 | 事実 |
+|------|------|
+| 「async関数はMCP経由で使えない」 | **誤り**。`.then()`でチェーンすれば正常に動作する |
+| 「アプリを再起動する必要がある」 | **不要**。`selectProject`はランタイムで即座にプロジェクトを切り替える |
+| 「ストアを直接操作する必要がある」 | **不要**。正規のIPC APIを使用すべき |
+
+### 戻り値
+
+`selectProject`は以下の形式で結果を返す：
+
+```typescript
+{
+  projectPath: string;           // 選択されたプロジェクトパス
+  kiroValidation: {              // .kiroディレクトリの検証結果
+    hasKiroDir: boolean;
+    hasSteeringDir: boolean;
+    hasSpecsDir: boolean;
+    hasBugsDir: boolean;
+  };
+  specs: SpecInfo[];             // プロジェクト内のSpec一覧
+  bugs: BugInfo[];               // プロジェクト内のBug一覧
+  error?: string;                // エラー時のみ
+}
+```
+
+### エラー時
+
+パスが存在しない場合などは `error` フィールドにエラーメッセージが含まれる。

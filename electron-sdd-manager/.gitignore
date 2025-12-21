@@ -28,3 +28,6 @@ coverage/
 # Electron
 *.asar
 .wdio-electron-data
+
+# E2E test fixtures - runtime generated files
+e2e-wdio/fixtures/*/.kiro/runtime/

@@ -12,7 +12,7 @@ import { tmpdir } from 'os';
 import {
   layoutConfigService,
   DEFAULT_LAYOUT,
-  LayoutConfigSchema,
+  ProjectConfigSchema,
   type LayoutValues,
 } from './layoutConfigService';
 
@@ -59,12 +59,12 @@ describe('layoutConfigService integration tests', () => {
       const content = await fs.readFile(configFilePath, 'utf-8');
       const data = JSON.parse(content);
 
-      // スキーマで検証
-      const result = LayoutConfigSchema.safeParse(data);
+      // スキーマで検証 (version 2)
+      const result = ProjectConfigSchema.safeParse(data);
       expect(result.success).toBe(true);
 
       // 値が正しいことを確認
-      expect(data.version).toBe(1);
+      expect(data.version).toBe(2);
       expect(data.layout).toEqual(layout);
     });
 
@@ -140,7 +140,7 @@ describe('layoutConfigService integration tests', () => {
 
     it('スキーマに合致しないJSONの場合はnullを返す', async () => {
       const invalidConfig = {
-        version: 2, // Invalid version
+        version: 99, // Invalid version
         layout: {
           leftPaneWidth: 300,
         },

@@ -4,17 +4,22 @@
  * Requirements: 4.1, 4.2, 4.4
  */
 
-import { access, readFile } from 'fs/promises';
+import { access } from 'fs/promises';
 import { join } from 'path';
 import { checkRequiredPermissions, CheckPermissionsResult } from './permissionsService';
+import {
+  projectConfigService,
+  ProfileName,
+} from './layoutConfigService';
 
 /**
- * Supported profile names
+ * @deprecated Use ProfileName from layoutConfigService
  */
-export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
+export type { ProfileName };
 
 /**
- * Profile configuration stored in .kiro/settings/profile.json
+ * Profile configuration stored in .kiro/sdd-orchestrator.json
+ * @deprecated Use ProfileConfig from layoutConfigService with name field
  */
 export interface ProfileConfig {
   readonly profile: ProfileName;
@@ -221,29 +226,18 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
- * Get the profile configuration path
- */
-function getProfileConfigPath(projectPath: string): string {
-  return join(projectPath, '.kiro', 'settings', 'profile.json');
-}
-
-/**
  * Read profile configuration from project
- * Returns null if not found or invalid
+ * Now reads from .kiro/sdd-orchestrator.json via projectConfigService
  */
 async function readProfileConfig(projectPath: string): Promise<ProfileConfig | null> {
-  const configPath = getProfileConfigPath(projectPath);
-  try {
-    const content = await readFile(configPath, 'utf-8');
-    const config = JSON.parse(content) as ProfileConfig;
-    // Validate that profile is a known value
-    if (config.profile && COMMANDS_BY_PROFILE[config.profile]) {
-      return config;
-    }
-    return null;
-  } catch {
-    return null;
+  const profile = await projectConfigService.loadProfile(projectPath);
+  if (profile && COMMANDS_BY_PROFILE[profile.name]) {
+    return {
+      profile: profile.name,
+      installedAt: profile.installedAt,
+    };
   }
+  return null;
 }
 
 /**

@@ -65,12 +65,15 @@ describe('ProjectChecker', () => {
   }
 
   /**
-   * Helper to create profile.json
+   * Helper to create profile config in sdd-orchestrator.json
    */
   async function createProfileConfig(profile: 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager'): Promise<void> {
-    const filePath = path.join(tempDir, '.kiro', 'settings', 'profile.json');
+    const filePath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify({ profile, installedAt: new Date().toISOString() }), 'utf-8');
+    await fs.writeFile(filePath, JSON.stringify({
+      version: 2,
+      profile: { name: profile, installedAt: new Date().toISOString() },
+    }), 'utf-8');
   }
 
   describe('checkSlashCommandsForProfile', () => {
@@ -254,12 +257,12 @@ describe('ProjectChecker', () => {
   });
 
   describe('getInstalledProfile', () => {
-    it('should return null when profile.json does not exist', async () => {
+    it('should return null when sdd-orchestrator.json does not exist', async () => {
       const result = await checker.getInstalledProfile(tempDir);
       expect(result).toBeNull();
     });
 
-    it('should return profile config when profile.json exists', async () => {
+    it('should return profile config when sdd-orchestrator.json exists', async () => {
       await createProfileConfig('cc-sdd');
 
       const result = await checker.getInstalledProfile(tempDir);

@@ -13,7 +13,6 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run build && wdio run wdio.conf.ts",
-    "test:e2e:watch": "wdio run wdio.conf.ts --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },

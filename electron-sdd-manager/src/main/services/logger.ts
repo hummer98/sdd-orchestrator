@@ -58,7 +58,12 @@ class Logger {
     }
 
     // Also write to console for development
-    console.log(formatted.trim());
+    // Wrap in try-catch to prevent EPIPE errors during shutdown
+    try {
+      console.log(formatted.trim());
+    } catch {
+      // Ignore console errors (e.g., EPIPE during app shutdown)
+    }
   }
 
   info(message: string, data?: unknown): void {

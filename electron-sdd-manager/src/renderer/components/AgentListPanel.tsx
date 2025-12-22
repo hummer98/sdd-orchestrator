@@ -145,7 +145,7 @@ export function AgentListPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div data-testid="agent-list-panel" className="h-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
         <Bot className="w-4 h-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">

@@ -1,6 +1,6 @@
 ---
 description: Verify bug resolution and document test results
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 argument-hint: [bug-name]
 ---
 
@@ -73,6 +73,14 @@ Provide output with the following structure:
 5. **Conclusion**:
    - If PASSED: Bug is resolved, ready for commit
    - If FAILED: What needs to be addressed, suggest `/kiro:bug-fix` again
+
+## Post-Verification Actions
+**If verification PASSED**, use AskUserQuestion to ask about next steps:
+- Question: "検証が完了しました。この修正をコミットしますか？"
+- Options:
+  1. "はい、コミットする" - Proceed to commit the changes
+  2. "いいえ、コミットしない" - End without committing
+- If user selects commit: Execute git add and git commit with appropriate message
 
 **Format Requirements**:
 - Use clear status indicators (✅ / ❌)

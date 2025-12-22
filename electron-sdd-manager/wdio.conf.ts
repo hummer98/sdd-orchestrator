@@ -12,7 +12,10 @@ const projectRoot = path.resolve(__dirname);
 // This allows workflow tests to run without actual Claude API calls
 const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude.sh');
 process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
-process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
+// Allow E2E_MOCK_CLAUDE_DELAY to be set via environment variable (default: 0.1s)
+if (!process.env.E2E_MOCK_CLAUDE_DELAY) {
+  process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
+}
 
 // ビルド済みアプリのバイナリパス（macOS）
 // 注意: electron-builderでビルド後に使用可能

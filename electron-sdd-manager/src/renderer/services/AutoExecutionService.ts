@@ -363,22 +363,30 @@ export class AutoExecutionService {
   // Requirements: 1.2, 1.3, 1.4, 2.3, 3.1, 3.2, 3.3
   // ============================================================
   private handleDirectStatusChange(agentId: string, status: string): void {
+    console.log(`[AutoExecutionService] handleDirectStatusChange: agentId=${agentId}, status=${status}`);
+
     // Task 3.4: Only process if auto-executing
-    if (!useWorkflowStore.getState().isAutoExecuting) return;
+    if (!useWorkflowStore.getState().isAutoExecuting) {
+      console.log('[AutoExecutionService] Not auto-executing, ignoring status change');
+      return;
+    }
 
     // Race condition fix: Always buffer events for unknown agentIds
     // They will be processed after executePhase returns with the agentId
     if (!this.trackedAgentIds.has(agentId)) {
+      console.log(`[AutoExecutionService] AgentId ${agentId} not tracked, buffering status=${status}`);
       this.pendingEvents.set(agentId, status);
       return;
     }
 
     const currentPhase = useWorkflowStore.getState().currentAutoPhase;
+    console.log(`[AutoExecutionService] Processing status change: agentId=${agentId}, status=${status}, currentPhase=${currentPhase}`);
 
     // Task 3.1, 3.2: Status-based completion detection (not state-transition based)
     if (status === 'completed') {
       // Get agent info to determine the phase
       const agent = useAgentStore.getState().getAgentById(agentId);
+      console.log(`[AutoExecutionService] Completed: agent?.phase=${agent?.phase}, currentPhase=${currentPhase}`);
       if (agent?.phase === 'document-review') {
         this.handleDocumentReviewCompleted();
       } else if (agent?.phase === 'document-review-reply') {
@@ -386,6 +394,8 @@ export class AutoExecutionService {
       } else if (currentPhase) {
         // Only proceed with regular phase completion if currentPhase is set
         this.handleAgentCompleted(currentPhase);
+      } else {
+        console.warn('[AutoExecutionService] No currentPhase set, cannot handle completion');
       }
     } else if (status === 'error' || status === 'failed') {
       // Task 3.3: Error handling
@@ -405,6 +415,35 @@ export class AutoExecutionService {
   // ============================================================
   isTrackedAgent(agentId: string): boolean {
     return this.trackedAgentIds.has(agentId);
+  }
+
+  // ============================================================
+  // E2E Debug: Expose internal state for debugging
+  // ============================================================
+  getDebugInfo(): {
+    trackedAgentIds: string[];
+    pendingEvents: [string, string][];
+    ipcListenerRegistered: boolean;
+  } {
+    return {
+      trackedAgentIds: Array.from(this.trackedAgentIds),
+      pendingEvents: Array.from(this.pendingEvents.entries()),
+      ipcListenerRegistered: !!this.unsubscribeIPC,
+    };
+  }
+
+  // ============================================================
+  // E2E/Test: Reset internal state for test isolation
+  // ============================================================
+  resetForTest(): void {
+    this.trackedAgentIds.clear();
+    this.pendingEvents.clear();
+    this.executedPhases = [];
+    this.executedValidations = [];
+    this.errors = [];
+    this.executionStartTime = null;
+    this.clearTimeout();
+    console.log('[AutoExecutionService] State reset for test');
   }
 
   // ============================================================
@@ -878,16 +917,21 @@ export class AutoExecutionService {
 
       // Task 2.2: Add agentId to tracked set immediately after getting the response
       if (agentInfo && agentInfo.agentId) {
+        console.log(`[AutoExecutionService] executePhase returned agentId=${agentInfo.agentId}, adding to trackedAgentIds`);
         this.trackedAgentIds.add(agentInfo.agentId);
 
         // Race condition fix: Process any buffered events for this agentId
         // Events may have arrived before we knew the agentId
         const bufferedStatus = this.pendingEvents.get(agentInfo.agentId);
+        console.log(`[AutoExecutionService] Checking pendingEvents for ${agentInfo.agentId}: bufferedStatus=${bufferedStatus}`);
         if (bufferedStatus) {
+          console.log(`[AutoExecutionService] Processing buffered status=${bufferedStatus} for agentId=${agentInfo.agentId}`);
           this.pendingEvents.delete(agentInfo.agentId);
           // Process immediately since trackedAgentIds now contains this agentId
           this.handleDirectStatusChange(agentInfo.agentId, bufferedStatus);
         }
+      } else {
+        console.warn('[AutoExecutionService] executePhase did not return agentId', agentInfo);
       }
     } catch (error) {
       this.handleAgentFailed(
@@ -904,6 +948,10 @@ let autoExecutionServiceInstance: AutoExecutionService | null = null;
 export function getAutoExecutionService(): AutoExecutionService {
   if (!autoExecutionServiceInstance) {
     autoExecutionServiceInstance = new AutoExecutionService();
+    // E2E debug: Expose service instance for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).__AUTO_EXECUTION_SERVICE__ = autoExecutionServiceInstance;
+    }
   }
   return autoExecutionServiceInstance;
 }

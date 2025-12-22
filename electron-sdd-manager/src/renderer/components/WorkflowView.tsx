@@ -417,9 +417,9 @@ export function WorkflowView() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="workflow-view">
       {/* Workflow Phases */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2" data-testid="phase-execution-panel">
         {WORKFLOW_PHASES.map((phase, index) => (
           <div key={phase}>
             {/* Phase Item */}

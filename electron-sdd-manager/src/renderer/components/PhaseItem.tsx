@@ -129,6 +129,7 @@ export function PhaseItem({
   return (
     <>
     <div
+      data-testid={`phase-item-${phase}`}
       className={clsx(
         'flex items-center justify-between p-3 rounded-lg',
         'bg-gray-50 dark:bg-gray-800',
@@ -211,6 +212,7 @@ export function PhaseItem({
           <>
             {showApproveAndExecute ? (
               <button
+                data-testid={`phase-button-approve-and-execute-${phase}`}
                 onClick={onApproveAndExecute}
                 className={clsx(
                   'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
@@ -223,6 +225,7 @@ export function PhaseItem({
               </button>
             ) : canExecute ? (
               <button
+                data-testid={`phase-button-${phase}`}
                 onClick={onExecute}
                 className={clsx(
                   'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
@@ -235,6 +238,7 @@ export function PhaseItem({
               </button>
             ) : (
               <button
+                data-testid={`phase-button-${phase}`}
                 disabled
                 className={clsx(
                   'flex items-center gap-1 px-3 py-1.5 rounded text-sm',

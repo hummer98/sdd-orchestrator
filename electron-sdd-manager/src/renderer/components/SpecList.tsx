@@ -47,7 +47,7 @@ export function SpecList() {
   const specs = getSortedFilteredSpecs();
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="spec-list">
       {/* Filter - ヘッダーはSpecListHeaderに分離済み */}
       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export function SpecList() {
             仕様がありません
           </div>
         ) : (
-          <ul>
+          <ul data-testid="spec-list-items">
             {specs.map((spec) => {
               // Task 33.1: Count running agents for this spec
               const agents = getAgentsForSpec(spec.name);
@@ -143,7 +143,7 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
   });
 
   return (
-    <li>
+    <li data-testid={`spec-item-${spec.name}`}>
       <div
         role="button"
         tabIndex={0}

@@ -17,6 +17,7 @@ const mockElectronAPI = {
   executeValidation: vi.fn(),
   updateApproval: vi.fn(),
   readSpecJson: vi.fn(),
+  onAgentStatusChange: vi.fn(() => vi.fn()), // Returns unsubscribe function
 };
 
 vi.stubGlobal('window', {

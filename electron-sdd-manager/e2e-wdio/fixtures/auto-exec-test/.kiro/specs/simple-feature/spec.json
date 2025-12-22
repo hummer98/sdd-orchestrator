@@ -1,4 +1,5 @@
 {
+  "feature_name": "simple-feature",
   "name": "simple-feature",
   "description": "E2Eテスト用のシンプルな機能",
   "phase": "initialized",

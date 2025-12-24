@@ -554,6 +554,17 @@ export class SpecManagerService {
         // Parse sessionId from Claude Code init message
         if (stream === 'stdout') {
           this.parseAndUpdateSessionId(agentId, specId, data);
+
+          // Bug Fix: Check for result message and force kill if process doesn't exit
+          // See docs/memo/claude-cli-process-not-exiting.md
+          if (data.includes('"type":"result"')) {
+            setTimeout(() => {
+              if (this.processes.has(agentId)) {
+                logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
+                process.kill();
+              }
+            }, 5000);
+          }
         }
 
         // Save log to file
@@ -833,6 +844,15 @@ export class SpecManagerService {
       // Set up event handlers (same as startAgent)
       process.onOutput((stream, data) => {
         this.registry.updateActivity(agentId);
+
+        if (stream === 'stdout' && data.includes('"type":"result"')) {
+          setTimeout(() => {
+            if (this.processes.has(agentId)) {
+              logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
+              process.kill();
+            }
+          }, 5000);
+        }
 
         // Save log to file (append to existing logs)
         const logEntry: LogEntry = {

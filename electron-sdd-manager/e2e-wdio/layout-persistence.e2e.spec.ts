@@ -231,8 +231,31 @@ describe('Layout Persistence E2E', () => {
 
   // ============================================================
   // ProjectAgentPanelレイアウト保存・復元 (project-agent-panel-always-visible feature)
+  // Note: Layout APIs require projectPath, so we need to select a project first
   // ============================================================
   describe('ProjectAgentPanelレイアウト保存・復元', () => {
+    // Test project path for layout persistence tests
+    const FIXTURE_PROJECT_PATH = require('path').resolve(__dirname, 'fixtures/test-project');
+
+    // Select project before layout tests
+    beforeEach(async () => {
+      // Select project via store to ensure projectPath is available
+      await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+        try {
+          const stores = (window as any).__STORES__;
+          if (stores?.projectStore?.getState) {
+            await stores.projectStore.getState().selectProject(projPath);
+            done(true);
+          } else {
+            done(false);
+          }
+        } catch {
+          done(false);
+        }
+      }, FIXTURE_PROJECT_PATH);
+      await browser.pause(300);
+    });
+
     it('ProjectAgentPanelの高さが取得できる', async () => {
       const container = await $('[data-testid="project-agent-panel-container"]');
       if (await container.isExisting()) {
@@ -242,14 +265,14 @@ describe('Layout Persistence E2E', () => {
     });
 
     it('saveLayoutConfigにprojectAgentPanelHeightを渡せる', async () => {
-      const canSave = await browser.execute(async () => {
+      const canSave = await browser.execute(async (projPath: string) => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.saveLayoutConfig !== 'function') {
           return false;
         }
         try {
-          // テスト用の値で保存を試みる
-          await window.electronAPI.saveLayoutConfig(undefined, {
+          // テスト用の値で保存を試みる (projectPathを渡す)
+          await window.electronAPI.saveLayoutConfig(projPath, {
             leftPaneWidth: 288,
             rightPaneWidth: 320,
             bottomPaneHeight: 192,
@@ -260,34 +283,38 @@ describe('Layout Persistence E2E', () => {
         } catch {
           return false;
         }
-      });
+      }, FIXTURE_PROJECT_PATH);
       expect(canSave).toBe(true);
     });
 
     it('loadLayoutConfigでprojectAgentPanelHeightが復元される', async () => {
-      const loadedHeight = await browser.execute(async () => {
+      const loadedHeight = await browser.execute(async (projPath: string) => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.loadLayoutConfig !== 'function') {
           return null;
         }
         try {
-          const config = await window.electronAPI.loadLayoutConfig();
+          const config = await window.electronAPI.loadLayoutConfig(projPath);
           return config?.projectAgentPanelHeight ?? null;
         } catch {
           return null;
         }
-      });
+      }, FIXTURE_PROJECT_PATH);
       // 保存した値または何らかの値が読み込まれる（nullでない、または後方互換でnull）
       expect(loadedHeight === null || typeof loadedHeight === 'number').toBe(true);
     });
 
     it('リサイズ後にレイアウトが保存される', async () => {
       // 1. 初期の高さを記録
-      const initialHeight = await browser.execute(async () => {
+      const initialHeight = await browser.execute(async (projPath: string) => {
         if (typeof window.electronAPI === 'undefined') return null;
-        const config = await window.electronAPI.loadLayoutConfig();
-        return config?.projectAgentPanelHeight ?? 120;
-      });
+        try {
+          const config = await window.electronAPI.loadLayoutConfig(projPath);
+          return config?.projectAgentPanelHeight ?? 120;
+        } catch {
+          return null;
+        }
+      }, FIXTURE_PROJECT_PATH);
 
       if (initialHeight === null) {
         // APIが利用できない場合はスキップ
@@ -297,36 +324,36 @@ describe('Layout Persistence E2E', () => {
 
       // 2. 新しい高さで保存
       const newHeight = initialHeight === 150 ? 180 : 150;
-      await browser.execute(async (height: number) => {
-        await window.electronAPI.saveLayoutConfig(undefined, {
+      await browser.execute(async (projPath: string, height: number) => {
+        await window.electronAPI.saveLayoutConfig(projPath, {
           leftPaneWidth: 288,
           rightPaneWidth: 320,
           bottomPaneHeight: 192,
           agentListHeight: 160,
           projectAgentPanelHeight: height,
         });
-      }, newHeight);
+      }, FIXTURE_PROJECT_PATH, newHeight);
 
       // 3. 読み込んで確認
-      const savedHeight = await browser.execute(async () => {
-        const config = await window.electronAPI.loadLayoutConfig();
+      const savedHeight = await browser.execute(async (projPath: string) => {
+        const config = await window.electronAPI.loadLayoutConfig(projPath);
         return config?.projectAgentPanelHeight;
-      });
+      }, FIXTURE_PROJECT_PATH);
 
       expect(savedHeight).toBe(newHeight);
     });
 
     it('resetLayoutConfigでprojectAgentPanelHeightがデフォルト値に戻る', async () => {
-      const resetResult = await browser.execute(async () => {
+      const resetResult = await browser.execute(async (projPath: string) => {
         if (typeof window.electronAPI === 'undefined' ||
             typeof window.electronAPI.resetLayoutConfig !== 'function') {
           return { success: false, height: null };
         }
         try {
-          // リセット実行
-          await window.electronAPI.resetLayoutConfig();
+          // リセット実行 (projectPathを渡す)
+          await window.electronAPI.resetLayoutConfig(projPath);
           // リセット後の値を読み込む
-          const config = await window.electronAPI.loadLayoutConfig();
+          const config = await window.electronAPI.loadLayoutConfig(projPath);
           return {
             success: true,
             height: config?.projectAgentPanelHeight ?? null,
@@ -334,7 +361,7 @@ describe('Layout Persistence E2E', () => {
         } catch {
           return { success: false, height: null };
         }
-      });
+      }, FIXTURE_PROJECT_PATH);
 
       if (resetResult.success && resetResult.height !== null) {
         // デフォルト値（120px）に戻っていることを確認

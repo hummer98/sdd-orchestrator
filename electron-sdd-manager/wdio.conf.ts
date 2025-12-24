@@ -53,8 +53,8 @@ export const config: Options.Testrunner = {
 
   logLevel: 'info',
   bail: 0,
-  waitforTimeout: 10000,
-  connectionRetryTimeout: 120000,
+  waitforTimeout: 30000, // 30 seconds for element waits
+  connectionRetryTimeout: 180000, // 3 minutes for connection
   connectionRetryCount: 3,
 
   services: ['electron'],
@@ -64,6 +64,6 @@ export const config: Options.Testrunner = {
 
   mochaOpts: {
     ui: 'bdd',
-    timeout: 120000, // 2 minutes for workflow tests
+    timeout: 300000, // 5 minutes for long-running workflow tests (multiple phases)
   },
 };

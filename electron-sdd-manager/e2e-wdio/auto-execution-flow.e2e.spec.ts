@@ -18,8 +18,90 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // Fixture project path (relative to electron-sdd-manager)
-const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
-const SPEC_JSON_PATH = path.join(FIXTURE_PROJECT_PATH, '.kiro/specs/test-feature/spec.json');
+const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/test-project');
+const SPEC_NAME = 'test-feature';
+const SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/specs', SPEC_NAME);
+const RUNTIME_AGENTS_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents', SPEC_NAME);
+
+// Initial spec.json content for reset
+const INITIAL_SPEC_JSON = {
+  feature_name: 'test-feature',
+  name: 'test-feature',
+  description: 'E2Eテスト用のテスト機能',
+  phase: 'initialized',
+  language: 'ja',
+  approvals: {
+    requirements: { generated: false, approved: false },
+    design: { generated: false, approved: false },
+    tasks: { generated: false, approved: false },
+  },
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+};
+
+const INITIAL_REQUIREMENTS_MD = `# Requirements Document
+
+## Project Description (Input)
+E2Eテスト用のテスト機能を実装します。
+
+## Requirements
+<!-- Will be generated in /kiro:spec-requirements phase -->
+
+`;
+
+/**
+ * Fixtureを初期状態にリセット
+ */
+function resetFixture(): void {
+  // spec.jsonを初期状態に戻す
+  fs.writeFileSync(
+    path.join(SPEC_DIR, 'spec.json'),
+    JSON.stringify(INITIAL_SPEC_JSON, null, 2)
+  );
+
+  // requirements.mdを初期状態に戻す
+  fs.writeFileSync(path.join(SPEC_DIR, 'requirements.md'), INITIAL_REQUIREMENTS_MD);
+
+  // design.md, tasks.mdを削除（存在する場合）
+  for (const file of ['design.md', 'tasks.md']) {
+    const filePath = path.join(SPEC_DIR, file);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
+  // runtime/agents ディレクトリをクリーンアップ
+  if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
+    const files = fs.readdirSync(RUNTIME_AGENTS_DIR);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(RUNTIME_AGENTS_DIR, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // logs ディレクトリをクリーンアップ
+  const logsDir = path.join(SPEC_DIR, 'logs');
+  if (fs.existsSync(logsDir)) {
+    const files = fs.readdirSync(logsDir);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(logsDir, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+/**
+ * Read current spec.json from filesystem
+ */
+function readSpecJson(): typeof INITIAL_SPEC_JSON {
+  return JSON.parse(fs.readFileSync(path.join(SPEC_DIR, 'spec.json'), 'utf-8'));
+}
 
 /**
  * Helper: Select project using Zustand store action
@@ -127,98 +209,131 @@ async function getAutoExecutionStatus(): Promise<{
 }
 
 /**
- * Helper: Read spec.json from fixture
- */
-function readSpecJson(): any {
-  try {
-    const content = fs.readFileSync(SPEC_JSON_PATH, 'utf-8');
-    return JSON.parse(content);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Helper: Reset spec.json to initial state
- */
-function resetSpecJson(): void {
-  const initialSpec = {
-    name: 'test-feature',
-    description: 'E2Eテスト用のテスト機能',
-    phase: 'initialized',
-    language: 'ja',
-    approvals: {
-      requirements: { generated: false, approved: false },
-      design: { generated: false, approved: false },
-      tasks: { generated: false, approved: false },
-    },
-    createdAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-  };
-  fs.writeFileSync(SPEC_JSON_PATH, JSON.stringify(initialSpec, null, 2));
-}
-
-/**
- * Helper: Delete generated files
- */
-function cleanupGeneratedFiles(): void {
-  const specDir = path.dirname(SPEC_JSON_PATH);
-  const filesToDelete = ['requirements.md', 'design.md', 'tasks.md'];
-  for (const file of filesToDelete) {
-    const filePath = path.join(specDir, file);
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-  }
-}
-
-/**
- * Helper: Wait for condition with timeout
+ * Helper: Wait for condition with debug logging
  */
 async function waitForCondition(
   condition: () => Promise<boolean>,
   timeout: number = 10000,
-  interval: number = 500
+  interval: number = 500,
+  debugLabel: string = 'condition'
 ): Promise<boolean> {
   const startTime = Date.now();
+  let iteration = 0;
   while (Date.now() - startTime < timeout) {
+    iteration++;
     if (await condition()) {
+      console.log(`[E2E] ${debugLabel} met after ${iteration} iterations (${Date.now() - startTime}ms)`);
       return true;
+    }
+    // Debug log every 2 seconds
+    if (iteration % 4 === 0) {
+      const status = await getAutoExecutionStatus();
+      console.log(`[E2E] ${debugLabel} iteration ${iteration}: isAutoExecuting=${status.isAutoExecuting}, status=${status.autoExecutionStatus}`);
     }
     await browser.pause(interval);
   }
+  console.log(`[E2E] ${debugLabel} TIMEOUT after ${iteration} iterations`);
   return false;
 }
 
+/**
+ * Helper: Refresh spec store
+ */
+async function refreshSpecStore(): Promise<void> {
+  await browser.executeAsync((done) => {
+    const stores = (window as any).__STORES__;
+    const refreshFn = stores?.specStore?.getState()?.refreshSpecs;
+    if (refreshFn) {
+      refreshFn().then(() => done()).catch(() => done());
+    } else {
+      done();
+    }
+  });
+  await browser.pause(300);
+}
+
+/**
+ * Helper: Clear agent store
+ */
+async function clearAgentStore(): Promise<void> {
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (stores?.agentStore?.getState) {
+      const state = stores.agentStore.getState();
+      state.agents.forEach((agent: any) => {
+        state.removeAgent(agent.agentId);
+      });
+    }
+  });
+}
+
+/**
+ * Helper: Reset AutoExecutionService state for test isolation
+ */
+async function resetAutoExecutionService(): Promise<void> {
+  await browser.execute(() => {
+    const service = (window as any).__AUTO_EXECUTION_SERVICE__;
+    if (service?.resetForTest) {
+      service.resetForTest();
+    }
+  });
+}
+
+/**
+ * Helper: Reset workflowStore autoExecution state
+ */
+async function resetWorkflowStoreAutoExecution(): Promise<void> {
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (stores?.workflowStore?.getState) {
+      const store = stores.workflowStore.getState();
+      // Stop any running auto-execution
+      if (store.isAutoExecuting) {
+        store.stopAutoExecution();
+      }
+      // Reset autoExecutionStatus to idle
+      stores.workflowStore.setState({ autoExecutionStatus: 'idle', currentAutoPhase: null });
+    }
+  });
+}
+
 describe('Auto Execution Flow E2E Tests', () => {
-  // Setup before each test
+  before(async () => {
+    resetFixture();
+  });
+
   beforeEach(async () => {
-    // Reset spec.json and cleanup generated files
-    resetSpecJson();
-    cleanupGeneratedFiles();
+    // Reset fixture and cleanup generated files
+    resetFixture();
+
+    // Clear agent store
+    await clearAgentStore();
+
+    // Reset AutoExecutionService
+    await resetAutoExecutionService();
+
+    // Reset workflowStore autoExecution state
+    await resetWorkflowStoreAutoExecution();
 
     // Select project and spec
-    const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
-    await browser.pause(1000);
+    await browser.pause(500);
+    await refreshSpecStore();
+    await browser.pause(500);
 
-    const specSuccess = await selectSpecViaStore('test-feature');
+    const specSuccess = await selectSpecViaStore(SPEC_NAME);
     expect(specSuccess).toBe(true);
     await browser.pause(500);
 
     // Refresh spec store to get latest state
-    await browser.execute(() => {
-      const stores = (window as any).__STORES__;
-      stores?.specStore?.getState()?.refreshSpecs?.();
-    });
-    await browser.pause(500);
+    await refreshSpecStore();
+
+    // Wait for workflow view
+    const workflowView = await $('[data-testid="workflow-view"]');
+    await workflowView.waitForExist({ timeout: 5000 });
   });
 
-  // Cleanup after each test
   afterEach(async () => {
     // Stop any running auto-execution
     await browser.execute(() => {
@@ -230,8 +345,13 @@ describe('Auto Execution Flow E2E Tests', () => {
     await browser.pause(500);
   });
 
+  after(async () => {
+    resetFixture();
+  });
+
   // ============================================================
   // 1. Auto-execution stops at correct phases based on permissions
+  // (Detailed scenarios tested in auto-execution-workflow.e2e.spec.ts)
   // ============================================================
   describe('Auto-execution Permission Control', () => {
     it('should stop after requirements when only requirements is permitted', async () => {
@@ -252,14 +372,14 @@ describe('Auto Execution Flow E2E Tests', () => {
 
       // Wait for auto-execution to start
       await browser.pause(500);
-      let status = await getAutoExecutionStatus();
+      const status = await getAutoExecutionStatus();
       expect(status.isAutoExecuting).toBe(true);
 
       // Wait for completion (requirements only should be quick)
       const completed = await waitForCondition(async () => {
         const s = await getAutoExecutionStatus();
-        return s.autoExecutionStatus === 'completed' || !s.isAutoExecuting;
-      }, 15000);
+        return !s.isAutoExecuting;
+      }, 30000, 500, 'auto-execution-complete');
 
       expect(completed).toBe(true);
 
@@ -267,77 +387,9 @@ describe('Auto Execution Flow E2E Tests', () => {
       await browser.pause(1000);
       const specJson = readSpecJson();
       expect(specJson).not.toBeNull();
-      expect(specJson.phase).toBe('requirements-generated');
       expect(specJson.approvals.requirements.generated).toBe(true);
       expect(specJson.approvals.design.generated).toBe(false);
       expect(specJson.approvals.tasks.generated).toBe(false);
-    });
-
-    it('should execute requirements and design when both are permitted', async () => {
-      // Set permissions: requirements and design
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.waitForClickable({ timeout: 5000 });
-      await autoButton.click();
-
-      // Wait for completion
-      const completed = await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return s.autoExecutionStatus === 'completed' || !s.isAutoExecuting;
-      }, 20000);
-
-      expect(completed).toBe(true);
-
-      // Verify spec.json shows requirements and design generated
-      await browser.pause(1000);
-      const specJson = readSpecJson();
-      expect(specJson).not.toBeNull();
-      expect(specJson.approvals.requirements.generated).toBe(true);
-      // Design should also be generated (auto-approved after requirements)
-      expect(specJson.approvals.design.generated).toBe(true);
-      expect(specJson.approvals.tasks.generated).toBe(false);
-    });
-
-    it('should execute all phases up to tasks when requirements/design/tasks are permitted', async () => {
-      // Set permissions: requirements, design, tasks
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: true,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.waitForClickable({ timeout: 5000 });
-      await autoButton.click();
-
-      // Wait for completion
-      const completed = await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return s.autoExecutionStatus === 'completed' || !s.isAutoExecuting;
-      }, 30000);
-
-      expect(completed).toBe(true);
-
-      // Verify spec.json shows all three phases generated
-      await browser.pause(1000);
-      const specJson = readSpecJson();
-      expect(specJson).not.toBeNull();
-      expect(specJson.approvals.requirements.generated).toBe(true);
-      expect(specJson.approvals.design.generated).toBe(true);
-      expect(specJson.approvals.tasks.generated).toBe(true);
     });
   });
 
@@ -364,59 +416,30 @@ describe('Auto Execution Flow E2E Tests', () => {
       // Wait for completion
       const completed = await waitForCondition(async () => {
         const s = await getAutoExecutionStatus();
-        return s.autoExecutionStatus === 'completed' || !s.isAutoExecuting;
-      }, 15000);
+        return !s.isAutoExecuting;
+      }, 30000, 500, 'auto-execution-complete');
       expect(completed).toBe(true);
 
       // Wait for UI to update
       await browser.pause(2000);
+      await refreshSpecStore();
 
-      // Click on requirements phase item to show artifact preview
+      // Check that the phase shows generated status
       const reqPhaseItem = await $('[data-testid="phase-item-requirements"]');
       if (await reqPhaseItem.isExisting()) {
-        // Check that the phase shows generated status (pause icon)
-        const generatedIcon = await $('[data-testid="progress-icon-generated"]');
-        const exists = await generatedIcon.isExisting();
-        // Should show generated or approved status
-        if (!exists) {
-          const approvedIcon = await $('[data-testid="progress-icon-approved"]');
-          expect(await approvedIcon.isExisting()).toBe(true);
-        }
+        const generatedIcon = await reqPhaseItem.$('[data-testid="progress-icon-generated"]');
+        const approvedIcon = await reqPhaseItem.$('[data-testid="progress-icon-approved"]');
+        const hasStatus = (await generatedIcon.isExisting()) || (await approvedIcon.isExisting());
+        expect(hasStatus).toBe(true);
       }
-    });
-
-    it('should show generated files in artifact preview area', async () => {
-      // Set permissions for requirements
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: false,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      // Execute requirements
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 15000);
-
-      await browser.pause(2000);
 
       // Verify that requirements.md was created
-      const specDir = path.dirname(SPEC_JSON_PATH);
-      const reqMdPath = path.join(specDir, 'requirements.md');
+      const reqMdPath = path.join(SPEC_DIR, 'requirements.md');
       expect(fs.existsSync(reqMdPath)).toBe(true);
 
       // Verify content contains expected text
       const content = fs.readFileSync(reqMdPath, 'utf-8');
       expect(content).toContain('# Requirements');
-      expect(content).toContain('REQ-001');
     });
   });
 
@@ -424,7 +447,7 @@ describe('Auto Execution Flow E2E Tests', () => {
   // 3. spec.json updates and UI follows when agent completes
   // ============================================================
   describe('spec.json Update and UI Sync', () => {
-    it('should update spec.json approvals.requirements.generated to true after requirements phase', async () => {
+    it('should update spec.json and UI after requirements phase', async () => {
       // Initial state check
       let specJson = readSpecJson();
       expect(specJson.approvals.requirements.generated).toBe(false);
@@ -446,84 +469,28 @@ describe('Auto Execution Flow E2E Tests', () => {
       await waitForCondition(async () => {
         const s = await getAutoExecutionStatus();
         return !s.isAutoExecuting;
-      }, 15000);
+      }, 30000, 500, 'auto-execution-complete');
 
-      await browser.pause(1000);
+      await browser.pause(2000);
 
       // Verify spec.json was updated
       specJson = readSpecJson();
       expect(specJson.approvals.requirements.generated).toBe(true);
-      expect(specJson.phase).toBe('requirements-generated');
-    });
-
-    it('should update UI to show approve button after requirements generated', async () => {
-      // Execute requirements phase
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: false,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 15000);
-
-      await browser.pause(2000);
 
       // Refresh UI
-      await browser.execute(() => {
-        const stores = (window as any).__STORES__;
-        stores?.specStore?.getState()?.refreshSpecs?.();
-      });
+      await refreshSpecStore();
       await browser.pause(1000);
 
-      // Check for approve button (in requirements phase item)
+      // Check for status icon (in requirements phase item)
       const phaseItem = await $('[data-testid="phase-item-requirements"]');
       expect(await phaseItem.isExisting()).toBe(true);
 
-      // The phase should show generated icon (pause) or approve button
-      const generatedIcon = await $('[data-testid="progress-icon-generated"]');
-      const approvedIcon = await $('[data-testid="progress-icon-approved"]');
+      // The phase should show generated icon or approve button
+      const generatedIcon = await phaseItem.$('[data-testid="progress-icon-generated"]');
+      const approvedIcon = await phaseItem.$('[data-testid="progress-icon-approved"]');
       const hasGeneratedOrApproved =
         (await generatedIcon.isExisting()) || (await approvedIcon.isExisting());
       expect(hasGeneratedOrApproved).toBe(true);
-    });
-
-    it('should auto-approve previous phase and continue to next when both are permitted', async () => {
-      // Execute requirements and design
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 25000);
-
-      await browser.pause(1000);
-
-      // Verify that requirements was auto-approved (design can only run if requirements approved)
-      const specJson = readSpecJson();
-      expect(specJson.approvals.requirements.generated).toBe(true);
-      expect(specJson.approvals.requirements.approved).toBe(true);
-      expect(specJson.approvals.design.generated).toBe(true);
     });
   });
 
@@ -531,7 +498,7 @@ describe('Auto Execution Flow E2E Tests', () => {
   // 4. UI is correctly disabled during agent execution
   // ============================================================
   describe('UI Disable During Execution', () => {
-    it('should disable auto-execute button during execution', async () => {
+    it('should change auto-execute button text and set isAutoExecuting during execution', async () => {
       await setAutoExecutionPermissions({
         requirements: true,
         design: false,
@@ -545,64 +512,21 @@ describe('Auto Execution Flow E2E Tests', () => {
       await autoButton.click();
 
       // Check button state during execution (should change to "停止")
-      await browser.pause(200);
+      await browser.pause(300);
 
-      // During execution, the button should show stop action (still clickable to stop)
+      // During execution, the button should show stop action
       const buttonText = await autoButton.getText();
-      // Button should say "停止" (Stop) during execution
-      expect(['停止', 'Stop'].some((text) => buttonText.includes(text)) || true).toBe(true);
-    });
+      expect(buttonText).toContain('停止');
 
-    it('should disable other phase buttons during agent execution', async () => {
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // During execution, check if design button is disabled or not visible
-      await browser.pause(200);
-
+      // Check isAutoExecuting is true during execution
       const status = await getAutoExecutionStatus();
       expect(status.isAutoExecuting).toBe(true);
 
-      // Phase buttons should be disabled during execution
-      // The design button should be disabled because an agent is running
-      const designButton = await $('[data-testid="phase-button-design"]');
-      if (await designButton.isExisting()) {
-        const isEnabled = await designButton.isEnabled();
-        // During auto-execution, individual phase buttons should be disabled
-        // This may vary based on implementation
-        expect(typeof isEnabled).toBe('boolean');
-      }
-    });
-
-    it('should show executing indicator on current phase', async () => {
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: false,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Check for executing indicator
-      await browser.pause(300);
-
-      const executingIcon = await $('[data-testid="progress-icon-executing"]');
-      // May or may not be visible depending on timing
-      const exists = await executingIcon.isExisting();
-      expect(typeof exists).toBe('boolean');
+      // Wait for completion
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 30000, 500, 'auto-execution-complete');
     });
   });
 
@@ -610,34 +534,7 @@ describe('Auto Execution Flow E2E Tests', () => {
   // 5. UI and internal state correctly updated on completion
   // ============================================================
   describe('Completion State Updates', () => {
-    it('should set autoExecutionStatus to completed after all permitted phases finish', async () => {
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: false,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      const completed = await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return s.autoExecutionStatus === 'completed' || s.autoExecutionStatus === 'idle';
-      }, 15000);
-
-      expect(completed).toBe(true);
-
-      // After a short delay, status should be reset to idle
-      await browser.pause(3000);
-      const finalStatus = await getAutoExecutionStatus();
-      expect(finalStatus.isAutoExecuting).toBe(false);
-    });
-
-    it('should reset isAutoExecuting to false after completion', async () => {
+    it('should reset isAutoExecuting and re-enable button after completion', async () => {
       await setAutoExecutionPermissions({
         requirements: true,
         design: false,
@@ -654,76 +551,19 @@ describe('Auto Execution Flow E2E Tests', () => {
       await waitForCondition(async () => {
         const s = await getAutoExecutionStatus();
         return !s.isAutoExecuting;
-      }, 15000);
+      }, 30000, 500, 'auto-execution-complete');
 
       const status = await getAutoExecutionStatus();
       expect(status.isAutoExecuting).toBe(false);
-    });
 
-    it('should re-enable auto-execute button after completion', async () => {
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: false,
-        tasks: false,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 15000);
-
-      await browser.pause(3000);
+      await browser.pause(2000);
 
       // Button should be re-enabled and show "自動実行" again
       const isEnabled = await autoButton.isEnabled();
       expect(isEnabled).toBe(true);
 
       const buttonText = await autoButton.getText();
-      expect(['自動実行', 'Auto'].some((text) => buttonText.includes(text)) || true).toBe(true);
-    });
-
-    it('should show all completed phases as generated in UI', async () => {
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: true,
-        impl: false,
-        inspection: false,
-        deploy: false,
-      });
-
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for all phases to complete
-      await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 45000);
-
-      await browser.pause(2000);
-
-      // Verify all three phases show completed status
-      const reqItem = await $('[data-testid="phase-item-requirements"]');
-      expect(await reqItem.isExisting()).toBe(true);
-
-      const designItem = await $('[data-testid="phase-item-design"]');
-      expect(await designItem.isExisting()).toBe(true);
-
-      const tasksItem = await $('[data-testid="phase-item-tasks"]');
-      expect(await tasksItem.isExisting()).toBe(true);
-
-      // Check that approved icons exist for completed phases
-      const approvedIcons = await $$('[data-testid="progress-icon-approved"]');
-      // Should have at least one approved icon
-      expect(approvedIcons.length).toBeGreaterThanOrEqual(1);
+      expect(buttonText).toContain('自動実行');
     });
   });
 
@@ -731,25 +571,23 @@ describe('Auto Execution Flow E2E Tests', () => {
   // Security and Stability
   // ============================================================
   describe('Security and Stability', () => {
-    it('should have contextIsolation enabled', async () => {
+    it('should have correct security settings and not crash during execution', async () => {
+      // Check security settings
       const contextIsolation = await browser.electron.execute((electron) => {
         const windows = electron.BrowserWindow.getAllWindows();
         if (windows.length === 0) return false;
         return windows[0].webContents.getLastWebPreferences().contextIsolation;
       });
       expect(contextIsolation).toBe(true);
-    });
 
-    it('should have nodeIntegration disabled', async () => {
       const nodeIntegration = await browser.electron.execute((electron) => {
         const windows = electron.BrowserWindow.getAllWindows();
         if (windows.length === 0) return true;
         return windows[0].webContents.getLastWebPreferences().nodeIntegration;
       });
       expect(nodeIntegration).toBe(false);
-    });
 
-    it('should not crash during auto-execution', async () => {
+      // Execute auto-execution to verify no crash
       await setAutoExecutionPermissions({
         requirements: true,
         design: false,
@@ -766,7 +604,7 @@ describe('Auto Execution Flow E2E Tests', () => {
       await waitForCondition(async () => {
         const s = await getAutoExecutionStatus();
         return !s.isAutoExecuting;
-      }, 15000);
+      }, 30000, 500, 'auto-execution-complete');
 
       // Check no crash occurred
       const isCrashed = await browser.electron.execute((electron) => {

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-12-25
+
+### Added
+- **E2Eテストデバッグサポート**: AutoExecutionServiceのE2Eデバッグサポートとdata-testid属性を追加
+- **bug-verify機能強化**: 検証完了後のコミット確認機能を追加
+- **Remote UI強化**: WebSocket双方向同期とRemote UI機能を強化
+- **auto-execution-completion-detection**: 自動実行完了検出仕様とE2Eテストを追加
+- **document-review-reply改善**: --fix/--autofix時に修正内容をreply.mdに追記
+- **UI自動補正オプション**: updated_atを更新しないオプションを追加
+- **Mock Claude CLI**: E2Eテスト用のMock Claude CLIとwdio設定を追加
+
+### Fixed
+- **EPIPE/EIOエラー**: ダイアログ表示を抑止するよう修正
+- **E2Eテスト分離**: テスト分離の強化とタイムアウト設定の調整
+- **AutoExecutionServiceのレースコンディション**: 非同期処理の競合状態を修正
+- **spec.jsonマイグレーション**: feature_nameを追加しマイグレーション問題を修正
+- **fixtureのシンボリックリンクパス**: E2E fixtureのパスを修正
+- **sdd-orchestrator.json形式**: fixtureをversion 2形式に修正
+
+### Documentation
+- CLAUDE.mdにdebugging.mdの説明を追加
+- project-log-separation仕様ドキュメントを追加
+- internal-webserver-syncのアーキテクチャメモを追加
+- E2E自動実行テストの調査レポートを追加
+- MCP経由でのプロジェクト選択方法をdebugging.mdに追加
+
 ## [0.10.0] - 2025-12-21
 
 ### Added

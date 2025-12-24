@@ -338,6 +338,9 @@ export class SpecManagerService {
   private specManagerLock: string | null = null;
   private specManagerLockResolve: (() => void) | null = null;
 
+  // Track agents forced killed after success result
+  private forcedKillSuccess: Set<string> = new Set();
+
   constructor(projectPath: string) {
     this.projectPath = projectPath;
     // Determine provider type from project path
@@ -561,6 +564,7 @@ export class SpecManagerService {
             setTimeout(() => {
               if (this.processes.has(agentId)) {
                 logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
+                this.forcedKillSuccess.add(agentId);
                 process.kill();
               }
             }, 5000);
@@ -586,10 +590,14 @@ export class SpecManagerService {
         const currentAgent = this.registry.get(agentId);
         if (currentAgent?.status === 'interrupted') {
           this.processes.delete(agentId);
+          this.forcedKillSuccess.delete(agentId);
           return;
         }
 
-        const newStatus: AgentStatus = code === 0 ? 'completed' : 'failed';
+        const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+        this.forcedKillSuccess.delete(agentId);
+
+        const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
         this.registry.updateStatus(agentId, newStatus);
         this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
         this.processes.delete(agentId);
@@ -849,6 +857,7 @@ export class SpecManagerService {
           setTimeout(() => {
             if (this.processes.has(agentId)) {
               logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
+              this.forcedKillSuccess.add(agentId);
               process.kill();
             }
           }, 5000);
@@ -871,10 +880,14 @@ export class SpecManagerService {
         const currentAgent = this.registry.get(agentId);
         if (currentAgent?.status === 'interrupted') {
           this.processes.delete(agentId);
+          this.forcedKillSuccess.delete(agentId);
           return;
         }
 
-        const newStatus: AgentStatus = code === 0 ? 'completed' : 'failed';
+        const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+        this.forcedKillSuccess.delete(agentId);
+
+        const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
         this.registry.updateStatus(agentId, newStatus);
         this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
         this.processes.delete(agentId);

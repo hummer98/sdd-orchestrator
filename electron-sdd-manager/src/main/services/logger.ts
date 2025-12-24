@@ -58,11 +58,14 @@ class Logger {
     }
 
     // Also write to console for development
-    // Wrap in try-catch to prevent EPIPE errors during shutdown
+    // Only write if stdout is writable to prevent EIO/EPIPE errors
+    // In packaged apps, stdout may be closed or unavailable
     try {
-      console.log(formatted.trim());
+      if (process.stdout && process.stdout.writable) {
+        console.log(formatted.trim());
+      }
     } catch {
-      // Ignore console errors (e.g., EPIPE during app shutdown)
+      // Ignore console errors (e.g., EPIPE/EIO during app shutdown or in packaged apps)
     }
   }
 

@@ -3,7 +3,7 @@
  * Requirements: 11.1, 11.6, 11.7, 13.1, 13.2
  */
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
@@ -12,6 +12,53 @@ import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandl
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
+
+// Prevent EPIPE/EIO errors from crashing the app
+// These occur when stdout/stderr streams are closed (common in packaged Electron apps)
+// See: https://github.com/electron/electron/issues/40781
+if (process.stdout) {
+  process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE' || err.code === 'EIO') {
+      // Silently ignore - stream is closed
+      return;
+    }
+    // Re-throw other errors
+    throw err;
+  });
+}
+if (process.stderr) {
+  process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE' || err.code === 'EIO') {
+      // Silently ignore - stream is closed
+      return;
+    }
+    // Re-throw other errors
+    throw err;
+  });
+}
+
+// Handle uncaught exceptions gracefully
+// EIO errors on stdout/stderr are common in packaged Electron apps
+// when the console is unavailable or closed
+process.on('uncaughtException', (error: Error) => {
+  // Ignore EIO and EPIPE errors on stdout/stderr (common in packaged apps)
+  if (error.message?.includes('EIO') || error.message?.includes('EPIPE')) {
+    // Log to file only (console may be broken)
+    logger.warn('[main] Ignored stdout/stderr error', { error: error.message });
+    return;
+  }
+
+  // For other uncaught exceptions, log and show error dialog
+  logger.error('[main] Uncaught exception', { error: error.message, stack: error.stack });
+
+  // Show error dialog to user (only if app is ready)
+  if (app.isReady()) {
+    dialog.showErrorBox(
+      'Unexpected Error',
+      `An unexpected error occurred:\n\n${error.message}\n\nPlease restart the application.`
+    );
+  }
+});
 
 let mainWindow: BrowserWindow | null = null;
 

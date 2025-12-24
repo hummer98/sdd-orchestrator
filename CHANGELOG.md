@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2025-12-25
+
+### Fixed
+- **Agent強制終了の改善**: Claudeプロセスがハングする問題を修正し、結果出力後に強制終了するように変更
+- **強制終了されたAgentの状態管理**: 強制終了されたAgentを完了状態として適切に扱うように修正
+
+### Documentation
+- Claude CLIプロセスが終了しない問題の調査メモを追加
+
 ## [0.11.0] - 2025-12-25
 
 ### Added

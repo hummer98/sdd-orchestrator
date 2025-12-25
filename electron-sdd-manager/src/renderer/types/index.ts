@@ -5,7 +5,6 @@ export type SpecPhase =
   | 'requirements-generated'
   | 'design-generated'
   | 'tasks-generated'
-  | 'implementation-in-progress'
   | 'implementation-complete';
 
 export type Phase = 'requirements' | 'design' | 'tasks';
@@ -19,6 +18,13 @@ export interface ApprovalStatus {
   requirements: PhaseApproval;
   design: PhaseApproval;
   tasks: PhaseApproval;
+}
+
+/** Inspection state for spec-inspection feature */
+export interface InspectionState {
+  passed: boolean;
+  inspected_at: string;
+  report_file: string;
 }
 
 export interface SpecJson {
@@ -42,6 +48,8 @@ export interface SpecJson {
   };
   /** Auto execution state (optional for backward compatibility) */
   autoExecution?: SpecAutoExecutionState;
+  /** Inspection state (optional for backward compatibility) */
+  inspection?: InspectionState;
 }
 
 export interface SpecMetadata {
@@ -60,6 +68,8 @@ export interface SpecDetail {
     design: ArtifactInfo | null;
     tasks: ArtifactInfo | null;
     research: ArtifactInfo | null;
+    /** Inspection report artifact (spec-inspection feature) */
+    inspection: ArtifactInfo | null;
   };
   taskProgress: TaskProgress | null;
 }

@@ -72,9 +72,9 @@ export class DocumentReviewService {
         return false;
       }
 
-      // Check if implementation has started
-      if (specJson.phase === 'implementation-in-progress' || specJson.phase === 'implementation-complete') {
-        logger.debug('[DocumentReviewService] Implementation already started');
+      // Check if implementation is complete
+      if (specJson.phase === 'implementation-complete') {
+        logger.debug('[DocumentReviewService] Implementation already complete');
         return false;
       }
 

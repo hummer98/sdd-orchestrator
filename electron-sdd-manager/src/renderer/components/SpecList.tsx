@@ -17,7 +17,6 @@ const PHASE_LABELS: Record<SpecPhase, string> = {
   'requirements-generated': '要件定義済',
   'design-generated': '設計済',
   'tasks-generated': 'タスク済',
-  'implementation-in-progress': '実装中',
   'implementation-complete': '実装完了',
 };
 
@@ -26,7 +25,6 @@ const PHASE_COLORS: Record<SpecPhase, string> = {
   'requirements-generated': 'bg-blue-100 text-blue-700',
   'design-generated': 'bg-yellow-100 text-yellow-700',
   'tasks-generated': 'bg-orange-100 text-orange-700',
-  'implementation-in-progress': 'bg-purple-100 text-purple-700',
   'implementation-complete': 'bg-green-100 text-green-700',
 };
 
@@ -67,7 +65,6 @@ export function SpecList() {
             <option value="requirements-generated">要件定義済</option>
             <option value="design-generated">設計済</option>
             <option value="tasks-generated">タスク済</option>
-            <option value="implementation-in-progress">実装中</option>
             <option value="implementation-complete">実装完了</option>
           </select>
         </div>

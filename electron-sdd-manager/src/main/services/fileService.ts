@@ -231,7 +231,7 @@ export class FileService {
     // Map old phase to new phase based on approvals
     let newPhase: SpecPhase;
     if (approvals.tasks.approved) {
-      newPhase = 'implementation-in-progress';
+      newPhase = 'tasks-generated';
     } else if (approvals.tasks.generated) {
       newPhase = 'tasks-generated';
     } else if (approvals.design.approved) {
@@ -521,8 +521,7 @@ ${description}
           specJson.approvals.tasks.generated = true;
           break;
         case 'impl':
-          // Update phase to implementation-in-progress when impl starts
-          specJson.phase = 'implementation-in-progress';
+          // impl case is no-op (implementation-in-progress state was removed)
           break;
         case 'impl-complete':
           // Update phase to implementation-complete when all tasks are done

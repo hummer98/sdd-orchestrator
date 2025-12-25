@@ -207,7 +207,7 @@ describe('FileService - updateSpecJsonFromPhase', () => {
       }
     });
 
-    it('should update phase to implementation-in-progress for impl', async () => {
+    it('should keep phase unchanged for impl (no-op)', async () => {
       await createSpecJson('tasks-generated', {
         requirements: { generated: true, approved: true },
         design: { generated: true, approved: true },
@@ -219,11 +219,12 @@ describe('FileService - updateSpecJsonFromPhase', () => {
       expect(result.ok).toBe(true);
 
       const specJson = await readSpecJson();
-      expect(specJson.phase).toBe('implementation-in-progress');
+      // impl case is now a no-op, phase stays as tasks-generated
+      expect(specJson.phase).toBe('tasks-generated');
     });
 
     it('should update phase to implementation-complete for impl-complete', async () => {
-      await createSpecJson('implementation-in-progress', {
+      await createSpecJson('tasks-generated', {
         requirements: { generated: true, approved: true },
         design: { generated: true, approved: true },
         tasks: { generated: true, approved: true },
@@ -245,12 +246,12 @@ describe('FileService - updateSpecJsonFromPhase', () => {
         tasks: { generated: true, approved: true },
       });
 
-      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl', { skipTimestamp: true });
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete', { skipTimestamp: true });
 
       expect(result.ok).toBe(true);
 
       const specJson = await readSpecJson();
-      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.phase).toBe('implementation-complete');
       expect(specJson.updated_at).toBe(oldTimestamp);
     });
 
@@ -262,12 +263,12 @@ describe('FileService - updateSpecJsonFromPhase', () => {
         tasks: { generated: true, approved: true },
       });
 
-      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl', { skipTimestamp: false });
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete', { skipTimestamp: false });
 
       expect(result.ok).toBe(true);
 
       const specJson = await readSpecJson();
-      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.phase).toBe('implementation-complete');
       expect(specJson.updated_at).not.toBe(oldTimestamp);
     });
 
@@ -279,12 +280,12 @@ describe('FileService - updateSpecJsonFromPhase', () => {
         tasks: { generated: true, approved: true },
       });
 
-      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl');
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete');
 
       expect(result.ok).toBe(true);
 
       const specJson = await readSpecJson();
-      expect(specJson.phase).toBe('implementation-in-progress');
+      expect(specJson.phase).toBe('implementation-complete');
       expect(specJson.updated_at).not.toBe(oldTimestamp);
     });
   });

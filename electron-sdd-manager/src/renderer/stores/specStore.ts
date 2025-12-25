@@ -57,6 +57,9 @@ export interface AutoExecutionRuntimeState {
   readonly autoExecutionStatus: AutoExecutionStatus;
 }
 
+/** Spec毎の自動実行runtime状態を管理するMap */
+export type AutoExecutionRuntimeMap = Map<string, AutoExecutionRuntimeState>;
+
 interface SpecState {
   specs: SpecMetadata[];
   selectedSpec: SpecMetadata | null;
@@ -69,8 +72,8 @@ interface SpecState {
   isWatching: boolean;
   // spec-manager extensions
   specManagerExecution: SpecManagerExecutionState;
-  // spec-scoped-auto-execution-state Task 5.1: Runtime auto-execution state
-  autoExecutionRuntime: AutoExecutionRuntimeState;
+  // spec-scoped-auto-execution-state: Spec毎のruntime状態Map
+  autoExecutionRuntimeMap: AutoExecutionRuntimeMap;
 }
 
 interface SpecActions {
@@ -90,12 +93,13 @@ interface SpecActions {
   // spec-scoped-auto-execution-state Task 4.3
   // Requirements: 6.3
   refreshSpecDetail: () => Promise<void>;
-  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state actions
-  setAutoExecutionRunning: (isRunning: boolean) => void;
-  setAutoExecutionPhase: (phase: WorkflowPhase | null) => void;
-  setAutoExecutionStatus: (status: AutoExecutionStatus) => void;
-  startAutoExecution: () => void;
-  stopAutoExecution: () => void;
+  // spec-scoped-auto-execution-state: Spec毎の自動実行runtime状態アクション
+  getAutoExecutionRuntime: (specId: string) => AutoExecutionRuntimeState;
+  setAutoExecutionRunning: (specId: string, isRunning: boolean) => void;
+  setAutoExecutionPhase: (specId: string, phase: WorkflowPhase | null) => void;
+  setAutoExecutionStatus: (specId: string, status: AutoExecutionStatus) => void;
+  startAutoExecution: (specId: string) => void;
+  stopAutoExecution: (specId: string) => void;
   // spec-manager extensions
   executeSpecManagerGeneration: (
     specId: string,
@@ -126,8 +130,8 @@ const initialSpecManagerExecution: SpecManagerExecutionState = {
   executionMode: null,
 };
 
-/** spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state initial value */
-const initialAutoExecutionRuntime: AutoExecutionRuntimeState = {
+/** spec-scoped-auto-execution-state: Spec毎のruntime状態のデフォルト値 */
+const DEFAULT_AUTO_EXECUTION_RUNTIME: AutoExecutionRuntimeState = {
   isAutoExecuting: false,
   currentAutoPhase: null,
   autoExecutionStatus: 'idle',
@@ -145,8 +149,8 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   error: null,
   isWatching: false,
   specManagerExecution: initialSpecManagerExecution,
-  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
-  autoExecutionRuntime: initialAutoExecutionRuntime,
+  // spec-scoped-auto-execution-state: Spec毎のruntime状態Map
+  autoExecutionRuntimeMap: new Map<string, AutoExecutionRuntimeState>(),
 
   // Actions
   loadSpecs: async (projectPath: string) => {
@@ -202,11 +206,28 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         }
       };
 
-      const [requirements, design, tasks, research] = await Promise.all([
+      // Helper to get inspection artifact from spec.json inspection field
+      const getInspectionArtifact = async (): Promise<ArtifactInfo | null> => {
+        const inspection = specJson.inspection;
+        if (!inspection?.report_file) {
+          return null;
+        }
+
+        try {
+          const artifactPath = `${spec.path}/${inspection.report_file}`;
+          const content = await window.electronAPI.readArtifact(artifactPath);
+          return { exists: true, updatedAt: null, content };
+        } catch {
+          return null;
+        }
+      };
+
+      const [requirements, design, tasks, research, inspection] = await Promise.all([
         getArtifactInfo('requirements'),
         getArtifactInfo('design'),
         getArtifactInfo('tasks'),
         getArtifactInfo('research'),
+        getInspectionArtifact(),
       ]);
 
       // Calculate task progress from tasks.md content
@@ -226,10 +247,10 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
 
         // Auto-fix spec.json phase if task completion doesn't match phase
         // Note: skipTimestamp: true to avoid updating updated_at for UI auto-correction
+        // Note: implementation-in-progress state was removed. Phase stays as tasks-generated during implementation.
         if (total > 0) {
           const currentPhase = specJson.phase;
           const isAllComplete = completed === total;
-          const hasStartedImpl = completed > 0;
 
           // If all tasks complete but phase is not implementation-complete, fix it
           if (isAllComplete && currentPhase !== 'implementation-complete') {
@@ -237,16 +258,6 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
             try {
               await window.electronAPI.syncSpecPhase(spec.path, 'impl-complete', { skipTimestamp: true });
               specJson.phase = 'implementation-complete';
-            } catch (error) {
-              console.error('[specStore] Failed to auto-fix phase:', error);
-            }
-          }
-          // If some tasks started but phase is still tasks-generated, fix to implementation-in-progress
-          else if (hasStartedImpl && !isAllComplete && currentPhase === 'tasks-generated') {
-            console.log('[specStore] Auto-fixing phase to implementation-in-progress', { spec: spec.name, currentPhase });
-            try {
-              await window.electronAPI.syncSpecPhase(spec.path, 'impl', { skipTimestamp: true });
-              specJson.phase = 'implementation-in-progress';
             } catch (error) {
               console.error('[specStore] Failed to auto-fix phase:', error);
             }
@@ -276,6 +287,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
           design,
           tasks,
           research,
+          inspection,
         },
         taskProgress,
       };
@@ -570,69 +582,71 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   },
 
   // ============================================================
-  // spec-scoped-auto-execution-state Task 5.1: Auto Execution Runtime Actions
-  // These actions replace the removed workflowStore actions
+  // spec-scoped-auto-execution-state: Spec毎の自動実行Runtime Actions
   // ============================================================
 
   /**
-   * Set auto execution running state
+   * Get auto execution runtime state for a specific spec
+   * Returns default state if not found
    */
-  setAutoExecutionRunning: (isRunning: boolean) => {
-    set({
-      autoExecutionRuntime: {
-        ...get().autoExecutionRuntime,
-        isAutoExecuting: isRunning,
-      },
-    });
+  getAutoExecutionRuntime: (specId: string): AutoExecutionRuntimeState => {
+    const map = get().autoExecutionRuntimeMap;
+    return map.get(specId) ?? { ...DEFAULT_AUTO_EXECUTION_RUNTIME };
   },
 
   /**
-   * Set current auto execution phase
+   * Set auto execution running state for a specific spec
    */
-  setAutoExecutionPhase: (phase: WorkflowPhase | null) => {
-    set({
-      autoExecutionRuntime: {
-        ...get().autoExecutionRuntime,
-        currentAutoPhase: phase,
-      },
-    });
+  setAutoExecutionRunning: (specId: string, isRunning: boolean) => {
+    const map = new Map(get().autoExecutionRuntimeMap);
+    const current = map.get(specId) ?? { ...DEFAULT_AUTO_EXECUTION_RUNTIME };
+    map.set(specId, { ...current, isAutoExecuting: isRunning });
+    set({ autoExecutionRuntimeMap: map });
   },
 
   /**
-   * Set auto execution status
+   * Set current auto execution phase for a specific spec
    */
-  setAutoExecutionStatus: (status: AutoExecutionStatus) => {
-    set({
-      autoExecutionRuntime: {
-        ...get().autoExecutionRuntime,
-        autoExecutionStatus: status,
-      },
-    });
+  setAutoExecutionPhase: (specId: string, phase: WorkflowPhase | null) => {
+    const map = new Map(get().autoExecutionRuntimeMap);
+    const current = map.get(specId) ?? { ...DEFAULT_AUTO_EXECUTION_RUNTIME };
+    map.set(specId, { ...current, currentAutoPhase: phase });
+    set({ autoExecutionRuntimeMap: map });
   },
 
   /**
-   * Start auto execution
+   * Set auto execution status for a specific spec
    */
-  startAutoExecution: () => {
-    set({
-      autoExecutionRuntime: {
-        ...get().autoExecutionRuntime,
-        isAutoExecuting: true,
-        autoExecutionStatus: 'running',
-      },
-    });
+  setAutoExecutionStatus: (specId: string, status: AutoExecutionStatus) => {
+    const map = new Map(get().autoExecutionRuntimeMap);
+    const current = map.get(specId) ?? { ...DEFAULT_AUTO_EXECUTION_RUNTIME };
+    map.set(specId, { ...current, autoExecutionStatus: status });
+    set({ autoExecutionRuntimeMap: map });
   },
 
   /**
-   * Stop auto execution
+   * Start auto execution for a specific spec
    */
-  stopAutoExecution: () => {
-    set({
-      autoExecutionRuntime: {
-        isAutoExecuting: false,
-        currentAutoPhase: null,
-        autoExecutionStatus: 'idle',
-      },
+  startAutoExecution: (specId: string) => {
+    const map = new Map(get().autoExecutionRuntimeMap);
+    map.set(specId, {
+      isAutoExecuting: true,
+      currentAutoPhase: null,
+      autoExecutionStatus: 'running',
     });
+    set({ autoExecutionRuntimeMap: map });
+  },
+
+  /**
+   * Stop auto execution for a specific spec
+   */
+  stopAutoExecution: (specId: string) => {
+    const map = new Map(get().autoExecutionRuntimeMap);
+    map.set(specId, {
+      isAutoExecuting: false,
+      currentAutoPhase: null,
+      autoExecutionStatus: 'idle',
+    });
+    set({ autoExecutionRuntimeMap: map });
   },
 }));

@@ -90,9 +90,9 @@ describe('DocumentReviewService', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when implementation is in progress', async () => {
+    it('should return false when implementation is complete', async () => {
       const specJson = createMockSpecJson({
-        phase: 'implementation-in-progress',
+        phase: 'implementation-complete',
       });
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
 

@@ -126,7 +126,8 @@ export type ReviewError =
   | { type: 'AGENT_ERROR'; message: string }
   | { type: 'FILE_NOT_FOUND'; path: string }
   | { type: 'ALREADY_RUNNING' }
-  | { type: 'ALREADY_APPROVED' };
+  | { type: 'ALREADY_APPROVED' }
+  | { type: 'PARSE_ERROR'; message: string };
 
 // ============================================================
 // Extended SpecJson with documentReview field

@@ -316,6 +316,9 @@ export interface ElectronAPI {
   writeFile(filePath: string, content: string): Promise<void>;
   updateApproval(specPath: string, phase: Phase, approved: boolean): Promise<void>;
 
+  // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
+  updateSpecJson(specPath: string, updates: Record<string, unknown>): Promise<void>;
+
   // Command Execution
   executeCommand(command: string, workingDirectory: string): Promise<ExecutionResult>;
   cancelExecution(): Promise<void>;
@@ -465,10 +468,13 @@ export interface ElectronAPI {
   // Document Review
   // Requirements: 6.1 - Document Review Workflow
   executeDocumentReview(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
-  executeDocumentReviewReply(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  executeDocumentReviewReply(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager', autofix?: boolean): Promise<AgentInfo>;
   executeDocumentReviewFix(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   approveDocumentReview(specPath: string): Promise<void>;
   skipDocumentReview(specPath: string): Promise<void>;
+
+  // Task 2.2: parseReplyFile IPC (auto-execution-document-review-autofix)
+  parseReplyFile(specPath: string, roundNumber: number): Promise<{ fixRequiredCount: number }>;
 
   // SSH Remote Project
   // Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2

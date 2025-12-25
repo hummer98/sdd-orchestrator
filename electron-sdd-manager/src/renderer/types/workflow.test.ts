@@ -143,7 +143,7 @@ describe('Workflow Types', () => {
     });
 
     describe('impl phase', () => {
-      it('should return pending when ready_for_implementation is true', () => {
+      it('should return pending when impl_completed is not set', () => {
         const specJson = createMockSpecJson({
         });
         expect(getPhaseStatus('impl', specJson)).toBe('pending');

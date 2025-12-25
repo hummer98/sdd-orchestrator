@@ -27,7 +27,6 @@
       }
     }
   },
-  "ready_for_implementation": true,
   "documentReview": {
     "rounds": 1,
     "status": "pending",

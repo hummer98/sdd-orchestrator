@@ -132,8 +132,16 @@ export function AgentLogPanel() {
                 {agent.phase}
               </span>
               <span className="text-sm text-gray-500">|</span>
-              <span className="text-sm text-gray-500 font-mono">
+              <span className="text-sm text-gray-500 font-mono flex items-center gap-1">
                 {agent.agentId} - {agent.sessionId}
+                <button
+                  onClick={() => navigator.clipboard.writeText(agent.sessionId)}
+                  className="p-0.5 rounded hover:bg-gray-600 text-gray-500 hover:text-gray-300"
+                  title="セッションIDをコピー"
+                  data-testid="copy-session-id"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
               </span>
             </>
           )}

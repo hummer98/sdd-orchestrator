@@ -11,6 +11,7 @@ import { SpecManagerService } from './specManagerService';
 import { SpecsWatcherService } from './specsWatcherService';
 import { AgentRecordWatcherService } from './agentRecordWatcherService';
 import { BugsWatcherService } from './bugsWatcherService';
+import { FileService } from './fileService';
 import { getConfigStore } from './configStore';
 import { logger } from './logger';
 import type { WindowBounds } from '../../renderer/types';
@@ -411,9 +412,10 @@ export class WindowManager {
     }
 
     // Create new services
+    const fileService = new FileService();
     const services: PerWindowServices = {
       specManagerService: new SpecManagerService(projectPath),
-      specsWatcherService: new SpecsWatcherService(projectPath),
+      specsWatcherService: new SpecsWatcherService(projectPath, fileService),
       agentRecordWatcherService: new AgentRecordWatcherService(projectPath),
       bugsWatcherService: new BugsWatcherService(projectPath),
     };

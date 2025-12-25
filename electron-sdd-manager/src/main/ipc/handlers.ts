@@ -1534,7 +1534,7 @@ export function startSpecsWatcher(window: BrowserWindow): void {
     specsWatcherService.stop();
   }
 
-  specsWatcherService = new SpecsWatcherService(currentProjectPath);
+  specsWatcherService = new SpecsWatcherService(currentProjectPath, fileService);
 
   specsWatcherService.onChange((event) => {
     logger.info('[handlers] Specs changed', { event });

@@ -1,11 +1,14 @@
 /**
  * SpecsWatcherService
  * Watches .kiro/specs directory for changes and notifies renderer
+ * Also monitors tasks.md for completion and updates spec.json phase
  */
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
+import { readFile } from 'fs/promises';
 import { logger } from './logger';
+import type { FileService } from './fileService';
 
 export type SpecsChangeEvent = {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
@@ -24,9 +27,11 @@ export class SpecsWatcherService {
   private callbacks: SpecsChangeCallback[] = [];
   private debounceTimer: NodeJS.Timeout | null = null;
   private debounceMs = 300;
+  private fileService: FileService | null = null;
 
-  constructor(projectPath: string) {
+  constructor(projectPath: string, fileService?: FileService) {
     this.projectPath = projectPath;
+    this.fileService = fileService ?? null;
   }
 
   /**
@@ -90,6 +95,14 @@ export class SpecsWatcherService {
 
     logger.debug('[SpecsWatcherService] File event', { type, filePath, specId });
 
+    // Check if tasks.md was modified and handle completion detection
+    const fileName = path.basename(filePath);
+    if ((type === 'change' || type === 'add') && fileName === 'tasks.md' && specId) {
+      this.checkTaskCompletion(filePath, specId).catch((error) => {
+        logger.error('[SpecsWatcherService] Failed to check task completion', { error, specId });
+      });
+    }
+
     // Debounce to avoid multiple rapid events
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -99,6 +112,66 @@ export class SpecsWatcherService {
       const event: SpecsChangeEvent = { type, path: filePath, specId };
       this.callbacks.forEach((cb) => cb(event));
     }, this.debounceMs);
+  }
+
+  /**
+   * Check if all tasks in tasks.md are complete and update spec.json phase
+   * This runs in the main process, independent of renderer state
+   */
+  private async checkTaskCompletion(tasksFilePath: string, specId: string): Promise<void> {
+    if (!this.fileService) {
+      logger.debug('[SpecsWatcherService] FileService not available, skipping task completion check');
+      return;
+    }
+
+    try {
+      // Read tasks.md content
+      const content = await readFile(tasksFilePath, 'utf-8');
+
+      // Parse task checkboxes (same logic as specStore)
+      const completedMatches = content.match(/^- \[x\]/gim) || [];
+      const pendingMatches = content.match(/^- \[ \]/gm) || [];
+      const total = completedMatches.length + pendingMatches.length;
+      const completed = completedMatches.length;
+
+      if (total === 0) {
+        logger.debug('[SpecsWatcherService] No tasks found in tasks.md', { specId });
+        return;
+      }
+
+      const isAllComplete = completed === total;
+      logger.debug('[SpecsWatcherService] Task completion check', { specId, completed, total, isAllComplete });
+
+      if (!isAllComplete) {
+        return;
+      }
+
+      // Read current spec.json to check phase
+      const specPath = path.dirname(tasksFilePath);
+      const specJsonPath = path.join(specPath, 'spec.json');
+
+      try {
+        const specJsonContent = await readFile(specJsonPath, 'utf-8');
+        const specJson = JSON.parse(specJsonContent);
+
+        if (specJson.phase === 'implementation-complete') {
+          logger.debug('[SpecsWatcherService] Phase already implementation-complete', { specId });
+          return;
+        }
+
+        // Update phase to implementation-complete
+        logger.info('[SpecsWatcherService] All tasks complete, updating phase to implementation-complete', { specId, previousPhase: specJson.phase });
+        const result = await this.fileService.updateSpecJsonFromPhase(specPath, 'impl-complete', { skipTimestamp: true });
+
+        if (!result.ok) {
+          logger.error('[SpecsWatcherService] Failed to update spec.json phase', { specId, error: result.error });
+        }
+      } catch (error) {
+        logger.error('[SpecsWatcherService] Failed to read spec.json', { specId, error });
+      }
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to read tasks.md', { specId, error });
+    }
   }
 
   /**

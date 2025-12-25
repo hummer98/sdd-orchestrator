@@ -1,7 +1,12 @@
 /**
  * Workflow Store
- * Manages workflow auto-execution state and settings
+ * Manages workflow auto-execution settings (global defaults)
  * Requirements: 5.1-5.4, 6.1-6.6, 7.1-7.4, 8.1-8.5
+ *
+ * NOTE: As part of spec-scoped-auto-execution-state feature (Task 5.1):
+ * - isAutoExecuting, currentAutoPhase, autoExecutionStatus have been migrated to spec.json
+ * - This store now only holds global default settings
+ * - Spec-specific auto-execution state is managed via spec.json.autoExecution
  */
 
 import { create } from 'zustand';
@@ -60,11 +65,13 @@ export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
 export interface ValidationOptions {
   gap: boolean;
   design: boolean;
+  impl: boolean;
 }
 
 const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
   gap: false,
   design: false,
+  impl: false,
 };
 
 // ============================================================
@@ -85,20 +92,11 @@ const DEFAULT_DOCUMENT_REVIEW_OPTIONS: DocumentReviewOptions = {
 };
 
 // ============================================================
-// Task 1.1: Auto Execution Status Types
+// Task 1.1: Auto Execution Status Types (DEPRECATED)
 // Requirements: 7.4
+// NOTE: AutoExecutionStatus has been migrated to spec.json
+// The type is now defined in types/index.ts as part of SpecAutoExecutionState
 // ============================================================
-
-/**
- * 自動実行の詳細状態
- */
-export type AutoExecutionStatus =
-  | 'idle'       // 待機中
-  | 'running'    // 実行中
-  | 'paused'     // 一時停止（Agent待機中）
-  | 'completing' // 完了処理中
-  | 'error'      // エラー停止
-  | 'completed'; // 完了
 
 /**
  * 実行サマリー情報
@@ -115,23 +113,19 @@ export interface ExecutionSummary {
 }
 
 // ============================================================
-// Task 2.3: Auto Execution State
+// Task 2.3: Auto Execution State (SIMPLIFIED)
 // Requirements: 6.1, 6.2, 6.3, 6.4, 7.4
+// NOTE: isAutoExecuting, currentAutoPhase, autoExecutionStatus migrated to spec.json
 // ============================================================
 
 interface WorkflowState {
-  /** 自動実行許可設定（フェーズごと） */
+  /** 自動実行許可設定（フェーズごと）- グローバルデフォルト設定 */
   autoExecutionPermissions: AutoExecutionPermissions;
   /** バリデーションオプション設定 */
   validationOptions: ValidationOptions;
-  /** 自動実行中フラグ */
-  isAutoExecuting: boolean;
-  /** 現在の自動実行位置 */
-  currentAutoPhase: WorkflowPhase | null;
 
-  // Task 1.1: Auto execution state extension
-  /** 自動実行の詳細状態 */
-  autoExecutionStatus: AutoExecutionStatus;
+  // Task 1.1: Auto execution state extension (simplified)
+  // NOTE: isAutoExecuting, currentAutoPhase, autoExecutionStatus removed
   /** 最後に失敗したフェーズ */
   lastFailedPhase: WorkflowPhase | null;
   /** 連続失敗回数 */
@@ -159,12 +153,8 @@ interface WorkflowActions {
   toggleAutoPermission: (phase: WorkflowPhase) => void;
   /** バリデーションオプションをトグル */
   toggleValidationOption: (type: ValidationType) => void;
-  /** 自動実行を開始 */
-  startAutoExecution: () => void;
-  /** 自動実行を停止 */
-  stopAutoExecution: () => void;
-  /** 現在の自動実行フェーズを更新 */
-  setCurrentAutoPhase: (phase: WorkflowPhase | null) => void;
+  // NOTE: startAutoExecution, stopAutoExecution, setCurrentAutoPhase removed
+  // These are now managed via spec.json.autoExecution
   /** 設定をリセット */
   resetSettings: () => void;
   /** フェーズが自動実行許可されているか確認 */
@@ -172,9 +162,8 @@ interface WorkflowActions {
   /** 次の自動実行フェーズを取得 */
   getNextAutoPhase: (currentPhase: WorkflowPhase | null) => WorkflowPhase | null;
 
-  // Task 1.2: State update actions
-  /** 自動実行ステータスを更新 */
-  setAutoExecutionStatus: (status: AutoExecutionStatus) => void;
+  // Task 1.2: State update actions (simplified)
+  // NOTE: setAutoExecutionStatus removed (migrated to spec.json)
   /** 最後に失敗したフェーズを設定 */
   setLastFailedPhase: (phase: WorkflowPhase | null) => void;
   /** 失敗リトライ回数をインクリメント */
@@ -197,6 +186,15 @@ interface WorkflowActions {
   // Requirements: 7.5
   /** レビュー確認待ち状態を設定 */
   setPendingReviewConfirmation: (pending: boolean) => void;
+
+  // spec-scoped-auto-execution-state Task 2.3: Sync methods
+  // Requirements: 2.4, 2.5
+  /** 自動実行許可設定を一括設定 */
+  setAutoExecutionPermissions: (permissions: AutoExecutionPermissions) => void;
+  /** ドキュメントレビューオプションを一括設定 */
+  setDocumentReviewOptions: (options: Partial<DocumentReviewOptions>) => void;
+  /** バリデーションオプションを一括設定 */
+  setValidationOptions: (options: Partial<ValidationOptions>) => void;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -209,14 +207,12 @@ type WorkflowStore = WorkflowState & WorkflowActions;
 export const useWorkflowStore = create<WorkflowStore>()(
   persist(
     (set, get) => ({
-      // Initial state
+      // Initial state (simplified - auto execution state moved to spec.json)
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
       validationOptions: { ...DEFAULT_VALIDATION_OPTIONS },
-      isAutoExecuting: false,
-      currentAutoPhase: null,
 
-      // Task 1.1: Auto execution state extension - initial state
-      autoExecutionStatus: 'idle' as AutoExecutionStatus,
+      // Task 1.1: Auto execution state extension - initial state (simplified)
+      // NOTE: isAutoExecuting, currentAutoPhase, autoExecutionStatus removed
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
@@ -250,41 +246,23 @@ export const useWorkflowStore = create<WorkflowStore>()(
         }));
       },
 
-      // Task 2.3: Auto Execution State
-      startAutoExecution: () => {
-        set({ isAutoExecuting: true });
-      },
+      // NOTE: startAutoExecution, stopAutoExecution, setCurrentAutoPhase removed
+      // These are now managed via spec.json.autoExecution
 
-      stopAutoExecution: () => {
-        set({
-          isAutoExecuting: false,
-          currentAutoPhase: null,
-        });
-      },
-
-      setCurrentAutoPhase: (phase: WorkflowPhase | null) => {
-        set({ currentAutoPhase: phase });
-      },
-
-      // Task 2.4: Reset Settings
+      // Task 2.4: Reset Settings (simplified)
       resetSettings: () => {
         set({
           autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
           validationOptions: { ...DEFAULT_VALIDATION_OPTIONS },
-          isAutoExecuting: false,
-          currentAutoPhase: null,
-          // Task 1.1: Also reset auto execution state extension
-          autoExecutionStatus: 'idle' as AutoExecutionStatus,
+          // Task 1.1: Reset remaining auto execution state
           lastFailedPhase: null,
           failedRetryCount: 0,
           executionSummary: null,
         });
       },
 
-      // Task 1.2: State update actions
-      setAutoExecutionStatus: (status: AutoExecutionStatus) => {
-        set({ autoExecutionStatus: status });
-      },
+      // Task 1.2: State update actions (simplified)
+      // NOTE: setAutoExecutionStatus removed (migrated to spec.json)
 
       setLastFailedPhase: (phase: WorkflowPhase | null) => {
         set({ lastFailedPhase: phase });
@@ -324,6 +302,30 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // Requirements: 7.5
       setPendingReviewConfirmation: (pending: boolean) => {
         set({ pendingReviewConfirmation: pending });
+      },
+
+      // spec-scoped-auto-execution-state Task 2.3: Sync methods
+      // Requirements: 2.4, 2.5
+      setAutoExecutionPermissions: (permissions: AutoExecutionPermissions) => {
+        set({ autoExecutionPermissions: { ...permissions } });
+      },
+
+      setDocumentReviewOptions: (options: Partial<DocumentReviewOptions>) => {
+        set((state) => ({
+          documentReviewOptions: {
+            ...state.documentReviewOptions,
+            ...options,
+          },
+        }));
+      },
+
+      setValidationOptions: (options: Partial<ValidationOptions>) => {
+        set((state) => ({
+          validationOptions: {
+            ...state.validationOptions,
+            ...options,
+          },
+        }));
       },
 
       // Helper methods

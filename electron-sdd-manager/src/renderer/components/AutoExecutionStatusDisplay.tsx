@@ -2,11 +2,12 @@
  * AutoExecutionStatusDisplay Component
  * Displays auto execution progress and status
  * Requirements: 5.1, 5.5, 8.2
+ * NOTE: Updated to use types from types/index.ts instead of workflowStore (Task 5.1)
  */
 
 import { clsx } from 'clsx';
 import { Loader2, Pause, AlertCircle, CheckCircle, Square, RotateCcw } from 'lucide-react';
-import type { AutoExecutionStatus } from '../stores/workflowStore';
+import type { AutoExecutionStatus } from '../types';
 import type { WorkflowPhase } from '../types/workflow';
 import { PHASE_LABELS } from '../types/workflow';
 

@@ -38,6 +38,11 @@ export interface UpdateReviewStateOptions {
   roundDetail?: Partial<RoundDetail>;
 }
 
+/** Result of parsing a reply file (Task 2.1: auto-execution-document-review-autofix) */
+export interface ParseReplyResult {
+  fixRequiredCount: number;
+}
+
 /**
  * Service for managing document review workflow
  */
@@ -719,5 +724,90 @@ export class DocumentReviewService {
   private async writeSpecJson(specPath: string, specJson: SpecJsonWithReview): Promise<void> {
     const specJsonPath = join(specPath, 'spec.json');
     await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+  }
+
+  // ============================================================
+  // Task 2.1: parseReplyFile - Reply.md解析機能
+  // Requirements: auto-execution-document-review-autofix 2.2
+  // ============================================================
+
+  /**
+   * Parse a document-review-{roundNumber}-reply.md file and extract Fix Required count
+   * @param specPath - Path to the spec directory
+   * @param roundNumber - Round number of the reply file
+   * @returns Result with fixRequiredCount or error
+   */
+  async parseReplyFile(specPath: string, roundNumber: number): Promise<Result<ParseReplyResult, ReviewError>> {
+    const replyFileName = `document-review-${roundNumber}-reply.md`;
+    const replyFilePath = join(specPath, replyFileName);
+
+    try {
+      const content = await readFile(replyFilePath, 'utf-8');
+
+      // Extract Fix Required count from Response Summary table
+      // Table format:
+      // | Severity | Total Items | Fix Required |
+      // |----------|-------------|--------------|
+      // | Critical | 2 | 1 |
+      // | High | 5 | 3 |
+      // ...
+
+      // Find the Response Summary section
+      const summaryMatch = content.match(/##\s*Response Summary[\s\S]*?\|[^|]+\|[^|]+\|\s*Fix Required\s*\|/i);
+      if (!summaryMatch) {
+        logger.warn('[DocumentReviewService] Response Summary table not found', { replyFilePath });
+        return {
+          ok: false,
+          error: {
+            type: 'PARSE_ERROR',
+            message: 'Response Summary table not found in reply file',
+          },
+        };
+      }
+
+      // Extract table rows after the header (skip header and separator rows)
+      // Pattern: | Severity | Number | Number | (each row)
+      const tableRowPattern = /\|\s*(?:Critical|High|Medium|Low|Info)\s*\|\s*\d+\s*\|\s*(\d+)\s*\|/gi;
+      let totalFixRequired = 0;
+      let match;
+
+      while ((match = tableRowPattern.exec(content)) !== null) {
+        const fixRequired = parseInt(match[1], 10);
+        if (!isNaN(fixRequired)) {
+          totalFixRequired += fixRequired;
+        }
+      }
+
+      logger.info('[DocumentReviewService] Parsed reply file', {
+        replyFilePath,
+        fixRequiredCount: totalFixRequired
+      });
+
+      return {
+        ok: true,
+        value: {
+          fixRequiredCount: totalFixRequired,
+        },
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('ENOENT')) {
+        return {
+          ok: false,
+          error: {
+            type: 'FILE_NOT_FOUND',
+            path: replyFilePath,
+          },
+        };
+      }
+
+      logger.error('[DocumentReviewService] Error parsing reply file', { error, replyFilePath });
+      return {
+        ok: false,
+        error: {
+          type: 'FILE_NOT_FOUND',
+          path: replyFilePath,
+        },
+      };
+    }
   }
 }

@@ -631,3 +631,294 @@ describe('buildClaudeArgs', () => {
     expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-789']);
   });
 });
+
+/**
+ * executeDocumentReviewReply with autofix option Tests
+ * Requirements: 1.1, 1.2, 1.3 (auto-execution-document-review-autofix)
+ */
+describe('executeDocumentReviewReply with autofix', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    // Create temporary directories for testing
+    testDir = path.join(os.tmpdir(), `spec-manager-autofix-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    // Stop all agents
+    await service.stopAllAgents();
+
+    // Clean up test directory
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should build command without --autofix by default', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReviewReply({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      reviewNumber: 1,
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.not.arrayContaining(['--autofix']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should build command with --autofix when autofix=true', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReviewReply({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      reviewNumber: 1,
+      autofix: true,
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.arrayContaining(['/kiro:document-review-reply my-feature 1 --autofix']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should NOT include --autofix when autofix=false', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReviewReply({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      reviewNumber: 1,
+      autofix: false,
+    });
+
+    const callArgs = startAgentSpy.mock.calls[0][0].args;
+    const commandArg = callArgs.find((arg: string) => arg.includes('/kiro:document-review-reply'));
+    expect(commandArg).not.toContain('--autofix');
+
+    startAgentSpy.mockRestore();
+  });
+});
+
+// ============================================================
+// spec-scoped-auto-execution-state Task 9.4: IPC Integration Tests
+// Requirements: 2.1, 2.2, 2.3
+// ============================================================
+describe('spec-scoped-auto-execution-state: spec.json autoExecution Integration', () => {
+  let testDir: string;
+  let specDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    // Create temporary directories for testing
+    testDir = path.join(os.tmpdir(), `spec-json-test-${Date.now()}`);
+    specDir = path.join(testDir, '.kiro', 'specs', 'test-feature');
+    await fs.mkdir(specDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    // Clean up test directory
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('readSpecJson with autoExecution normalization', () => {
+    it('should add default autoExecution when field is missing', async () => {
+      // Create spec.json without autoExecution field
+      const specJson = {
+        feature_name: 'test-feature',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'initialized',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(specJson, null, 2));
+
+      // Read spec.json via service (SpecManagerService uses fileService)
+      const content = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+
+      // File should not have autoExecution initially
+      expect(parsed.autoExecution).toBeUndefined();
+    });
+
+    it('should preserve existing autoExecution when reading', async () => {
+      // Create spec.json with autoExecution field
+      const specJson = {
+        feature_name: 'test-feature',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'initialized',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+        autoExecution: {
+          enabled: true,
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: {
+            gap: true,
+            design: false,
+            impl: false,
+          },
+        },
+      };
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(specJson, null, 2));
+
+      // Read spec.json
+      const content = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+
+      // autoExecution should be preserved
+      expect(parsed.autoExecution).toBeDefined();
+      expect(parsed.autoExecution.enabled).toBe(true);
+      expect(parsed.autoExecution.permissions.requirements).toBe(true);
+      expect(parsed.autoExecution.documentReviewFlag).toBe('run');
+    });
+  });
+
+  describe('updateSpecJson with autoExecution', () => {
+    it('should update autoExecution field in spec.json', async () => {
+      // Create initial spec.json
+      const specJson = {
+        feature_name: 'test-feature',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'initialized',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(specJson, null, 2));
+
+      // Update with autoExecution
+      const autoExecution = {
+        enabled: true,
+        permissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+        documentReviewFlag: 'skip',
+        validationOptions: {
+          gap: false,
+          design: false,
+          impl: false,
+        },
+      };
+
+      // Read, update, and write
+      const content = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      parsed.autoExecution = autoExecution;
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(parsed, null, 2));
+
+      // Read back and verify
+      const updatedContent = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const updatedParsed = JSON.parse(updatedContent);
+
+      expect(updatedParsed.autoExecution).toBeDefined();
+      expect(updatedParsed.autoExecution.enabled).toBe(true);
+      expect(updatedParsed.autoExecution.permissions.requirements).toBe(true);
+      expect(updatedParsed.autoExecution.permissions.design).toBe(true);
+      expect(updatedParsed.autoExecution.permissions.tasks).toBe(true);
+      expect(updatedParsed.autoExecution.documentReviewFlag).toBe('skip');
+    });
+
+    it('should preserve other spec.json fields when updating autoExecution', async () => {
+      // Create initial spec.json with all fields
+      const specJson = {
+        feature_name: 'test-feature',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'design-generated',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'in_progress',
+        },
+      };
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(specJson, null, 2));
+
+      // Update only autoExecution
+      const autoExecution = {
+        enabled: true,
+        permissions: {
+          requirements: true,
+          design: true,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+        documentReviewFlag: 'run',
+        validationOptions: {
+          gap: true,
+          design: false,
+          impl: false,
+        },
+      };
+
+      const content = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      parsed.autoExecution = autoExecution;
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify(parsed, null, 2));
+
+      // Verify other fields are preserved
+      const updatedContent = await fs.readFile(path.join(specDir, 'spec.json'), 'utf-8');
+      const updatedParsed = JSON.parse(updatedContent);
+
+      expect(updatedParsed.feature_name).toBe('test-feature');
+      expect(updatedParsed.phase).toBe('design-generated');
+      expect(updatedParsed.approvals.requirements.approved).toBe(true);
+      expect(updatedParsed.documentReview.rounds).toBe(1);
+      expect(updatedParsed.autoExecution.enabled).toBe(true);
+    });
+  });
+});

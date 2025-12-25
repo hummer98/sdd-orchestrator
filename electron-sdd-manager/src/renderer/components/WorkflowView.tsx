@@ -2,6 +2,7 @@
  * WorkflowView Component
  * Main workflow view showing 6 phases with controls
  * Requirements: 1.1-1.4, 3.1-3.5, 5.2-5.8, 6.1-6.6, 7.1-7.6, 9.1-9.3
+ * Task 5.1: Use specStore.autoExecutionRuntime instead of workflowStore for auto execution state
  */
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
@@ -38,12 +39,14 @@ const MAX_CONTINUE_RETRIES = 2;
 // ============================================================
 
 export function WorkflowView() {
-  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs } = useSpecStore();
+  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs, autoExecutionRuntime } = useSpecStore();
   const workflowStore = useWorkflowStore();
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
   const autoExecutionServiceRef = useRef(getAutoExecutionService());
+  // Task 5.1: Extract auto execution state from specStore
+  const { isAutoExecuting, currentAutoPhase, autoExecutionStatus } = autoExecutionRuntime;
 
   // Cleanup AutoExecutionService on unmount
   useEffect(() => {
@@ -229,9 +232,10 @@ export function WorkflowView() {
 
   // Task 10.1: Auto execution button handler
   // Requirements: 1.1, 1.2
+  // Task 5.1: Use isAutoExecuting from specStore
   const handleAutoExecution = useCallback(() => {
     const service = autoExecutionServiceRef.current;
-    if (workflowStore.isAutoExecuting) {
+    if (isAutoExecuting) {
       service.stop();
     } else {
       const started = service.start();
@@ -239,7 +243,7 @@ export function WorkflowView() {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [workflowStore.isAutoExecuting]);
+  }, [isAutoExecuting]);
 
   // Task 10.4: Retry handler
   // Requirements: 8.2, 8.3
@@ -423,6 +427,7 @@ export function WorkflowView() {
         {WORKFLOW_PHASES.map((phase, index) => (
           <div key={phase}>
             {/* Phase Item */}
+            {/* Task 5.1: Use isAutoExecuting and currentAutoPhase from specStore */}
             <PhaseItem
               phase={phase}
               label={PHASE_LABELS[phase]}
@@ -431,7 +436,7 @@ export function WorkflowView() {
               autoExecutionPermitted={workflowStore.autoExecutionPermissions[phase]}
               isExecuting={runningPhases.has(phase)}
               canExecute={canExecutePhase(phase)}
-              isAutoPhase={workflowStore.isAutoExecuting && workflowStore.currentAutoPhase === phase}
+              isAutoPhase={isAutoExecuting && currentAutoPhase === phase}
               onExecute={() => handleExecutePhase(phase)}
               onApprove={() => handleApprovePhase(phase)}
               onApproveAndExecute={() => handleApproveAndExecutePhase(phase)}
@@ -462,12 +467,13 @@ export function WorkflowView() {
             {/* Task 6.3: Document Review Panel (between tasks and impl) */}
             {/* Task 6.1: Progress indicator and auto execution flag control added */}
             {/* Requirements: 6.1, 6.4, 6.5, 6.6, 6.7, 6.8 */}
+            {/* Task 5.1: Use isAutoExecuting from specStore */}
             {phase === 'tasks' && (
               <div className="my-3">
                 <DocumentReviewPanel
                   reviewState={documentReviewState}
                   isExecuting={isReviewExecuting}
-                  isAutoExecuting={workflowStore.isAutoExecuting}
+                  isAutoExecuting={isAutoExecuting}
                   hasTasks={!!specDetail?.artifacts.tasks?.content}
                   autoExecutionFlag={workflowStore.documentReviewOptions.autoExecutionFlag}
                   onStartReview={handleStartDocumentReview}
@@ -511,9 +517,10 @@ export function WorkflowView() {
 
         {/* Task 11.2: Auto Execution Status Display */}
         {/* Requirements: 5.1, 5.5, 8.2 */}
+        {/* Task 5.1: Use autoExecutionStatus and currentAutoPhase from specStore */}
         <AutoExecutionStatusDisplay
-          status={workflowStore.autoExecutionStatus}
-          currentPhase={workflowStore.currentAutoPhase}
+          status={autoExecutionStatus}
+          currentPhase={currentAutoPhase}
           lastFailedPhase={workflowStore.lastFailedPhase}
           retryCount={workflowStore.failedRetryCount}
           onRetry={handleRetry}
@@ -523,22 +530,23 @@ export function WorkflowView() {
       </div>
 
       {/* Footer Buttons */}
+      {/* Task 5.1: Use isAutoExecuting from specStore */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
         <button
           data-testid="auto-execute-button"
           onClick={handleAutoExecution}
-          disabled={!workflowStore.isAutoExecuting && runningPhases.size > 0}
+          disabled={!isAutoExecuting && runningPhases.size > 0}
           className={clsx(
             'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded',
             'font-medium transition-colors',
-            workflowStore.isAutoExecuting
+            isAutoExecuting
               ? 'bg-red-500 text-white hover:bg-red-600'
               : runningPhases.size > 0
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
                 : 'bg-blue-500 text-white hover:bg-blue-600'
           )}
         >
-          {workflowStore.isAutoExecuting ? (
+          {isAutoExecuting ? (
             <>
               <Square className="w-4 h-4" />
               停止

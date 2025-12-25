@@ -90,7 +90,14 @@ const createMockStores = (overrides: any = {}) => {
       retryCount: 0,
       executionMode: null,
     },
+    // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
+    autoExecutionRuntime: {
+      isAutoExecuting: false,
+      currentAutoPhase: null,
+      autoExecutionStatus: 'idle' as const,
+    },
     clearSpecManagerError: vi.fn(),
+    refreshSpecs: vi.fn(),
     ...overrides.specStore,
   };
 

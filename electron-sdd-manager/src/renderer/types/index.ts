@@ -40,6 +40,8 @@ export interface SpecJson {
       replyCompletedAt?: string;
     }>;
   };
+  /** Auto execution state (optional for backward compatibility) */
+  autoExecution?: SpecAutoExecutionState;
 }
 
 export interface SpecMetadata {
@@ -163,4 +165,104 @@ export interface SelectProjectResult {
   readonly specs: SpecMetadata[];
   readonly bugs: BugMetadata[];
   readonly error?: SelectProjectError;
+}
+
+// ============================================================
+// Spec-Scoped Auto Execution State Types
+// spec-scoped-auto-execution-state feature
+// Requirements: 1.1, 1.2, 1.3
+// ============================================================
+
+/**
+ * 自動実行の詳細状態
+ * NOTE: This type was moved from workflowStore as part of spec-scoped-auto-execution-state Task 5.1
+ */
+export type AutoExecutionStatus =
+  | 'idle'       // 待機中
+  | 'running'    // 実行中
+  | 'paused'     // 一時停止（Agent待機中）
+  | 'completing' // 完了処理中
+  | 'error'      // エラー停止
+  | 'completed'; // 完了
+
+/** 自動実行フェーズ許可設定 */
+export interface AutoExecutionPermissions {
+  requirements: boolean;
+  design: boolean;
+  tasks: boolean;
+  impl: boolean;
+  inspection: boolean;
+  deploy: boolean;
+}
+
+/** バリデーションオプション */
+export interface ValidationOptions {
+  gap: boolean;
+  design: boolean;
+  impl: boolean;
+}
+
+/** ドキュメントレビューフラグ */
+export type DocumentReviewFlag = 'skip' | 'run' | 'pause';
+
+/**
+ * Spec単位の自動実行状態
+ * spec.jsonのautoExecutionフィールドに永続化される
+ */
+export interface SpecAutoExecutionState {
+  /** 自動実行の有効/無効 */
+  enabled: boolean;
+  /** フェーズ別許可設定 */
+  permissions: AutoExecutionPermissions;
+  /** ドキュメントレビューフラグ */
+  documentReviewFlag: DocumentReviewFlag;
+  /** バリデーションオプション */
+  validationOptions: ValidationOptions;
+}
+
+/** デフォルトの自動実行状態 */
+export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
+  enabled: false,
+  permissions: {
+    requirements: false,
+    design: false,
+    tasks: false,
+    impl: false,
+    inspection: false,
+    deploy: false,
+  },
+  documentReviewFlag: 'skip',
+  validationOptions: {
+    gap: false,
+    design: false,
+    impl: false,
+  },
+};
+
+/** Partial型の自動実行状態からフル状態を生成するファクトリー関数 */
+export function createSpecAutoExecutionState(
+  partial?: Partial<{
+    enabled: boolean;
+    permissions: Partial<AutoExecutionPermissions>;
+    documentReviewFlag: DocumentReviewFlag;
+    validationOptions: Partial<ValidationOptions>;
+  }>
+): SpecAutoExecutionState {
+  if (!partial) {
+    return { ...DEFAULT_SPEC_AUTO_EXECUTION_STATE };
+  }
+
+  return {
+    enabled: partial.enabled ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.enabled,
+    permissions: {
+      ...DEFAULT_SPEC_AUTO_EXECUTION_STATE.permissions,
+      ...(partial.permissions ?? {}),
+    },
+    documentReviewFlag:
+      partial.documentReviewFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag,
+    validationOptions: {
+      ...DEFAULT_SPEC_AUTO_EXECUTION_STATE.validationOptions,
+      ...(partial.validationOptions ?? {}),
+    },
+  };
 }

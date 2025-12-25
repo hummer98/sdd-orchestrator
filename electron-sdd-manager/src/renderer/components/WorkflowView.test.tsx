@@ -140,7 +140,14 @@ const mockSpecStoreState = {
     retryCount: 0,
     executionMode: null,
   },
+  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
+  autoExecutionRuntime: {
+    isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle' as const,
+  },
   clearSpecManagerError: vi.fn(),
+  refreshSpecs: vi.fn(),
 };
 
 describe('WorkflowView', () => {
@@ -261,9 +268,14 @@ describe('WorkflowView', () => {
     });
 
     it('should enable stop button even when agent is running during auto execution', () => {
-      (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockWorkflowState,
-        isAutoExecuting: true,
+      // isAutoExecuting is now in specStore.autoExecutionRuntime
+      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSpecStoreState,
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'requirements',
+          autoExecutionStatus: 'running' as const,
+        },
       });
       // セレクタ対応モックのため状態を直接変更
       const agentsMap = new Map();
@@ -280,8 +292,11 @@ describe('WorkflowView', () => {
 
       render(<WorkflowView />);
 
-      const button = screen.getByRole('button', { name: /停止/i });
-      expect(button).not.toBeDisabled();
+      // Multiple stop buttons may exist (e.g., footer and status display)
+      const buttons = screen.getAllByRole('button', { name: /停止/i });
+      expect(buttons.length).toBeGreaterThan(0);
+      // All stop buttons should be enabled
+      buttons.forEach(button => expect(button).not.toBeDisabled());
     });
   });
 
@@ -336,14 +351,21 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 7.4: Auto execution mode', () => {
     it('should change button to stop when auto executing', () => {
-      (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockWorkflowState,
-        isAutoExecuting: true,
+      // isAutoExecuting is now in specStore.autoExecutionRuntime
+      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSpecStoreState,
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'requirements',
+          autoExecutionStatus: 'running' as const,
+        },
       });
 
       render(<WorkflowView />);
 
-      expect(screen.getByRole('button', { name: /停止/i })).toBeInTheDocument();
+      // Multiple stop buttons may exist (e.g., footer and status display)
+      const stopButtons = screen.getAllByRole('button', { name: /停止/i });
+      expect(stopButtons.length).toBeGreaterThan(0);
     });
   });
 
@@ -353,11 +375,14 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 10.2: Phase highlight during auto execution', () => {
     it('should highlight current auto phase', () => {
-      (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockWorkflowState,
-        isAutoExecuting: true,
-        currentAutoPhase: 'design',
-        autoExecutionStatus: 'running',
+      // isAutoExecuting is now in specStore.autoExecutionRuntime
+      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSpecStoreState,
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'design',
+          autoExecutionStatus: 'running' as const,
+        },
       });
 
       render(<WorkflowView />);
@@ -374,10 +399,18 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 10.4: Retry button on error', () => {
     it('should show retry button when autoExecutionStatus is error', () => {
+      // autoExecutionStatus is now in specStore.autoExecutionRuntime
+      // lastFailedPhase stays in workflowStore
+      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSpecStoreState,
+        autoExecutionRuntime: {
+          isAutoExecuting: false,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'error' as const,
+        },
+      });
       (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockWorkflowState,
-        isAutoExecuting: false,
-        autoExecutionStatus: 'error',
         lastFailedPhase: 'design',
       });
 

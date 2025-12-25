@@ -2,28 +2,76 @@
  * Workflow Store Tests
  * TDD: Testing workflow state management
  * Requirements: 5.1-5.4, 6.1-6.6, 7.1-7.4, 8.1-8.5
+ * spec-scoped-auto-execution-state Task 5.1: workflowStore simplification
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from './workflowStore';
-import type { AutoExecutionStatus, ExecutionSummary } from './workflowStore';
+import type { ExecutionSummary } from './workflowStore';
 
 describe('useWorkflowStore', () => {
   beforeEach(() => {
     // Reset store state
+    // Note: isAutoExecuting, currentAutoPhase, autoExecutionStatus have been removed
+    // as part of spec-scoped-auto-execution-state Task 5.1 migration
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
       validationOptions: {
         gap: false,
         design: false,
+        impl: false,
       },
-      isAutoExecuting: false,
-      currentAutoPhase: null,
-      // Task 1.1: Auto execution state extension
-      autoExecutionStatus: 'idle',
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
+    });
+  });
+
+  // ============================================================
+  // spec-scoped-auto-execution-state Task 5.1: Field Removal Tests
+  // Requirements: 5.3
+  // These tests verify that deprecated fields have been removed from workflowStore
+  // ============================================================
+  describe('Task 5.1: Deprecated field removal', () => {
+    it('should NOT have isAutoExecuting field (migrated to spec.json)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('isAutoExecuting');
+    });
+
+    it('should NOT have currentAutoPhase field (migrated to spec.json)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('currentAutoPhase');
+    });
+
+    it('should NOT have autoExecutionStatus field (migrated to spec.json)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('autoExecutionStatus');
+    });
+
+    it('should still have autoExecutionPermissions (global default setting)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).toHaveProperty('autoExecutionPermissions');
+      expect(state.autoExecutionPermissions).toBeDefined();
+    });
+
+    it('should NOT have startAutoExecution action (deprecated)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('startAutoExecution');
+    });
+
+    it('should NOT have stopAutoExecution action (deprecated)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('stopAutoExecution');
+    });
+
+    it('should NOT have setCurrentAutoPhase action (deprecated)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('setCurrentAutoPhase');
+    });
+
+    it('should NOT have setAutoExecutionStatus action (deprecated)', () => {
+      const state = useWorkflowStore.getState();
+      expect(state).not.toHaveProperty('setAutoExecutionStatus');
     });
   });
 
@@ -113,76 +161,16 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // Task 2.3: Auto Execution State
-  // Requirements: 6.1, 6.2, 6.3, 6.4
+  // Task 2.3: Auto Execution State (DEPRECATED)
+  // Note: isAutoExecuting, currentAutoPhase, autoExecutionStatus have been
+  // migrated to spec.json as part of spec-scoped-auto-execution-state feature.
+  // Tests for these fields are now in Task 5.1: Deprecated field removal.
   // ============================================================
-  describe('Task 2.3: Auto execution state', () => {
-    describe('initial state', () => {
-      it('should not be auto executing initially', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.isAutoExecuting).toBe(false);
-      });
-
-      it('should have null current auto phase initially', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.currentAutoPhase).toBeNull();
-      });
-    });
-
-    describe('startAutoExecution', () => {
-      it('should set isAutoExecuting to true', () => {
-        useWorkflowStore.getState().startAutoExecution();
-
-        const state = useWorkflowStore.getState();
-        expect(state.isAutoExecuting).toBe(true);
-      });
-    });
-
-    describe('stopAutoExecution', () => {
-      it('should set isAutoExecuting to false', () => {
-        useWorkflowStore.setState({ isAutoExecuting: true });
-
-        useWorkflowStore.getState().stopAutoExecution();
-
-        const state = useWorkflowStore.getState();
-        expect(state.isAutoExecuting).toBe(false);
-      });
-
-      it('should clear currentAutoPhase', () => {
-        useWorkflowStore.setState({
-          isAutoExecuting: true,
-          currentAutoPhase: 'design',
-        });
-
-        useWorkflowStore.getState().stopAutoExecution();
-
-        const state = useWorkflowStore.getState();
-        expect(state.currentAutoPhase).toBeNull();
-      });
-    });
-
-    describe('setCurrentAutoPhase', () => {
-      it('should set current auto phase', () => {
-        useWorkflowStore.getState().setCurrentAutoPhase('design');
-
-        const state = useWorkflowStore.getState();
-        expect(state.currentAutoPhase).toBe('design');
-      });
-
-      it('should allow setting to null', () => {
-        useWorkflowStore.setState({ currentAutoPhase: 'tasks' });
-
-        useWorkflowStore.getState().setCurrentAutoPhase(null);
-
-        const state = useWorkflowStore.getState();
-        expect(state.currentAutoPhase).toBeNull();
-      });
-    });
-  });
 
   // ============================================================
   // Task 2.4: Reset Settings
   // Requirements: 5.4
+  // Note: Updated to reflect simplified workflowStore (no auto execution state)
   // ============================================================
   describe('Task 2.4: Reset settings', () => {
     describe('resetSettings', () => {
@@ -209,6 +197,7 @@ describe('useWorkflowStore', () => {
           validationOptions: {
             gap: true,
             design: true,
+            impl: true,
           },
         });
 
@@ -217,19 +206,20 @@ describe('useWorkflowStore', () => {
         const state = useWorkflowStore.getState();
         expect(state.validationOptions.gap).toBe(false);
         expect(state.validationOptions.design).toBe(false);
+        expect(state.validationOptions.impl).toBe(false);
       });
 
-      it('should stop auto execution', () => {
+      it('should reset failed state', () => {
         useWorkflowStore.setState({
-          isAutoExecuting: true,
-          currentAutoPhase: 'design',
+          lastFailedPhase: 'design',
+          failedRetryCount: 3,
         });
 
         useWorkflowStore.getState().resetSettings();
 
         const state = useWorkflowStore.getState();
-        expect(state.isAutoExecuting).toBe(false);
-        expect(state.currentAutoPhase).toBeNull();
+        expect(state.lastFailedPhase).toBeNull();
+        expect(state.failedRetryCount).toBe(0);
       });
     });
   });
@@ -269,16 +259,13 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // Task 1.1: Auto execution status extension
+  // Task 1.1: Auto execution status extension (UPDATED)
   // Requirements: 7.4
+  // Note: autoExecutionStatus and isAutoExecuting have been migrated to spec.json
+  // Only lastFailedPhase, failedRetryCount, executionSummary remain in workflowStore
   // ============================================================
-  describe('Task 1.1: Auto execution status extension', () => {
+  describe('Task 1.1: Auto execution state (simplified)', () => {
     describe('initial state', () => {
-      it('should have idle autoExecutionStatus', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.autoExecutionStatus).toBe('idle');
-      });
-
       it('should have null lastFailedPhase', () => {
         const state = useWorkflowStore.getState();
         expect(state.lastFailedPhase).toBeNull();
@@ -293,54 +280,15 @@ describe('useWorkflowStore', () => {
         const state = useWorkflowStore.getState();
         expect(state.executionSummary).toBeNull();
       });
-
-      it('should have isAutoExecuting as false on initialization', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.isAutoExecuting).toBe(false);
-      });
-    });
-
-    describe('AutoExecutionStatus type', () => {
-      it('should support all status values', () => {
-        const validStatuses: AutoExecutionStatus[] = [
-          'idle',
-          'running',
-          'paused',
-          'completing',
-          'error',
-          'completed',
-        ];
-
-        for (const status of validStatuses) {
-          useWorkflowStore.getState().setAutoExecutionStatus(status);
-          expect(useWorkflowStore.getState().autoExecutionStatus).toBe(status);
-        }
-      });
     });
   });
 
   // ============================================================
-  // Task 1.2: State update actions
+  // Task 1.2: State update actions (UPDATED)
   // Requirements: 7.1, 7.3
+  // Note: setAutoExecutionStatus removed (migrated to spec.json)
   // ============================================================
-  describe('Task 1.2: State update actions', () => {
-    describe('setAutoExecutionStatus', () => {
-      it('should update autoExecutionStatus to running', () => {
-        useWorkflowStore.getState().setAutoExecutionStatus('running');
-        expect(useWorkflowStore.getState().autoExecutionStatus).toBe('running');
-      });
-
-      it('should update autoExecutionStatus to error', () => {
-        useWorkflowStore.getState().setAutoExecutionStatus('error');
-        expect(useWorkflowStore.getState().autoExecutionStatus).toBe('error');
-      });
-
-      it('should update autoExecutionStatus to completed', () => {
-        useWorkflowStore.getState().setAutoExecutionStatus('completed');
-        expect(useWorkflowStore.getState().autoExecutionStatus).toBe('completed');
-      });
-    });
-
+  describe('Task 1.2: State update actions (simplified)', () => {
     describe('setLastFailedPhase', () => {
       it('should set last failed phase', () => {
         useWorkflowStore.getState().setLastFailedPhase('design');
@@ -415,38 +363,11 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // Task 1.3: Persistence exclusion for runtime state
+  // Task 1.3: Persistence exclusion for runtime state (UPDATED)
   // Requirements: 7.2, 7.4
+  // Note: isAutoExecuting and autoExecutionStatus have been removed from workflowStore
   // ============================================================
   describe('Task 1.3: Persistence exclusion', () => {
-    it('should not persist isAutoExecuting', () => {
-      // This test validates that partialize excludes runtime state
-      // The actual persistence behavior is tested via integration tests
-      // Here we just verify the initial state is always reset
-      useWorkflowStore.setState({ isAutoExecuting: true });
-
-      // Create a new store instance (simulating app restart)
-      // In actual persistence, this would be false
-      const partialState = {
-        autoExecutionPermissions: useWorkflowStore.getState().autoExecutionPermissions,
-        validationOptions: useWorkflowStore.getState().validationOptions,
-      };
-
-      // Verify that isAutoExecuting is not in the partial state
-      expect(partialState).not.toHaveProperty('isAutoExecuting');
-    });
-
-    it('should not persist autoExecutionStatus', () => {
-      useWorkflowStore.setState({ autoExecutionStatus: 'running' });
-
-      const partialState = {
-        autoExecutionPermissions: useWorkflowStore.getState().autoExecutionPermissions,
-        validationOptions: useWorkflowStore.getState().validationOptions,
-      };
-
-      expect(partialState).not.toHaveProperty('autoExecutionStatus');
-    });
-
     it('should not persist lastFailedPhase', () => {
       useWorkflowStore.setState({ lastFailedPhase: 'design' });
 

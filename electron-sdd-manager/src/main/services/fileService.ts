@@ -451,6 +451,42 @@ ${description}
   }
 
   /**
+   * Update spec.json with arbitrary updates
+   * spec-scoped-auto-execution-state: Generic update method
+   *
+   * @param specPath - Path to the spec directory
+   * @param updates - Object with fields to update (will be merged with existing spec.json)
+   */
+  async updateSpecJson(
+    specPath: string,
+    updates: Record<string, unknown>
+  ): Promise<Result<void, FileError>> {
+    try {
+      const specJsonPath = join(specPath, 'spec.json');
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      // Merge updates
+      Object.assign(specJson, updates);
+
+      // Update timestamp
+      specJson.updated_at = new Date().toISOString();
+
+      await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: specPath,
+          message: String(error),
+        },
+      };
+    }
+  }
+
+  /**
    * Update spec.json based on completed phase generation
    * Called when a spec-manager phase completes successfully
    * Requirements: 3.3-3.5

@@ -280,4 +280,293 @@ describe('WorkflowView Integration', () => {
       });
     });
   });
+
+  // ============================================================
+  // spec-scoped-auto-execution-state Task 9.5: E2E Integration Tests
+  // Requirements: 3.1, 3.2, 4.1, 4.2, 6.1, 6.3
+  // ============================================================
+  describe('spec-scoped-auto-execution-state: Spec-Scoped Auto Execution', () => {
+    const mockSpecDetailWithAutoExecution: SpecDetail = {
+      metadata: {
+        name: 'spec-with-auto',
+        path: '/test/specs/spec-with-auto',
+        phase: 'initialized',
+        updatedAt: '2024-01-01T00:00:00Z',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      },
+      specJson: {
+        feature_name: 'spec-with-auto',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        language: 'ja',
+        phase: 'initialized',
+        approvals: {
+          requirements: { generated: false, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+        autoExecution: {
+          enabled: true,
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: {
+            gap: true,
+            design: false,
+            impl: false,
+          },
+        },
+      } as ExtendedSpecJson,
+      artifacts: {
+        requirements: null,
+        design: null,
+        tasks: null,
+      },
+      taskProgress: null,
+    };
+
+    const mockSpecDetailB: SpecDetail = {
+      metadata: {
+        name: 'spec-b',
+        path: '/test/specs/spec-b',
+        phase: 'design-generated',
+        updatedAt: '2024-01-02T00:00:00Z',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      },
+      specJson: {
+        feature_name: 'spec-b',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-02T00:00:00Z',
+        language: 'ja',
+        phase: 'design-generated',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+        autoExecution: {
+          enabled: false,
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: {
+            gap: false,
+            design: false,
+            impl: false,
+          },
+        },
+      } as ExtendedSpecJson,
+      artifacts: {
+        requirements: null,
+        design: null,
+        tasks: null,
+      },
+      taskProgress: null,
+    };
+
+    it('should sync autoExecution state to workflowStore when spec is selected', async () => {
+      // Set up spec with autoExecution enabled
+      useSpecStore.setState({
+        selectedSpec: mockSpecDetailWithAutoExecution.metadata,
+        specDetail: mockSpecDetailWithAutoExecution,
+      });
+
+      // Verify workflowStore is synced (happens via selectSpec -> syncFromSpecAutoExecution)
+      // In production, this is triggered by selectSpec action
+      // For this test, we simulate the sync by directly calling the service
+      const { getAutoExecutionService } = await import('../services/AutoExecutionService');
+      const service = getAutoExecutionService();
+      service.syncFromSpecAutoExecution();
+
+      const workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
+      expect(workflowState.autoExecutionPermissions.design).toBe(true);
+      expect(workflowState.autoExecutionPermissions.tasks).toBe(false);
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('run');
+      expect(workflowState.validationOptions.gap).toBe(true);
+    });
+
+    it('should maintain spec independence when switching specs', async () => {
+      const { getAutoExecutionService, disposeAutoExecutionService } = await import(
+        '../services/AutoExecutionService'
+      );
+
+      // First, select spec with autoExecution enabled
+      useSpecStore.setState({
+        selectedSpec: mockSpecDetailWithAutoExecution.metadata,
+        specDetail: mockSpecDetailWithAutoExecution,
+      });
+
+      disposeAutoExecutionService();
+      const service1 = getAutoExecutionService();
+      service1.syncFromSpecAutoExecution();
+
+      // Verify spec-with-auto settings
+      let workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
+      expect(workflowState.validationOptions.gap).toBe(true);
+
+      // Switch to spec-b (autoExecution disabled)
+      useSpecStore.setState({
+        selectedSpec: mockSpecDetailB.metadata,
+        specDetail: mockSpecDetailB,
+      });
+
+      disposeAutoExecutionService();
+      const service2 = getAutoExecutionService();
+      service2.syncFromSpecAutoExecution();
+
+      // Verify spec-b settings (different from spec-with-auto)
+      workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
+      expect(workflowState.validationOptions.gap).toBe(false);
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('skip');
+
+      // Switch back to spec-with-auto
+      useSpecStore.setState({
+        selectedSpec: mockSpecDetailWithAutoExecution.metadata,
+        specDetail: mockSpecDetailWithAutoExecution,
+      });
+
+      disposeAutoExecutionService();
+      const service3 = getAutoExecutionService();
+      service3.syncFromSpecAutoExecution();
+
+      // Verify spec-with-auto settings are restored
+      workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
+      expect(workflowState.validationOptions.gap).toBe(true);
+    });
+
+    it('should handle external spec.json changes via FileWatcher', async () => {
+      // Set up spec store with initial state
+      useSpecStore.setState({
+        selectedSpec: mockSpecDetailWithAutoExecution.metadata,
+        specDetail: mockSpecDetailWithAutoExecution,
+      });
+
+      // Simulate external change to spec.json (e.g., by Claude agent)
+      // In production, this happens via FileWatcher -> refreshSpecDetail
+      const updatedSpecDetail: SpecDetail = {
+        ...mockSpecDetailWithAutoExecution,
+        specJson: {
+          ...mockSpecDetailWithAutoExecution.specJson,
+          autoExecution: {
+            enabled: true,
+            permissions: {
+              requirements: true,
+              design: true,
+              tasks: true, // Changed from false to true
+              impl: true, // Changed from false to true
+              inspection: false,
+              deploy: false,
+            },
+            documentReviewFlag: 'pause', // Changed from 'run' to 'pause'
+            validationOptions: {
+              gap: false, // Changed from true to false
+              design: true, // Changed from false to true
+              impl: false,
+            },
+          },
+        },
+      };
+
+      // Update spec store (simulating FileWatcher triggering refreshSpecDetail)
+      useSpecStore.setState({
+        specDetail: updatedSpecDetail,
+      });
+
+      // Sync the updated state
+      const { getAutoExecutionService, disposeAutoExecutionService } = await import(
+        '../services/AutoExecutionService'
+      );
+      disposeAutoExecutionService();
+      const service = getAutoExecutionService();
+      service.syncFromSpecAutoExecution();
+
+      // Verify workflowStore reflects the external changes
+      const workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.tasks).toBe(true);
+      expect(workflowState.autoExecutionPermissions.impl).toBe(true);
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('pause');
+      expect(workflowState.validationOptions.gap).toBe(false);
+      expect(workflowState.validationOptions.design).toBe(true);
+    });
+
+    it('should use default state when spec has no autoExecution field', async () => {
+      // Create spec without autoExecution field
+      const mockSpecWithoutAutoExecution: SpecDetail = {
+        metadata: {
+          name: 'legacy-spec',
+          path: '/test/specs/legacy-spec',
+          phase: 'initialized',
+          updatedAt: '2024-01-01T00:00:00Z',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        },
+        specJson: {
+          feature_name: 'legacy-spec',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          language: 'ja',
+          phase: 'initialized',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          // No autoExecution field - simulating legacy spec
+        } as ExtendedSpecJson,
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+        },
+        taskProgress: null,
+      };
+
+      useSpecStore.setState({
+        selectedSpec: mockSpecWithoutAutoExecution.metadata,
+        specDetail: mockSpecWithoutAutoExecution,
+      });
+
+      const { getAutoExecutionService, disposeAutoExecutionService } = await import(
+        '../services/AutoExecutionService'
+      );
+      disposeAutoExecutionService();
+      const service = getAutoExecutionService();
+      service.syncFromSpecAutoExecution();
+
+      // Verify default state is applied
+      const workflowState = useWorkflowStore.getState();
+      expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
+      expect(workflowState.autoExecutionPermissions.design).toBe(false);
+      expect(workflowState.autoExecutionPermissions.tasks).toBe(false);
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('skip');
+      expect(workflowState.validationOptions.gap).toBe(false);
+    });
+  });
 });

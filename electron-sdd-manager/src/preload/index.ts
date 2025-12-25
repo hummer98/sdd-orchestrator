@@ -82,6 +82,10 @@ const electronAPI = {
   updateApproval: (specPath: string, phase: Phase, approved: boolean) =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATE_APPROVAL, specPath, phase, approved),
 
+  // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
+  updateSpecJson: (specPath: string, updates: Record<string, unknown>): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_SPEC_JSON, specPath, updates),
+
   // Command Execution
   executeCommand: (command: string, workingDirectory: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_COMMAND, command, workingDirectory),
@@ -591,15 +595,17 @@ const electronAPI = {
    * @param featureName Feature name for the review reply command
    * @param reviewNumber Review round number to reply to
    * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @param autofix When true, appends --autofix flag to command (Requirements: auto-execution-document-review-autofix 1.2)
    * @returns AgentInfo on success
    */
   executeDocumentReviewReply: (
     specId: string,
     featureName: string,
     reviewNumber: number,
-    commandPrefix?: 'kiro' | 'spec-manager'
+    commandPrefix?: 'kiro' | 'spec-manager',
+    autofix?: boolean
   ): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY, specId, featureName, reviewNumber, commandPrefix),
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY, specId, featureName, reviewNumber, commandPrefix, autofix),
 
   /**
    * Execute document-review-reply --fix agent (apply fixes from existing reply)
@@ -630,6 +636,16 @@ const electronAPI = {
    */
   skipDocumentReview: (specPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW, specPath),
+
+  /**
+   * Parse a document-review-reply.md file to extract Fix Required count
+   * Task 2.2: parseReplyFile IPC (auto-execution-document-review-autofix)
+   * @param specPath Full path to spec directory
+   * @param roundNumber Round number of the reply file
+   * @returns ParseReplyResult with fixRequiredCount
+   */
+  parseReplyFile: (specPath: string, roundNumber: number): Promise<{ fixRequiredCount: number }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARSE_REPLY_FILE, specPath, roundNumber),
 
   // ============================================================
   // SSH Remote Project (Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2, 8.5)

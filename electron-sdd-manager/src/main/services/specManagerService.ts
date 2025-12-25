@@ -245,12 +245,14 @@ export interface ExecuteDocumentReviewOptions {
   commandPrefix?: CommandPrefix;
 }
 
-/** Document Review Reply execution options (Requirements: 6.1) */
+/** Document Review Reply execution options (Requirements: 6.1, autofix: auto-execution-document-review-autofix) */
 export interface ExecuteDocumentReviewReplyOptions {
   specId: string;
   featureName: string;
   reviewNumber: number;
   commandPrefix?: CommandPrefix;
+  /** When true, appends --autofix flag to document-review-reply command */
+  autofix?: boolean;
 }
 
 /** Document Review Fix execution options (apply --fix from existing reply) */
@@ -1081,18 +1083,26 @@ export class SpecManagerService {
   /**
    * Execute document-review-reply agent
    * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+   * Requirements: 1.1 (auto-execution-document-review-autofix) - autofix option support
    */
   async executeDocumentReviewReply(options: ExecuteDocumentReviewReplyOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, featureName, reviewNumber, commandPrefix = 'kiro' } = options;
+    const { specId, featureName, reviewNumber, commandPrefix = 'kiro', autofix } = options;
     const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review-reply' : '/spec-manager:document-review-reply';
 
-    logger.info('[SpecManagerService] executeDocumentReviewReply called', { specId, featureName, reviewNumber, slashCommand, commandPrefix });
+    // Build command with optional --autofix flag
+    const commandParts = [slashCommand, featureName, String(reviewNumber)];
+    if (autofix === true) {
+      commandParts.push('--autofix');
+    }
+    const fullCommand = commandParts.join(' ');
+
+    logger.info('[SpecManagerService] executeDocumentReviewReply called', { specId, featureName, reviewNumber, slashCommand, commandPrefix, autofix });
 
     return this.startAgent({
       specId,
       phase: 'document-review-reply',
       command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber}` }),
+      args: buildClaudeArgs({ command: fullCommand }),
       group: 'doc',
     });
   }

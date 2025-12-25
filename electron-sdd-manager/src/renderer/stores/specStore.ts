@@ -5,7 +5,8 @@
  */
 
 import { create } from 'zustand';
-import type { SpecMetadata, SpecDetail, SpecPhase, ArtifactInfo, TaskProgress } from '../types';
+import type { SpecMetadata, SpecDetail, SpecPhase, ArtifactInfo, TaskProgress, AutoExecutionStatus } from '../types';
+import type { WorkflowPhase } from '../types/workflow';
 
 /** spec-manager用フェーズタイプ */
 export type SpecManagerPhase = 'requirements' | 'design' | 'tasks' | 'impl';
@@ -42,6 +43,20 @@ export interface SpecManagerExecutionState {
   readonly executionMode: 'auto' | 'manual' | null;
 }
 
+/**
+ * spec-scoped-auto-execution-state Task 5.1: Auto Execution Runtime State
+ * Runtime state for auto-execution (not persisted to spec.json)
+ * This replaces the fields removed from workflowStore
+ */
+export interface AutoExecutionRuntimeState {
+  /** 自動実行中フラグ */
+  readonly isAutoExecuting: boolean;
+  /** 現在の自動実行フェーズ */
+  readonly currentAutoPhase: WorkflowPhase | null;
+  /** 自動実行の詳細状態 */
+  readonly autoExecutionStatus: AutoExecutionStatus;
+}
+
 interface SpecState {
   specs: SpecMetadata[];
   selectedSpec: SpecMetadata | null;
@@ -54,6 +69,8 @@ interface SpecState {
   isWatching: boolean;
   // spec-manager extensions
   specManagerExecution: SpecManagerExecutionState;
+  // spec-scoped-auto-execution-state Task 5.1: Runtime auto-execution state
+  autoExecutionRuntime: AutoExecutionRuntimeState;
 }
 
 interface SpecActions {
@@ -70,6 +87,15 @@ interface SpecActions {
   // Unified project selection support (unified-project-selection feature)
   // Requirements: 3.1
   setSpecs: (specs: SpecMetadata[]) => void;
+  // spec-scoped-auto-execution-state Task 4.3
+  // Requirements: 6.3
+  refreshSpecDetail: () => Promise<void>;
+  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state actions
+  setAutoExecutionRunning: (isRunning: boolean) => void;
+  setAutoExecutionPhase: (phase: WorkflowPhase | null) => void;
+  setAutoExecutionStatus: (status: AutoExecutionStatus) => void;
+  startAutoExecution: () => void;
+  stopAutoExecution: () => void;
   // spec-manager extensions
   executeSpecManagerGeneration: (
     specId: string,
@@ -100,6 +126,13 @@ const initialSpecManagerExecution: SpecManagerExecutionState = {
   executionMode: null,
 };
 
+/** spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state initial value */
+const initialAutoExecutionRuntime: AutoExecutionRuntimeState = {
+  isAutoExecuting: false,
+  currentAutoPhase: null,
+  autoExecutionStatus: 'idle',
+};
+
 export const useSpecStore = create<SpecStore>((set, get) => ({
   // Initial state
   specs: [],
@@ -112,6 +145,8 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   error: null,
   isWatching: false,
   specManagerExecution: initialSpecManagerExecution,
+  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
+  autoExecutionRuntime: initialAutoExecutionRuntime,
 
   // Actions
   loadSpecs: async (projectPath: string) => {
@@ -252,6 +287,16 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         console.log('[specStore] Setting specDetail:', { spec: spec.name, taskProgress: specDetail.taskProgress });
         set({ specDetail, isLoading: false });
       }
+
+      // spec-scoped-auto-execution-state: Sync autoExecution state to workflowStore
+      // Import and sync after setting specDetail to avoid circular dependency issues
+      try {
+        const { getAutoExecutionService } = await import('../services/AutoExecutionService');
+        const service = getAutoExecutionService();
+        service.syncFromSpecAutoExecution();
+      } catch (syncError) {
+        console.error('[specStore] Failed to sync autoExecution state:', syncError);
+      }
     } catch (error) {
       if (!silent) {
         set({
@@ -390,6 +435,34 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   },
 
   // ============================================================
+  // spec-scoped-auto-execution-state Task 4.3
+  // Requirements: 6.3
+  // ============================================================
+
+  /**
+   * Refresh specDetail by re-reading spec.json
+   * Used when external changes are detected (e.g., FileWatcher notification)
+   * Also syncs autoExecution state to workflowStore
+   */
+  refreshSpecDetail: async () => {
+    const { selectedSpec } = get();
+
+    // Do nothing if no spec is selected
+    if (!selectedSpec) {
+      return;
+    }
+
+    try {
+      // Re-select the spec with silent mode to refresh without full loading state
+      await get().selectSpec(selectedSpec, { silent: true });
+      console.log('[specStore] refreshSpecDetail completed:', selectedSpec.name);
+    } catch (error) {
+      console.error('[specStore] Failed to refresh spec detail:', error);
+      // Preserve existing specDetail on error (graceful failure)
+    }
+  },
+
+  // ============================================================
   // spec-manager Extensions
   // Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
   // ============================================================
@@ -492,6 +565,73 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         ...get().specManagerExecution,
         error: null,
         implTaskStatus: null,
+      },
+    });
+  },
+
+  // ============================================================
+  // spec-scoped-auto-execution-state Task 5.1: Auto Execution Runtime Actions
+  // These actions replace the removed workflowStore actions
+  // ============================================================
+
+  /**
+   * Set auto execution running state
+   */
+  setAutoExecutionRunning: (isRunning: boolean) => {
+    set({
+      autoExecutionRuntime: {
+        ...get().autoExecutionRuntime,
+        isAutoExecuting: isRunning,
+      },
+    });
+  },
+
+  /**
+   * Set current auto execution phase
+   */
+  setAutoExecutionPhase: (phase: WorkflowPhase | null) => {
+    set({
+      autoExecutionRuntime: {
+        ...get().autoExecutionRuntime,
+        currentAutoPhase: phase,
+      },
+    });
+  },
+
+  /**
+   * Set auto execution status
+   */
+  setAutoExecutionStatus: (status: AutoExecutionStatus) => {
+    set({
+      autoExecutionRuntime: {
+        ...get().autoExecutionRuntime,
+        autoExecutionStatus: status,
+      },
+    });
+  },
+
+  /**
+   * Start auto execution
+   */
+  startAutoExecution: () => {
+    set({
+      autoExecutionRuntime: {
+        ...get().autoExecutionRuntime,
+        isAutoExecuting: true,
+        autoExecutionStatus: 'running',
+      },
+    });
+  },
+
+  /**
+   * Stop auto execution
+   */
+  stopAutoExecution: () => {
+    set({
+      autoExecutionRuntime: {
+        isAutoExecuting: false,
+        currentAutoPhase: null,
+        autoExecutionStatus: 'idle',
       },
     });
   },

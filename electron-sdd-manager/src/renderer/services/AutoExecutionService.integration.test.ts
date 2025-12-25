@@ -59,12 +59,10 @@ describe('AutoExecutionService Integration Tests', () => {
     });
 
     // Reset stores
+    // Note: isAutoExecuting, currentAutoPhase, autoExecutionStatus moved to specStore.autoExecutionRuntime
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
       validationOptions: { gap: false, design: false },
-      isAutoExecuting: false,
-      currentAutoPhase: null,
-      autoExecutionStatus: 'idle',
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
@@ -93,6 +91,12 @@ describe('AutoExecutionService Integration Tests', () => {
         implTaskStatus: null,
         retryCount: 0,
         executionMode: null,
+      },
+      // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
+      autoExecutionRuntime: {
+        isAutoExecuting: false,
+        currentAutoPhase: null,
+        autoExecutionStatus: 'idle',
       },
     });
 
@@ -131,8 +135,9 @@ describe('AutoExecutionService Integration Tests', () => {
       // 開始
       const started = service.start();
       expect(started).toBe(true);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('running');
+      // isAutoExecuting, autoExecutionStatus are now in specStore.autoExecutionRuntime
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('running');
 
       // executePhaseが呼ばれることを確認
       await vi.advanceTimersByTimeAsync(100);
@@ -187,7 +192,7 @@ describe('AutoExecutionService Integration Tests', () => {
 
       const started = service.start();
       expect(started).toBe(false);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(false);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
     });
   });
 
@@ -271,11 +276,11 @@ describe('AutoExecutionService Integration Tests', () => {
       });
 
       service.start();
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
 
       await service.stop();
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(false);
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('idle');
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('idle');
     });
 
     it('失敗フェーズから再実行できる', () => {
@@ -300,7 +305,7 @@ describe('AutoExecutionService Integration Tests', () => {
 
       const retried = service.retryFrom('design');
       expect(retried).toBe(true);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
       expect(useWorkflowStore.getState().failedRetryCount).toBe(1);
     });
 
@@ -516,15 +521,19 @@ describe('AutoExecutionService Integration Tests', () => {
     });
 
     it('停止時にcurrentAutoPhaseがクリアされる', async () => {
-      useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: 'design',
-        autoExecutionStatus: 'running',
+      // Set auto execution state in specStore.autoExecutionRuntime
+      useSpecStore.setState({
+        ...useSpecStore.getState(),
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'design',
+          autoExecutionStatus: 'running',
+        },
       });
 
       await service.stop();
 
-      expect(useWorkflowStore.getState().currentAutoPhase).toBeNull();
+      expect(useSpecStore.getState().autoExecutionRuntime.currentAutoPhase).toBeNull();
     });
   });
 

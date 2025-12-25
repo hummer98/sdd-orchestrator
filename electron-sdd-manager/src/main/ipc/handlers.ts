@@ -498,6 +498,17 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // spec-scoped-auto-execution-state: Update spec.json handler
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE_SPEC_JSON,
+    async (_event, specPath: string, updates: Record<string, unknown>) => {
+      const result = await fileService.updateSpecJson(specPath, updates);
+      if (!result.ok) {
+        throw new Error(`Failed to update spec.json: ${result.error.type}`);
+      }
+    }
+  );
+
   // Command Execution Handlers
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_COMMAND,
@@ -1119,8 +1130,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY,
-    async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_REPLY called', { specId, featureName, reviewNumber, commandPrefix });
+    async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager', autofix?: boolean) => {
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_REPLY called', { specId, featureName, reviewNumber, commandPrefix, autofix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1129,7 +1140,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeDocumentReviewReply({ specId, featureName, reviewNumber, commandPrefix });
+      const result = await service.executeDocumentReviewReply({ specId, featureName, reviewNumber, commandPrefix, autofix });
 
       if (!result.ok) {
         logger.error('[handlers] executeDocumentReviewReply failed', { error: result.error });
@@ -1190,6 +1201,22 @@ export function registerIpcHandlers(): void {
       if (!result.ok) {
         throw new Error(`Failed to skip document review: ${result.error.type}`);
       }
+    }
+  );
+
+  // Task 2.2: parseReplyFile IPC handler (auto-execution-document-review-autofix)
+  ipcMain.handle(
+    IPC_CHANNELS.PARSE_REPLY_FILE,
+    async (_event, specPath: string, roundNumber: number) => {
+      logger.info('[handlers] PARSE_REPLY_FILE called', { specPath, roundNumber });
+      const { DocumentReviewService } = await import('../services/documentReviewService');
+      const service = new DocumentReviewService(currentProjectPath || '');
+      const result = await service.parseReplyFile(specPath, roundNumber);
+      if (!result.ok) {
+        logger.error('[handlers] parseReplyFile failed', { error: result.error });
+        throw new Error(`Failed to parse reply file: ${result.error.type}`);
+      }
+      return result.value;
     }
   );
 

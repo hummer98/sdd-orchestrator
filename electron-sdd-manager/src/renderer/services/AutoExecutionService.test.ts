@@ -10,6 +10,7 @@ import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/
 import { useAgentStore } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import type { WorkflowPhase } from '../types/workflow';
+import type { SpecAutoExecutionState } from '../types/index';
 
 // Mock electronAPI
 const mockElectronAPI = {
@@ -30,7 +31,7 @@ describe('AutoExecutionService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset workflow store
+    // Reset workflow store (global settings only - autoExecution state moved to specStore)
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
       validationOptions: {
@@ -38,9 +39,6 @@ describe('AutoExecutionService', () => {
         design: false,
         impl: false,
       },
-      isAutoExecuting: false,
-      currentAutoPhase: null,
-      autoExecutionStatus: 'idle',
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
@@ -55,7 +53,7 @@ describe('AutoExecutionService', () => {
       error: null,
     });
 
-    // Reset spec store
+    // Reset spec store (including autoExecutionRuntime - moved from workflowStore)
     useSpecStore.setState({
       specs: [],
       selectedSpec: null,
@@ -71,6 +69,11 @@ describe('AutoExecutionService', () => {
         implTaskStatus: null,
         retryCount: 0,
         executionMode: null,
+      },
+      autoExecutionRuntime: {
+        isAutoExecuting: false,
+        currentAutoPhase: null,
+        autoExecutionStatus: 'idle',
       },
     });
 
@@ -95,9 +98,9 @@ describe('AutoExecutionService', () => {
       expect(() => service.dispose()).not.toThrow();
     });
 
-    it('should connect to workflowStore', () => {
-      const workflowState = useWorkflowStore.getState();
-      expect(workflowState.autoExecutionStatus).toBe('idle');
+    it('should connect to specStore for autoExecutionRuntime', () => {
+      const specState = useSpecStore.getState();
+      expect(specState.autoExecutionRuntime.autoExecutionStatus).toBe('idle');
     });
   });
 
@@ -773,8 +776,8 @@ describe('AutoExecutionService', () => {
       const result = service.start();
 
       expect(result).toBe(true);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('running');
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('running');
     });
 
     it('should fail when no permitted phases', () => {
@@ -792,7 +795,7 @@ describe('AutoExecutionService', () => {
       const result = service.start();
 
       expect(result).toBe(false);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(false);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
     });
 
     it('should fail when specDetail is missing', () => {
@@ -832,7 +835,7 @@ describe('AutoExecutionService', () => {
 
       // Note: The actual phase execution would set currentAutoPhase
       // This test verifies the start logic
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
     });
   });
 
@@ -842,27 +845,32 @@ describe('AutoExecutionService', () => {
   // ============================================================
   describe('Task 4.2: stop', () => {
     it('should set status to idle when stopped', async () => {
-      useWorkflowStore.setState({
-        isAutoExecuting: true,
-        autoExecutionStatus: 'running',
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          autoExecutionStatus: 'running',
+          currentAutoPhase: null,
+        },
       });
 
       await service.stop();
 
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(false);
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('idle');
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('idle');
     });
 
     it('should clear currentAutoPhase when stopped', async () => {
-      useWorkflowStore.setState({
-        isAutoExecuting: true,
-        autoExecutionStatus: 'running',
-        currentAutoPhase: 'design',
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          autoExecutionStatus: 'running',
+          currentAutoPhase: 'design',
+        },
       });
 
       await service.stop();
 
-      expect(useWorkflowStore.getState().currentAutoPhase).toBeNull();
+      expect(useSpecStore.getState().autoExecutionRuntime.currentAutoPhase).toBeNull();
     });
   });
 
@@ -901,7 +909,7 @@ describe('AutoExecutionService', () => {
       const result = service.retryFrom('design');
 
       expect(result).toBe(true);
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
     });
 
     it('should increment retry count', () => {
@@ -1006,9 +1014,14 @@ describe('AutoExecutionService', () => {
       const selectSpecMock = vi.fn().mockResolvedValue(undefined);
       useSpecStore.setState({ selectSpec: selectSpecMock } as any);
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'requirements',
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: 'requirements',
         autoExecutionPermissions: {
           requirements: true,
           design: false,
@@ -1066,9 +1079,14 @@ describe('AutoExecutionService', () => {
       const selectSpecMock = vi.fn().mockResolvedValue(undefined);
       useSpecStore.setState({ selectSpec: selectSpecMock } as any);
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'design',
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: 'design',
         autoExecutionPermissions: {
           requirements: true,
           design: true,
@@ -1120,9 +1138,14 @@ describe('AutoExecutionService', () => {
       mockElectronAPI.updateApproval.mockResolvedValue(undefined);
       mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecDetail.specJson);
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'impl',
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: 'impl',
         autoExecutionPermissions: {
           requirements: true,
           design: true,
@@ -1216,6 +1239,13 @@ describe('AutoExecutionService', () => {
       useSpecStore.setState({ selectSpec: selectSpecMock } as any);
 
       // Enable document review with autoReply - only tasks is permitted so it will be the starting phase
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'tasks',
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
         autoExecutionPermissions: {
           requirements: false,
@@ -1228,8 +1258,6 @@ describe('AutoExecutionService', () => {
         documentReviewOptions: {
           autoExecutionFlag: 'run',
         },
-        isAutoExecuting: true,
-        currentAutoPhase: 'tasks',
       });
 
       // Mock getAgentById to return tasks phase agent
@@ -1344,9 +1372,14 @@ describe('AutoExecutionService', () => {
       const selectSpecMock = vi.fn().mockResolvedValue(undefined);
       useSpecStore.setState({ selectSpec: selectSpecMock } as any);
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: null,
         documentReviewOptions: {
           autoExecutionFlag: 'run',
         },
@@ -1370,12 +1403,13 @@ describe('AutoExecutionService', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Should trigger document-review-reply execution
+      // Should trigger document-review-reply execution with autofix=true in auto-execution mode
       expect((mockElectronAPI as any).executeDocumentReviewReply).toHaveBeenCalledWith(
         'test-spec',
         'test-spec',
         1,
-        expect.anything()
+        expect.anything(), // commandPrefix
+        true // autofix=true in auto-execution mode
       );
     });
 
@@ -1412,9 +1446,14 @@ describe('AutoExecutionService', () => {
       mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
       (mockElectronAPI as any).executeDocumentReviewReply = vi.fn();
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: null,
         documentReviewOptions: {
           autoExecutionFlag: 'pause',
         },
@@ -1597,15 +1636,19 @@ describe('AutoExecutionService', () => {
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
 
       // Not auto-executing
-      useWorkflowStore.setState({
-        isAutoExecuting: false,
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: false,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'idle',
+        },
       });
 
       // Simulate status change
       statusChangeCallback?.('agent-123', 'completed');
 
       // Should not cause any state changes
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('idle');
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('idle');
     });
 
     it('should ignore status changes for untracked agents', async () => {
@@ -1625,9 +1668,14 @@ describe('AutoExecutionService', () => {
       mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
       mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'tracked-agent' });
 
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: 'requirements',
+          autoExecutionStatus: 'running',
+        },
+      });
       useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: 'requirements',
         autoExecutionPermissions: {
           requirements: true,
           design: false,
@@ -1645,7 +1693,7 @@ describe('AutoExecutionService', () => {
       statusChangeCallback?.('untracked-agent', 'completed');
 
       // Should remain running (not completed)
-      expect(useWorkflowStore.getState().isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
     });
 
     it('should handle completed status for tracked agent', async () => {
@@ -1696,7 +1744,7 @@ describe('AutoExecutionService', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Should trigger completion flow (eventually sets to completed)
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('completed');
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('completed');
     });
 
     it('should handle error/failed status for tracked agent', async () => {
@@ -1742,7 +1790,7 @@ describe('AutoExecutionService', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Should be in error state
-      expect(useWorkflowStore.getState().autoExecutionStatus).toBe('error');
+      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('error');
     });
 
     it('should handle completed status without requiring running state first (fast completion)', async () => {
@@ -1811,6 +1859,410 @@ describe('AutoExecutionService', () => {
   });
 
   // ============================================================
+  // Task 1.3: AutoExecutionServiceでautofix付きreply実行
+  // Requirements: auto-execution-document-review-autofix 1.3, 1.4
+  // ============================================================
+  describe('Task 1.3: Autofix option in executeDocumentReviewReply', () => {
+    let statusChangeCallback: ((agentId: string, status: any) => void) | null = null;
+
+    beforeEach(() => {
+      // Capture the IPC callback
+      mockElectronAPI.onAgentStatusChange.mockImplementation((callback) => {
+        statusChangeCallback = callback;
+        return vi.fn();
+      });
+
+      // Recreate service to capture callback
+      service.dispose();
+      service = new AutoExecutionService();
+    });
+
+    it('should call executeDocumentReviewReply with autofix=true in auto-execution mode', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 0,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      (mockElectronAPI as any).executeDocumentReviewReply = vi.fn().mockResolvedValue({
+        agentId: 'reply-agent-1',
+        specId: 'test-spec',
+        phase: 'document-review-reply',
+        status: 'running',
+      });
+
+      // Mock selectSpec
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      // Enable auto-execution mode with document review enabled
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
+      useWorkflowStore.setState({
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Mock getAgentById to return document-review agent (for handleDocumentReviewCompleted)
+      useAgentStore.setState({
+        getAgentById: () => ({
+          agentId: 'review-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review',
+          status: 'completed',
+        } as any),
+      } as any);
+
+      // Manually add agent to tracked set (simulating IPC call return)
+      (service as any).trackedAgentIds.add('review-agent-1');
+
+      // Simulate document-review completion via IPC callback
+      // This should trigger executeDocumentReviewReply with autofix=true
+      statusChangeCallback?.('review-agent-1', 'completed');
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should trigger document-review-reply execution with autofix=true
+      expect((mockElectronAPI as any).executeDocumentReviewReply).toHaveBeenCalledWith(
+        'test-spec',
+        'test-spec',
+        1,
+        expect.anything(), // commandPrefix
+        true // autofix=true in auto-execution mode
+      );
+    });
+  });
+
+  // ============================================================
+  // Task 3.1: AutoExecutionServiceのreply完了ハンドラを拡張
+  // Requirements: auto-execution-document-review-autofix 2.1, 2.3, 2.4, 2.5, 4.1, 4.3
+  // ============================================================
+  describe('Task 3.1: Extended reply completion handler with autofix', () => {
+    let statusChangeCallback: ((agentId: string, status: any) => void) | null = null;
+
+    beforeEach(() => {
+      // Capture the IPC callback
+      mockElectronAPI.onAgentStatusChange.mockImplementation((callback) => {
+        statusChangeCallback = callback;
+        return vi.fn();
+      });
+
+      // Recreate service to capture callback
+      service.dispose();
+      service = new AutoExecutionService();
+    });
+
+    it('should auto-approve when fixRequiredCount is 0', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      // Mock parseReplyFile to return fixRequiredCount: 0
+      (mockElectronAPI as any).parseReplyFile = vi.fn().mockResolvedValue({ fixRequiredCount: 0 });
+      (mockElectronAPI as any).approveDocumentReview = vi.fn().mockResolvedValue(undefined);
+
+      // Mock selectSpec
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      // Enable auto-execution mode
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
+      useWorkflowStore.setState({
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false, // impl not permitted for this test
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Mock getAgentById to return document-review-reply agent
+      useAgentStore.setState({
+        getAgentById: () => ({
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        } as any),
+      } as any);
+
+      // Manually add agent to tracked set
+      (service as any).trackedAgentIds.add('reply-agent-1');
+
+      // Simulate document-review-reply completion via IPC callback
+      statusChangeCallback?.('reply-agent-1', 'completed');
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should call parseReplyFile
+      expect((mockElectronAPI as any).parseReplyFile).toHaveBeenCalledWith('/test', 1);
+      // Should call approveDocumentReview when fixRequiredCount is 0
+      expect((mockElectronAPI as any).approveDocumentReview).toHaveBeenCalledWith('/test');
+    });
+
+    it('should set pendingReviewConfirmation when fixRequiredCount > 0', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      // Mock parseReplyFile to return fixRequiredCount: 3
+      (mockElectronAPI as any).parseReplyFile = vi.fn().mockResolvedValue({ fixRequiredCount: 3 });
+      (mockElectronAPI as any).approveDocumentReview = vi.fn();
+
+      // Enable auto-execution mode
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
+      useWorkflowStore.setState({
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Mock getAgentById to return document-review-reply agent
+      useAgentStore.setState({
+        getAgentById: () => ({
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        } as any),
+      } as any);
+
+      // Manually add agent to tracked set
+      (service as any).trackedAgentIds.add('reply-agent-1');
+
+      // Simulate document-review-reply completion
+      statusChangeCallback?.('reply-agent-1', 'completed');
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should NOT call approveDocumentReview
+      expect((mockElectronAPI as any).approveDocumentReview).not.toHaveBeenCalled();
+      // Should set pendingReviewConfirmation
+      expect(useWorkflowStore.getState().pendingReviewConfirmation).toBe(true);
+    });
+
+    it('should auto-approve and continue to impl phase when fixRequiredCount is 0 and impl is permitted', async () => {
+      const mockSpecJsonInProgress = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      // After approval, documentReview.status becomes 'approved'
+      const mockSpecJsonApproved = {
+        ...mockSpecJsonInProgress,
+        documentReview: {
+          rounds: 1,
+          status: 'approved',
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJsonInProgress,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+      // First call returns in_progress, subsequent calls return approved (after approval)
+      let readSpecJsonCallCount = 0;
+      mockElectronAPI.readSpecJson.mockImplementation(async () => {
+        readSpecJsonCallCount++;
+        // First call is for getting currentRound, second+ is for validatePreconditions
+        return readSpecJsonCallCount === 1 ? mockSpecJsonInProgress : mockSpecJsonApproved;
+      });
+
+      // Mock parseReplyFile to return fixRequiredCount: 0
+      (mockElectronAPI as any).parseReplyFile = vi.fn().mockResolvedValue({ fixRequiredCount: 0 });
+      (mockElectronAPI as any).approveDocumentReview = vi.fn().mockResolvedValue(undefined);
+      mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'impl-agent-1' });
+
+      // Mock selectSpec
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      // Enable auto-execution mode with impl permitted
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
+      useWorkflowStore.setState({
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: true, // impl is permitted
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Mock getAgentById to return document-review-reply agent
+      useAgentStore.setState({
+        getAgentById: () => ({
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        } as any),
+        getAgentsForSpec: () => [],
+      } as any);
+
+      // Manually add agent to tracked set
+      (service as any).trackedAgentIds.add('reply-agent-1');
+
+      // Simulate document-review-reply completion via IPC callback
+      statusChangeCallback?.('reply-agent-1', 'completed');
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Should call approveDocumentReview
+      expect((mockElectronAPI as any).approveDocumentReview).toHaveBeenCalledWith('/test');
+      // Should continue to impl phase
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith('test-spec', 'impl', 'test-spec');
+    });
+
+    it('should fallback to pendingReviewConfirmation when parseReplyFile fails', async () => {
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+        },
+        documentReview: {
+          rounds: 1,
+          status: 'in_progress',
+          currentRound: 1,
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      // Mock parseReplyFile to throw an error
+      (mockElectronAPI as any).parseReplyFile = vi.fn().mockRejectedValue(new Error('File not found'));
+      (mockElectronAPI as any).approveDocumentReview = vi.fn();
+
+      // Enable auto-execution mode
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
+      });
+      useWorkflowStore.setState({
+        documentReviewOptions: {
+          autoExecutionFlag: 'run',
+        },
+      });
+
+      // Mock getAgentById to return document-review-reply agent
+      useAgentStore.setState({
+        getAgentById: () => ({
+          agentId: 'reply-agent-1',
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          status: 'completed',
+        } as any),
+      } as any);
+
+      // Manually add agent to tracked set
+      (service as any).trackedAgentIds.add('reply-agent-1');
+
+      // Simulate document-review-reply completion
+      statusChangeCallback?.('reply-agent-1', 'completed');
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Should NOT call approveDocumentReview
+      expect((mockElectronAPI as any).approveDocumentReview).not.toHaveBeenCalled();
+      // Should fallback to pendingReviewConfirmation
+      expect(useWorkflowStore.getState().pendingReviewConfirmation).toBe(true);
+    });
+  });
+
+  // ============================================================
   // Task 7.3: User Confirmation After Review Round
   // Requirements: 7.5
   // Updated to use IPC direct subscription for completion detection
@@ -1847,9 +2299,12 @@ describe('AutoExecutionService', () => {
       useSpecStore.setState({ specDetail: mockSpecDetail as any });
 
       // Set isAutoExecuting to true so the callback is processed
-      useWorkflowStore.setState({
-        isAutoExecuting: true,
-        currentAutoPhase: null,
+      useSpecStore.setState({
+        autoExecutionRuntime: {
+          isAutoExecuting: true,
+          currentAutoPhase: null,
+          autoExecutionStatus: 'running',
+        },
       });
 
       // Mock getAgentById to return document-review-reply agent
@@ -1877,6 +2332,533 @@ describe('AutoExecutionService', () => {
 
       // Verify that pendingReviewConfirmation was set (indicates handleDocumentReviewReplyCompleted was called)
       expect(useWorkflowStore.getState().pendingReviewConfirmation).toBe(true);
+    });
+  });
+
+  // ============================================================
+  // spec-scoped-auto-execution-state Task 2.1-2.3: Spec単位の自動実行状態管理
+  // Requirements: 2.1-2.5, 3.1-3.2
+  // ============================================================
+  describe('Spec-Scoped Auto Execution State', () => {
+    describe('Task 2.1: getSpecAutoExecutionState', () => {
+      it('should return default state when spec has no autoExecution field', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          // No autoExecution field
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        const state = service.getSpecAutoExecutionState();
+
+        expect(state).toBeDefined();
+        expect(state.enabled).toBe(false);
+        expect(state.permissions.requirements).toBe(false);
+        expect(state.documentReviewFlag).toBe('skip');
+      });
+
+      it('should return autoExecution state when present in spec', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          autoExecution: {
+            enabled: true,
+            permissions: {
+              requirements: true,
+              design: true,
+              tasks: true,
+              impl: false,
+              inspection: false,
+              deploy: false,
+            },
+            documentReviewFlag: 'run',
+            validationOptions: {
+              gap: true,
+              design: false,
+              impl: false,
+            },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        const state = service.getSpecAutoExecutionState();
+
+        expect(state.enabled).toBe(true);
+        expect(state.permissions.requirements).toBe(true);
+        expect(state.permissions.design).toBe(true);
+        expect(state.permissions.tasks).toBe(true);
+        expect(state.permissions.impl).toBe(false);
+        expect(state.documentReviewFlag).toBe('run');
+        expect(state.validationOptions.gap).toBe(true);
+      });
+
+      it('should return null when no specDetail is selected', () => {
+        useSpecStore.setState({ specDetail: null });
+
+        const state = service.getSpecAutoExecutionState();
+
+        expect(state).toBeNull();
+      });
+    });
+
+    describe('Task 2.2: updateSpecAutoExecutionState', () => {
+      it('should call updateSpecJson with autoExecution field', async () => {
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: {
+            feature_name: 'test',
+            approvals: {
+              requirements: { generated: false, approved: false },
+              design: { generated: false, approved: false },
+              tasks: { generated: false, approved: false },
+            },
+          },
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        // Mock updateSpecJson
+        (mockElectronAPI as any).updateSpecJson = vi.fn().mockResolvedValue(undefined);
+
+        const newState: SpecAutoExecutionState = {
+          enabled: true,
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: {
+            gap: false,
+            design: false,
+            impl: false,
+          },
+        };
+
+        await service.updateSpecAutoExecutionState(newState);
+
+        expect((mockElectronAPI as any).updateSpecJson).toHaveBeenCalledWith(
+          '/test',
+          expect.objectContaining({
+            autoExecution: newState,
+          })
+        );
+      });
+
+      it('should return false when no specDetail is selected', async () => {
+        useSpecStore.setState({ specDetail: null });
+
+        const newState: SpecAutoExecutionState = {
+          enabled: true,
+          permissions: {
+            requirements: true,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: {
+            gap: false,
+            design: false,
+            impl: false,
+          },
+        };
+
+        const result = await service.updateSpecAutoExecutionState(newState);
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('Task 2.3: syncFromSpecAutoExecution', () => {
+      it('should sync workflowStore permissions from spec autoExecution', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          autoExecution: {
+            enabled: true,
+            permissions: {
+              requirements: true,
+              design: true,
+              tasks: true,
+              impl: false,
+              inspection: false,
+              deploy: false,
+            },
+            documentReviewFlag: 'run',
+            validationOptions: {
+              gap: true,
+              design: false,
+              impl: false,
+            },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        service.syncFromSpecAutoExecution();
+
+        const workflowState = useWorkflowStore.getState();
+        expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
+        expect(workflowState.autoExecutionPermissions.design).toBe(true);
+        expect(workflowState.autoExecutionPermissions.tasks).toBe(true);
+        expect(workflowState.autoExecutionPermissions.impl).toBe(false);
+        expect(workflowState.documentReviewOptions?.autoExecutionFlag).toBe('run');
+        expect(workflowState.validationOptions.gap).toBe(true);
+      });
+
+      it('should not modify workflowStore when no specDetail is selected', () => {
+        useSpecStore.setState({ specDetail: null });
+        const initialState = useWorkflowStore.getState();
+
+        service.syncFromSpecAutoExecution();
+
+        const afterState = useWorkflowStore.getState();
+        expect(afterState.autoExecutionPermissions).toEqual(initialState.autoExecutionPermissions);
+      });
+
+      it('should handle spec without autoExecution (use defaults)', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          // No autoExecution field
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        service.syncFromSpecAutoExecution();
+
+        const workflowState = useWorkflowStore.getState();
+        // Should use default values (all false)
+        expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
+        expect(workflowState.autoExecutionPermissions.design).toBe(false);
+        expect(workflowState.documentReviewOptions?.autoExecutionFlag).toBe('skip');
+      });
+    });
+
+    describe('Task 2.4: startWithSpecState', () => {
+      it('should start auto execution using spec autoExecution state', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          autoExecution: {
+            enabled: true,
+            permissions: {
+              requirements: true,
+              design: true,
+              tasks: false,
+              impl: false,
+              inspection: false,
+              deploy: false,
+            },
+            documentReviewFlag: 'skip',
+            validationOptions: {
+              gap: false,
+              design: false,
+              impl: false,
+            },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+        mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'agent-123' });
+
+        const result = service.startWithSpecState();
+
+        expect(result).toBe(true);
+        expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      });
+
+      it('should fail when spec autoExecution is not enabled', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          autoExecution: {
+            enabled: false, // Not enabled
+            permissions: {
+              requirements: true,
+              design: true,
+              tasks: false,
+              impl: false,
+              inspection: false,
+              deploy: false,
+            },
+            documentReviewFlag: 'skip',
+            validationOptions: {
+              gap: false,
+              design: false,
+              impl: false,
+            },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        const result = service.startWithSpecState();
+
+        expect(result).toBe(false);
+        expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
+      });
+
+      it('should fail when no specDetail is selected', () => {
+        useSpecStore.setState({ specDetail: null });
+
+        const result = service.startWithSpecState();
+
+        expect(result).toBe(false);
+      });
+    });
+  });
+
+  // ============================================================
+  // spec-scoped-auto-execution-state Task 8: Spec Independence and Error Handling
+  // Requirements: 4.1, 4.2, 2.3, 2.4
+  // ============================================================
+  describe('Task 8: Spec Independence and Error Handling', () => {
+    describe('Task 8.1: Spec Independence', () => {
+      it('should only track agents for the currently selected spec', async () => {
+        const mockSpecJson = {
+          feature_name: 'spec-a',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'spec-a', path: '/project/specs/spec-a' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+        mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'spec-a-agent' });
+
+        useWorkflowStore.setState({
+          autoExecutionPermissions: {
+            requirements: true,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+        });
+
+        service.start();
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify spec-a agent is tracked
+        expect(service.isTrackedAgent('spec-a-agent')).toBe(true);
+
+        // Simulate spec-b agent (different spec) - should not be tracked
+        expect(service.isTrackedAgent('spec-b-agent')).toBe(false);
+      });
+
+      it('should clear tracked agents when stop is called', async () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+        mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+        mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'test-agent' });
+
+        useWorkflowStore.setState({
+          autoExecutionPermissions: {
+            requirements: true,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+        });
+
+        service.start();
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify agent is tracked
+        expect(service.isTrackedAgent('test-agent')).toBe(true);
+
+        // Stop execution
+        await service.stop();
+
+        // Tracked agents should be cleared
+        expect(service.isTrackedAgent('test-agent')).toBe(false);
+      });
+    });
+
+    describe('Task 8.2: Error handling on spec.json write failure', () => {
+      it('should return false and log error when updateSpecJson fails', async () => {
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: {
+            feature_name: 'test',
+            approvals: {
+              requirements: { generated: false, approved: false },
+              design: { generated: false, approved: false },
+              tasks: { generated: false, approved: false },
+            },
+          },
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        // Mock updateSpecJson to fail
+        (mockElectronAPI as any).updateSpecJson = vi.fn().mockRejectedValue(new Error('Write error'));
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const newState: SpecAutoExecutionState = {
+          enabled: true,
+          permissions: {
+            requirements: true,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: {
+            gap: false,
+            design: false,
+            impl: false,
+          },
+        };
+
+        const result = await service.updateSpecAutoExecutionState(newState);
+
+        expect(result).toBe(false);
+        expect(consoleErrorSpy).toHaveBeenCalled();
+
+        consoleErrorSpy.mockRestore();
+      });
+    });
+
+    describe('Task 8.3: Default state on missing or invalid autoExecution', () => {
+      it('should apply default values when autoExecution field is missing', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          // No autoExecution field
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        const state = service.getSpecAutoExecutionState();
+
+        // Should return default state
+        expect(state).toBeDefined();
+        expect(state.enabled).toBe(false);
+        expect(state.permissions.requirements).toBe(false);
+        expect(state.permissions.design).toBe(false);
+        expect(state.permissions.tasks).toBe(false);
+        expect(state.permissions.impl).toBe(false);
+        expect(state.documentReviewFlag).toBe('skip');
+        expect(state.validationOptions.gap).toBe(false);
+        expect(state.validationOptions.design).toBe(false);
+        expect(state.validationOptions.impl).toBe(false);
+      });
+
+      it('should merge partial autoExecution with defaults', () => {
+        const mockSpecJson = {
+          feature_name: 'test',
+          approvals: {
+            requirements: { generated: false, approved: false },
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+          autoExecution: {
+            enabled: true,
+            // Partial permissions - some fields missing
+            permissions: {
+              requirements: true,
+              // design, tasks, impl, inspection, deploy are missing
+            },
+            // documentReviewFlag and validationOptions are missing
+          },
+        };
+        const mockSpecDetail = {
+          metadata: { name: 'test-spec', path: '/test' },
+          specJson: mockSpecJson,
+        };
+        useSpecStore.setState({ specDetail: mockSpecDetail as any });
+
+        const state = service.getSpecAutoExecutionState();
+
+        // Should merge with defaults
+        expect(state.enabled).toBe(true);
+        expect(state.permissions.requirements).toBe(true); // From spec
+        expect(state.permissions.design).toBe(false); // Default
+        expect(state.permissions.tasks).toBe(false); // Default
+        expect(state.documentReviewFlag).toBe('skip'); // Default
+        expect(state.validationOptions.gap).toBe(false); // Default
+      });
     });
   });
 });

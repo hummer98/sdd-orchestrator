@@ -1,5 +1,5 @@
 /**
- * ProjectSelector - spec-manager Install Feature Tests
+ * ProjectValidationPanel - spec-manager Install Feature Tests
  * TDD: Testing Slash Command and SDD settings installation
  * Requirements: 4.1, 4.2, 4.3, 4.5, 4.6
  */
@@ -9,18 +9,16 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Mock stores using vi.hoisted to make variables available before hoisting
-const { mockUseProjectStore, mockUseSpecStore } = vi.hoisted(() => ({
+const { mockUseProjectStore } = vi.hoisted(() => ({
   mockUseProjectStore: vi.fn(),
-  mockUseSpecStore: vi.fn(),
 }));
 
 vi.mock('../stores', () => ({
   useProjectStore: mockUseProjectStore,
-  useSpecStore: mockUseSpecStore,
 }));
 
 // Import after mocks are set up
-import { ProjectSelector } from './ProjectSelector';
+import { ProjectValidationPanel } from './ProjectValidationPanel';
 
 const createMockStores = (overrides: any = {}) => {
   const defaultProjectStore = {
@@ -43,28 +41,19 @@ const createMockStores = (overrides: any = {}) => {
     clearInstallResult: vi.fn(),
     // permissions check
     permissionsCheck: null,
+    permissionsFixLoading: false,
+    fixPermissions: vi.fn(),
     ...overrides.projectStore,
   };
 
-  const defaultSpecStore = {
-    loadSpecs: vi.fn(),
-    ...overrides.specStore,
-  };
-
   mockUseProjectStore.mockReturnValue(defaultProjectStore);
-  mockUseSpecStore.mockReturnValue(defaultSpecStore);
 
-  return { defaultProjectStore, defaultSpecStore };
+  return { defaultProjectStore };
 };
 
-describe('ProjectSelector - spec-manager Install Feature', () => {
+describe('ProjectValidationPanel - spec-manager Install Feature', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.electronAPI = {
-      showOpenDialog: vi.fn(),
-      checkSpecManagerFiles: vi.fn(),
-      installSpecManagerFiles: vi.fn(),
-    } as any;
   });
 
   // ============================================================
@@ -88,15 +77,13 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           allPresent: false,
         };
 
-        window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue(mockCheckResult);
-
-        const { defaultProjectStore } = createMockStores({
+        createMockStores({
           projectStore: {
             specManagerCheck: mockCheckResult,
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         // Should display check result
         expect(screen.queryByText(/不足しているコマンド/)).toBeInTheDocument();
@@ -111,7 +98,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         // checkSpecManagerFiles is called by the store's selectProject action,
         // not directly by the component. This test verifies the action exists.
@@ -139,7 +126,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/コマンドをインストール/)).toBeInTheDocument();
       });
@@ -163,7 +150,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/設定をインストール/)).toBeInTheDocument();
       });
@@ -187,16 +174,21 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         // Should have separate buttons for commands and settings
         expect(screen.queryByText(/コマンドをインストール/)).toBeInTheDocument();
         expect(screen.queryByText(/設定をインストール/)).toBeInTheDocument();
       });
 
-      it('should not display anything when all files are present', () => {
+      it('should not render anything when all files are present and no issues', () => {
         createMockStores({
           projectStore: {
+            kiroValidation: {
+              exists: true,
+              hasSpecs: true,
+              hasSteering: true,
+            },
             specManagerCheck: {
               commands: {
                 allPresent: true,
@@ -210,14 +202,18 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
               },
               allPresent: true,
             },
+            permissionsCheck: {
+              allPresent: true,
+              missing: [],
+              present: [],
+            },
           },
         });
 
-        render(<ProjectSelector />);
+        const { container } = render(<ProjectValidationPanel />);
 
-        // 成功時は何も表示しない（ノイズ削減）
-        expect(screen.queryByText(/spec-manager/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/インストール/)).not.toBeInTheDocument();
+        // Component should render nothing when all is valid
+        expect(container.firstChild).toBeNull();
       });
     });
 
@@ -245,7 +241,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         // Should display success message
         expect(screen.queryByText(/インストール完了/)).toBeInTheDocument();
@@ -274,7 +270,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         // Should show installed files in result
         expect(screen.queryByText(/spec-manager\/init/)).toBeInTheDocument();
@@ -298,7 +294,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/テンプレート未発見/)).toBeInTheDocument();
         expect(screen.queryByText(/TEMPLATE_NOT_FOUND/)).toBeInTheDocument();
@@ -320,7 +316,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/権限エラー/)).toBeInTheDocument();
       });
@@ -342,7 +338,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/spec-manager\/init/)).toBeInTheDocument();
         expect(screen.queryByText(/spec-manager\/requirements/)).toBeInTheDocument();
@@ -363,7 +359,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/rules\/ears-format.md/)).toBeInTheDocument();
         expect(screen.queryByText(/templates\/specs\/design.md/)).toBeInTheDocument();
@@ -382,7 +378,7 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        render(<ProjectValidationPanel />);
 
         expect(screen.queryByText(/不足しているパーミッション/)).toBeInTheDocument();
         expect(screen.queryByText(/Read\(\*\*\)/)).toBeInTheDocument();
@@ -391,6 +387,11 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
       it('should not display anything when all permissions are present', () => {
         createMockStores({
           projectStore: {
+            kiroValidation: {
+              exists: true,
+              hasSpecs: true,
+              hasSteering: true,
+            },
             permissionsCheck: {
               allPresent: true,
               missing: [],
@@ -399,22 +400,62 @@ describe('ProjectSelector - spec-manager Install Feature', () => {
           },
         });
 
-        render(<ProjectSelector />);
+        const { container } = render(<ProjectValidationPanel />);
 
-        // 成功時は何も表示しない（ノイズ削減）
-        expect(screen.queryByText(/パーミッション/)).not.toBeInTheDocument();
+        // Component should render nothing when all is valid
+        expect(container.firstChild).toBeNull();
       });
 
       it('should not display permissions section when check is null', () => {
         createMockStores({
           projectStore: {
+            kiroValidation: {
+              exists: true,
+              hasSpecs: true,
+              hasSteering: true,
+            },
             permissionsCheck: null,
           },
         });
 
-        render(<ProjectSelector />);
+        const { container } = render(<ProjectValidationPanel />);
 
-        expect(screen.queryByText(/パーミッション/)).not.toBeInTheDocument();
+        // Component should render nothing when all is valid and no check needed
+        expect(container.firstChild).toBeNull();
+      });
+    });
+
+    describe('kiro validation display', () => {
+      it('should display validation issues when .kiro directory is missing', () => {
+        createMockStores({
+          projectStore: {
+            kiroValidation: {
+              exists: false,
+              hasSpecs: false,
+              hasSteering: false,
+            },
+          },
+        });
+
+        render(<ProjectValidationPanel />);
+
+        expect(screen.queryByText(/.kiro ディレクトリ/)).toBeInTheDocument();
+      });
+
+      it('should display validation issues when specs directory is missing', () => {
+        createMockStores({
+          projectStore: {
+            kiroValidation: {
+              exists: true,
+              hasSpecs: false,
+              hasSteering: true,
+            },
+          },
+        });
+
+        render(<ProjectValidationPanel />);
+
+        expect(screen.queryByText(/specs ディレクトリ/)).toBeInTheDocument();
       });
     });
   });

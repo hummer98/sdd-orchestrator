@@ -1,20 +1,17 @@
 /**
- * ProjectSelector Component
- * Handles project directory selection
+ * ProjectValidationPanel Component
+ * Displays validation status for .kiro directory, spec-manager files, and permissions
  * Requirements: 1.1, 1.2, 1.3, 4.1-4.6
  */
 
-import { FolderOpen, CheckCircle, AlertCircle, FolderPlus, Download, Loader2, FileWarning } from 'lucide-react';
-import { useProjectStore, useSpecStore } from '../stores';
+import { CheckCircle, AlertCircle, FolderPlus, Download, Loader2, FileWarning } from 'lucide-react';
+import { useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { InstallError } from '../stores/projectStore';
 
-export function ProjectSelector() {
+export function ProjectValidationPanel() {
   const {
-    currentProject,
     kiroValidation,
-    isLoading,
-    selectProject,
     // spec-manager extensions
     specManagerCheck,
     installLoading,
@@ -28,56 +25,22 @@ export function ProjectSelector() {
     permissionsFixLoading,
     fixPermissions,
   } = useProjectStore();
-  const { loadSpecs } = useSpecStore();
 
-  const handleSelectProject = async () => {
-    const path = await window.electronAPI.showOpenDialog();
-    if (path) {
-      await selectProject(path);
-      await loadSpecs(path);
-    }
-  };
+  // Check if there's anything to display
+  const hasKiroIssues = kiroValidation && !(kiroValidation.exists && kiroValidation.hasSpecs && kiroValidation.hasSteering);
+  const hasSpecManagerIssues = specManagerCheck && !specManagerCheck.allPresent;
+  const hasPermissionIssues = permissionsCheck && !permissionsCheck.allPresent;
+
+  // If nothing to display, render nothing
+  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues) {
+    return null;
+  }
 
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-2 mb-2">
-        <FolderOpen className="w-5 h-5 text-gray-500" />
-        <h2 className="font-semibold text-gray-700 dark:text-gray-300">
-          プロジェクト
-        </h2>
-      </div>
-
-      <button
-        onClick={handleSelectProject}
-        disabled={isLoading}
-        className={clsx(
-          'w-full px-3 py-2 text-left rounded-md transition-colors',
-          'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700',
-          'text-gray-700 dark:text-gray-300',
-          'disabled:opacity-50 disabled:cursor-not-allowed'
-        )}
-      >
-        {isLoading ? (
-          <span className="flex items-center gap-2">
-            <span className="animate-spin">...</span>
-            読み込み中...
-          </span>
-        ) : currentProject ? (
-          <span className="truncate block">{currentProject.split('/').pop()}</span>
-        ) : (
-          <span className="text-gray-500">プロジェクトを選択...</span>
-        )}
-      </button>
-
-      {currentProject && (
-        <div className="mt-2 text-xs text-gray-500 truncate" title={currentProject}>
-          {currentProject}
-        </div>
-      )}
-
       {/* Show validation only when there are issues */}
-      {kiroValidation && !(kiroValidation.exists && kiroValidation.hasSpecs && kiroValidation.hasSteering) && (
-        <div className="mt-3 space-y-1">
+      {hasKiroIssues && (
+        <div className="space-y-1">
           {!kiroValidation.exists && (
             <ValidationItem valid={false} label=".kiro ディレクトリ" />
           )}

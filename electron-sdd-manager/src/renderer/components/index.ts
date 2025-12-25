@@ -2,7 +2,7 @@
  * Component exports
  */
 
-export { ProjectSelector } from './ProjectSelector';
+export { ProjectValidationPanel } from './ProjectValidationPanel';
 export { RecentProjects } from './RecentProjects';
 export { SpecList } from './SpecList';
 export { SpecDetail } from './SpecDetail';
@@ -56,3 +56,7 @@ export { ProjectSwitchConfirmDialog } from './ProjectSwitchConfirmDialog';
 // Unified Commandset Install Dialog
 export { CommandsetInstallDialog } from './CommandsetInstallDialog';
 export type { ProfileName } from './CommandsetInstallDialog';
+// Task 2, 3, 4: bugs-pane-integration - BugPhaseItem, BugWorkflowView, BugArtifactEditorコンポーネント
+export { BugPhaseItem } from './BugPhaseItem';
+export { BugWorkflowView } from './BugWorkflowView';
+export { BugArtifactEditor } from './BugArtifactEditor';

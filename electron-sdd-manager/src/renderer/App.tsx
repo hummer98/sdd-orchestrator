@@ -31,10 +31,13 @@ import {
   SSHConnectDialog,
   SSHAuthDialog,
   ProjectSwitchConfirmDialog,
-  ProjectSelector,
+  ProjectValidationPanel,
+  // Task 5: bugs-pane-integration - Bug表示用コンポーネント
+  BugArtifactEditor,
+  BugWorkflowView,
 } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
 import type { CommandPrefix } from './stores';
 
 // ペイン幅の制限値
@@ -65,6 +68,8 @@ export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject } = useProjectStore();
   const { selectedSpec, specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
+  // Task 5: bugs-pane-integration - Bug選択状態の参照
+  const { selectedBug } = useBugStore();
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
@@ -536,8 +541,8 @@ export function App() {
             className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900"
           >
             {/* Bug Workflow UI: 統合サイドバー構成 */}
-            {/* 1. ProjectSelector (プロジェクト選択とパーミッションチェック) */}
-            <ProjectSelector />
+            {/* 1. ProjectValidationPanel (バリデーション表示のみ、問題がある場合に表示) */}
+            <ProjectValidationPanel />
 
             {/* 2. ErrorBanner (問題がある場合のみ表示) */}
             <ErrorBanner />
@@ -567,7 +572,9 @@ export function App() {
 
           {/* Main area */}
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+            {/* Task 5: bugs-pane-integration - Spec選択時またはBug選択時で表示を切り替え */}
             {selectedSpec ? (
+              /* Spec選択時: ArtifactEditor + WorkflowView */
               <div className="flex-1 flex overflow-hidden">
                 {/* Center - Editor */}
                 <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -594,11 +601,40 @@ export function App() {
                   </div>
                 </aside>
               </div>
+            ) : selectedBug ? (
+              /* Bug選択時: BugArtifactEditor + BugWorkflowView */
+              <div className="flex-1 flex overflow-hidden">
+                {/* Center - Bug Document Editor */}
+                <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                  <BugArtifactEditor />
+                </div>
+
+                {/* Right resize handle */}
+                <ResizeHandle direction="horizontal" onResize={handleRightResize} onResizeEnd={saveLayout} />
+
+                {/* Right sidebar - Bug Workflow View */}
+                <aside
+                  style={{ width: rightPaneWidth }}
+                  className="shrink-0 flex flex-col overflow-hidden"
+                >
+                  {/* Agent list panel for bugs */}
+                  <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
+                    <AgentListPanel />
+                  </div>
+                  {/* Agent一覧とワークフロー間のリサイズハンドル */}
+                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} onResizeEnd={saveLayout} />
+                  {/* Bug Workflow: 5フェーズワークフロービュー */}
+                  <div className="flex-1 overflow-hidden">
+                    <BugWorkflowView />
+                  </div>
+                </aside>
+              </div>
             ) : (
+              /* 未選択時: プレースホルダー */
               <div className="flex-1 flex items-center justify-center text-gray-400">
                 {currentProject ? (
                   kiroValidation?.exists ? (
-                    '仕様を選択するか、新規仕様を作成してください'
+                    '仕様またはバグを選択するか、新規作成してください'
                   ) : (
                     '.kiroディレクトリを初期化してください'
                   )

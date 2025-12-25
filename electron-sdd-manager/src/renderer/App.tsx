@@ -554,17 +554,21 @@ export function App() {
               </div>
             )}
 
-            {/* 4. ProjectAgentPanel用リサイズハンドル（上方向にリサイズ） */}
-            <ResizeHandle direction="vertical" onResize={handleProjectAgentPanelResize} onResizeEnd={saveLayout} />
+            {/* 4. ProjectAgentPanel用リサイズハンドル（上方向にリサイズ） - プロジェクト選択時のみ表示 */}
+            {currentProject && (
+              <>
+                <ResizeHandle direction="vertical" onResize={handleProjectAgentPanelResize} onResizeEnd={saveLayout} />
 
-            {/* 5. ProjectAgentPanel (下部固定、リサイズ可能) */}
-            <div
-              style={{ height: projectAgentPanelHeight }}
-              className="shrink-0 overflow-hidden"
-              data-testid="project-agent-panel-container"
-            >
-              <ProjectAgentPanel />
-            </div>
+                {/* 5. ProjectAgentPanel (下部固定、リサイズ可能) */}
+                <div
+                  style={{ height: projectAgentPanelHeight }}
+                  className="shrink-0 overflow-hidden"
+                  data-testid="project-agent-panel-container"
+                >
+                  <ProjectAgentPanel />
+                </div>
+              </>
+            )}
           </aside>
 
           {/* Left resize handle */}

@@ -307,5 +307,37 @@ describe('CreateSpecDialog', () => {
 
       expect(mockOnClose).toHaveBeenCalled();
     });
+
+    // Bug fix: spec-create-button-loading-state
+    // handleCloseで全てのローカル状態がリセットされることを検証
+    it('should reset isCreating state when dialog is closed after successful creation', async () => {
+      // コンポーネントが再マウントされないシナリオをシミュレート
+      // DocsTabsではCreateSpecDialogは常にマウントされており、isOpenで表示/非表示を制御
+      const { rerender } = render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      // 作成成功後、ダイアログが閉じる
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      });
+
+      // ダイアログを非表示にしてから再表示（アンマウントせずに再オープン）
+      rerender(<CreateSpecDialog isOpen={false} onClose={mockOnClose} />);
+      rerender(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // 再オープン後、作成ボタンがLoading状態ではなく有効であること
+      const createButtonAfterReopen = screen.getByRole('button', { name: /作成$/i });
+      // 説明が空なのでdisabledだが、Loading表示ではない
+      expect(screen.queryByText(/作成中/i)).not.toBeInTheDocument();
+      // 説明を入力すればボタンが有効になる
+      const textareaAfterReopen = screen.getByLabelText('説明');
+      fireEvent.change(textareaAfterReopen, { target: { value: 'テスト' } });
+      expect(createButtonAfterReopen).not.toBeDisabled();
+    });
   });
 });

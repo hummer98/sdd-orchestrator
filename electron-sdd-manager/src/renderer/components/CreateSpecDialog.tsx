@@ -63,6 +63,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const handleClose = () => {
     setDescription('');
     setError(null);
+    setIsCreating(false);
     onClose();
   };
 

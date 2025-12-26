@@ -46,7 +46,7 @@ const LEFT_PANE_MAX = 500;
 const RIGHT_PANE_MIN = 250;
 const RIGHT_PANE_MAX = 500;
 const BOTTOM_PANE_MIN = 100;
-const BOTTOM_PANE_MAX = 400;
+// BOTTOM_PANE_MAX removed: no upper limit for agent log panel height
 // 右ペイン内のAgent一覧パネルの高さ制限
 const AGENT_LIST_MIN = 80;
 const AGENT_LIST_MAX = 400;
@@ -118,7 +118,7 @@ export function App() {
   }, []);
 
   const handleBottomResize = useCallback((delta: number) => {
-    setBottomPaneHeight((prev) => Math.min(BOTTOM_PANE_MAX, Math.max(BOTTOM_PANE_MIN, prev - delta)));
+    setBottomPaneHeight((prev) => Math.max(BOTTOM_PANE_MIN, prev - delta));
   }, []);
 
   const handleAgentListResize = useCallback((delta: number) => {

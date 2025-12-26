@@ -48,6 +48,9 @@ export class AutoExecutionService {
   private executedValidations: ValidationType[] = [];
   private errors: string[] = [];
 
+  // 現在自動実行中のSpecId
+  private currentExecutingSpecId: string | null = null;
+
   // ============================================================
   // Task 1.1, 2.1: IPC Direct Subscription and AgentId Tracking
   // Requirements: 1.1, 2.1, 2.4
@@ -349,6 +352,8 @@ export class AutoExecutionService {
       return false;
     }
 
+    const specId = specStore.specDetail.metadata.name;
+
     // Bug Fix: Determine starting phase based on current spec progress
     // Instead of always starting from null (beginning), check which phases are already completed
     const approvals = specStore.specDetail.specJson.approvals;
@@ -369,9 +374,10 @@ export class AutoExecutionService {
     this.executedPhases = [];
     this.executedValidations = [];
     this.errors = [];
+    this.currentExecutingSpecId = specId;
 
-    // Update store state - Task 5.1: use specStore for auto execution state
-    specStore.startAutoExecution();
+    // Update store state - use specStore with specId
+    specStore.startAutoExecution(specId);
     workflowStore.resetFailedRetryCount();
     workflowStore.setLastFailedPhase(null);
     workflowStore.setExecutionSummary(null);
@@ -386,7 +392,6 @@ export class AutoExecutionService {
   // Task 4.2: Stop auto execution
   // Requirements: 1.2, 5.2
   // Task 2.3: Clear tracked agentIds on stop
-  // Task 5.1: Use specStore for auto execution state
   // ============================================================
   async stop(): Promise<void> {
     const specStore = useSpecStore.getState();
@@ -402,14 +407,16 @@ export class AutoExecutionService {
       this.generateSummary();
     }
 
-    // Task 5.1: use specStore for auto execution state
-    specStore.stopAutoExecution();
+    // Stop auto execution for the current spec
+    if (this.currentExecutingSpecId) {
+      specStore.stopAutoExecution(this.currentExecutingSpecId);
+      this.currentExecutingSpecId = null;
+    }
   }
 
   // ============================================================
   // Task 4.3: Retry from failed phase
   // Requirements: 8.3
-  // Task 5.1: Use specStore for auto execution state
   // ============================================================
   retryFrom(fromPhase: WorkflowPhase): boolean {
     const workflowStore = useWorkflowStore.getState();
@@ -420,6 +427,8 @@ export class AutoExecutionService {
       console.error('[AutoExecutionService] specDetail is not available');
       return false;
     }
+
+    const specId = specStore.specDetail.metadata.name;
 
     // Check if phase is permitted
     if (!workflowStore.autoExecutionPermissions[fromPhase]) {
@@ -442,8 +451,13 @@ export class AutoExecutionService {
       this.executionStartTime = Date.now();
     }
 
-    // Start execution - Task 5.1: use specStore for auto execution state
-    specStore.startAutoExecution();
+    // Set currentExecutingSpecId if not set
+    if (!this.currentExecutingSpecId) {
+      this.currentExecutingSpecId = specId;
+    }
+
+    // Start execution for the spec
+    specStore.startAutoExecution(specId);
 
     this.executePhase(fromPhase);
 
@@ -466,14 +480,19 @@ export class AutoExecutionService {
   // ============================================================
   // Task 3.1: Direct Status Change Handler
   // Requirements: 1.2, 1.3, 1.4, 2.3, 3.1, 3.2, 3.3
-  // Task 5.1: Use specStore for auto execution state
   // ============================================================
   private handleDirectStatusChange(agentId: string, status: string): void {
     console.log(`[AutoExecutionService] handleDirectStatusChange: agentId=${agentId}, status=${status}`);
 
-    // Task 3.4: Only process if auto-executing - Task 5.1: use specStore
+    // Only process if auto-executing for the current spec
+    if (!this.currentExecutingSpecId) {
+      console.log('[AutoExecutionService] No spec executing, ignoring status change');
+      return;
+    }
+
     const specStore = useSpecStore.getState();
-    if (!specStore.autoExecutionRuntime.isAutoExecuting) {
+    const runtime = specStore.getAutoExecutionRuntime(this.currentExecutingSpecId);
+    if (!runtime.isAutoExecuting) {
       console.log('[AutoExecutionService] Not auto-executing, ignoring status change');
       return;
     }
@@ -486,7 +505,7 @@ export class AutoExecutionService {
       return;
     }
 
-    const currentPhase = specStore.autoExecutionRuntime.currentAutoPhase;
+    const currentPhase = runtime.currentAutoPhase;
     console.log(`[AutoExecutionService] Processing status change: agentId=${agentId}, status=${status}, currentPhase=${currentPhase}`);
 
     // Task 3.1, 3.2: Status-based completion detection (not state-transition based)
@@ -549,8 +568,34 @@ export class AutoExecutionService {
     this.executedValidations = [];
     this.errors = [];
     this.executionStartTime = null;
+    this.currentExecutingSpecId = null;
     this.clearTimeout();
     console.log('[AutoExecutionService] State reset for test');
+  }
+
+  // ============================================================
+  // Helper: Get current executing specId
+  // ============================================================
+  getCurrentExecutingSpecId(): string | null {
+    return this.currentExecutingSpecId;
+  }
+
+  // ============================================================
+  // Helper: Set auto execution status for current spec
+  // ============================================================
+  private setStatus(status: import('../types').AutoExecutionStatus): void {
+    if (this.currentExecutingSpecId) {
+      useSpecStore.getState().setAutoExecutionStatus(this.currentExecutingSpecId, status);
+    }
+  }
+
+  // ============================================================
+  // Helper: Set auto execution phase for current spec
+  // ============================================================
+  private setPhase(phase: WorkflowPhase | null): void {
+    if (this.currentExecutingSpecId) {
+      useSpecStore.getState().setAutoExecutionPhase(this.currentExecutingSpecId, phase);
+    }
   }
 
   // ============================================================
@@ -670,7 +715,6 @@ export class AutoExecutionService {
     this.clearTimeout();
 
     const workflowStore = useWorkflowStore.getState();
-    const specStore = useSpecStore.getState();
     const { documentReviewOptions } = workflowStore;
 
     // If autoExecutionFlag is 'run', auto-execute document-review-reply
@@ -679,7 +723,7 @@ export class AutoExecutionService {
       await this.executeDocumentReviewReply();
     } else {
       // Pause for user to manually execute reply - Task 5.1: use specStore
-      specStore.setAutoExecutionStatus('paused');
+      this.setStatus('paused');
     }
   }
 
@@ -739,7 +783,7 @@ export class AutoExecutionService {
     // Fallback to pendingReviewConfirmation if specDetail is not available
     if (!specDetail) {
       console.warn('[AutoExecutionService] specDetail not available, falling back to pendingReviewConfirmation');
-      specStore.setAutoExecutionStatus('paused');
+      this.setStatus('paused');
       workflowStore.setPendingReviewConfirmation(true);
       return;
     }
@@ -767,7 +811,7 @@ export class AutoExecutionService {
         const { autoExecutionPermissions } = workflowStore;
         if (autoExecutionPermissions.impl) {
           console.log('[AutoExecutionService] Continuing to impl phase');
-          specStore.setAutoExecutionStatus('running');
+          this.setStatus('running');
           this.executePhase('impl');
         } else {
           console.log('[AutoExecutionService] impl not permitted, completing auto-execution');
@@ -776,13 +820,13 @@ export class AutoExecutionService {
       } else {
         // Fixes required, pause for user confirmation
         console.log(`[AutoExecutionService] ${parseResult.fixRequiredCount} fixes required, waiting for user confirmation`);
-        specStore.setAutoExecutionStatus('paused');
+        this.setStatus('paused');
         workflowStore.setPendingReviewConfirmation(true);
       }
     } catch (error) {
       // Fallback to pendingReviewConfirmation on error
       console.error('[AutoExecutionService] Error parsing reply file, falling back to pendingReviewConfirmation', error);
-      specStore.setAutoExecutionStatus('paused');
+      this.setStatus('paused');
       workflowStore.setPendingReviewConfirmation(true);
     }
   }
@@ -797,9 +841,7 @@ export class AutoExecutionService {
     this.clearTimeout();
     this.errors.push(error);
 
-    const specStore = useSpecStore.getState();
-
-    specStore.setAutoExecutionStatus('error');
+    this.setStatus('error');
     notify.error(`${phase}でエラーが発生しました: ${error}`);
 
     this.generateSummary();
@@ -807,13 +849,11 @@ export class AutoExecutionService {
 
   /**
    * Continue to next review round (called by user action)
-   * Task 5.1: Use specStore for auto execution state
    */
   continueToNextReviewRound(): void {
     const workflowStore = useWorkflowStore.getState();
-    const specStore = useSpecStore.getState();
     workflowStore.setPendingReviewConfirmation(false);
-    specStore.setAutoExecutionStatus('running');
+    this.setStatus('running');
 
     this.executeDocumentReview();
   }
@@ -832,7 +872,7 @@ export class AutoExecutionService {
     try {
       await window.electronAPI.approveDocumentReview(specDetail.metadata.path);
       workflowStore.setPendingReviewConfirmation(false);
-      specStore.setAutoExecutionStatus('running');
+      this.setStatus('running');
 
       // Continue to next phase (impl)
       const nextPhase = this.getNextPermittedPhase('tasks');
@@ -887,10 +927,9 @@ export class AutoExecutionService {
     this.clearTimeout();
     this.errors.push(error);
 
-    const specStore = useSpecStore.getState();
     const workflowStore = useWorkflowStore.getState();
 
-    specStore.setAutoExecutionStatus('error');
+    this.setStatus('error');
     workflowStore.setLastFailedPhase(phase);
 
     notify.error(`フェーズ "${phase}" でエラーが発生しました: ${error}`);
@@ -962,8 +1001,7 @@ export class AutoExecutionService {
     if (validationType) {
       try {
         console.log(`[AutoExecutionService] Executing validation: ${validationType}`);
-        // Task 5.1: use specStore for auto execution state
-        useSpecStore.getState().setAutoExecutionStatus('paused');
+        this.setStatus('paused');
 
         await window.electronAPI.executeValidation(
           specDetail.metadata.name,
@@ -977,8 +1015,7 @@ export class AutoExecutionService {
         // For now, we'll continue after a short delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Task 5.1: use specStore for auto execution state
-        useSpecStore.getState().setAutoExecutionStatus('running');
+        this.setStatus('running');
       } catch (error) {
         console.error(`[AutoExecutionService] Validation ${validationType} failed:`, error);
         this.errors.push(`Validation ${validationType} failed`);
@@ -996,10 +1033,9 @@ export class AutoExecutionService {
   private completeAutoExecution(): void {
     console.log('[AutoExecutionService] Auto execution completed');
 
-    const specStore = useSpecStore.getState();
     const workflowStore = useWorkflowStore.getState();
 
-    specStore.setAutoExecutionStatus('completed');
+    this.setStatus('completed');
 
     this.generateSummary();
 
@@ -1010,8 +1046,11 @@ export class AutoExecutionService {
     }
 
     // Reset after a delay
+    const specIdToReset = this.currentExecutingSpecId;
     setTimeout(() => {
-      useSpecStore.getState().stopAutoExecution();
+      if (specIdToReset) {
+        useSpecStore.getState().stopAutoExecution(specIdToReset);
+      }
     }, 2000);
   }
 
@@ -1067,7 +1106,7 @@ export class AutoExecutionService {
         }
       } else if (precondition.waitingForAgent) {
         // Wait for agent to complete - Task 5.1: use specStore
-        specStore.setAutoExecutionStatus('paused');
+        this.setStatus('paused');
         return;
       } else {
         this.handleAgentFailed(phase, precondition.error || 'Precondition validation failed');
@@ -1076,7 +1115,7 @@ export class AutoExecutionService {
     }
 
     // Update current phase - Task 5.1: use specStore
-    specStore.setAutoExecutionPhase(phase);
+    this.setPhase(phase);
 
     // Setup timeout
     this.setupTimeout(phase);

@@ -183,7 +183,8 @@ async function setAutoExecutionPermissions(permissions: Record<string, boolean>)
 }
 
 /**
- * Helper: Get auto-execution status
+ * Helper: Get auto-execution status from specStore.getAutoExecutionRuntime
+ * (Migrated to Map-based per-Spec state as part of spec-scoped-auto-execution-state feature)
  */
 async function getAutoExecutionStatus(): Promise<{
   isAutoExecuting: boolean;
@@ -193,10 +194,12 @@ async function getAutoExecutionStatus(): Promise<{
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) {
+      if (!stores?.specStore?.getState) {
         return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
       }
-      const state = stores.workflowStore.getState();
+      const storeState = stores.specStore.getState();
+      const specId = storeState.specDetail?.metadata?.name || '';
+      const state = storeState.getAutoExecutionRuntime(specId);
       return {
         isAutoExecuting: state.isAutoExecuting,
         autoExecutionStatus: state.autoExecutionStatus,
@@ -314,19 +317,25 @@ async function resetAutoExecutionService(): Promise<void> {
 }
 
 /**
- * Helper: Reset workflowStore autoExecution state
+ * Helper: Reset specStore autoExecution runtime state
+ * (Migrated to Map-based per-Spec state as part of spec-scoped-auto-execution-state feature)
  */
-async function resetWorkflowStoreAutoExecution(): Promise<void> {
+async function resetSpecStoreAutoExecution(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.workflowStore?.getState) {
-      const store = stores.workflowStore.getState();
+    if (stores?.specStore?.getState) {
+      const storeState = stores.specStore.getState();
+      const specId = storeState.specDetail?.metadata?.name || '';
       // Stop any running auto-execution
-      if (store.isAutoExecuting) {
-        store.stopAutoExecution();
+      if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
+        storeState.stopAutoExecution(specId);
       }
-      // Reset autoExecutionStatus to idle
-      stores.workflowStore.setState({ autoExecutionStatus: 'idle', currentAutoPhase: null });
+      // Reset autoExecutionRuntimeMap for this spec
+      if (specId) {
+        storeState.setAutoExecutionStatus(specId, 'idle');
+        storeState.setAutoExecutionPhase(specId, null);
+        storeState.setAutoExecutionRunning(specId, false);
+      }
     }
   });
 }
@@ -357,8 +366,8 @@ describe('Auto Execution Workflow E2E', () => {
     // AutoExecutionServiceの状態をリセット
     await resetAutoExecutionService();
 
-    // workflowStoreの自動実行状態をリセット
-    await resetWorkflowStoreAutoExecution();
+    // specStoreの自動実行状態をリセット
+    await resetSpecStoreAutoExecution();
 
     // プロジェクトとspecを選択
     const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
@@ -389,8 +398,12 @@ describe('Auto Execution Workflow E2E', () => {
     // 自動実行を停止
     await browser.execute(() => {
       const stores = (window as any).__STORES__;
-      if (stores?.workflowStore?.getState()?.isAutoExecuting) {
-        stores.workflowStore.getState().stopAutoExecution();
+      if (stores?.specStore?.getState) {
+        const storeState = stores.specStore.getState();
+        const specId = storeState.specDetail?.metadata?.name || '';
+        if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
+          storeState.stopAutoExecution(specId);
+        }
       }
     });
     await browser.pause(500);

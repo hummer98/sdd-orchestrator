@@ -88,6 +88,7 @@ Report → Analyze → Fix → Verify
 - Default files: `product.md`, `tech.md`, `structure.md`
 - **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表（用語定義、UIコンポーネントマッピング）
 - **`debugging.md`**: ログ保存場所、MCP操作、トラブルシューティング情報
+- **`skill-reference.md`**: プロファイル別Skill/コマンドリファレンス（生成ファイル、前提条件、spec.json状態遷移、書き換え主体）
 - Custom files are supported (managed via `/kiro:steering-custom`)
 
 ## Development Commands

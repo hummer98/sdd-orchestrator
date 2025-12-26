@@ -107,6 +107,8 @@
 | Spec作成 | 新規Spec初期化 | `CreateSpecDialog` |
 | Bug作成 | 新規Bugレポート作成 | `CreateBugDialog` |
 | Bugアクション | analyze/fix/verify実行 | `BugActionButtons` |
+| Bugワークフロー | Bug修正の5フェーズ表示・操作 | `BugWorkflowView`, `BugPhaseItem` |
+| Bugドキュメント | Bugアーティファクトのタブ表示 | `BugArtifactEditor` |
 
 ### 状態表示コンポーネント
 
@@ -173,4 +175,4 @@
 
 ---
 
-_updated_at: 2025-12-19_
+_updated_at: 2025-12-26_

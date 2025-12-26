@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2025-12-26
+
+### Added
+- **project-log-separation機能**: プロジェクトごとのログ分離機能を実装
+- **--dangerously-skip-permissions オプション**: Agent実行時のパーミッションスキップオプションをサポート
+- **spec-inspection機能**: spec-inspectionコマンドとエージェントを追加
+- **bugs-pane UI**: バグワークフローUIコンポーネントとストアを追加
+
+### Fixed
+- **セッションIDラベル**: AgentLogPanelヘッダーにセッションIDラベルを追加
+- **auto-execution設定の永続化**: spec.jsonへの自動実行設定の永続化を修正
+- **タスク完了検出**: タスク完了検出をメインプロセス（specsWatcherService）に移動
+- **ProjectAgentPanel**: プロジェクト未選択時に非表示に
+- **implementation-in-progress状態**: システムから未使用状態を削除
+- **セッションIDコピーボタン**: AgentLogPanelにセッションIDコピーボタンを追加
+- **左ペイン重複表示**: 左ペインから重複プロジェクト表示UIを削除
+- **CreateSpecDialog**: ダイアログを閉じた時にisCreating状態をリセット
+
+### Changed
+- **ready_for_implementation フィールド削除**: 未使用フィールドのリファクタリング
+
+### Documentation
+- symbol-semantic-mapとCLAUDE.mdを更新
+- skill-reference.mdをSDDコマンド動作用に追加
+- commandset-unified-installer用のdocument-review-2-replyを追加
+
 ## [0.11.2] - 2025-12-25
 
 ### Added

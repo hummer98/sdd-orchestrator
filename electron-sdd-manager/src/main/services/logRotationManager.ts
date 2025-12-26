@@ -9,7 +9,7 @@
  */
 
 import * as path from 'path';
-import { stat, rename, readdir, unlink } from 'fs/promises';
+import { rename, readdir, unlink } from 'fs/promises';
 
 /**
  * Options for LogRotationManager
@@ -153,13 +153,12 @@ export class LogRotationManager implements LogRotationManagerService {
    */
   private async getNextSequenceNumber(logDir: string, date: string): Promise<number> {
     try {
-      const files = await readdir(logDir);
+      const files = await readdir(logDir) as string[];
       const pattern = new RegExp(`^main\\.${date}\\.(\\d+)\\.log$`);
 
       let maxSequence = 0;
       for (const file of files) {
-        const fileName = typeof file === 'string' ? file : file.name;
-        const match = fileName.match(pattern);
+        const match = file.match(pattern);
         if (match) {
           const seq = parseInt(match[1], 10);
           if (seq > maxSequence) {
@@ -180,22 +179,20 @@ export class LogRotationManager implements LogRotationManagerService {
    */
   async cleanupOldFiles(logDir: string, retentionDays: number): Promise<void> {
     try {
-      const files = await readdir(logDir);
+      const files = await readdir(logDir) as string[];
       const cutoffDateStr = this.getCutoffDateString(retentionDays);
 
       for (const file of files) {
-        const fileName = typeof file === 'string' ? file : file.name;
-
         // Parse date from filename: main.YYYY-MM-DD.N.log
-        const dateMatch = fileName.match(/^main\.(\d{4}-\d{2}-\d{2})\.\d+\.log$/);
+        const dateMatch = file.match(/^main\.(\d{4}-\d{2}-\d{2})\.\d+\.log$/);
         if (dateMatch) {
           const fileDateStr = dateMatch[1];
           // String comparison works for YYYY-MM-DD format
           if (fileDateStr < cutoffDateStr) {
             try {
-              await unlink(path.join(logDir, fileName));
+              await unlink(path.join(logDir, file));
             } catch (unlinkError) {
-              console.error(`Failed to delete old log file ${fileName}:`, unlinkError);
+              console.error(`Failed to delete old log file ${file}:`, unlinkError);
               // Continue with other files
             }
           }

@@ -11,7 +11,7 @@ import { SpecList } from './SpecList';
 import { BugList } from './BugList';
 import { CreateSpecDialog } from './CreateSpecDialog';
 import { CreateBugDialog } from './CreateBugDialog';
-import { useProjectStore } from '../stores';
+import { useProjectStore, useSpecStore, useBugStore } from '../stores';
 
 export type DocsTab = 'specs' | 'bugs';
 
@@ -42,6 +42,23 @@ export function DocsTabs({ className }: DocsTabsProps): React.ReactElement {
   const [isCreateSpecDialogOpen, setIsCreateSpecDialogOpen] = useState(false);
   const [isCreateBugDialogOpen, setIsCreateBugDialogOpen] = useState(false);
   const { currentProject } = useProjectStore();
+  const { clearSelectedSpec } = useSpecStore();
+  const { clearSelectedBug } = useBugStore();
+
+  /**
+   * Handle tab change with mutual exclusion of selection state
+   * Bug fix: bugs-tab-selection-not-updating
+   * When switching tabs, clear the selection from the opposite store
+   * to ensure App.tsx conditional rendering works correctly
+   */
+  const handleTabChange = (tabId: DocsTab) => {
+    if (tabId === 'specs') {
+      clearSelectedBug();
+    } else {
+      clearSelectedSpec();
+    }
+    setActiveTab(tabId);
+  };
 
   const handleCreateClick = () => {
     if (activeTab === 'specs') {
@@ -69,7 +86,7 @@ export function DocsTabs({ className }: DocsTabsProps): React.ReactElement {
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`tabpanel-${config.id}`}
-                onClick={() => setActiveTab(config.id)}
+                onClick={() => handleTabChange(config.id)}
                 className={clsx(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium',
                   'transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',

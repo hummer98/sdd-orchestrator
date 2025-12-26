@@ -15,8 +15,29 @@ vi.mock('../stores/projectStore', () => ({
   useProjectStore: vi.fn(),
 }));
 
+const mockClearSelectedSpec = vi.fn();
+const mockClearSelectedBug = vi.fn();
+
 vi.mock('../stores/specStore', () => ({
   useSpecStore: vi.fn(),
+}));
+
+vi.mock('../stores/bugStore', () => ({
+  useBugStore: vi.fn(),
+}));
+
+// Mock child list components
+vi.mock('./SpecList', () => ({
+  SpecList: () => <div data-testid="spec-list">SpecList</div>,
+}));
+
+vi.mock('./BugList', () => ({
+  BugList: () => (
+    <div data-testid="bug-list">
+      <div>bug-001</div>
+      <div>bug-002</div>
+    </div>
+  ),
 }));
 
 // Mock dialog components to add data-testid
@@ -119,16 +140,20 @@ describe('DocsTabs Integration', () => {
       error: null,
       selectSpec: vi.fn(),
       getSortedFilteredSpecs: () => mockSpecs,
+      clearSelectedSpec: mockClearSelectedSpec,
     });
 
-    // Reset bugStore state
-    useBugStore.setState({
+    // Default bug store mock
+    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       bugs: mockBugs,
       selectedBug: null,
       bugDetail: null,
       isLoading: false,
       error: null,
       isWatching: false,
+      selectBug: vi.fn(),
+      getSortedBugs: () => mockBugs,
+      clearSelectedBug: mockClearSelectedBug,
     });
 
     // Default mock implementations
@@ -140,14 +165,7 @@ describe('DocsTabs Integration', () => {
   });
 
   afterEach(() => {
-    useBugStore.setState({
-      bugs: [],
-      selectedBug: null,
-      bugDetail: null,
-      isLoading: false,
-      error: null,
-      isWatching: false,
-    });
+    vi.clearAllMocks();
   });
 
   // ============================================================
@@ -186,8 +204,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should display BugList when Bugs tab is selected', () => {
-      useBugStore.setState({ bugs: mockBugs });
-
+      // bugs are already set in beforeEach mock
       render(<DocsTabs />);
 
       // Switch to Bugs tab

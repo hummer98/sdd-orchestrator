@@ -6,11 +6,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DocsTabs } from './DocsTabs';
-import { useProjectStore } from '../stores';
+import { useProjectStore, useSpecStore, useBugStore } from '../stores';
 
 // Mock stores
+const mockClearSelectedSpec = vi.fn();
+const mockClearSelectedBug = vi.fn();
+
 vi.mock('../stores', () => ({
   useProjectStore: vi.fn(),
+  useSpecStore: vi.fn(),
+  useBugStore: vi.fn(),
 }));
 
 // Mock child components
@@ -45,6 +50,12 @@ describe('DocsTabs', () => {
     vi.clearAllMocks();
     (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       currentProject: '/test/project',
+    });
+    (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      clearSelectedSpec: mockClearSelectedSpec,
+    });
+    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      clearSelectedBug: mockClearSelectedBug,
     });
   });
 
@@ -110,6 +121,29 @@ describe('DocsTabs', () => {
 
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByTestId('tabpanel-specs')).toBeInTheDocument();
+    });
+
+    // Bug fix: bugs-tab-selection-not-updating
+    it('should clear spec selection when switching to Bugs tab', () => {
+      render(<DocsTabs />);
+
+      fireEvent.click(screen.getByTestId('tab-bugs'));
+
+      expect(mockClearSelectedSpec).toHaveBeenCalledTimes(1);
+      expect(mockClearSelectedBug).not.toHaveBeenCalled();
+    });
+
+    it('should clear bug selection when switching to Specs tab', () => {
+      render(<DocsTabs />);
+
+      // First switch to bugs
+      fireEvent.click(screen.getByTestId('tab-bugs'));
+      vi.clearAllMocks();
+      // Then switch back to specs
+      fireEvent.click(screen.getByTestId('tab-specs'));
+
+      expect(mockClearSelectedBug).toHaveBeenCalledTimes(1);
+      expect(mockClearSelectedSpec).not.toHaveBeenCalled();
     });
   });
 

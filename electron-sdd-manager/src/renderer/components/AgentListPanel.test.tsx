@@ -8,14 +8,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentListPanel } from './AgentListPanel';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
-import { useSpecStore } from '../stores/specStore';
 
 // Mock the stores
 vi.mock('../stores/agentStore');
-vi.mock('../stores/specStore');
 
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
-const mockUseSpecStore = useSpecStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('AgentListPanel - Task 30', () => {
   const mockStopAgent = vi.fn();
@@ -39,10 +36,6 @@ describe('AgentListPanel - Task 30', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockUseSpecStore.mockReturnValue({
-      selectedSpec: { name: 'spec-1', path: '/path/to/spec-1' },
-    });
 
     mockGetAgentById.mockImplementation((agentId: string) => {
       if (agentId === 'agent-1') return baseAgentInfo;
@@ -68,14 +61,14 @@ describe('AgentListPanel - Task 30', () => {
 
   describe('Task 30.1: Agent一覧UI', () => {
     it('should display agent list when spec is selected', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByText('Agent一覧')).toBeInTheDocument();
       expect(screen.getByText('requirements')).toBeInTheDocument();
     });
 
     it('should display agent status icon for running agent', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByTitle('実行中')).toBeInTheDocument();
     });
@@ -95,7 +88,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', completedAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByTitle('完了')).toBeInTheDocument();
     });
@@ -115,7 +108,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', interruptedAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByTitle('中断')).toBeInTheDocument();
     });
@@ -135,7 +128,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', hangAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByTitle('応答なし')).toBeInTheDocument();
     });
@@ -153,14 +146,14 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', baseAgentInfo]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const agentItem = screen.getByTestId('agent-item-agent-1');
       expect(agentItem).toHaveClass('bg-blue-50');
     });
 
     it('should call selectAgent when clicking on agent item', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const agentItem = screen.getByTestId('agent-item-agent-1');
       fireEvent.click(agentItem);
@@ -182,17 +175,13 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map(),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByText('Agentはありません')).toBeInTheDocument();
     });
 
-    it('should return null when no spec is selected', () => {
-      mockUseSpecStore.mockReturnValue({
-        selectedSpec: null,
-      });
-
-      const { container } = render(<AgentListPanel />);
+    it('should return null when specId is empty', () => {
+      const { container } = render(<AgentListPanel specId="" />);
 
       expect(container.firstChild).toBeNull();
     });
@@ -200,7 +189,7 @@ describe('AgentListPanel - Task 30', () => {
 
   describe('Task 30.4: タグにtooltipでagentId/sessionId表示', () => {
     it('should display agentId and sessionId in tooltip', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const agentItem = screen.getByTestId('agent-item-agent-1');
       expect(agentItem).toHaveAttribute('title', 'agent-1 / session-1');
@@ -223,13 +212,13 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', completedAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument();
     });
 
     it('should NOT show delete button for running agent', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument();
     });
@@ -250,7 +239,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', completedAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       // Click the delete button (icon button in list item) to open confirmation dialog
       const deleteButtons = screen.getAllByRole('button', { name: '削除' });
@@ -268,10 +257,9 @@ describe('AgentListPanel - Task 30', () => {
   });
 
   describe('Auto-select agent when spec changes', () => {
-    it('should auto-select the first agent when spec is selected and no agent is selected', () => {
-      const agent1 = { ...baseAgentInfo, agentId: 'agent-1' };
-      const agent2 = { ...baseAgentInfo, agentId: 'agent-2' };
-      mockGetAgentsForSpec.mockReturnValue([agent1, agent2]);
+    it('should auto-select running agent when spec is selected', () => {
+      const runningAgent = { ...baseAgentInfo, agentId: 'agent-1', status: 'running' as const };
+      mockGetAgentsForSpec.mockReturnValue([runningAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
         stopAgent: mockStopAgent,
@@ -281,13 +269,34 @@ describe('AgentListPanel - Task 30', () => {
         getAgentById: mockGetAgentById,
         removeAgent: vi.fn(),
         loadAgents: vi.fn(),
-        agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
+        agents: new Map([['agent-1', runningAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
-      // Should auto-select the first agent
+      // Should auto-select the running agent
       expect(mockSelectAgent).toHaveBeenCalledWith('agent-1');
+    });
+
+    it('should NOT auto-select completed agent', () => {
+      const completedAgent = { ...baseAgentInfo, agentId: 'agent-1', status: 'completed' as const };
+      mockGetAgentsForSpec.mockReturnValue([completedAgent]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec,
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', completedAgent]]),
+      });
+
+      render(<AgentListPanel specId="spec-1" />);
+
+      // Should NOT auto-select completed agent
+      expect(mockSelectAgent).not.toHaveBeenCalled();
     });
 
     it('should not auto-select if an agent for this spec is already selected', () => {
@@ -306,7 +315,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', agent1], ['agent-2', agent2]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       // Should NOT auto-select since agent-1 is already selected
       expect(mockSelectAgent).not.toHaveBeenCalled();
@@ -326,16 +335,16 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map(),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(mockSelectAgent).not.toHaveBeenCalled();
     });
 
-    it('should prioritize running agent over completed agent in auto-select', () => {
+    it('should only auto-select running agent even when completed agents exist', () => {
       const completedAgent = { ...baseAgentInfo, agentId: 'agent-completed', status: 'completed' as const, startedAt: '2025-01-01T00:00:00Z' };
       const runningAgent = { ...baseAgentInfo, agentId: 'agent-running', status: 'running' as const, startedAt: '2025-01-01T00:00:01Z' };
 
-      // Return in wrong order to test sorting
+      // Completed agent is listed first, but only running agent should be auto-selected
       mockGetAgentsForSpec.mockReturnValue([completedAgent, runningAgent]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
@@ -349,9 +358,9 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-completed', completedAgent], ['agent-running', runningAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
-      // Should auto-select the running agent (prioritized over completed)
+      // Should auto-select the running agent only
       expect(mockSelectAgent).toHaveBeenCalledWith('agent-running');
     });
 
@@ -376,7 +385,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['project-agent-1', projectAgent], ['spec-agent-1', specAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       // Should NOT auto-select because a project agent is selected
       expect(mockSelectAgent).not.toHaveBeenCalled();
@@ -385,7 +394,7 @@ describe('AgentListPanel - Task 30', () => {
 
   describe('Task 30.3: 停止ボタン', () => {
     it('should show stop button for running agent', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByRole('button', { name: '停止' })).toBeInTheDocument();
     });
@@ -405,13 +414,13 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', completedAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.queryByRole('button', { name: '停止' })).not.toBeInTheDocument();
     });
 
     it('should call stopAgent when stop button is clicked', async () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const stopButton = screen.getByRole('button', { name: '停止' });
       fireEvent.click(stopButton);
@@ -436,7 +445,7 @@ describe('AgentListPanel - Task 30', () => {
         agents: new Map([['agent-1', hangAgent]]),
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       expect(screen.getByRole('button', { name: '停止' })).toBeInTheDocument();
     });
@@ -465,14 +474,14 @@ describe('AgentListPanel - Task 30', () => {
     });
 
     it('should display checkbox next to Agent一覧 title', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
       expect(checkbox).toBeInTheDocument();
     });
 
     it('should be unchecked by default', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
       expect(checkbox).not.toBeChecked();
@@ -493,14 +502,14 @@ describe('AgentListPanel - Task 30', () => {
         setSkipPermissions: mockSetSkipPermissions,
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
       expect(checkbox).toBeChecked();
     });
 
     it('should call setSkipPermissions when checkbox is clicked', () => {
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
       fireEvent.click(checkbox);
@@ -523,7 +532,7 @@ describe('AgentListPanel - Task 30', () => {
         setSkipPermissions: mockSetSkipPermissions,
       });
 
-      render(<AgentListPanel />);
+      render(<AgentListPanel specId="spec-1" />);
 
       const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
       fireEvent.click(checkbox);

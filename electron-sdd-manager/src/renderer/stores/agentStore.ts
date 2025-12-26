@@ -421,8 +421,30 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           if (agentInfo.agentId && agentInfo.specId !== undefined) {
             get().addAgent(agentInfo.specId, agentInfo);
             // 新規追加時のみ自動選択（File as SSOT: WorkflowViewからの直接呼び出しを廃止）
+            // Bug fix: agent-selection-scope-mismatch - 選択中のspec/bugと一致する場合のみ自動選択
             if (type === 'add') {
-              get().selectAgent(agentInfo.agentId);
+              // Project Agent（specId=''）は常に自動選択
+              if (agentInfo.specId === '') {
+                get().selectAgent(agentInfo.agentId);
+              } else {
+                // Spec/Bug Agentは選択中のspec/bugと一致する場合のみ自動選択
+                // Dynamic import to avoid circular dependency
+                import('./specStore').then(({ useSpecStore }) => {
+                  const { selectedSpec } = useSpecStore.getState();
+                  // Bug agents use 'bug:{bugName}' format
+                  if (agentInfo.specId.startsWith('bug:')) {
+                    import('./bugStore').then(({ useBugStore }) => {
+                      const { selectedBug } = useBugStore.getState();
+                      const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
+                      if (agentInfo.specId === expectedSpecId) {
+                        get().selectAgent(agentInfo.agentId);
+                      }
+                    });
+                  } else if (selectedSpec && agentInfo.specId === selectedSpec.name) {
+                    get().selectAgent(agentInfo.agentId);
+                  }
+                });
+              }
             }
           }
         }

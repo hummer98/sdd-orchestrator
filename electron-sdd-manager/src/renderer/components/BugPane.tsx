@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useBugStore } from '../stores';
 import {
   ArtifactEditor,
-  BugAgentListPanel,
+  AgentListPanel,
   BugWorkflowView,
   ResizeHandle,
 } from './index';
@@ -87,7 +87,10 @@ export function BugPane({
       >
         {/* Agent list panel for bugs */}
         <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
-          <BugAgentListPanel />
+          <AgentListPanel
+            specId={selectedBug ? `bug:${selectedBug.name}` : ''}
+            testId="bug-agent-list-panel"
+          />
         </div>
         {/* Agent一覧とワークフロー間のリサイズハンドル */}
         <ResizeHandle direction="vertical" onResize={onAgentListResize} onResizeEnd={onResizeEnd} />

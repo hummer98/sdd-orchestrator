@@ -142,7 +142,7 @@ export function SpecPane({
       >
         {/* Agent list panel */}
         <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
-          <AgentListPanel />
+          <AgentListPanel specId={selectedSpec?.name || ''} />
         </div>
         {/* Agent一覧とワークフロー間のリサイズハンドル */}
         <ResizeHandle direction="vertical" onResize={onAgentListResize} onResizeEnd={onResizeEnd} />

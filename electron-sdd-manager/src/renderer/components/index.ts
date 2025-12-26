@@ -62,7 +62,7 @@ export type { ProfileName } from './CommandsetInstallDialog';
 // Note: BugArtifactEditor removed - using shared ArtifactEditor (bugs-tab-spec-editing-feature)
 export { BugPhaseItem } from './BugPhaseItem';
 export { BugWorkflowView } from './BugWorkflowView';
-// Bug fix: bugs-tab-agent-list-missing - SpecPane, BugPane, BugAgentListPanelコンポーネント
+// Bug fix: bugs-tab-agent-list-missing - SpecPane, BugPaneコンポーネント
+// Bug fix: agent-list-panel-dry-violation - BugAgentListPanelをAgentListPanelに統合
 export { SpecPane } from './SpecPane';
 export { BugPane } from './BugPane';
-export { BugAgentListPanel } from './BugAgentListPanel';

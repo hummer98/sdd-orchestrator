@@ -1,14 +1,14 @@
 /**
  * AgentListPanel Component
- * Displays list of SDD Agents for the selected spec
+ * Displays list of SDD Agents for the selected spec or bug
  * Task 30.1-30.3: Agent list UI, continue button, stop button
  * Requirements: 5.1, 5.2, 5.7, 5.8
+ * Bug fix: agent-list-panel-dry-violation - Props化による統合
  */
 
 import { useState, useEffect } from 'react';
 import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
-import { useSpecStore } from '../stores/specStore';
 import { clsx } from 'clsx';
 
 type AgentStatus = AgentInfo['status'];
@@ -66,8 +66,14 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
   },
 };
 
-export function AgentListPanel() {
-  const { selectedSpec } = useSpecStore();
+interface AgentListPanelProps {
+  /** specId for filtering agents (spec name or 'bug:{bugName}') */
+  specId: string;
+  /** data-testid attribute */
+  testId?: string;
+}
+
+export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentListPanelProps) {
   const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
@@ -78,9 +84,8 @@ export function AgentListPanel() {
     }
   }, [agents.size, loadAgents]);
 
-  // Get agents for this spec (sorted: running first, then by startedAt descending)
-  const specName = selectedSpec?.name || '';
-  const specAgents = getAgentsForSpec(specName)
+  // Get agents for this spec/bug (sorted: running first, then by startedAt descending)
+  const filteredAgents = getAgentsForSpec(specId)
     .sort((a, b) => {
       // Running agents first
       if (a.status === 'running' && b.status !== 'running') return -1;
@@ -89,10 +94,10 @@ export function AgentListPanel() {
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
 
-  // Auto-select the most recent agent when spec changes
-  // This improves UX by automatically linking spec selection with agent selection
+  // Auto-select running agent when specId changes
+  // Only auto-select if there's an agent currently running for this spec/bug
   useEffect(() => {
-    if (!selectedSpec) return;
+    if (!specId) return;
 
     // Skip auto-select if a project agent is currently selected
     // (Project agents have specId === '')
@@ -101,25 +106,21 @@ export function AgentListPanel() {
       if (currentAgent && currentAgent.specId === '') return;
     }
 
-    // Get fresh agents list for the new spec
-    const specAgents = getAgentsForSpec(selectedSpec.name)
-      .sort((a, b) => {
-        if (a.status === 'running' && b.status !== 'running') return -1;
-        if (a.status !== 'running' && b.status === 'running') return 1;
-        return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-      });
+    // Get agents for the new spec/bug
+    const currentAgents = getAgentsForSpec(specId);
 
-    // If an agent is already selected for this spec, don't auto-select
-    const currentSelectedAgent = specAgents.find(a => a.agentId === selectedAgentId);
+    // If an agent is already selected for this spec/bug, don't auto-select
+    const currentSelectedAgent = currentAgents.find(a => a.agentId === selectedAgentId);
     if (currentSelectedAgent) return;
 
-    // Auto-select the first agent (running or most recent)
-    if (specAgents.length > 0) {
-      selectAgent(specAgents[0].agentId);
+    // Only auto-select if there's a running agent
+    const runningAgent = currentAgents.find(a => a.status === 'running');
+    if (runningAgent) {
+      selectAgent(runningAgent.agentId);
     }
-  }, [selectedSpec?.name, selectedAgentId, getAgentsForSpec, getAgentById, selectAgent]);
+  }, [specId, selectedAgentId, getAgentsForSpec, getAgentById, selectAgent]);
 
-  if (!selectedSpec) {
+  if (!specId) {
     return null;
   }
 
@@ -145,15 +146,15 @@ export function AgentListPanel() {
   };
 
   return (
-    <div data-testid="agent-list-panel" className="h-full flex flex-col p-4">
+    <div data-testid={testId} className="h-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
         <Bot className="w-4 h-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           Agent一覧
         </h3>
-        {specAgents.length > 0 && (
+        {filteredAgents.length > 0 && (
           <span className="text-xs text-gray-400">
-            ({specAgents.length})
+            ({filteredAgents.length})
           </span>
         )}
         <label
@@ -171,13 +172,13 @@ export function AgentListPanel() {
         </label>
       </div>
 
-      {specAgents.length === 0 ? (
+      {filteredAgents.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-2">
           Agentはありません
         </p>
       ) : (
         <ul className="flex-1 space-y-2 overflow-y-auto">
-          {specAgents.map((agent) => (
+          {filteredAgents.map((agent) => (
             <AgentListItem
               key={agent.agentId}
               agent={agent}

@@ -2,12 +2,12 @@
   "feature_name": "test-feature",
   "name": "test-feature",
   "description": "E2Eテスト用のテスト機能",
-  "phase": "initialized",
+  "phase": "requirements-generated",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "design": {
       "generated": false,
@@ -19,5 +19,6 @@
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2025-12-26T01:05:24.675Z"
 }

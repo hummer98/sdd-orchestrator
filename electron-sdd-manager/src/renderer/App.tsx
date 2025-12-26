@@ -508,6 +508,15 @@ export function App() {
                 </span>
               </div>
             )}
+            {/* Bug title in header (when bug is selected and no spec is selected) */}
+            {selectedBug && !specDetail && (
+              <div className="ml-4 flex items-center gap-2">
+                <span className="text-gray-400">/</span>
+                <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                  {selectedBug.name}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {/* VSCode Open Button */}

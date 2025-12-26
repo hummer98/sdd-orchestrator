@@ -9,7 +9,6 @@ import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useBugStore } from '../stores/bugStore';
 import { BugListItem } from './BugListItem';
-import { BugActionButtons } from './BugActionButtons';
 import type { BugPhase } from '../types';
 
 const PHASE_LABELS: Record<BugPhase | 'all', string> = {
@@ -25,7 +24,7 @@ const PHASE_LABELS: Record<BugPhase | 'all', string> = {
  * - Shows bug list from bugStore
  * - Filter by phase
  * - Selection and detail display
- * - Action buttons for selected bug
+ * Note: Selected bug name is displayed in App header (Spec-like behavior)
  */
 export function BugList(): React.ReactElement {
   const {
@@ -73,18 +72,6 @@ export function BugList(): React.ReactElement {
           </select>
         </div>
       </div>
-
-      {/* Selected bug action buttons */}
-      {selectedBug && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-              {selectedBug.name}
-            </span>
-            <BugActionButtons bug={selectedBug} compact />
-          </div>
-        </div>
-      )}
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">

@@ -140,14 +140,8 @@ describe('BugList + bugStore Integration', () => {
       );
     });
 
-    it('should show action buttons when bug is selected', async () => {
-      useBugStore.setState({ bugs: mockBugs, selectedBug: mockBugs[0] });
-
-      render(<BugList />);
-
-      // Action buttons should be visible for selected bug
-      expect(screen.getByTestId('action-analyze')).toBeInTheDocument();
-    });
+    // Note: Action buttons are now displayed in App header instead of BugList
+    // (bugs-panel-label-removal fix)
 
     it('should filter bugs by phase', async () => {
       useBugStore.setState({ bugs: mockBugs });

@@ -202,36 +202,8 @@ describe('BugList', () => {
       expect(selectedItem).toHaveAttribute('data-selected', 'true');
     });
 
-    it('should show action buttons when bug is selected', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...defaultMockState,
-        selectedBug: mockBugs[0],
-      });
-      render(<BugList />);
-
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument();
-    });
-
-    it('should not show action buttons when no bug is selected', () => {
-      render(<BugList />);
-
-      expect(screen.queryByTestId('action-buttons')).not.toBeInTheDocument();
-    });
-
-    it('should display selected bug name in action bar', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...defaultMockState,
-        selectedBug: mockBugs[0],
-      });
-      render(<BugList />);
-
-      // The bug name appears in both the action bar and the list item
-      // We verify the action bar by checking the action buttons are present
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument();
-      // And the bug name is in the action bar container
-      const allBugNames = screen.getAllByText('bug-1');
-      expect(allBugNames.length).toBeGreaterThanOrEqual(2); // At least in action bar and list
-    });
+    // Note: Action buttons and selected bug name are now displayed in App header
+    // instead of BugList component (bugs-panel-label-removal fix)
   });
 
   // ============================================================

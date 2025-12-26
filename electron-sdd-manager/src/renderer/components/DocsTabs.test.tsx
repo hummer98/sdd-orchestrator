@@ -7,16 +7,18 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DocsTabs, type DocsTab } from './DocsTabs';
-import { useProjectStore, useSpecStore, useBugStore } from '../stores';
+import { useProjectStore, useSpecStore, useBugStore, useAgentStore } from '../stores';
 
 // Mock stores
 const mockClearSelectedSpec = vi.fn();
 const mockClearSelectedBug = vi.fn();
+const mockSelectAgent = vi.fn();
 
 vi.mock('../stores', () => ({
   useProjectStore: vi.fn(),
   useSpecStore: vi.fn(),
   useBugStore: vi.fn(),
+  useAgentStore: vi.fn(),
 }));
 
 // Helper component to wrap DocsTabs with controlled state
@@ -63,6 +65,9 @@ describe('DocsTabs', () => {
     });
     (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       clearSelectedBug: mockClearSelectedBug,
+    });
+    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      selectAgent: mockSelectAgent,
     });
   });
 
@@ -151,6 +156,15 @@ describe('DocsTabs', () => {
 
       expect(mockClearSelectedBug).toHaveBeenCalledTimes(1);
       expect(mockClearSelectedSpec).not.toHaveBeenCalled();
+    });
+
+    // Bug fix: agent-log-shows-selection-without-spec
+    it('should clear agent selection when switching tabs', () => {
+      render(<DocsTabsWrapper />);
+
+      fireEvent.click(screen.getByTestId('tab-bugs'));
+
+      expect(mockSelectAgent).toHaveBeenCalledWith(null);
     });
   });
 

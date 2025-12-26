@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import type { KiroValidation, SelectProjectResult } from '../types';
 import { useSpecStore } from './specStore';
 import { useBugStore } from './bugStore';
+import { useAgentStore } from './agentStore';
 
 /** spec-managerファイルチェック結果 */
 export interface FileCheckResult {
@@ -177,6 +178,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       if (result.bugs) {
         useBugStore.getState().setBugs(result.bugs);
       }
+
+      // Bug fix: agent-log-shows-selection-without-spec
+      // Clear agent selection when switching projects to prevent stale agent logs
+      useAgentStore.getState().selectAgent(null);
 
       // Register event listeners for file watchers (File as SSOT)
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler

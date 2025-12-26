@@ -11,7 +11,7 @@ import { SpecList } from './SpecList';
 import { BugList } from './BugList';
 import { CreateSpecDialog } from './CreateSpecDialog';
 import { CreateBugDialog } from './CreateBugDialog';
-import { useProjectStore, useSpecStore, useBugStore } from '../stores';
+import { useProjectStore, useSpecStore, useBugStore, useAgentStore } from '../stores';
 
 export type DocsTab = 'specs' | 'bugs';
 
@@ -47,12 +47,15 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
   const { currentProject } = useProjectStore();
   const { clearSelectedSpec } = useSpecStore();
   const { clearSelectedBug } = useBugStore();
+  const { selectAgent } = useAgentStore();
 
   /**
    * Handle tab change with mutual exclusion of selection state
    * Bug fix: bugs-tab-selection-not-updating
    * When switching tabs, clear the selection from the opposite store
    * to ensure App.tsx conditional rendering works correctly
+   * Bug fix: agent-log-shows-selection-without-spec
+   * Also clear agent selection to prevent stale agent logs from being displayed
    */
   const handleTabChange = (tabId: DocsTab) => {
     if (tabId === 'specs') {
@@ -60,6 +63,7 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
     } else {
       clearSelectedSpec();
     }
+    selectAgent(null);
     onTabChange(tabId);
   };
 

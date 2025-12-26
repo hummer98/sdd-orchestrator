@@ -43,6 +43,37 @@ const mockBugDetail: BugDetail = {
   },
 };
 
+// Mock with all artifacts existing
+const mockBugDetailAllArtifacts: BugDetail = {
+  metadata: mockBugMetadata,
+  artifacts: {
+    report: {
+      exists: true,
+      path: '/project/.kiro/bugs/test-bug/report.md',
+      updatedAt: '2024-01-01T00:00:00Z',
+      content: '# Bug Report\n\nThis is a test bug report.',
+    },
+    analysis: {
+      exists: true,
+      path: '/project/.kiro/bugs/test-bug/analysis.md',
+      updatedAt: '2024-01-02T00:00:00Z',
+      content: '# Analysis\n\nRoot cause analysis.',
+    },
+    fix: {
+      exists: true,
+      path: '/project/.kiro/bugs/test-bug/fix.md',
+      updatedAt: '2024-01-03T00:00:00Z',
+      content: '# Fix\n\nFix implementation.',
+    },
+    verification: {
+      exists: true,
+      path: '/project/.kiro/bugs/test-bug/verification.md',
+      updatedAt: '2024-01-04T00:00:00Z',
+      content: '# Verification\n\nVerification results.',
+    },
+  },
+};
+
 describe('BugArtifactEditor', () => {
   const mockUseBugStore = useBugStore as unknown as ReturnType<typeof vi.fn>;
 
@@ -60,7 +91,23 @@ describe('BugArtifactEditor', () => {
       expect(screen.getByTestId('bug-artifact-editor')).toBeInTheDocument();
     });
 
-    it('should render 4 document tabs', () => {
+    it('should render only existing document tabs', () => {
+      render(<BugArtifactEditor />);
+
+      // Only report and analysis exist in mockBugDetail
+      expect(screen.getByTestId('bug-tab-report')).toBeInTheDocument();
+      expect(screen.getByTestId('bug-tab-analysis')).toBeInTheDocument();
+      // fix and verification don't exist, so tabs should not be rendered
+      expect(screen.queryByTestId('bug-tab-fix')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('bug-tab-verification')).not.toBeInTheDocument();
+    });
+
+    it('should render all 4 tabs when all artifacts exist', () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetailAllArtifacts,
+      });
+
       render(<BugArtifactEditor />);
 
       expect(screen.getByTestId('bug-tab-report')).toBeInTheDocument();
@@ -101,22 +148,32 @@ describe('BugArtifactEditor', () => {
   });
 
   describe('placeholder for missing documents', () => {
-    it('should show placeholder when document does not exist', () => {
+    it('should show placeholder when no artifacts exist', () => {
+      // Mock with no existing artifacts
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: {
+          metadata: mockBugMetadata,
+          artifacts: {
+            report: null,
+            analysis: null,
+            fix: null,
+            verification: null,
+          },
+        },
+      });
+
       render(<BugArtifactEditor />);
 
-      // Switch to fix tab (which has no content)
-      fireEvent.click(screen.getByTestId('bug-tab-fix'));
-
-      expect(screen.getByText('ドキュメント未生成')).toBeInTheDocument();
+      expect(screen.getByText('表示可能なドキュメントがありません')).toBeInTheDocument();
     });
 
-    it('should show placeholder when artifact is null', () => {
+    it('should not render tabs for null artifacts', () => {
       render(<BugArtifactEditor />);
 
-      // Switch to verification tab (which is null)
-      fireEvent.click(screen.getByTestId('bug-tab-verification'));
-
-      expect(screen.getByText('ドキュメント未生成')).toBeInTheDocument();
+      // fix and verification are null in mockBugDetail, so they shouldn't be rendered
+      expect(screen.queryByTestId('bug-tab-fix')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('bug-tab-verification')).not.toBeInTheDocument();
     });
   });
 
@@ -133,7 +190,23 @@ describe('BugArtifactEditor', () => {
   });
 
   describe('tab labels', () => {
-    it('should display correct Japanese labels for tabs', () => {
+    it('should display correct labels for existing tabs', () => {
+      render(<BugArtifactEditor />);
+
+      // Only existing artifacts should have tabs
+      expect(screen.getByText('report.md')).toBeInTheDocument();
+      expect(screen.getByText('analysis.md')).toBeInTheDocument();
+      // Non-existing artifacts should not have tabs
+      expect(screen.queryByText('fix.md')).not.toBeInTheDocument();
+      expect(screen.queryByText('verification.md')).not.toBeInTheDocument();
+    });
+
+    it('should display all labels when all artifacts exist', () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetailAllArtifacts,
+      });
+
       render(<BugArtifactEditor />);
 
       expect(screen.getByText('report.md')).toBeInTheDocument();

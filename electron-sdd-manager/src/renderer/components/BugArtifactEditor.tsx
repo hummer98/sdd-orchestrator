@@ -5,7 +5,7 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { clsx } from 'clsx';
 import MDEditor from '@uiw/react-md-editor';
 import { useBugStore } from '../stores/bugStore';
@@ -41,6 +41,24 @@ export function BugArtifactEditor() {
   const { selectedBug, bugDetail } = useBugStore();
   const [activeTab, setActiveTab] = useState<BugDocumentTab>('report');
 
+  // Filter tabs to only show existing artifacts (matching ArtifactEditor behavior)
+  const availableTabs = useMemo((): TabConfig[] => {
+    if (!bugDetail?.artifacts) {
+      return [];
+    }
+    return TAB_CONFIGS.filter((tab) => {
+      const artifact = bugDetail.artifacts[tab.key];
+      return artifact !== null && artifact.exists;
+    });
+  }, [bugDetail?.artifacts]);
+
+  // If current activeTab doesn't exist, switch to first available tab
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.find((t) => t.key === activeTab)) {
+      setActiveTab(availableTabs[0].key);
+    }
+  }, [availableTabs, activeTab]);
+
   // Get content for active tab
   const content = useMemo(() => {
     if (!bugDetail) return null;
@@ -59,11 +77,23 @@ export function BugArtifactEditor() {
     );
   }
 
+  // If no artifacts exist, show placeholder
+  if (availableTabs.length === 0) {
+    return (
+      <div
+        data-testid="bug-artifact-editor"
+        className="flex items-center justify-center h-full text-gray-400"
+      >
+        表示可能なドキュメントがありません
+      </div>
+    );
+  }
+
   return (
     <div data-testid="bug-artifact-editor" className="flex flex-col h-full">
       {/* Tabs */}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
-        {TAB_CONFIGS.map((tab) => (
+        {availableTabs.map((tab) => (
           <button
             key={tab.key}
             data-testid={`bug-tab-${tab.key}`}

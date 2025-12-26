@@ -13,6 +13,48 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WorkflowPhase, ValidationType } from '../types/workflow';
 import { WORKFLOW_PHASES } from '../types/workflow';
+import type { SpecAutoExecutionState } from '../types';
+
+// ============================================================
+// Bug Fix: auto-execution-settings-not-persisted
+// Helper function to persist settings to spec.json
+// ============================================================
+
+/**
+ * Persist current workflow settings to spec.json
+ * Called after each setting change to ensure spec-scoped persistence
+ */
+async function persistSettingsToSpec(): Promise<void> {
+  // Dynamic import to avoid circular dependency
+  const { useSpecStore } = await import('./specStore');
+  const specStore = useSpecStore.getState();
+  const specDetail = specStore.specDetail;
+
+  if (!specDetail) {
+    // No spec selected, skip persistence
+    return;
+  }
+
+  // Get current state from workflowStore
+  const workflowState = useWorkflowStore.getState();
+
+  // Build the autoExecution state object
+  const autoExecutionState: SpecAutoExecutionState = {
+    enabled: true, // Enable when user explicitly changes settings
+    permissions: { ...workflowState.autoExecutionPermissions },
+    documentReviewFlag: workflowState.documentReviewOptions.autoExecutionFlag,
+    validationOptions: { ...workflowState.validationOptions },
+  };
+
+  try {
+    await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
+      autoExecution: autoExecutionState,
+    });
+    console.log('[workflowStore] Settings persisted to spec.json');
+  } catch (error) {
+    console.error('[workflowStore] Failed to persist settings to spec.json:', error);
+  }
+}
 
 // ============================================================
 // Task 2.1: Auto Execution Permissions
@@ -227,6 +269,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
       pendingReviewConfirmation: false,
 
       // Task 2.1: Auto Execution Permissions
+      // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
       toggleAutoPermission: (phase: WorkflowPhase) => {
         set((state) => ({
           autoExecutionPermissions: {
@@ -234,9 +277,12 @@ export const useWorkflowStore = create<WorkflowStore>()(
             [phase]: !state.autoExecutionPermissions[phase],
           },
         }));
+        // Persist to spec.json after state update
+        persistSettingsToSpec();
       },
 
       // Task 2.2: Validation Options
+      // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
       toggleValidationOption: (type: ValidationType) => {
         set((state) => ({
           validationOptions: {
@@ -244,6 +290,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
             [type]: !state.validationOptions[type],
           },
         }));
+        // Persist to spec.json after state update
+        persistSettingsToSpec();
       },
 
       // NOTE: startAutoExecution, stopAutoExecution, setCurrentAutoPhase removed
@@ -289,6 +337,7 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
       // Task 6.1: Auto Execution Flag Control
       // Requirements: 6.7, 6.8
+      // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
       setDocumentReviewAutoExecutionFlag: (flag: DocumentReviewAutoExecutionFlag) => {
         set((state) => ({
           documentReviewOptions: {
@@ -296,6 +345,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
             autoExecutionFlag: flag,
           },
         }));
+        // Persist to spec.json after state update
+        persistSettingsToSpec();
       },
 
       // Task 7.3: Review Confirmation

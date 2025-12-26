@@ -12,10 +12,14 @@ import { useSpecStore } from '../stores/specStore';
 import type { WorkflowPhase } from '../types/workflow';
 
 // Mock electronAPI
+let agentIdCounter = 0;
 const mockElectronAPI = {
-  executePhase: vi.fn(),
+  executePhase: vi.fn().mockImplementation(() => {
+    agentIdCounter++;
+    return Promise.resolve({ agentId: `agent-${agentIdCounter}` });
+  }),
   executeValidation: vi.fn(),
-  updateApproval: vi.fn(),
+  updateApproval: vi.fn().mockResolvedValue(undefined),
   readSpecJson: vi.fn(),
   onAgentStatusChange: vi.fn(() => vi.fn()), // Returns unsubscribe function
 };
@@ -47,6 +51,7 @@ describe('AutoExecutionService Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    agentIdCounter = 0; // Reset counter for each test
 
     // Setup default mock return for readSpecJson
     mockElectronAPI.readSpecJson.mockResolvedValue({
@@ -92,12 +97,8 @@ describe('AutoExecutionService Integration Tests', () => {
         retryCount: 0,
         executionMode: null,
       },
-      // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
-      autoExecutionRuntime: {
-        isAutoExecuting: false,
-        currentAutoPhase: null,
-        autoExecutionStatus: 'idle',
-      },
+      // spec-scoped-auto-execution-state: Using Map for per-spec state
+      autoExecutionRuntimeMap: new Map(),
     });
 
     service = new AutoExecutionService();
@@ -135,9 +136,10 @@ describe('AutoExecutionService Integration Tests', () => {
       // 開始
       const started = service.start();
       expect(started).toBe(true);
-      // isAutoExecuting, autoExecutionStatus are now in specStore.autoExecutionRuntime
-      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
-      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('running');
+      // isAutoExecuting, autoExecutionStatus are now in specStore.autoExecutionRuntimeMap
+      const runtime = useSpecStore.getState().getAutoExecutionRuntime('test-spec');
+      expect(runtime.isAutoExecuting).toBe(true);
+      expect(runtime.autoExecutionStatus).toBe('running');
 
       // executePhaseが呼ばれることを確認
       await vi.advanceTimersByTimeAsync(100);
@@ -192,7 +194,7 @@ describe('AutoExecutionService Integration Tests', () => {
 
       const started = service.start();
       expect(started).toBe(false);
-      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
+      // When start fails, no spec ID is set, so just verify start returned false
     });
   });
 
@@ -276,11 +278,11 @@ describe('AutoExecutionService Integration Tests', () => {
       });
 
       service.start();
-      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().getAutoExecutionRuntime('test-spec').isAutoExecuting).toBe(true);
 
       await service.stop();
-      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
-      expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('idle');
+      expect(useSpecStore.getState().getAutoExecutionRuntime('test-spec').isAutoExecuting).toBe(false);
+      expect(useSpecStore.getState().getAutoExecutionRuntime('test-spec').autoExecutionStatus).toBe('idle');
     });
 
     it('失敗フェーズから再実行できる', () => {
@@ -305,7 +307,7 @@ describe('AutoExecutionService Integration Tests', () => {
 
       const retried = service.retryFrom('design');
       expect(retried).toBe(true);
-      expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      expect(useSpecStore.getState().getAutoExecutionRuntime('test-spec').isAutoExecuting).toBe(true);
       expect(useWorkflowStore.getState().failedRetryCount).toBe(1);
     });
 
@@ -521,19 +523,35 @@ describe('AutoExecutionService Integration Tests', () => {
     });
 
     it('停止時にcurrentAutoPhaseがクリアされる', async () => {
-      // Set auto execution state in specStore.autoExecutionRuntime
-      useSpecStore.setState({
-        ...useSpecStore.getState(),
-        autoExecutionRuntime: {
-          isAutoExecuting: true,
-          currentAutoPhase: 'design',
-          autoExecutionStatus: 'running',
+      // Set auto execution state in specStore.autoExecutionRuntimeMap
+      const specId = 'test-spec';
+      useSpecStore.getState().startAutoExecution(specId);
+      useSpecStore.getState().setAutoExecutionPhase(specId, 'design');
+
+      // Verify initial state
+      expect(useSpecStore.getState().getAutoExecutionRuntime(specId).currentAutoPhase).toBe('design');
+
+      // Set currentExecutingSpecId in service (using start/stop flow)
+      const mockSpecDetail = createMockSpecDetail({
+        requirements: { generated: false, approved: false },
+      });
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: false,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
         },
       });
 
+      // Start and stop to test phase clearing
+      service.start();
       await service.stop();
 
-      expect(useSpecStore.getState().autoExecutionRuntime.currentAutoPhase).toBeNull();
+      expect(useSpecStore.getState().getAutoExecutionRuntime(specId).currentAutoPhase).toBeNull();
     });
   });
 

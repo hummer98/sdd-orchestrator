@@ -206,8 +206,8 @@ describe('Workflow Types', () => {
         expect(permissions.deploy).toBe(false);
       });
 
-      it('should have documentReviewFlag set to skip by default', () => {
-        expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag).toBe('skip');
+      it('should have documentReviewFlag set to pause by default', () => {
+        expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag).toBe('pause');
       });
 
       it('should have all validation options set to false by default', () => {

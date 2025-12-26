@@ -256,7 +256,7 @@ describe('useSpecStore', () => {
       // Verify workflow store uses defaults (not synced from spec)
       const workflowState = useWorkflowStore.getState();
       expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
-      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('skip');
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
     });
   });
 

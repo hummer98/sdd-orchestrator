@@ -241,7 +241,7 @@ export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
     inspection: false,
     deploy: false,
   },
-  documentReviewFlag: 'skip',
+  documentReviewFlag: 'pause',
   validationOptions: {
     gap: false,
     design: false,

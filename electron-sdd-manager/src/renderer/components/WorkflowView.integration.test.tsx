@@ -565,7 +565,7 @@ describe('WorkflowView Integration', () => {
       expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
       expect(workflowState.autoExecutionPermissions.design).toBe(false);
       expect(workflowState.autoExecutionPermissions.tasks).toBe(false);
-      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('skip');
+      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
       expect(workflowState.validationOptions.gap).toBe(false);
     });
   });

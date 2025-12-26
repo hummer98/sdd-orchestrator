@@ -24,6 +24,8 @@ describe('useWorkflowStore', () => {
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
+      // Reset document review options to default 'pause'
+      documentReviewOptions: { autoExecutionFlag: 'pause' },
     });
   });
 
@@ -409,9 +411,9 @@ describe('useWorkflowStore', () => {
   // ============================================================
   describe('Task 6.1: Document review auto execution flag', () => {
     describe('initial state', () => {
-      it('should have autoExecutionFlag as run by default', () => {
+      it('should have autoExecutionFlag as pause by default', () => {
         const state = useWorkflowStore.getState();
-        expect(state.documentReviewOptions.autoExecutionFlag).toBe('run');
+        expect(state.documentReviewOptions.autoExecutionFlag).toBe('pause');
       });
     });
 
@@ -436,20 +438,20 @@ describe('useWorkflowStore', () => {
       });
 
       it('should cycle through all flags correctly', () => {
-        // Start with run (default)
-        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('run');
-
-        // Set to pause
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
+        // Start with pause (default)
         expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
 
         // Set to skip
         useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
         expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('skip');
 
-        // Back to run
+        // Set to run
         useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
         expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('run');
+
+        // Back to pause
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
+        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
       });
     });
   });

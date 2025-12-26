@@ -129,9 +129,9 @@ export interface DocumentReviewOptions {
   autoExecutionFlag: DocumentReviewAutoExecutionFlag;
 }
 
-const DEFAULT_DOCUMENT_REVIEW_OPTIONS: DocumentReviewOptions = {
-  autoExecutionFlag: 'run',
-};
+// NOTE: DEFAULT_DOCUMENT_REVIEW_OPTIONS removed as part of document-review-default-cleanup
+// The default value 'pause' is now defined inline in the store initialization
+// and in DEFAULT_SPEC_AUTO_EXECUTION_STATE (types/index.ts)
 
 // ============================================================
 // Task 1.1: Auto Execution Status Types (DEPRECATED)
@@ -263,7 +263,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
       commandPrefix: DEFAULT_COMMAND_PREFIX,
 
       // Task 7.1: Document Review Options - initial state
-      documentReviewOptions: { ...DEFAULT_DOCUMENT_REVIEW_OPTIONS },
+      // Default to 'pause' - requires user confirmation before auto-executing document review
+      documentReviewOptions: { autoExecutionFlag: 'pause' },
 
       // Task 7.3: Review Confirmation - initial state
       pendingReviewConfirmation: false,

@@ -2341,7 +2341,7 @@ describe('AutoExecutionService', () => {
         expect(state).toBeDefined();
         expect(state.enabled).toBe(false);
         expect(state.permissions.requirements).toBe(false);
-        expect(state.documentReviewFlag).toBe('skip');
+        expect(state.documentReviewFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
       });
 
       it('should return autoExecution state when present in spec', () => {
@@ -2542,10 +2542,10 @@ describe('AutoExecutionService', () => {
         service.syncFromSpecAutoExecution();
 
         const workflowState = useWorkflowStore.getState();
-        // Should use default values (all false)
+        // Should use default values (all false, documentReviewFlag: 'pause')
         expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
         expect(workflowState.autoExecutionPermissions.design).toBe(false);
-        expect(workflowState.documentReviewOptions?.autoExecutionFlag).toBe('skip');
+        expect(workflowState.documentReviewOptions?.autoExecutionFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
       });
     });
 
@@ -2798,7 +2798,7 @@ describe('AutoExecutionService', () => {
         expect(state.permissions.design).toBe(false);
         expect(state.permissions.tasks).toBe(false);
         expect(state.permissions.impl).toBe(false);
-        expect(state.documentReviewFlag).toBe('skip');
+        expect(state.documentReviewFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
         expect(state.validationOptions.gap).toBe(false);
         expect(state.validationOptions.design).toBe(false);
         expect(state.validationOptions.impl).toBe(false);
@@ -2835,7 +2835,7 @@ describe('AutoExecutionService', () => {
         expect(state.permissions.requirements).toBe(true); // From spec
         expect(state.permissions.design).toBe(false); // Default
         expect(state.permissions.tasks).toBe(false); // Default
-        expect(state.documentReviewFlag).toBe('skip'); // Default
+        expect(state.documentReviewFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
         expect(state.validationOptions.gap).toBe(false); // Default
       });
     });

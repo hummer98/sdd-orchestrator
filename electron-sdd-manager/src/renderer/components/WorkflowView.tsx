@@ -39,13 +39,23 @@ const MAX_CONTINUE_RETRIES = 2;
 // ============================================================
 
 export function WorkflowView() {
-  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs, autoExecutionRuntime } = useSpecStore();
+  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs } = useSpecStore();
   const workflowStore = useWorkflowStore();
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
   const autoExecutionServiceRef = useRef(getAutoExecutionService());
-  // Task 5.1: Extract auto execution state from specStore
+
+  // Spec毎の自動実行runtime状態を取得
+  const specId = specDetail?.metadata.name ?? '';
+  const autoExecutionRuntimeMap = useSpecStore((state) => state.autoExecutionRuntimeMap);
+  const autoExecutionRuntime = useMemo(() => {
+    return autoExecutionRuntimeMap.get(specId) ?? {
+      isAutoExecuting: false,
+      currentAutoPhase: null,
+      autoExecutionStatus: 'idle' as const,
+    };
+  }, [autoExecutionRuntimeMap, specId]);
   const { isAutoExecuting, currentAutoPhase, autoExecutionStatus } = autoExecutionRuntime;
 
   // Cleanup AutoExecutionService on unmount

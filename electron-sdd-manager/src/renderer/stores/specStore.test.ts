@@ -503,97 +503,258 @@ describe('useSpecStore', () => {
   });
 
   // ============================================================
-  // spec-scoped-auto-execution-state Task 5.1: Auto Execution Runtime State
-  // This tests the new runtime state management in specStore
+  // spec-inspection: inspection フィールドありの spec.json 読み込みテスト
+  // Requirements: 12.4, 12.5
   // ============================================================
-  describe('Task 5.1: Auto Execution Runtime State', () => {
+  describe('Inspection Report Loading', () => {
+    it('should load inspection artifact when spec.json has inspection field', async () => {
+      const mockSpecJson = {
+        feature_name: 'feature-inspected',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'implementation-complete',
+        approvals: mockSpecs[0].approvals,
+        inspection: {
+          passed: true,
+          inspected_at: '2024-01-15T12:00:00Z',
+          report_file: 'inspection-1.md',
+        },
+      };
+
+      const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: GO';
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
+        if (path.endsWith('inspection-1.md')) {
+          return Promise.resolve(mockInspectionContent);
+        }
+        return Promise.reject(new Error('Not found'));
+      });
+
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+
+      const state = useSpecStore.getState();
+      expect(state.specDetail).toBeTruthy();
+      expect(state.specDetail?.artifacts.inspection).toBeTruthy();
+      expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
+      expect(state.specDetail?.artifacts.inspection?.content).toBe(mockInspectionContent);
+    });
+
+    it('should set inspection artifact to null when spec.json has no inspection field', async () => {
+      const mockSpecJson = {
+        feature_name: 'feature-no-inspection',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'tasks-generated',
+        approvals: mockSpecs[0].approvals,
+        // No inspection field
+      };
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+
+      const state = useSpecStore.getState();
+      expect(state.specDetail).toBeTruthy();
+      expect(state.specDetail?.artifacts.inspection).toBeNull();
+    });
+
+    it('should handle inspection artifact file read error gracefully', async () => {
+      const mockSpecJson = {
+        feature_name: 'feature-inspected-missing',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'implementation-complete',
+        approvals: mockSpecs[0].approvals,
+        inspection: {
+          passed: true,
+          inspected_at: '2024-01-15T12:00:00Z',
+          report_file: 'inspection-1.md',
+        },
+      };
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+
+      const state = useSpecStore.getState();
+      expect(state.specDetail).toBeTruthy();
+      // inspection artifact should be null when file read fails
+      expect(state.specDetail?.artifacts.inspection).toBeNull();
+    });
+
+    it('should include inspection field in specJson when present', async () => {
+      const mockSpecJson = {
+        feature_name: 'feature-inspected',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'implementation-complete',
+        approvals: mockSpecs[0].approvals,
+        inspection: {
+          passed: true,
+          inspected_at: '2024-01-15T12:00:00Z',
+          report_file: 'inspection-1.md',
+        },
+      };
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+
+      const state = useSpecStore.getState();
+      expect(state.specDetail?.specJson.inspection).toBeTruthy();
+      expect(state.specDetail?.specJson.inspection?.passed).toBe(true);
+      expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+    });
+  });
+
+  // ============================================================
+  // spec-scoped-auto-execution-state: Spec毎の自動実行Runtime State
+  // This tests the new per-spec runtime state management in specStore
+  // ============================================================
+  describe('Spec毎の自動実行Runtime State', () => {
+    const TEST_SPEC_ID = 'test-feature';
+
     describe('initial state', () => {
-      it('should have isAutoExecuting as false initially', () => {
+      it('should have empty autoExecutionRuntimeMap initially', () => {
         const state = useSpecStore.getState();
-        expect(state.autoExecutionRuntime.isAutoExecuting).toBe(false);
+        expect(state.autoExecutionRuntimeMap.size).toBe(0);
+      });
+    });
+
+    describe('getAutoExecutionRuntime', () => {
+      it('should return default state for unknown specId', () => {
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime('unknown-spec');
+        expect(runtime.isAutoExecuting).toBe(false);
+        expect(runtime.currentAutoPhase).toBeNull();
+        expect(runtime.autoExecutionStatus).toBe('idle');
       });
 
-      it('should have currentAutoPhase as null initially', () => {
-        const state = useSpecStore.getState();
-        expect(state.autoExecutionRuntime.currentAutoPhase).toBeNull();
-      });
-
-      it('should have autoExecutionStatus as idle initially', () => {
-        const state = useSpecStore.getState();
-        expect(state.autoExecutionRuntime.autoExecutionStatus).toBe('idle');
+      it('should return stored state for known specId', () => {
+        useSpecStore.getState().startAutoExecution(TEST_SPEC_ID);
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.isAutoExecuting).toBe(true);
+        expect(runtime.autoExecutionStatus).toBe('running');
       });
     });
 
     describe('setAutoExecutionRunning', () => {
-      it('should set isAutoExecuting to true', () => {
-        useSpecStore.getState().setAutoExecutionRunning(true);
-        expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(true);
+      it('should set isAutoExecuting to true for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionRunning(TEST_SPEC_ID, true);
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.isAutoExecuting).toBe(true);
       });
 
-      it('should set isAutoExecuting to false', () => {
-        useSpecStore.getState().setAutoExecutionRunning(true);
-        useSpecStore.getState().setAutoExecutionRunning(false);
-        expect(useSpecStore.getState().autoExecutionRuntime.isAutoExecuting).toBe(false);
+      it('should set isAutoExecuting to false for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionRunning(TEST_SPEC_ID, true);
+        useSpecStore.getState().setAutoExecutionRunning(TEST_SPEC_ID, false);
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.isAutoExecuting).toBe(false);
+      });
+
+      it('should not affect other specs', () => {
+        useSpecStore.getState().setAutoExecutionRunning(TEST_SPEC_ID, true);
+        const otherRuntime = useSpecStore.getState().getAutoExecutionRuntime('other-spec');
+        expect(otherRuntime.isAutoExecuting).toBe(false);
       });
     });
 
     describe('setAutoExecutionPhase', () => {
-      it('should set currentAutoPhase', () => {
-        useSpecStore.getState().setAutoExecutionPhase('design');
-        expect(useSpecStore.getState().autoExecutionRuntime.currentAutoPhase).toBe('design');
+      it('should set currentAutoPhase for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionPhase(TEST_SPEC_ID, 'design');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.currentAutoPhase).toBe('design');
       });
 
       it('should allow setting to null', () => {
-        useSpecStore.getState().setAutoExecutionPhase('tasks');
-        useSpecStore.getState().setAutoExecutionPhase(null);
-        expect(useSpecStore.getState().autoExecutionRuntime.currentAutoPhase).toBeNull();
+        useSpecStore.getState().setAutoExecutionPhase(TEST_SPEC_ID, 'tasks');
+        useSpecStore.getState().setAutoExecutionPhase(TEST_SPEC_ID, null);
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.currentAutoPhase).toBeNull();
       });
     });
 
     describe('setAutoExecutionStatus', () => {
-      it('should set autoExecutionStatus to running', () => {
-        useSpecStore.getState().setAutoExecutionStatus('running');
-        expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('running');
+      it('should set autoExecutionStatus to running for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionStatus(TEST_SPEC_ID, 'running');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.autoExecutionStatus).toBe('running');
       });
 
-      it('should set autoExecutionStatus to paused', () => {
-        useSpecStore.getState().setAutoExecutionStatus('paused');
-        expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('paused');
+      it('should set autoExecutionStatus to paused for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionStatus(TEST_SPEC_ID, 'paused');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.autoExecutionStatus).toBe('paused');
       });
 
-      it('should set autoExecutionStatus to completed', () => {
-        useSpecStore.getState().setAutoExecutionStatus('completed');
-        expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('completed');
+      it('should set autoExecutionStatus to completed for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionStatus(TEST_SPEC_ID, 'completed');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.autoExecutionStatus).toBe('completed');
       });
 
-      it('should set autoExecutionStatus to error', () => {
-        useSpecStore.getState().setAutoExecutionStatus('error');
-        expect(useSpecStore.getState().autoExecutionRuntime.autoExecutionStatus).toBe('error');
+      it('should set autoExecutionStatus to error for specific spec', () => {
+        useSpecStore.getState().setAutoExecutionStatus(TEST_SPEC_ID, 'error');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.autoExecutionStatus).toBe('error');
       });
     });
 
     describe('startAutoExecution', () => {
-      it('should set isAutoExecuting to true and status to running', () => {
-        useSpecStore.getState().startAutoExecution();
-        const state = useSpecStore.getState().autoExecutionRuntime;
-        expect(state.isAutoExecuting).toBe(true);
-        expect(state.autoExecutionStatus).toBe('running');
+      it('should set isAutoExecuting to true and status to running for specific spec', () => {
+        useSpecStore.getState().startAutoExecution(TEST_SPEC_ID);
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.isAutoExecuting).toBe(true);
+        expect(runtime.autoExecutionStatus).toBe('running');
+      });
+
+      it('should allow multiple specs to be executing simultaneously', () => {
+        useSpecStore.getState().startAutoExecution(TEST_SPEC_ID);
+        useSpecStore.getState().startAutoExecution('another-spec');
+
+        const runtime1 = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        const runtime2 = useSpecStore.getState().getAutoExecutionRuntime('another-spec');
+
+        expect(runtime1.isAutoExecuting).toBe(true);
+        expect(runtime2.isAutoExecuting).toBe(true);
       });
     });
 
     describe('stopAutoExecution', () => {
-      it('should reset all auto execution state', () => {
+      it('should reset auto execution state for specific spec', () => {
         // First start auto execution
-        useSpecStore.getState().startAutoExecution();
-        useSpecStore.getState().setAutoExecutionPhase('design');
+        useSpecStore.getState().startAutoExecution(TEST_SPEC_ID);
+        useSpecStore.getState().setAutoExecutionPhase(TEST_SPEC_ID, 'design');
 
         // Then stop
-        useSpecStore.getState().stopAutoExecution();
+        useSpecStore.getState().stopAutoExecution(TEST_SPEC_ID);
 
-        const state = useSpecStore.getState().autoExecutionRuntime;
-        expect(state.isAutoExecuting).toBe(false);
-        expect(state.currentAutoPhase).toBeNull();
-        expect(state.autoExecutionStatus).toBe('idle');
+        const runtime = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        expect(runtime.isAutoExecuting).toBe(false);
+        expect(runtime.currentAutoPhase).toBeNull();
+        expect(runtime.autoExecutionStatus).toBe('idle');
+      });
+
+      it('should not affect other specs when stopping one', () => {
+        // Start both specs
+        useSpecStore.getState().startAutoExecution(TEST_SPEC_ID);
+        useSpecStore.getState().startAutoExecution('another-spec');
+
+        // Stop only one
+        useSpecStore.getState().stopAutoExecution(TEST_SPEC_ID);
+
+        const runtime1 = useSpecStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+        const runtime2 = useSpecStore.getState().getAutoExecutionRuntime('another-spec');
+
+        expect(runtime1.isAutoExecuting).toBe(false);
+        expect(runtime2.isAutoExecuting).toBe(true);
       });
     });
   });

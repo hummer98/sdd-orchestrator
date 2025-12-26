@@ -12,10 +12,28 @@ import { useWorkflowStore } from '../stores/workflowStore';
 import type { SpecDetail, ArtifactInfo } from '../types';
 import type { ExtendedSpecJson } from '../types/workflow';
 
-// Mock stores
-vi.mock('../stores/specStore', () => ({
-  useSpecStore: vi.fn(),
-}));
+// Mock stores - will be configured per test
+// specStoreの状態はテスト毎に上書き可能
+let mockSpecStoreStateForSelector: Record<string, unknown> = {};
+
+vi.mock('../stores/specStore', () => {
+  // セレクタ関数をサポート：selector(state)を実行して返す
+  const mockUseSpecStore = Object.assign(
+    vi.fn((selector?: (state: Record<string, unknown>) => unknown) => {
+      if (selector) {
+        return selector(mockSpecStoreStateForSelector);
+      }
+      return mockSpecStoreStateForSelector;
+    }),
+    {
+      subscribe: vi.fn(() => vi.fn()),
+      getState: vi.fn(() => mockSpecStoreStateForSelector),
+    }
+  );
+  return {
+    useSpecStore: mockUseSpecStore,
+  };
+});
 
 vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
@@ -84,6 +102,8 @@ const mockSpecDetail: SpecDetail = {
     requirements: mockArtifact,
     design: mockArtifact,
     tasks: { ...mockArtifact, content: '- [x] Task 1\n- [ ] Task 2' },
+    research: null,
+    inspection: null,
   },
   taskProgress: { total: 2, completed: 1, percentage: 50 },
 };
@@ -126,6 +146,17 @@ const mockWorkflowState = {
   setDocumentReviewAutoExecutionFlag: vi.fn(),
 };
 
+// Create a Map for autoExecutionRuntimeMap
+const createAutoExecutionRuntimeMap = () => {
+  const map = new Map();
+  map.set('test-feature', {
+    isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle' as const,
+  });
+  return map;
+};
+
 const mockSpecStoreState = {
   specDetail: mockSpecDetail,
   isLoading: false,
@@ -140,12 +171,8 @@ const mockSpecStoreState = {
     retryCount: 0,
     executionMode: null,
   },
-  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
-  autoExecutionRuntime: {
-    isAutoExecuting: false,
-    currentAutoPhase: null,
-    autoExecutionStatus: 'idle' as const,
-  },
+  // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state (as Map)
+  autoExecutionRuntimeMap: createAutoExecutionRuntimeMap(),
   clearSpecManagerError: vi.fn(),
   refreshSpecs: vi.fn(),
 };
@@ -153,7 +180,8 @@ const mockSpecStoreState = {
 describe('WorkflowView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSpecStoreState);
+    // セレクタ対応のモック状態を設定
+    mockSpecStoreStateForSelector = { ...mockSpecStoreState };
     (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockWorkflowState);
     // モック状態をリセット（セレクタ対応済みのモックなので直接状態を変更）
     mockAgentStoreState = {
@@ -268,15 +296,17 @@ describe('WorkflowView', () => {
     });
 
     it('should enable stop button even when agent is running during auto execution', () => {
-      // isAutoExecuting is now in specStore.autoExecutionRuntime
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSpecStoreState,
-        autoExecutionRuntime: {
-          isAutoExecuting: true,
-          currentAutoPhase: 'requirements',
-          autoExecutionStatus: 'running' as const,
-        },
+      // isAutoExecuting is now in specStore.autoExecutionRuntimeMap
+      const executingMap = new Map();
+      executingMap.set('test-feature', {
+        isAutoExecuting: true,
+        currentAutoPhase: 'requirements',
+        autoExecutionStatus: 'running' as const,
       });
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        autoExecutionRuntimeMap: executingMap,
+      };
       // セレクタ対応モックのため状態を直接変更
       const agentsMap = new Map();
       agentsMap.set('test-feature', [
@@ -319,12 +349,13 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Loading and empty states', () => {
     it('should display loading state', () => {
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockSpecStoreStateForSelector = {
         ...mockSpecStoreState,
         specDetail: null,
         isLoading: true,
         selectedSpec: mockSpecDetail.metadata,
-      });
+        autoExecutionRuntimeMap: createAutoExecutionRuntimeMap(),
+      };
 
       render(<WorkflowView />);
 
@@ -332,12 +363,13 @@ describe('WorkflowView', () => {
     });
 
     it('should display empty state when no spec selected', () => {
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      mockSpecStoreStateForSelector = {
         ...mockSpecStoreState,
         specDetail: null,
         isLoading: false,
         selectedSpec: null,
-      });
+        autoExecutionRuntimeMap: createAutoExecutionRuntimeMap(),
+      };
 
       render(<WorkflowView />);
 
@@ -351,15 +383,17 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 7.4: Auto execution mode', () => {
     it('should change button to stop when auto executing', () => {
-      // isAutoExecuting is now in specStore.autoExecutionRuntime
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSpecStoreState,
-        autoExecutionRuntime: {
-          isAutoExecuting: true,
-          currentAutoPhase: 'requirements',
-          autoExecutionStatus: 'running' as const,
-        },
+      // isAutoExecuting is now in specStore.autoExecutionRuntimeMap
+      const executingMap = new Map();
+      executingMap.set('test-feature', {
+        isAutoExecuting: true,
+        currentAutoPhase: 'requirements',
+        autoExecutionStatus: 'running' as const,
       });
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        autoExecutionRuntimeMap: executingMap,
+      };
 
       render(<WorkflowView />);
 
@@ -375,15 +409,17 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 10.2: Phase highlight during auto execution', () => {
     it('should highlight current auto phase', () => {
-      // isAutoExecuting is now in specStore.autoExecutionRuntime
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSpecStoreState,
-        autoExecutionRuntime: {
-          isAutoExecuting: true,
-          currentAutoPhase: 'design',
-          autoExecutionStatus: 'running' as const,
-        },
+      // isAutoExecuting is now in specStore.autoExecutionRuntimeMap
+      const executingMap = new Map();
+      executingMap.set('test-feature', {
+        isAutoExecuting: true,
+        currentAutoPhase: 'design',
+        autoExecutionStatus: 'running' as const,
       });
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        autoExecutionRuntimeMap: executingMap,
+      };
 
       render(<WorkflowView />);
 
@@ -399,16 +435,18 @@ describe('WorkflowView', () => {
   // ============================================================
   describe('Task 10.4: Retry button on error', () => {
     it('should show retry button when autoExecutionStatus is error', () => {
-      // autoExecutionStatus is now in specStore.autoExecutionRuntime
+      // autoExecutionStatus is now in specStore.autoExecutionRuntimeMap
       // lastFailedPhase stays in workflowStore
-      (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSpecStoreState,
-        autoExecutionRuntime: {
-          isAutoExecuting: false,
-          currentAutoPhase: null,
-          autoExecutionStatus: 'error' as const,
-        },
+      const errorMap = new Map();
+      errorMap.set('test-feature', {
+        isAutoExecuting: false,
+        currentAutoPhase: null,
+        autoExecutionStatus: 'error' as const,
       });
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        autoExecutionRuntimeMap: errorMap,
+      };
       (useWorkflowStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockWorkflowState,
         lastFailedPhase: 'design',

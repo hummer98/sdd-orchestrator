@@ -67,6 +67,8 @@ const mockSpecDetail = {
     requirements: { exists: true, updatedAt: null, content: '# Requirements' },
     design: { exists: true, updatedAt: null, content: '# Design' },
     tasks: { exists: true, updatedAt: null, content: '- [x] 1.1 Task 1\n- [ ] 1.2 Task 2' },
+    research: null,
+    inspection: null,
   },
   taskProgress: {
     total: 2,
@@ -90,12 +92,14 @@ const createMockStores = (overrides: any = {}) => {
       retryCount: 0,
       executionMode: null,
     },
-    // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state
-    autoExecutionRuntime: {
-      isAutoExecuting: false,
-      currentAutoPhase: null,
-      autoExecutionStatus: 'idle' as const,
-    },
+    // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state (as Map)
+    autoExecutionRuntimeMap: new Map([
+      ['test-feature', {
+        isAutoExecuting: false,
+        currentAutoPhase: null,
+        autoExecutionStatus: 'idle' as const,
+      }],
+    ]),
     clearSpecManagerError: vi.fn(),
     refreshSpecs: vi.fn(),
     ...overrides.specStore,

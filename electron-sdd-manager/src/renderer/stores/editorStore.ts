@@ -8,8 +8,11 @@ import { create } from 'zustand';
 
 /** Base artifact types */
 type BaseArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
-/** Dynamic artifact types for document review files */
-type DynamicArtifactType = `document-review-${number}` | `document-review-${number}-reply`;
+/** Dynamic artifact types for document review and inspection files */
+type DynamicArtifactType =
+  | `document-review-${number}`
+  | `document-review-${number}-reply`
+  | `inspection-${number}`;
 /** All artifact types */
 export type ArtifactType = BaseArtifactType | DynamicArtifactType;
 

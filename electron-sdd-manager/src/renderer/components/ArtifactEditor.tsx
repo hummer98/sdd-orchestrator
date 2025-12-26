@@ -83,7 +83,27 @@ export function ArtifactEditor() {
     return tabs;
   }, [specDetail?.specJson?.documentReview]);
 
-  // Filter base tabs to only show existing artifacts, then add review tabs
+  // Build inspection tabs from spec.json inspection field (REQ-12.1, REQ-12.2)
+  const inspectionTabs = useMemo((): TabInfo[] => {
+    const inspection = specDetail?.specJson?.inspection;
+    if (!inspection?.report_file) {
+      return [];
+    }
+
+    // Extract number from report_file (e.g., "inspection-1.md" -> 1)
+    const match = inspection.report_file.match(/inspection-(\d+)\.md/);
+    if (!match) {
+      return [];
+    }
+
+    const n = parseInt(match[1], 10);
+    return [{
+      key: `inspection-${n}` as ArtifactType,
+      label: `Inspection-${n}`,
+    }];
+  }, [specDetail?.specJson?.inspection]);
+
+  // Filter base tabs to only show existing artifacts, then add review and inspection tabs
   const availableTabs = useMemo((): TabInfo[] => {
     let baseTabs = BASE_TABS;
     if (specDetail?.artifacts) {
@@ -92,9 +112,9 @@ export function ArtifactEditor() {
         return artifact !== null && artifact.exists;
       });
     }
-    // Append document review tabs after tasks
-    return [...baseTabs, ...documentReviewTabs];
-  }, [specDetail?.artifacts, documentReviewTabs]);
+    // Append document review tabs after tasks, then inspection tabs (REQ-12.4)
+    return [...baseTabs, ...documentReviewTabs, ...inspectionTabs];
+  }, [specDetail?.artifacts, documentReviewTabs, inspectionTabs]);
 
   // If current activeTab doesn't exist, switch to first available tab
   useEffect(() => {

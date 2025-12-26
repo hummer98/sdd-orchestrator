@@ -7,8 +7,21 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { BugMetadata } from '../types';
-import { BugProgressIndicator, BugPhaseLabel } from './BugProgressIndicator';
+import type { BugMetadata, BugPhase } from '../types';
+
+const PHASE_LABELS: Record<BugPhase, string> = {
+  reported: '報告済',
+  analyzed: '分析済',
+  fixed: '修正済',
+  verified: '検証済',
+};
+
+const PHASE_COLORS: Record<BugPhase, string> = {
+  reported: 'bg-red-100 text-red-700',
+  analyzed: 'bg-yellow-100 text-yellow-700',
+  fixed: 'bg-blue-100 text-blue-700',
+  verified: 'bg-green-100 text-green-700',
+};
 
 interface BugListItemProps {
   bug: BugMetadata;
@@ -19,8 +32,8 @@ interface BugListItemProps {
 /**
  * BugListItem displays a single bug in the bug list
  * - Bug name with copy button
- * - Progress indicator (4-phase workflow)
- * - Phase label and update time
+ * - Phase badge (SpecListItem-style)
+ * - Update time
  * - Selection highlight
  */
 export function BugListItem({ bug, isSelected, onSelect }: BugListItemProps): React.ReactElement {
@@ -102,12 +115,18 @@ export function BugListItem({ bug, isSelected, onSelect }: BugListItemProps): Re
           </button>
         </div>
 
-        {/* Row 2: Progress indicator, phase label, and update time */}
+        {/* Row 2: Phase badge and update time */}
         <div className="flex items-center gap-2">
-          <BugProgressIndicator phase={bug.phase} compact />
-          <BugPhaseLabel phase={bug.phase} />
           <span
-            className="text-xs text-gray-400 ml-auto"
+            className={clsx(
+              'px-2 py-0.5 text-xs rounded-full',
+              PHASE_COLORS[bug.phase]
+            )}
+          >
+            {PHASE_LABELS[bug.phase]}
+          </span>
+          <span
+            className="text-xs text-gray-400"
             title={tooltipDate}
           >
             {formattedDate}

@@ -43,16 +43,16 @@ describe('BugListItem', () => {
       expect(screen.getByText('test-bug')).toBeInTheDocument();
     });
 
-    it('should display progress indicator', () => {
+    it('should display phase badge', () => {
       render(<BugListItem {...defaultProps} />);
 
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      expect(screen.getByText('報告済')).toBeInTheDocument();
     });
 
-    it('should display phase label', () => {
+    it('should display correct phase label for analyzed phase', () => {
       render(<BugListItem {...defaultProps} bug={{ ...mockBug, phase: 'analyzed' }} />);
 
-      expect(screen.getByText('Analyze')).toBeInTheDocument();
+      expect(screen.getByText('分析済')).toBeInTheDocument();
     });
 
     it('should display formatted date', () => {
@@ -165,15 +165,15 @@ describe('BugListItem', () => {
   });
 
   // ============================================================
-  // Progress indicator phases
+  // Phase badge
   // Requirements: 3.2, 3.3, 3.4
   // ============================================================
-  describe('progress indicator phases', () => {
+  describe('phase badge', () => {
     const phases: Array<{ phase: BugMetadata['phase']; expectedLabel: string }> = [
-      { phase: 'reported', expectedLabel: 'Report' },
-      { phase: 'analyzed', expectedLabel: 'Analyze' },
-      { phase: 'fixed', expectedLabel: 'Fix' },
-      { phase: 'verified', expectedLabel: 'Verify' },
+      { phase: 'reported', expectedLabel: '報告済' },
+      { phase: 'analyzed', expectedLabel: '分析済' },
+      { phase: 'fixed', expectedLabel: '修正済' },
+      { phase: 'verified', expectedLabel: '検証済' },
     ];
 
     phases.forEach(({ phase, expectedLabel }) => {

@@ -133,7 +133,7 @@ export function AgentLogPanel() {
               </span>
               <span className="text-sm text-gray-500">|</span>
               <span className="text-sm text-gray-500 font-mono flex items-center gap-1">
-                {agent.agentId} - {agent.sessionId}
+                {agent.agentId} - セッションID: {agent.sessionId}
                 <button
                   onClick={() => navigator.clipboard.writeText(agent.sessionId)}
                   className="p-0.5 rounded hover:bg-gray-600 text-gray-500 hover:text-gray-300"

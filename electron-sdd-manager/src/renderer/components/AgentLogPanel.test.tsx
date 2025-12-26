@@ -137,7 +137,7 @@ describe('AgentLogPanel - Task 31', () => {
     it('should display agentId and sessionId in header', () => {
       render(<AgentLogPanel />);
 
-      expect(screen.getByText('agent-1 - session-1')).toBeInTheDocument();
+      expect(screen.getByText('agent-1 - セッションID: session-1')).toBeInTheDocument();
     });
 
     it('should not display agentId-sessionId when no agent is selected', () => {

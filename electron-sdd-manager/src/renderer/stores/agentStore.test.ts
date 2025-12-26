@@ -623,6 +623,234 @@ describe('useAgentStore', () => {
         expect(cleanupRecordChanged).toHaveBeenCalled();
       });
     });
+
+    // ============================================================
+    // Bug fix: agent-selection-scope-mismatch
+    // Agent追加時の自動選択スコープ制御テスト
+    // ============================================================
+    describe('onAgentRecordChanged auto-selection scope (agent-selection-scope-mismatch)', () => {
+      let recordChangedCallback: ((type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void) | null = null;
+
+      beforeEach(() => {
+        // Setup mock event listeners
+        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(vi.fn());
+        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockImplementation((cb) => {
+          recordChangedCallback = cb;
+          return vi.fn();
+        });
+      });
+
+      it('should auto-select Project Agent (specId="") regardless of selected spec', async () => {
+        // Mock specStore - any spec selected
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: { name: 'some-spec', path: '/path' } }),
+          },
+        }));
+
+        useAgentStore.getState().setupEventListeners();
+
+        const projectAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'project-agent-1',
+          specId: '', // Project Agent
+        };
+
+        // Trigger add event
+        recordChangedCallback?.('add', projectAgent);
+
+        // Wait for async operations
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          expect(state.selectedAgentId).toBe('project-agent-1');
+        });
+      });
+
+      it('should auto-select agent when specId matches selected spec', async () => {
+        // Mock specStore with matching spec selected
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: { name: 'spec-1', path: '/path/spec-1' } }),
+          },
+        }));
+
+        // Clear dynamic import cache
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const matchingAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'matching-agent',
+          specId: 'spec-1', // Matches selected spec
+        };
+
+        recordChangedCallback?.('add', matchingAgent);
+
+        // Wait for async dynamic import
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          expect(state.selectedAgentId).toBe('matching-agent');
+        });
+      });
+
+      it('should NOT auto-select agent when specId does not match selected spec', async () => {
+        // Mock specStore with different spec selected
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: { name: 'spec-A', path: '/path/spec-A' } }),
+          },
+        }));
+
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const nonMatchingAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'non-matching-agent',
+          specId: 'spec-B', // Does NOT match selected spec
+        };
+
+        recordChangedCallback?.('add', nonMatchingAgent);
+
+        // Wait a bit for any async operations
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const state = useAgentStore.getState();
+        // Agent should be added to Map but NOT selected
+        expect(state.agents.get('spec-B')).toBeDefined();
+        expect(state.selectedAgentId).toBeNull();
+      });
+
+      it('should NOT auto-select agent when no spec is selected', async () => {
+        // Mock specStore with no spec selected
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: null }),
+          },
+        }));
+
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const agent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'orphan-agent',
+          specId: 'spec-1',
+        };
+
+        recordChangedCallback?.('add', agent);
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const state = useAgentStore.getState();
+        // Agent should be added but NOT selected
+        expect(state.agents.get('spec-1')).toBeDefined();
+        expect(state.selectedAgentId).toBeNull();
+      });
+
+      it('should auto-select Bug Agent when selected bug matches', async () => {
+        // Mock specStore (no spec selected)
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: null }),
+          },
+        }));
+
+        // Mock bugStore with matching bug selected
+        vi.doMock('./bugStore', () => ({
+          useBugStore: {
+            getState: () => ({ selectedBug: { name: 'my-bug', path: '/path/my-bug' } }),
+          },
+        }));
+
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const bugAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'bug-agent-1',
+          specId: 'bug:my-bug', // Bug Agent format
+        };
+
+        recordChangedCallback?.('add', bugAgent);
+
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          expect(state.selectedAgentId).toBe('bug-agent-1');
+        });
+      });
+
+      it('should NOT auto-select Bug Agent when selected bug does not match', async () => {
+        // Mock specStore (no spec selected)
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: null }),
+          },
+        }));
+
+        // Mock bugStore with different bug selected
+        vi.doMock('./bugStore', () => ({
+          useBugStore: {
+            getState: () => ({ selectedBug: { name: 'other-bug', path: '/path/other-bug' } }),
+          },
+        }));
+
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const bugAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'bug-agent-mismatch',
+          specId: 'bug:my-bug', // Does NOT match selected bug
+        };
+
+        recordChangedCallback?.('add', bugAgent);
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const state = useAgentStore.getState();
+        expect(state.agents.get('bug:my-bug')).toBeDefined();
+        expect(state.selectedAgentId).toBeNull();
+      });
+
+      it('should still add agent to Map even when not auto-selected', async () => {
+        // Mock specStore with no spec selected
+        vi.doMock('./specStore', () => ({
+          useSpecStore: {
+            getState: () => ({ selectedSpec: null }),
+          },
+        }));
+
+        vi.resetModules();
+
+        useAgentStore.getState().setupEventListeners();
+
+        const agent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'added-not-selected',
+          specId: 'spec-xyz',
+        };
+
+        recordChangedCallback?.('add', agent);
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const state = useAgentStore.getState();
+        // Agent MUST be in the Map
+        const specAgents = state.agents.get('spec-xyz');
+        expect(specAgents).toBeDefined();
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents?.[0].agentId).toBe('added-not-selected');
+        // But NOT selected
+        expect(state.selectedAgentId).toBeNull();
+      });
+    });
   });
 
   // ============================================================

@@ -4,7 +4,7 @@
 Agent追加時の自動選択が選択中のSpecに限定されていない。別Specのagent追加でも自動選択が発生してしまう
 
 ## Status
-**Pending**
+**Resolved** ✅
 
 ## Environment
 - Date Reported: 2025-12-27T16:48:00+09:00

@@ -9,6 +9,7 @@ Agent追加時の自動選択ロジックを修正し、現在選択中のspec/b
 | File | Change Description |
 |------|-------------------|
 | `agentStore.ts` | onAgentRecordChangedイベントリスナーの自動選択ロジックを修正 |
+| `agentStore.test.ts` | 自動選択スコープのテストケース7件を追加 |
 
 ### Code Changes
 
@@ -67,9 +68,19 @@ Agent追加時の自動選択ロジックを修正し、現在選択中のspec/b
 ## Test Results
 ```
 Test Files  1 passed (1)
-     Tests  55 passed (55)
-  Duration  759ms
+     Tests  62 passed (62)
+  Duration  1.09s
 ```
 
+### 追加されたテストケース
+1. `should auto-select Project Agent (specId="") regardless of selected spec`
+2. `should auto-select agent when specId matches selected spec`
+3. `should NOT auto-select agent when specId does not match selected spec`
+4. `should NOT auto-select agent when no spec is selected`
+5. `should auto-select Bug Agent when selected bug matches`
+6. `should NOT auto-select Bug Agent when selected bug does not match`
+7. `should still add agent to Map even when not auto-selected`
+
 ## Related Commits
-- (コミット後に記録)
+- `bc60e26` fix(ui): unify AgentListPanel and fix agent auto-selection scope
+- `3fcb758` test(agent): add unit tests for agent auto-selection scope fix

@@ -5,16 +5,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  ArtifactEditor,
   NotificationProvider,
   UnsavedChangesDialog,
   ResizeHandle,
   // Task 30-33: Agent管理コンポーネント
-  AgentListPanel,
   AgentLogPanel,
   AgentInputPanel,
-  // SDD Hybrid Workflow: 右ペインを統合したWorkflowView
-  WorkflowView,
   // CLI Install
   CliInstallDialog,
   // Unified Commandset Install
@@ -32,10 +28,11 @@ import {
   SSHAuthDialog,
   ProjectSwitchConfirmDialog,
   ProjectValidationPanel,
-  // Task 5: bugs-pane-integration - Bug表示用コンポーネント
-  BugArtifactEditor,
-  BugWorkflowView,
+  // Bug fix: bugs-tab-agent-list-missing - タブベースのペイン切り替え
+  SpecPane,
+  BugPane,
 } from './components';
+import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
 import type { CommandPrefix } from './stores';
@@ -66,7 +63,7 @@ const DEFAULT_LAYOUT = {
 
 export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles } = useProjectStore();
-  const { selectedSpec, specDetail } = useSpecStore();
+  const { specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   // Task 5: bugs-pane-integration - Bug選択状態の参照
   const { selectedBug } = useBugStore();
@@ -99,6 +96,8 @@ export function App() {
   // SSH Remote Project dialogs
   const [isSSHConnectDialogOpen, setIsSSHConnectDialogOpen] = useState(false);
   const [isSSHConnecting, setIsSSHConnecting] = useState(false);
+  // Bug fix: bugs-tab-agent-list-missing - タブ状態をApp.tsxで管理
+  const [activeTab, setActiveTab] = useState<DocsTab>('specs');
 
   // ペインサイズの状態（pane-layout-persistence feature）
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LAYOUT.leftPaneWidth);
@@ -559,7 +558,7 @@ export function App() {
             {/* 3. DocsTabs (Specs/Bugsタブ切り替え、新規作成ボタン含む) */}
             {currentProject && kiroValidation?.exists && (
               <div className="flex-1 overflow-hidden">
-                <DocsTabs />
+                <DocsTabs activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
             )}
 
@@ -585,72 +584,30 @@ export function App() {
 
           {/* Main area */}
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Task 5: bugs-pane-integration - Spec選択時またはBug選択時で表示を切り替え */}
-            {selectedSpec ? (
-              /* Spec選択時: ArtifactEditor + WorkflowView */
-              <div className="flex-1 flex overflow-hidden">
-                {/* Center - Editor */}
-                <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                  <ArtifactEditor />
-                </div>
-
-                {/* Right resize handle */}
-                <ResizeHandle direction="horizontal" onResize={handleRightResize} onResizeEnd={saveLayout} />
-
-                {/* Right sidebar - SDD Hybrid Workflow View */}
-                <aside
-                  style={{ width: rightPaneWidth }}
-                  className="shrink-0 flex flex-col overflow-hidden"
-                >
-                  {/* Agent list panel */}
-                  <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
-                    <AgentListPanel />
-                  </div>
-                  {/* Agent一覧とワークフロー間のリサイズハンドル */}
-                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} onResizeEnd={saveLayout} />
-                  {/* SDD Hybrid Workflow: 6フェーズワークフロービュー */}
-                  <div className="flex-1 overflow-hidden">
-                    <WorkflowView />
-                  </div>
-                </aside>
-              </div>
-            ) : selectedBug ? (
-              /* Bug選択時: BugArtifactEditor + BugWorkflowView */
-              <div className="flex-1 flex overflow-hidden">
-                {/* Center - Bug Document Editor */}
-                <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                  <BugArtifactEditor />
-                </div>
-
-                {/* Right resize handle */}
-                <ResizeHandle direction="horizontal" onResize={handleRightResize} onResizeEnd={saveLayout} />
-
-                {/* Right sidebar - Bug Workflow View */}
-                <aside
-                  style={{ width: rightPaneWidth }}
-                  className="shrink-0 flex flex-col overflow-hidden"
-                >
-                  {/* Agent list panel for bugs */}
-                  <div style={{ height: agentListHeight }} className="shrink-0 overflow-hidden">
-                    <AgentListPanel />
-                  </div>
-                  {/* Agent一覧とワークフロー間のリサイズハンドル */}
-                  <ResizeHandle direction="vertical" onResize={handleAgentListResize} onResizeEnd={saveLayout} />
-                  {/* Bug Workflow: 5フェーズワークフロービュー */}
-                  <div className="flex-1 overflow-hidden">
-                    <BugWorkflowView />
-                  </div>
-                </aside>
-              </div>
+            {/* Bug fix: bugs-tab-agent-list-missing - タブ選択に応じてペインを切り替え */}
+            {currentProject && kiroValidation?.exists ? (
+              activeTab === 'specs' ? (
+                <SpecPane
+                  rightPaneWidth={rightPaneWidth}
+                  agentListHeight={agentListHeight}
+                  onRightResize={handleRightResize}
+                  onAgentListResize={handleAgentListResize}
+                  onResizeEnd={saveLayout}
+                />
+              ) : (
+                <BugPane
+                  rightPaneWidth={rightPaneWidth}
+                  agentListHeight={agentListHeight}
+                  onRightResize={handleRightResize}
+                  onAgentListResize={handleAgentListResize}
+                  onResizeEnd={saveLayout}
+                />
+              )
             ) : (
               /* 未選択時: プレースホルダー */
               <div className="flex-1 flex items-center justify-center text-gray-400">
                 {currentProject ? (
-                  kiroValidation?.exists ? (
-                    '仕様またはバグを選択するか、新規作成してください'
-                  ) : (
-                    '.kiroディレクトリを初期化してください'
-                  )
+                  '.kiroディレクトリを初期化してください'
                 ) : (
                   'プロジェクトを選択してください'
                 )}

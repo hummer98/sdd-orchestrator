@@ -3,12 +3,19 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4
  */
 
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { DocsTabs } from './DocsTabs';
+import { DocsTabs, type DocsTab } from './DocsTabs';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
 import { useBugStore } from '../stores/bugStore';
+
+// Helper component to wrap DocsTabs with controlled state
+function DocsTabsWrapper({ initialTab = 'specs' as DocsTab }: { initialTab?: DocsTab }) {
+  const [activeTab, setActiveTab] = useState<DocsTab>(initialTab);
+  return <DocsTabs activeTab={activeTab} onTabChange={setActiveTab} />;
+}
 
 // Mock stores
 vi.mock('../stores/projectStore', () => ({
@@ -174,14 +181,14 @@ describe('DocsTabs Integration', () => {
   // ============================================================
   describe('tab switching', () => {
     it('should display both Specs and Bugs tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByRole('tab', { name: /specs/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /bugs/i })).toBeInTheDocument();
     });
 
     it('should show Specs tab content by default', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Specs tab should be selected
       const specsTab = screen.getByRole('tab', { name: /specs/i });
@@ -189,7 +196,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should switch to Bugs tab when clicked', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Click Bugs tab
       const bugsTab = screen.getByRole('tab', { name: /bugs/i });
@@ -205,7 +212,7 @@ describe('DocsTabs Integration', () => {
 
     it('should display BugList when Bugs tab is selected', () => {
       // bugs are already set in beforeEach mock
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Switch to Bugs tab
       const bugsTab = screen.getByRole('tab', { name: /bugs/i });
@@ -217,7 +224,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should switch back to Specs tab when clicked', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Switch to Bugs tab
       fireEvent.click(screen.getByRole('tab', { name: /bugs/i }));
@@ -237,7 +244,7 @@ describe('DocsTabs Integration', () => {
   // ============================================================
   describe('tab state persistence', () => {
     it('should maintain tab state between re-renders', () => {
-      const { rerender } = render(<DocsTabs />);
+      const { rerender } = render(<DocsTabsWrapper />);
 
       // Switch to Bugs tab
       fireEvent.click(screen.getByRole('tab', { name: /bugs/i }));
@@ -246,7 +253,7 @@ describe('DocsTabs Integration', () => {
       expect(screen.getByRole('tab', { name: /bugs/i })).toHaveAttribute('aria-selected', 'true');
 
       // Re-render
-      rerender(<DocsTabs />);
+      rerender(<DocsTabsWrapper />);
 
       // Bugs tab should still be selected (component maintains internal state)
       expect(screen.getByRole('tab', { name: /bugs/i })).toHaveAttribute('aria-selected', 'true');
@@ -259,7 +266,7 @@ describe('DocsTabs Integration', () => {
   // ============================================================
   describe('create dialog integration', () => {
     it('should show create button when project is selected', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('create-button')).toBeInTheDocument();
     });
@@ -269,13 +276,13 @@ describe('DocsTabs Integration', () => {
         currentProject: null,
       });
 
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.queryByTestId('create-button')).not.toBeInTheDocument();
     });
 
     it('should open CreateSpecDialog when create button is clicked on Specs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Click create button
       fireEvent.click(screen.getByTestId('create-button'));
@@ -285,7 +292,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should open CreateBugDialog when create button is clicked on Bugs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Switch to Bugs tab
       fireEvent.click(screen.getByRole('tab', { name: /bugs/i }));
@@ -298,7 +305,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should close CreateSpecDialog when close is called', async () => {
-      const { container } = render(<DocsTabs />);
+      const { container } = render(<DocsTabsWrapper />);
 
       // Open dialog
       fireEvent.click(screen.getByTestId('create-button'));
@@ -317,7 +324,7 @@ describe('DocsTabs Integration', () => {
     });
 
     it('should close CreateBugDialog when close is called', async () => {
-      const { container } = render(<DocsTabs />);
+      const { container } = render(<DocsTabsWrapper />);
 
       // Switch to Bugs tab and open dialog
       fireEvent.click(screen.getByRole('tab', { name: /bugs/i }));
@@ -343,26 +350,26 @@ describe('DocsTabs Integration', () => {
   // ============================================================
   describe('accessibility', () => {
     it('should have tablist role on tab container', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
     it('should have tab role on tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       const tabs = screen.getAllByRole('tab');
       expect(tabs).toHaveLength(2);
     });
 
     it('should have tabpanel role on content', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByRole('tabpanel')).toBeInTheDocument();
     });
 
     it('should set aria-controls on tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       const specsTab = screen.getByRole('tab', { name: /specs/i });
       const bugsTab = screen.getByRole('tab', { name: /bugs/i });

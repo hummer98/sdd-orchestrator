@@ -17,6 +17,10 @@ export type DocsTab = 'specs' | 'bugs';
 
 interface DocsTabsProps {
   className?: string;
+  /** Active tab (controlled mode) */
+  activeTab: DocsTab;
+  /** Callback when tab changes */
+  onTabChange: (tab: DocsTab) => void;
 }
 
 interface TabConfig {
@@ -37,8 +41,7 @@ const TAB_CONFIGS: TabConfig[] = [
  * - Switches between SpecList and BugList
  * - Shows create button for current tab type
  */
-export function DocsTabs({ className }: DocsTabsProps): React.ReactElement {
-  const [activeTab, setActiveTab] = useState<DocsTab>('specs');
+export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): React.ReactElement {
   const [isCreateSpecDialogOpen, setIsCreateSpecDialogOpen] = useState(false);
   const [isCreateBugDialogOpen, setIsCreateBugDialogOpen] = useState(false);
   const { currentProject } = useProjectStore();
@@ -57,7 +60,7 @@ export function DocsTabs({ className }: DocsTabsProps): React.ReactElement {
     } else {
       clearSelectedSpec();
     }
-    setActiveTab(tabId);
+    onTabChange(tabId);
   };
 
   const handleCreateClick = () => {

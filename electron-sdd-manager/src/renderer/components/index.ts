@@ -11,6 +11,7 @@ export { PhaseExecutionPanel } from './PhaseExecutionPanel';
 export { ApprovalPanel } from './ApprovalPanel';
 export { RejectDialog } from './RejectDialog';
 export { ArtifactEditor } from './ArtifactEditor';
+export type { TabInfo, ArtifactInfo, ArtifactEditorProps } from './ArtifactEditor';
 export { LogPanel } from './LogPanel';
 export { UnsavedChangesDialog } from './UnsavedChangesDialog';
 export { NotificationProvider } from './NotificationProvider';
@@ -47,6 +48,7 @@ export { BugActionButtons, getNextActionLabel } from './BugActionButtons';
 export { BugList } from './BugList';
 export { CreateBugDialog } from './CreateBugDialog';
 export { DocsTabs } from './DocsTabs';
+export type { DocsTab } from './DocsTabs';
 // SSH Remote Project Components
 export { SSHStatusIndicator } from './SSHStatusIndicator';
 export { SSHConnectDialog } from './SSHConnectDialog';
@@ -56,7 +58,11 @@ export { ProjectSwitchConfirmDialog } from './ProjectSwitchConfirmDialog';
 // Unified Commandset Install Dialog
 export { CommandsetInstallDialog } from './CommandsetInstallDialog';
 export type { ProfileName } from './CommandsetInstallDialog';
-// Task 2, 3, 4: bugs-pane-integration - BugPhaseItem, BugWorkflowView, BugArtifactEditorコンポーネント
+// Task 2, 3: bugs-pane-integration - BugPhaseItem, BugWorkflowViewコンポーネント
+// Note: BugArtifactEditor removed - using shared ArtifactEditor (bugs-tab-spec-editing-feature)
 export { BugPhaseItem } from './BugPhaseItem';
 export { BugWorkflowView } from './BugWorkflowView';
-export { BugArtifactEditor } from './BugArtifactEditor';
+// Bug fix: bugs-tab-agent-list-missing - SpecPane, BugPane, BugAgentListPanelコンポーネント
+export { SpecPane } from './SpecPane';
+export { BugPane } from './BugPane';
+export { BugAgentListPanel } from './BugAgentListPanel';

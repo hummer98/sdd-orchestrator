@@ -3,9 +3,10 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4
  */
 
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DocsTabs } from './DocsTabs';
+import { DocsTabs, type DocsTab } from './DocsTabs';
 import { useProjectStore, useSpecStore, useBugStore } from '../stores';
 
 // Mock stores
@@ -17,6 +18,12 @@ vi.mock('../stores', () => ({
   useSpecStore: vi.fn(),
   useBugStore: vi.fn(),
 }));
+
+// Helper component to wrap DocsTabs with controlled state
+function DocsTabsWrapper({ initialTab = 'specs' as DocsTab }: { initialTab?: DocsTab }) {
+  const [activeTab, setActiveTab] = useState<DocsTab>(initialTab);
+  return <DocsTabs activeTab={activeTab} onTabChange={setActiveTab} />;
+}
 
 // Mock child components
 vi.mock('./SpecList', () => ({
@@ -65,27 +72,27 @@ describe('DocsTabs', () => {
   // ============================================================
   describe('tab display and switching', () => {
     it('should render tabs container', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('docs-tabs')).toBeInTheDocument();
     });
 
     it('should display Specs and Bugs tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toBeInTheDocument();
       expect(screen.getByTestId('tab-bugs')).toBeInTheDocument();
     });
 
     it('should show Specs tab as active by default', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'false');
     });
 
     it('should show SpecList by default', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tabpanel-specs')).toBeInTheDocument();
       expect(screen.getByTestId('spec-list')).toBeInTheDocument();
@@ -93,7 +100,7 @@ describe('DocsTabs', () => {
     });
 
     it('should switch to Bugs tab when clicked', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('tab-bugs'));
 
@@ -102,7 +109,7 @@ describe('DocsTabs', () => {
     });
 
     it('should show BugList when Bugs tab is selected', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('tab-bugs'));
 
@@ -112,7 +119,7 @@ describe('DocsTabs', () => {
     });
 
     it('should switch back to Specs tab when clicked', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Switch to bugs
       fireEvent.click(screen.getByTestId('tab-bugs'));
@@ -125,7 +132,7 @@ describe('DocsTabs', () => {
 
     // Bug fix: bugs-tab-selection-not-updating
     it('should clear spec selection when switching to Bugs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('tab-bugs'));
 
@@ -134,7 +141,7 @@ describe('DocsTabs', () => {
     });
 
     it('should clear bug selection when switching to Specs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // First switch to bugs
       fireEvent.click(screen.getByTestId('tab-bugs'));
@@ -153,7 +160,7 @@ describe('DocsTabs', () => {
   // ============================================================
   describe('create button', () => {
     it('should display create button when project is selected', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('create-button')).toBeInTheDocument();
     });
@@ -162,13 +169,13 @@ describe('DocsTabs', () => {
       (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         currentProject: null,
       });
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.queryByTestId('create-button')).not.toBeInTheDocument();
     });
 
     it('should open CreateSpecDialog when create button is clicked on Specs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('create-button'));
 
@@ -176,7 +183,7 @@ describe('DocsTabs', () => {
     });
 
     it('should open CreateBugDialog when create button is clicked on Bugs tab', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       // Switch to bugs tab
       fireEvent.click(screen.getByTestId('tab-bugs'));
@@ -187,7 +194,7 @@ describe('DocsTabs', () => {
     });
 
     it('should close CreateSpecDialog when close is called', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('create-button'));
       expect(screen.getByTestId('create-spec-dialog')).toBeInTheDocument();
@@ -197,7 +204,7 @@ describe('DocsTabs', () => {
     });
 
     it('should close CreateBugDialog when close is called', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       fireEvent.click(screen.getByTestId('tab-bugs'));
       fireEvent.click(screen.getByTestId('create-button'));
@@ -213,26 +220,26 @@ describe('DocsTabs', () => {
   // ============================================================
   describe('accessibility', () => {
     it('should have tablist role on tab container', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
     it('should have tab role on tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       const tabs = screen.getAllByRole('tab');
       expect(tabs).toHaveLength(2);
     });
 
     it('should have tabpanel role on content', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByRole('tabpanel')).toBeInTheDocument();
     });
 
     it('should set aria-controls on tabs', () => {
-      render(<DocsTabs />);
+      render(<DocsTabsWrapper />);
 
       expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-controls', 'tabpanel-specs');
       expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-controls', 'tabpanel-bugs');
@@ -245,14 +252,14 @@ describe('DocsTabs', () => {
   // ============================================================
   describe('tab state persistence', () => {
     it('should maintain tab state when re-rendered', () => {
-      const { rerender } = render(<DocsTabs />);
+      const { rerender } = render(<DocsTabsWrapper />);
 
       // Switch to bugs
       fireEvent.click(screen.getByTestId('tab-bugs'));
       expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'true');
 
       // Re-render
-      rerender(<DocsTabs />);
+      rerender(<DocsTabsWrapper />);
 
       // Tab state should be maintained (component state is preserved in rerender)
       expect(screen.getByTestId('tab-bugs')).toHaveAttribute('aria-selected', 'true');

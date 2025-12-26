@@ -184,10 +184,12 @@ export class BugService {
       try {
         const filePath = join(bugPath, `${name}.md`);
         const stats = await stat(filePath);
+        const content = await readFile(filePath, 'utf-8');
         return {
           exists: true,
           path: filePath,
           updatedAt: stats.mtime.toISOString(),
+          content,
         };
       } catch {
         return null;

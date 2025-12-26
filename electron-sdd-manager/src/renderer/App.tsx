@@ -65,7 +65,7 @@ const DEFAULT_LAYOUT = {
 };
 
 export function App() {
-  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject } = useProjectStore();
+  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles } = useProjectStore();
   const { selectedSpec, specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   // Task 5: bugs-pane-integration - Bug選択状態の参照
@@ -698,6 +698,9 @@ export function App() {
 
             const { summary } = result.value;
             console.log(`[App] Commandset installed successfully:`, summary);
+
+            // Refresh spec-manager files check to update UI (bug fix: commandset-install-warning-persists)
+            await checkSpecManagerFiles(currentProject);
 
             // Return summary for the dialog to display
             return {

@@ -31,6 +31,9 @@ interface AgentState {
   logs: Map<string, LogEntry[]>; // agentId -> logs
   isLoading: boolean;
   error: string | null;
+  // Skip permissions flag for claude CLI (--dangerously-skip-permissions)
+  // Per-project, in-memory only, default OFF
+  skipPermissions: boolean;
 }
 
 interface AgentActions {
@@ -69,6 +72,9 @@ interface AgentActions {
 
   // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
   selectForProjectAgents: () => void;
+
+  // Skip permissions control
+  setSkipPermissions: (enabled: boolean) => void;
 }
 
 type AgentStore = AgentState & AgentActions;
@@ -80,6 +86,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   logs: new Map<string, LogEntry[]>(),
   isLoading: false,
   error: null,
+  skipPermissions: false,
 
   // Task 29.2: Agent操作アクション
   // Requirements: 5.1-5.8
@@ -182,13 +189,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     sessionId?: string
   ): Promise<string | null> => {
     try {
+      // Get skipPermissions from current state
+      const { skipPermissions } = get();
       const newAgent = await window.electronAPI.startAgent(
         specId,
         phase,
         command,
         args,
         group,
-        sessionId
+        sessionId,
+        skipPermissions
       );
 
       const agentId = (newAgent as AgentInfo).agentId;
@@ -460,5 +470,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     // プロジェクトエージェント（specId=''）を選択対象として設定
     // selectedAgentIdをnullにリセットして、ProjectAgentPanelにフォーカスを移す
     set({ selectedAgentId: null });
+  },
+
+  // Skip permissions control
+  // Sets the --dangerously-skip-permissions flag for claude CLI
+  setSkipPermissions: (enabled: boolean) => {
+    set({ skipPermissions: enabled });
   },
 }));

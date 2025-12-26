@@ -45,6 +45,8 @@ export interface ClaudeArgsOptions {
   resumePrompt?: string;
   /** 許可するツールのリスト（--allowedToolsフラグ用） */
   allowedTools?: string[];
+  /** パーミッションチェックをスキップするフラグ（--dangerously-skip-permissions） */
+  skipPermissions?: boolean;
 }
 
 /**
@@ -67,6 +69,11 @@ export interface ClaudeArgsOptions {
  */
 export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   const args: string[] = [...CLAUDE_CLI_BASE_FLAGS];
+
+  // --dangerously-skip-permissions は他のオプションより前に配置
+  if (options.skipPermissions) {
+    args.push('--dangerously-skip-permissions');
+  }
 
   // allowedToolsは--resumeより前に配置（CLIの引数解析順序を考慮）
   if (options.allowedTools && options.allowedTools.length > 0) {
@@ -215,6 +222,8 @@ export interface StartAgentOptions {
   sessionId?: string;
   /** Provider type for local/SSH transparency (defaults to 'local') */
   providerType?: ProviderType;
+  /** Skip permissions check flag (--dangerously-skip-permissions) */
+  skipPermissions?: boolean;
 }
 
 export interface ExecutePhaseOptions {
@@ -443,10 +452,16 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType } = options;
+    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions } = options;
     const effectiveProviderType = providerType ?? this.providerType;
+
+    // Add --dangerously-skip-permissions flag if enabled
+    const effectiveArgs = skipPermissions
+      ? ['--dangerously-skip-permissions', ...args]
+      : args;
+
     logger.info('[SpecManagerService] startAgent called', {
-      specId, phase, command, args, group, sessionId, providerType: effectiveProviderType,
+      specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions,
     });
 
     // Check if phase is already running
@@ -477,7 +492,7 @@ export class SpecManagerService {
 
     try {
       logger.info('[SpecManagerService] Creating agent process', {
-        agentId, command, args, cwd: this.projectPath, providerType: effectiveProviderType,
+        agentId, command, args: effectiveArgs, cwd: this.projectPath, providerType: effectiveProviderType,
       });
 
       // Create the agent process using provider-aware factory for SSH, or direct for local
@@ -488,7 +503,7 @@ export class SpecManagerService {
         const providerResult = await createProviderAgentProcess({
           agentId,
           command,
-          args,
+          args: effectiveArgs,
           cwd: this.projectPath,
           sessionId,
           providerType: 'ssh',
@@ -513,7 +528,7 @@ export class SpecManagerService {
         process = createAgentProcess({
           agentId,
           command,
-          args,
+          args: effectiveArgs,
           cwd: this.projectPath,
           sessionId,
         });
@@ -531,7 +546,7 @@ export class SpecManagerService {
         status: 'running',
         startedAt: now,
         lastActivityAt: now,
-        command: `${command} ${args.join(' ')}`,
+        command: `${command} ${effectiveArgs.join(' ')}`,
       };
 
       // Register the agent
@@ -548,7 +563,7 @@ export class SpecManagerService {
         status: 'running',
         startedAt: now,
         lastActivityAt: now,
-        command: `${command} ${args.join(' ')}`,
+        command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
       // Set up event handlers

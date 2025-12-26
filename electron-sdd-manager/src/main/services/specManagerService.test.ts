@@ -630,6 +630,59 @@ describe('buildClaudeArgs', () => {
     });
     expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-789']);
   });
+
+  // ============================================================
+  // skipPermissions tests (--dangerously-skip-permissions)
+  // ============================================================
+  describe('skipPermissions option', () => {
+    it('should include --dangerously-skip-permissions when skipPermissions is true', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-requirements my-feature',
+        skipPermissions: true,
+      });
+      expect(args).toContain('--dangerously-skip-permissions');
+      expect(args).toEqual([...BASE_FLAGS, '--dangerously-skip-permissions', '/kiro:spec-requirements my-feature']);
+    });
+
+    it('should NOT include --dangerously-skip-permissions when skipPermissions is false', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-requirements my-feature',
+        skipPermissions: false,
+      });
+      expect(args).not.toContain('--dangerously-skip-permissions');
+      expect(args).toEqual([...BASE_FLAGS, '/kiro:spec-requirements my-feature']);
+    });
+
+    it('should NOT include --dangerously-skip-permissions when skipPermissions is undefined', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-requirements my-feature',
+      });
+      expect(args).not.toContain('--dangerously-skip-permissions');
+    });
+
+    it('should include --dangerously-skip-permissions with resume session', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: 'continue',
+        skipPermissions: true,
+      });
+      expect(args).toContain('--dangerously-skip-permissions');
+      // skipPermissions should come before --resume
+      const skipIndex = args.indexOf('--dangerously-skip-permissions');
+      const resumeIndex = args.indexOf('--resume');
+      expect(skipIndex).toBeLessThan(resumeIndex);
+    });
+
+    it('should include --dangerously-skip-permissions with allowedTools', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-impl my-feature',
+        skipPermissions: true,
+        allowedTools: ['Read', 'Write'],
+      });
+      expect(args).toContain('--dangerously-skip-permissions');
+      expect(args).toContain('--allowedTools');
+    });
+  });
 });
 
 /**

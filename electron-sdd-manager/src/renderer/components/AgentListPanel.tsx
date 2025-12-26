@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
 
 export function AgentListPanel() {
   const { selectedSpec } = useSpecStore();
-  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
 
   // Load agents when component mounts or when agents map is empty
@@ -156,6 +156,19 @@ export function AgentListPanel() {
             ({specAgents.length})
           </span>
         )}
+        <label
+          className="ml-auto flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
+          title="--dangerously-skip-permissions オプションを有効化"
+        >
+          <input
+            type="checkbox"
+            checked={skipPermissions}
+            onChange={(e) => setSkipPermissions(e.target.checked)}
+            className="w-3 h-3 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+            aria-label="Skip Permissions"
+          />
+          <span className="select-none">Skip Permissions</span>
+        </label>
       </div>
 
       {specAgents.length === 0 ? (

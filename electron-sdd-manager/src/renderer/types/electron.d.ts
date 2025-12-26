@@ -332,7 +332,8 @@ export interface ElectronAPI {
     command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string
+    sessionId?: string,
+    skipPermissions?: boolean
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
   resumeAgent(agentId: string, prompt?: string): Promise<AgentInfo>;

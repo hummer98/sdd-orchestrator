@@ -112,9 +112,10 @@ const electronAPI = {
     command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string
+    sessionId?: string,
+    skipPermissions?: boolean
   ): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, command, args, group, sessionId),
+    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, command, args, group, sessionId, skipPermissions),
 
   stopAgent: (agentId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.STOP_AGENT, agentId),
@@ -885,6 +886,27 @@ const electronAPI = {
    */
   isE2ETest: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_IS_E2E_TEST),
+
+  // ============================================================
+  // Project Log (project-log-separation feature)
+  // Requirements: 6.1, 6.2, 6.3
+  // ============================================================
+
+  /**
+   * Get project log file path
+   * Returns null if no project is selected
+   * @returns Log file path or null
+   */
+  getProjectLogPath: (): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_PROJECT_LOG_PATH),
+
+  /**
+   * Open log directory in system file browser
+   * Opens Finder (macOS) / Explorer (Windows) / File Manager (Linux)
+   * @throws Error if no project is selected or directory doesn't exist
+   */
+  openLogInBrowser: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OPEN_LOG_IN_BROWSER),
 };
 
 // Expose API to renderer

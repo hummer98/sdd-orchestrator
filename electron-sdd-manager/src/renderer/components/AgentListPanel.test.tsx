@@ -441,4 +441,94 @@ describe('AgentListPanel - Task 30', () => {
       expect(screen.getByRole('button', { name: '停止' })).toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // Skip Permissions checkbox (--dangerously-skip-permissions)
+  // ============================================================
+  describe('Skip Permissions checkbox', () => {
+    const mockSetSkipPermissions = vi.fn();
+
+    beforeEach(() => {
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([baseAgentInfo]),
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', baseAgentInfo]]),
+        skipPermissions: false,
+        setSkipPermissions: mockSetSkipPermissions,
+      });
+    });
+
+    it('should display checkbox next to Agent一覧 title', () => {
+      render(<AgentListPanel />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
+      expect(checkbox).toBeInTheDocument();
+    });
+
+    it('should be unchecked by default', () => {
+      render(<AgentListPanel />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('should be checked when skipPermissions is true', () => {
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([baseAgentInfo]),
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', baseAgentInfo]]),
+        skipPermissions: true,
+        setSkipPermissions: mockSetSkipPermissions,
+      });
+
+      render(<AgentListPanel />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
+      expect(checkbox).toBeChecked();
+    });
+
+    it('should call setSkipPermissions when checkbox is clicked', () => {
+      render(<AgentListPanel />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
+      fireEvent.click(checkbox);
+
+      expect(mockSetSkipPermissions).toHaveBeenCalledWith(true);
+    });
+
+    it('should call setSkipPermissions(false) when unchecking', () => {
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: null,
+        stopAgent: mockStopAgent,
+        resumeAgent: mockResumeAgent,
+        selectAgent: mockSelectAgent,
+        getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([baseAgentInfo]),
+        getAgentById: mockGetAgentById,
+        removeAgent: vi.fn(),
+        loadAgents: vi.fn(),
+        agents: new Map([['agent-1', baseAgentInfo]]),
+        skipPermissions: true,
+        setSkipPermissions: mockSetSkipPermissions,
+      });
+
+      render(<AgentListPanel />);
+
+      const checkbox = screen.getByRole('checkbox', { name: /skip permissions/i });
+      fireEvent.click(checkbox);
+
+      expect(mockSetSkipPermissions).toHaveBeenCalledWith(false);
+    });
+  });
 });

@@ -84,6 +84,11 @@ describe('useAgentStore', () => {
         expect(state.logs).toBeInstanceOf(Map);
         expect(state.logs.size).toBe(0);
       });
+
+      it('should have skipPermissions false initially', () => {
+        const state = useAgentStore.getState();
+        expect(state.skipPermissions).toBe(false);
+      });
     });
 
     describe('agents Map structure', () => {
@@ -228,13 +233,33 @@ describe('useAgentStore', () => {
           'claude',
           ['-p'],
           undefined,
-          undefined
+          undefined,
+          false // skipPermissions default
         );
 
         const state = useAgentStore.getState();
         const specAgents = state.agents.get('spec-1');
         expect(specAgents).toHaveLength(1);
         expect(specAgents?.[0].agentId).toBe('agent-1');
+      });
+
+      it('should pass skipPermissions=true when enabled', async () => {
+        window.electronAPI.startAgent = vi.fn().mockResolvedValue(mockAgentInfo);
+
+        // Enable skipPermissions
+        useAgentStore.getState().setSkipPermissions(true);
+
+        await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
+
+        expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
+          'spec-1',
+          'requirements',
+          'claude',
+          ['-p'],
+          undefined,
+          undefined,
+          true // skipPermissions enabled
+        );
       });
 
       it('should add agent to existing spec agents', async () => {
@@ -721,6 +746,38 @@ describe('useAgentStore', () => {
         // spec-1やspec-2のエージェントは含まれない
         expect(projectAgents.some(a => a.specId === 'spec-1')).toBe(false);
         expect(projectAgents.some(a => a.specId === 'spec-2')).toBe(false);
+      });
+    });
+
+    // ============================================================
+    // skipPermissions control
+    // Skip permissions flag for claude CLI (--dangerously-skip-permissions)
+    // ============================================================
+    describe('setSkipPermissions', () => {
+      it('should set skipPermissions to true', () => {
+        useAgentStore.getState().setSkipPermissions(true);
+
+        const state = useAgentStore.getState();
+        expect(state.skipPermissions).toBe(true);
+      });
+
+      it('should set skipPermissions to false', () => {
+        useAgentStore.setState({ skipPermissions: true });
+
+        useAgentStore.getState().setSkipPermissions(false);
+
+        const state = useAgentStore.getState();
+        expect(state.skipPermissions).toBe(false);
+      });
+
+      it('should toggle skipPermissions', () => {
+        expect(useAgentStore.getState().skipPermissions).toBe(false);
+
+        useAgentStore.getState().setSkipPermissions(true);
+        expect(useAgentStore.getState().skipPermissions).toBe(true);
+
+        useAgentStore.getState().setSkipPermissions(false);
+        expect(useAgentStore.getState().skipPermissions).toBe(false);
       });
     });
 

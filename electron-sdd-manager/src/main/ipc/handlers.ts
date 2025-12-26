@@ -3,7 +3,7 @@
  * Requirements: 11.2, 11.3, 5.1-5.8, 9.1-9.10, 10.1-10.3, 13.1, 13.2
  */
 
-import { ipcMain, dialog, app, BrowserWindow } from 'electron';
+import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { FileService } from '../services/fileService';
 import { CommandService } from '../services/commandService';
@@ -15,6 +15,7 @@ import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
+import { projectLogger } from '../services/projectLogger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir, ClaudeMdInstallMode } from '../services/commandInstallerService';
 import { getDefaultLogFileService, initDefaultLogFileService } from '../services/logFileService';
@@ -319,6 +320,11 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
 export async function setProjectPath(projectPath: string): Promise<void> {
   logger.info('[handlers] setProjectPath called', { projectPath });
   currentProjectPath = projectPath;
+
+  // Task 4.2: Switch project logger to new project
+  // Requirements: 1.1, 1.2 (project-log-separation)
+  projectLogger.setCurrentProject(projectPath);
+
   specManagerService = new SpecManagerService(projectPath);
   eventCallbacksRegistered = false; // Reset when service is recreated
 
@@ -591,9 +597,10 @@ export function registerIpcHandlers(): void {
       command: string,
       args: string[],
       group?: ExecutionGroup,
-      sessionId?: string
+      sessionId?: string,
+      skipPermissions?: boolean
     ) => {
-      logger.info('[handlers] START_AGENT called', { specId, phase, command, args, group, sessionId });
+      logger.info('[handlers] START_AGENT called', { specId, phase, command, args, group, sessionId, skipPermissions });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -645,6 +652,7 @@ export function registerIpcHandlers(): void {
         args,
         group,
         sessionId,
+        skipPermissions,
       });
 
       if (!result.ok) {
@@ -1477,6 +1485,50 @@ export function registerIpcHandlers(): void {
   // E2E Test Mode Handler
   ipcMain.handle(IPC_CHANNELS.GET_IS_E2E_TEST, () => {
     return process.argv.includes('--e2e-test');
+  });
+
+  // ============================================================
+  // Project Log (project-log-separation feature)
+  // Requirements: 6.1, 6.2, 6.3
+  // ============================================================
+
+  /**
+   * Get project log path
+   * Task 3.1: Returns the project log path or null if no project is selected
+   */
+  ipcMain.handle(IPC_CHANNELS.GET_PROJECT_LOG_PATH, async () => {
+    logger.debug('[handlers] GET_PROJECT_LOG_PATH called');
+    return projectLogger.getProjectLogPath();
+  });
+
+  /**
+   * Open log directory in system file browser
+   * Task 3.2: Opens the log directory using shell.openPath
+   */
+  ipcMain.handle(IPC_CHANNELS.OPEN_LOG_IN_BROWSER, async () => {
+    logger.info('[handlers] OPEN_LOG_IN_BROWSER called');
+    const logPath = projectLogger.getProjectLogPath();
+
+    if (!logPath) {
+      throw new Error('No project log path available');
+    }
+
+    // Get the directory containing the log file
+    const logDir = path.dirname(logPath);
+
+    try {
+      // Check if directory exists
+      await access(logDir);
+      // Open in system file browser
+      const result = await shell.openPath(logDir);
+      if (result) {
+        // shell.openPath returns empty string on success, error message on failure
+        throw new Error(`Failed to open log directory: ${result}`);
+      }
+    } catch (error) {
+      logger.error('[handlers] OPEN_LOG_IN_BROWSER failed', { logDir, error });
+      throw error instanceof Error ? error : new Error('Failed to open log directory');
+    }
   });
 }
 

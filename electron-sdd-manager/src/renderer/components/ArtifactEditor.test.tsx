@@ -2,14 +2,15 @@
  * ArtifactEditor Component Tests
  * TDD: Testing inspection tab dynamic generation
  * Requirements: 12.1, 12.2, 12.3
+ * Bug fix: bugs-tab-spec-editing-feature (shared ArtifactEditor)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ArtifactEditor } from './ArtifactEditor';
-import { useSpecStore } from '../stores/specStore';
 import { useEditorStore } from '../stores/editorStore';
-import type { SpecDetail, SpecMetadata, SpecJson } from '../types';
+import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
+import type { ArtifactType } from '../stores/editorStore';
 
 // Mock MDEditor to avoid complex editor initialization
 vi.mock('@uiw/react-md-editor', () => ({
@@ -27,55 +28,24 @@ const mockElectronAPI = {
 // @ts-expect-error - Mock window.electronAPI
 window.electronAPI = mockElectronAPI;
 
-// Create base mock data
-const createMockSpecMetadata = (overrides?: Partial<SpecMetadata>): SpecMetadata => ({
-  name: 'test-feature',
-  path: '/project/.kiro/specs/test-feature',
-  phase: 'implementation-complete',
-  updatedAt: '2024-01-15T10:00:00Z',
-  approvals: {
-    requirements: { generated: true, approved: true },
-    design: { generated: true, approved: true },
-    tasks: { generated: true, approved: true },
-  },
-  ...overrides,
-});
+/** Spec artifact tabs */
+const SPEC_TABS: TabInfo[] = [
+  { key: 'requirements', label: 'requirements.md' },
+  { key: 'design', label: 'design.md' },
+  { key: 'tasks', label: 'tasks.md' },
+  { key: 'research', label: 'research.md' },
+];
 
-const createMockSpecJson = (overrides?: Partial<SpecJson>): SpecJson => ({
-  feature_name: 'test-feature',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-15T10:00:00Z',
-  language: 'ja',
-  phase: 'implementation-complete',
-  approvals: {
-    requirements: { generated: true, approved: true },
-    design: { generated: true, approved: true },
-    tasks: { generated: true, approved: true },
-  },
-  ...overrides,
-});
+/** Bug artifact tabs */
+const BUG_TABS: TabInfo[] = [
+  { key: 'report', label: 'report.md' },
+  { key: 'analysis', label: 'analysis.md' },
+  { key: 'fix', label: 'fix.md' },
+  { key: 'verification', label: 'verification.md' },
+];
 
-const createMockSpecDetail = (overrides?: Partial<SpecDetail>): SpecDetail => ({
-  metadata: createMockSpecMetadata(),
-  specJson: createMockSpecJson(),
-  artifacts: {
-    requirements: { exists: true, updatedAt: null, content: '# Requirements' },
-    design: { exists: true, updatedAt: null, content: '# Design' },
-    tasks: { exists: true, updatedAt: null, content: '# Tasks' },
-    research: null,
-    inspection: null,
-  },
-  taskProgress: null,
-  ...overrides,
-});
-
-describe('ArtifactEditor Inspection Tab', () => {
+describe('ArtifactEditor', () => {
   beforeEach(() => {
-    // Reset stores
-    useSpecStore.setState({
-      selectedSpec: null,
-      specDetail: null,
-    });
     useEditorStore.setState({
       activeTab: 'requirements',
       content: '',
@@ -89,106 +59,148 @@ describe('ArtifactEditor Inspection Tab', () => {
     vi.clearAllMocks();
   });
 
+  describe('Shared component behavior', () => {
+    it('should display placeholder when basePath is null', () => {
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath={null}
+          placeholder="仕様を選択してエディターを開始"
+        />
+      );
+
+      expect(screen.getByText('仕様を選択してエディターを開始')).toBeInTheDocument();
+    });
+
+    it('should display bug placeholder when basePath is null', () => {
+      render(
+        <ArtifactEditor
+          tabs={BUG_TABS}
+          basePath={null}
+          placeholder="バグを選択してエディターを開始"
+        />
+      );
+
+      expect(screen.getByText('バグを選択してエディターを開始')).toBeInTheDocument();
+    });
+
+    it('should render spec tabs when artifacts exist', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
+
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+        />
+      );
+
+      expect(screen.getByRole('tab', { name: 'requirements.md' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'design.md' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'tasks.md' })).toBeInTheDocument();
+    });
+
+    it('should render bug tabs when artifacts exist', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        report: { exists: true },
+        analysis: { exists: true },
+        fix: null,
+        verification: null,
+      };
+
+      render(
+        <ArtifactEditor
+          tabs={BUG_TABS}
+          basePath="/project/.kiro/bugs/test-bug"
+          placeholder="バグを選択してエディターを開始"
+          artifacts={artifacts}
+          testId="bug-artifact-editor"
+        />
+      );
+
+      expect(screen.getByRole('tab', { name: 'report.md' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'analysis.md' })).toBeInTheDocument();
+    });
+  });
+
   describe('Inspection tab dynamic generation (REQ-12.1, REQ-12.2)', () => {
-    it('should display Inspection-1 tab when spec.json has inspection field', () => {
-      const specDetail = createMockSpecDetail({
-        specJson: createMockSpecJson({
-          inspection: {
-            passed: true,
-            inspected_at: '2024-01-15T12:00:00Z',
-            report_file: 'inspection-1.md',
-          },
-        }),
-        artifacts: {
-          requirements: { exists: true, updatedAt: null, content: '# Requirements' },
-          design: { exists: true, updatedAt: null, content: '# Design' },
-          tasks: { exists: true, updatedAt: null, content: '# Tasks' },
-          research: null,
-          inspection: { exists: true, updatedAt: null, content: '# Inspection Report #1' },
-        },
-      });
+    it('should display Inspection-1 tab when dynamicTabs include it', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
 
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
+      const dynamicTabs: TabInfo[] = [
+        { key: 'inspection-1' as ArtifactType, label: 'Inspection-1' },
+      ];
 
-      render(<ArtifactEditor />);
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+          dynamicTabs={dynamicTabs}
+        />
+      );
 
-      // Verify Inspection-1 tab is rendered
-      expect(screen.getByRole('button', { name: 'Inspection-1' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Inspection-1' })).toBeInTheDocument();
     });
 
     it('should display Inspection-2 tab for inspection-2.md report', () => {
-      const specDetail = createMockSpecDetail({
-        specJson: createMockSpecJson({
-          inspection: {
-            passed: true,
-            inspected_at: '2024-01-15T12:00:00Z',
-            report_file: 'inspection-2.md',
-          },
-        }),
-        artifacts: {
-          requirements: { exists: true, updatedAt: null, content: '# Requirements' },
-          design: { exists: true, updatedAt: null, content: '# Design' },
-          tasks: { exists: true, updatedAt: null, content: '# Tasks' },
-          research: null,
-          inspection: { exists: true, updatedAt: null, content: '# Inspection Report #2' },
-        },
-      });
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
 
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
+      const dynamicTabs: TabInfo[] = [
+        { key: 'inspection-2' as ArtifactType, label: 'Inspection-2' },
+      ];
 
-      render(<ArtifactEditor />);
-
-      // Verify Inspection-2 tab is rendered
-      expect(screen.getByRole('button', { name: 'Inspection-2' })).toBeInTheDocument();
-    });
-
-    it('should not display inspection tab when spec.json has no inspection field', () => {
-      const specDetail = createMockSpecDetail();
-      // specDetail.specJson has no inspection field
-
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
-
-      render(<ArtifactEditor />);
-
-      // Verify no Inspection tab is rendered
-      const buttons = screen.getAllByRole('button');
-      const inspectionTab = buttons.find(btn =>
-        btn.textContent?.includes('Inspection')
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+          dynamicTabs={dynamicTabs}
+        />
       );
-      expect(inspectionTab).toBeUndefined();
+
+      expect(screen.getByRole('tab', { name: 'Inspection-2' })).toBeInTheDocument();
     });
 
-    it('should not display inspection tab when report_file format is invalid', () => {
-      const specDetail = createMockSpecDetail({
-        specJson: createMockSpecJson({
-          inspection: {
-            passed: true,
-            inspected_at: '2024-01-15T12:00:00Z',
-            report_file: 'invalid-report.md', // Invalid format
-          },
-        }),
-      });
+    it('should not display inspection tab when dynamicTabs is empty', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
 
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+          dynamicTabs={[]}
+        />
+      );
 
-      render(<ArtifactEditor />);
-
-      // Verify no Inspection tab is rendered for invalid format
-      const buttons = screen.getAllByRole('button');
-      const inspectionTab = buttons.find(btn =>
-        btn.textContent?.includes('Inspection')
+      const tabs = screen.getAllByRole('tab');
+      const inspectionTab = tabs.find(tab =>
+        tab.textContent?.includes('Inspection')
       );
       expect(inspectionTab).toBeUndefined();
     });
@@ -196,38 +208,30 @@ describe('ArtifactEditor Inspection Tab', () => {
 
   describe('Inspection tab placement (REQ-12.4)', () => {
     it('should place inspection tab after tasks tab', () => {
-      const specDetail = createMockSpecDetail({
-        specJson: createMockSpecJson({
-          inspection: {
-            passed: true,
-            inspected_at: '2024-01-15T12:00:00Z',
-            report_file: 'inspection-1.md',
-          },
-        }),
-        artifacts: {
-          requirements: { exists: true, updatedAt: null, content: '# Requirements' },
-          design: { exists: true, updatedAt: null, content: '# Design' },
-          tasks: { exists: true, updatedAt: null, content: '# Tasks' },
-          research: null,
-          inspection: { exists: true, updatedAt: null, content: '# Inspection' },
-        },
-      });
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
 
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
+      const dynamicTabs: TabInfo[] = [
+        { key: 'inspection-1' as ArtifactType, label: 'Inspection-1' },
+      ];
 
-      render(<ArtifactEditor />);
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+          dynamicTabs={dynamicTabs}
+        />
+      );
 
-      // Get all tab buttons
-      const buttons = screen.getAllByRole('button');
-      const tabLabels = buttons
-        .filter(btn => !btn.className.includes('rounded'))
-        .map(btn => btn.textContent?.trim())
-        .filter(Boolean);
+      const tabs = screen.getAllByRole('tab');
+      const tabLabels = tabs.map(tab => tab.textContent?.trim());
 
-      // Verify order: requirements, design, tasks, (document-review tabs if any), inspection
       const tasksIndex = tabLabels.indexOf('tasks.md');
       const inspectionIndex = tabLabels.findIndex(label => label?.includes('Inspection'));
 
@@ -237,65 +241,61 @@ describe('ArtifactEditor Inspection Tab', () => {
     });
 
     it('should place inspection tab after document review tabs when both exist', () => {
-      const specDetail = createMockSpecDetail({
-        specJson: createMockSpecJson({
-          documentReview: {
-            rounds: 1,
-            roundDetails: [
-              { roundNumber: 1, status: 'reply_complete' },
-            ],
-          },
-          inspection: {
-            passed: true,
-            inspected_at: '2024-01-15T12:00:00Z',
-            report_file: 'inspection-1.md',
-          },
-        }),
-        artifacts: {
-          requirements: { exists: true, updatedAt: null, content: '# Requirements' },
-          design: { exists: true, updatedAt: null, content: '# Design' },
-          tasks: { exists: true, updatedAt: null, content: '# Tasks' },
-          research: null,
-          inspection: { exists: true, updatedAt: null, content: '# Inspection' },
-        },
-      });
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
 
-      useSpecStore.setState({
-        selectedSpec: createMockSpecMetadata(),
-        specDetail,
-      });
+      const dynamicTabs: TabInfo[] = [
+        { key: 'document-review-1' as ArtifactType, label: 'Review-1' },
+        { key: 'document-review-1-reply' as ArtifactType, label: 'Reply-1' },
+        { key: 'inspection-1' as ArtifactType, label: 'Inspection-1' },
+      ];
 
-      render(<ArtifactEditor />);
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+          dynamicTabs={dynamicTabs}
+        />
+      );
 
-      // Get all tab buttons
-      const buttons = screen.getAllByRole('button');
-      const tabLabels = buttons
-        .filter(btn => !btn.className.includes('rounded'))
-        .map(btn => btn.textContent?.trim())
-        .filter(Boolean);
+      const tabs = screen.getAllByRole('tab');
+      const tabLabels = tabs.map(tab => tab.textContent?.trim());
 
-      // Find positions
       const review1Index = tabLabels.findIndex(label => label?.includes('Review-1'));
       const reply1Index = tabLabels.findIndex(label => label?.includes('Reply-1'));
       const inspectionIndex = tabLabels.findIndex(label => label?.includes('Inspection'));
 
-      // Document review tabs should exist and inspection should be after them
       expect(review1Index).toBeGreaterThan(-1);
       expect(reply1Index).toBeGreaterThan(-1);
       expect(inspectionIndex).toBeGreaterThan(reply1Index);
     });
   });
 
-  describe('No spec selected state', () => {
-    it('should display placeholder message when no spec is selected', () => {
-      useSpecStore.setState({
-        selectedSpec: null,
-        specDetail: null,
-      });
+  describe('No artifacts available', () => {
+    it('should display no artifacts message when all artifacts are null', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: null,
+        design: null,
+        tasks: null,
+        research: null,
+      };
 
-      render(<ArtifactEditor />);
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+        />
+      );
 
-      expect(screen.getByText('仕様を選択してエディターを開始')).toBeInTheDocument();
+      expect(screen.getByText('表示可能なアーティファクトがありません')).toBeInTheDocument();
     });
   });
 });

@@ -6,15 +6,17 @@
 
 import { create } from 'zustand';
 
-/** Base artifact types */
-type BaseArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+/** Spec artifact types */
+type SpecArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+/** Bug artifact types */
+type BugArtifactType = 'report' | 'analysis' | 'fix' | 'verification';
 /** Dynamic artifact types for document review and inspection files */
 type DynamicArtifactType =
   | `document-review-${number}`
   | `document-review-${number}-reply`
   | `inspection-${number}`;
 /** All artifact types */
-export type ArtifactType = BaseArtifactType | DynamicArtifactType;
+export type ArtifactType = SpecArtifactType | BugArtifactType | DynamicArtifactType;
 
 interface EditorState {
   activeTab: ArtifactType;

@@ -1,32 +1,51 @@
 /**
  * ArtifactEditor Component
- * Markdown editor for specification artifacts
+ * Shared Markdown editor for Spec and Bug artifacts
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
+ * Bug fix: bugs-tab-spec-editing-feature
  */
 
 import { useEffect, useMemo } from 'react';
 import { Save, Eye, Edit, Loader2, Circle } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
-import { useEditorStore, useSpecStore, notify } from '../stores';
+import { useEditorStore, notify } from '../stores';
 import type { ArtifactType } from '../stores/editorStore';
 import { clsx } from 'clsx';
 
-type BaseArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
-
-interface TabInfo {
+/** Tab configuration for artifact editor */
+export interface TabInfo {
   key: ArtifactType;
   label: string;
 }
 
-const BASE_TABS: TabInfo[] = [
-  { key: 'requirements', label: 'requirements.md' },
-  { key: 'design', label: 'design.md' },
-  { key: 'tasks', label: 'tasks.md' },
-  { key: 'research', label: 'research.md' },
-];
+/** Artifact existence info for filtering tabs */
+export interface ArtifactInfo {
+  exists: boolean;
+}
 
-export function ArtifactEditor() {
-  const { selectedSpec, specDetail } = useSpecStore();
+export interface ArtifactEditorProps {
+  /** Base tabs configuration */
+  tabs: TabInfo[];
+  /** Base path for artifacts (spec or bug directory path) */
+  basePath: string | null;
+  /** Placeholder text when nothing is selected */
+  placeholder: string;
+  /** Dynamic tabs (e.g., document review, inspection) */
+  dynamicTabs?: TabInfo[];
+  /** Artifact existence map for filtering tabs */
+  artifacts?: Record<string, ArtifactInfo | null>;
+  /** Test ID for testing */
+  testId?: string;
+}
+
+export function ArtifactEditor({
+  tabs,
+  basePath,
+  placeholder,
+  dynamicTabs = [],
+  artifacts,
+  testId,
+}: ArtifactEditorProps) {
   const {
     activeTab,
     content,
@@ -42,79 +61,30 @@ export function ArtifactEditor() {
     clearEditor,
   } = useEditorStore();
 
-  // Load artifact when spec or tab changes
+  // Load artifact when basePath or tab changes
   useEffect(() => {
-    if (selectedSpec) {
-      loadArtifact(selectedSpec.path, activeTab);
+    if (basePath) {
+      loadArtifact(basePath, activeTab);
     } else {
       clearEditor();
     }
-  }, [selectedSpec, activeTab, loadArtifact, clearEditor]);
+  }, [basePath, activeTab, loadArtifact, clearEditor]);
 
-  // Build document review tabs from roundDetails
-  const documentReviewTabs = useMemo((): TabInfo[] => {
-    const reviewState = specDetail?.specJson?.documentReview;
-    if (!reviewState?.roundDetails || reviewState.roundDetails.length === 0) {
-      return [];
-    }
-
-    const tabs: TabInfo[] = [];
-    // Sort by roundNumber and add tabs in order
-    const sortedDetails = [...reviewState.roundDetails].sort(
-      (a, b) => a.roundNumber - b.roundNumber
-    );
-
-    for (const detail of sortedDetails) {
-      const n = detail.roundNumber;
-      // Always add review tab if we have a roundDetail
-      tabs.push({
-        key: `document-review-${n}` as ArtifactType,
-        label: `Review-${n}`,
-      });
-      // Add reply tab if reply is complete
-      if (detail.status === 'reply_complete') {
-        tabs.push({
-          key: `document-review-${n}-reply` as ArtifactType,
-          label: `Reply-${n}`,
-        });
-      }
-    }
-
-    return tabs;
-  }, [specDetail?.specJson?.documentReview]);
-
-  // Build inspection tabs from spec.json inspection field (REQ-12.1, REQ-12.2)
-  const inspectionTabs = useMemo((): TabInfo[] => {
-    const inspection = specDetail?.specJson?.inspection;
-    if (!inspection?.report_file) {
-      return [];
-    }
-
-    // Extract number from report_file (e.g., "inspection-1.md" -> 1)
-    const match = inspection.report_file.match(/inspection-(\d+)\.md/);
-    if (!match) {
-      return [];
-    }
-
-    const n = parseInt(match[1], 10);
-    return [{
-      key: `inspection-${n}` as ArtifactType,
-      label: `Inspection-${n}`,
-    }];
-  }, [specDetail?.specJson?.inspection]);
-
-  // Filter base tabs to only show existing artifacts, then add review and inspection tabs
+  // Filter base tabs to only show existing artifacts, then add dynamic tabs
   const availableTabs = useMemo((): TabInfo[] => {
-    let baseTabs = BASE_TABS;
-    if (specDetail?.artifacts) {
-      baseTabs = BASE_TABS.filter((tab) => {
-        const artifact = specDetail.artifacts[tab.key as BaseArtifactType];
-        return artifact !== null && artifact.exists;
+    if (!tabs || tabs.length === 0) {
+      return dynamicTabs;
+    }
+    let filteredTabs = tabs;
+    if (artifacts) {
+      filteredTabs = tabs.filter((tab) => {
+        const artifact = artifacts[tab.key];
+        return artifact !== null && artifact?.exists;
       });
     }
-    // Append document review tabs after tasks, then inspection tabs (REQ-12.4)
-    return [...baseTabs, ...documentReviewTabs, ...inspectionTabs];
-  }, [specDetail?.artifacts, documentReviewTabs, inspectionTabs]);
+    // Append dynamic tabs (document review, inspection, etc.)
+    return [...filteredTabs, ...dynamicTabs];
+  }, [tabs, artifacts, dynamicTabs]);
 
   // If current activeTab doesn't exist, switch to first available tab
   useEffect(() => {
@@ -123,17 +93,23 @@ export function ArtifactEditor() {
     }
   }, [availableTabs, activeTab, setActiveTab]);
 
-  if (!selectedSpec) {
+  if (!basePath) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        仕様を選択してエディターを開始
+      <div
+        data-testid={testId}
+        className="flex items-center justify-center h-full text-gray-400"
+      >
+        {placeholder}
       </div>
     );
   }
 
   if (availableTabs.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div
+        data-testid={testId}
+        className="flex items-center justify-center h-full text-gray-400"
+      >
         表示可能なアーティファクトがありません
       </div>
     );
@@ -168,12 +144,15 @@ export function ArtifactEditor() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div data-testid={testId} className="flex flex-col h-full">
       {/* Tabs */}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
         {availableTabs.map((tab) => (
           <button
             key={tab.key}
+            data-testid={testId ? `${testId}-tab-${tab.key}` : undefined}
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => handleTabChange(tab.key)}
             className={clsx(
               'px-4 py-2 text-sm font-medium transition-colors',
@@ -272,7 +251,7 @@ export function ArtifactEditor() {
           {getTabDisplayName(activeTab)}
         </span>
         <span>
-          {content.length} 文字 | {content.split('\n').length} 行
+          {(content || '').length} 文字 | {(content || '').split('\n').length} 行
         </span>
       </div>
     </div>

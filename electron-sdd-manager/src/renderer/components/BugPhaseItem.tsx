@@ -91,8 +91,8 @@ export function BugPhaseItem({
           </span>
         )}
 
-        {/* 実行ボタン */}
-        {showExecuteButton && !isExecuting && (
+        {/* 実行ボタン（完了済みフェーズでは非表示） */}
+        {showExecuteButton && !isExecuting && !isCompleted && (
           <button
             data-testid={`bug-phase-execute-button-${phase}`}
             onClick={onExecute}

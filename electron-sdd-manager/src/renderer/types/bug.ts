@@ -127,3 +127,71 @@ export const PHASE_COLORS: Record<BugPhase, string> = {
  * All phases in order
  */
 export const BUG_PHASES: readonly BugPhase[] = ['reported', 'analyzed', 'fixed', 'verified'] as const;
+
+// ============================================================
+// Task 1.1: bugs-pane-integration - BugWorkflowPhase, BugPhaseStatus, BugDocumentTab型
+// Requirements: 2.2, 3.2
+// ============================================================
+
+/**
+ * Bugワークフロー表示用のフェーズ型
+ * BugPhase（ドキュメント存在判定用）とは別概念
+ * Requirements: 3.2
+ */
+export type BugWorkflowPhase = 'report' | 'analyze' | 'fix' | 'verify' | 'deploy';
+
+/**
+ * ワークフローフェーズの状態
+ * Requirements: 3.3
+ */
+export type BugPhaseStatus = 'pending' | 'completed' | 'executing';
+
+/**
+ * Bugドキュメントタブ型
+ * Requirements: 2.2
+ */
+export type BugDocumentTab = 'report' | 'analysis' | 'fix' | 'verification';
+
+/**
+ * ワークフローフェーズの順序定義
+ */
+export const BUG_WORKFLOW_PHASES: readonly BugWorkflowPhase[] = [
+  'report',
+  'analyze',
+  'fix',
+  'verify',
+  'deploy',
+] as const;
+
+/**
+ * ドキュメントタブの順序定義
+ */
+export const BUG_DOCUMENT_TABS: readonly BugDocumentTab[] = [
+  'report',
+  'analysis',
+  'fix',
+  'verification',
+] as const;
+
+/**
+ * ワークフローフェーズのラベル
+ */
+export const BUG_WORKFLOW_PHASE_LABELS: Record<BugWorkflowPhase, string> = {
+  report: 'Report',
+  analyze: 'Analyze',
+  fix: 'Fix',
+  verify: 'Verify',
+  deploy: 'Deploy',
+};
+
+/**
+ * フェーズとコマンドのマッピング
+ * Requirements: 4.1-4.5
+ */
+export const BUG_PHASE_COMMANDS: Record<BugWorkflowPhase, string | null> = {
+  report: null, // 手動作成のため実行ボタンなし
+  analyze: '/kiro:bug-analyze',
+  fix: '/kiro:bug-fix',
+  verify: '/kiro:bug-verify',
+  deploy: '/commit',
+};

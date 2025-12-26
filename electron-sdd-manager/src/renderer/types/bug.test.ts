@@ -11,11 +11,20 @@ import {
   PHASE_LABELS,
   PHASE_COLORS,
   BUG_PHASES,
+  // Task 1.1: bugs-pane-integration新規型
+  BUG_WORKFLOW_PHASES,
+  BUG_DOCUMENT_TABS,
+  BUG_WORKFLOW_PHASE_LABELS,
+  BUG_PHASE_COMMANDS,
   type BugPhase,
   type BugAction,
   type BugMetadata,
   type BugDetail,
   type BugsChangeEvent,
+  // Task 1.1: bugs-pane-integration新規型
+  type BugWorkflowPhase,
+  type BugPhaseStatus,
+  type BugDocumentTab,
 } from './bug';
 
 describe('Bug Types', () => {
@@ -165,6 +174,56 @@ describe('Bug Types', () => {
         bugName: 'test-bug',
       };
       expect(event.type).toBe('add');
+    });
+  });
+
+  // Task 1.1: bugs-pane-integration - BugWorkflowPhase, BugPhaseStatus, BugDocumentTab型テスト
+  // Requirements: 2.2, 3.2
+  describe('BugWorkflowPhase type', () => {
+    it('should define 5 workflow phases', () => {
+      expect(BUG_WORKFLOW_PHASES).toEqual(['report', 'analyze', 'fix', 'verify', 'deploy']);
+    });
+
+    it('should be readonly array', () => {
+      expect(BUG_WORKFLOW_PHASES.length).toBe(5);
+    });
+  });
+
+  describe('BugPhaseStatus type', () => {
+    it('should have all status values', () => {
+      // TypeScript compile-time check for valid values
+      const statuses: BugPhaseStatus[] = ['pending', 'completed', 'executing'];
+      expect(statuses).toHaveLength(3);
+    });
+  });
+
+  describe('BugDocumentTab type', () => {
+    it('should define 4 document tabs', () => {
+      expect(BUG_DOCUMENT_TABS).toEqual(['report', 'analysis', 'fix', 'verification']);
+    });
+
+    it('should be readonly array', () => {
+      expect(BUG_DOCUMENT_TABS.length).toBe(4);
+    });
+  });
+
+  describe('BUG_WORKFLOW_PHASE_LABELS', () => {
+    it('should have labels for all workflow phases', () => {
+      expect(BUG_WORKFLOW_PHASE_LABELS.report).toBe('Report');
+      expect(BUG_WORKFLOW_PHASE_LABELS.analyze).toBe('Analyze');
+      expect(BUG_WORKFLOW_PHASE_LABELS.fix).toBe('Fix');
+      expect(BUG_WORKFLOW_PHASE_LABELS.verify).toBe('Verify');
+      expect(BUG_WORKFLOW_PHASE_LABELS.deploy).toBe('Deploy');
+    });
+  });
+
+  describe('BUG_PHASE_COMMANDS', () => {
+    it('should map phases to commands correctly', () => {
+      expect(BUG_PHASE_COMMANDS.report).toBeNull(); // No command for report
+      expect(BUG_PHASE_COMMANDS.analyze).toBe('/kiro:bug-analyze');
+      expect(BUG_PHASE_COMMANDS.fix).toBe('/kiro:bug-fix');
+      expect(BUG_PHASE_COMMANDS.verify).toBe('/kiro:bug-verify');
+      expect(BUG_PHASE_COMMANDS.deploy).toBe('/commit');
     });
   });
 });

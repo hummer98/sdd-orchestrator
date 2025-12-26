@@ -233,4 +233,49 @@ describe('bugStore', () => {
       expect(useBugStore.getState().isWatching).toBe(false);
     });
   });
+
+  // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
+  // Requirements: 5.4
+  describe('refreshBugs - selection consistency', () => {
+    it('should clear selectedBug when selected bug is deleted', async () => {
+      mockReadBugs.mockResolvedValue(mockBugs);
+      mockReadBugDetail.mockResolvedValue(mockBugDetail);
+      mockStartBugsWatcher.mockResolvedValue(undefined);
+
+      // Load bugs and select one
+      await useBugStore.getState().loadBugs('/project');
+      await useBugStore.getState().selectBug(mockBugs[0]);
+
+      expect(useBugStore.getState().selectedBug).toEqual(mockBugs[0]);
+
+      // Simulate bug deletion by returning list without the selected bug
+      const bugsWithoutSelected = mockBugs.filter(b => b.path !== mockBugs[0].path);
+      mockReadBugs.mockResolvedValue(bugsWithoutSelected);
+
+      // Refresh bugs
+      await useBugStore.getState().refreshBugs();
+
+      // Selected bug should be cleared
+      expect(useBugStore.getState().selectedBug).toBeNull();
+      expect(useBugStore.getState().bugDetail).toBeNull();
+    });
+
+    it('should keep selectedBug when selected bug still exists', async () => {
+      mockReadBugs.mockResolvedValue(mockBugs);
+      mockReadBugDetail.mockResolvedValue(mockBugDetail);
+      mockStartBugsWatcher.mockResolvedValue(undefined);
+
+      // Load bugs and select one
+      await useBugStore.getState().loadBugs('/project');
+      await useBugStore.getState().selectBug(mockBugs[0]);
+
+      expect(useBugStore.getState().selectedBug).toEqual(mockBugs[0]);
+
+      // Refresh with same bugs (selected bug still exists)
+      await useBugStore.getState().refreshBugs();
+
+      // Selected bug should still be selected (with refreshed detail)
+      expect(useBugStore.getState().selectedBug?.path).toBe(mockBugs[0].path);
+    });
+  });
 });

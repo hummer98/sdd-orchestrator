@@ -128,6 +128,8 @@ export const useBugStore = create<BugStore>((set, get) => ({
         const bugs = await window.electronAPI.readBugs(currentProjectPath);
         set({ bugs });
 
+        // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
+        // Requirements: 5.4
         // Also refresh selected bug detail if one is selected
         const { selectedBug } = get();
         if (selectedBug) {
@@ -136,6 +138,9 @@ export const useBugStore = create<BugStore>((set, get) => ({
           if (updatedBug) {
             // Re-select to refresh detail pane (silent mode for smoother UX)
             await get().selectBug(updatedBug, { silent: true });
+          } else {
+            // 選択中のBugが削除された場合は選択状態を解除
+            get().clearSelectedBug();
           }
         }
       } catch (error) {

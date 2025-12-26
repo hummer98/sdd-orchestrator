@@ -50,6 +50,7 @@ class DocsTabs {
         <button
           class="docs-tab ${specsActive ? 'docs-tab-active' : ''}"
           data-tab="specs"
+          data-testid="remote-tab-specs"
           aria-selected="${specsActive}"
           role="tab"
         >
@@ -61,6 +62,7 @@ class DocsTabs {
         <button
           class="docs-tab ${bugsActive ? 'docs-tab-active' : ''}"
           data-tab="bugs"
+          data-testid="remote-tab-bugs"
           aria-selected="${bugsActive}"
           role="tab"
         >
@@ -200,7 +202,7 @@ class SpecList {
     const phaseInfo = this.getPhaseInfo(spec);
 
     return `
-      <div class="spec-card ${selectedClass}" data-spec-id="${spec.feature_name}">
+      <div class="spec-card ${selectedClass}" data-spec-id="${spec.feature_name}" data-testid="remote-spec-item-${spec.feature_name}">
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
             <h3 class="font-medium truncate">${spec.feature_name}</h3>
@@ -356,7 +358,7 @@ class BugList {
     const selectedClass = isSelected ? 'bug-card-selected' : '';
 
     return `
-      <div class="bug-card ${selectedClass}" data-bug-name="${bug.name}">
+      <div class="bug-card ${selectedClass}" data-bug-name="${bug.name}" data-testid="remote-bug-item-${bug.name}">
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
             <h3 class="font-medium truncate">${bug.name}</h3>

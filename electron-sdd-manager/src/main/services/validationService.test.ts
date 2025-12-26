@@ -114,6 +114,7 @@ Protocol description.
       const commands = [
         'spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
         'validate-gap', 'validate-design', 'validate-impl',
+        'spec-inspection',
         'document-review', 'document-review-reply',
         'steering', 'steering-custom',
         'bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status',
@@ -127,6 +128,7 @@ Protocol description.
         'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
         'steering', 'steering-custom',
         'validate-design', 'validate-gap', 'validate-impl',
+        'spec-inspection',
       ];
       for (const agent of agents) {
         await createValidAgentFile(agent);

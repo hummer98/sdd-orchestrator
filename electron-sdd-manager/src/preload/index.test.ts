@@ -104,7 +104,8 @@ describe('Preload API - Task 28.1: Agent管理API公開', () => {
         'claude',
         ['-p', 'command'],
         'doc',
-        'session-123'
+        'session-123',
+        undefined  // skipPermissions
       );
       expect(result).toEqual(mockAgentInfo);
     });

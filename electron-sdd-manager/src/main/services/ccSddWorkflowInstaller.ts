@@ -11,7 +11,7 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（19種類）
+ * cc-sdd コマンド一覧（20種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
@@ -27,6 +27,8 @@ export const CC_SDD_COMMANDS = [
   'validate-gap',
   'validate-design',
   'validate-impl',
+  // Inspection (1)
+  'spec-inspection',
   // Document Review (2)
   'document-review',
   'document-review-reply',
@@ -42,7 +44,7 @@ export const CC_SDD_COMMANDS = [
 ] as const;
 
 /**
- * cc-sdd エージェント一覧（9種類）
+ * cc-sdd エージェント一覧（10種類）
  * Claude Code subagent として使用されるエージェント定義ファイル
  */
 export const CC_SDD_AGENTS = [
@@ -58,6 +60,8 @@ export const CC_SDD_AGENTS = [
   'validate-design',
   'validate-gap',
   'validate-impl',
+  // Inspection Agent (1)
+  'spec-inspection',
 ] as const;
 
 /**

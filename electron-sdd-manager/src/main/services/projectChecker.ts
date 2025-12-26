@@ -28,7 +28,7 @@ export interface ProfileConfig {
 }
 
 /**
- * Commands included in cc-sdd profile (11 commands)
+ * Commands included in cc-sdd profile (12 commands)
  * Note: Does NOT include spec-quick
  */
 export const CC_SDD_PROFILE_COMMANDS = [
@@ -41,12 +41,13 @@ export const CC_SDD_PROFILE_COMMANDS = [
   'kiro/validate-gap',
   'kiro/validate-design',
   'kiro/validate-impl',
+  'kiro/spec-inspection',
   'kiro/steering',
   'kiro/steering-custom',
 ] as const;
 
 /**
- * Commands included in cc-sdd-agent profile (12 commands)
+ * Commands included in cc-sdd-agent profile (13 commands)
  * Includes all cc-sdd commands + spec-quick
  */
 export const CC_SDD_AGENT_PROFILE_COMMANDS = [
@@ -60,6 +61,7 @@ export const CC_SDD_AGENT_PROFILE_COMMANDS = [
   'kiro/validate-gap',
   'kiro/validate-design',
   'kiro/validate-impl',
+  'kiro/spec-inspection',
   'kiro/steering',
   'kiro/steering-custom',
 ] as const;

@@ -274,24 +274,28 @@ describe('ProjectChecker', () => {
 });
 
 describe('Constants', () => {
-  it('cc-sdd profile should have 18 commands (11 base + 5 bug + 2 doc-review)', () => {
-    expect(COMMANDS_BY_PROFILE['cc-sdd'].length).toBe(18);
+  it('cc-sdd profile should have 19 commands (12 base + 5 bug + 2 doc-review)', () => {
+    expect(COMMANDS_BY_PROFILE['cc-sdd'].length).toBe(19);
     expect(COMMANDS_BY_PROFILE['cc-sdd']).not.toContain('kiro/spec-quick');
+    expect(COMMANDS_BY_PROFILE['cc-sdd']).toContain('kiro/spec-inspection');
   });
 
-  it('cc-sdd-agent profile should have 19 commands (12 base + 5 bug + 2 doc-review)', () => {
-    expect(COMMANDS_BY_PROFILE['cc-sdd-agent'].length).toBe(19);
+  it('cc-sdd-agent profile should have 20 commands (13 base + 5 bug + 2 doc-review)', () => {
+    expect(COMMANDS_BY_PROFILE['cc-sdd-agent'].length).toBe(20);
     expect(COMMANDS_BY_PROFILE['cc-sdd-agent']).toContain('kiro/spec-quick');
+    expect(COMMANDS_BY_PROFILE['cc-sdd-agent']).toContain('kiro/spec-inspection');
   });
 
-  it('CC_SDD_PROFILE_COMMANDS should have 11 base commands (without spec-quick)', () => {
-    expect(CC_SDD_PROFILE_COMMANDS.length).toBe(11);
+  it('CC_SDD_PROFILE_COMMANDS should have 12 base commands (without spec-quick)', () => {
+    expect(CC_SDD_PROFILE_COMMANDS.length).toBe(12);
     expect(CC_SDD_PROFILE_COMMANDS).not.toContain('kiro/spec-quick');
+    expect(CC_SDD_PROFILE_COMMANDS).toContain('kiro/spec-inspection');
   });
 
-  it('CC_SDD_AGENT_PROFILE_COMMANDS should have 12 base commands (with spec-quick)', () => {
-    expect(CC_SDD_AGENT_PROFILE_COMMANDS.length).toBe(12);
+  it('CC_SDD_AGENT_PROFILE_COMMANDS should have 13 base commands (with spec-quick)', () => {
+    expect(CC_SDD_AGENT_PROFILE_COMMANDS.length).toBe(13);
     expect(CC_SDD_AGENT_PROFILE_COMMANDS).toContain('kiro/spec-quick');
+    expect(CC_SDD_AGENT_PROFILE_COMMANDS).toContain('kiro/spec-inspection');
   });
 
   it('getCommandsForProfile should return correct commands for each profile', () => {

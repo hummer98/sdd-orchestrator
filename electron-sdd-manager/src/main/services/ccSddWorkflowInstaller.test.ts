@@ -46,12 +46,13 @@ describe('CcSddWorkflowInstaller', () => {
     // Define command categories
     const specCommands = ['spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick'];
     const validateCommands = ['validate-gap', 'validate-design', 'validate-impl'];
+    const inspectionCommands = ['spec-inspection'];
     const steeringCommands = ['steering', 'steering-custom'];
     const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status'];
     const documentReviewCommands = ['document-review', 'document-review-reply'];
 
     // Create command templates in new structure
-    for (const cmd of [...specCommands, ...validateCommands, ...steeringCommands]) {
+    for (const cmd of [...specCommands, ...validateCommands, ...inspectionCommands, ...steeringCommands]) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# Template for ${cmd}\nThis is a template file for cc-sdd command.`, 'utf-8');
@@ -125,7 +126,7 @@ describe('CcSddWorkflowInstaller', () => {
   }
 
   describe('Constants', () => {
-    it('should define all cc-sdd commands (19 types)', () => {
+    it('should define all cc-sdd commands (20 types)', () => {
       // Spec Workflow (7)
       expect(CC_SDD_COMMANDS).toContain('spec-init');
       expect(CC_SDD_COMMANDS).toContain('spec-requirements');
@@ -138,6 +139,8 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_COMMANDS).toContain('validate-gap');
       expect(CC_SDD_COMMANDS).toContain('validate-design');
       expect(CC_SDD_COMMANDS).toContain('validate-impl');
+      // Inspection (1)
+      expect(CC_SDD_COMMANDS).toContain('spec-inspection');
       // Document Review (2)
       expect(CC_SDD_COMMANDS).toContain('document-review');
       expect(CC_SDD_COMMANDS).toContain('document-review-reply');
@@ -151,10 +154,10 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_COMMANDS).toContain('bug-verify');
       expect(CC_SDD_COMMANDS).toContain('bug-status');
       // Total count
-      expect(CC_SDD_COMMANDS.length).toBe(19);
+      expect(CC_SDD_COMMANDS.length).toBe(20);
     });
 
-    it('should define all cc-sdd agents (9 types)', () => {
+    it('should define all cc-sdd agents (10 types)', () => {
       // Spec Agents (4)
       expect(CC_SDD_AGENTS).toContain('spec-design');
       expect(CC_SDD_AGENTS).toContain('spec-impl');
@@ -167,8 +170,10 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_AGENTS).toContain('validate-design');
       expect(CC_SDD_AGENTS).toContain('validate-gap');
       expect(CC_SDD_AGENTS).toContain('validate-impl');
+      // Inspection Agent (1)
+      expect(CC_SDD_AGENTS).toContain('spec-inspection');
       // Total count
-      expect(CC_SDD_AGENTS.length).toBe(9);
+      expect(CC_SDD_AGENTS.length).toBe(10);
     });
 
     it('should have CLAUDE.md section with cc-sdd workflow', () => {
@@ -190,12 +195,12 @@ describe('CcSddWorkflowInstaller', () => {
   });
 
   describe('installCommands', () => {
-    it('should install all 19 cc-sdd commands to .claude/commands/kiro/', async () => {
+    it('should install all 20 cc-sdd commands to .claude/commands/kiro/', async () => {
       const result = await installer.installCommands(tempDir);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed.length).toBe(19);
+        expect(result.value.installed.length).toBe(20);
         expect(result.value.installed).toContain('spec-init');
         expect(result.value.installed).toContain('spec-requirements');
         expect(result.value.installed).toContain('spec-design');
@@ -206,6 +211,7 @@ describe('CcSddWorkflowInstaller', () => {
         expect(result.value.installed).toContain('validate-gap');
         expect(result.value.installed).toContain('validate-design');
         expect(result.value.installed).toContain('validate-impl');
+        expect(result.value.installed).toContain('spec-inspection');
         expect(result.value.installed).toContain('document-review');
         expect(result.value.installed).toContain('document-review-reply');
         expect(result.value.installed).toContain('steering');
@@ -236,7 +242,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.skipped).toContain('spec-init');
-        expect(result.value.installed.length).toBe(18); // 19 - 1 skipped
+        expect(result.value.installed.length).toBe(19); // 20 - 1 skipped
       }
 
       // Verify existing file was not overwritten
@@ -255,7 +261,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.overwritten).toContain('spec-init');
-        expect(result.value.installed.length).toBe(18); // 19 - 1 overwritten
+        expect(result.value.installed.length).toBe(19); // 20 - 1 overwritten
       }
 
       // Verify file was overwritten
@@ -279,12 +285,12 @@ describe('CcSddWorkflowInstaller', () => {
   });
 
   describe('installAgents', () => {
-    it('should install all 9 cc-sdd agents to .claude/agents/kiro/', async () => {
+    it('should install all 10 cc-sdd agents to .claude/agents/kiro/', async () => {
       const result = await installer.installAgents(tempDir);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed.length).toBe(9);
+        expect(result.value.installed.length).toBe(10);
         expect(result.value.installed).toContain('spec-design');
         expect(result.value.installed).toContain('spec-impl');
         expect(result.value.installed).toContain('spec-requirements');
@@ -294,6 +300,7 @@ describe('CcSddWorkflowInstaller', () => {
         expect(result.value.installed).toContain('validate-design');
         expect(result.value.installed).toContain('validate-gap');
         expect(result.value.installed).toContain('validate-impl');
+        expect(result.value.installed).toContain('spec-inspection');
       }
 
       // Verify files were created in correct location
@@ -315,7 +322,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.skipped).toContain('spec-design');
-        expect(result.value.installed.length).toBe(8);
+        expect(result.value.installed.length).toBe(9); // 10 - 1 skipped
       }
 
       // Verify existing file was not overwritten
@@ -334,7 +341,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.overwritten).toContain('spec-design');
-        expect(result.value.installed.length).toBe(8);
+        expect(result.value.installed.length).toBe(9); // 10 - 1 overwritten
       }
 
       // Verify file was overwritten
@@ -431,8 +438,8 @@ describe('CcSddWorkflowInstaller', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.commands.installed.length).toBe(19);
-        expect(result.value.agents.installed.length).toBe(9);
+        expect(result.value.commands.installed.length).toBe(20);
+        expect(result.value.agents.installed.length).toBe(10);
         expect(result.value.claudeMd.action).toBe('created');
       }
     });
@@ -452,8 +459,8 @@ describe('CcSddWorkflowInstaller', () => {
       if (result.ok) {
         expect(result.value.commands.skipped).toContain('spec-init');
         expect(result.value.agents.skipped).toContain('spec-design');
-        expect(result.value.commands.installed.length).toBe(18); // 19 - 1 skipped
-        expect(result.value.agents.installed.length).toBe(8);
+        expect(result.value.commands.installed.length).toBe(19); // 20 - 1 skipped
+        expect(result.value.agents.installed.length).toBe(9); // 10 - 1 skipped
       }
     });
   });
@@ -463,9 +470,9 @@ describe('CcSddWorkflowInstaller', () => {
       const status = await installer.checkInstallStatus(tempDir);
 
       expect(status.commands.installed).toEqual([]);
-      expect(status.commands.missing.length).toBe(19);
+      expect(status.commands.missing.length).toBe(20);
       expect(status.agents.installed).toEqual([]);
-      expect(status.agents.missing.length).toBe(9);
+      expect(status.agents.missing.length).toBe(10);
       expect(status.claudeMd.exists).toBe(false);
       expect(status.claudeMd.hasCcSddSection).toBe(false);
     });
@@ -476,9 +483,9 @@ describe('CcSddWorkflowInstaller', () => {
 
       const status = await installer.checkInstallStatus(tempDir);
 
-      expect(status.commands.installed.length).toBe(19);
+      expect(status.commands.installed.length).toBe(20);
       expect(status.commands.missing).toEqual([]);
-      expect(status.agents.installed.length).toBe(9);
+      expect(status.agents.installed.length).toBe(10);
       expect(status.agents.missing).toEqual([]);
       expect(status.claudeMd.exists).toBe(true);
       expect(status.claudeMd.hasCcSddSection).toBe(true);
@@ -497,10 +504,10 @@ describe('CcSddWorkflowInstaller', () => {
 
       expect(status.commands.installed).toContain('spec-init');
       expect(status.commands.missing).not.toContain('spec-init');
-      expect(status.commands.missing.length).toBe(18); // 19 - 1 installed
+      expect(status.commands.missing.length).toBe(19); // 20 - 1 installed
       expect(status.agents.installed).toContain('spec-design');
       expect(status.agents.missing).not.toContain('spec-design');
-      expect(status.agents.missing.length).toBe(8);
+      expect(status.agents.missing.length).toBe(9); // 10 - 1 installed
     });
 
     it('should detect cc-sdd section in existing CLAUDE.md', async () => {
@@ -545,11 +552,12 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
     // Create cc-sdd template files in new structure
     const specCommands = ['spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick'];
     const validateCommands = ['validate-gap', 'validate-design', 'validate-impl'];
+    const inspectionCommands = ['spec-inspection'];
     const steeringCommands = ['steering', 'steering-custom'];
     const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status'];
     const documentReviewCommands = ['document-review', 'document-review-reply'];
 
-    for (const cmd of [...specCommands, ...validateCommands, ...steeringCommands]) {
+    for (const cmd of [...specCommands, ...validateCommands, ...inspectionCommands, ...steeringCommands]) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, `# CC-SDD Command: ${cmd}`, 'utf-8');
@@ -645,9 +653,9 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
 
     // Verify cc-sdd files were installed (bug-create skipped)
     if (result.ok) {
-      expect(result.value.commands.installed.length).toBe(18); // 19 - 1 skipped
+      expect(result.value.commands.installed.length).toBe(19); // 20 - 1 skipped
       expect(result.value.commands.skipped).toContain('bug-create');
-      expect(result.value.agents.installed.length).toBe(9);
+      expect(result.value.agents.installed.length).toBe(10);
     }
   });
 

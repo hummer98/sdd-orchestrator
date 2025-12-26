@@ -178,6 +178,11 @@ export const IPC_CHANNELS = {
 
   // E2E Test Mode
   GET_IS_E2E_TEST: 'ipc:get-is-e2e-test',
+
+  // Project Log (project-log-separation feature)
+  // Requirements: 6.1, 6.2, 6.3
+  GET_PROJECT_LOG_PATH: 'ipc:get-project-log-path',
+  OPEN_LOG_IN_BROWSER: 'ipc:open-log-in-browser',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

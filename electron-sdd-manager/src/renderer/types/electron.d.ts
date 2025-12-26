@@ -510,6 +510,25 @@ export interface ElectronAPI {
   onMenuInstallExperimentalPlan(callback: () => void): () => void;
   onMenuInstallExperimentalDebug(callback: () => void): () => void;
   onMenuInstallExperimentalCommit(callback: () => void): () => void;
+
+  // ============================================================
+  // Project Log (project-log-separation feature)
+  // Requirements: 6.1, 6.2, 6.3, 6.4
+  // ============================================================
+
+  /**
+   * Get project log file path
+   * Returns null if no project is selected
+   * @returns Log file path or null
+   */
+  getProjectLogPath(): Promise<string | null>;
+
+  /**
+   * Open log directory in system file browser
+   * Opens Finder (macOS) / Explorer (Windows) / File Manager (Linux)
+   * @throws Error if no project is selected or directory doesn't exist
+   */
+  openLogInBrowser(): Promise<void>;
 }
 
 declare global {

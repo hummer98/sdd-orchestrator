@@ -328,3 +328,72 @@ describe('Exclusive Control (Task 1.5)', () => {
     resetProjectSelectionLock(); // Cleanup
   });
 });
+
+// ============================================================
+// Project Log IPC (project-log-separation feature)
+// Requirements: 6.1, 6.2, 6.3
+// Task 5.4: IPC経由でのログパス取得テストを作成する
+// ============================================================
+
+describe('IPC Handlers - Project Log (Task 3.1, 3.2, 5.4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('GET_PROJECT_LOG_PATH channel (Task 3.1)', () => {
+    it('should define GET_PROJECT_LOG_PATH channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.GET_PROJECT_LOG_PATH).toBe('ipc:get-project-log-path');
+    });
+
+    it('should register get-project-log-path handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasGetProjectLogPath = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:get-project-log-path'
+      );
+      expect(hasGetProjectLogPath).toBe(true);
+    });
+  });
+
+  describe('OPEN_LOG_IN_BROWSER channel (Task 3.2)', () => {
+    it('should define OPEN_LOG_IN_BROWSER channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.OPEN_LOG_IN_BROWSER).toBe('ipc:open-log-in-browser');
+    });
+
+    it('should register open-log-in-browser handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasOpenLogInBrowser = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:open-log-in-browser'
+      );
+      expect(hasOpenLogInBrowser).toBe(true);
+    });
+  });
+
+  describe('IPC Response Behavior (Task 5.4)', () => {
+    it('should return null when no project is selected', async () => {
+      // This test verifies Requirements: 6.3
+      // When no project is selected, getProjectLogPath should return null
+      const { projectLogger } = await import('../services/projectLogger');
+      projectLogger.setCurrentProject(null);
+      expect(projectLogger.getProjectLogPath()).toBeNull();
+    });
+
+    it('should return log path when project is selected', async () => {
+      // This test verifies Requirements: 6.1
+      // When a project is selected, getProjectLogPath should return the log path
+      const { projectLogger } = await import('../services/projectLogger');
+      projectLogger.setCurrentProject('/tmp/test-project');
+      const logPath = projectLogger.getProjectLogPath();
+      expect(logPath).not.toBeNull();
+      expect(logPath).toContain('.kiro/logs/main.log');
+      projectLogger.setCurrentProject(null); // Cleanup
+    });
+  });
+});

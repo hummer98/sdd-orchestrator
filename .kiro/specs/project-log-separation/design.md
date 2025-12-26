@@ -130,6 +130,38 @@ flowchart TD
     G --> C
 ```
 
+### LogRotationManager統合フロー
+
+```mermaid
+sequenceDiagram
+    participant Logger as ProjectLogger
+    participant RotMgr as LogRotationManager
+    participant FS as FileSystem
+
+    Note over Logger: 初期化時
+    Logger->>RotMgr: new LogRotationManager()
+    Logger->>Logger: rotationManager = instance
+
+    Note over Logger: ログ書き込み時
+    Logger->>Logger: write(entry)
+    Logger->>RotMgr: checkAndRotate(logPath, currentSize)
+    RotMgr->>FS: stat(logPath)
+    RotMgr-->>Logger: needsRotation: boolean
+
+    alt needsRotation = true
+        Logger->>Logger: closeCurrentStream()
+        Logger->>RotMgr: rotate(logPath)
+        RotMgr->>FS: rename to main.YYYY-MM-DD.N.log
+        Logger->>Logger: createNewStream()
+    end
+
+    Logger->>FS: append(entry)
+
+    Note over Logger: 定期クリーンアップ（日次）
+    Logger->>RotMgr: cleanupOldFiles(logDir, 30)
+    RotMgr->>FS: readdir & unlink old files
+```
+
 ## Requirements Traceability
 
 | Requirement | Summary | Components | Interfaces | Flows |
@@ -155,14 +187,20 @@ flowchart TD
 | 6.1 | ログパス表示 | IPC Handler, Preload | getProjectLogPath | - |
 | 6.2 | ファイルブラウザで開く | IPC Handler | openLogInBrowser | - |
 | 6.3 | IPCでのパス公開 | Channels, Handlers | getProjectLogPath | - |
+| 6.4 | ElectronAPI型定義 | electron.d.ts | getProjectLogPath, openLogInBrowser | - |
+| 7.1 | LogRotationManager初期化 | ProjectLogger | constructor | - |
+| 7.2 | ローテーションチェック呼び出し | ProjectLogger | write | ログローテーション |
+| 7.3 | ストリーム再作成 | ProjectLogger | rotateStream | ログローテーション |
+| 7.4 | 古いファイル削除委譲 | ProjectLogger, LogRotationManager | cleanupOldFiles | - |
 
 ## Components and Interfaces
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies (P0/P1) | Contracts |
 |-----------|--------------|--------|--------------|--------------------------|-----------|
-| ProjectLogger | Infrastructure | プロジェクト対応ロガー | 1.1-1.4, 3.1-3.4, 4.1-4.3 | fs (P0) | Service, State |
-| LogRotationManager | Infrastructure | ファイルローテーション管理 | 5.1-5.4 | fs (P0), ProjectLogger (P1) | Service |
-| IPC Log Handlers | IPC | ログパスアクセス提供 | 6.1-6.3 | ProjectLogger (P0) | API |
+| ProjectLogger | Infrastructure | プロジェクト対応ロガー | 1.1-1.4, 3.1-3.4, 4.1-4.3, 7.1-7.4 | fs (P0), LogRotationManager (P1) | Service, State |
+| LogRotationManager | Infrastructure | ファイルローテーション管理 | 5.1-5.4 | fs (P0) | Service |
+| IPC Log Handlers | IPC | ログパスアクセス提供 | 6.1-6.4 | ProjectLogger (P0) | API |
+| ElectronAPI Type Definition | Types | レンダラー向け型定義 | 6.4 | - | Type |
 
 ### Infrastructure Layer
 
@@ -349,6 +387,54 @@ interface LogRotationManagerService {
 - Integration: `channels.ts` に新チャンネル追加、`handlers.ts` にハンドラ実装
 - Validation: プロジェクト未選択時は null を返す
 - Risks: shell.openPath がエラーを返す可能性（ファイルが存在しない等）
+
+---
+
+#### ElectronAPI Type Definition
+
+| Field | Detail |
+|-------|--------|
+| Intent | レンダラープロセスから呼び出すpreload APIの型定義 |
+| Requirements | 6.4 |
+
+**Responsibilities & Constraints**
+
+- preloadで公開されるAPIの型安全性を保証
+- TypeScriptの型チェックをサポート
+
+**Dependencies**
+
+- Inbound: Renderer components — 型参照 (P0)
+
+**Contracts**: Type [x]
+
+##### Type Definition
+
+```typescript
+// electron.d.ts の ElectronAPI インターフェースに追加
+interface ElectronAPI {
+  // ... 既存のメソッド ...
+
+  // Project Log (project-log-separation feature)
+  /**
+   * 現在のプロジェクトのログファイルパスを取得
+   * @returns プロジェクトログファイルパス、プロジェクト未選択時はnull
+   */
+  getProjectLogPath(): Promise<string | null>;
+
+  /**
+   * システムのファイルブラウザでログディレクトリを開く
+   */
+  openLogInBrowser(): Promise<void>;
+}
+```
+
+**Implementation Notes**
+
+- Location: `src/renderer/types/electron.d.ts`
+- Integration: preload/index.ts で公開されるAPIと1:1対応
+
+---
 
 ## Data Models
 

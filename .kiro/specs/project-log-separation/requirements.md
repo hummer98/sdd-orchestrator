@@ -70,4 +70,16 @@
 1. When ユーザーがログ表示操作を行う, the SDD Orchestrator shall 現在のプロジェクトのログファイルパスを表示する
 2. Where プロジェクトログ機能が有効, the SDD Orchestrator shall ログファイルをシステムのファイルブラウザで開くオプションを提供する
 3. The SDD Orchestrator shall ログディレクトリパスをIPCを通じてレンダラープロセスに公開する
+4. The SDD Orchestrator shall preload APIの型定義（ElectronAPI）に`getProjectLogPath`と`openLogInBrowser`を追加する
+
+### Requirement 7: ログローテーション機能の統合
+
+**Objective:** As a 開発者, I want ログローテーション機能がProjectLoggerに統合されていること, so that ログファイルが自動的に管理される
+
+#### Acceptance Criteria
+
+1. The ProjectLogger shall LogRotationManagerを初期化時にインスタンス化する
+2. When ログを書き込む, the ProjectLogger shall LogRotationManagerを使用してローテーションチェックを行う
+3. When ローテーションが必要, the ProjectLogger shall ストリームを再作成する
+4. The ProjectLogger shall 古いログファイルの自動削除をLogRotationManagerに委譲する
 

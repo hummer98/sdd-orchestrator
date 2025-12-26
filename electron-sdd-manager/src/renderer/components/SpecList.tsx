@@ -56,9 +56,11 @@ export function SpecList() {
             className={clsx(
               'flex-1 px-2 py-1 text-sm rounded',
               'bg-gray-100 dark:bg-gray-800',
+              'text-gray-700 dark:text-gray-300',
               'border border-gray-200 dark:border-gray-700',
               'focus:outline-none focus:ring-2 focus:ring-blue-500'
             )}
+            data-testid="status-filter"
           >
             <option value="all">すべて</option>
             <option value="initialized">初期化</option>

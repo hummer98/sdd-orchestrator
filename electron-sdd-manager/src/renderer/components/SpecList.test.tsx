@@ -123,4 +123,15 @@ describe('SpecList - Task 33.1', () => {
       expect(agentCountBadge).toHaveTextContent('1');
     });
   });
+
+  describe('Filter text color', () => {
+    it('should have gray text color for filter select (not black)', () => {
+      render(<SpecList />);
+
+      const filterSelect = screen.getByTestId('status-filter');
+      // Check that select has text-gray-700 class for proper visibility
+      expect(filterSelect.className).toContain('text-gray-700');
+      expect(filterSelect.className).toContain('dark:text-gray-300');
+    });
+  });
 });

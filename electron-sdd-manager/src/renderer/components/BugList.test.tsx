@@ -219,4 +219,18 @@ describe('BugList', () => {
       expect(items[2]).toHaveAttribute('data-testid', 'bug-item-bug-3');
     });
   });
+
+  // ============================================================
+  // Filter text color
+  // ============================================================
+  describe('filter text color', () => {
+    it('should have gray text color for filter select (not black)', () => {
+      render(<BugList />);
+
+      const filterSelect = screen.getByTestId('phase-filter');
+      // Check that select has text-gray-700 class for proper visibility
+      expect(filterSelect.className).toContain('text-gray-700');
+      expect(filterSelect.className).toContain('dark:text-gray-300');
+    });
+  });
 });

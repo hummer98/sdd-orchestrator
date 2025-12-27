@@ -9,39 +9,69 @@
 
 | ログ種別 | 開発環境 | 本番環境 (macOS) |
 |----------|----------|------------------|
-| メインプロセスログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/sdd-orchestrator/main.log` |
+| グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/SDD Orchestrator/main.log` |
+| **プロジェクトログ** | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
 | アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
 | エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左（プロジェクト内） |
 | SSH接続ログ | メモリ内バッファ（最大1000エントリ） | 同左 |
 
+### プロジェクト別ログ（project-log-separation機能）
+
+プロジェクトを開くと、そのプロジェクト専用のログファイルが作成される。
+
+- **保存場所**: `{projectPath}/.kiro/logs/main.log`
+- **グローバルログとの二重書き込み**: プロジェクト関連のログはプロジェクトログとグローバルログの両方に記録
+- **ローテーション**: 10MBまたは日付変更でローテーション（`main.YYYY-MM-DD.N.log`）
+- **自動削除**: 30日経過したログファイルは自動削除
+
+#### UIからのアクセス
+
+```typescript
+// プロジェクトログパスを取得
+const logPath = await window.electronAPI.getProjectLogPath();
+
+// ログディレクトリをファイルブラウザで開く
+await window.electronAPI.openLogInBrowser();
+```
+
 ### ログフォーマット
 
-- **形式**: `[ISO8601タイムスタンプ] [LEVEL] message data`
+- **形式**: `[ISO8601タイムスタンプ] [LEVEL] [projectId] message data`
+- **projectId**: プロジェクト選択時はプロジェクトパス、未選択時は `global`
 - **ログレベル**: DEBUG, INFO, WARN, ERROR
 - **エージェントログ**: JSONL形式（JSON Lines）
 
 ### 本番環境でのログ確認
 
 ```bash
-# ログファイルを確認
-cat ~/Library/Logs/sdd-orchestrator/main.log
+# グローバルログファイルを確認
+cat ~/Library/Logs/SDD\ Orchestrator/main.log
 
 # リアルタイムで監視
-tail -f ~/Library/Logs/sdd-orchestrator/main.log
+tail -f ~/Library/Logs/SDD\ Orchestrator/main.log
 
 # エラーのみ抽出
-grep "\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main.log
+grep "\[ERROR\]" ~/Library/Logs/SDD\ Orchestrator/main.log
 
 # 最新100行を確認
-tail -100 ~/Library/Logs/sdd-orchestrator/main.log
+tail -100 ~/Library/Logs/SDD\ Orchestrator/main.log
+
+# プロジェクトログを確認（プロジェクトパスを指定）
+cat /path/to/project/.kiro/logs/main.log
+
+# 特定プロジェクトのログをリアルタイム監視
+tail -f /path/to/project/.kiro/logs/main.log
 ```
 
 ### ログ実装詳細
 
-- **ロガー実装**: カスタム実装（electron-log未使用）
-- **ソース**: [logger.ts](electron-sdd-manager/src/main/services/logger.ts)
+- **ロガー実装**: ProjectLogger（カスタム実装、electron-log未使用）
+- **ソース**:
+  - [projectLogger.ts](electron-sdd-manager/src/main/services/projectLogger.ts) - プロジェクト対応ロガー
+  - [logRotationManager.ts](electron-sdd-manager/src/main/services/logRotationManager.ts) - ローテーション管理
+  - [logger.ts](electron-sdd-manager/src/main/services/logger.ts) - 旧ロガー（互換性維持）
 - **本番判定**: `app.isPackaged` でパッケージ版かを判定
-- **ログローテーション**: 未実装（単一ファイルに追記）
+- **ログローテーション**: 10MB/日付単位でローテーション、30日保持
 
 ## MCP経由でのログ参照
 

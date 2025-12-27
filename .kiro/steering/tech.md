@@ -96,6 +96,14 @@ task electron:stop   # 停止
 - `handlers.ts`: IPCハンドラ実装
 - preload経由でrendererに公開
 
+### ロギング設計
+- **ProjectLogger**: プロジェクト別ログファイル + グローバルログへの二重書き込み
+- **LogRotationManager**: 10MB/日付単位ローテーション、30日保持
+- **ログ保存場所**:
+  - グローバル: `~/Library/Logs/SDD Orchestrator/main.log`（本番）
+  - プロジェクト: `{projectPath}/.kiro/logs/main.log`
+- **フォーマット**: `[timestamp] [LEVEL] [projectId] message`
+
 ---
 _Document standards and patterns, not every dependency_
 _updated_at: 2025-12-19_

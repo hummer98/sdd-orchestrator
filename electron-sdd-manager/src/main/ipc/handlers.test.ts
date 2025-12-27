@@ -335,6 +335,102 @@ describe('Exclusive Control (Task 1.5)', () => {
 // Task 5.4: IPC経由でのログパス取得テストを作成する
 // ============================================================
 
+// ============================================================
+// Auto Execution IPC Handler Registration (Inspection Fix Tasks 11.1-11.4)
+// Fixes: Critical Issues #1-#4 from inspection-1.md
+// ============================================================
+
+describe('IPC Handlers - Auto Execution Integration (Task 11.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Auto Execution handler registration', () => {
+    it('should register auto-execution:start handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAutoExecutionStart = handleCalls.some(
+        ([channel]: [string]) => channel === 'auto-execution:start'
+      );
+      expect(hasAutoExecutionStart).toBe(true);
+    });
+
+    it('should register auto-execution:stop handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAutoExecutionStop = handleCalls.some(
+        ([channel]: [string]) => channel === 'auto-execution:stop'
+      );
+      expect(hasAutoExecutionStop).toBe(true);
+    });
+
+    it('should register auto-execution:status handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAutoExecutionStatus = handleCalls.some(
+        ([channel]: [string]) => channel === 'auto-execution:status'
+      );
+      expect(hasAutoExecutionStatus).toBe(true);
+    });
+
+    it('should register auto-execution:all-status handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAutoExecutionAllStatus = handleCalls.some(
+        ([channel]: [string]) => channel === 'auto-execution:all-status'
+      );
+      expect(hasAutoExecutionAllStatus).toBe(true);
+    });
+
+    it('should register auto-execution:retry-from handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAutoExecutionRetryFrom = handleCalls.some(
+        ([channel]: [string]) => channel === 'auto-execution:retry-from'
+      );
+      expect(hasAutoExecutionRetryFrom).toBe(true);
+    });
+  });
+});
+
+describe('Auto Execution Coordinator Instance (Task 11.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should export getAutoExecutionCoordinator function', async () => {
+    const { getAutoExecutionCoordinator } = await import('./handlers');
+    expect(typeof getAutoExecutionCoordinator).toBe('function');
+  });
+
+  it('should return singleton instance', async () => {
+    const { getAutoExecutionCoordinator } = await import('./handlers');
+    const instance1 = getAutoExecutionCoordinator();
+    const instance2 = getAutoExecutionCoordinator();
+    expect(instance1).toBe(instance2);
+  });
+
+  it('should return an AutoExecutionCoordinator instance', async () => {
+    const { getAutoExecutionCoordinator } = await import('./handlers');
+    const coordinator = getAutoExecutionCoordinator();
+    // Verify it has expected methods
+    expect(typeof coordinator.start).toBe('function');
+    expect(typeof coordinator.stop).toBe('function');
+    expect(typeof coordinator.getStatus).toBe('function');
+    expect(typeof coordinator.getAllStatuses).toBe('function');
+  });
+});
+
 describe('IPC Handlers - Project Log (Task 3.1, 3.2, 5.4)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

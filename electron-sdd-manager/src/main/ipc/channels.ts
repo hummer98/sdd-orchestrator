@@ -198,6 +198,26 @@ export const IPC_CHANNELS = {
   CLOUDFLARE_STOP_TUNNEL: 'cloudflare:stop-tunnel',
   CLOUDFLARE_GET_TUNNEL_STATUS: 'cloudflare:get-tunnel-status',
   CLOUDFLARE_TUNNEL_STATUS_CHANGED: 'cloudflare:tunnel-status-changed',
+
+  // Auto Execution (auto-execution-main-process feature)
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+  AUTO_EXECUTION_START: 'auto-execution:start',
+  AUTO_EXECUTION_STOP: 'auto-execution:stop',
+  AUTO_EXECUTION_STATUS: 'auto-execution:status',
+  AUTO_EXECUTION_ALL_STATUS: 'auto-execution:all-status',
+  AUTO_EXECUTION_RETRY_FROM: 'auto-execution:retry-from',
+  // Events (Renderer -> Main)
+  AUTO_EXECUTION_STATUS_CHANGED: 'auto-execution:status-changed',
+  AUTO_EXECUTION_PHASE_COMPLETED: 'auto-execution:phase-completed',
+  AUTO_EXECUTION_PHASE_STARTED: 'auto-execution:phase-started',
+  AUTO_EXECUTION_ERROR: 'auto-execution:error',
+  AUTO_EXECUTION_COMPLETED: 'auto-execution:completed',
+
+  // Inspection Workflow (inspection-workflow-ui feature)
+  // Requirements: 4.2, 4.3, 4.5
+  EXECUTE_INSPECTION: 'ipc:execute-inspection',
+  EXECUTE_INSPECTION_FIX: 'ipc:execute-inspection-fix',
+  SET_INSPECTION_AUTO_EXECUTION_FLAG: 'ipc:set-inspection-auto-execution-flag',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

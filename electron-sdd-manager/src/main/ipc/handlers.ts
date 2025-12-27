@@ -33,6 +33,8 @@ import {
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
+import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
+import { AutoExecutionCoordinator } from '../services/autoExecutionCoordinator';
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
@@ -72,6 +74,9 @@ let specsWatcherService: SpecsWatcherService | null = null;
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
 // BugsWatcherService instance
 let bugsWatcherService: BugsWatcherService | null = null;
+// AutoExecutionCoordinator singleton instance
+// Fixes: Critical Issue #2 (AutoExecutionCoordinatorのインスタンス管理不備)
+let autoExecutionCoordinator: AutoExecutionCoordinator | null = null;
 // Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
 // Initial project path set from command line arguments
@@ -122,6 +127,19 @@ function getErrorMessage(error: AgentError): string {
     default:
       return '不明なエラーが発生しました';
   }
+}
+
+/**
+ * Get AutoExecutionCoordinator singleton instance
+ * Fixes: Critical Issue #2 (AutoExecutionCoordinatorのインスタンス管理不備)
+ * Task 11.2: シングルトンインスタンスを提供
+ */
+export function getAutoExecutionCoordinator(): AutoExecutionCoordinator {
+  if (!autoExecutionCoordinator) {
+    autoExecutionCoordinator = new AutoExecutionCoordinator();
+    logger.info('[handlers] AutoExecutionCoordinator created');
+  }
+  return autoExecutionCoordinator;
 }
 
 /**
@@ -1577,6 +1595,81 @@ export function registerIpcHandlers(): void {
       throw error instanceof Error ? error : new Error('Failed to open log directory');
     }
   });
+
+  // ============================================================
+  // Inspection Workflow (inspection-workflow-ui feature)
+  // Requirements: 4.2, 4.3, 4.5
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_INSPECTION,
+    async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_INSPECTION called', { specId, featureName, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeInspection({ specId, featureName, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeInspection failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeInspection succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_INSPECTION_FIX,
+    async (event, specId: string, featureName: string, roundNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_INSPECTION_FIX called', { specId, featureName, roundNumber, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeInspectionFix({ specId, featureName, roundNumber, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeInspectionFix failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeInspectionFix succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG,
+    async (_event, specPath: string, flag: 'run' | 'pause' | 'skip') => {
+      logger.info('[handlers] SET_INSPECTION_AUTO_EXECUTION_FLAG called', { specPath, flag });
+      const service = getSpecManagerService();
+      await service.setInspectionAutoExecutionFlag(specPath, flag);
+      logger.info('[handlers] setInspectionAutoExecutionFlag succeeded', { specPath, flag });
+    }
+  );
+
+  // ============================================================
+  // Auto Execution Handlers (Inspection Fix Task 11.1)
+  // Fixes: Critical Issue #1 (registerAutoExecutionHandlersの未呼び出し)
+  // Fixes: Critical Issue #3 (Renderer -> IPC -> Main通信の未接続)
+  // Fixes: Critical Issue #4 (Dead Code: autoExecutionHandlers.ts)
+  // ============================================================
+  const coordinator = getAutoExecutionCoordinator();
+  registerAutoExecutionHandlers(coordinator);
+  logger.info('[handlers] Auto Execution handlers registered');
 }
 
 /**

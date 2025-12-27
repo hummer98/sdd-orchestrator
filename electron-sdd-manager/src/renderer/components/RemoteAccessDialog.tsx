@@ -4,7 +4,6 @@
  * Requirements: 1.4, 1.5, 2.2
  */
 
-import { X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { RemoteAccessPanel } from './RemoteAccessPanel';
 
@@ -50,20 +49,6 @@ export function RemoteAccessDialog({ isOpen, onClose }: RemoteAccessDialogProps)
           'animate-in fade-in zoom-in-95 duration-200'
         )}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className={clsx(
-            'absolute top-3 right-3 p-1.5 rounded-md',
-            'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
-            'hover:bg-gray-100 dark:hover:bg-gray-700',
-            'transition-colors'
-          )}
-          aria-label="Close dialog"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {/* RemoteAccessPanel */}
         <RemoteAccessPanel className="border-0 shadow-none" />
       </div>

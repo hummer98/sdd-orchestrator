@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-12-27
+
+### Added
+- **Remote UIワークフロー機能強化**: WebSocket双方向通信とメッセージルーティングを実装
+- **Remote UI用IPCチャンネル追加**: Remote UI操作用のIPCハンドラーを追加
+- **Spec操作API追加**: SpecManagerServiceに仕様操作用APIメソッドを追加
+- **Main Process自動実行基盤**: Main Process側への自動実行ロジック移行基盤を実装
+- **Cloudflare Tunnel統合基盤**: Cloudflare Tunnel統合の基盤実装
+
+### Fixed
+- **Verify実行ボタンAgent表示**: Verify実行ボタンでAgentがAgent一覧に表示されない問題を修正
+- **Spec切替時Agent選択**: Spec切替時にAgentがない場合は選択をクリア
+- **自動承認修正**: 生成済み・未承認フェーズの自動承認を修正
+- **inspection phase status**: inspection.passedによるステータス判定を修正
+
+### Changed
+- **タブ折り返し**: タブが多い場合に二行折り返しを可能に
+
+### Documentation
+- 新規仕様書追加（parallel-task-impl, remote-ui-workflow, spec-productivity-metrics）
+
 ## [0.14.0] - 2025-12-27
 
 ### Added

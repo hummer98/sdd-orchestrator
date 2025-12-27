@@ -88,15 +88,11 @@ function toSerializableResult(
 // Handler registration
 // ============================================================
 
-let coordinatorRef: AutoExecutionCoordinator | null = null;
-
 /**
  * Register all auto-execution IPC handlers
  * @param coordinator AutoExecutionCoordinator instance
  */
 export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordinator): void {
-  coordinatorRef = coordinator;
-
   logger.info('[autoExecutionHandlers] Registering IPC handlers');
 
   // AUTO_EXECUTION_START
@@ -174,8 +170,6 @@ export function unregisterAutoExecutionHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM);
-
-  coordinatorRef = null;
 
   logger.info('[autoExecutionHandlers] IPC handlers unregistered');
 }

@@ -309,6 +309,43 @@ export interface AgentInfo {
   readonly command: string;
 }
 
+/**
+ * Auto execution state
+ * (auto-execution-main-process feature)
+ */
+export interface AutoExecutionState {
+  specPath: string;
+  specId: string;
+  status: 'idle' | 'running' | 'paused' | 'completing' | 'completed' | 'error';
+  currentPhase: WorkflowPhase | null;
+  executedPhases: WorkflowPhase[];
+  errors: string[];
+  startTime: number;
+  lastActivityTime: number;
+}
+
+/**
+ * Auto execution error
+ */
+export type AutoExecutionError =
+  | { type: 'ALREADY_EXECUTING'; specId: string }
+  | { type: 'NOT_EXECUTING'; specId: string }
+  | { type: 'MAX_CONCURRENT_REACHED'; limit: number }
+  | { type: 'PRECONDITION_FAILED'; message: string }
+  | { type: 'PHASE_EXECUTION_FAILED'; phase: WorkflowPhase; message?: string }
+  | { type: 'SPEC_NOT_FOUND'; specPath: string };
+
+/**
+ * Auto execution summary
+ */
+export interface AutoExecutionSummary {
+  specId: string;
+  executedPhases: WorkflowPhase[];
+  totalDuration: number;
+  errors: string[];
+  status: 'completed' | 'error' | 'paused';
+}
+
 export interface ElectronAPI {
   // File System
   showOpenDialog(): Promise<string | null>;
@@ -558,6 +595,92 @@ export interface ElectronAPI {
    * @throws Error if no project is selected or directory doesn't exist
    */
   openLogInBrowser(): Promise<void>;
+
+  // ============================================================
+  // Auto Execution (auto-execution-main-process feature)
+  // ============================================================
+
+  /**
+   * Start auto-execution for a spec
+   */
+  autoExecutionStart(params: {
+    specPath: string;
+    specId: string;
+    options: {
+      permissions: {
+        requirements: boolean;
+        design: boolean;
+        tasks: boolean;
+        impl: boolean;
+      };
+      documentReviewFlag: 'run' | 'pause' | 'skip';
+      validationOptions: {
+        gap: boolean;
+        design: boolean;
+        impl: boolean;
+      };
+      timeoutMs?: number;
+    };
+  }): Promise<{ ok: true; value: AutoExecutionState } | { ok: false; error: AutoExecutionError }>;
+
+  /**
+   * Stop auto-execution for a spec
+   */
+  autoExecutionStop(params: { specPath: string }): Promise<{ ok: true; value: void } | { ok: false; error: AutoExecutionError }>;
+
+  /**
+   * Get auto-execution status for a spec
+   */
+  autoExecutionStatus(params: { specPath: string }): Promise<AutoExecutionState | null>;
+
+  /**
+   * Get all auto-execution statuses
+   */
+  autoExecutionAllStatus(): Promise<Record<string, AutoExecutionState>>;
+
+  /**
+   * Retry auto-execution from a specific phase
+   */
+  autoExecutionRetryFrom(params: { specPath: string; phase: WorkflowPhase }): Promise<{ ok: true; value: AutoExecutionState } | { ok: false; error: AutoExecutionError }>;
+
+  /**
+   * Subscribe to auto-execution status changes
+   */
+  onAutoExecutionStatusChanged(callback: (data: { specPath: string; state: AutoExecutionState }) => void): () => void;
+
+  /**
+   * Subscribe to auto-execution phase completed events
+   */
+  onAutoExecutionPhaseCompleted(callback: (data: { specPath: string; phase: WorkflowPhase }) => void): () => void;
+
+  /**
+   * Subscribe to auto-execution error events
+   */
+  onAutoExecutionError(callback: (data: { specPath: string; error: AutoExecutionError }) => void): () => void;
+
+  /**
+   * Subscribe to auto-execution completed events
+   */
+  onAutoExecutionCompleted(callback: (data: { specPath: string; summary: AutoExecutionSummary }) => void): () => void;
+
+  // ============================================================
+  // Inspection Workflow (inspection-workflow-ui feature)
+  // ============================================================
+
+  /**
+   * Execute inspection agent
+   */
+  executeInspection(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+
+  /**
+   * Execute inspection fix agent
+   */
+  executeInspectionFix(specId: string, featureName: string, roundNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+
+  /**
+   * Set inspection auto execution flag
+   */
+  setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void>;
 }
 
 declare global {

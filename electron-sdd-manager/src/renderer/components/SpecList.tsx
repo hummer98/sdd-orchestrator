@@ -195,10 +195,10 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           <span
             className={clsx(
               'px-2 py-0.5 text-xs rounded-full',
-              PHASE_COLORS[spec.phase]
+              PHASE_COLORS[spec.phase] ?? 'bg-gray-200 text-gray-700'
             )}
           >
-            {PHASE_LABELS[spec.phase]}
+            {PHASE_LABELS[spec.phase] ?? spec.phase}
           </span>
           {runningAgentCount > 0 && (
             <span

@@ -206,6 +206,7 @@ class SpecList {
 
   /**
    * Render single spec card
+   * Matches Electron version layout: name on first row, phase badge + date on second row
    * @param {Object} spec
    * @returns {string}
    */
@@ -213,18 +214,17 @@ class SpecList {
     const isSelected = spec.feature_name === this.selectedSpecId;
     const selectedClass = isSelected ? 'spec-card-selected' : '';
 
-    // Determine current phase and status
-    const phaseInfo = this.getPhaseInfo(spec);
+    // Get phase from spec.phase (matches Electron version)
+    const phase = spec.phase || 'initialized';
+    const formattedDate = this.formatUpdatedDate(spec.updated_at || spec.updatedAt);
 
     return `
       <div class="spec-card ${selectedClass}" data-spec-id="${spec.feature_name}" data-testid="remote-spec-item-${spec.feature_name}">
-        <div class="flex items-start justify-between">
-          <div class="flex-1 min-w-0">
-            <h3 class="font-medium truncate">${spec.feature_name}</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${spec.phase || 'ready'}</p>
-          </div>
-          <div class="flex-shrink-0 ml-3">
-            ${this.renderPhaseBadge(phaseInfo.phase, phaseInfo.status)}
+        <div class="flex flex-col gap-1">
+          <h3 class="font-medium truncate text-gray-800 dark:text-gray-200">${spec.feature_name}</h3>
+          <div class="flex items-center gap-2">
+            ${this.renderPhaseBadge(phase)}
+            <span class="text-xs text-gray-400">${formattedDate}</span>
           </div>
         </div>
       </div>
@@ -232,72 +232,45 @@ class SpecList {
   }
 
   /**
-   * Get phase information from spec for list display
-   * Uses approvals object if available for accurate status
-   * @param {Object} spec
-   * @returns {{ phase: string, status: string }}
+   * Format updated date like Electron version
+   * Today: HH:mm, other days: M/D
+   * @param {string} dateStr
+   * @returns {string}
    */
-  getPhaseInfo(spec) {
-    // If approvals available, find the most advanced phase
-    if (spec.approvals) {
-      const approvals = spec.approvals;
+  formatUpdatedDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
 
-      // Check from most advanced to least advanced
-      if (approvals.tasks?.approved) {
-        return { phase: 'tasks', status: 'approved' };
-      }
-      if (approvals.tasks?.generated) {
-        return { phase: 'tasks', status: 'generated' };
-      }
-      if (approvals.design?.approved) {
-        return { phase: 'design', status: 'approved' };
-      }
-      if (approvals.design?.generated) {
-        return { phase: 'design', status: 'generated' };
-      }
-      if (approvals.requirements?.approved) {
-        return { phase: 'requirements', status: 'approved' };
-      }
-      if (approvals.requirements?.generated) {
-        return { phase: 'requirements', status: 'generated' };
-      }
-      return { phase: 'ready', status: 'pending' };
+    if (isToday) {
+      return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
     }
-
-    // Fallback: use phase string
-    const phase = spec.phase || 'ready';
-    const phaseMap = {
-      'ready': { phase: 'ready', status: 'pending' },
-      'requirements-generated': { phase: 'requirements', status: 'generated' },
-      'requirements-approved': { phase: 'requirements', status: 'approved' },
-      'design-generated': { phase: 'design', status: 'generated' },
-      'design-approved': { phase: 'design', status: 'approved' },
-      'tasks-generated': { phase: 'tasks', status: 'generated' },
-      'tasks-approved': { phase: 'tasks', status: 'approved' },
-      'implementation': { phase: 'implementation', status: 'generated' },
-      'implementation-complete': { phase: 'implementation', status: 'approved' },
-    };
-
-    return phaseMap[phase] || { phase: 'ready', status: 'pending' };
+    return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
   }
 
   /**
-   * Render phase badge
-   * @param {string} phase
-   * @param {string} status
+   * Render phase badge matching Electron version exactly
+   * Uses spec.phase values directly (initialized, requirements-generated, etc.)
+   * @param {string} phase - The spec.phase value
    * @returns {string}
    */
-  renderPhaseBadge(phase, status) {
-    const statusClass = `phase-badge-${status}`;
-    const labels = {
-      requirements: 'Req',
-      design: 'Design',
-      tasks: 'Tasks',
-      implementation: 'Impl',
-      ready: 'Ready',
+  renderPhaseBadge(phase) {
+    // Match Electron version's PHASE_LABELS and PHASE_COLORS
+    const phaseConfig = {
+      'initialized': { label: '初期化', colorClass: 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200' },
+      'requirements-generated': { label: '要件定義済', colorClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+      'design-generated': { label: '設計済', colorClass: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
+      'tasks-generated': { label: 'タスク済', colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+      'implementation-complete': { label: '実装完了', colorClass: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
     };
 
-    return `<span class="phase-badge ${statusClass}">${labels[phase] || phase}</span>`;
+    const config = phaseConfig[phase];
+    if (config) {
+      return `<span class="px-2 py-0.5 text-xs rounded-full ${config.colorClass}">${config.label}</span>`;
+    }
+    // 未知のphaseはそのまま表示
+    return `<span class="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">${phase}</span>`;
   }
 }
 

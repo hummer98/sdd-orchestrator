@@ -36,7 +36,7 @@
 
 #### Acceptance Criteria
 
-1. When リモートWebサーバーが開始された場合, the Remote Access Service shall 短めのアクセストークン（8-12文字程度）を自動生成する
+1. When リモートWebサーバーが開始された場合, the Remote Access Service shall 短めのアクセストークン（10文字）を自動生成する
 2. The Remote Access Service shall 生成したアクセストークンをアプリ設定として永続化する
 3. When ユーザーが「トークンをリフレッシュ」ボタンをクリックした場合, the Remote Access Service shall 新しいアクセストークンを生成し、既存のトークンを無効化する
 4. When クライアントがアクセストークンなしまたは不一致のトークンで接続を試みた場合, the Remote Access Service shall その接続を拒否する

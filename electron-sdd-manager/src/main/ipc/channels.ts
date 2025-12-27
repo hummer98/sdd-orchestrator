@@ -183,6 +183,20 @@ export const IPC_CHANNELS = {
   // Requirements: 6.1, 6.2, 6.3
   GET_PROJECT_LOG_PATH: 'ipc:get-project-log-path',
   OPEN_LOG_IN_BROWSER: 'ipc:open-log-in-browser',
+
+  // Cloudflare Tunnel (cloudflare-tunnel-integration feature)
+  // Requirements: 1.2, 2.1, 2.2, 2.3, 3.1, 3.3
+  CLOUDFLARE_GET_SETTINGS: 'cloudflare:get-settings',
+  CLOUDFLARE_SET_TUNNEL_TOKEN: 'cloudflare:set-tunnel-token',
+  CLOUDFLARE_REFRESH_ACCESS_TOKEN: 'cloudflare:refresh-access-token',
+  CLOUDFLARE_ENSURE_ACCESS_TOKEN: 'cloudflare:ensure-access-token',
+  CLOUDFLARE_CHECK_BINARY: 'cloudflare:check-binary',
+  CLOUDFLARE_SET_PUBLISH_TO_CLOUDFLARE: 'cloudflare:set-publish-to-cloudflare',
+  CLOUDFLARE_SET_CLOUDFLARED_PATH: 'cloudflare:set-cloudflared-path',
+  CLOUDFLARE_START_TUNNEL: 'cloudflare:start-tunnel',
+  CLOUDFLARE_STOP_TUNNEL: 'cloudflare:stop-tunnel',
+  CLOUDFLARE_GET_TUNNEL_STATUS: 'cloudflare:get-tunnel-status',
+  CLOUDFLARE_TUNNEL_STATUS_CHANGED: 'cloudflare:tunnel-status-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

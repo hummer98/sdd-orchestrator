@@ -2,6 +2,7 @@
  * Remote Access Store
  * Manages remote access server state in the renderer process
  * Requirements: 1.4, 1.5, 1.6, 8.5
+ * Cloudflare Tunnel Integration: 5.2, 6.1, 6.2, 3.3, 5.1, 6.3
  */
 
 import { create } from 'zustand';
@@ -13,8 +14,14 @@ import { persist } from 'zustand/middleware';
 export const STORAGE_KEY = 'sdd-manager-remote-access';
 
 /**
+ * Tunnel status types
+ */
+type TunnelStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+/**
  * Remote Access State
  * Requirements: 1.4, 1.5, 1.6, 8.5
+ * Cloudflare Tunnel: 5.2, 6.1, 6.2
  */
 interface RemoteAccessState {
   /** Server is running */
@@ -35,6 +42,24 @@ interface RemoteAccessState {
   autoStartEnabled: boolean;
   /** Loading state */
   isLoading: boolean;
+
+  // Cloudflare Tunnel state (Task 7.1, 9.1-9.4)
+  /** Whether to publish via Cloudflare Tunnel (persisted) */
+  publishToCloudflare: boolean;
+  /** Cloudflare Tunnel URL */
+  tunnelUrl: string | null;
+  /** QR code for Tunnel URL with access token */
+  tunnelQrCodeDataUrl: string | null;
+  /** Tunnel connection status */
+  tunnelStatus: TunnelStatus;
+  /** Tunnel error message */
+  tunnelError: string | null;
+  /** Access token for authentication */
+  accessToken: string | null;
+  /** Whether to show cloudflared install dialog */
+  showInstallCloudflaredDialog: boolean;
+  /** Whether Tunnel Token is configured (Task 9.1) */
+  hasTunnelToken: boolean;
 }
 
 /**
@@ -57,6 +82,16 @@ interface RemoteAccessActions {
   cleanup: () => void;
   /** Reset store to initial state */
   reset: () => void;
+
+  // Cloudflare Tunnel actions (Task 7.2, 9.4)
+  /** Set publish to Cloudflare setting (persisted) */
+  setPublishToCloudflare: (enabled: boolean) => void;
+  /** Dismiss cloudflared install dialog */
+  dismissInstallDialog: () => void;
+  /** Refresh access token (Task 9.4) */
+  refreshAccessToken: () => Promise<void>;
+  /** Load Cloudflare settings from main process (Task 9.1) */
+  loadCloudflareSettings: () => Promise<void>;
 }
 
 type RemoteAccessStore = RemoteAccessState & RemoteAccessActions;
@@ -74,6 +109,16 @@ const initialState: RemoteAccessState = {
   localIp: null,
   autoStartEnabled: false,
   isLoading: false,
+
+  // Cloudflare Tunnel initial state
+  publishToCloudflare: false,
+  tunnelUrl: null,
+  tunnelQrCodeDataUrl: null,
+  tunnelStatus: 'disconnected',
+  tunnelError: null,
+  accessToken: null,
+  showInstallCloudflaredDialog: false,
+  hasTunnelToken: false,
 };
 
 /**
@@ -137,12 +182,20 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
           console.log('[remoteAccessStore] qrCodeDataUrl received:', result.ok ? result.value.qrCodeDataUrl?.substring(0, 50) + '...' : 'N/A');
 
           if (result.ok) {
+            // Determine tunnel status based on tunnelUrl
+            const tunnelStatus = result.value.tunnelUrl ? 'connected' : 'disconnected';
+
             set({
               isRunning: true,
               port: result.value.port,
               url: result.value.url,
               qrCodeDataUrl: result.value.qrCodeDataUrl,
               localIp: result.value.localIp,
+              // Cloudflare Tunnel state
+              tunnelUrl: result.value.tunnelUrl ?? null,
+              tunnelQrCodeDataUrl: result.value.tunnelQrCodeDataUrl ?? null,
+              tunnelStatus,
+              accessToken: result.value.accessToken ?? null,
               error: null,
               isLoading: false,
             });
@@ -181,6 +234,10 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
             localIp: null,
             clientCount: 0,
             isLoading: false,
+            // Clear Tunnel state but preserve accessToken for next session
+            tunnelUrl: null,
+            tunnelQrCodeDataUrl: null,
+            tunnelStatus: 'disconnected',
           });
         } catch (error) {
           set({
@@ -231,6 +288,16 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
           console.error('[remoteAccessStore] Failed to get initial status:', error);
         }
 
+        // Load Cloudflare settings (Task 9.1)
+        try {
+          const settings = await window.electronAPI.getCloudflareSettings();
+          set({
+            hasTunnelToken: settings.hasTunnelToken,
+          });
+        } catch (error) {
+          console.error('[remoteAccessStore] Failed to load Cloudflare settings:', error);
+        }
+
         // Subscribe to status changes
         // Note: ServerStatus does not include qrCodeDataUrl, so we preserve existing value
         // Skip updates while loading to avoid race condition with startServer result
@@ -267,21 +334,73 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
 
       /**
        * Reset store to initial state
-       * Preserves autoStartEnabled as it is persisted
+       * Preserves autoStartEnabled and publishToCloudflare as they are persisted
        */
       reset: () => {
-        const { autoStartEnabled } = get();
+        const { autoStartEnabled, publishToCloudflare } = get();
         set({
           ...initialState,
           autoStartEnabled, // Preserve persisted value
+          publishToCloudflare, // Preserve persisted value
         });
+      },
+
+      // Cloudflare Tunnel actions (Task 7.2)
+
+      /**
+       * Set publish to Cloudflare setting
+       * This value is persisted to localStorage
+       */
+      setPublishToCloudflare: (enabled: boolean) => {
+        set({ publishToCloudflare: enabled });
+      },
+
+      /**
+       * Dismiss cloudflared install dialog
+       */
+      dismissInstallDialog: () => {
+        set({ showInstallCloudflaredDialog: false });
+      },
+
+      /**
+       * Refresh access token (Task 9.4)
+       * Generates a new access token and updates the QR code
+       */
+      refreshAccessToken: async () => {
+        try {
+          const result = await window.electronAPI.refreshAccessToken();
+          if (result) {
+            set({
+              accessToken: result.accessToken,
+              tunnelQrCodeDataUrl: result.tunnelQrCodeDataUrl ?? null,
+            });
+          }
+        } catch (error) {
+          console.error('[remoteAccessStore] Failed to refresh access token:', error);
+        }
+      },
+
+      /**
+       * Load Cloudflare settings from main process (Task 9.1)
+       * Checks if Tunnel Token is configured
+       */
+      loadCloudflareSettings: async () => {
+        try {
+          const settings = await window.electronAPI.getCloudflareSettings();
+          set({
+            hasTunnelToken: settings.hasTunnelToken,
+          });
+        } catch (error) {
+          console.error('[remoteAccessStore] Failed to load Cloudflare settings:', error);
+        }
       },
     }),
     {
       name: STORAGE_KEY,
       partialize: (state) => ({
-        // Only persist autoStartEnabled
+        // Only persist autoStartEnabled and publishToCloudflare
         autoStartEnabled: state.autoStartEnabled,
+        publishToCloudflare: state.publishToCloudflare,
       }),
     }
   )

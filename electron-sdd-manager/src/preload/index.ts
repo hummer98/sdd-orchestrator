@@ -440,6 +440,113 @@ const electronAPI = {
   },
 
   // ============================================================
+  // Cloudflare Tunnel Integration (cloudflare-tunnel-integration feature)
+  // Requirements: 1.1-1.5, 2.1-2.5, 3.1-3.5, 4.1-4.5, 5.1-5.4
+  // ============================================================
+
+  /**
+   * Get Cloudflare settings (tunnel token, access token, publish setting, cloudflared path)
+   * @returns CloudflareSettings object
+   */
+  getCloudflareSettings: (): Promise<{
+    hasTunnelToken: boolean;
+    accessToken: string | null;
+    publishToCloudflare: boolean;
+    cloudflaredPath: string | null;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_GET_SETTINGS),
+
+  /**
+   * Set Cloudflare Tunnel Token
+   * @param token Tunnel token string
+   */
+  setCloudfareTunnelToken: (token: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_SET_TUNNEL_TOKEN, token),
+
+  /**
+   * Refresh access token (generates a new one)
+   * @returns New access token
+   */
+  refreshCloudflareAccessToken: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_REFRESH_ACCESS_TOKEN),
+
+  /**
+   * Refresh access token and get updated QR code
+   * Used by remoteAccessStore for UI updates (Task 9.4)
+   * @returns RefreshAccessTokenResult with accessToken and tunnelQrCodeDataUrl
+   */
+  refreshAccessToken: async (): Promise<{
+    accessToken: string;
+    tunnelQrCodeDataUrl?: string;
+  }> => {
+    const accessToken = await ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_REFRESH_ACCESS_TOKEN);
+    // TODO: Get updated tunnelQrCodeDataUrl if server is running with tunnel
+    // For now, return just the token - the QR code will be regenerated on next server start
+    return { accessToken };
+  },
+
+  /**
+   * Ensure access token exists (generates if needed)
+   * @returns Access token (existing or newly generated)
+   */
+  ensureCloudflareAccessToken: (): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_ENSURE_ACCESS_TOKEN),
+
+  /**
+   * Check if cloudflared binary exists
+   * @returns BinaryCheckResponse with exists, path, and installInstructions
+   */
+  checkCloudflareBinary: (): Promise<{
+    exists: boolean;
+    path?: string;
+    installInstructions?: {
+      homebrew: string;
+      macports: string;
+      downloadUrl: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_CHECK_BINARY),
+
+  /**
+   * Set publish to Cloudflare setting
+   * @param enabled Whether to publish via Cloudflare Tunnel
+   */
+  setCloudflarePublishToCloudflare: (enabled: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_SET_PUBLISH_TO_CLOUDFLARE, enabled),
+
+  /**
+   * Set custom cloudflared path
+   * @param path Custom path or null to use default
+   */
+  setCloudflaredPath: (path: string | null): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_SET_CLOUDFLARED_PATH, path),
+
+  /**
+   * Subscribe to tunnel status changes
+   * @param callback Function called when tunnel status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onCloudflareTunnelStatusChanged: (callback: (status: {
+    status: 'disconnected' | 'connecting' | 'connected' | 'error';
+    tunnelUrl: string | null;
+    error: string | null;
+  }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: {
+      status: 'disconnected' | 'connecting' | 'connected' | 'error';
+      tunnelUrl: string | null;
+      error: string | null;
+    }) => {
+      callback(status);
+    };
+    ipcRenderer.on(IPC_CHANNELS.CLOUDFLARE_TUNNEL_STATUS_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.CLOUDFLARE_TUNNEL_STATUS_CHANGED, handler);
+    };
+  },
+
+  // ============================================================
   // cc-sdd Workflow Install (cc-sdd-command-installer feature)
   // ============================================================
 

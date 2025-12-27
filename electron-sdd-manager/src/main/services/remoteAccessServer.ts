@@ -2,6 +2,7 @@
  * Remote Access Server Service
  * HTTP/WebSocket server for mobile remote access
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3
+ * Cloudflare Tunnel Integration: 1.1-1.5, 6.5, 7.1, 7.2
  */
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
@@ -11,23 +12,46 @@ import { join } from 'path';
 import { getLocalIP } from '../utils/ipValidator';
 import { StaticFileServer } from './staticFileServer';
 import { WebSocketHandler } from './webSocketHandler';
+import { getAccessTokenService, AccessTokenService } from './accessTokenService';
+import { logger } from './logger';
+
+/**
+ * Tunnel status types
+ */
+export type TunnelStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 /**
  * Result of successfully starting the server
+ * Extended to include Cloudflare Tunnel information
  */
 export interface ServerStartResult {
   /** The port the server is running on */
   readonly port: number;
-  /** The full URL to connect to the server */
+  /** The full URL to connect to the server (LAN) */
   readonly url: string;
-  /** QR code as a data URL */
+  /** QR code as a data URL (LAN URL) */
   readonly qrCodeDataUrl: string;
   /** The local IP address */
   readonly localIp: string;
+  /** Cloudflare Tunnel URL, null if not enabled */
+  readonly tunnelUrl: string | null;
+  /** QR code for Tunnel URL with access token, null if tunnel not enabled */
+  readonly tunnelQrCodeDataUrl: string | null;
+  /** Access token for authentication */
+  readonly accessToken: string;
+}
+
+/**
+ * Options for starting the server
+ */
+export interface ServerStartOptions {
+  /** Whether to publish via Cloudflare Tunnel (default: false) */
+  publishToCloudflare?: boolean;
 }
 
 /**
  * Current server status
+ * Extended to include Cloudflare Tunnel status
  */
 export interface ServerStatus {
   /** Whether the server is currently running */
@@ -38,6 +62,10 @@ export interface ServerStatus {
   readonly url: string | null;
   /** Number of connected WebSocket clients */
   readonly clientCount: number;
+  /** Cloudflare Tunnel connection status */
+  readonly tunnelStatus: TunnelStatus;
+  /** Cloudflare Tunnel URL, null if not connected */
+  readonly tunnelUrl: string | null;
 }
 
 /**
@@ -82,23 +110,37 @@ export class RemoteAccessServer {
   private statusChangeCallbacks: Set<(status: ServerStatus) => void> = new Set();
   private staticFileServer: StaticFileServer;
   private webSocketHandler: WebSocketHandler;
+  private accessTokenService: AccessTokenService;
+  private tunnelStatus: TunnelStatus = 'disconnected';
+  private tunnelUrl: string | null = null;
 
-  constructor() {
+  constructor(accessTokenService?: AccessTokenService) {
     // Initialize static file server with mobile UI directory
-    // __dirname points to dist/main, remote-ui is at dist/main/remote-ui
-    const uiDir = join(__dirname, 'remote-ui');
+    // In development, use src directory for hot reload; in production, use dist
+    const isDev = process.env.NODE_ENV === 'development' || import.meta.env?.DEV;
+    const uiDir = isDev
+      ? join(__dirname, '../../src/main/remote-ui') // dev: dist/main -> src/main/remote-ui
+      : join(__dirname, 'remote-ui'); // prod: dist/main/remote-ui
+    logger.debug(`[remoteAccessServer] Using UI directory: ${uiDir} (isDev: ${isDev})`);
     this.staticFileServer = new StaticFileServer(uiDir);
     // Initialize WebSocketHandler
     this.webSocketHandler = new WebSocketHandler();
+    // Initialize AccessTokenService
+    this.accessTokenService = accessTokenService ?? getAccessTokenService();
   }
 
   /**
    * Start the server
    *
    * @param preferredPort The preferred port to use (default: 8765)
+   * @param options Server start options including Cloudflare Tunnel settings
    * @returns Result with server info on success, or error on failure
    */
-  async start(preferredPort: number = DEFAULT_PORT): Promise<Result<ServerStartResult, ServerError>> {
+  async start(
+    preferredPort: number = DEFAULT_PORT,
+    options: ServerStartOptions = {}
+  ): Promise<Result<ServerStartResult, ServerError>> {
+    const { publishToCloudflare = false } = options;
     // Check if already running
     if (this.httpServer && this.port) {
       return {
@@ -154,8 +196,24 @@ export class RemoteAccessServer {
       this.port = selectedPort;
       this.url = `http://${this.localIp}:${this.port}`;
 
-      // Generate QR code
-      const qrCodeDataUrl = await QRCode.toDataURL(this.url);
+      // Ensure access token exists
+      const accessToken = this.accessTokenService.ensureToken();
+
+      // Generate QR code for LAN URL (with token)
+      const lanUrlWithToken = `${this.url}?token=${accessToken}`;
+      const qrCodeDataUrl = await QRCode.toDataURL(lanUrlWithToken);
+
+      // Handle Cloudflare Tunnel if enabled
+      let tunnelUrl: string | null = null;
+      let tunnelQrCodeDataUrl: string | null = null;
+
+      if (publishToCloudflare) {
+        // TODO: Integrate with CloudflareTunnelManager
+        // For now, tunnel is not connected
+        this.tunnelStatus = 'disconnected';
+      } else {
+        this.tunnelStatus = 'disconnected';
+      }
 
       // Notify status change
       this.notifyStatusChange();
@@ -167,6 +225,9 @@ export class RemoteAccessServer {
           url: this.url,
           qrCodeDataUrl,
           localIp: this.localIp,
+          tunnelUrl,
+          tunnelQrCodeDataUrl,
+          accessToken,
         },
       };
     } catch (error) {
@@ -207,6 +268,8 @@ export class RemoteAccessServer {
     this.port = null;
     this.url = null;
     this.localIp = null;
+    this.tunnelStatus = 'disconnected';
+    this.tunnelUrl = null;
 
     // Notify status change
     this.notifyStatusChange();
@@ -221,6 +284,8 @@ export class RemoteAccessServer {
       port: this.port,
       url: this.url,
       clientCount: this.webSocketHandler.getClientCount(),
+      tunnelStatus: this.tunnelStatus,
+      tunnelUrl: this.tunnelUrl,
     };
   }
 

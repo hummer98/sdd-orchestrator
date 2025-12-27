@@ -448,3 +448,198 @@ describe('Remote Access Store (Task 4.2)', () => {
     });
   });
 });
+
+// ============================================================
+// Task 7.1 & 7.2: Cloudflare Tunnel State Management Tests
+// Requirements: 5.2, 6.1, 6.2, 3.3, 5.1, 6.3
+// ============================================================
+
+describe('Remote Access Store - Cloudflare Tunnel (Task 7.1 & 7.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+
+    // Reset store state
+    const store = useRemoteAccessStore.getState();
+    store.reset();
+
+    // Mock window.electronAPI
+    (window as any).electronAPI = mockElectronAPI;
+
+    // Setup default mock returns
+    mockElectronAPI.onRemoteServerStatusChanged.mockReturnValue(() => {});
+    mockElectronAPI.onRemoteClientCountChanged.mockReturnValue(() => {});
+  });
+
+  afterEach(() => {
+    (window as any).electronAPI = originalElectronAPI;
+  });
+
+  describe('Initial Cloudflare State', () => {
+    it('should have correct initial Cloudflare-related state', () => {
+      const store = useRemoteAccessStore.getState();
+
+      expect(store.publishToCloudflare).toBe(false);
+      expect(store.tunnelUrl).toBeNull();
+      expect(store.tunnelQrCodeDataUrl).toBeNull();
+      expect(store.tunnelStatus).toBe('disconnected');
+      expect(store.tunnelError).toBeNull();
+      expect(store.accessToken).toBeNull();
+      expect(store.showInstallCloudflaredDialog).toBe(false);
+    });
+  });
+
+  describe('setPublishToCloudflare action', () => {
+    it('should update publishToCloudflare setting', () => {
+      const store = useRemoteAccessStore.getState();
+
+      act(() => {
+        store.setPublishToCloudflare(true);
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      expect(updatedStore.publishToCloudflare).toBe(true);
+    });
+
+    it('should persist publishToCloudflare to localStorage', () => {
+      const store = useRemoteAccessStore.getState();
+
+      act(() => {
+        store.setPublishToCloudflare(true);
+      });
+
+      const storedValue = localStorage.getItem(STORAGE_KEY);
+      expect(storedValue).not.toBeNull();
+
+      const parsed = JSON.parse(storedValue!);
+      expect(parsed.state.publishToCloudflare).toBe(true);
+    });
+  });
+
+  describe('startServer with Cloudflare options', () => {
+    it('should receive tunnelUrl and accessToken when Cloudflare is enabled', async () => {
+      mockElectronAPI.startRemoteServer.mockResolvedValue({
+        ok: true,
+        value: {
+          port: 8765,
+          url: 'http://192.168.1.1:8765',
+          qrCodeDataUrl: 'data:image/png;base64,lan-qr',
+          localIp: '192.168.1.1',
+          tunnelUrl: 'https://test.trycloudflare.com',
+          tunnelQrCodeDataUrl: 'data:image/png;base64,tunnel-qr',
+          accessToken: 'abc123XYZ0',
+        },
+      });
+
+      const store = useRemoteAccessStore.getState();
+
+      await act(async () => {
+        await store.startServer();
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      expect(updatedStore.tunnelUrl).toBe('https://test.trycloudflare.com');
+      expect(updatedStore.tunnelQrCodeDataUrl).toBe('data:image/png;base64,tunnel-qr');
+      expect(updatedStore.accessToken).toBe('abc123XYZ0');
+    });
+
+    it('should handle null tunnelUrl when Cloudflare is not enabled', async () => {
+      mockElectronAPI.startRemoteServer.mockResolvedValue({
+        ok: true,
+        value: {
+          port: 8765,
+          url: 'http://192.168.1.1:8765',
+          qrCodeDataUrl: 'data:image/png;base64,test',
+          localIp: '192.168.1.1',
+          tunnelUrl: null,
+          tunnelQrCodeDataUrl: null,
+          accessToken: 'abc123XYZ0',
+        },
+      });
+
+      const store = useRemoteAccessStore.getState();
+
+      await act(async () => {
+        await store.startServer();
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      expect(updatedStore.tunnelUrl).toBeNull();
+      expect(updatedStore.tunnelQrCodeDataUrl).toBeNull();
+      expect(updatedStore.tunnelStatus).toBe('disconnected');
+      expect(updatedStore.accessToken).toBe('abc123XYZ0');
+    });
+  });
+
+  describe('dismissInstallDialog action', () => {
+    it('should set showInstallCloudflaredDialog to false', () => {
+      useRemoteAccessStore.setState({ showInstallCloudflaredDialog: true });
+
+      const store = useRemoteAccessStore.getState();
+
+      act(() => {
+        store.dismissInstallDialog();
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      expect(updatedStore.showInstallCloudflaredDialog).toBe(false);
+    });
+  });
+
+  describe('reset action with Cloudflare state', () => {
+    it('should reset Cloudflare state but preserve publishToCloudflare', () => {
+      useRemoteAccessStore.setState({
+        publishToCloudflare: true,
+        tunnelUrl: 'https://test.trycloudflare.com',
+        tunnelQrCodeDataUrl: 'data:image/png;base64,tunnel-qr',
+        tunnelStatus: 'connected',
+        tunnelError: 'Some error',
+        accessToken: 'abc123XYZ0',
+        showInstallCloudflaredDialog: true,
+      });
+
+      const store = useRemoteAccessStore.getState();
+
+      act(() => {
+        store.reset();
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      // publishToCloudflare should be preserved (persisted)
+      expect(updatedStore.publishToCloudflare).toBe(true);
+      // Other Cloudflare state should be reset
+      expect(updatedStore.tunnelUrl).toBeNull();
+      expect(updatedStore.tunnelQrCodeDataUrl).toBeNull();
+      expect(updatedStore.tunnelStatus).toBe('disconnected');
+      expect(updatedStore.tunnelError).toBeNull();
+      expect(updatedStore.accessToken).toBeNull();
+      expect(updatedStore.showInstallCloudflaredDialog).toBe(false);
+    });
+  });
+
+  describe('stopServer with Cloudflare state', () => {
+    it('should clear tunnel state when server is stopped', async () => {
+      mockElectronAPI.stopRemoteServer.mockResolvedValue(undefined);
+
+      useRemoteAccessStore.setState({
+        isRunning: true,
+        tunnelUrl: 'https://test.trycloudflare.com',
+        tunnelQrCodeDataUrl: 'data:image/png;base64,tunnel-qr',
+        tunnelStatus: 'connected',
+        accessToken: 'abc123XYZ0',
+      });
+
+      const store = useRemoteAccessStore.getState();
+
+      await act(async () => {
+        await store.stopServer();
+      });
+
+      const updatedStore = useRemoteAccessStore.getState();
+      expect(updatedStore.tunnelUrl).toBeNull();
+      expect(updatedStore.tunnelQrCodeDataUrl).toBeNull();
+      expect(updatedStore.tunnelStatus).toBe('disconnected');
+      // accessToken is preserved for next session
+    });
+  });
+});

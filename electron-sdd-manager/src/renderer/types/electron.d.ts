@@ -209,6 +209,30 @@ export interface ServerStartResult {
   readonly url: string;
   readonly qrCodeDataUrl: string;
   readonly localIp: string;
+  // Cloudflare Tunnel fields (Task 9.2, 9.3)
+  readonly tunnelUrl?: string;
+  readonly tunnelQrCodeDataUrl?: string;
+  readonly accessToken?: string;
+}
+
+/**
+ * Cloudflare settings
+ * Requirements: 2.1, 2.4, 9.1
+ */
+export interface CloudflareSettings {
+  readonly hasTunnelToken: boolean;
+  readonly accessToken: string | null;
+  readonly publishToCloudflare: boolean;
+  readonly cloudflaredPath: string | null;
+}
+
+/**
+ * Refresh access token result
+ * Requirements: 9.4
+ */
+export interface RefreshAccessTokenResult {
+  readonly accessToken: string;
+  readonly tunnelQrCodeDataUrl?: string;
 }
 
 /**
@@ -442,6 +466,11 @@ export interface ElectronAPI {
   getRemoteServerStatus(): Promise<ServerStatus>;
   onRemoteServerStatusChanged(callback: (status: ServerStatus) => void): () => void;
   onRemoteClientCountChanged(callback: (count: number) => void): () => void;
+
+  // Cloudflare Tunnel Settings (Task 8.1, 9.1, 9.4)
+  getCloudflareSettings(): Promise<CloudflareSettings>;
+  setCloudfareTunnelToken(token: string): Promise<void>;
+  refreshAccessToken(): Promise<RefreshAccessTokenResult>;
 
   // cc-sdd Workflow Install
   checkCcSddWorkflowStatus(projectPath: string): Promise<CcSddWorkflowInstallStatus>;

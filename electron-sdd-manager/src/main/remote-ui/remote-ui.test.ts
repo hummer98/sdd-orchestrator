@@ -231,7 +231,8 @@ describe('Mobile UI Static Files', () => {
 
     it('should show phase badges', () => {
       expect(componentsContent).toContain('renderPhaseBadge');
-      expect(componentsContent).toContain('phase-badge');
+      // Phase badges now use Tailwind classes matching Electron version
+      expect(componentsContent).toContain('rounded-full');
     });
 
     it('should handle spec selection', () => {

@@ -379,3 +379,245 @@ describe('RemoteAccessServer - WebSocketHandler Integration (Task 8.1)', () => {
     });
   });
 });
+
+// ============================================================
+// Task 6.1 & 6.2: Cloudflare Tunnel Integration Tests
+// Requirements: 1.1, 1.2, 1.3, 1.5, 6.5, 7.1, 7.2
+// ============================================================
+
+import { AccessTokenService } from './accessTokenService';
+
+// Mock AccessTokenService for controlled testing
+const createMockAccessTokenService = (): AccessTokenService => {
+  const mockService = {
+    ensureToken: vi.fn().mockReturnValue('testtoken1'),
+    generateToken: vi.fn().mockReturnValue('testtoken1'),
+    validateToken: vi.fn().mockReturnValue(true),
+    refreshToken: vi.fn().mockReturnValue('newtoken12'),
+    getToken: vi.fn().mockReturnValue('testtoken1'),
+  };
+  return mockService as unknown as AccessTokenService;
+};
+
+describe('RemoteAccessServer - Cloudflare Tunnel Integration (Task 6.1 & 6.2)', () => {
+  let server: RemoteAccessServer;
+
+  beforeEach(() => {
+    server = new RemoteAccessServer();
+  });
+
+  afterEach(async () => {
+    try {
+      await server.stop();
+    } catch {
+      // Ignore errors if server wasn't started
+    }
+  });
+
+  describe('start with publishToCloudflare option', () => {
+    it('should start server without Cloudflare when publishToCloudflare is false', async () => {
+      const result = await server.start(undefined, { publishToCloudflare: false });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.port).toBeGreaterThanOrEqual(8765);
+        expect(result.value.url).toBeDefined();
+        expect(result.value.tunnelUrl).toBeNull();
+        expect(result.value.tunnelQrCodeDataUrl).toBeNull();
+        expect(result.value.accessToken).toBeDefined();
+      }
+    });
+
+    it('should include accessToken in ServerStartResult', async () => {
+      const result = await server.start();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // accessToken should be a 10-character alphanumeric string
+        expect(result.value.accessToken).toBeDefined();
+        expect(result.value.accessToken.length).toBe(10);
+        expect(result.value.accessToken).toMatch(/^[a-zA-Z0-9]+$/);
+      }
+    });
+
+    it('should return tunnelUrl as null when publishToCloudflare is false', async () => {
+      const result = await server.start(undefined, { publishToCloudflare: false });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.tunnelUrl).toBeNull();
+        expect(result.value.tunnelQrCodeDataUrl).toBeNull();
+      }
+    });
+  });
+
+  describe('stop behavior with Tunnel', () => {
+    it('should stop Tunnel when server is stopped', async () => {
+      await server.start();
+      const status = server.getStatus();
+      expect(status.isRunning).toBe(true);
+
+      await server.stop();
+
+      const statusAfter = server.getStatus();
+      expect(statusAfter.isRunning).toBe(false);
+      expect(statusAfter.tunnelStatus).toBe('disconnected');
+    });
+  });
+
+  describe('getStatus with Tunnel info', () => {
+    it('should include tunnel status in getStatus', async () => {
+      await server.start();
+      const status = server.getStatus();
+
+      expect(status.tunnelStatus).toBeDefined();
+      expect(['disconnected', 'connecting', 'connected', 'error']).toContain(status.tunnelStatus);
+    });
+
+    it('should return tunnelUrl as null when tunnel is not connected', async () => {
+      await server.start(undefined, { publishToCloudflare: false });
+      const status = server.getStatus();
+
+      expect(status.tunnelUrl).toBeNull();
+      expect(status.tunnelStatus).toBe('disconnected');
+    });
+  });
+});
+
+// ============================================================
+// Task 12.1: RemoteAccessServer + Tunnel Integration Tests
+// Requirements: 1.1, 1.4, 1.5, 7.1, 7.2
+// ============================================================
+
+describe('RemoteAccessServer - Integration Tests (Task 12.1)', () => {
+  let server: RemoteAccessServer;
+  let mockAccessTokenService: AccessTokenService;
+
+  beforeEach(() => {
+    mockAccessTokenService = createMockAccessTokenService();
+    server = new RemoteAccessServer(mockAccessTokenService);
+  });
+
+  afterEach(async () => {
+    try {
+      await server.stop();
+    } catch {
+      // Ignore errors if server wasn't started
+    }
+  });
+
+  describe('Server lifecycle with AccessTokenService', () => {
+    it('should call ensureToken when server starts', async () => {
+      const result = await server.start();
+
+      expect(result.ok).toBe(true);
+      expect(mockAccessTokenService.ensureToken).toHaveBeenCalled();
+    });
+
+    it('should include generated accessToken in ServerStartResult', async () => {
+      const result = await server.start();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.accessToken).toBe('testtoken1');
+      }
+    });
+
+    it('should generate QR code with token in URL', async () => {
+      const result = await server.start();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // QR code should be generated with token in URL
+        expect(result.value.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
+      }
+    });
+  });
+
+  describe('Server start/stop cycle', () => {
+    it('should complete full start/stop cycle without errors', async () => {
+      // Start server
+      const startResult = await server.start();
+      expect(startResult.ok).toBe(true);
+      expect(server.getStatus().isRunning).toBe(true);
+
+      // Stop server
+      await server.stop();
+      expect(server.getStatus().isRunning).toBe(false);
+    });
+
+    it('should reset all status fields on stop', async () => {
+      // Start server
+      await server.start();
+
+      // Stop server
+      await server.stop();
+
+      const status = server.getStatus();
+      expect(status.isRunning).toBe(false);
+      expect(status.port).toBeNull();
+      expect(status.url).toBeNull();
+      expect(status.tunnelStatus).toBe('disconnected');
+      expect(status.tunnelUrl).toBeNull();
+    });
+
+    it('should allow restart after stop', async () => {
+      // First cycle
+      await server.start();
+      await server.stop();
+
+      // Second cycle
+      const result = await server.start();
+      expect(result.ok).toBe(true);
+      expect(server.getStatus().isRunning).toBe(true);
+    });
+  });
+
+  describe('Status change notifications', () => {
+    it('should notify on start with correct status', async () => {
+      const callback = vi.fn();
+      server.onStatusChange(callback);
+
+      await server.start();
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isRunning: true,
+          tunnelStatus: 'disconnected',
+        })
+      );
+    });
+
+    it('should notify on stop with disconnected tunnelStatus', async () => {
+      const callback = vi.fn();
+      server.onStatusChange(callback);
+
+      await server.start();
+      callback.mockClear();
+
+      await server.stop();
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isRunning: false,
+          tunnelStatus: 'disconnected',
+          tunnelUrl: null,
+        })
+      );
+    });
+  });
+
+  describe('Error handling with Cloudflare options', () => {
+    it('should handle publishToCloudflare=true without tunnel manager', async () => {
+      // Currently, publishing to Cloudflare without tunnel manager should still work
+      // (tunnel status will be 'disconnected')
+      const result = await server.start(undefined, { publishToCloudflare: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.tunnelUrl).toBeNull();
+        expect(result.value.accessToken).toBeDefined();
+      }
+    });
+  });
+});

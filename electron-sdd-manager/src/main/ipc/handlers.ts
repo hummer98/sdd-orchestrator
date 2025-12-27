@@ -33,7 +33,7 @@ import {
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
-import type { SpecInfo, BugInfo } from '../services/webSocketHandler';
+import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { access, rm, stat, readdir } from 'fs/promises';
@@ -403,7 +403,30 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     }));
   };
 
-  setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote);
+  // Get agents for remote access
+  const getAgentsForRemote = async (): Promise<AgentStateInfo[] | null> => {
+    if (!specManagerService) {
+      logger.error('[handlers] SpecManagerService not initialized for remote access agents');
+      return null;
+    }
+    const allAgentsMap = specManagerService.getAllAgents();
+    const agents: AgentStateInfo[] = [];
+    for (const agentList of allAgentsMap.values()) {
+      for (const agent of agentList) {
+        agents.push({
+          id: agent.agentId,
+          status: agent.status,
+          phase: agent.phase,
+          specId: agent.specId,
+          startedAt: agent.startedAt,
+          lastActivityAt: agent.lastActivityAt,
+        });
+      }
+    }
+    return agents;
+  };
+
+  setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote, getAgentsForRemote);
   setupWorkflowController(specManagerService);
   logger.info('[handlers] Remote Access StateProvider and WorkflowController set up');
 }

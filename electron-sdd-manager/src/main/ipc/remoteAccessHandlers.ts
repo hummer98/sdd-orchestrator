@@ -4,13 +4,13 @@
  * Requirements: 1.1, 1.2, 1.6, 3.1, 3.2, 3.3, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, SpecInfo, BugInfo, BugAction, ValidationType } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, ValidationType } from '../services/webSocketHandler';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
 import { buildClaudeArgs } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
@@ -36,11 +36,13 @@ export function getRemoteAccessServer(): RemoteAccessServer {
  * @param projectPath - Current project path
  * @param getSpecs - Function to retrieve specs from the project
  * @param getBugs - Function to retrieve bugs from the project (optional)
+ * @param getAgents - Function to retrieve agents (optional)
  */
 export function createStateProvider(
   projectPath: string,
   getSpecs: () => Promise<SpecInfo[] | null>,
-  getBugs?: () => Promise<BugInfo[] | null>
+  getBugs?: () => Promise<BugInfo[] | null>,
+  getAgents?: () => Promise<AgentStateInfo[] | null>
 ): StateProvider {
   return {
     getProjectPath: () => projectPath,
@@ -53,6 +55,12 @@ export function createStateProvider(
       const bugs = await getBugs();
       return bugs || [];
     },
+    getAgents: async () => {
+      if (!getAgents) return [];
+      const agents = await getAgents();
+      return agents || [];
+    },
+    getVersion: () => app.getVersion(),
   };
 }
 
@@ -63,17 +71,19 @@ export function createStateProvider(
  * @param projectPath - Current project path
  * @param getSpecs - Function to retrieve specs from the project
  * @param getBugs - Function to retrieve bugs from the project (optional)
+ * @param getAgents - Function to retrieve agents (optional)
  */
 export function setupStateProvider(
   projectPath: string,
   getSpecs: () => Promise<SpecInfo[] | null>,
-  getBugs?: () => Promise<BugInfo[] | null>
+  getBugs?: () => Promise<BugInfo[] | null>,
+  getAgents?: () => Promise<AgentStateInfo[] | null>
 ): void {
   const server = getRemoteAccessServer();
   const wsHandler = server.getWebSocketHandler();
 
   if (wsHandler) {
-    const stateProvider = createStateProvider(projectPath, getSpecs, getBugs);
+    const stateProvider = createStateProvider(projectPath, getSpecs, getBugs, getAgents);
     wsHandler.setStateProvider(stateProvider);
     logger.info('[remoteAccessHandlers] StateProvider set up successfully', { projectPath });
   }

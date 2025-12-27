@@ -6,6 +6,90 @@
  */
 
 /**
+ * Simple Hash-based Router
+ * Routes:
+ *   #/           - List view (specs/bugs)
+ *   #/spec/:name - Spec detail view
+ *   #/bug/:name  - Bug detail view
+ */
+class Router {
+  constructor() {
+    this.routes = [];
+    this.currentRoute = null;
+    window.addEventListener('hashchange', () => this.handleRoute());
+  }
+
+  /**
+   * Register a route
+   * @param {string} pattern - Route pattern (e.g., '/spec/:name')
+   * @param {Function} handler - Handler function
+   */
+  on(pattern, handler) {
+    this.routes.push({ pattern, handler });
+  }
+
+  /**
+   * Navigate to a route
+   * @param {string} path - Path to navigate to
+   */
+  navigate(path) {
+    window.location.hash = path;
+  }
+
+  /**
+   * Handle current route
+   */
+  handleRoute() {
+    const hash = window.location.hash.slice(1) || '/';
+
+    for (const route of this.routes) {
+      const match = this.matchRoute(route.pattern, hash);
+      if (match) {
+        this.currentRoute = { pattern: route.pattern, params: match.params };
+        route.handler(match.params);
+        return;
+      }
+    }
+
+    // Default to list view if no match
+    this.navigate('/');
+  }
+
+  /**
+   * Match a route pattern against a path
+   * @param {string} pattern
+   * @param {string} path
+   * @returns {{ params: Object } | null}
+   */
+  matchRoute(pattern, path) {
+    const patternParts = pattern.split('/');
+    const pathParts = path.split('/');
+
+    if (patternParts.length !== pathParts.length) {
+      return null;
+    }
+
+    const params = {};
+    for (let i = 0; i < patternParts.length; i++) {
+      if (patternParts[i].startsWith(':')) {
+        params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
+      } else if (patternParts[i] !== pathParts[i]) {
+        return null;
+      }
+    }
+
+    return { params };
+  }
+
+  /**
+   * Go back (navigate to list)
+   */
+  back() {
+    this.navigate('/');
+  }
+}
+
+/**
  * Main Application Class
  */
 class App {
@@ -18,6 +102,9 @@ class App {
     this.selectedBug = null;
     this.agents = [];
 
+    // Router
+    this.router = new Router();
+
     // Components
     this.docsTabs = new DocsTabs();
     this.connectionStatus = new ConnectionStatus();
@@ -29,17 +116,100 @@ class App {
     this.toast = new Toast();
     this.reconnectOverlay = new ReconnectOverlay();
 
-    // DOM references for tab sections
+    // DOM references for views
+    this.viewList = document.getElementById('view-list');
     this.specListSection = document.getElementById('spec-list-section');
     this.bugListSection = document.getElementById('bug-list-section');
 
     // DOM references
     this.projectPathEl = document.getElementById('project-path');
+    this.appVersionEl = document.getElementById('app-version');
 
     // Initialize
     this.setupDarkMode();
+    this.setupRouter();
     this.setupComponents();
     this.setupWebSocket();
+  }
+
+  /**
+   * Setup router and routes
+   */
+  setupRouter() {
+    // List view (default)
+    this.router.on('/', () => {
+      this.showView('list');
+    });
+
+    // Spec detail view
+    this.router.on('/spec/:name', (params) => {
+      const spec = this.specs.find(s => s.feature_name === params.name);
+      if (spec) {
+        this.selectedSpec = spec;
+        this.specList.setSelected(spec.feature_name);
+        this.specDetail.show(spec);
+        this.showView('spec-detail');
+
+        // Notify server of spec selection
+        wsManager.send({
+          type: 'SELECT_SPEC',
+          payload: { specId: spec.feature_name },
+        });
+      } else {
+        // Spec not found, go back to list
+        this.router.back();
+      }
+    });
+
+    // Bug detail view
+    this.router.on('/bug/:name', (params) => {
+      const bug = this.bugs.find(b => b.name === params.name);
+      if (bug) {
+        this.selectedBug = bug;
+        this.bugList.setSelected(bug.name);
+        this.bugDetail.show(bug);
+        this.showView('bug-detail');
+      } else {
+        // Bug not found, go back to list
+        this.router.back();
+      }
+    });
+
+    // Handle initial route
+    this.router.handleRoute();
+  }
+
+  /**
+   * Show a specific view
+   * @param {'list' | 'spec-detail' | 'bug-detail'} viewName
+   */
+  showView(viewName) {
+    // Hide all views
+    this.viewList.classList.add('hidden');
+    this.specDetail.sectionEl.classList.add('hidden');
+    this.bugDetail.sectionEl.classList.add('hidden');
+
+    // Show requested view
+    switch (viewName) {
+      case 'list':
+        this.viewList.classList.remove('hidden');
+        // Clear selections when returning to list
+        this.selectedSpec = null;
+        this.selectedBug = null;
+        this.specList.setSelected(null);
+        this.bugList.setSelected(null);
+        this.logViewer.clear();
+        break;
+      case 'spec-detail':
+        this.specDetail.sectionEl.classList.remove('hidden');
+        break;
+      case 'bug-detail':
+        this.bugDetail.sectionEl.classList.remove('hidden');
+        break;
+    }
+
+    // Scroll to top when changing views
+    window.scrollTo(0, 0);
   }
 
   /**
@@ -83,11 +253,9 @@ class App {
       this.handleTabChange(tab);
     };
 
-    // Bug list selection handler (Task 7.1)
+    // Bug list selection handler (Task 7.1) - now uses router
     this.bugList.onSelect = (bug) => {
-      this.selectedBug = bug;
-      this.bugList.setSelected(bug.name);
-      this.bugDetail.show(bug);
+      this.router.navigate(`/bug/${encodeURIComponent(bug.name)}`);
     };
 
     // Bug detail callbacks (Task 7.1)
@@ -97,22 +265,14 @@ class App {
       this.toast.info(`Starting ${phase}...`);
     };
 
+    // Back button uses router
     this.bugDetail.onBack = () => {
-      this.selectedBug = null;
-      this.bugList.setSelected(null);
+      this.router.back();
     };
 
-    // Spec list selection handler
+    // Spec list selection handler - now uses router
     this.specList.onSelect = (spec) => {
-      this.selectedSpec = spec;
-      this.specList.setSelected(spec.feature_name);
-      this.specDetail.show(spec);
-
-      // Notify server of spec selection
-      wsManager.send({
-        type: 'SELECT_SPEC',
-        payload: { specId: spec.feature_name },
-      });
+      this.router.navigate(`/spec/${encodeURIComponent(spec.feature_name)}`);
     };
 
     // Spec detail callbacks
@@ -132,10 +292,9 @@ class App {
       this.resumeWorkflow(agentId);
     };
 
+    // Back button uses router
     this.specDetail.onBack = () => {
-      this.selectedSpec = null;
-      this.specList.setSelected(null);
-      this.logViewer.clear();
+      this.router.back();
     };
 
     this.specDetail.onSendInput = (agentId, text) => {
@@ -254,12 +413,17 @@ class App {
    * @param {Object} payload
    */
   handleInit(payload) {
-    const { project, specs, bugs, logs } = payload || {};
+    const { project, specs, bugs, agents, version, logs } = payload || {};
 
     // Update project path
     if (project) {
       this.projectPath = project;
       this.projectPathEl.textContent = this.formatProjectPath(project);
+    }
+
+    // Update version
+    if (version) {
+      this.appVersionEl.textContent = `v${version}`;
     }
 
     // Update specs
@@ -274,10 +438,20 @@ class App {
       this.bugList.update(bugs);
     }
 
+    // Update agents
+    if (agents) {
+      this.agents = agents;
+      this.specDetail.updateAgentList(this.agents);
+    }
+
     // Load initial logs
     if (logs && logs.length > 0) {
       this.logViewer.setLogs(logs);
     }
+
+    // Re-evaluate current route now that data is loaded
+    // This handles direct navigation to detail pages
+    this.router.handleRoute();
   }
 
   /**

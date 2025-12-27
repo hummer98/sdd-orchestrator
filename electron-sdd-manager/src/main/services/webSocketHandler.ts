@@ -77,6 +77,22 @@ export interface StateProvider {
   getSpecs(): Promise<SpecInfo[]>;
   /** Get all bugs in the project (optional for backward compatibility) */
   getBugs?(): Promise<BugInfo[]>;
+  /** Get all agents (optional for backward compatibility) */
+  getAgents?(): Promise<AgentStateInfo[]>;
+  /** Get the application version (optional for backward compatibility) */
+  getVersion?(): string;
+}
+
+/**
+ * Agent info for state distribution (Remote UI display)
+ */
+export interface AgentStateInfo {
+  readonly id: string;
+  readonly status: string;
+  readonly phase?: string;
+  readonly specId?: string;
+  readonly startedAt?: string;
+  readonly lastActivityAt?: string;
 }
 
 /**
@@ -307,6 +323,8 @@ export class WebSocketHandler {
     const project = this.stateProvider?.getProjectPath() || '';
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
     const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
+    const agents = this.stateProvider?.getAgents ? await this.stateProvider.getAgents() : [];
+    const version = this.stateProvider?.getVersion ? this.stateProvider.getVersion() : '';
     const logs = this.config.logBuffer.getAll();
 
     this.send(client.id, {
@@ -315,6 +333,8 @@ export class WebSocketHandler {
         project,
         specs,
         bugs,
+        agents,
+        version,
         logs,
       },
       timestamp: Date.now(),
@@ -382,6 +402,9 @@ export class WebSocketHandler {
         break;
       case 'GET_BUGS':
         await this.handleGetBugs(client, message);
+        break;
+      case 'GET_AGENTS':
+        await this.handleGetAgents(client, message);
         break;
       case 'SELECT_SPEC':
         await this.handleSelectSpec(client, message);
@@ -663,6 +686,20 @@ export class WebSocketHandler {
     this.send(client.id, {
       type: 'BUGS_UPDATED',
       payload: { bugs },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Handle GET_AGENTS message
+   */
+  private async handleGetAgents(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const agents = this.stateProvider?.getAgents ? await this.stateProvider.getAgents() : [];
+
+    this.send(client.id, {
+      type: 'AGENT_LIST',
+      payload: { agents },
       requestId: message.requestId,
       timestamp: Date.now(),
     });

@@ -118,8 +118,10 @@ describe('AgentLogPanel - Task 31', () => {
       expect(screen.getByText('Agentを選択してください')).toBeInTheDocument();
     });
 
-    it('should show empty log message when logs are empty', () => {
+    it('should show empty log message when logs are empty and no command', () => {
       mockGetLogsForAgent.mockReturnValue([]);
+      // Agent without command field (e.g., old agent record)
+      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, command: '' });
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: 'agent-1',
         clearLogs: mockClearLogs,
@@ -130,6 +132,21 @@ describe('AgentLogPanel - Task 31', () => {
       render(<AgentLogPanel />);
 
       expect(screen.getByText('ログがありません')).toBeInTheDocument();
+    });
+
+    it('should show command line when logs are empty but command exists', () => {
+      mockGetLogsForAgent.mockReturnValue([]);
+      mockUseAgentStore.mockReturnValue({
+        selectedAgentId: 'agent-1',
+        clearLogs: mockClearLogs,
+        getLogsForAgent: mockGetLogsForAgent,
+        getAgentById: mockGetAgentById.mockReturnValue(baseAgentInfo),
+      });
+
+      render(<AgentLogPanel />);
+
+      expect(screen.getByText('コマンド:')).toBeInTheDocument();
+      expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });
 

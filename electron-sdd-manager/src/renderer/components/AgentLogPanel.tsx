@@ -32,17 +32,36 @@ export function AgentLogPanel() {
 
   // Format logs for display
   const displayLines = useMemo<DisplayLine[]>(() => {
+    const lines: DisplayLine[] = [];
+
+    // Add command line as first entry if agent exists
+    if (agent?.command) {
+      lines.push({
+        id: 'command-line',
+        type: 'formatted',
+        formatted: {
+          type: 'system',
+          icon: '▶',
+          label: 'コマンド',
+          content: agent.command,
+          color: 'cyan',
+        },
+      });
+    }
+
     if (!isFormatted) {
       // Raw mode: show original data
-      return logs.map((log, idx) => ({
-        id: `${log.id}-${idx}`,
-        type: 'raw' as const,
-        raw: { data: log.data, stream: log.stream },
-      }));
+      logs.forEach((log, idx) => {
+        lines.push({
+          id: `${log.id}-${idx}`,
+          type: 'raw' as const,
+          raw: { data: log.data, stream: log.stream },
+        });
+      });
+      return lines;
     }
 
     // Formatted mode: parse and format
-    const lines: DisplayLine[] = [];
     logs.forEach((log, logIdx) => {
       if (log.stream === 'stdin') {
         // stdin shows user input with blue color
@@ -92,7 +111,7 @@ export function AgentLogPanel() {
       }
     });
     return lines;
-  }, [logs, isFormatted]);
+  }, [logs, isFormatted, agent?.command]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 

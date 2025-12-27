@@ -97,8 +97,6 @@ export const VALIDATION_LABELS: Record<ValidationType, string> = {
 export interface ExtendedSpecJson extends SpecJson {
   /** 実装完了フラグ（オプショナル、デフォルト: false） */
   impl_completed?: boolean;
-  /** 検査完了フラグ（オプショナル、デフォルト: false） */
-  inspection_completed?: boolean;
   /** デプロイ完了フラグ（オプショナル、デフォルト: false） */
   deploy_completed?: boolean;
 }
@@ -120,7 +118,7 @@ export function getPhaseStatus(
 ): PhaseStatus {
   // 検査フェーズ
   if (phase === 'inspection') {
-    return specJson.inspection_completed ? 'approved' : 'pending';
+    return specJson.inspection?.passed ? 'approved' : 'pending';
   }
 
   // デプロイフェーズ

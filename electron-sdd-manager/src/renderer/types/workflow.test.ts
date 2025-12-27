@@ -158,14 +158,29 @@ describe('Workflow Types', () => {
     });
 
     describe('inspection phase', () => {
-      it('should return pending when inspection_completed is undefined', () => {
+      it('should return pending when inspection is undefined', () => {
         const specJson = createMockSpecJson();
         expect(getPhaseStatus('inspection', specJson)).toBe('pending');
       });
 
-      it('should return approved when inspection_completed is true', () => {
+      it('should return pending when inspection.passed is false', () => {
         const specJson = createMockSpecJson({
-          inspection_completed: true,
+          inspection: {
+            passed: false,
+            inspected_at: '2024-01-01T00:00:00Z',
+            report_file: 'inspection-1.md',
+          },
+        });
+        expect(getPhaseStatus('inspection', specJson)).toBe('pending');
+      });
+
+      it('should return approved when inspection.passed is true', () => {
+        const specJson = createMockSpecJson({
+          inspection: {
+            passed: true,
+            inspected_at: '2024-01-01T00:00:00Z',
+            report_file: 'inspection-1.md',
+          },
         });
         expect(getPhaseStatus('inspection', specJson)).toBe('approved');
       });

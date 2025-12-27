@@ -129,3 +129,12 @@
 4. The SDD Orchestrator shall editorStore.tsのArtifactTypeに`inspection-${number}`パターンを追加する
 5. The SDD Orchestrator shall specStore.tsのselectSpec関数で検査報告書ファイルを読み込む
 
+### Requirement 13: 検査ボタンからの実行
+**Objective:** As a 開発者, I want SDD OrchestratorのWorkflowViewにある検査（inspection）ボタンをクリックしてspec-inspectionを実行したい, so that GUIから直接検査を開始できる
+
+#### Acceptance Criteria
+1. The SDD Orchestrator shall specManagerService.tsのPHASE_COMMANDS_BY_PREFIXのinspectionフェーズを`/kiro:spec-inspection`に変更する
+2. When 検査ボタンがクリックされた場合, the SDD Orchestrator shall `/kiro:spec-inspection {feature}` コマンドを実行する
+3. The SDD Orchestrator shall spec-managerプレフィックス用にinspectionフェーズを`/spec-manager:inspection`に設定する
+4. When 自動実行（Auto Execute）でinspectionフェーズに到達した場合, the SDD Orchestrator shall 同様に`/kiro:spec-inspection`を実行する
+

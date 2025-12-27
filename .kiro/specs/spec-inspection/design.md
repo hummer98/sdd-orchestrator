@@ -34,7 +34,7 @@
 - `specManagerService.ts`: Agent起動・管理パターンを踏襲
 - `documentReviewService.ts`: spec.jsonフィールド管理パターンを参照
 - `validate-*.md`: Slash command + Subagentパターンを継承
-- `PHASE_COMMANDS_BY_PREFIX`: inspectionフェーズは既に定義済み（`/kiro:validate-impl`）
+- `PHASE_COMMANDS_BY_PREFIX`: inspectionフェーズのコマンドを`/kiro:spec-inspection`に変更（Req 13.1）
 
 **技術的負債の回避**:
 - 既存のResult<T, E>パターンを使用
@@ -190,6 +190,7 @@ sequenceDiagram
 | 9.1-9.5 | 自動修正オプション（--autofix） | AutofixEngine | executeAutofix() | Auto-fix Flow |
 | 10.1-10.3 | spec.jsonへのinspectionステータス管理 | InspectionStateManager | updateInspectionState() | Inspection Execution |
 | 11.1-11.3 | プロファイル配布 | Template files | - | - |
+| 13.1-13.4 | 検査ボタンからの実行 | specManagerService | PHASE_COMMANDS_BY_PREFIX | Inspection Execution |
 
 ## Components and Interfaces
 
@@ -965,3 +966,66 @@ const getArtifactContent = (tabKey: ArtifactType): string | null => {
   return null;
 };
 ```
+
+## Inspection Button Integration
+
+### Requirements Traceability
+
+| Requirement | Summary | Components | Interfaces |
+|-------------|---------|------------|------------|
+| 13.1-13.4 | 検査ボタンからの実行 | specManagerService | PHASE_COMMANDS_BY_PREFIX |
+
+### PHASE_COMMANDS_BY_PREFIX変更（13.1, 13.3）
+
+検査ボタン（WorkflowViewのinspectionフェーズ）から `/kiro:spec-inspection` を実行するため、`specManagerService.ts` の `PHASE_COMMANDS_BY_PREFIX` を変更する。
+
+**現在の定義**:
+```typescript
+const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
+  kiro: {
+    // ...
+    inspection: '/kiro:validate-impl',  // 変更前
+    // ...
+  },
+  'spec-manager': {
+    // ...
+    inspection: '/spec-manager:validate-impl',  // 変更前
+    // ...
+  },
+};
+```
+
+**変更後**:
+```typescript
+const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
+  kiro: {
+    // ...
+    inspection: '/kiro:spec-inspection',  // 変更後
+    // ...
+  },
+  'spec-manager': {
+    // ...
+    inspection: '/spec-manager:inspection',  // 変更後
+    // ...
+  },
+};
+```
+
+### 検査ボタン実行フロー（13.2, 13.4）
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant WorkflowView
+    participant specManagerService
+    participant Claude
+
+    User->>WorkflowView: 検査ボタンをクリック
+    WorkflowView->>specManagerService: executePhase(specId, 'inspection')
+    specManagerService->>specManagerService: PHASE_COMMANDS_BY_PREFIX['kiro']['inspection']
+    specManagerService->>Claude: /kiro:spec-inspection {feature}
+    Claude->>Claude: 検査実行
+    Claude-->>WorkflowView: 完了通知
+```
+
+**Note**: 自動実行（Auto Execute）時も同じ `executePhase` メソッドを使用するため、手動実行と同様に `/kiro:spec-inspection` が実行される。

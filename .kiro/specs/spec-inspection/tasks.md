@@ -159,3 +159,15 @@
   - specStore: inspection フィールドありの spec.json 読み込みテスト
   - ArtifactEditor: inspection タブの動的生成テスト
   - _Requirements: 12.1, 12.3, 12.5_
+
+- [x] 10. 検査ボタン統合
+- [x] 10.1 (P) PHASE_COMMANDS_BY_PREFIXの変更
+  - specManagerService.ts の kiro.inspection を `/kiro:spec-inspection` に変更
+  - specManagerService.ts の spec-manager.inspection を `/spec-manager:inspection` に変更
+  - 関連するユニットテストの更新
+  - _Requirements: 13.1, 13.3_
+
+- [x] 10.2 検査ボタン動作確認
+  - WorkflowViewの検査ボタンクリック時に `/kiro:spec-inspection` が実行されることを確認
+  - 自動実行（Auto Execute）でinspectionフェーズ到達時に同様に実行されることを確認
+  - _Requirements: 13.2, 13.4_

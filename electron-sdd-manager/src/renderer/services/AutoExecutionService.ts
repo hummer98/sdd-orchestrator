@@ -1263,8 +1263,23 @@ export class AutoExecutionService {
 // Singleton instance
 let autoExecutionServiceInstance: AutoExecutionService | null = null;
 
+/**
+ * Get the singleton AutoExecutionService instance.
+ *
+ * @deprecated This Renderer-based AutoExecutionService will be replaced by
+ * Main Process-based AutoExecutionCoordinator. Use useAutoExecution hook
+ * for new code, which communicates with Main Process via IPC.
+ * See: auto-execution-main-process feature (Task 4.3)
+ */
 export function getAutoExecutionService(): AutoExecutionService {
   if (!autoExecutionServiceInstance) {
+    // Log deprecation warning in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '[AutoExecutionService] DEPRECATED: This Renderer-based service will be replaced by ' +
+        'Main Process-based AutoExecutionCoordinator. Use useAutoExecution hook for new code.'
+      );
+    }
     autoExecutionServiceInstance = new AutoExecutionService();
     // E2E debug: Expose service instance for debugging
     if (typeof window !== 'undefined') {
@@ -1274,6 +1289,14 @@ export function getAutoExecutionService(): AutoExecutionService {
   return autoExecutionServiceInstance;
 }
 
+/**
+ * Dispose the singleton AutoExecutionService instance.
+ *
+ * @deprecated This Renderer-based AutoExecutionService will be replaced by
+ * Main Process-based AutoExecutionCoordinator. Use useAutoExecution hook
+ * for new code, which communicates with Main Process via IPC.
+ * See: auto-execution-main-process feature (Task 4.3)
+ */
 export function disposeAutoExecutionService(): void {
   if (autoExecutionServiceInstance) {
     autoExecutionServiceInstance.dispose();

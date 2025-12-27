@@ -17,7 +17,9 @@ import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
+import { InspectionPanel } from './InspectionPanel';
 import type { DocumentReviewState } from '../types/documentReview';
+import type { MultiRoundInspectionState } from '../types/inspection';
 import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
 import {
   WORKFLOW_PHASES,
@@ -72,6 +74,17 @@ export function WorkflowView() {
   const documentReviewState = useMemo((): DocumentReviewState | null => {
     const reviewData = (specJson as ExtendedSpecJson & { documentReview?: DocumentReviewState })?.documentReview;
     return reviewData || null;
+  }, [specJson]);
+
+  // Get inspection state from spec.json (multi-round structure)
+  // Task 4: InspectionPanel integration (inspection-workflow-ui feature)
+  const inspectionState = useMemo((): MultiRoundInspectionState | null => {
+    const inspectionData = (specJson as ExtendedSpecJson & { inspection?: MultiRoundInspectionState })?.inspection;
+    // Check if it's the new multi-round structure (has roundDetails)
+    if (inspectionData && 'roundDetails' in inspectionData) {
+      return inspectionData;
+    }
+    return null;
   }, [specJson]);
 
   // Calculate phase statuses
@@ -346,6 +359,63 @@ export function WorkflowView() {
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
+  // ============================================================
+  // Task 4: Inspection handlers (inspection-workflow-ui feature)
+  // Requirements: 3.1, 3.2, 3.3, 4.2, 4.3
+  // ============================================================
+
+  // Check if inspection is currently executing
+  const isInspectionExecuting = useMemo(() => {
+    return runningPhases.has('inspection') || runningPhases.has('inspection-fix');
+  }, [runningPhases]);
+
+  // Handler for starting inspection
+  const handleStartInspection = useCallback(async () => {
+    if (!specDetail) return;
+
+    try {
+      await window.electronAPI.executeInspection(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        workflowStore.commandPrefix
+      );
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Inspectionの実行に失敗しました');
+    }
+  }, [specDetail, workflowStore.commandPrefix]);
+
+  // Handler for executing inspection fix
+  const handleExecuteInspectionFix = useCallback(async (roundNumber: number) => {
+    if (!specDetail) return;
+
+    try {
+      await window.electronAPI.executeInspectionFix(
+        specDetail.metadata.name,
+        specDetail.metadata.name,
+        roundNumber,
+        workflowStore.commandPrefix
+      );
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Inspection Fixの実行に失敗しました');
+    }
+  }, [specDetail, workflowStore.commandPrefix]);
+
+  // Handler for changing inspection auto execution flag
+  const handleInspectionAutoExecutionFlagChange = useCallback(async (flag: 'run' | 'pause' | 'skip') => {
+    if (!specDetail) return;
+
+    try {
+      await window.electronAPI.setInspectionAutoExecutionFlag(
+        specDetail.metadata.path,
+        flag
+      );
+      // Refresh specs to update the UI
+      refreshSpecs();
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : '自動実行フラグの変更に失敗しました');
+    }
+  }, [specDetail, refreshSpecs]);
+
   // Track previous runningPhases for detecting phase completion
   const prevRunningPhasesRef = useRef<Set<string>>(new Set());
 
@@ -487,6 +557,27 @@ export function WorkflowView() {
                   progress={specDetail.taskProgress}
                   onExecuteTask={handleExecuteTask}
                   canExecute={runningPhases.size === 0 && runningGroupInSpec !== 'validate'}
+                />
+              </div>
+            )}
+
+            {/* Task 4: InspectionPanel (after impl, before deploy) */}
+            {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
+            {/* Show InspectionPanel when:
+                1. Current phase is 'impl'
+                2. Tasks are approved (phaseStatuses.tasks === 'approved')
+                3. Task progress is 100%
+            */}
+            {phase === 'impl' && phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100 && (
+              <div className="my-3">
+                <InspectionPanel
+                  inspectionState={inspectionState}
+                  isExecuting={isInspectionExecuting}
+                  isAutoExecuting={isAutoExecuting}
+                  autoExecutionFlag={workflowStore.autoExecutionPermissions.inspection ? 'run' : 'pause'}
+                  onStartInspection={handleStartInspection}
+                  onExecuteFix={handleExecuteInspectionFix}
+                  onAutoExecutionFlagChange={handleInspectionAutoExecutionFlagChange}
                 />
               </div>
             )}

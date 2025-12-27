@@ -459,4 +459,64 @@ describe('WorkflowView', () => {
       expect(screen.getByText('設計')).toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // Task 4: InspectionPanel integration (inspection-workflow-ui feature)
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+  describe('Task 4: InspectionPanel integration', () => {
+    it('should show InspectionPanel when task progress is 100%', () => {
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: {
+          ...mockSpecDetail,
+          taskProgress: { total: 10, completed: 10, percentage: 100 },
+        },
+      };
+
+      render(<WorkflowView />);
+
+      // InspectionPanel should be visible (contains "Inspection" heading)
+      expect(screen.getByRole('heading', { name: 'Inspection' })).toBeInTheDocument();
+    });
+
+    it('should not show InspectionPanel when task progress is less than 100%', () => {
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: {
+          ...mockSpecDetail,
+          taskProgress: { total: 10, completed: 5, percentage: 50 },
+        },
+      };
+
+      render(<WorkflowView />);
+
+      // InspectionPanel should not be visible
+      expect(screen.queryByRole('heading', { name: 'Inspection' })).not.toBeInTheDocument();
+    });
+
+    it('should not show InspectionPanel when tasks are not approved', () => {
+      const specWithUnapprovedTasks = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: false }, // Not approved
+          },
+        },
+        taskProgress: { total: 10, completed: 10, percentage: 100 },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithUnapprovedTasks,
+      };
+
+      render(<WorkflowView />);
+
+      // InspectionPanel should not be visible because tasks are not approved
+      expect(screen.queryByRole('heading', { name: 'Inspection' })).not.toBeInTheDocument();
+    });
+  });
 });

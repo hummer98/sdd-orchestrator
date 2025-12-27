@@ -167,6 +167,12 @@ export * from './bugAutoExecution';
 export * from './executionContext';
 
 // ============================================================
+// inspection-workflow-ui Task 1: Inspection Workflow Types
+// Requirements: 2.1, 2.2, 2.3, 2.4
+// ============================================================
+export * from './inspection';
+
+// ============================================================
 // Unified Project Selection Types (unified-project-selection feature)
 // Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
 // ============================================================

@@ -112,7 +112,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     design: '/kiro:spec-design',
     tasks: '/kiro:spec-tasks',
     impl: '/kiro:spec-impl',
-    inspection: '/kiro:validate-impl',
+    inspection: '/kiro:spec-inspection',  // Requirements: 13.1 - spec-inspection command
     deploy: '/kiro:deployment',
   },
   'spec-manager': {
@@ -120,7 +120,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     design: '/spec-manager:design',
     tasks: '/spec-manager:tasks',
     impl: '/spec-manager:impl',
-    inspection: '/spec-manager:validate-impl',
+    inspection: '/spec-manager:inspection',  // Requirements: 13.3 - spec-manager inspection command
     deploy: '/spec-manager:deployment',
   },
 };

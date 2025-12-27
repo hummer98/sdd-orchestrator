@@ -491,6 +491,69 @@ describe('SpecManagerService', () => {
     });
   });
 
+  // ============================================================
+  // Task 10.1: PHASE_COMMANDS_BY_PREFIX inspection phase tests
+  // Requirements: 13.1, 13.2, 13.3, 13.4
+  // ============================================================
+  describe('executePhase - inspection phase', () => {
+    it('should use /kiro:spec-inspection for inspection phase with kiro prefix', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executePhase({
+        specId: 'test-spec',
+        phase: 'inspection',
+        featureName: 'my-feature',
+        commandPrefix: 'kiro',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['/kiro:spec-inspection my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should use /spec-manager:inspection for inspection phase with spec-manager prefix', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executePhase({
+        specId: 'test-spec',
+        phase: 'inspection',
+        featureName: 'my-feature',
+        commandPrefix: 'spec-manager',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['/spec-manager:inspection my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should default to kiro prefix and use /kiro:spec-inspection', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executePhase({
+        specId: 'test-spec',
+        phase: 'inspection',
+        featureName: 'my-feature',
+        // No commandPrefix specified - should default to 'kiro'
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['/kiro:spec-inspection my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
   describe('executeValidation', () => {
     it('should build command with --output-format stream-json', async () => {
       const startAgentSpy = vi.spyOn(service, 'startAgent');

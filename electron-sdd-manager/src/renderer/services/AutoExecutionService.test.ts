@@ -1013,6 +1013,185 @@ describe('AutoExecutionService', () => {
   });
 
   // ============================================================
+  // Bug Fix: Auto-approve unapproved phases before executing next phase
+  // When a phase is generated but not approved, auto-execution should
+  // auto-approve it before proceeding to the next phase
+  // ============================================================
+  describe('Bug Fix: Auto-approve unapproved phases before execution', () => {
+    let statusChangeCallback: ((agentId: string, status: any) => void) | null = null;
+
+    beforeEach(() => {
+      // Capture the IPC callback
+      mockElectronAPI.onAgentStatusChange.mockImplementation((callback) => {
+        statusChangeCallback = callback;
+        return vi.fn();
+      });
+
+      // Recreate service to capture callback
+      service.dispose();
+      service = new AutoExecutionService();
+    });
+
+    it('should auto-approve requirements before executing design when requirements is generated but not approved', async () => {
+      // Setup: requirements is generated but not approved
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: false },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'agent-1' });
+
+      // Mock selectSpec to prevent errors
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      // Allow requirements and design
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      // Start auto execution
+      service.start();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Verify updateApproval was called for requirements before executing design
+      expect(mockElectronAPI.updateApproval).toHaveBeenCalledWith(
+        '/test',
+        'requirements',
+        true
+      );
+
+      // Verify design phase execution was attempted
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'design',
+        'test-spec'
+      );
+    });
+
+    it('should auto-approve design before executing tasks when design is generated but not approved', async () => {
+      // Setup: requirements approved, design generated but not approved
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'agent-1' });
+
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      service.start();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Verify updateApproval was called for design
+      expect(mockElectronAPI.updateApproval).toHaveBeenCalledWith(
+        '/test',
+        'design',
+        true
+      );
+
+      // Verify tasks phase execution was attempted
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'tasks',
+        'test-spec'
+      );
+    });
+
+    it('should not call updateApproval when previous phase is already approved', async () => {
+      // Setup: requirements is generated AND approved
+      const mockSpecJson = {
+        feature_name: 'test',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+      const mockSpecDetail = {
+        metadata: { name: 'test-spec', path: '/test' },
+        specJson: mockSpecJson,
+      };
+      useSpecStore.setState({ specDetail: mockSpecDetail as any });
+      mockElectronAPI.readSpecJson.mockResolvedValue(mockSpecJson);
+      mockElectronAPI.updateApproval.mockResolvedValue(undefined);
+      mockElectronAPI.executePhase.mockResolvedValue({ agentId: 'agent-1' });
+
+      const selectSpecMock = vi.fn().mockResolvedValue(undefined);
+      useSpecStore.setState({ selectSpec: selectSpecMock } as any);
+
+      useWorkflowStore.setState({
+        autoExecutionPermissions: {
+          requirements: true,
+          design: true,
+          tasks: false,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+      });
+
+      service.start();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // updateApproval should NOT be called for requirements since it's already approved
+      expect(mockElectronAPI.updateApproval).not.toHaveBeenCalledWith(
+        '/test',
+        'requirements',
+        true
+      );
+
+      // But design phase should still be executed
+      expect(mockElectronAPI.executePhase).toHaveBeenCalledWith(
+        'test-spec',
+        'design',
+        'test-spec'
+      );
+    });
+  });
+
+  // ============================================================
   // Task 5.2.1: Auto-approve completed phase
   // Requirements: 2.5 - Phase should be approved after successful completion
   // Updated to use IPC direct subscription for completion detection

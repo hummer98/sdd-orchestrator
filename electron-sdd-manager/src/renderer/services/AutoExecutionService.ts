@@ -1193,20 +1193,23 @@ export class AutoExecutionService {
     // Validate preconditions using snapshot
     const precondition = await this.validatePreconditions(phase, context.specDetailSnapshot);
 
-    if (!precondition.valid) {
-      if (precondition.requiresApproval) {
-        // Try auto-approval
-        const prevPhase = WORKFLOW_PHASES[WORKFLOW_PHASES.indexOf(phase) - 1];
-        if (prevPhase && ['requirements', 'design', 'tasks'].includes(prevPhase)) {
-          const approved = await this.autoApprovePhase(
-            prevPhase as 'requirements' | 'design' | 'tasks'
-          );
-          if (!approved) {
-            this.handleAgentFailedForContext(context, phase, `Failed to auto-approve ${prevPhase}`);
-            return;
-          }
+    // Bug Fix: Handle auto-approval regardless of precondition.valid
+    // When requiresApproval is true, we need to auto-approve the previous phase
+    // even if valid is true (valid means "can proceed if we auto-approve")
+    if (precondition.requiresApproval) {
+      const prevPhase = WORKFLOW_PHASES[WORKFLOW_PHASES.indexOf(phase) - 1];
+      if (prevPhase && ['requirements', 'design', 'tasks'].includes(prevPhase)) {
+        console.log(`[AutoExecutionService] Auto-approving ${prevPhase} before executing ${phase}`);
+        const approved = await this.autoApprovePhase(
+          prevPhase as 'requirements' | 'design' | 'tasks'
+        );
+        if (!approved) {
+          this.handleAgentFailedForContext(context, phase, `Failed to auto-approve ${prevPhase}`);
+          return;
         }
-      } else if (precondition.waitingForAgent) {
+      }
+    } else if (!precondition.valid) {
+      if (precondition.waitingForAgent) {
         this.setStatusForSpec(context.specId, 'paused');
         return;
       } else {

@@ -178,7 +178,7 @@ describe('BugWorkflowView', () => {
 
       // startAgent is called asynchronously, but we can verify it was called
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'test-bug', // bugName as specId
+        'bug:test-bug', // bug:{name} format for AgentListPanel filtering
         'analyze',
         'claude',
         ['-p', '/kiro:bug-analyze test-bug'],
@@ -218,7 +218,7 @@ describe('BugWorkflowView', () => {
       fireEvent.click(button);
 
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'test-bug', // bugName as specId
+        'bug:test-bug', // bug:{name} format for AgentListPanel filtering
         'deploy',
         'claude',
         ['-p', '/commit'],

@@ -128,7 +128,7 @@ describe('BugActionButtons', () => {
 
       await waitFor(() => {
         expect(mockStartAgent).toHaveBeenCalledWith(
-          '', // specId (global)
+          'bug:test-bug', // specId (bug:{name} format)
           'bug-analyze', // phase
           '/kiro:bug-analyze', // command
           ['test-bug'], // args
@@ -147,7 +147,7 @@ describe('BugActionButtons', () => {
 
       await waitFor(() => {
         expect(mockStartAgent).toHaveBeenCalledWith(
-          '',
+          'bug:test-bug', // specId (bug:{name} format)
           'bug-fix',
           '/kiro:bug-fix',
           ['test-bug'],
@@ -166,7 +166,7 @@ describe('BugActionButtons', () => {
 
       await waitFor(() => {
         expect(mockStartAgent).toHaveBeenCalledWith(
-          '',
+          'bug:test-bug', // specId (bug:{name} format)
           'bug-verify',
           '/kiro:bug-verify',
           ['test-bug'],

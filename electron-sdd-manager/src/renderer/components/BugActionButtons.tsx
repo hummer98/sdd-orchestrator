@@ -57,9 +57,9 @@ export function BugActionButtons({
 
     try {
       // Start agent with bug workflow command
-      // specId is empty string for global agents (bug workflow is not tied to a specific spec)
+      // Use bug:{name} format for specId to match BugPane's AgentListPanel filtering
       const agentId = await startAgent(
-        '', // Global agent (not spec-specific)
+        `bug:${bug.name}`, // Bug-specific agent with consistent naming
         `bug-${config.action}`, // Phase name
         config.command, // Command to execute
         [bug.name], // Args: bug name

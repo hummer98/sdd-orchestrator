@@ -95,9 +95,10 @@ export function BugWorkflowView() {
   const isAutoExecuting = autoExecutionStatus === 'running' || autoExecutionStatus === 'paused';
 
   // Get running phases for the selected bug
+  // Use bug:{name} format to match AgentListPanel filtering
   const runningPhases = useMemo(() => {
     if (!selectedBug) return new Set<string>();
-    const bugAgents = getAgentsForBug(selectedBug.name);
+    const bugAgents = getAgentsForBug(`bug:${selectedBug.name}`);
     const running = bugAgents
       .filter((a) => a.status === 'running')
       .map((a) => a.phase);
@@ -153,7 +154,7 @@ export function BugWorkflowView() {
       }
 
       await window.electronAPI.startAgent(
-        selectedBug.name, // Use bug name as specId for grouping
+        `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
         phase,
         'claude',
         ['-p', fullCommand],

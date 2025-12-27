@@ -231,7 +231,7 @@ export class BugAutoExecutionService {
       }
 
       const agentInfo = await window.electronAPI.startAgent(
-        selectedBug.name,
+        `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
         phase,
         'claude',
         ['-p', fullCommand],

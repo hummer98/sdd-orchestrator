@@ -841,6 +841,7 @@ class SpecDetail {
 
   /**
    * Update agent list
+   * Now displays same content as Electron version: phase, startedAt, duration, status
    * @param {Array} agents
    */
   updateAgentList(agents) {
@@ -852,37 +853,164 @@ class SpecDetail {
       return;
     }
 
-    this.agentListEl.innerHTML = this.agents.map(agent => {
-      const statusColors = {
-        'running': 'bg-green-500',
-        'completed': 'bg-blue-500',
-        'failed': 'bg-red-500',
-        'stopped': 'bg-yellow-500',
-      };
-      const statusColor = statusColors[agent.status] || 'bg-gray-400';
+    // Sort agents: running first, then by startedAt descending (matching Electron version)
+    const sortedAgents = [...this.agents].sort((a, b) => {
+      if (a.status === 'running' && b.status !== 'running') return -1;
+      if (a.status !== 'running' && b.status === 'running') return 1;
+      const dateA = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+      const dateB = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+      return dateB - dateA;
+    });
 
-      // Extract phase from agentId if not explicitly set (agentId format: specName-phase-timestamp)
+    this.agentListEl.innerHTML = sortedAgents.map(agent => {
+      const statusConfig = this.getStatusConfig(agent.status);
+
+      // Extract phase from agentId if not explicitly set
       const displayPhase = agent.phase || this.extractPhaseFromId(agent.id) || 'Agent';
+
+      // Format datetime (MM/DD HH:mm) - matching Electron version
+      const formattedDate = agent.startedAt ? this.formatDateTime(agent.startedAt) : '';
+
+      // Calculate duration - matching Electron version
+      const duration = this.calculateDuration(agent);
+      const isRunning = agent.status === 'running';
 
       return `
         <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700" data-agent-id="${agent.id}">
-          <span class="w-2 h-2 rounded-full ${statusColor}"></span>
+          <span class="${statusConfig.iconClassName}" title="${statusConfig.label}">${statusConfig.icon}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate">${displayPhase}</div>
-            <div class="text-xs text-gray-400 truncate">${agent.id}</div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium truncate">${displayPhase}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                ${formattedDate}${duration ? ` (${duration}${isRunning ? '...' : ''})` : ''}
+              </span>
+            </div>
           </div>
-          <span class="text-xs text-gray-400">${agent.status}</span>
+          ${this.renderAgentActions(agent)}
         </div>
       `;
     }).join('');
 
     // Add click handlers to select agent
     this.agentListEl.querySelectorAll('[data-agent-id]').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
+        // Don't select if clicking action button
+        if (e.target.closest('.agent-action-btn')) return;
         const agentId = el.dataset.agentId;
         this.selectAgent(agentId);
       });
     });
+
+    // Add stop button handlers
+    this.agentListEl.querySelectorAll('.agent-stop-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const agentId = btn.dataset.agentId;
+        if (this.onStop) {
+          this.onStop(agentId);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get status configuration for display (matching Electron version)
+   * @param {string} status
+   * @returns {{ label: string, icon: string, iconClassName: string }}
+   */
+  getStatusConfig(status) {
+    const configs = {
+      running: {
+        label: '実行中',
+        icon: '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>',
+        iconClassName: 'text-blue-500',
+      },
+      completed: {
+        label: '完了',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        iconClassName: 'text-green-500',
+      },
+      interrupted: {
+        label: '中断',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
+        iconClassName: 'text-yellow-500',
+      },
+      hang: {
+        label: '応答なし',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
+        iconClassName: 'text-red-500',
+      },
+      failed: {
+        label: '失敗',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        iconClassName: 'text-red-500',
+      },
+    };
+    return configs[status] || { label: status, icon: '<span class="w-2 h-2 rounded-full bg-gray-400"></span>', iconClassName: 'text-gray-400' };
+  }
+
+  /**
+   * Format ISO date string to "MM/DD HH:mm" (matching Electron version)
+   * @param {string} isoString
+   * @returns {string}
+   */
+  formatDateTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${month}/${day} ${hours}:${minutes}`;
+  }
+
+  /**
+   * Calculate duration string (matching Electron version)
+   * @param {Object} agent
+   * @returns {string}
+   */
+  calculateDuration(agent) {
+    if (!agent.startedAt) return '';
+    const startTime = new Date(agent.startedAt).getTime();
+    const endTime = agent.status === 'running'
+      ? Date.now()
+      : (agent.lastActivityAt ? new Date(agent.lastActivityAt).getTime() : Date.now());
+    const ms = endTime - startTime;
+    return this.formatDuration(ms);
+  }
+
+  /**
+   * Format duration in milliseconds to "Xm Ys" or "Xs" (matching Electron version)
+   * @param {number} ms
+   * @returns {string}
+   */
+  formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) {
+      return `${minutes}分${seconds}秒`;
+    }
+    return `${seconds}秒`;
+  }
+
+  /**
+   * Render agent action buttons (stop for running agents)
+   * @param {Object} agent
+   * @returns {string}
+   */
+  renderAgentActions(agent) {
+    if (agent.status === 'running' || agent.status === 'hang') {
+      return `
+        <button class="agent-action-btn agent-stop-btn p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400" data-agent-id="${agent.id}" title="停止">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+          </svg>
+        </button>
+      `;
+    }
+    return '';
   }
 
   /**

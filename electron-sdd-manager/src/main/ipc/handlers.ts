@@ -634,10 +634,17 @@ export function registerIpcHandlers(): void {
           }
 
           // Broadcast status change to Remote UI via WebSocket
+          // Include full agent info for remote-ui to display same content as Electron version
           const remoteServer = getRemoteAccessServer();
           const wsHandler = remoteServer.getWebSocketHandler();
           if (wsHandler) {
-            wsHandler.broadcastAgentStatus(agentId, status);
+            const agentInfo = service.getAgentById(agentId);
+            wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
+              specId: agentInfo.specId,
+              phase: agentInfo.phase,
+              startedAt: agentInfo.startedAt,
+              lastActivityAt: agentInfo.lastActivityAt,
+            } : undefined);
           }
         });
       } else {
@@ -1564,10 +1571,17 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
     }
 
     // Broadcast status change to Remote UI via WebSocket
+    // Include full agent info for remote-ui to display same content as Electron version
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
     if (wsHandler) {
-      wsHandler.broadcastAgentStatus(agentId, status);
+      const agentInfo = service.getAgentById(agentId);
+      wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
+        specId: agentInfo.specId,
+        phase: agentInfo.phase,
+        startedAt: agentInfo.startedAt,
+        lastActivityAt: agentInfo.lastActivityAt,
+      } : undefined);
     }
   });
 }

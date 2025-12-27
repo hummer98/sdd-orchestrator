@@ -132,6 +132,14 @@ export interface WorkflowController {
 }
 
 /**
+ * Access Token Service interface for token validation
+ * Requirements: 3.4, 7.3 (cloudflare-tunnel-integration)
+ */
+export interface AccessTokenServiceInterface {
+  validateToken(token: string): boolean;
+}
+
+/**
  * Configuration options for WebSocketHandler
  */
 export interface WebSocketHandlerConfig {
@@ -141,15 +149,24 @@ export interface WebSocketHandlerConfig {
   rateLimiter?: RateLimiter;
   /** Log buffer instance */
   logBuffer?: LogBuffer;
+  /** Access token service for authentication (optional) */
+  accessTokenService?: AccessTokenServiceInterface;
+  /** Require token authentication (default: false) */
+  requireTokenAuth?: boolean;
+  /** Skip token validation for private IPs (default: true) */
+  skipTokenForPrivateIp?: boolean;
 }
 
 /**
  * Default configuration values
  */
-const DEFAULT_CONFIG: Required<WebSocketHandlerConfig> = {
+const DEFAULT_CONFIG = {
   maxClients: 10,
   rateLimiter: defaultRateLimiter,
   logBuffer: defaultLogBuffer,
+  accessTokenService: undefined as AccessTokenServiceInterface | undefined,
+  requireTokenAuth: false,
+  skipTokenForPrivateIp: true,
 };
 
 /**
@@ -164,7 +181,7 @@ const DEFAULT_CONFIG: Required<WebSocketHandlerConfig> = {
  * handler.broadcast({ type: 'STATUS_UPDATE', payload: {...}, timestamp: Date.now() });
  */
 export class WebSocketHandler {
-  private readonly config: Required<WebSocketHandlerConfig>;
+  private readonly config: typeof DEFAULT_CONFIG;
   private readonly clients: Map<string, ClientInfo> = new Map();
   private wss: WebSocketServer | null = null;
   private clientIdCounter = 0;
@@ -215,10 +232,36 @@ export class WebSocketHandler {
     // Get client IP address
     const ip = this.getClientIP(req);
 
-    // Validate IP address (only allow private IPs)
+    // Get real client IP from Cloudflare headers if present
+    const realIp = this.getRealClientIP(req) || ip;
+
+    // Validate IP address (only allow private IPs for direct connections)
     if (!isPrivateIP(ip)) {
       ws.close(1008, 'Connection from non-private IP rejected');
       return;
+    }
+
+    // Token authentication
+    // Requirements: 3.4, 7.3 (cloudflare-tunnel-integration)
+    if (this.config.requireTokenAuth) {
+      const isRealIpPrivate = isPrivateIP(realIp);
+
+      // Skip token validation for private IPs if configured
+      if (!this.config.skipTokenForPrivateIp || !isRealIpPrivate) {
+        const token = this.extractTokenFromRequest(req);
+
+        if (!token) {
+          ws.close(4001, 'Unauthorized: Token required');
+          return;
+        }
+
+        if (this.config.accessTokenService) {
+          if (!this.config.accessTokenService.validateToken(token)) {
+            ws.close(4001, 'Unauthorized: Invalid token');
+            return;
+          }
+        }
+      }
     }
 
     // Check max connections
@@ -403,6 +446,40 @@ export class WebSocketHandler {
   }
 
   /**
+   * Get real client IP from Cloudflare headers
+   * Requirements: 7.3 (cloudflare-tunnel-integration)
+   *
+   * Cloudflare adds cf-connecting-ip header with the real client IP
+   * when connections come through Cloudflare Tunnel
+   */
+  private getRealClientIP(req: IncomingMessage): string | null {
+    // Check Cloudflare header
+    const cfIp = req.headers['cf-connecting-ip'];
+    if (cfIp) {
+      return Array.isArray(cfIp) ? cfIp[0] : cfIp;
+    }
+    return null;
+  }
+
+  /**
+   * Extract access token from request URL query parameters
+   * Requirements: 3.4, 7.3 (cloudflare-tunnel-integration)
+   */
+  private extractTokenFromRequest(req: IncomingMessage): string | null {
+    if (!req.url) {
+      return null;
+    }
+
+    try {
+      // Parse URL to extract query parameters
+      const url = new URL(req.url, 'http://localhost');
+      return url.searchParams.get('token');
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Generate a unique client ID
    */
   private generateClientId(): string {
@@ -500,11 +577,27 @@ export class WebSocketHandler {
    *
    * @param agentId Agent identifier
    * @param status New agent status
+   * @param agentInfo Optional full agent info for rich display (matches Electron version)
    */
-  broadcastAgentStatus(agentId: string, status: string): void {
+  broadcastAgentStatus(agentId: string, status: string, agentInfo?: {
+    specId?: string;
+    phase?: string;
+    startedAt?: string;
+    lastActivityAt?: string;
+  }): void {
     this.broadcast({
       type: 'AGENT_STATUS',
-      payload: { agentId, status },
+      payload: {
+        agentId,
+        status,
+        // Include full agent info for remote-ui to display same content as Electron version
+        ...(agentInfo && {
+          specId: agentInfo.specId,
+          phase: agentInfo.phase,
+          startedAt: agentInfo.startedAt,
+          lastActivityAt: agentInfo.lastActivityAt,
+        }),
+      },
       timestamp: Date.now(),
     });
   }

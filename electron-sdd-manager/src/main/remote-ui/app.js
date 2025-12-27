@@ -326,18 +326,29 @@ class App {
 
   /**
    * Handle AGENT_STATUS message
+   * Now includes full agent info to match Electron version display
    * @param {Object} payload
    */
   handleAgentStatus(payload) {
-    const { agentId, status, phase } = payload || {};
+    const { agentId, status, phase, specId, startedAt, lastActivityAt } = payload || {};
 
-    // Update agent in list
+    // Update agent in list with full info (matching Electron version's AgentInfo)
     const existingAgent = this.agents.find(a => a.id === agentId);
     if (existingAgent) {
       existingAgent.status = status;
       if (phase) existingAgent.phase = phase;
+      if (specId) existingAgent.specId = specId;
+      if (startedAt) existingAgent.startedAt = startedAt;
+      if (lastActivityAt) existingAgent.lastActivityAt = lastActivityAt;
     } else {
-      this.agents.push({ id: agentId, status, phase: phase || 'Unknown' });
+      this.agents.push({
+        id: agentId,
+        status,
+        phase: phase || 'Unknown',
+        specId: specId || '',
+        startedAt: startedAt || new Date().toISOString(),
+        lastActivityAt: lastActivityAt || new Date().toISOString(),
+      });
     }
     this.specDetail.updateAgentList(this.agents);
 

@@ -968,6 +968,13 @@ export class SpecManagerService {
   }
 
   /**
+   * Get agent by ID
+   */
+  getAgentById(agentId: string): AgentInfo | undefined {
+    return this.registry.get(agentId);
+  }
+
+  /**
    * Get all agents grouped by spec
    */
   getAllAgents(): Map<string, AgentInfo[]> {

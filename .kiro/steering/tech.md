@@ -96,6 +96,47 @@ task electron:stop   # 停止
 - `handlers.ts`: IPCハンドラ実装
 - preload経由でrendererに公開
 
+### Remote UI アーキテクチャ
+
+Electronアプリはブラウザからアクセス可能なRemote UIを提供する。
+
+**構成**:
+- `remoteAccessServer.ts`: Express静的サーバー + WebSocketサーバー
+- `webSocketHandler.ts`: WebSocket経由のIPC-like通信
+- `remote-ui/`: 独立したReactアプリ（Vite別ビルド）
+
+**Remote UIで利用可能な機能**:
+- ワークフロー表示・操作
+- Agent実行状態の監視
+- 一部のIPC操作（WebSocket経由）
+
+**Desktop UI vs Remote UI**:
+| 観点 | Desktop UI | Remote UI |
+|------|------------|-----------|
+| アクセス | Electronウィンドウ | ブラウザ（localhost / Cloudflare Tunnel） |
+| IPC | preload + contextBridge | WebSocket経由 |
+| 機能範囲 | フル機能 | サブセット（制限あり） |
+| 状態管理 | Zustand stores | 独自stores（WebSocket同期） |
+
+## 新規Spec作成時の確認事項
+
+### Remote UI影響チェック
+
+新しい機能を設計する際は、以下を明確にすること：
+
+1. **Remote UIへの影響有無**
+   - この機能はRemote UIからも利用可能にするか？
+   - Desktop専用機能か？
+
+2. **Remote UIも変更する場合**
+   - WebSocketハンドラの追加が必要か？
+   - `remote-ui/` 側のコンポーネント・stores追加が必要か？
+   - 同期方式（push/pull）の設計
+
+3. **要件定義での明記**
+   - `requirements.md` に「Remote UI対応: 要/不要」を記載
+   - 対応する場合、どの操作をRemote UIで許可するか明記
+
 ### ロギング設計
 - **ProjectLogger**: プロジェクト別ログファイル + グローバルログへの二重書き込み
 - **LogRotationManager**: 10MB/日付単位ローテーション、30日保持

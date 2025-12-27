@@ -321,7 +321,7 @@ describe('AgentListPanel - Task 30', () => {
       expect(mockSelectAgent).not.toHaveBeenCalled();
     });
 
-    it('should not auto-select when no agents exist for the spec', () => {
+    it('should clear selection when no agents exist for the spec', () => {
       mockGetAgentsForSpec.mockReturnValue([]);
       mockUseAgentStore.mockReturnValue({
         selectedAgentId: null,
@@ -337,7 +337,8 @@ describe('AgentListPanel - Task 30', () => {
 
       render(<AgentListPanel specId="spec-1" />);
 
-      expect(mockSelectAgent).not.toHaveBeenCalled();
+      // Should clear selection (call selectAgent(null)) when moving to a spec with no agents
+      expect(mockSelectAgent).toHaveBeenCalledWith(null);
     });
 
     it('should only auto-select running agent even when completed agents exist', () => {

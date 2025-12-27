@@ -96,6 +96,7 @@ export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentLis
 
   // Auto-select running agent when specId changes
   // Only auto-select if there's an agent currently running for this spec/bug
+  // Clear selection if moving to a spec with no agents
   useEffect(() => {
     if (!specId) return;
 
@@ -117,6 +118,10 @@ export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentLis
     const runningAgent = currentAgents.find(a => a.status === 'running');
     if (runningAgent) {
       selectAgent(runningAgent.agentId);
+    } else if (currentAgents.length === 0) {
+      // Clear selection when moving to a spec with no agents
+      // This prevents stale agent logs from previous spec being displayed
+      selectAgent(null);
     }
   }, [specId, selectedAgentId, getAgentsForSpec, getAgentById, selectAgent]);
 

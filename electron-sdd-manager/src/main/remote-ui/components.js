@@ -744,17 +744,14 @@ class SpecDetail {
    */
   getCurrentPhaseInfo(spec) {
     const phaseStatus = this.getPhaseStatusFromSpec(spec);
-    const phase = spec.phase || 'ready';
+    const phase = spec.phase || 'initialized';
 
     // Check for implementation complete
     if (phase === 'implementation-complete') {
       return { label: '✓ Complete', colorKey: 'complete' };
     }
-    if (phase === 'implementation') {
-      return { label: '🔧 Implementing', colorKey: 'implementation' };
-    }
 
-    // Check based on approvals
+    // Check based on approvals (most accurate source)
     if (phaseStatus.tasks === 'approved') {
       return { label: '✓ Tasks Approved', colorKey: 'tasks-done' };
     }
@@ -849,11 +846,14 @@ class SpecDetail {
       };
       const statusColor = statusColors[agent.status] || 'bg-gray-400';
 
+      // Extract phase from agentId if not explicitly set (agentId format: specName-phase-timestamp)
+      const displayPhase = agent.phase || this.extractPhaseFromId(agent.id) || 'Agent';
+
       return `
         <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700" data-agent-id="${agent.id}">
           <span class="w-2 h-2 rounded-full ${statusColor}"></span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate">${agent.phase || 'Unknown'}</div>
+            <div class="text-sm font-medium truncate">${displayPhase}</div>
             <div class="text-xs text-gray-400 truncate">${agent.id}</div>
           </div>
           <span class="text-xs text-gray-400">${agent.status}</span>
@@ -868,6 +868,28 @@ class SpecDetail {
         this.selectAgent(agentId);
       });
     });
+  }
+
+  /**
+   * Extract phase name from agentId
+   * @param {string} agentId - Format: specName-phase-timestamp or just an identifier
+   * @returns {string|null}
+   */
+  extractPhaseFromId(agentId) {
+    if (!agentId) return null;
+
+    // Known phase names to detect
+    const phases = ['requirements', 'design', 'tasks', 'implementation', 'analyze', 'fix', 'verify', 'gap', 'design-validation', 'document-review'];
+
+    // Check if any phase name is in the agentId
+    for (const phase of phases) {
+      if (agentId.toLowerCase().includes(phase)) {
+        // Capitalize first letter
+        return phase.charAt(0).toUpperCase() + phase.slice(1);
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -925,33 +947,33 @@ class SpecDetail {
     }
 
     // Fallback: derive from phase string
-    const phaseString = spec.phase || 'ready';
+    // SpecPhase values: 'initialized', 'requirements-generated', 'design-generated', 'tasks-generated', 'implementation-complete'
+    const phaseString = spec.phase || 'initialized';
     switch (phaseString) {
       case 'implementation-complete':
-      case 'implementation':
-      case 'tasks-approved':
+        // All phases approved for implementation-complete
         result.requirements = 'approved';
         result.design = 'approved';
         result.tasks = 'approved';
         break;
       case 'tasks-generated':
+        // Tasks generated means design and requirements were approved
         result.requirements = 'approved';
         result.design = 'approved';
         result.tasks = 'generated';
         break;
-      case 'design-approved':
-        result.requirements = 'approved';
-        result.design = 'approved';
-        break;
       case 'design-generated':
+        // Design generated means requirements was approved
         result.requirements = 'approved';
         result.design = 'generated';
         break;
-      case 'requirements-approved':
-        result.requirements = 'approved';
-        break;
       case 'requirements-generated':
         result.requirements = 'generated';
+        break;
+      case 'initialized':
+      case 'ready':
+      default:
+        // Nothing generated yet
         break;
     }
 
@@ -1438,29 +1460,87 @@ class LogViewer {
   }
 
   /**
-   * Render single log entry
+   * Render single log entry with formatting
    * @param {Object} entry
    * @returns {string}
    */
   renderEntry(entry) {
     const { data, stream, type, timestamp } = entry;
-    let className = 'log-entry';
+
+    // Try to parse and format the log data using LogFormatter
+    if (data && window.LogFormatter) {
+      const formattedLines = window.LogFormatter.formatLogData(data);
+
+      if (formattedLines.length > 0) {
+        return formattedLines.map(line => this.renderFormattedLine(line, timestamp)).join('');
+      }
+    }
+
+    // Fallback: render as raw log entry
+    return this.renderRawEntry(entry);
+  }
+
+  /**
+   * Render formatted log line
+   * @param {Object} line - Formatted line from LogFormatter
+   * @param {number} timestamp
+   * @returns {string}
+   */
+  renderFormattedLine(line, timestamp) {
+    const colorClass = window.LogFormatter.getColorClass(line.color);
+    const bgClass = window.LogFormatter.getBgClass(line.type);
+    const time = timestamp ? new Date(timestamp).toLocaleTimeString() : '';
+    const timePrefix = time ? `<span class="text-gray-500 text-xs mr-2">[${time}]</span>` : '';
+
+    // Escape content for HTML
+    const escapedContent = this.escapeHtml(line.content || '');
+    const escapedDetails = line.details ? this.escapeHtml(line.details) : '';
+
+    return `
+      <div class="log-entry-formatted px-2 py-1 rounded mb-1 ${bgClass}">
+        <div class="flex items-start gap-2 ${colorClass}">
+          ${line.icon ? `<span class="shrink-0">${line.icon}</span>` : ''}
+          ${line.label ? `<span class="shrink-0 font-semibold">${this.escapeHtml(line.label)}:</span>` : ''}
+          <span class="whitespace-pre-wrap break-all flex-1">
+            ${escapedContent}
+            ${escapedDetails ? `<span class="text-gray-500 ml-2">${escapedDetails}</span>` : ''}
+          </span>
+        </div>
+        ${timePrefix ? `<div class="text-right">${timePrefix}</div>` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Render raw log entry (fallback)
+   * @param {Object} entry
+   * @returns {string}
+   */
+  renderRawEntry(entry) {
+    const { data, stream, type, timestamp } = entry;
+    let className = 'log-entry px-2 py-1';
 
     // Determine color class based on type or stream
-    if (type) {
-      className += ` log-${type}`;
-    } else if (stream) {
-      className += ` log-${stream}`;
+    if (stream === 'stderr') {
+      className += ' text-red-400 bg-red-900/20';
+    } else if (stream === 'stdin') {
+      className += ' text-blue-400 bg-blue-900/20';
+    } else if (type === 'error') {
+      className += ' text-red-400';
+    } else if (type === 'warning') {
+      className += ' text-yellow-400';
+    } else {
+      className += ' text-gray-300';
     }
 
     // Format timestamp
     const time = timestamp ? new Date(timestamp).toLocaleTimeString() : '';
-    const timePrefix = time ? `<span class="text-gray-400 mr-2">[${time}]</span>` : '';
+    const timePrefix = time ? `<span class="text-gray-500 text-xs mr-2">[${time}]</span>` : '';
 
     // Escape HTML in data
     const escapedData = this.escapeHtml(data || '');
 
-    return `<div class="${className}">${timePrefix}${escapedData}</div>`;
+    return `<div class="${className}">${timePrefix}<span class="whitespace-pre-wrap break-all">${escapedData}</span></div>`;
   }
 
   /**

@@ -102,8 +102,8 @@
         </div>
       </header>
 
-      <!-- Content -->
-      <div class="p-4 space-y-4">
+      <!-- Content (pt-16 to prevent overlap with fixed header) -->
+      <div class="p-4 pt-16 space-y-4">
         <!-- Action Button -->
         <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
           <button id="btn-bug-action" data-testid="remote-bug-action" class="w-full touch-target bg-amber-500 hover:bg-amber-600 text-white rounded-lg py-4 px-4 font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed">
@@ -139,8 +139,8 @@
         </div>
       </header>
 
-      <!-- Content -->
-      <div class="p-4 space-y-4">
+      <!-- Content (pt-16 to prevent overlap with fixed header) -->
+      <div class="p-4 pt-16 space-y-4">
         <!-- Next Action Button -->
         <div id="next-action-section" class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
           <button id="btn-next-action" data-testid="remote-spec-next-action" class="w-full touch-target bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-4 px-4 font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed">
@@ -238,6 +238,7 @@
 
   <!-- Scripts -->
   <script src="websocket.js"></script>
+  <script src="logFormatter.js"></script>
   <script src="components.js"></script>
   <script src="app.js"></script>
 </body>

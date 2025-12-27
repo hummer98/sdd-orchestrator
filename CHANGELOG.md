@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-12-27
+
+### Added
+- **ArtifactEditor検索機能**: Cmd+F/Ctrl+Fでマークダウンエディタ内を検索可能に
+  - SearchBar: 検索バーUI（大文字小文字区別オプション付き）
+  - SearchHighlightLayer: 編集モードでの検索マッチハイライト
+  - PreviewHighlightLayer: プレビューモードでの検索マッチハイライト
+  - Enter/Shift+Enterでマッチ間を移動
+- **Bugワークフロー自動実行機能**: Bugフェーズの連続自動実行をサポート
+  - BugAutoExecutionService: analyze→fix→verifyの自動進行
+  - BugAutoExecutionStatusDisplay: 自動実行状態の表示
+  - workflowStoreに自動実行状態を追加
+- **E2Eテスト追加**: RemoteAccessServer、install-dialogs、artifact-editor-search、bug-auto-executionのE2Eテスト
+
+### Fixed
+- **UI改善**: フィルタselect要素のテキスト色を修正
+- **AgentListPanel統合**: SpecタブとBugsタブでAgentListPanelを統一
+- **Agent自動選択スコープ修正**: タブ・プロジェクト切り替え時のAgent選択クリア
+- **BugListItem表示統一**: SpecListItemと同じ表示スタイルに統一
+- **BugArtifactEditor**: 存在するアーティファクトタブのみ表示
+- **完了フェーズ実行ボタン非表示**: 完了したBugフェーズの実行ボタンを非表示
+- **AgentLogパネル最大高さ制限削除**: 表示領域を拡大
+
+### Changed
+- **ドキュメント更新**: CLAUDE.mdにCommandset Installer説明追加
+- **ロギング設計ドキュメント**: プロジェクト別ログ機能の説明を追加
+
 ## [0.12.0] - 2025-12-26
 
 ### Added

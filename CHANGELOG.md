@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-12-27
+
+### Added
+- **Cloudflare Tunnel統合機能**: Cloudflare Tunnelを使用したRemote UIアクセスを実装（Task 1-10）
+- **Remote UI Agent一覧同期機能**: Remote UIでAgent一覧のリアルタイム同期をサポート
+
+### Fixed
+- **sdd-orchestrator.json profileフィールド**: profileフィールドをsdd-orchestrator.jsonに追加
+- **spec-list未知phase表示**: 未知のphase値をそのまま表示するフォールバックを追加
+- **spec-inspection NOGO対応**: NOGO判定時もspec.jsonを更新するよう修正
+- **Remote UI Spec一覧ソート**: Spec一覧のソート順をElectron版と統一
+- **Remote UI Bugs一覧表示**: Remote UIでBugs一覧が表示されない問題を修正
+- **Remote UI Agent一覧表示**: Agent一覧の表示内容をElectron版と統一
+- **Remote UI画面レイアウト**: Spec/Bug Detail画面のレイアウト構造を修正
+- **Remote UI Closeボタン削除**: RemoteAccessDialogから不要なCloseボタンを削除
+- **WorkflowView重複呼び出し**: document-review-replyの重複呼び出しを削除
+
+### Changed
+- **Remote UI hash-based routing**: Remote UIの画面遷移をhash-based routingに改善
+
+### Documentation
+- Cloudflare Tunnel設定ガイドを追加
+- MCP操作手順書（operations.md）を追加
+- 新規Spec作成時のRemote UI影響チェックをsteeringに追加
+
 ## [0.13.1] - 2025-12-27
 
 ### Added

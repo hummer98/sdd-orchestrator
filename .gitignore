@@ -7,3 +7,6 @@ node_modules
 .mcp.json
 .electron-dev.pid
 logs/
+
+# MCP tool artifacts
+.playwright-mcp/

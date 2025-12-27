@@ -5,6 +5,52 @@ MCP経由でElectronアプリを操作するための手順書。
 
 ---
 
+## ⚠️ MCP eval での Promise 操作（重要）
+
+**MCPの`eval`コマンドは同期的な戻り値のみを正しく返す。** Promiseを返すAPIは特別な対応が必要。
+
+### 問題
+
+```javascript
+// ❌ NG: Promiseが空オブジェクト {} として返される
+command: "eval"
+args: { "code": "window.electronAPI.getRemoteServerStatus()" }
+// 結果: {} （Promiseオブジェクトがシリアライズされて空に見える）
+```
+
+### 解決方法1: 変数に保存して2段階で取得（推奨）
+
+```javascript
+// ステップ1: Promiseを解決して変数に保存
+command: "eval"
+args: { "code": "window.electronAPI.getRemoteServerStatus().then(r => { window.__result = r; })" }
+
+// ステップ2: 変数を読み取る
+command: "eval"
+args: { "code": "window.__result" }
+```
+
+### 解決方法2: JSON.stringify を使用
+
+```javascript
+// .then() 内で JSON.stringify する（結果が文字列として返る）
+command: "eval"
+args: { "code": "window.electronAPI.getRemoteServerStatus().then(r => JSON.stringify(r))" }
+```
+
+**注意**: 方法2はログ出力には表示されるが、MCPの戻り値には含まれない場合がある。確実に結果を取得するには方法1を使用する。
+
+### 適用対象API
+
+以下のAPIはすべてPromiseを返すため、上記の対応が必要：
+- `selectProject()`, `readSpecs()`, `readBugs()`, `readSpecJson()`, `readBugDetail()`
+- `startRemoteServer()`, `stopRemoteServer()`, `getRemoteServerStatus()`
+- `loadLayoutConfig()`, `saveLayoutConfig()`, `resetLayoutConfig()`
+- `checkCommandsetStatus()`, `checkRequiredPermissions()`
+- その他 `window.electronAPI.*` の全てのメソッド
+
+---
+
 ## プロジェクト選択
 
 ### 方法1: 起動時引数（推奨）

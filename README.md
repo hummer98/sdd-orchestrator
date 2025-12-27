@@ -23,6 +23,7 @@ SDD Orchestrator is a tool for managing the lifecycle of software specifications
 - Human-AI collaborative workflow
 - Document review system with issue tracking and resolution workflow
 - Kiro format (`.kiro/specs/`) compliant
+- Remote access via smartphone with Cloudflare Tunnel support
 
 ## Architecture
 
@@ -119,6 +120,51 @@ For small-scale bug fixes without requiring full SDD process:
 **When to use:**
 - **Small bugs**: Bug Fix workflow (lightweight & fast)
 - **Complex bugs requiring design changes**: Full SDD workflow
+
+## Remote Access with Cloudflare Tunnel
+
+SDD Orchestrator supports remote access from outside your LAN using Cloudflare Tunnel.
+
+### Features
+
+- **Named Tunnel Connection**: Secure connection via Cloudflare Named Tunnel
+- **Dual Access**: Supports both LAN and Tunnel access simultaneously
+- **Token Authentication**: Security ensured by app-generated access tokens
+- **QR Code Support**: Easy smartphone connection via URL+token embedded QR code
+
+### Prerequisites
+
+To use the Cloudflare Tunnel feature, you need to install the `cloudflared` binary.
+
+#### macOS
+
+```bash
+# Homebrew
+brew install cloudflared
+
+# MacPorts
+sudo port install cloudflared
+```
+
+#### Other Platforms
+
+Download from the [official Cloudflare download page](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+
+### Basic Usage
+
+1. **Configure Tunnel Token**
+   - Enter Cloudflare Tunnel Token in the app settings
+   - Or set the `CLOUDFLARE_TUNNEL_TOKEN` environment variable
+
+2. **Start Remote Server**
+   - Check "Publish to Cloudflare" in Remote Access Panel
+   - Click the Start Server button
+
+3. **Connect**
+   - Use the displayed Tunnel URL or QR code to connect
+   - Access token is automatically authenticated
+
+For detailed setup instructions, see [Cloudflare Tunnel Setup Guide](docs/guides/cloudflare-tunnel-setup.md).
 
 ## Architecture
 

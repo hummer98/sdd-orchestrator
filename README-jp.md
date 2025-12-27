@@ -40,6 +40,7 @@ SDDは、AIエージェントと人間が協調してソフトウェアを開発
 - **ドキュメントレビュー**: 整合性・完全性の自動チェックと課題追跡
 - **人間-AI協調ワークフロー**: 各フェーズで人間の承認を挟む品質管理
 - **Kiro形式（`.kiro/specs/`）準拠**
+- **リモートアクセス**: Cloudflare Tunnel対応でLAN外からもセキュアに操作可能
 
 ## クイックスタート
 
@@ -115,6 +116,51 @@ Claude Codeで以下を実行：
 **使い分け：**
 - **小規模バグ**: Bug Fixワークフロー（軽量・高速）
 - **設計変更を伴う複雑なバグ**: フルSDDワークフロー
+
+## Cloudflare Tunnelによるリモートアクセス
+
+SDD OrchestratorはCloudflare Tunnelを使用して、LAN外からもセキュアにリモートアクセス機能を利用できます。
+
+### 機能概要
+
+- **Named Tunnel接続**: Cloudflare Named Tunnelを使用したセキュアな接続
+- **デュアルアクセス**: LAN内アクセスとTunnel経由アクセスの両方に対応
+- **アクセストークン認証**: アプリ生成のトークンによる認証でセキュリティを確保
+- **QRコード対応**: URL+トークン埋め込みQRコードでスマートフォンから簡単接続
+
+### 前提条件
+
+Cloudflare Tunnel機能を使用するには、`cloudflared`バイナリのインストールが必要です。
+
+#### macOS
+
+```bash
+# Homebrew
+brew install cloudflared
+
+# MacPorts
+sudo port install cloudflared
+```
+
+#### その他のプラットフォーム
+
+[Cloudflare公式ダウンロードページ](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)からダウンロードしてください。
+
+### 基本的な使用方法
+
+1. **Tunnel Tokenの設定**
+   - アプリの設定画面でCloudflare Tunnel Tokenを入力
+   - または環境変数`CLOUDFLARE_TUNNEL_TOKEN`を設定
+
+2. **リモートサーバーの起動**
+   - Remote Access Panelで「Cloudflareに公開」にチェック
+   - サーバー開始ボタンをクリック
+
+3. **接続**
+   - 表示されたTunnel URLまたはQRコードを使用して接続
+   - アクセストークンは自動的に認証されます
+
+詳細な設定手順は[Cloudflare Tunnel設定ガイド](docs/guides/cloudflare-tunnel-setup.md)を参照してください。
 
 ## アーキテクチャ
 

@@ -1,0 +1,49 @@
+{
+  "feature_name": "cloudflare-tunnel-integration",
+  "created_at": "2025-12-27T10:30:00+09:00",
+  "updated_at": "2025-12-27T02:25:24.876Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": true,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "validationOptions": {
+      "gap": false,
+      "design": false,
+      "impl": false
+    }
+  },
+  "documentReview": {
+    "rounds": 1,
+    "status": "pending",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": false
+      }
+    ]
+  }
+}

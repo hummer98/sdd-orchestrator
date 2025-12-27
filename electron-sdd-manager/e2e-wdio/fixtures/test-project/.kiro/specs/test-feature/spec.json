@@ -1,24 +1,41 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2E\u30c6\u30b9\u30c8\u7528\u306e\u30c6\u30b9\u30c8\u6a5f\u80fd",
-  "phase": "requirements-generated",
+  "description": "E2Eテスト用のテスト機能",
+  "phase": "tasks-generated",
   "language": "ja",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "tasks": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "updated_at": "2025-12-26T23:40:47.243862Z"
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "pause",
+    "validationOptions": {
+      "gap": false,
+      "design": false,
+      "impl": false
+    }
+  },
+  "updated_at": "2025-12-27T11:19:55.678Z"
 }

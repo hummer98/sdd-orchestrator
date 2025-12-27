@@ -144,11 +144,26 @@ class SpecList {
 
   /**
    * Update specs list
+   * Sorts by updatedAt descending (newest first) to match Electron version
    * @param {Array} specs
    */
   update(specs) {
-    this.specs = specs || [];
+    this.specs = this.sortSpecs(specs || []);
     this.render();
+  }
+
+  /**
+   * Sort specs by updatedAt descending (newest first)
+   * Matches Electron version's default sort behavior (specStore.getSortedFilteredSpecs)
+   * @param {Array} specs
+   * @returns {Array}
+   */
+  sortSpecs(specs) {
+    return [...specs].sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return dateB - dateA; // Descending order (newest first)
+    });
   }
 
   /**

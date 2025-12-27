@@ -187,7 +187,7 @@ export function ArtifactEditor({
   return (
     <div data-testid={testId} className="flex flex-col h-full">
       {/* Tabs */}
-      <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
+      <div className="flex flex-wrap items-center border-b border-gray-200 dark:border-gray-700">
         {availableTabs.map((tab) => (
           <button
             key={tab.key}
@@ -210,8 +210,8 @@ export function ArtifactEditor({
           </button>
         ))}
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Spacer - min-width ensures it stays on the last row */}
+        <div className="flex-1 min-w-[100px]" />
 
         {/* Mode toggle */}
         <div className="flex items-center mr-4">

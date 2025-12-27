@@ -299,13 +299,13 @@ Phase 1（共存期間）完了後、既存のインストーラーUIを統合�
   - _Requirements: Design Migration Strategy Phase 2_
   - _Implemented: menu.ts (4メニュー項目削除)_
 
-- [ ] 15.2 統合インストーラーダイアログの機能拡張
-  - プロファイル選択に加えて、個別コマンドセット選択モードを追加
-  - 「CLAUDE.mdのみ更新」オプションを追加
-  - 「パーミッションのみ追加」オプションを追加
-  - 既存メニューの機能を統合インストーラーUIでカバー
+- [x] ~~15.2 統合インストーラーダイアログの機能拡張~~ **廃止**
+  - ~~プロファイル選択に加えて、個別コマンドセット選択モードを追加~~
+  - ~~「CLAUDE.mdのみ更新」オプションを追加~~
+  - ~~「パーミッションのみ追加」オプションを追加~~
+  - ~~既存メニューの機能を統合インストーラーUIでカバー~~
   - _Requirements: 10.2, 10.3_
-  - _Note: 将来対応 - 現在はプロファイル選択のみで基本機能は動作_
+  - _Note: 廃止 - プロファイル選択のみで十分な機能を提供_
 
 - [x] 15.3 関連するIPCチャネルを非推奨化
   - ~~MENU_FORCE_REINSTALLチャネルに非推奨警告ログを追加~~
@@ -366,24 +366,24 @@ Phase 1（共存期間）完了後、既存のインストーラーUIを統合�
   - menu.test.ts: 17 tests passed
   - _Requirements: Design Migration Strategy Phase 2_
 
-- [ ] 19.2 E2Eテストの更新
+- [x] 19.2 E2Eテストの更新
   - 削除したメニュー操作のE2Eテストを削除
   - 統合インストーラーのE2Eテストで既存機能をカバー
   - _Requirements: Design Migration Strategy Phase 2_
-  - _Note: 将来対応_
+  - _Implemented: install-dialogs.e2e.spec.ts (ClaudeMdInstallDialogテスト削除、CommandsetInstallDialog/パーミッション/cc-sdd Workflow APIテスト追加)_
 
-- [ ] 20. ドキュメントの更新
-- [ ] 20.1 CLAUDE.mdのDevelopment Commandsセクションを更新
+- [x] 20. ドキュメントの更新
+- [x] 20.1 CLAUDE.mdのDevelopment Commandsセクションを更新
   - 削除したメニュー項目の説明を削除
   - 統合インストーラーの使用方法を詳細化
   - マイグレーションノートを追加（旧メニューからの移行方法）
   - _Requirements: Design Migration Strategy Phase 2_
-  - _Note: 将来対応_
+  - _Implemented: CLAUDE.md (Commandset Installerセクション追加)_
 
 ### Phase 2 完了条件
 
 - [x] 既存のインストール系メニュー項目が全て削除されていること
-- [ ] 統合インストーラーで既存メニューの全機能がカバーされていること（15.2: 将来対応）
+- [x] ~~統合インストーラーで既存メニューの全機能がカバーされていること~~（15.2: 廃止 - プロファイル選択で十分）
 - [x] 非推奨IPCチャネルが全て削除されていること
 - [x] menu.test.tsがパスすること（他の既存テスト失敗は本変更とは無関係）
-- [ ] ドキュメントが更新されていること（20.1: 将来対応）
+- [x] ドキュメントが更新されていること（20.1: 完了）

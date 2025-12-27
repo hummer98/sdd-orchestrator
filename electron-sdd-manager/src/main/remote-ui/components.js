@@ -703,6 +703,7 @@ class SpecDetail {
 
   /**
    * Update current phase tag display
+   * Matches Electron version's 6-phase workflow colors
    * @param {Object} spec
    */
   updatePhaseTag(spec) {
@@ -716,6 +717,9 @@ class SpecDetail {
       'tasks-pending': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
       'tasks-done': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
       'implementation': 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300',
+      'impl-done': 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300',
+      'inspection-done': 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300',
+      'deploy-done': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
       'complete': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
     };
 
@@ -725,6 +729,7 @@ class SpecDetail {
 
   /**
    * Get current phase info for display
+   * Matches Electron version's 6-phase workflow (requirements, design, tasks, impl, inspection, deploy)
    * @param {Object} spec
    * @returns {{ label: string, colorKey: string }}
    */
@@ -732,7 +737,22 @@ class SpecDetail {
     const phaseStatus = this.getPhaseStatusFromSpec(spec);
     const phase = spec.phase || 'initialized';
 
-    // Check for implementation complete
+    // Check deploy phase first (highest priority)
+    if (phaseStatus.deploy === 'approved') {
+      return { label: '✓ Deployed', colorKey: 'deploy-done' };
+    }
+
+    // Check inspection phase
+    if (phaseStatus.inspection === 'approved') {
+      return { label: '✓ Inspection Passed', colorKey: 'inspection-done' };
+    }
+
+    // Check implementation phase
+    if (phaseStatus.impl === 'approved') {
+      return { label: '✓ Impl Complete', colorKey: 'impl-done' };
+    }
+
+    // Check for implementation complete (legacy phase string)
     if (phase === 'implementation-complete') {
       return { label: '✓ Complete', colorKey: 'complete' };
     }
@@ -762,6 +782,7 @@ class SpecDetail {
 
   /**
    * Get next phase to execute
+   * Matches Electron version's 6-phase workflow
    * @param {Object} spec
    * @returns {string|null}
    */
@@ -769,10 +790,27 @@ class SpecDetail {
     const phaseStatus = this.getPhaseStatusFromSpec(spec);
     const phase = spec.phase || 'ready';
 
-    if (phase === 'implementation-complete') {
-      return null; // All done
+    // All done if deployed
+    if (phaseStatus.deploy === 'approved') {
+      return null;
     }
 
+    // After inspection, deploy
+    if (phaseStatus.inspection === 'approved') {
+      return 'deploy';
+    }
+
+    // After implementation, inspection
+    if (phaseStatus.impl === 'approved') {
+      return 'inspection';
+    }
+
+    // Legacy phase string check
+    if (phase === 'implementation-complete') {
+      return 'inspection'; // Move to inspection after impl complete
+    }
+
+    // After tasks approved, implementation
     if (phaseStatus.tasks === 'approved') {
       return 'implementation';
     }
@@ -787,6 +825,7 @@ class SpecDetail {
 
   /**
    * Update next action button
+   * Matches Electron version's 6-phase workflow
    * @param {Object} spec
    */
   updateNextActionButton(spec) {
@@ -796,6 +835,8 @@ class SpecDetail {
       'design': '🎨 Generate Design',
       'tasks': '📋 Generate Tasks',
       'implementation': '🚀 Run Implementation',
+      'inspection': '🔍 Run Inspection',
+      'deploy': '🚀 Deploy',
     };
 
     if (!nextPhase || this.isRunning) {
@@ -803,7 +844,7 @@ class SpecDetail {
       this.nextActionBtn.textContent = nextPhase ? phaseLabels[nextPhase] : '✓ All Complete';
     } else {
       this.nextActionBtn.disabled = false;
-      this.nextActionBtn.textContent = phaseLabels[nextPhase];
+      this.nextActionBtn.textContent = phaseLabels[nextPhase] || nextPhase;
     }
 
     // Auto execute button
@@ -1032,17 +1073,36 @@ class SpecDetail {
   /**
    * Get phase status for each phase from spec
    * Uses approvals object if available, falls back to phase string
+   * Matches Electron version's getPhaseStatus (workflow.ts) with 6 phases
    * @param {Object} spec
-   * @returns {Object} Status for each phase
+   * @returns {Object} Status for each phase (requirements, design, tasks, impl, inspection, deploy)
    */
   getPhaseStatusFromSpec(spec) {
     const result = {
       requirements: 'pending',
       design: 'pending',
       tasks: 'pending',
+      impl: 'pending',
+      inspection: 'pending',
+      deploy: 'pending',
     };
 
-    // If approvals object is available, use it (more accurate)
+    // Inspection phase: check inspection.passed
+    if (spec.inspection?.passed) {
+      result.inspection = 'approved';
+    }
+
+    // Deploy phase: check deploy_completed
+    if (spec.deploy_completed) {
+      result.deploy = 'approved';
+    }
+
+    // Implementation phase: check impl_completed
+    if (spec.impl_completed) {
+      result.impl = 'approved';
+    }
+
+    // If approvals object is available, use it for requirements/design/tasks (more accurate)
     if (spec.approvals) {
       const approvals = spec.approvals;
       if (approvals.requirements) {

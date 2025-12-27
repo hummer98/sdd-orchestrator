@@ -106,6 +106,7 @@ export const IPC_CHANNELS = {
   GET_REMOTE_SERVER_STATUS: 'remote-access:get-status',
   REMOTE_SERVER_STATUS_CHANGED: 'remote-access:status-changed',
   REMOTE_CLIENT_COUNT_CHANGED: 'remote-access:client-count-changed',
+  REFRESH_ACCESS_TOKEN: 'remote-access:refresh-access-token',
 
   // Bug Management (Requirements: 3.1, 6.1, 6.3, 6.5)
   READ_BUGS: 'ipc:read-bugs',

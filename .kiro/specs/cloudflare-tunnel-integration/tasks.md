@@ -222,15 +222,15 @@
 
 ### 15.1 UIコンポーネントの統合
 
-- [ ] 15.1.1 CloudflareSettingsPanelの統合
-  - CloudflareSettingsPanelコンポーネントをApp.tsxまたはSettingsにインポート
-  - 設定画面内のCloudflare Tunnel設定セクションとして表示
-  - 既存のSettingsPanelとの整合性を確保
+- [x] 15.1.1 CloudflareSettingsPanelの統合
+  - CloudflareSettingsPanelコンポーネントをRemoteAccessDialogにインポート
+  - RemoteAccessDialog内のCloudflare Tunnel設定セクションとして表示
+  - 既存のRemoteAccessPanelとの整合性を確保
   - _Requirements: 2.1, 2.4_
   - _Inspection: Major Issue #1 - デッドコード解消_
 
-- [ ] 15.1.2 InstallCloudflaredDialogの統合
-  - InstallCloudflaredDialogをApp.tsxにインポート
+- [x] 15.1.2 InstallCloudflaredDialogの統合
+  - InstallCloudflaredDialogをRemoteAccessDialogにインポート
   - remoteAccessStoreのshowInstallCloudflaredDialogフラグで表示制御
   - cloudflaredバイナリ不在時にダイアログを表示
   - _Requirements: 4.2, 4.3_
@@ -238,14 +238,14 @@
 
 ### 15.2 TODO残存箇所の実装完了
 
-- [ ] 15.2.1 RemoteAccessServerのTunnel統合完了
+- [x] 15.2.1 RemoteAccessServerのTunnel統合完了
   - remoteAccessServer.ts:206-208のTODOコメントを解消
   - CloudflareTunnelManagerとの統合ロジックを実装
   - publishToCloudflareオプション有効時のTunnel接続を実装
   - _Requirements: 1.1, 1.2, 7.1_
   - _Inspection: Major Issue #3 - TODO解消_
 
-- [ ] 15.2.2 refreshAccessTokenのQRコード更新実装
+- [x] 15.2.2 refreshAccessTokenのQRコード更新実装
   - preload/index.ts:483-485のTODOコメントを解消
   - トークンリフレッシュ時に新しいQRコードDataURLを取得
   - 更新されたQRコードをレンダラープロセスに返却
@@ -254,10 +254,10 @@
 
 ### 15.3 修正後の検証
 
-- [ ] 15.3.1 ユニットテストの実行
+- [x] 15.3.1 ユニットテストの実行
   - 修正した機能のテストが全てパスすることを確認
-  - `npm run test` でテストスイート全体を実行
+  - `npm run test` でテストスイート全体を実行（2820 passed）
 
-- [ ] 15.3.2 E2Eテストの実行
+- [x] 15.3.2 E2Eテストの実行
   - Cloudflare Tunnel関連のE2Eテストを実行
   - UI統合が正しく動作することを確認

@@ -560,4 +560,270 @@ describe('Mobile UI Static Files', () => {
       expect(appContent).toContain('new App()');
     });
   });
+
+  // ============================================================
+  // getPhaseStatusFromSpec Logic Tests
+  // Tests the phase status logic extracted from components.js
+  // Matches Electron version's getPhaseStatus (workflow.ts)
+  // ============================================================
+  describe('getPhaseStatusFromSpec Logic', () => {
+    /**
+     * Extracted getPhaseStatusFromSpec logic for testing
+     * This mirrors the implementation in components.js
+     */
+    function getPhaseStatusFromSpec(spec: {
+      inspection?: { passed?: boolean };
+      deploy_completed?: boolean;
+      impl_completed?: boolean;
+      approvals?: {
+        requirements?: { generated?: boolean; approved?: boolean };
+        design?: { generated?: boolean; approved?: boolean };
+        tasks?: { generated?: boolean; approved?: boolean };
+      };
+      phase?: string;
+    }) {
+      const result: Record<string, string> = {
+        requirements: 'pending',
+        design: 'pending',
+        tasks: 'pending',
+        impl: 'pending',
+        inspection: 'pending',
+        deploy: 'pending',
+      };
+
+      // Inspection phase: check inspection.passed
+      if (spec.inspection?.passed) {
+        result.inspection = 'approved';
+      }
+
+      // Deploy phase: check deploy_completed
+      if (spec.deploy_completed) {
+        result.deploy = 'approved';
+      }
+
+      // Implementation phase: check impl_completed
+      if (spec.impl_completed) {
+        result.impl = 'approved';
+      }
+
+      // If approvals object is available, use it for requirements/design/tasks
+      if (spec.approvals) {
+        const approvals = spec.approvals;
+        if (approvals.requirements) {
+          result.requirements = approvals.requirements.approved ? 'approved' :
+                                approvals.requirements.generated ? 'generated' : 'pending';
+        }
+        if (approvals.design) {
+          result.design = approvals.design.approved ? 'approved' :
+                          approvals.design.generated ? 'generated' : 'pending';
+        }
+        if (approvals.tasks) {
+          result.tasks = approvals.tasks.approved ? 'approved' :
+                         approvals.tasks.generated ? 'generated' : 'pending';
+        }
+        return result;
+      }
+
+      // Fallback: derive from phase string
+      const phaseString = spec.phase || 'initialized';
+      switch (phaseString) {
+        case 'implementation-complete':
+          result.requirements = 'approved';
+          result.design = 'approved';
+          result.tasks = 'approved';
+          break;
+        case 'tasks-generated':
+          result.requirements = 'approved';
+          result.design = 'approved';
+          result.tasks = 'generated';
+          break;
+        case 'design-generated':
+          result.requirements = 'approved';
+          result.design = 'generated';
+          break;
+        case 'requirements-generated':
+          result.requirements = 'generated';
+          break;
+      }
+
+      return result;
+    }
+
+    describe('requirements phase', () => {
+      it('should return pending when not generated', () => {
+        const spec = { approvals: { requirements: { generated: false, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).requirements).toBe('pending');
+      });
+
+      it('should return generated when generated but not approved', () => {
+        const spec = { approvals: { requirements: { generated: true, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).requirements).toBe('generated');
+      });
+
+      it('should return approved when approved', () => {
+        const spec = { approvals: { requirements: { generated: true, approved: true } } };
+        expect(getPhaseStatusFromSpec(spec).requirements).toBe('approved');
+      });
+    });
+
+    describe('design phase', () => {
+      it('should return pending when not generated', () => {
+        const spec = { approvals: { design: { generated: false, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).design).toBe('pending');
+      });
+
+      it('should return generated when generated but not approved', () => {
+        const spec = { approvals: { design: { generated: true, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).design).toBe('generated');
+      });
+
+      it('should return approved when approved', () => {
+        const spec = { approvals: { design: { generated: true, approved: true } } };
+        expect(getPhaseStatusFromSpec(spec).design).toBe('approved');
+      });
+    });
+
+    describe('tasks phase', () => {
+      it('should return pending when not generated', () => {
+        const spec = { approvals: { tasks: { generated: false, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).tasks).toBe('pending');
+      });
+
+      it('should return generated when generated but not approved', () => {
+        const spec = { approvals: { tasks: { generated: true, approved: false } } };
+        expect(getPhaseStatusFromSpec(spec).tasks).toBe('generated');
+      });
+
+      it('should return approved when approved', () => {
+        const spec = { approvals: { tasks: { generated: true, approved: true } } };
+        expect(getPhaseStatusFromSpec(spec).tasks).toBe('approved');
+      });
+    });
+
+    describe('impl phase', () => {
+      it('should return pending when impl_completed is not set', () => {
+        const spec = {};
+        expect(getPhaseStatusFromSpec(spec).impl).toBe('pending');
+      });
+
+      it('should return pending when impl_completed is false', () => {
+        const spec = { impl_completed: false };
+        expect(getPhaseStatusFromSpec(spec).impl).toBe('pending');
+      });
+
+      it('should return approved when impl_completed is true', () => {
+        const spec = { impl_completed: true };
+        expect(getPhaseStatusFromSpec(spec).impl).toBe('approved');
+      });
+    });
+
+    describe('inspection phase', () => {
+      it('should return pending when inspection is undefined', () => {
+        const spec = {};
+        expect(getPhaseStatusFromSpec(spec).inspection).toBe('pending');
+      });
+
+      it('should return pending when inspection.passed is false', () => {
+        const spec = { inspection: { passed: false } };
+        expect(getPhaseStatusFromSpec(spec).inspection).toBe('pending');
+      });
+
+      it('should return approved when inspection.passed is true', () => {
+        const spec = { inspection: { passed: true } };
+        expect(getPhaseStatusFromSpec(spec).inspection).toBe('approved');
+      });
+    });
+
+    describe('deploy phase', () => {
+      it('should return pending when deploy_completed is undefined', () => {
+        const spec = {};
+        expect(getPhaseStatusFromSpec(spec).deploy).toBe('pending');
+      });
+
+      it('should return pending when deploy_completed is false', () => {
+        const spec = { deploy_completed: false };
+        expect(getPhaseStatusFromSpec(spec).deploy).toBe('pending');
+      });
+
+      it('should return approved when deploy_completed is true', () => {
+        const spec = { deploy_completed: true };
+        expect(getPhaseStatusFromSpec(spec).deploy).toBe('approved');
+      });
+    });
+
+    describe('fallback from phase string (no approvals object)', () => {
+      it('should return all pending for initialized phase', () => {
+        const spec = { phase: 'initialized' };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('pending');
+        expect(result.design).toBe('pending');
+        expect(result.tasks).toBe('pending');
+      });
+
+      it('should return requirements generated for requirements-generated phase', () => {
+        const spec = { phase: 'requirements-generated' };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('generated');
+        expect(result.design).toBe('pending');
+        expect(result.tasks).toBe('pending');
+      });
+
+      it('should return design generated for design-generated phase', () => {
+        const spec = { phase: 'design-generated' };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('approved');
+        expect(result.design).toBe('generated');
+        expect(result.tasks).toBe('pending');
+      });
+
+      it('should return tasks generated for tasks-generated phase', () => {
+        const spec = { phase: 'tasks-generated' };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('approved');
+        expect(result.design).toBe('approved');
+        expect(result.tasks).toBe('generated');
+      });
+
+      it('should return all approved for implementation-complete phase', () => {
+        const spec = { phase: 'implementation-complete' };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('approved');
+        expect(result.design).toBe('approved');
+        expect(result.tasks).toBe('approved');
+      });
+    });
+
+    describe('6-phase workflow coverage', () => {
+      it('should return all 6 phases in result', () => {
+        const spec = {};
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result).toHaveProperty('requirements');
+        expect(result).toHaveProperty('design');
+        expect(result).toHaveProperty('tasks');
+        expect(result).toHaveProperty('impl');
+        expect(result).toHaveProperty('inspection');
+        expect(result).toHaveProperty('deploy');
+      });
+
+      it('should correctly handle all phases being approved', () => {
+        const spec = {
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+          impl_completed: true,
+          inspection: { passed: true },
+          deploy_completed: true,
+        };
+        const result = getPhaseStatusFromSpec(spec);
+        expect(result.requirements).toBe('approved');
+        expect(result.design).toBe('approved');
+        expect(result.tasks).toBe('approved');
+        expect(result.impl).toBe('approved');
+        expect(result.inspection).toBe('approved');
+        expect(result.deploy).toBe('approved');
+      });
+    });
+  });
 });

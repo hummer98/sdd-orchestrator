@@ -472,17 +472,16 @@ const electronAPI = {
 
   /**
    * Refresh access token and get updated QR code
-   * Used by remoteAccessStore for UI updates (Task 9.4)
+   * Used by remoteAccessStore for UI updates (Task 9.4, Task 15.2.2)
    * @returns RefreshAccessTokenResult with accessToken and tunnelQrCodeDataUrl
    */
   refreshAccessToken: async (): Promise<{
     accessToken: string;
     tunnelQrCodeDataUrl?: string;
-  }> => {
-    const accessToken = await ipcRenderer.invoke(IPC_CHANNELS.CLOUDFLARE_REFRESH_ACCESS_TOKEN);
-    // TODO: Get updated tunnelQrCodeDataUrl if server is running with tunnel
-    // For now, return just the token - the QR code will be regenerated on next server start
-    return { accessToken };
+  } | null> => {
+    // Task 15.2.2: Call RemoteAccessServer's refreshAccessToken which handles QR regeneration
+    const result = await ipcRenderer.invoke(IPC_CHANNELS.REFRESH_ACCESS_TOKEN);
+    return result;
   },
 
   /**

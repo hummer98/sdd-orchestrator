@@ -66,3 +66,7 @@ export { BugWorkflowView } from './BugWorkflowView';
 // Bug fix: agent-list-panel-dry-violation - BugAgentListPanelをAgentListPanelに統合
 export { SpecPane } from './SpecPane';
 export { BugPane } from './BugPane';
+// Cloudflare Tunnel Integration (Task 15.1.1, 15.1.2)
+export { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
+export { InstallCloudflaredDialog } from './InstallCloudflaredDialog';
+export type { InstallInstructions } from './InstallCloudflaredDialog';

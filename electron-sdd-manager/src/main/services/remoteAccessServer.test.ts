@@ -608,9 +608,9 @@ describe('RemoteAccessServer - Integration Tests (Task 12.1)', () => {
   });
 
   describe('Error handling with Cloudflare options', () => {
-    it('should handle publishToCloudflare=true without tunnel manager', async () => {
-      // Currently, publishing to Cloudflare without tunnel manager should still work
-      // (tunnel status will be 'disconnected')
+    it('should handle publishToCloudflare=true when tunnel manager is not provided', async () => {
+      // When publishToCloudflare is true but no tunnel manager is provided,
+      // the server should still work with tunnel status 'disconnected'
       const result = await server.start(undefined, { publishToCloudflare: true });
 
       expect(result.ok).toBe(true);
@@ -618,6 +618,224 @@ describe('RemoteAccessServer - Integration Tests (Task 12.1)', () => {
         expect(result.value.tunnelUrl).toBeNull();
         expect(result.value.accessToken).toBeDefined();
       }
+    });
+  });
+});
+
+// ============================================================
+// Task 15.2.1: RemoteAccessServer Tunnel Integration Tests
+// Requirements: 1.1, 7.1, 7.2
+// ============================================================
+
+import { CloudflareTunnelManager } from './cloudflareTunnelManager';
+
+describe('RemoteAccessServer - CloudflareTunnelManager Integration (Task 15.2.1)', () => {
+  let server: RemoteAccessServer;
+  let mockTunnelManager: CloudflareTunnelManager;
+
+  beforeEach(() => {
+    // Create mock tunnel manager
+    mockTunnelManager = {
+      start: vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          url: 'https://test-tunnel.trycloudflare.com',
+          pid: 12345,
+        },
+      }),
+      stop: vi.fn().mockResolvedValue({ ok: true }),
+      getStatus: vi.fn().mockReturnValue({
+        state: 'running',
+        url: 'https://test-tunnel.trycloudflare.com',
+        pid: 12345,
+      }),
+      onStatusChange: vi.fn().mockReturnValue(() => {}),
+      getConnectUrl: vi.fn().mockReturnValue('https://test-tunnel.trycloudflare.com?token=testtoken1'),
+    } as unknown as CloudflareTunnelManager;
+
+    const mockAccessTokenService = createMockAccessTokenService();
+    server = new RemoteAccessServer(mockAccessTokenService, mockTunnelManager);
+  });
+
+  afterEach(async () => {
+    try {
+      await server.stop();
+    } catch {
+      // Ignore errors if server wasn't started
+    }
+  });
+
+  describe('start with CloudflareTunnelManager', () => {
+    it('should call tunnelManager.start when publishToCloudflare is true', async () => {
+      const result = await server.start(undefined, { publishToCloudflare: true });
+
+      expect(result.ok).toBe(true);
+      expect(mockTunnelManager.start).toHaveBeenCalled();
+    });
+
+    it('should return tunnelUrl when tunnel connection succeeds', async () => {
+      const result = await server.start(undefined, { publishToCloudflare: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.tunnelUrl).toBe('https://test-tunnel.trycloudflare.com');
+      }
+    });
+
+    it('should return tunnelQrCodeDataUrl when tunnel connection succeeds', async () => {
+      const result = await server.start(undefined, { publishToCloudflare: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.tunnelQrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
+      }
+    });
+
+    it('should set tunnelStatus to connected when tunnel succeeds', async () => {
+      await server.start(undefined, { publishToCloudflare: true });
+      const status = server.getStatus();
+
+      expect(status.tunnelStatus).toBe('connected');
+    });
+
+    it('should NOT call tunnelManager.start when publishToCloudflare is false', async () => {
+      await server.start(undefined, { publishToCloudflare: false });
+
+      expect(mockTunnelManager.start).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('start with tunnel failure', () => {
+    it('should set tunnelStatus to error when tunnel fails', async () => {
+      (mockTunnelManager.start as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        error: { type: 'BINARY_NOT_FOUND', message: 'cloudflared not found' },
+      });
+
+      await server.start(undefined, { publishToCloudflare: true });
+      const status = server.getStatus();
+
+      // Server should still be running but tunnel status is error
+      expect(status.isRunning).toBe(true);
+      expect(status.tunnelStatus).toBe('error');
+    });
+
+    it('should still return server URL when tunnel fails', async () => {
+      (mockTunnelManager.start as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        error: { type: 'BINARY_NOT_FOUND', message: 'cloudflared not found' },
+      });
+
+      const result = await server.start(undefined, { publishToCloudflare: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.url).toBeDefined();
+        expect(result.value.tunnelUrl).toBeNull();
+      }
+    });
+  });
+
+  describe('stop with tunnel', () => {
+    it('should call tunnelManager.stop when stopping server', async () => {
+      await server.start(undefined, { publishToCloudflare: true });
+      await server.stop();
+
+      expect(mockTunnelManager.stop).toHaveBeenCalled();
+    });
+
+    it('should reset tunnelStatus to disconnected after stop', async () => {
+      await server.start(undefined, { publishToCloudflare: true });
+      await server.stop();
+      const status = server.getStatus();
+
+      expect(status.tunnelStatus).toBe('disconnected');
+      expect(status.tunnelUrl).toBeNull();
+    });
+  });
+});
+
+// ============================================================
+// Task 15.2.2: refreshAccessToken QR Code Update Tests
+// Requirements: 3.3, 6.2, 6.4
+// ============================================================
+
+describe('RemoteAccessServer - refreshAccessToken (Task 15.2.2)', () => {
+  let server: RemoteAccessServer;
+  let mockAccessTokenService: AccessTokenService;
+  let mockTunnelManager: CloudflareTunnelManager;
+
+  beforeEach(() => {
+    mockAccessTokenService = createMockAccessTokenService();
+    mockTunnelManager = {
+      start: vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          url: 'https://test-tunnel.trycloudflare.com',
+          pid: 12345,
+        },
+      }),
+      stop: vi.fn().mockResolvedValue({ ok: true }),
+      getStatus: vi.fn().mockReturnValue({
+        state: 'running',
+        url: 'https://test-tunnel.trycloudflare.com',
+        pid: 12345,
+      }),
+      onStatusChange: vi.fn().mockReturnValue(() => {}),
+      getConnectUrl: vi.fn().mockReturnValue('https://test-tunnel.trycloudflare.com?token=newtoken12'),
+    } as unknown as CloudflareTunnelManager;
+
+    server = new RemoteAccessServer(mockAccessTokenService, mockTunnelManager);
+  });
+
+  afterEach(async () => {
+    try {
+      await server.stop();
+    } catch {
+      // Ignore errors if server wasn't started
+    }
+  });
+
+  describe('refreshAccessToken method', () => {
+    it('should return null when server is not running', async () => {
+      const result = await server.refreshAccessToken();
+
+      expect(result).toBeNull();
+    });
+
+    it('should call accessTokenService.refreshToken when server is running', async () => {
+      await server.start();
+
+      await server.refreshAccessToken();
+
+      expect(mockAccessTokenService.refreshToken).toHaveBeenCalled();
+    });
+
+    it('should return new accessToken when server is running', async () => {
+      await server.start();
+
+      const result = await server.refreshAccessToken();
+
+      expect(result).not.toBeNull();
+      expect(result!.accessToken).toBe('newtoken12');
+    });
+
+    it('should return updated tunnelQrCodeDataUrl when tunnel is connected', async () => {
+      await server.start(undefined, { publishToCloudflare: true });
+
+      const result = await server.refreshAccessToken();
+
+      expect(result).not.toBeNull();
+      expect(result!.tunnelQrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('should return null tunnelQrCodeDataUrl when tunnel is not connected', async () => {
+      await server.start(undefined, { publishToCloudflare: false });
+
+      const result = await server.refreshAccessToken();
+
+      expect(result).not.toBeNull();
+      expect(result!.tunnelQrCodeDataUrl).toBeNull();
     });
   });
 });

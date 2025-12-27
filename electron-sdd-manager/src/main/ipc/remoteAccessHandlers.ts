@@ -332,6 +332,15 @@ export function registerRemoteAccessHandlers(): void {
 
     return server.getStatus();
   });
+
+  // REFRESH_ACCESS_TOKEN handler
+  // Task 15.2.2: Refresh access token and regenerate QR code
+  ipcMain.handle(IPC_CHANNELS.REFRESH_ACCESS_TOKEN, async () => {
+    logger.info('[remoteAccessHandlers] REFRESH_ACCESS_TOKEN called');
+
+    const result = await server.refreshAccessToken();
+    return result;
+  });
 }
 
 /**
@@ -368,6 +377,7 @@ export function cleanupRemoteAccessHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.START_REMOTE_SERVER);
   ipcMain.removeHandler(IPC_CHANNELS.STOP_REMOTE_SERVER);
   ipcMain.removeHandler(IPC_CHANNELS.GET_REMOTE_SERVER_STATUS);
+  ipcMain.removeHandler(IPC_CHANNELS.REFRESH_ACCESS_TOKEN);
 
   // Reset singleton for clean test environment
   remoteAccessServer = null;

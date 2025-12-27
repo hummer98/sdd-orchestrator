@@ -13,6 +13,7 @@ import { getLocalIP } from '../utils/ipValidator';
 import { StaticFileServer } from './staticFileServer';
 import { WebSocketHandler } from './webSocketHandler';
 import { getAccessTokenService, AccessTokenService } from './accessTokenService';
+import { CloudflareTunnelManager } from './cloudflareTunnelManager';
 import { logger } from './logger';
 
 /**
@@ -111,10 +112,12 @@ export class RemoteAccessServer {
   private staticFileServer: StaticFileServer;
   private webSocketHandler: WebSocketHandler;
   private accessTokenService: AccessTokenService;
+  private tunnelManager: CloudflareTunnelManager | null = null;
   private tunnelStatus: TunnelStatus = 'disconnected';
   private tunnelUrl: string | null = null;
+  private tunnelActive: boolean = false;
 
-  constructor(accessTokenService?: AccessTokenService) {
+  constructor(accessTokenService?: AccessTokenService, tunnelManager?: CloudflareTunnelManager) {
     // Initialize static file server with mobile UI directory
     // In development, use src directory for hot reload; in production, use dist
     const isDev = process.env.NODE_ENV === 'development' || import.meta.env?.DEV;
@@ -127,6 +130,8 @@ export class RemoteAccessServer {
     this.webSocketHandler = new WebSocketHandler();
     // Initialize AccessTokenService
     this.accessTokenService = accessTokenService ?? getAccessTokenService();
+    // Initialize CloudflareTunnelManager (optional)
+    this.tunnelManager = tunnelManager ?? null;
   }
 
   /**
@@ -203,14 +208,31 @@ export class RemoteAccessServer {
       const lanUrlWithToken = `${this.url}?token=${accessToken}`;
       const qrCodeDataUrl = await QRCode.toDataURL(lanUrlWithToken);
 
-      // Handle Cloudflare Tunnel if enabled
+      // Handle Cloudflare Tunnel if enabled (Task 15.2.1)
       let tunnelUrl: string | null = null;
       let tunnelQrCodeDataUrl: string | null = null;
 
-      if (publishToCloudflare) {
-        // TODO: Integrate with CloudflareTunnelManager
-        // For now, tunnel is not connected
-        this.tunnelStatus = 'disconnected';
+      if (publishToCloudflare && this.tunnelManager) {
+        // Start Cloudflare Tunnel
+        this.tunnelStatus = 'connecting';
+        this.notifyStatusChange();
+
+        const tunnelResult = await this.tunnelManager.start(this.port);
+        if (tunnelResult.ok) {
+          this.tunnelUrl = tunnelResult.value.url;
+          this.tunnelStatus = 'connected';
+          this.tunnelActive = true;
+          tunnelUrl = tunnelResult.value.url;
+
+          // Generate QR code for Tunnel URL with access token
+          const tunnelUrlWithToken = `${tunnelUrl}?token=${accessToken}`;
+          tunnelQrCodeDataUrl = await QRCode.toDataURL(tunnelUrlWithToken);
+        } else {
+          // Tunnel failed but server is still running
+          this.tunnelStatus = 'error';
+          this.tunnelUrl = null;
+          logger.warn(`[remoteAccessServer] Tunnel connection failed: ${tunnelResult.error.message}`);
+        }
       } else {
         this.tunnelStatus = 'disconnected';
       }
@@ -243,8 +265,15 @@ export class RemoteAccessServer {
 
   /**
    * Stop the server
+   * Task 15.2.1: Also stops Cloudflare Tunnel if active
    */
   async stop(): Promise<void> {
+    // Stop Cloudflare Tunnel if active (Task 15.2.1)
+    if (this.tunnelActive && this.tunnelManager) {
+      await this.tunnelManager.stop();
+      this.tunnelActive = false;
+    }
+
     // Disconnect all WebSocket connections via WebSocketHandler
     this.webSocketHandler.disconnectAll();
 
@@ -323,6 +352,37 @@ export class RemoteAccessServer {
    */
   getWebSocketServer(): WebSocketServer | null {
     return this.wss;
+  }
+
+  /**
+   * Refresh access token and regenerate QR code
+   * Task 15.2.2: Returns new token and updated QR code for tunnel
+   *
+   * @returns RefreshResult with new token and QR code, or null if server not running
+   */
+  async refreshAccessToken(): Promise<{
+    accessToken: string;
+    tunnelQrCodeDataUrl: string | null;
+  } | null> {
+    // Return null if server is not running
+    if (!this.httpServer || !this.port) {
+      return null;
+    }
+
+    // Generate new token
+    const newToken = this.accessTokenService.refreshToken();
+
+    // Generate tunnel QR code if tunnel is connected
+    let tunnelQrCodeDataUrl: string | null = null;
+    if (this.tunnelActive && this.tunnelUrl) {
+      const tunnelUrlWithToken = `${this.tunnelUrl}?token=${newToken}`;
+      tunnelQrCodeDataUrl = await QRCode.toDataURL(tunnelUrlWithToken);
+    }
+
+    return {
+      accessToken: newToken,
+      tunnelQrCodeDataUrl,
+    };
   }
 
   /**

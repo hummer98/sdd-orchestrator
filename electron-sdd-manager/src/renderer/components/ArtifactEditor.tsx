@@ -1,16 +1,22 @@
 /**
  * ArtifactEditor Component
- * Shared Markdown editor for Spec and Bug artifacts
+ * Shared Markdown editor for Spec and Bug artifacts with search functionality
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
+ * Requirements: artifact-editor-search 1.1, 1.2, 1.3, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4
  * Bug fix: bugs-tab-spec-editing-feature
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { Save, Eye, Edit, Loader2, Circle } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { useEditorStore, notify } from '../stores';
 import type { ArtifactType } from '../stores/editorStore';
 import { clsx } from 'clsx';
+import { SearchBar } from './SearchBar';
+import { SearchHighlightLayer } from './SearchHighlightLayer';
+import { PreviewHighlightLayer } from './PreviewHighlightLayer';
+import { useTextSearch } from '../hooks/useTextSearch';
+import { useSearchKeyboard } from '../hooks/useSearchKeyboard';
 
 /** Tab configuration for artifact editor */
 export interface TabInfo {
@@ -53,13 +59,48 @@ export function ArtifactEditor({
     isSaving,
     mode,
     error,
+    searchVisible,
+    searchQuery,
+    caseSensitive,
+    matches,
+    activeMatchIndex,
     setActiveTab,
     setContent,
     setMode,
     save,
     loadArtifact,
     clearEditor,
+    setSearchVisible,
+    clearSearch,
+    navigateNext,
+    navigatePrev,
   } = useEditorStore();
+
+  // Ref for preview container (used by PreviewHighlightLayer)
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize text search hook to calculate matches
+  useTextSearch();
+
+  // Handle search toggle
+  const handleSearchToggle = useCallback(() => {
+    setSearchVisible(!searchVisible);
+  }, [searchVisible, setSearchVisible]);
+
+  // Handle search close
+  const handleSearchClose = useCallback(() => {
+    clearSearch();
+  }, [clearSearch]);
+
+  // Setup keyboard shortcuts for search
+  useSearchKeyboard({
+    enabled: !!basePath,
+    searchVisible,
+    onToggle: handleSearchToggle,
+    onClose: handleSearchClose,
+    onNext: navigateNext,
+    onPrev: navigatePrev,
+  });
 
   // Load artifact when basePath or tab changes
   useEffect(() => {
@@ -217,6 +258,9 @@ export function ArtifactEditor({
         </button>
       </div>
 
+      {/* Search bar */}
+      <SearchBar visible={searchVisible} onClose={handleSearchClose} />
+
       {/* Error message */}
       {error && (
         <div className="px-4 py-2 bg-red-50 text-red-600 text-sm">
@@ -225,7 +269,7 @@ export function ArtifactEditor({
       )}
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative" ref={previewContainerRef}>
         <MDEditor
           value={content}
           onChange={(value) => setContent(value || '')}
@@ -240,6 +284,23 @@ export function ArtifactEditor({
             },
           }}
         />
+        {/* Edit mode: SearchHighlightLayer overlay */}
+        {searchVisible && mode === 'edit' && (
+          <SearchHighlightLayer
+            content={content}
+            matches={matches}
+            activeIndex={activeMatchIndex}
+          />
+        )}
+        {/* Preview mode: PreviewHighlightLayer using CSS Custom Highlight API */}
+        {searchVisible && mode === 'preview' && (
+          <PreviewHighlightLayer
+            containerRef={previewContainerRef}
+            query={searchQuery}
+            caseSensitive={caseSensitive}
+            activeIndex={activeMatchIndex}
+          />
+        )}
       </div>
 
       {/* Status bar */}

@@ -55,6 +55,12 @@ describe('ArtifactEditor', () => {
       mode: 'edit',
       currentPath: null,
       error: null,
+      // Search state
+      searchVisible: false,
+      searchQuery: '',
+      caseSensitive: false,
+      matches: [],
+      activeMatchIndex: -1,
     });
     vi.clearAllMocks();
   });
@@ -296,6 +302,342 @@ describe('ArtifactEditor', () => {
       );
 
       expect(screen.getByText('表示可能なアーティファクトがありません')).toBeInTheDocument();
+    });
+  });
+
+  describe('Search functionality (artifact-editor-search)', () => {
+    it('should display search bar when searchVisible is true', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
+
+      useEditorStore.setState({ searchVisible: true });
+
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+        />
+      );
+
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    });
+
+    it('should hide search bar when searchVisible is false', () => {
+      const artifacts: Record<string, ArtifactInfo | null> = {
+        requirements: { exists: true },
+        design: { exists: true },
+        tasks: { exists: true },
+        research: null,
+      };
+
+      useEditorStore.setState({ searchVisible: false });
+
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath="/project/.kiro/specs/test-feature"
+          placeholder="仕様を選択してエディターを開始"
+          artifacts={artifacts}
+        />
+      );
+
+      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+    });
+
+    it('should not display search bar when basePath is null', () => {
+      useEditorStore.setState({ searchVisible: true });
+
+      render(
+        <ArtifactEditor
+          tabs={SPEC_TABS}
+          basePath={null}
+          placeholder="仕様を選択してエディターを開始"
+        />
+      );
+
+      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Highlight layer integration (artifact-editor-search Task 7)', () => {
+    describe('Edit mode highlight layer (REQ 4.1, 4.2, 4.4)', () => {
+      it('should render SearchHighlightLayer in edit mode when matches exist', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'edit',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        expect(screen.getByTestId('search-highlight-layer')).toBeInTheDocument();
+      });
+
+      it('should not render SearchHighlightLayer in preview mode', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'preview',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        expect(screen.queryByTestId('search-highlight-layer')).not.toBeInTheDocument();
+      });
+
+      it('should not render SearchHighlightLayer when search is not visible', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'edit',
+          searchVisible: false,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        expect(screen.queryByTestId('search-highlight-layer')).not.toBeInTheDocument();
+      });
+    });
+
+    describe('Preview mode highlight layer (REQ 4.1, 4.2, 4.3)', () => {
+      it('should inject CSS highlight styles in preview mode when search is visible', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'preview',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        // PreviewHighlightLayer injects a style element
+        const styleElement = document.querySelector('style[data-search-highlight]');
+        expect(styleElement).toBeInTheDocument();
+      });
+
+      it('should not inject CSS highlight styles in edit mode', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'edit',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        // PreviewHighlightLayer should not be rendered in edit mode
+        const styleElement = document.querySelector('style[data-search-highlight]');
+        expect(styleElement).not.toBeInTheDocument();
+      });
+
+      it('should not inject CSS highlight styles when search is not visible', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        useEditorStore.setState({
+          mode: 'preview',
+          searchVisible: false,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        const styleElement = document.querySelector('style[data-search-highlight]');
+        expect(styleElement).not.toBeInTheDocument();
+      });
+    });
+
+    describe('Mode switching highlight layer toggle (REQ 4.3, 4.4)', () => {
+      it('should switch from SearchHighlightLayer to PreviewHighlightLayer on mode change', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        // Start in edit mode
+        useEditorStore.setState({
+          mode: 'edit',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: [{ start: 0, end: 4 }],
+          activeMatchIndex: 0,
+          content: 'test content',
+        });
+
+        const { rerender } = render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        // Initially in edit mode: SearchHighlightLayer should be present
+        expect(screen.getByTestId('search-highlight-layer')).toBeInTheDocument();
+        expect(document.querySelector('style[data-search-highlight]')).not.toBeInTheDocument();
+
+        // Switch to preview mode
+        useEditorStore.setState({ mode: 'preview' });
+
+        rerender(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        // After switch: PreviewHighlightLayer should be present, SearchHighlightLayer should not
+        expect(screen.queryByTestId('search-highlight-layer')).not.toBeInTheDocument();
+        expect(document.querySelector('style[data-search-highlight]')).toBeInTheDocument();
+      });
+    });
+
+    describe('Store integration for highlight layers', () => {
+      it('should pass correct matches and activeMatchIndex to highlight layers', () => {
+        const artifacts: Record<string, ArtifactInfo | null> = {
+          requirements: { exists: true },
+          design: { exists: true },
+          tasks: { exists: true },
+          research: null,
+        };
+
+        const testMatches = [
+          { start: 0, end: 4 },
+          { start: 10, end: 14 },
+        ];
+
+        useEditorStore.setState({
+          mode: 'edit',
+          searchVisible: true,
+          searchQuery: 'test',
+          matches: testMatches,
+          activeMatchIndex: 1,
+          content: 'test hello test',
+        });
+
+        render(
+          <ArtifactEditor
+            tabs={SPEC_TABS}
+            basePath="/project/.kiro/specs/test-feature"
+            placeholder="仕様を選択してエディターを開始"
+            artifacts={artifacts}
+          />
+        );
+
+        const layer = screen.getByTestId('search-highlight-layer');
+        expect(layer).toBeInTheDocument();
+
+        // The second match (index 1) should be highlighted as active
+        const activeHighlight = screen.getByTestId('highlight-active');
+        expect(activeHighlight).toBeInTheDocument();
+      });
     });
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Editor Store
- * Manages editor state including dirty tracking
- * Requirements: 7.1-7.7, 9.1-9.4
+ * Manages editor state including dirty tracking and search functionality
+ * Requirements: 7.1-7.7, 9.1-9.4, artifact-editor-search 2.1-2.5, 3.1-3.5, 5.1-5.3
  */
 
 import { create } from 'zustand';
@@ -18,6 +18,12 @@ type DynamicArtifactType =
 /** All artifact types */
 export type ArtifactType = SpecArtifactType | BugArtifactType | DynamicArtifactType;
 
+/** Search match position */
+export interface SearchMatch {
+  start: number;
+  end: number;
+}
+
 interface EditorState {
   activeTab: ArtifactType;
   content: string;
@@ -27,6 +33,12 @@ interface EditorState {
   mode: 'edit' | 'preview';
   currentPath: string | null;
   error: string | null;
+  // Search state
+  searchVisible: boolean;
+  searchQuery: string;
+  caseSensitive: boolean;
+  matches: SearchMatch[];
+  activeMatchIndex: number;
 }
 
 interface EditorActions {
@@ -37,6 +49,15 @@ interface EditorActions {
   discardChanges: () => void;
   loadArtifact: (specPath: string, artifact: ArtifactType) => Promise<void>;
   clearEditor: () => void;
+  // Search actions
+  setSearchVisible: (visible: boolean) => void;
+  setSearchQuery: (query: string) => void;
+  setCaseSensitive: (caseSensitive: boolean) => void;
+  setMatches: (matches: SearchMatch[]) => void;
+  navigateToMatch: (index: number) => void;
+  navigateNext: () => void;
+  navigatePrev: () => void;
+  clearSearch: () => void;
 }
 
 type EditorStore = EditorState & EditorActions;
@@ -51,6 +72,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   mode: 'edit',
   currentPath: null,
   error: null,
+  // Search initial state
+  searchVisible: false,
+  searchQuery: '',
+  caseSensitive: false,
+  matches: [],
+  activeMatchIndex: -1,
 
   // Actions
   setActiveTab: (tab: ArtifactType) => {
@@ -135,6 +162,65 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       isDirty: false,
       currentPath: null,
       error: null,
+    });
+  },
+
+  // Search actions
+  setSearchVisible: (visible: boolean) => {
+    set({ searchVisible: visible });
+  },
+
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
+  },
+
+  setCaseSensitive: (caseSensitive: boolean) => {
+    set({ caseSensitive });
+  },
+
+  setMatches: (matches: SearchMatch[]) => {
+    set({
+      matches,
+      activeMatchIndex: matches.length > 0 ? 0 : -1,
+    });
+  },
+
+  navigateToMatch: (index: number) => {
+    const { matches } = get();
+    if (matches.length === 0) {
+      set({ activeMatchIndex: -1 });
+      return;
+    }
+    // Clamp index to valid range
+    const clampedIndex = Math.max(0, Math.min(index, matches.length - 1));
+    set({ activeMatchIndex: clampedIndex });
+  },
+
+  navigateNext: () => {
+    const { matches, activeMatchIndex } = get();
+    if (matches.length === 0) {
+      return;
+    }
+    const nextIndex = (activeMatchIndex + 1) % matches.length;
+    set({ activeMatchIndex: nextIndex });
+  },
+
+  navigatePrev: () => {
+    const { matches, activeMatchIndex } = get();
+    if (matches.length === 0) {
+      return;
+    }
+    const prevIndex = activeMatchIndex <= 0 ? matches.length - 1 : activeMatchIndex - 1;
+    set({ activeMatchIndex: prevIndex });
+  },
+
+  clearSearch: () => {
+    set({
+      searchVisible: false,
+      searchQuery: '',
+      caseSensitive: false,
+      matches: [],
+      activeMatchIndex: -1,
     });
   },
 }));

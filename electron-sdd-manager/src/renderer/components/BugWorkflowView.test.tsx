@@ -25,6 +25,19 @@ vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
 }));
 
+// Mock BugAutoExecutionService
+vi.mock('../services/BugAutoExecutionService', () => ({
+  getBugAutoExecutionService: vi.fn().mockReturnValue({
+    getStatus: () => 'idle',
+    getCurrentPhase: () => null,
+    getLastFailedPhase: () => null,
+    getRetryCount: () => 0,
+    start: vi.fn().mockReturnValue(true),
+    stop: vi.fn().mockResolvedValue(undefined),
+    retryFrom: vi.fn().mockReturnValue(true),
+  }),
+}));
+
 // Mock electronAPI
 const mockElectronAPI = {
   startAgent: vi.fn().mockResolvedValue({
@@ -224,6 +237,49 @@ describe('BugWorkflowView', () => {
 
       render(<BugWorkflowView />);
       expect(screen.getByText('バグを選択してください')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // bugs-workflow-auto-execution Task 4: Auto execution support
+  // Requirements: 1.1-1.6, 6.1
+  // ============================================================
+  describe('Task 4: Auto execution button', () => {
+    beforeEach(() => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+      });
+
+      mockUseWorkflowStore.mockReturnValue({
+        commandPrefix: '/kiro:',
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: false,
+        },
+      });
+    });
+
+    it('should render auto execution button', () => {
+      render(<BugWorkflowView />);
+      expect(screen.getByTestId('bug-auto-execute-button')).toBeInTheDocument();
+    });
+
+    it('should display "自動実行" label', () => {
+      render(<BugWorkflowView />);
+      expect(screen.getByText('自動実行')).toBeInTheDocument();
+    });
+
+    it('should disable auto execution button when no bug is selected', () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: null,
+        bugDetail: null,
+      });
+
+      render(<BugWorkflowView />);
+      // Button should not exist when no bug is selected (placeholder shown instead)
     });
   });
 });

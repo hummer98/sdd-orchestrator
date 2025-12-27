@@ -22,6 +22,14 @@ export interface BugPhaseItemProps {
   showExecuteButton: boolean;
   /** 実行ボタンハンドラ */
   onExecute: () => void;
+  // ============================================================
+  // bugs-workflow-auto-execution Task 5.1: Auto execution props
+  // Requirements: 6.3, 6.5
+  // ============================================================
+  /** 自動実行が進行中かどうか */
+  isAutoExecuting?: boolean;
+  /** このフェーズが自動実行中かどうか */
+  isAutoExecutingPhase?: boolean;
 }
 
 export function BugPhaseItem({
@@ -31,9 +39,14 @@ export function BugPhaseItem({
   canExecute,
   showExecuteButton,
   onExecute,
+  isAutoExecuting = false,
+  isAutoExecutingPhase = false,
 }: BugPhaseItemProps) {
   const isExecuting = status === 'executing';
   const isCompleted = status === 'completed';
+
+  // Task 5.2: Disable manual execution during auto execution (Requirements: 6.5)
+  const isButtonDisabled = !canExecute || isExecuting || isAutoExecuting;
 
   // 進捗アイコンのレンダリング
   const renderStatusIcon = () => {
@@ -68,7 +81,8 @@ export function BugPhaseItem({
         'flex items-center justify-between p-3 rounded-lg',
         'bg-gray-50 dark:bg-gray-800',
         'transition-colors',
-        isExecuting && 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
+        // Task 5.1: Highlight during auto execution (Requirements: 6.3)
+        (isExecuting || isAutoExecutingPhase) && 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
       )}
     >
       {/* 左側: 進捗アイコン + フェーズ名 */}
@@ -96,11 +110,11 @@ export function BugPhaseItem({
           <button
             data-testid={`bug-phase-execute-button-${phase}`}
             onClick={onExecute}
-            disabled={!canExecute || isExecuting}
+            disabled={isButtonDisabled}
             className={clsx(
               'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
               'transition-colors',
-              canExecute && !isExecuting
+              !isButtonDisabled
                 ? 'bg-blue-500 text-white hover:bg-blue-600'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
             )}

@@ -112,4 +112,63 @@ describe('BugPhaseItem', () => {
       expect(screen.getByTestId(`bug-phase-item-${phase}`)).toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // bugs-workflow-auto-execution Task 5: Auto execution support
+  // Requirements: 6.3, 6.5
+  // ============================================================
+  describe('Task 5: Auto execution support', () => {
+    describe('isAutoExecuting prop', () => {
+      it('should disable execute button when isAutoExecuting is true', () => {
+        render(
+          <BugPhaseItem
+            {...defaultProps}
+            isAutoExecuting={true}
+          />
+        );
+        const button = screen.getByTestId('bug-phase-execute-button-analyze');
+        expect(button).toBeDisabled();
+      });
+
+      it('should not disable execute button when isAutoExecuting is false', () => {
+        render(
+          <BugPhaseItem
+            {...defaultProps}
+            isAutoExecuting={false}
+            canExecute={true}
+          />
+        );
+        const button = screen.getByTestId('bug-phase-execute-button-analyze');
+        expect(button).not.toBeDisabled();
+      });
+    });
+
+    describe('isAutoExecutingPhase prop', () => {
+      it('should highlight phase when isAutoExecutingPhase is true', () => {
+        const { container } = render(
+          <BugPhaseItem
+            {...defaultProps}
+            isAutoExecuting={true}
+            isAutoExecutingPhase={true}
+          />
+        );
+
+        const phaseItem = screen.getByTestId('bug-phase-item-analyze');
+        expect(phaseItem).toHaveClass('ring-2');
+      });
+
+      it('should not highlight phase when isAutoExecutingPhase is false', () => {
+        const { container } = render(
+          <BugPhaseItem
+            {...defaultProps}
+            isAutoExecuting={true}
+            isAutoExecutingPhase={false}
+          />
+        );
+
+        const phaseItem = screen.getByTestId('bug-phase-item-analyze');
+        expect(phaseItem).not.toHaveClass('ring-2');
+      });
+    });
+  });
 });

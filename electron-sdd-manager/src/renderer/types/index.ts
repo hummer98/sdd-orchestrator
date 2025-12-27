@@ -155,6 +155,12 @@ export * from './bug';
 import type { BugMetadata } from './bug';
 
 // ============================================================
+// bugs-workflow-auto-execution Task 6: Bug Auto Execution Types
+// Requirements: 7.4
+// ============================================================
+export * from './bugAutoExecution';
+
+// ============================================================
 // Unified Project Selection Types (unified-project-selection feature)
 // Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
 // ============================================================

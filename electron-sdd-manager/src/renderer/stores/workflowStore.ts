@@ -14,6 +14,9 @@ import { persist } from 'zustand/middleware';
 import type { WorkflowPhase, ValidationType } from '../types/workflow';
 import { WORKFLOW_PHASES } from '../types/workflow';
 import type { SpecAutoExecutionState } from '../types';
+import type { BugWorkflowPhase } from '../types/bug';
+import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
+import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
 
 // ============================================================
 // Bug Fix: auto-execution-settings-not-persisted
@@ -188,6 +191,13 @@ interface WorkflowState {
   // Requirements: 7.5
   /** レビューラウンド完了後の確認待ち状態 */
   pendingReviewConfirmation: boolean;
+
+  // ============================================================
+  // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings
+  // Requirements: 2.1, 7.4
+  // ============================================================
+  /** Bug自動実行許可設定（フェーズごと） */
+  bugAutoExecutionPermissions: BugAutoExecutionPermissions;
 }
 
 interface WorkflowActions {
@@ -237,6 +247,17 @@ interface WorkflowActions {
   setDocumentReviewOptions: (options: Partial<DocumentReviewOptions>) => void;
   /** バリデーションオプションを一括設定 */
   setValidationOptions: (options: Partial<ValidationOptions>) => void;
+
+  // ============================================================
+  // bugs-workflow-auto-execution Task 1.2: Bug Auto Execution Actions
+  // Requirements: 2.2
+  // ============================================================
+  /** Bug自動実行許可をトグル */
+  toggleBugAutoPermission: (phase: BugWorkflowPhase) => void;
+  /** Bug自動実行許可設定を一括設定 */
+  setBugAutoExecutionPermissions: (permissions: BugAutoExecutionPermissions) => void;
+  /** Bug自動実行許可設定を取得 */
+  getBugAutoExecutionPermissions: () => BugAutoExecutionPermissions;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -268,6 +289,9 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
       // Task 7.3: Review Confirmation - initial state
       pendingReviewConfirmation: false,
+
+      // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings - initial state
+      bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
 
       // Task 2.1: Auto Execution Permissions
       // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
@@ -397,14 +421,40 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
         return WORKFLOW_PHASES[currentIndex + 1];
       },
+
+      // ============================================================
+      // bugs-workflow-auto-execution Task 1.2: Bug Auto Execution Actions
+      // Requirements: 2.2
+      // ============================================================
+      toggleBugAutoPermission: (phase: BugWorkflowPhase) => {
+        // Skip report phase as it's not auto-executable
+        if (phase === 'report') return;
+
+        set((state) => ({
+          bugAutoExecutionPermissions: {
+            ...state.bugAutoExecutionPermissions,
+            [phase]: !state.bugAutoExecutionPermissions[phase as keyof BugAutoExecutionPermissions],
+          },
+        }));
+      },
+
+      setBugAutoExecutionPermissions: (permissions: BugAutoExecutionPermissions) => {
+        set({ bugAutoExecutionPermissions: { ...permissions } });
+      },
+
+      getBugAutoExecutionPermissions: () => {
+        return get().bugAutoExecutionPermissions;
+      },
     }),
     {
       name: 'sdd-manager-workflow-settings',
+      // Task 1.3: Persistence - include bugAutoExecutionPermissions
       partialize: (state) => ({
         autoExecutionPermissions: state.autoExecutionPermissions,
         validationOptions: state.validationOptions,
         commandPrefix: state.commandPrefix,
         documentReviewOptions: state.documentReviewOptions,
+        bugAutoExecutionPermissions: state.bugAutoExecutionPermissions,
       }),
     }
   )

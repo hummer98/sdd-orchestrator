@@ -613,6 +613,42 @@ describe('useSpecStore', () => {
       expect(state.specDetail?.specJson.inspection?.passed).toBe(true);
       expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
     });
+
+    // NOGO (passed: false) ケースのテスト
+    it('should load inspection artifact when spec.json has NOGO inspection (passed: false)', async () => {
+      const mockSpecJson = {
+        feature_name: 'feature-inspected-nogo',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'implementation-complete',
+        approvals: mockSpecs[0].approvals,
+        inspection: {
+          passed: false,
+          inspected_at: '2024-01-15T12:00:00Z',
+          report_file: 'inspection-1.md',
+        },
+      };
+
+      const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: NOGO';
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
+        if (path.endsWith('inspection-1.md')) {
+          return Promise.resolve(mockInspectionContent);
+        }
+        return Promise.reject(new Error('Not found'));
+      });
+
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+
+      const state = useSpecStore.getState();
+      expect(state.specDetail).toBeTruthy();
+      expect(state.specDetail?.artifacts.inspection).toBeTruthy();
+      expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
+      expect(state.specDetail?.artifacts.inspection?.content).toBe(mockInspectionContent);
+      expect(state.specDetail?.specJson.inspection?.passed).toBe(false);
+    });
   });
 
   // ============================================================

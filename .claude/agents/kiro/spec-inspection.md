@@ -187,8 +187,7 @@ If NOGO judgment AND --autofix option:
 
 ### 6. Update spec.json
 
-If GO judgment:
-- Update spec.json with inspection status:
+**Always update spec.json** after inspection (both GO and NOGO):
 ```json
 {
   "inspection": {
@@ -200,9 +199,11 @@ If GO judgment:
 ```
 
 Field definitions:
-- `passed`: boolean - true for GO, false for NOGO (only update on GO)
+- `passed`: boolean - true for GO, false for NOGO
 - `inspected_at`: ISO 8601 timestamp of inspection
 - `report_file`: filename of generated report (e.g., "inspection-1.md")
+
+**Note**: The report_file must always be set so the UI can display the inspection report.
 
 ## Important Constraints
 - **Semantic verification**: Use LLM understanding, not just static analysis

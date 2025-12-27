@@ -162,51 +162,6 @@ cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-orchestrator
 
 これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。
 
-## MCP経由でのプロジェクト選択
+## 正常系の操作手順
 
-### 重要：正しい方法
-
-MCP `send_command_to_electron` の `eval` コマンドで `selectProject` APIを呼び出す。
-
-```javascript
-// ✅ 正しい方法：.then()でPromiseをチェーン
-command: "eval"
-args: { "code": "window.electronAPI.selectProject('/path/to/project').then(r => JSON.stringify(r))" }
-```
-
-**動作確認済みの例**:
-```javascript
-command: "eval"
-args: { "code": "window.electronAPI.selectProject('/Users/yamamoto/git/sdd-orchestrator').then(r => JSON.stringify(r))" }
-```
-
-### よくある誤解
-
-| 誤解 | 事実 |
-|------|------|
-| 「async関数はMCP経由で使えない」 | **誤り**。`.then()`でチェーンすれば正常に動作する |
-| 「アプリを再起動する必要がある」 | **不要**。`selectProject`はランタイムで即座にプロジェクトを切り替える |
-| 「ストアを直接操作する必要がある」 | **不要**。正規のIPC APIを使用すべき |
-
-### 戻り値
-
-`selectProject`は以下の形式で結果を返す：
-
-```typescript
-{
-  projectPath: string;           // 選択されたプロジェクトパス
-  kiroValidation: {              // .kiroディレクトリの検証結果
-    hasKiroDir: boolean;
-    hasSteeringDir: boolean;
-    hasSpecsDir: boolean;
-    hasBugsDir: boolean;
-  };
-  specs: SpecInfo[];             // プロジェクト内のSpec一覧
-  bugs: BugInfo[];               // プロジェクト内のBug一覧
-  error?: string;                // エラー時のみ
-}
-```
-
-### エラー時
-
-パスが存在しない場合などは `error` フィールドにエラーメッセージが含まれる。
+MCP経由でのUI操作、プロジェクト選択、Remote UI起動などの正常系手順は `.kiro/steering/operations.md` を参照。

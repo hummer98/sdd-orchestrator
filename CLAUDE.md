@@ -87,7 +87,8 @@ Report → Analyze → Fix → Verify
 - Load entire `.kiro/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
 - **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表（用語定義、UIコンポーネントマッピング）
-- **`debugging.md`**: ログ保存場所、MCP操作、トラブルシューティング情報
+- **`debugging.md`**: ログ保存場所、トラブルシューティング情報
+- **`operations.md`**: MCP経由のElectronアプリ操作手順（プロジェクト選択、UI操作、Remote UI）
 - **`skill-reference.md`**: プロファイル別Skill/コマンドリファレンス（生成ファイル、前提条件、spec.json状態遷移、書き換え主体）
 - Custom files are supported (managed via `/kiro:steering-custom`)
 
@@ -227,7 +228,7 @@ Conventional Commits形式に従った構造化されたコミットメッセー
 | トリガー | 用途 |
 |----------|------|
 | `task electron:*` 実行後にエラー発生 | 環境問題の診断 |
-| MCP electronツール使用時 | UI操作・ログ取得の詳細手順 |
+| MCP electronツール使用時 | UI操作手順は `operations.md`、エラー時は `debugging.md` |
 | E2Eテスト失敗時 | テスト失敗の原因調査 |
 | 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業 |
 | Electronアプリが期待通り動作しない | 動作確認・トラブルシューティング |

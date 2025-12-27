@@ -1,0 +1,190 @@
+# Operations Guide
+
+MCP経由でElectronアプリを操作するための手順書。
+動作確認・検証作業時にAIが参照すべき正常系の操作パターンを記載。
+
+---
+
+## プロジェクト選択
+
+### 方法1: 起動時引数（推奨）
+
+```bash
+# バックグラウンド起動
+task electron:start PROJECT=/Users/yamamoto/git/sdd-orchestrator
+
+# フォアグラウンド起動
+task electron:dev PROJECT=/Users/yamamoto/git/sdd-orchestrator
+```
+
+### 方法2: MCP経由でランタイム選択
+
+```javascript
+// MCP send_command_to_electron の eval コマンド
+command: "eval"
+args: { "code": "window.electronAPI.selectProject('/path/to/project').then(r => JSON.stringify(r))" }
+```
+
+**戻り値**:
+```typescript
+{
+  projectPath: string;
+  kiroValidation: {
+    hasKiroDir: boolean;
+    hasSteeringDir: boolean;
+    hasSpecsDir: boolean;
+    hasBugsDir: boolean;
+  };
+  specs: SpecInfo[];
+  bugs: BugInfo[];
+  error?: string;  // エラー時のみ
+}
+```
+
+---
+
+## スクリーンショット取得
+
+```javascript
+// MCP screenshot でウィンドウ全体を取得
+// → ページ構造の確認には get_page_structure を使用
+```
+
+---
+
+## UI要素の確認・操作
+
+### ページ構造の取得
+
+```javascript
+// MCP get_page_structure でDOM構造を取得
+// テスト対象の要素セレクタを特定する
+```
+
+### 要素クリック
+
+```javascript
+// テキストでクリック
+click_by_text: "Create Spec"
+
+// セレクタでクリック
+click_by_selector: "[data-testid='spec-list-item']"
+```
+
+### 制限事項
+
+- **メニューバー操作不可**: File, Edit, View等のネイティブメニューはMCPでクリック不可
+- **代替**: IPC直接呼び出しを使用
+
+---
+
+## IPC直接呼び出しパターン
+
+メニュー経由でしか呼び出せない機能をMCPで操作する場合:
+
+```javascript
+// レイアウトリセット
+command: "eval"
+args: { "code": "window.electronAPI.resetLayoutConfig('/path/to/project')" }
+
+// レイアウト読み込み
+command: "eval"
+args: { "code": "window.electronAPI.loadLayoutConfig('/path/to/project').then(r => JSON.stringify(r))" }
+
+// Spec一覧読み込み
+command: "eval"
+args: { "code": "window.electronAPI.readSpecs('/path/to/project').then(r => JSON.stringify(r))" }
+
+// Bug一覧読み込み
+command: "eval"
+args: { "code": "window.electronAPI.readBugs('/path/to/project').then(r => JSON.stringify(r))" }
+
+// Spec詳細読み込み（specPathは.kiro/specs/feature-nameの形式）
+command: "eval"
+args: { "code": "window.electronAPI.readSpecJson('/path/to/.kiro/specs/feature-name').then(r => JSON.stringify(r))" }
+```
+
+---
+
+## Remote UI
+
+### 起動確認
+
+1. Electronアプリでプロジェクトを選択
+2. Remote Accessをトグル（右上のアイコン or メニュー）
+3. 表示されたURLにブラウザでアクセス
+
+### MCP経由での起動
+
+```javascript
+// サーバー起動
+command: "eval"
+args: { "code": "window.electronAPI.startRemoteServer().then(r => JSON.stringify(r))" }
+
+// ステータス確認
+command: "eval"
+args: { "code": "window.electronAPI.getRemoteServerStatus().then(r => JSON.stringify(r))" }
+
+// サーバー停止
+command: "eval"
+args: { "code": "window.electronAPI.stopRemoteServer()" }
+```
+
+---
+
+## よく使うレシピ
+
+### 動作確認フロー
+
+1. アプリ起動: `task electron:start PROJECT=/path/to/project`
+2. スクリーンショット: MCP `screenshot`
+3. 要素確認: MCP `get_page_structure`
+4. 操作実行: `click_by_text` or `click_by_selector` or `eval`
+5. 結果確認: スクリーンショット再取得
+
+### Spec操作確認
+
+```javascript
+// Spec一覧取得
+command: "eval"
+args: { "code": "window.electronAPI.readSpecs('/path/to/project').then(r => JSON.stringify(r))" }
+
+// 特定Specの詳細
+command: "eval"
+args: { "code": "window.electronAPI.readSpecJson('/path/to/.kiro/specs/my-feature').then(r => JSON.stringify(r))" }
+```
+
+### インストール状態確認
+
+```javascript
+// コマンドセット状態
+command: "eval"
+args: { "code": "window.electronAPI.checkCommandsetStatus('/path/to/project').then(r => JSON.stringify(r))" }
+
+// 必要なパーミッション確認
+command: "eval"
+args: { "code": "window.electronAPI.checkRequiredPermissions('/path/to/project').then(r => JSON.stringify(r))" }
+```
+
+---
+
+## 主要IPC API一覧
+
+| カテゴリ | API | 用途 |
+|----------|-----|------|
+| プロジェクト | `selectProject(path)` | プロジェクト選択 |
+| Spec | `readSpecs(path)` | Spec一覧取得 |
+| Spec | `readSpecJson(specPath)` | Spec詳細取得 |
+| Bug | `readBugs(path)` | Bug一覧取得 |
+| Bug | `readBugDetail(bugPath)` | Bug詳細取得 |
+| レイアウト | `loadLayoutConfig(path)` | レイアウト読み込み |
+| レイアウト | `resetLayoutConfig(path)` | レイアウトリセット |
+| Remote | `startRemoteServer()` | Remote UI起動 |
+| Remote | `getRemoteServerStatus()` | Remote UIステータス |
+| インストール | `checkCommandsetStatus(path)` | コマンドセット状態 |
+
+詳細なAPI定義: `electron-sdd-manager/src/preload/index.ts`
+
+---
+
+_エラー発生時のトラブルシューティングは `.kiro/steering/debugging.md` を参照_

@@ -349,28 +349,13 @@ export function WorkflowView() {
   // Track previous runningPhases for detecting phase completion
   const prevRunningPhasesRef = useRef<Set<string>>(new Set());
 
-  // Auto-execute document-review-reply when document-review completes
-  // Also refresh specDetail when any agent phase completes
+  // Refresh specDetail when any agent phase completes
+  // Note: Auto-execution of document-review-reply is handled by AutoExecutionService (with --autofix flag)
   useEffect(() => {
     if (!specDetail) return;
 
     const prevRunning = prevRunningPhasesRef.current;
     const currentRunning = runningPhases;
-
-    // Check if document-review just completed (was running, now not running)
-    const wasReviewRunning = prevRunning.has('document-review');
-    const isReviewRunning = currentRunning.has('document-review');
-
-    if (wasReviewRunning && !isReviewRunning) {
-      // document-review just completed, check if we should auto-execute reply
-      // Get the latest document review round number from documentReviewState
-      const latestRound = documentReviewState?.rounds ?? 0;
-      if (latestRound > 0) {
-        // Auto-execute document-review-reply without --fix (default behavior)
-        console.log('[WorkflowView] document-review completed, auto-executing reply for round', latestRound);
-        handleExecuteDocumentReviewReply(latestRound);
-      }
-    }
 
     // Check if any phase just completed - refresh specDetail to update UI
     // This handles spec.json updates from any agent (document-review, phases, validations, etc.)
@@ -387,7 +372,7 @@ export function WorkflowView() {
 
     // Update ref for next comparison
     prevRunningPhasesRef.current = new Set(currentRunning);
-  }, [runningPhases, specDetail, documentReviewState, handleExecuteDocumentReviewReply, refreshSpecs]);
+  }, [runningPhases, specDetail, refreshSpecs]);
 
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;

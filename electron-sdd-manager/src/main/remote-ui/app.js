@@ -102,6 +102,10 @@ class App {
     this.selectedBug = null;
     this.agents = [];
 
+    // Task 5.1: Auto-execution state (per spec)
+    // Requirements: 6.1, 6.2
+    this.autoExecutionStatuses = {};
+
     // Router
     this.router = new Router();
 
@@ -400,6 +404,20 @@ class App {
 
     wsManager.on('SPEC_UPDATED', (payload) => {
       this.handleSpecUpdated(payload);
+    });
+
+    // Task 5.2: Auto-execution event handlers
+    // Requirements: 6.4, 6.5, 6.6
+    wsManager.on('AUTO_EXECUTION_STATUS', (payload) => {
+      this.handleAutoExecutionStatusUpdate(payload);
+    });
+
+    wsManager.on('AUTO_EXECUTION_PHASE_COMPLETED', (payload) => {
+      this.handleAutoExecutionPhaseCompleted(payload);
+    });
+
+    wsManager.on('AUTO_EXECUTION_ERROR', (payload) => {
+      this.handleAutoExecutionError(payload);
     });
 
     // Connect
@@ -797,6 +815,114 @@ class App {
       return '.../' + parts.slice(-2).join('/');
     }
     return path;
+  }
+
+  // ============================================================
+  // Task 5.1: Auto-Execution Store Methods
+  // Requirements: 6.1, 6.2
+  // ============================================================
+
+  /**
+   * Start auto-execution for the current spec
+   * @param {string} specId
+   * @param {Object} options - Auto-execution options
+   */
+  startAutoExecution(specId, options = {}) {
+    wsManager.startAutoExecution(specId, options);
+    this.toast.info('Starting auto execution...');
+  }
+
+  /**
+   * Stop auto-execution for the current spec
+   * @param {string} specId
+   */
+  stopAutoExecution(specId) {
+    wsManager.stopAutoExecution(specId);
+    this.toast.info('Stopping auto execution...');
+  }
+
+  // ============================================================
+  // Task 5.2: Auto-Execution Event Handlers
+  // Requirements: 6.4, 6.5, 6.6
+  // ============================================================
+
+  /**
+   * Handle AUTO_EXECUTION_STATUS message
+   * @param {Object} payload - { specId, status, currentPhase, executedPhases }
+   */
+  handleAutoExecutionStatusUpdate(payload) {
+    const { specId, status, currentPhase, executedPhases } = payload || {};
+
+    if (!specId) return;
+
+    // Update auto-execution status for this spec
+    this.autoExecutionStatuses[specId] = {
+      status: status || 'idle',
+      currentPhase: currentPhase || null,
+      executedPhases: executedPhases || [],
+    };
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.updateAutoExecutionStatus(this.autoExecutionStatuses[specId]);
+    }
+  }
+
+  /**
+   * Handle AUTO_EXECUTION_PHASE_COMPLETED message
+   * @param {Object} payload - { specId, phase, result }
+   */
+  handleAutoExecutionPhaseCompleted(payload) {
+    const { specId, phase, result } = payload || {};
+
+    if (!specId || !phase) return;
+
+    // Update status
+    const currentStatus = this.autoExecutionStatuses[specId] || {};
+    if (!currentStatus.executedPhases) {
+      currentStatus.executedPhases = [];
+    }
+    if (!currentStatus.executedPhases.includes(phase)) {
+      currentStatus.executedPhases.push(phase);
+    }
+    this.autoExecutionStatuses[specId] = currentStatus;
+
+    // Show toast
+    if (result?.success) {
+      this.toast.success(`Phase ${phase} completed`);
+    }
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.updateAutoExecutionStatus(this.autoExecutionStatuses[specId]);
+    }
+  }
+
+  /**
+   * Handle AUTO_EXECUTION_ERROR message
+   * @param {Object} payload - { specId, error, phase }
+   */
+  handleAutoExecutionError(payload) {
+    const { specId, error, phase } = payload || {};
+
+    if (!specId) return;
+
+    // Update status to error
+    this.autoExecutionStatuses[specId] = {
+      ...this.autoExecutionStatuses[specId],
+      status: 'error',
+      currentPhase: null,
+      error: error || 'Unknown error',
+      lastFailedPhase: phase,
+    };
+
+    // Show toast
+    this.toast.error(`Auto-execution error: ${error || 'Unknown error'}`);
+
+    // Update SpecDetail if showing this spec
+    if (this.selectedSpec && this.selectedSpec.feature_name === specId) {
+      this.specDetail.updateAutoExecutionStatus(this.autoExecutionStatuses[specId]);
+    }
   }
 }
 

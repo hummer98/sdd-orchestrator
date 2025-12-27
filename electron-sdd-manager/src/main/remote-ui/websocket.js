@@ -332,6 +332,45 @@ class WebSocketManager {
       payload: { specId },
     });
   }
+
+  // ============================================================
+  // Task 5.2: Auto-Execution WebSocket Functions
+  // Requirements: 5.1, 5.2, 5.3
+  // ============================================================
+
+  /**
+   * Start auto-execution for a spec
+   * @param {string} specId - Spec ID
+   * @param {Object} options - Auto-execution options
+   */
+  startAutoExecution(specId, options = {}) {
+    return this.send({
+      type: 'AUTO_EXECUTE_START',
+      payload: { specId, options },
+    });
+  }
+
+  /**
+   * Stop auto-execution for a spec
+   * @param {string} specId - Spec ID
+   */
+  stopAutoExecution(specId) {
+    return this.send({
+      type: 'AUTO_EXECUTE_STOP',
+      payload: { specId },
+    });
+  }
+
+  /**
+   * Get auto-execution status for a spec
+   * @param {string} specId - Spec ID
+   */
+  getAutoExecutionStatus(specId) {
+    return this.send({
+      type: 'AUTO_EXECUTE_STATUS',
+      payload: { specId },
+    });
+  }
 }
 
 // Export singleton instance

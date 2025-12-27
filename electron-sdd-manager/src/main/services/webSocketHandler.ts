@@ -123,6 +123,38 @@ export type BugAction = 'analyze' | 'fix' | 'verify';
 export type ValidationType = 'gap' | 'design';
 
 /**
+ * Auto Execution Options for Remote UI
+ * Requirements: 5.1, 5.2, 5.3 (auto-execution-main-process)
+ */
+export interface AutoExecutionOptionsWS {
+  readonly permissions: {
+    readonly requirements: boolean;
+    readonly design: boolean;
+    readonly tasks: boolean;
+    readonly impl: boolean;
+  };
+  readonly documentReviewFlag: 'run' | 'pause' | 'skip';
+  readonly validationOptions: {
+    readonly gap: boolean;
+    readonly design: boolean;
+    readonly impl: boolean;
+  };
+}
+
+/**
+ * Auto Execution State for Remote UI
+ * Requirements: 5.4, 5.5, 5.6 (auto-execution-main-process)
+ */
+export interface AutoExecutionStateWS {
+  readonly specPath: string;
+  readonly specId: string;
+  readonly status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  readonly currentPhase: string | null;
+  readonly executedPhases: string[];
+  readonly errors: string[];
+}
+
+/**
  * Workflow controller interface for executing workflow operations
  * Requirements: 6.2, 6.3, 6.4 (internal-webserver-sync Tasks 2.1, 2.2, 2.3)
  */
@@ -145,6 +177,24 @@ export interface WorkflowController {
   executeValidation?(specId: string, type: ValidationType): Promise<WorkflowResult<AgentInfo>>;
   /** Execute document review */
   executeDocumentReview?(specId: string): Promise<WorkflowResult<AgentInfo>>;
+
+  // Auto execution methods (auto-execution-main-process feature)
+  // Requirements: 5.1, 5.2, 5.3
+  /** Start auto execution for a spec */
+  autoExecuteStart?(specPath: string, specId: string, options: AutoExecutionOptionsWS): Promise<WorkflowResult<AutoExecutionStateWS>>;
+  /** Stop auto execution for a spec */
+  autoExecuteStop?(specPath: string): Promise<WorkflowResult<void>>;
+  /** Get auto execution status for a spec */
+  autoExecuteStatus?(specPath: string): Promise<AutoExecutionStateWS | null>;
+  /** Get all auto execution statuses */
+  autoExecuteAllStatus?(): Promise<Record<string, AutoExecutionStateWS>>;
+
+  // Inspection workflow methods (inspection-workflow-ui feature)
+  // Requirements: 6.1, 6.4 (Task 6.2)
+  /** Execute inspection (validate-impl) */
+  executeInspection?(specId: string, featureName: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Execute inspection fix */
+  executeInspectionFix?(specId: string, featureName: string, roundNumber: number): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -432,6 +482,26 @@ export class WebSocketHandler {
         break;
       case 'EXECUTE_DOCUMENT_REVIEW':
         await this.handleExecuteDocumentReview(client, message);
+        break;
+      // Inspection handlers (inspection-workflow-ui feature)
+      case 'INSPECTION_START':
+        await this.handleInspectionStart(client, message);
+        break;
+      case 'INSPECTION_FIX':
+        await this.handleInspectionFix(client, message);
+        break;
+      // Auto Execution handlers (auto-execution-main-process feature)
+      case 'AUTO_EXECUTE_START':
+        await this.handleAutoExecuteStart(client, message);
+        break;
+      case 'AUTO_EXECUTE_STOP':
+        await this.handleAutoExecuteStop(client, message);
+        break;
+      case 'AUTO_EXECUTE_STATUS':
+        await this.handleAutoExecuteStatus(client, message);
+        break;
+      case 'AUTO_EXECUTE_ALL_STATUS':
+        await this.handleAutoExecuteAllStatus(client, message);
         break;
       default:
         this.send(client.id, {
@@ -1184,6 +1254,141 @@ export class WebSocketHandler {
   }
 
   // ============================================================
+  // Inspection Handlers (inspection-workflow-ui Task 6.2)
+  // Requirements: 6.1, 6.4
+  // ============================================================
+
+  /**
+   * Handle INSPECTION_START message
+   * Requirements: 6.1, 6.4 (inspection-workflow-ui Task 6.2)
+   */
+  private async handleInspectionStart(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeInspection) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Inspection execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const featureName = (payload.featureName as string) || specId;
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeInspection(specId, featureName);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'INSPECTION_STARTED',
+        payload: {
+          specId,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Inspection execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle INSPECTION_FIX message
+   * Requirements: 6.1, 6.4 (inspection-workflow-ui Task 6.2)
+   */
+  private async handleInspectionFix(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeInspectionFix) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Inspection fix execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const featureName = (payload.featureName as string) || specId;
+    const roundNumber = payload.roundNumber as number;
+
+    if (!specId || typeof roundNumber !== 'number') {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or roundNumber' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeInspectionFix(specId, featureName, roundNumber);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'INSPECTION_FIX_STARTED',
+        payload: {
+          specId,
+          roundNumber,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Inspection fix execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
   // Broadcast Methods for Task Progress and Spec Updates (internal-webserver-sync Task 3.4)
   // ============================================================
 
@@ -1214,6 +1419,266 @@ export class WebSocketHandler {
     this.broadcast({
       type: 'SPEC_UPDATED',
       payload: { specId, ...updates },
+      timestamp: Date.now(),
+    });
+  }
+
+  // ============================================================
+  // Auto Execution Handlers (auto-execution-main-process Tasks 3.1, 3.2, 3.3)
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+  // ============================================================
+
+  /**
+   * Handle AUTO_EXECUTE_START message
+   * Requirements: 5.1 (auto-execution-main-process Task 3.2)
+   */
+  private async handleAutoExecuteStart(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.autoExecuteStart) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Auto execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specPath = payload.specPath as string;
+    const specId = payload.specId as string;
+    const options = payload.options as AutoExecutionOptionsWS | undefined;
+
+    if (!specPath || !specId || !options) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specPath, specId, or options' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.autoExecuteStart(specPath, specId, options);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'AUTO_EXECUTION_STARTED',
+        payload: { state: result.value },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Auto execution start failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle AUTO_EXECUTE_STOP message
+   * Requirements: 5.2 (auto-execution-main-process Task 3.2)
+   */
+  private async handleAutoExecuteStop(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.autoExecuteStop) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Auto execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specPath = payload.specPath as string;
+
+    if (!specPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specPath' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.autoExecuteStop(specPath);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'AUTO_EXECUTION_STOPPED',
+        payload: { specPath },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Auto execution stop failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle AUTO_EXECUTE_STATUS message
+   * Requirements: 5.3 (auto-execution-main-process Task 3.2)
+   */
+  private async handleAutoExecuteStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.autoExecuteStatus) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Auto execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specPath = payload.specPath as string;
+
+    if (!specPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specPath' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const state = await this.workflowController.autoExecuteStatus(specPath);
+
+    this.send(client.id, {
+      type: 'AUTO_EXECUTION_STATUS',
+      payload: { specPath, state },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Handle AUTO_EXECUTE_ALL_STATUS message
+   * Requirements: 5.3 (auto-execution-main-process Task 3.2)
+   */
+  private async handleAutoExecuteAllStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.autoExecuteAllStatus) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Auto execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const statuses = await this.workflowController.autoExecuteAllStatus();
+
+    this.send(client.id, {
+      type: 'AUTO_EXECUTION_ALL_STATUS',
+      payload: { statuses },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  // ============================================================
+  // Auto Execution Broadcast Methods (auto-execution-main-process Task 3.3)
+  // Requirements: 5.4, 5.5, 5.6, 7.2
+  // ============================================================
+
+  /**
+   * Broadcast auto execution status change to all connected clients
+   * Requirements: 5.4 (auto-execution-main-process Task 3.3)
+   *
+   * @param specPath Specification path
+   * @param state Current auto execution state
+   */
+  broadcastAutoExecutionStatus(specPath: string, state: AutoExecutionStateWS): void {
+    this.broadcast({
+      type: 'AUTO_EXECUTION_STATUS',
+      payload: { specPath, state },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast auto execution phase completed to all connected clients
+   * Requirements: 5.5 (auto-execution-main-process Task 3.3)
+   *
+   * @param specPath Specification path
+   * @param phase Completed phase
+   */
+  broadcastAutoExecutionPhaseCompleted(specPath: string, phase: string): void {
+    this.broadcast({
+      type: 'AUTO_EXECUTION_PHASE_COMPLETED',
+      payload: { specPath, phase },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast auto execution error to all connected clients
+   * Requirements: 5.6 (auto-execution-main-process Task 3.3)
+   *
+   * @param specPath Specification path
+   * @param error Error details
+   */
+  broadcastAutoExecutionError(specPath: string, error: { type: string; message?: string }): void {
+    this.broadcast({
+      type: 'AUTO_EXECUTION_ERROR',
+      payload: { specPath, error },
       timestamp: Date.now(),
     });
   }

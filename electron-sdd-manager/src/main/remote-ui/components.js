@@ -1087,8 +1087,29 @@ class SpecDetail {
       deploy: 'pending',
     };
 
-    // Inspection phase: check inspection.passed
-    if (spec.inspection?.passed) {
+    // ============================================================
+    // Task 6.1: Multi-round inspection structure support
+    // Requirements: 6.1, 6.2, 6.3, 6.4 (inspection-workflow-ui)
+    // ============================================================
+    // Inspection phase: check for multi-round structure first
+    if (spec.inspection?.roundDetails && Array.isArray(spec.inspection.roundDetails)) {
+      // New multi-round structure
+      const roundDetails = spec.inspection.roundDetails;
+      if (roundDetails.length > 0) {
+        // Get latest round's passed value
+        const latestRound = roundDetails[roundDetails.length - 1];
+        if (latestRound.passed === true) {
+          result.inspection = 'approved';
+        } else if (spec.inspection.status === 'in_progress') {
+          result.inspection = 'executing';
+        } else {
+          result.inspection = 'generated'; // NOGO state
+        }
+      } else if (spec.inspection.status === 'in_progress') {
+        result.inspection = 'executing';
+      }
+    } else if (spec.inspection?.passed) {
+      // Legacy structure: inspection.passed is a boolean
       result.inspection = 'approved';
     }
 
@@ -1492,6 +1513,115 @@ class SpecDetail {
             </span>
           </div>
         `).join('')}
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // Task 5.3: Auto-Execution Status Display
+  // Requirements: 6.1, 6.2, 6.3
+  // ============================================================
+
+  /**
+   * Update auto-execution status display
+   * @param {Object} status - { status, currentPhase, executedPhases, error, lastFailedPhase }
+   */
+  updateAutoExecutionStatus(status) {
+    this.autoExecutionStatus = status || { status: 'idle', currentPhase: null, executedPhases: [] };
+
+    // Update the button text based on status
+    const isRunning = this.autoExecutionStatus.status === 'running';
+    this.autoExecuteBtn.textContent = isRunning ? 'Stop Auto Execution' : 'Auto Execute';
+    this.autoExecuteBtn.classList.toggle('btn-danger', isRunning);
+    this.autoExecuteBtn.classList.toggle('btn-primary', !isRunning);
+
+    // Re-render the status display
+    const statusContainer = document.getElementById('auto-execution-status');
+    if (statusContainer) {
+      statusContainer.innerHTML = this.renderAutoExecutionStatus();
+    }
+  }
+
+  /**
+   * Render auto-execution status display
+   * @returns {string} HTML string for status display
+   */
+  renderAutoExecutionStatus() {
+    const status = this.autoExecutionStatus || { status: 'idle', currentPhase: null, executedPhases: [] };
+
+    // Only show status if not idle
+    if (status.status === 'idle' && !status.executedPhases?.length) {
+      return '';
+    }
+
+    const statusColors = {
+      'idle': 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+      'running': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+      'completed': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+      'error': 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
+      'paused': 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
+    };
+
+    const statusLabels = {
+      'idle': 'Idle',
+      'running': 'Running',
+      'completed': 'Completed',
+      'error': 'Error',
+      'paused': 'Paused',
+    };
+
+    const statusColor = statusColors[status.status] || statusColors['idle'];
+    const statusLabel = statusLabels[status.status] || 'Unknown';
+
+    let phaseIndicator = '';
+    if (status.currentPhase) {
+      phaseIndicator = `
+        <div class="flex items-center gap-2 mt-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary-500 border-t-transparent"></div>
+          <span class="text-sm text-gray-600 dark:text-gray-400">
+            Executing: <strong>${status.currentPhase}</strong>
+          </span>
+        </div>
+      `;
+    }
+
+    let executedPhasesDisplay = '';
+    if (status.executedPhases && status.executedPhases.length > 0) {
+      executedPhasesDisplay = `
+        <div class="flex flex-wrap gap-1 mt-2">
+          ${status.executedPhases.map(phase => `
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              ${phase}
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    let errorDisplay = '';
+    if (status.status === 'error' && status.error) {
+      errorDisplay = `
+        <div class="mt-2 p-2 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+          <strong>Error:</strong> ${status.error}
+          ${status.lastFailedPhase ? `<br>Failed at: ${status.lastFailedPhase}` : ''}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="auto-execution-status mt-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Execution</span>
+          <span class="px-2 py-0.5 text-xs font-medium rounded ${statusColor}">
+            ${statusLabel}
+          </span>
+        </div>
+        ${phaseIndicator}
+        ${executedPhasesDisplay}
+        ${errorDisplay}
       </div>
     `;
   }

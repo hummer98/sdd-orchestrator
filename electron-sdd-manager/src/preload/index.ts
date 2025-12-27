@@ -1013,6 +1013,248 @@ const electronAPI = {
    */
   openLogInBrowser: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.OPEN_LOG_IN_BROWSER),
+
+  // ============================================================
+  // Auto Execution (auto-execution-main-process feature)
+  // Requirements: 3.1, 3.4, 3.5, 4.1, 4.2, 4.3
+  // ============================================================
+
+  /**
+   * Start auto-execution for a spec
+   * @param params Start parameters (specPath, specId, options)
+   * @returns Result with AutoExecutionState on success, or error
+   */
+  autoExecutionStart: (params: {
+    specPath: string;
+    specId: string;
+    options: {
+      permissions: {
+        requirements: boolean;
+        design: boolean;
+        tasks: boolean;
+        impl: boolean;
+      };
+      documentReviewFlag: 'run' | 'pause' | 'skip';
+      validationOptions: {
+        gap: boolean;
+        design: boolean;
+        impl: boolean;
+      };
+      timeoutMs?: number;
+    };
+  }): Promise<{ ok: true; value: {
+    specPath: string;
+    specId: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+  } } | { ok: false; error: { type: string; specId?: string; limit?: number; message?: string; phase?: string; specPath?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_START, params),
+
+  /**
+   * Stop auto-execution for a spec
+   * @param params Stop parameters (specPath)
+   * @returns Result with void on success, or error
+   */
+  autoExecutionStop: (params: { specPath: string }): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; specId?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_STOP, params),
+
+  /**
+   * Get auto-execution status for a spec
+   * @param params Status parameters (specPath)
+   * @returns AutoExecutionState or null
+   */
+  autoExecutionStatus: (params: { specPath: string }): Promise<{
+    specPath: string;
+    specId: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_STATUS, params),
+
+  /**
+   * Get all auto-execution statuses
+   * @returns Record of specPath to AutoExecutionState
+   */
+  autoExecutionAllStatus: (): Promise<Record<string, {
+    specPath: string;
+    specId: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+  }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS),
+
+  /**
+   * Retry auto-execution from a specific phase
+   * @param params Retry parameters (specPath, phase)
+   * @returns Result with AutoExecutionState on success, or error
+   */
+  autoExecutionRetryFrom: (params: { specPath: string; phase: string }): Promise<{ ok: true; value: {
+    specPath: string;
+    specId: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+  } } | { ok: false; error: { type: string; specId?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM, params),
+
+  /**
+   * Subscribe to auto-execution status changes
+   * @param callback Function called when status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onAutoExecutionStatusChanged: (callback: (data: { specPath: string; state: {
+    specPath: string;
+    specId: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+  } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { specPath: string; state: unknown }) => {
+      callback(data as { specPath: string; state: {
+        specPath: string;
+        specId: string;
+        status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+        currentPhase: string | null;
+        executedPhases: string[];
+        errors: string[];
+        startTime: number;
+        lastActivityTime: number;
+      } });
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUTO_EXECUTION_STATUS_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUTO_EXECUTION_STATUS_CHANGED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to auto-execution phase completed events
+   * @param callback Function called when a phase completes
+   * @returns Cleanup function to unsubscribe
+   */
+  onAutoExecutionPhaseCompleted: (callback: (data: { specPath: string; phase: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { specPath: string; phase: string }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUTO_EXECUTION_PHASE_COMPLETED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUTO_EXECUTION_PHASE_COMPLETED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to auto-execution error events
+   * @param callback Function called when an error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onAutoExecutionError: (callback: (data: { specPath: string; error: { type: string; message?: string } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { specPath: string; error: { type: string; message?: string } }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUTO_EXECUTION_ERROR, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUTO_EXECUTION_ERROR, handler);
+    };
+  },
+
+  /**
+   * Subscribe to auto-execution completed events
+   * @param callback Function called when execution completes
+   * @returns Cleanup function to unsubscribe
+   */
+  onAutoExecutionCompleted: (callback: (data: { specPath: string; summary: {
+    specId: string;
+    executedPhases: string[];
+    totalDuration: number;
+    errors: string[];
+    status: 'completed' | 'error' | 'paused';
+  } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { specPath: string; summary: unknown }) => {
+      callback(data as { specPath: string; summary: {
+        specId: string;
+        executedPhases: string[];
+        totalDuration: number;
+        errors: string[];
+        status: 'completed' | 'error' | 'paused';
+      } });
+    };
+    ipcRenderer.on(IPC_CHANNELS.AUTO_EXECUTION_COMPLETED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AUTO_EXECUTION_COMPLETED, handler);
+    };
+  },
+
+  // ============================================================
+  // Inspection Workflow (inspection-workflow-ui feature)
+  // Requirements: 4.2, 4.3, 4.5
+  // ============================================================
+
+  /**
+   * Execute inspection agent
+   * @param specId Spec directory name
+   * @param featureName Feature name for the inspection command
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeInspection: (
+    specId: string,
+    featureName: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_INSPECTION, specId, featureName, commandPrefix),
+
+  /**
+   * Execute inspection fix agent
+   * @param specId Spec directory name
+   * @param featureName Feature name for the inspection fix command
+   * @param roundNumber Inspection round number to apply fixes for
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeInspectionFix: (
+    specId: string,
+    featureName: string,
+    roundNumber: number,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_INSPECTION_FIX, specId, featureName, roundNumber, commandPrefix),
+
+  /**
+   * Set inspection auto execution flag
+   * @param specPath Full path to spec directory
+   * @param flag Auto execution flag ('run' | 'pause' | 'skip')
+   */
+  setInspectionAutoExecutionFlag: (
+    specPath: string,
+    flag: 'run' | 'pause' | 'skip'
+  ): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG, specPath, flag),
 };
 
 // Expose API to renderer

@@ -826,4 +826,132 @@ describe('Mobile UI Static Files', () => {
       });
     });
   });
+
+  // ============================================================
+  // Task 5.1: autoExecution Store Implementation
+  // Requirements: 6.1, 6.2
+  // ============================================================
+  describe('Task 5.1: AutoExecution Store', () => {
+    let appJsContent: string;
+
+    beforeAll(async () => {
+      appJsContent = await readFile(join(REMOTE_UI_DIR, 'app.js'), 'utf-8');
+    });
+
+    it('should have autoExecutionStatuses property in App class', () => {
+      // The App class should track auto-execution status per spec
+      expect(appJsContent).toContain('autoExecutionStatuses');
+    });
+
+    it('should have startAutoExecution method', () => {
+      // Method to start auto-execution via WebSocket
+      expect(appJsContent).toContain('startAutoExecution');
+    });
+
+    it('should have stopAutoExecution method', () => {
+      // Method to stop auto-execution via WebSocket
+      expect(appJsContent).toContain('stopAutoExecution');
+    });
+  });
+
+  // ============================================================
+  // Task 5.2: WebSocket Event Handlers
+  // Requirements: 6.4, 6.5, 6.6
+  // ============================================================
+  describe('Task 5.2: WebSocket Auto-Execution Event Handlers', () => {
+    let appJsContent: string;
+
+    beforeAll(async () => {
+      appJsContent = await readFile(join(REMOTE_UI_DIR, 'app.js'), 'utf-8');
+    });
+
+    it('should handle AUTO_EXECUTION_STATUS message', () => {
+      expect(appJsContent).toContain('AUTO_EXECUTION_STATUS');
+    });
+
+    it('should handle AUTO_EXECUTION_PHASE_COMPLETED message', () => {
+      expect(appJsContent).toContain('AUTO_EXECUTION_PHASE_COMPLETED');
+    });
+
+    it('should handle AUTO_EXECUTION_ERROR message', () => {
+      expect(appJsContent).toContain('AUTO_EXECUTION_ERROR');
+    });
+
+    it('should have handleAutoExecutionStatusUpdate method', () => {
+      expect(appJsContent).toContain('handleAutoExecutionStatusUpdate');
+    });
+
+    it('should have handleAutoExecutionPhaseCompleted method', () => {
+      expect(appJsContent).toContain('handleAutoExecutionPhaseCompleted');
+    });
+
+    it('should have handleAutoExecutionError method', () => {
+      expect(appJsContent).toContain('handleAutoExecutionError');
+    });
+  });
+
+  // ============================================================
+  // Task 5.3: Remote UI Auto-Execution Component
+  // Requirements: 6.1, 6.2, 6.3
+  // ============================================================
+  describe('Task 5.3: Remote UI Auto-Execution Component', () => {
+    let componentsJsContent: string;
+    let htmlContent: string;
+
+    beforeAll(async () => {
+      componentsJsContent = await readFile(join(REMOTE_UI_DIR, 'components.js'), 'utf-8');
+      htmlContent = await readFile(join(REMOTE_UI_DIR, 'index.html'), 'utf-8');
+    });
+
+    it('should have auto-execute button in SpecDetail', () => {
+      // Auto-execute button should be present
+      expect(htmlContent).toContain('btn-auto-execute');
+    });
+
+    it('should have renderAutoExecutionStatus method in SpecDetail', () => {
+      // Method to render auto-execution status display
+      expect(componentsJsContent).toContain('renderAutoExecutionStatus');
+    });
+
+    it('should have updateAutoExecutionStatus method in SpecDetail', () => {
+      // Method to update auto-execution status
+      expect(componentsJsContent).toContain('updateAutoExecutionStatus');
+    });
+
+    it('should display current executing phase indicator', () => {
+      // The component should show which phase is currently executing
+      expect(componentsJsContent).toContain('currentPhase');
+    });
+
+    it('should display progress states (pending/executing/completed/error)', () => {
+      // Status indicators for different states
+      expect(componentsJsContent).toContain('running');
+      expect(componentsJsContent).toContain('completed');
+      expect(componentsJsContent).toContain('error');
+    });
+  });
+
+  // ============================================================
+  // Task 5.2 (continued): WebSocket message sending functions
+  // Requirements: 5.1, 5.2, 5.3
+  // ============================================================
+  describe('Task 5.2: WebSocket Auto-Execution Message Sending', () => {
+    let websocketJsContent: string;
+
+    beforeAll(async () => {
+      websocketJsContent = await readFile(join(REMOTE_UI_DIR, 'websocket.js'), 'utf-8');
+    });
+
+    it('should have startAutoExecution function in WebSocketManager', () => {
+      expect(websocketJsContent).toContain('startAutoExecution');
+    });
+
+    it('should have stopAutoExecution function in WebSocketManager', () => {
+      expect(websocketJsContent).toContain('stopAutoExecution');
+    });
+
+    it('should have getAutoExecutionStatus function in WebSocketManager', () => {
+      expect(websocketJsContent).toContain('getAutoExecutionStatus');
+    });
+  });
 });

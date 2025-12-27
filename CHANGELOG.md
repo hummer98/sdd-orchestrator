@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2025-12-27
+
+### Added
+- **Agentログコマンドライン表示**: Agentログの1行目にコマンドラインを表示
+- **並行実行対応ExecutionContext**: 自動実行の並行処理に対応するためExecutionContextを導入
+- **spec-inspectionコマンド変更**: inspection phaseのコマンドをspec-inspectionに変更
+
+### Fixed
+- **RemoteWebサーバーUI修正**: 4つの問題を修正（詳細はコミットログ参照）
+
+### Documentation
+- Cloudflare Tunnel統合の仕様ドキュメント追加
+- remote-ui TypeScript移行計画の追加
+- spec-inspectionに検査ボタン統合要件を追加
+
 ## [0.13.0] - 2025-12-27
 
 ### Added

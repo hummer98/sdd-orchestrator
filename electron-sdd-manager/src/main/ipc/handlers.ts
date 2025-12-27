@@ -33,7 +33,7 @@ import {
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
-import type { SpecInfo } from '../services/webSocketHandler';
+import type { SpecInfo, BugInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { access, rm, stat, readdir } from 'fs/promises';
@@ -386,7 +386,24 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     }));
   };
 
-  setupStateProvider(projectPath, getSpecsForRemote);
+  // Get bugs for remote access
+  const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
+    const result = await bugService.readBugs(projectPath);
+    if (!result.ok) {
+      logger.error('[handlers] Failed to read bugs for remote access', { error: result.error });
+      return null;
+    }
+    // BugMetadata and BugInfo have compatible structures
+    return result.value.map(bug => ({
+      name: bug.name,
+      path: bug.path,
+      phase: bug.phase,
+      updatedAt: bug.updatedAt,
+      reportedAt: bug.reportedAt,
+    }));
+  };
+
+  setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote);
   setupWorkflowController(specManagerService);
   logger.info('[handlers] Remote Access StateProvider and WorkflowController set up');
 }

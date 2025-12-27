@@ -6,6 +6,7 @@
 
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { readFile, writeFile } from 'fs/promises';
 import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
 import { createAgentProcess, AgentProcess, getClaudeCommand } from './agentProcess';
 import {
@@ -269,6 +270,21 @@ export interface ExecuteDocumentReviewFixOptions {
   specId: string;
   featureName: string;
   reviewNumber: number;
+  commandPrefix?: CommandPrefix;
+}
+
+/** Inspection execution options (inspection-workflow-ui feature) */
+export interface ExecuteInspectionOptions {
+  specId: string;
+  featureName: string;
+  commandPrefix?: CommandPrefix;
+}
+
+/** Inspection Fix execution options (inspection-workflow-ui feature) */
+export interface ExecuteInspectionFixOptions {
+  specId: string;
+  featureName: string;
+  roundNumber: number;
   commandPrefix?: CommandPrefix;
 }
 
@@ -1146,6 +1162,85 @@ export class SpecManagerService {
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
       group: 'doc',
     });
+  }
+
+  // ============================================================
+  // Inspection Workflow (inspection-workflow-ui feature)
+  // Requirements: 4.2, 4.3, 4.5
+  // ============================================================
+
+  /**
+   * Execute inspection agent (validate-impl)
+   * Requirements: 4.2 (inspection-workflow-ui)
+   */
+  async executeInspection(options: ExecuteInspectionOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, commandPrefix = 'kiro' } = options;
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:validate-impl' : '/spec-manager:validate-impl';
+
+    logger.info('[SpecManagerService] executeInspection called', { specId, featureName, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'inspection',
+      command: getClaudeCommand(),
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+      group: 'validate',
+    });
+  }
+
+  /**
+   * Execute inspection fix agent (impl with inspection task)
+   * Requirements: 4.3 (inspection-workflow-ui)
+   */
+  async executeInspectionFix(options: ExecuteInspectionFixOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, roundNumber, commandPrefix = 'kiro' } = options;
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-impl' : '/spec-manager:impl';
+
+    // Fix: Run impl with inspection findings as context
+    // The inspection fix uses spec-impl with a special task identifier indicating fix from inspection
+    logger.info('[SpecManagerService] executeInspectionFix called', { specId, featureName, roundNumber, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'inspection-fix',
+      command: getClaudeCommand(),
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --inspection-fix ${roundNumber}` }),
+      group: 'impl',
+    });
+  }
+
+  /**
+   * Set inspection auto execution flag in spec.json
+   * Requirements: 4.5 (inspection-workflow-ui)
+   */
+  async setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void> {
+    logger.info('[SpecManagerService] setInspectionAutoExecutionFlag called', { specPath, flag });
+
+    const specJsonPath = `${specPath}/spec.json`;
+
+    try {
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      // Ensure autoExecution.permissions structure exists
+      if (!specJson.autoExecution) {
+        specJson.autoExecution = {};
+      }
+      if (!specJson.autoExecution.permissions) {
+        specJson.autoExecution.permissions = {};
+      }
+
+      // Set the inspection flag
+      specJson.autoExecution.permissions.inspection = flag;
+
+      // Write back to file
+      await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+
+      logger.info('[SpecManagerService] setInspectionAutoExecutionFlag succeeded', { specPath, flag });
+    } catch (error) {
+      logger.error('[SpecManagerService] setInspectionAutoExecutionFlag failed', { specPath, flag, error });
+      throw error;
+    }
   }
 
   /**

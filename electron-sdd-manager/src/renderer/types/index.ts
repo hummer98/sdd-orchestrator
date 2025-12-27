@@ -161,6 +161,12 @@ import type { BugMetadata } from './bug';
 export * from './bugAutoExecution';
 
 // ============================================================
+// auto-execution-parallel-spec Task 1: ExecutionContext Types
+// Requirements: 1.1, 1.5, 1.6, 3.6
+// ============================================================
+export * from './executionContext';
+
+// ============================================================
 // Unified Project Selection Types (unified-project-selection feature)
 // Requirements: 1.1-1.6, 4.1-4.4, 5.1-5.4, 6.1-6.4
 // ============================================================

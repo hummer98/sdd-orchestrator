@@ -1,11 +1,12 @@
 /**
  * AutoExecutionService
- * Manages auto-execution of workflow phases
- * Requirements: 1.1-1.4, 2.1-2.5, 3.1-3.4, 4.1-4.4, 6.3-6.4, 8.1-8.5
+ * Manages auto-execution of workflow phases with parallel spec support
+ * Requirements: 1.1-1.6, 2.1-2.6, 3.1-3.6, 4.1-4.5, 6.1-6.5, 7.1-7.5, 8.1-8.5
  *
- * NOTE: Updated for spec-scoped-auto-execution-state Task 5.1
- * - Now uses specStore.autoExecutionRuntime instead of workflowStore
- * - isAutoExecuting, currentAutoPhase, autoExecutionStatus are now managed by specStore
+ * NOTE: Updated for auto-execution-parallel-spec feature
+ * - ExecutionContext per spec for parallel execution support
+ * - Map-based internal state management
+ * - AgentId to SpecId mapping for event routing
  */
 
 import { useWorkflowStore } from '../stores/workflowStore';
@@ -13,8 +14,14 @@ import { useAgentStore } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { notify } from '../stores/notificationStore';
 import { WORKFLOW_PHASES, type WorkflowPhase, type ValidationType } from '../types/workflow';
-import type { ApprovalStatus, SpecAutoExecutionState } from '../types';
+import type { ApprovalStatus, SpecAutoExecutionState, SpecDetail } from '../types';
 import { DEFAULT_SPEC_AUTO_EXECUTION_STATE, createSpecAutoExecutionState } from '../types';
+import {
+  createExecutionContext,
+  disposeExecutionContext,
+  MAX_CONCURRENT_SPECS,
+  type ExecutionContext,
+} from '../types/executionContext';
 
 // ============================================================
 // Task 3.1: Service Types
@@ -36,28 +43,31 @@ const MAX_RETRIES = 3;
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 
 // ============================================================
-// Task 3.1: AutoExecutionService Class
-// Requirements: 2.1, 3.4
+// auto-execution-parallel-spec: AutoExecutionService Class
+// Requirements: 1.1-1.6, 2.1-2.6, 3.1-3.6, 4.1-4.5, 6.1-6.5, 7.1-7.5
 // ============================================================
 
 export class AutoExecutionService {
   private unsubscribeAgentStore: (() => void) | null = null;
-  private executionStartTime: number | null = null;
-  private currentTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private executedPhases: WorkflowPhase[] = [];
-  private executedValidations: ValidationType[] = [];
-  private errors: string[] = [];
 
-  // 現在自動実行中のSpecId
+  // ============================================================
+  // Task 2.1: Map-based internal state management
+  // Requirements: 1.1, 2.1
+  // ============================================================
+  private executionContexts: Map<string, ExecutionContext> = new Map();
+  private agentToSpecMap: Map<string, string> = new Map();
+  private pendingEventsMap: Map<string, { specId: string; status: string }> = new Map();
+
+  // Legacy fields for backward compatibility (single spec tracking)
   private currentExecutingSpecId: string | null = null;
 
   // ============================================================
-  // Task 1.1, 2.1: IPC Direct Subscription and AgentId Tracking
+  // Task 1.1, 2.1: IPC Direct Subscription
   // Requirements: 1.1, 2.1, 2.4
   // ============================================================
   private unsubscribeIPC: (() => void) | null = null;
   private trackedAgentIds: Set<string> = new Set();
-  private pendingEvents: Map<string, string> = new Map(); // agentId -> status
+  private pendingEvents: Map<string, string> = new Map(); // agentId -> status (legacy)
 
   constructor() {
     this.setupDirectIPCListener();
@@ -65,23 +75,88 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 3.1, 1.2: Cleanup (with IPC subscription cleanup)
-  // Requirements: 1.5
+  // Task 2.1: Public API for parallel execution
+  // Requirements: 1.1, 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Get ExecutionContext for a specific spec
+   * Requirements: 1.1
+   */
+  getExecutionContext(specId: string): ExecutionContext | undefined {
+    return this.executionContexts.get(specId);
+  }
+
+  /**
+   * Get count of active executions
+   * Requirements: 3.4
+   */
+  getActiveExecutionCount(): number {
+    return this.executionContexts.size;
+  }
+
+  /**
+   * Check if a specific spec is executing
+   * Requirements: 3.1
+   */
+  isExecuting(specId: string): boolean {
+    return this.executionContexts.has(specId);
+  }
+
+  /**
+   * Get specId for a given agentId
+   * Requirements: 2.3
+   */
+  getSpecIdForAgent(agentId: string): string | undefined {
+    return this.agentToSpecMap.get(agentId);
+  }
+
+  // ============================================================
+  // Task 7.3: dispose() - Clean up all contexts
+  // Requirements: 6.4
   // ============================================================
   dispose(): void {
     if (this.unsubscribeAgentStore) {
       this.unsubscribeAgentStore();
       this.unsubscribeAgentStore = null;
     }
-    // Task 1.2: Clean up IPC subscription
     if (this.unsubscribeIPC) {
       this.unsubscribeIPC();
       this.unsubscribeIPC = null;
     }
-    this.clearTimeout();
-    // Task 2.3: Clear tracked agentIds on dispose
+
+    // Clean up all execution contexts
+    for (const [specId, context] of this.executionContexts) {
+      disposeExecutionContext(context);
+      useSpecStore.getState().stopAutoExecution(specId);
+    }
+    this.executionContexts.clear();
+    this.agentToSpecMap.clear();
+    this.pendingEventsMap.clear();
+
+    // Legacy cleanup
     this.trackedAgentIds.clear();
     this.pendingEvents.clear();
+    this.currentExecutingSpecId = null;
+  }
+
+  // ============================================================
+  // Task 7.4: forceCleanupAll() - Test utility
+  // Requirements: 6.5
+  // ============================================================
+  forceCleanupAll(): void {
+    // Clean up all execution contexts without disposing the service
+    for (const [specId, context] of this.executionContexts) {
+      disposeExecutionContext(context);
+      useSpecStore.getState().stopAutoExecution(specId);
+    }
+    this.executionContexts.clear();
+    this.agentToSpecMap.clear();
+    this.pendingEventsMap.clear();
+    this.trackedAgentIds.clear();
+    this.pendingEvents.clear();
+    this.currentExecutingSpecId = null;
+    console.log('[AutoExecutionService] Force cleanup completed');
   }
 
   // ============================================================
@@ -225,15 +300,18 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 3.3: Precondition validation
-  // Requirements: 3.1, 3.4
+  // Task 5.1: Precondition validation with ExecutionContext support
+  // Requirements: 3.1, 3.4, 4.1, 4.2
   // ============================================================
-  async validatePreconditions(phase: WorkflowPhase): Promise<PreconditionResult> {
+  async validatePreconditions(phase: WorkflowPhase, specDetailSnapshot?: SpecDetail): Promise<PreconditionResult> {
     const specStore = useSpecStore.getState();
     const agentStore = useAgentStore.getState();
 
+    // Use snapshot if provided, otherwise use current specDetail
+    const specDetail = specDetailSnapshot || specStore.specDetail;
+
     // Check specDetail availability
-    if (!specStore.specDetail) {
+    if (!specDetail) {
       return {
         valid: false,
         requiresApproval: false,
@@ -243,8 +321,6 @@ export class AutoExecutionService {
         error: 'specDetail is not available',
       };
     }
-
-    const specDetail = specStore.specDetail;
 
     // Read spec.json directly to get the latest state (avoid stale cache)
     const specJson = await window.electronAPI.readSpecJson(specDetail.metadata.path);
@@ -338,9 +414,8 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 4.1: Start auto execution
-  // Requirements: 1.1, 2.1
-  // Bug Fix: Resume from current spec progress instead of starting from beginning
+  // Task 3.1: Start auto execution with ExecutionContext
+  // Requirements: 1.1, 1.2, 1.5, 2.1, 3.1, 3.4, 3.5
   // ============================================================
   start(): boolean {
     const specStore = useSpecStore.getState();
@@ -353,10 +428,23 @@ export class AutoExecutionService {
     }
 
     const specId = specStore.specDetail.metadata.name;
+    const specDetail = specStore.specDetail;
+
+    // Task 2.2: Check concurrent execution limit
+    if (this.executionContexts.size >= MAX_CONCURRENT_SPECS) {
+      console.error(`[AutoExecutionService] Maximum concurrent executions (${MAX_CONCURRENT_SPECS}) reached`);
+      notify.error(`同時実行可能なSpec数の上限（${MAX_CONCURRENT_SPECS}件）に達しています`);
+      return false;
+    }
+
+    // Task 2.2: Prevent duplicate execution of same specId
+    if (this.executionContexts.has(specId)) {
+      console.error(`[AutoExecutionService] Spec ${specId} is already executing`);
+      return false;
+    }
 
     // Bug Fix: Determine starting phase based on current spec progress
-    // Instead of always starting from null (beginning), check which phases are already completed
-    const approvals = specStore.specDetail.specJson.approvals;
+    const approvals = specDetail.specJson.approvals;
     const lastCompletedPhase = this.getLastCompletedPhase(approvals);
 
     // Get next permitted phase after the last completed one
@@ -368,67 +456,90 @@ export class AutoExecutionService {
 
     console.log(`[AutoExecutionService] Starting from phase: ${firstPhase} (last completed: ${lastCompletedPhase || 'none'})`);
 
+    // Task 3.1: Create ExecutionContext with specDetail snapshot
+    const context = createExecutionContext({
+      specId,
+      specDetail,
+    });
+    this.executionContexts.set(specId, context);
 
-    // Reset execution tracking
-    this.executionStartTime = Date.now();
-    this.executedPhases = [];
-    this.executedValidations = [];
-    this.errors = [];
+    // Legacy: Set currentExecutingSpecId for backward compatibility
     this.currentExecutingSpecId = specId;
 
-    // Update store state - use specStore with specId
+    // Update store state
     specStore.startAutoExecution(specId);
     workflowStore.resetFailedRetryCount();
     workflowStore.setLastFailedPhase(null);
     workflowStore.setExecutionSummary(null);
 
     // Start execution from first phase
-    this.executePhase(firstPhase);
+    this.executePhaseForContext(context, firstPhase);
 
     return true;
   }
 
   // ============================================================
-  // Task 4.2: Stop auto execution
-  // Requirements: 1.2, 5.2
-  // Task 2.3: Clear tracked agentIds on stop
+  // Task 7.2: Stop auto execution with specId parameter
+  // Requirements: 1.2, 5.2, 6.3, 7.1
   // ============================================================
-  async stop(): Promise<void> {
+  async stop(specId?: string): Promise<void> {
     const specStore = useSpecStore.getState();
 
-    this.clearTimeout();
+    // If specId not provided, use currentExecutingSpecId (backward compatibility)
+    const targetSpecId = specId || this.currentExecutingSpecId;
 
-    // Task 2.3: Clear tracked agentIds to prevent stale event handling
-    this.trackedAgentIds.clear();
-    this.pendingEvents.clear();
-
-    // Generate summary if we executed anything
-    if (this.executedPhases.length > 0) {
-      this.generateSummary();
+    if (!targetSpecId) {
+      console.log('[AutoExecutionService] No spec to stop');
+      return;
     }
 
-    // Stop auto execution for the current spec
-    if (this.currentExecutingSpecId) {
-      specStore.stopAutoExecution(this.currentExecutingSpecId);
+    const context = this.executionContexts.get(targetSpecId);
+
+    if (context) {
+      // Clean up context timeout
+      disposeExecutionContext(context);
+
+      // Remove context from map
+      this.executionContexts.delete(targetSpecId);
+
+      // Clean up agentToSpecMap entries for this spec
+      for (const [agentId, mappedSpecId] of this.agentToSpecMap) {
+        if (mappedSpecId === targetSpecId) {
+          this.agentToSpecMap.delete(agentId);
+          this.trackedAgentIds.delete(agentId);
+        }
+      }
+
+      // Generate summary if we executed anything
+      if (context.executedPhases.length > 0) {
+        this.generateSummaryFromContext(context);
+      }
+    }
+
+    // Stop auto execution in store
+    specStore.stopAutoExecution(targetSpecId);
+
+    // Update currentExecutingSpecId if we stopped it
+    if (this.currentExecutingSpecId === targetSpecId) {
       this.currentExecutingSpecId = null;
     }
   }
 
   // ============================================================
-  // Task 4.3: Retry from failed phase
-  // Requirements: 8.3
+  // Task 8.1: Retry from failed phase with specId parameter
+  // Requirements: 6.2, 7.1, 8.3
   // ============================================================
-  retryFrom(fromPhase: WorkflowPhase): boolean {
+  retryFrom(fromPhase: WorkflowPhase, specId?: string): boolean {
     const workflowStore = useWorkflowStore.getState();
     const specStore = useSpecStore.getState();
 
-    // Check if specDetail is available
-    if (!specStore.specDetail) {
+    // If specId not provided, use current specDetail (backward compatibility)
+    const targetSpecId = specId || specStore.specDetail?.metadata.name;
+
+    if (!targetSpecId) {
       console.error('[AutoExecutionService] specDetail is not available');
       return false;
     }
-
-    const specId = specStore.specDetail.metadata.name;
 
     // Check if phase is permitted
     if (!workflowStore.autoExecutionPermissions[fromPhase]) {
@@ -446,20 +557,31 @@ export class AutoExecutionService {
       return false;
     }
 
-    // Reset execution start time for this retry
-    if (!this.executionStartTime) {
-      this.executionStartTime = Date.now();
+    // Get or create execution context
+    let context = this.executionContexts.get(targetSpecId);
+    if (!context && specStore.specDetail) {
+      context = createExecutionContext({
+        specId: targetSpecId,
+        specDetail: specStore.specDetail,
+      });
+      this.executionContexts.set(targetSpecId, context);
     }
 
-    // Set currentExecutingSpecId if not set
-    if (!this.currentExecutingSpecId) {
-      this.currentExecutingSpecId = specId;
+    if (!context) {
+      console.error('[AutoExecutionService] Cannot create execution context');
+      return false;
     }
+
+    // Update context status
+    context.executionStatus = 'running';
+
+    // Update currentExecutingSpecId for backward compatibility
+    this.currentExecutingSpecId = targetSpecId;
 
     // Start execution for the spec
-    specStore.startAutoExecution(specId);
+    specStore.startAutoExecution(targetSpecId);
 
-    this.executePhase(fromPhase);
+    this.executePhaseForContext(context, fromPhase);
 
     return true;
   }
@@ -478,61 +600,67 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 3.1: Direct Status Change Handler
-  // Requirements: 1.2, 1.3, 1.4, 2.3, 3.1, 3.2, 3.3
+  // Task 4.1: Direct Status Change Handler with AgentId-SpecId resolution
+  // Requirements: 1.2, 1.3, 1.4, 2.3, 2.4, 3.1, 3.2, 3.3
   // ============================================================
   private handleDirectStatusChange(agentId: string, status: string): void {
     console.log(`[AutoExecutionService] handleDirectStatusChange: agentId=${agentId}, status=${status}`);
 
-    // Only process if auto-executing for the current spec
-    if (!this.currentExecutingSpecId) {
-      console.log('[AutoExecutionService] No spec executing, ignoring status change');
-      return;
-    }
+    // Task 4.1: Resolve specId from agentToSpecMap
+    const specId = this.agentToSpecMap.get(agentId);
 
-    const specStore = useSpecStore.getState();
-    const runtime = specStore.getAutoExecutionRuntime(this.currentExecutingSpecId);
-    if (!runtime.isAutoExecuting) {
-      console.log('[AutoExecutionService] Not auto-executing, ignoring status change');
-      return;
-    }
-
-    // Race condition fix: Always buffer events for unknown agentIds
-    // They will be processed after executePhase returns with the agentId
-    if (!this.trackedAgentIds.has(agentId)) {
-      console.log(`[AutoExecutionService] AgentId ${agentId} not tracked, buffering status=${status}`);
+    if (!specId) {
+      // Task 2.4: Buffer events for unknown agentIds
+      console.log(`[AutoExecutionService] AgentId ${agentId} not mapped, buffering status=${status}`);
       this.pendingEvents.set(agentId, status);
       return;
     }
 
-    const currentPhase = runtime.currentAutoPhase;
-    console.log(`[AutoExecutionService] Processing status change: agentId=${agentId}, status=${status}, currentPhase=${currentPhase}`);
+    const context = this.executionContexts.get(specId);
+    if (!context) {
+      console.log(`[AutoExecutionService] No context for specId=${specId}, ignoring status change`);
+      return;
+    }
 
-    // Task 3.1, 3.2: Status-based completion detection (not state-transition based)
+    const specStore = useSpecStore.getState();
+    const runtime = specStore.getAutoExecutionRuntime(specId);
+    if (!runtime.isAutoExecuting) {
+      console.log(`[AutoExecutionService] Spec ${specId} not auto-executing, ignoring status change`);
+      return;
+    }
+
+    // Check if agent is tracked in this context
+    if (!context.trackedAgentIds.has(agentId)) {
+      console.log(`[AutoExecutionService] AgentId ${agentId} not tracked in context ${specId}, buffering`);
+      this.pendingEvents.set(agentId, status);
+      return;
+    }
+
+    const currentPhase = context.currentPhase;
+    console.log(`[AutoExecutionService] Processing status change: agentId=${agentId}, status=${status}, specId=${specId}, currentPhase=${currentPhase}`);
+
+    // Task 4.2: Handle completion event for the specific context
     if (status === 'completed') {
-      // Get agent info to determine the phase
       const agent = useAgentStore.getState().getAgentById(agentId);
       console.log(`[AutoExecutionService] Completed: agent?.phase=${agent?.phase}, currentPhase=${currentPhase}`);
       if (agent?.phase === 'document-review') {
-        this.handleDocumentReviewCompleted();
+        this.handleDocumentReviewCompletedForContext(context);
       } else if (agent?.phase === 'document-review-reply') {
-        this.handleDocumentReviewReplyCompleted();
+        this.handleDocumentReviewReplyCompletedForContext(context);
       } else if (currentPhase) {
-        // Only proceed with regular phase completion if currentPhase is set
-        this.handleAgentCompleted(currentPhase);
+        this.handleAgentCompletedForContext(context, currentPhase);
       } else {
         console.warn('[AutoExecutionService] No currentPhase set, cannot handle completion');
       }
     } else if (status === 'error' || status === 'failed') {
-      // Task 3.3: Error handling
+      // Task 4.3: Error handling for specific context
       const agent = useAgentStore.getState().getAgentById(agentId);
       if (agent?.phase === 'document-review' || agent?.phase === 'document-review-reply') {
-        this.handleDocumentReviewFailed(agent.phase, 'Agent execution failed');
+        this.handleDocumentReviewFailedForContext(context, agent.phase, 'Agent execution failed');
       } else if (currentPhase) {
-        this.handleAgentFailed(currentPhase, 'Agent execution failed');
+        this.handleAgentFailedForContext(context, currentPhase, 'Agent execution failed');
       }
     }
-    // Task 3.4: running, interrupted, hang are ignored (UI update is handled by AgentStore)
   }
 
   // ============================================================
@@ -540,7 +668,7 @@ export class AutoExecutionService {
   // Requirements: 2.1, 2.3
   // ============================================================
   isTrackedAgent(agentId: string): boolean {
-    return this.trackedAgentIds.has(agentId);
+    return this.trackedAgentIds.has(agentId) || this.agentToSpecMap.has(agentId);
   }
 
   // ============================================================
@@ -550,11 +678,15 @@ export class AutoExecutionService {
     trackedAgentIds: string[];
     pendingEvents: [string, string][];
     ipcListenerRegistered: boolean;
+    executionContexts: string[];
+    agentToSpecMap: [string, string][];
   } {
     return {
       trackedAgentIds: Array.from(this.trackedAgentIds),
       pendingEvents: Array.from(this.pendingEvents.entries()),
       ipcListenerRegistered: !!this.unsubscribeIPC,
+      executionContexts: Array.from(this.executionContexts.keys()),
+      agentToSpecMap: Array.from(this.agentToSpecMap.entries()),
     };
   }
 
@@ -562,75 +694,72 @@ export class AutoExecutionService {
   // E2E/Test: Reset internal state for test isolation
   // ============================================================
   resetForTest(): void {
-    this.trackedAgentIds.clear();
-    this.pendingEvents.clear();
-    this.executedPhases = [];
-    this.executedValidations = [];
-    this.errors = [];
-    this.executionStartTime = null;
-    this.currentExecutingSpecId = null;
-    this.clearTimeout();
+    this.forceCleanupAll();
     console.log('[AutoExecutionService] State reset for test');
   }
 
   // ============================================================
-  // Helper: Get current executing specId
+  // Helper: Get current executing specId (backward compatibility)
   // ============================================================
   getCurrentExecutingSpecId(): string | null {
     return this.currentExecutingSpecId;
   }
 
   // ============================================================
-  // Helper: Set auto execution status for current spec
+  // Helper: Set auto execution status for a specific spec
   // ============================================================
-  private setStatus(status: import('../types').AutoExecutionStatus): void {
-    if (this.currentExecutingSpecId) {
-      useSpecStore.getState().setAutoExecutionStatus(this.currentExecutingSpecId, status);
+  private setStatusForSpec(specId: string, status: import('../types').AutoExecutionStatus): void {
+    const context = this.executionContexts.get(specId);
+    if (context) {
+      context.executionStatus = status;
     }
+    useSpecStore.getState().setAutoExecutionStatus(specId, status);
   }
 
   // ============================================================
-  // Helper: Set auto execution phase for current spec
+  // Helper: Set auto execution phase for a specific spec
   // ============================================================
-  private setPhase(phase: WorkflowPhase | null): void {
-    if (this.currentExecutingSpecId) {
-      useSpecStore.getState().setAutoExecutionPhase(this.currentExecutingSpecId, phase);
+  private setPhaseForSpec(specId: string, phase: WorkflowPhase | null): void {
+    const context = this.executionContexts.get(specId);
+    if (context) {
+      context.currentPhase = phase;
     }
+    useSpecStore.getState().setAutoExecutionPhase(specId, phase);
   }
 
   // ============================================================
   // Task 5.1: Agent state monitoring (DEPRECATED)
   // Requirements: 6.1, 6.3
-  // Note: Completion detection has been moved to setupDirectIPCListener
-  //       This method is now empty and kept for backward compatibility
-  //       The UI updates are handled by AgentStore's onAgentStatusChange
   // ============================================================
   private setupAgentListener(): void {
     // DEPRECATED: Completion detection now uses IPC direct subscription
-    // See setupDirectIPCListener() for the new implementation
-    // This empty subscription is kept to maintain the unsubscribe pattern
     this.unsubscribeAgentStore = useAgentStore.subscribe(() => {
       // No-op: Completion detection moved to IPC direct subscription
     });
   }
 
   // ============================================================
-  // Task 5.2: Agent completion handling
-  // Requirements: 2.3, 6.2
+  // Task 4.2: Agent completion handling for ExecutionContext
+  // Requirements: 1.3, 2.3, 6.2
   // ============================================================
-  private handleAgentCompleted(completedPhase: WorkflowPhase): void {
-    console.log(`[AutoExecutionService] Phase ${completedPhase} completed`);
+  private handleAgentCompletedForContext(context: ExecutionContext, completedPhase: WorkflowPhase): void {
+    console.log(`[AutoExecutionService] Phase ${completedPhase} completed for spec ${context.specId}`);
 
-    this.clearTimeout();
-    this.executedPhases.push(completedPhase);
+    // Clear timeout for this context
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+      context.timeoutId = null;
+    }
 
-    // Auto-approve the completed phase so next phase doesn't get blocked by prompt checks
-    this.autoApproveCompletedPhase(completedPhase).then(() => {
+    context.executedPhases.push(completedPhase);
+
+    // Auto-approve the completed phase
+    this.autoApproveCompletedPhaseForContext(context, completedPhase).then(() => {
       // Check for validation after this phase
-      this.executeValidationIfEnabled(completedPhase).then(() => {
-        // Task 7.2: After tasks phase, check if we should execute document review
+      this.executeValidationIfEnabledForContext(context, completedPhase).then(() => {
+        // After tasks phase, check if we should execute document review
         if (completedPhase === 'tasks') {
-          this.handleTasksCompletedForDocumentReview();
+          this.handleTasksCompletedForDocumentReviewForContext(context);
           return;
         }
 
@@ -639,171 +768,163 @@ export class AutoExecutionService {
 
         if (nextPhase) {
           // Continue to next phase
-          this.executePhase(nextPhase);
+          this.executePhaseForContext(context, nextPhase);
         } else {
           // All phases completed
-          this.completeAutoExecution();
+          this.completeAutoExecutionForContext(context);
         }
       });
     });
   }
 
   // ============================================================
-  // Task 7.2: Document Review Workflow Integration
-  // Requirements: 7.1, 7.2, 7.3
+  // Task 4.3: Agent failure handling for ExecutionContext
+  // Requirements: 3.2, 3.3
+  // ============================================================
+  private handleAgentFailedForContext(context: ExecutionContext, phase: WorkflowPhase, error: string): void {
+    console.error(`[AutoExecutionService] Phase ${phase} failed for spec ${context.specId}: ${error}`);
+
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+      context.timeoutId = null;
+    }
+
+    context.errors.push(error);
+    context.executionStatus = 'error';
+
+    const workflowStore = useWorkflowStore.getState();
+    this.setStatusForSpec(context.specId, 'error');
+    workflowStore.setLastFailedPhase(phase);
+
+    notify.error(`フェーズ "${phase}" でエラーが発生しました: ${error}`);
+
+    this.generateSummaryFromContext(context);
+  }
+
+  // ============================================================
+  // Document Review Workflow Integration for ExecutionContext
   // ============================================================
 
-  /**
-   * Handle tasks phase completion for document review
-   * Executes document review if not skipped, otherwise continues to impl
-   */
-  private async handleTasksCompletedForDocumentReview(): Promise<void> {
+  private async handleTasksCompletedForDocumentReviewForContext(context: ExecutionContext): Promise<void> {
     const workflowStore = useWorkflowStore.getState();
     const { documentReviewOptions } = workflowStore;
 
-    // Check if document review should be skipped (autoExecutionFlag === 'skip')
     if (documentReviewOptions.autoExecutionFlag === 'skip') {
       console.log('[AutoExecutionService] Document review skipped');
-      // Skip document review, continue to next phase
       const nextPhase = this.getNextPermittedPhase('tasks');
       if (nextPhase) {
-        this.executePhase(nextPhase);
+        this.executePhaseForContext(context, nextPhase);
       } else {
-        this.completeAutoExecution();
+        this.completeAutoExecutionForContext(context);
       }
       return;
     }
 
-    // Execute document review
-    await this.executeDocumentReview();
+    await this.executeDocumentReviewForContext(context);
   }
 
-  /**
-   * Execute document review agent
-   */
-  private async executeDocumentReview(): Promise<void> {
-    const specDetail = useSpecStore.getState().specDetail;
+  private async executeDocumentReviewForContext(context: ExecutionContext): Promise<void> {
     const workflowStore = useWorkflowStore.getState();
 
-    if (!specDetail) {
-      this.handleDocumentReviewFailed('document-review', 'specDetail is not available');
-      return;
-    }
-
     try {
-      console.log('[AutoExecutionService] Executing document review');
-      await window.electronAPI.executeDocumentReview(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
+      console.log(`[AutoExecutionService] Executing document review for spec ${context.specId}`);
+      const agentInfo = await window.electronAPI.executeDocumentReview(
+        context.specId,
+        context.specId,
         workflowStore.commandPrefix
       );
+
+      // Track the agent
+      if (agentInfo?.agentId) {
+        this.agentToSpecMap.set(agentInfo.agentId, context.specId);
+        context.trackedAgentIds.add(agentInfo.agentId);
+        this.trackedAgentIds.add(agentInfo.agentId);
+      }
     } catch (error) {
-      this.handleDocumentReviewFailed(
+      this.handleDocumentReviewFailedForContext(
+        context,
         'document-review',
         error instanceof Error ? error.message : 'Document review execution failed'
       );
     }
   }
 
-  /**
-   * Handle document-review agent completion
-   * Requirements: 7.2
-   */
-  private async handleDocumentReviewCompleted(): Promise<void> {
-    console.log('[AutoExecutionService] Document review completed');
+  private async handleDocumentReviewCompletedForContext(context: ExecutionContext): Promise<void> {
+    console.log(`[AutoExecutionService] Document review completed for spec ${context.specId}`);
 
-    this.clearTimeout();
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+      context.timeoutId = null;
+    }
 
     const workflowStore = useWorkflowStore.getState();
     const { documentReviewOptions } = workflowStore;
 
-    // If autoExecutionFlag is 'run', auto-execute document-review-reply
-    // If 'pause', wait for user to manually execute reply
     if (documentReviewOptions.autoExecutionFlag === 'run') {
-      await this.executeDocumentReviewReply();
+      await this.executeDocumentReviewReplyForContext(context);
     } else {
-      // Pause for user to manually execute reply - Task 5.1: use specStore
-      this.setStatus('paused');
+      this.setStatusForSpec(context.specId, 'paused');
     }
   }
 
-  /**
-   * Execute document-review-reply agent
-   * Requirements: auto-execution-document-review-autofix 1.3 - Pass autofix=true in auto-execution mode
-   */
-  private async executeDocumentReviewReply(): Promise<void> {
-    const specDetail = useSpecStore.getState().specDetail;
+  private async executeDocumentReviewReplyForContext(context: ExecutionContext): Promise<void> {
     const workflowStore = useWorkflowStore.getState();
 
-    if (!specDetail) {
-      this.handleDocumentReviewFailed('document-review-reply', 'specDetail is not available');
-      return;
-    }
-
     // Get current round number from spec.json
-    const specJson = await window.electronAPI.readSpecJson(specDetail.metadata.path);
+    const specJson = await window.electronAPI.readSpecJson(context.specPath);
     const currentRound = (specJson as any).documentReview?.currentRound || 1;
 
     try {
-      console.log(`[AutoExecutionService] Executing document review reply for round ${currentRound}`);
-      // In auto-execution mode, always pass autofix=true to enable automatic fixes
-      await window.electronAPI.executeDocumentReviewReply(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
+      console.log(`[AutoExecutionService] Executing document review reply for round ${currentRound}, spec ${context.specId}`);
+      const agentInfo = await window.electronAPI.executeDocumentReviewReply(
+        context.specId,
+        context.specId,
         currentRound,
         workflowStore.commandPrefix,
-        true // autofix=true in auto-execution mode (Requirements: auto-execution-document-review-autofix 1.3)
+        true // autofix=true in auto-execution mode
       );
+
+      // Track the agent
+      if (agentInfo?.agentId) {
+        this.agentToSpecMap.set(agentInfo.agentId, context.specId);
+        context.trackedAgentIds.add(agentInfo.agentId);
+        this.trackedAgentIds.add(agentInfo.agentId);
+      }
     } catch (error) {
-      this.handleDocumentReviewFailed(
+      this.handleDocumentReviewFailedForContext(
+        context,
         'document-review-reply',
         error instanceof Error ? error.message : 'Document review reply execution failed'
       );
     }
   }
 
-  /**
-   * Handle document-review-reply agent completion
-   * Requirements: 7.5 - Pause for user confirmation after round completes
-   * Requirements: auto-execution-document-review-autofix 2.1, 2.3, 2.4, 2.5, 4.1, 4.3
-   *   - Parse reply file to extract fixRequiredCount
-   *   - Auto-approve when fixRequiredCount === 0
-   *   - Fallback to pendingReviewConfirmation on error or fixRequiredCount > 0
-   * Task 5.1: Use specStore for auto execution state
-   */
-  private async handleDocumentReviewReplyCompleted(): Promise<void> {
-    console.log('[AutoExecutionService] Document review reply completed');
+  private async handleDocumentReviewReplyCompletedForContext(context: ExecutionContext): Promise<void> {
+    console.log(`[AutoExecutionService] Document review reply completed for spec ${context.specId}`);
 
-    this.clearTimeout();
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+      context.timeoutId = null;
+    }
 
     const workflowStore = useWorkflowStore.getState();
-    const specStore = useSpecStore.getState();
-    const specDetail = specStore.specDetail;
-
-    // Fallback to pendingReviewConfirmation if specDetail is not available
-    if (!specDetail) {
-      console.warn('[AutoExecutionService] specDetail not available, falling back to pendingReviewConfirmation');
-      this.setStatus('paused');
-      workflowStore.setPendingReviewConfirmation(true);
-      return;
-    }
 
     try {
       // Get current round from spec.json
-      const specJson = await window.electronAPI.readSpecJson(specDetail.metadata.path);
+      const specJson = await window.electronAPI.readSpecJson(context.specPath);
       const currentRound = (specJson as any).documentReview?.currentRound || 1;
 
       console.log(`[AutoExecutionService] Parsing reply file for round ${currentRound}`);
 
       // Parse reply file to get fixRequiredCount
-      const parseResult = await window.electronAPI.parseReplyFile(specDetail.metadata.path, currentRound);
+      const parseResult = await window.electronAPI.parseReplyFile(context.specPath, currentRound);
 
       console.log(`[AutoExecutionService] parseReplyFile result: fixRequiredCount=${parseResult.fixRequiredCount}`);
 
       if (parseResult.fixRequiredCount === 0) {
         // Auto-approve document review
         console.log('[AutoExecutionService] No fixes required, auto-approving document review');
-        await window.electronAPI.approveDocumentReview(specDetail.metadata.path);
+        await window.electronAPI.approveDocumentReview(context.specPath);
 
         notify.success('ドキュメントレビューが自動承認されました（修正不要）');
 
@@ -811,40 +932,40 @@ export class AutoExecutionService {
         const { autoExecutionPermissions } = workflowStore;
         if (autoExecutionPermissions.impl) {
           console.log('[AutoExecutionService] Continuing to impl phase');
-          this.setStatus('running');
-          this.executePhase('impl');
+          this.setStatusForSpec(context.specId, 'running');
+          this.executePhaseForContext(context, 'impl');
         } else {
           console.log('[AutoExecutionService] impl not permitted, completing auto-execution');
-          this.completeAutoExecution();
+          this.completeAutoExecutionForContext(context);
         }
       } else {
         // Fixes required, pause for user confirmation
         console.log(`[AutoExecutionService] ${parseResult.fixRequiredCount} fixes required, waiting for user confirmation`);
-        this.setStatus('paused');
+        this.setStatusForSpec(context.specId, 'paused');
         workflowStore.setPendingReviewConfirmation(true);
       }
     } catch (error) {
-      // Fallback to pendingReviewConfirmation on error
       console.error('[AutoExecutionService] Error parsing reply file, falling back to pendingReviewConfirmation', error);
-      this.setStatus('paused');
+      this.setStatusForSpec(context.specId, 'paused');
       workflowStore.setPendingReviewConfirmation(true);
     }
   }
 
-  /**
-   * Handle document review failure
-   * Task 5.1: Use specStore for auto execution state
-   */
-  private handleDocumentReviewFailed(phase: string, error: string): void {
-    console.error(`[AutoExecutionService] ${phase} failed: ${error}`);
+  private handleDocumentReviewFailedForContext(context: ExecutionContext, phase: string, error: string): void {
+    console.error(`[AutoExecutionService] ${phase} failed for spec ${context.specId}: ${error}`);
 
-    this.clearTimeout();
-    this.errors.push(error);
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+      context.timeoutId = null;
+    }
 
-    this.setStatus('error');
+    context.errors.push(error);
+    context.executionStatus = 'error';
+
+    this.setStatusForSpec(context.specId, 'error');
     notify.error(`${phase}でエラーが発生しました: ${error}`);
 
-    this.generateSummary();
+    this.generateSummaryFromContext(context);
   }
 
   /**
@@ -853,63 +974,68 @@ export class AutoExecutionService {
   continueToNextReviewRound(): void {
     const workflowStore = useWorkflowStore.getState();
     workflowStore.setPendingReviewConfirmation(false);
-    this.setStatus('running');
 
-    this.executeDocumentReview();
+    // Find the first paused context and continue
+    for (const [specId, context] of this.executionContexts) {
+      if (context.executionStatus === 'paused') {
+        this.setStatusForSpec(specId, 'running');
+        this.executeDocumentReviewForContext(context);
+        break;
+      }
+    }
   }
 
   /**
    * Approve review and continue to impl phase (called by user action)
-   * Task 5.1: Use specStore for auto execution state
    */
   async approveReviewAndContinue(): Promise<void> {
-    const specStore = useSpecStore.getState();
-    const specDetail = specStore.specDetail;
     const workflowStore = useWorkflowStore.getState();
 
-    if (!specDetail) return;
+    // Find the first paused context
+    for (const [specId, context] of this.executionContexts) {
+      if (context.executionStatus === 'paused') {
+        try {
+          await window.electronAPI.approveDocumentReview(context.specPath);
+          workflowStore.setPendingReviewConfirmation(false);
+          this.setStatusForSpec(specId, 'running');
 
-    try {
-      await window.electronAPI.approveDocumentReview(specDetail.metadata.path);
-      workflowStore.setPendingReviewConfirmation(false);
-      this.setStatus('running');
-
-      // Continue to next phase (impl)
-      const nextPhase = this.getNextPermittedPhase('tasks');
-      if (nextPhase) {
-        this.executePhase(nextPhase);
-      } else {
-        this.completeAutoExecution();
+          // Continue to next phase (impl)
+          const nextPhase = this.getNextPermittedPhase('tasks');
+          if (nextPhase) {
+            this.executePhaseForContext(context, nextPhase);
+          } else {
+            this.completeAutoExecutionForContext(context);
+          }
+        } catch (error) {
+          notify.error('ドキュメントレビューの承認に失敗しました');
+        }
+        break;
       }
-    } catch (error) {
-      notify.error('ドキュメントレビューの承認に失敗しました');
     }
   }
 
   // ============================================================
-  // Task 5.2.1: Auto-approve completed phase
-  // Requirements: 2.5 - Approve phase immediately after successful completion
+  // Task 5.2: Auto-approve completed phase for ExecutionContext
+  // Requirements: 2.5, 4.4
   // ============================================================
-  private async autoApproveCompletedPhase(phase: WorkflowPhase): Promise<void> {
+  private async autoApproveCompletedPhaseForContext(context: ExecutionContext, phase: WorkflowPhase): Promise<void> {
     // Only requirements, design, tasks phases have approval status
     if (!['requirements', 'design', 'tasks'].includes(phase)) {
       return;
     }
 
-    const specStore = useSpecStore.getState();
-    const specDetail = specStore.specDetail;
-
-    if (!specDetail) return;
-
     try {
-      console.log(`[AutoExecutionService] Auto-approving completed phase: ${phase}`);
+      console.log(`[AutoExecutionService] Auto-approving completed phase: ${phase} for spec ${context.specId}`);
       await window.electronAPI.updateApproval(
-        specDetail.metadata.path,
+        context.specPath,
         phase as 'requirements' | 'design' | 'tasks',
         true
       );
       // Refresh spec detail to reflect the updated approval status
-      await specStore.selectSpec(specDetail.metadata);
+      const specStore = useSpecStore.getState();
+      if (specStore.specDetail?.metadata.name === context.specId) {
+        await specStore.selectSpec(context.specDetailSnapshot.metadata);
+      }
     } catch (error) {
       console.error(`[AutoExecutionService] Failed to auto-approve ${phase}:`, error);
       // Don't fail the execution, just log the error
@@ -917,48 +1043,23 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 9.1: Error handling
-  // Requirements: 8.1, 2.4
-  // Task 5.1: Use specStore for auto execution state
+  // Task 6.1: Timeout management for ExecutionContext
+  // Requirements: 3.6
   // ============================================================
-  private handleAgentFailed(phase: WorkflowPhase, error: string): void {
-    console.error(`[AutoExecutionService] Phase ${phase} failed: ${error}`);
+  private setupTimeoutForContext(context: ExecutionContext, phase: WorkflowPhase): void {
+    // Clear any existing timeout
+    if (context.timeoutId) {
+      clearTimeout(context.timeoutId);
+    }
 
-    this.clearTimeout();
-    this.errors.push(error);
-
-    const workflowStore = useWorkflowStore.getState();
-
-    this.setStatus('error');
-    workflowStore.setLastFailedPhase(phase);
-
-    notify.error(`フェーズ "${phase}" でエラーが発生しました: ${error}`);
-
-    this.generateSummary();
-  }
-
-  // ============================================================
-  // Task 5.3: Timeout handling
-  // Requirements: 6.4
-  // ============================================================
-  private setupTimeout(phase: WorkflowPhase): void {
-    this.clearTimeout();
-
-    this.currentTimeoutId = setTimeout(() => {
-      console.error(`[AutoExecutionService] Phase ${phase} timed out`);
-      this.handleAgentFailed(phase, 'Execution timed out');
+    context.timeoutId = setTimeout(() => {
+      console.error(`[AutoExecutionService] Phase ${phase} timed out for spec ${context.specId}`);
+      this.handleAgentFailedForContext(context, phase, 'Execution timed out');
     }, DEFAULT_TIMEOUT_MS);
   }
 
-  private clearTimeout(): void {
-    if (this.currentTimeoutId) {
-      clearTimeout(this.currentTimeoutId);
-      this.currentTimeoutId = null;
-    }
-  }
-
   // ============================================================
-  // Task 6.1: Auto-approval
+  // Auto-approval
   // Requirements: 2.5, 3.2
   // ============================================================
   private async autoApprovePhase(phase: 'requirements' | 'design' | 'tasks'): Promise<boolean> {
@@ -979,19 +1080,15 @@ export class AutoExecutionService {
   }
 
   // ============================================================
-  // Task 7.1: Validation execution
+  // Validation execution for ExecutionContext
   // Requirements: 4.1, 4.2, 4.3
   // ============================================================
-  private async executeValidationIfEnabled(phase: WorkflowPhase): Promise<void> {
+  private async executeValidationIfEnabledForContext(context: ExecutionContext, phase: WorkflowPhase): Promise<void> {
     const { validationOptions } = useWorkflowStore.getState();
-    const specDetail = useSpecStore.getState().specDetail;
-
-    if (!specDetail) return;
 
     let validationType: ValidationType | null = null;
 
     // Determine which validation to run based on completed phase
-    // Note: validate-impl is executed as inspection phase, not as validation option
     if (phase === 'requirements' && validationOptions.gap) {
       validationType = 'gap';
     } else if (phase === 'design' && validationOptions.design) {
@@ -1000,96 +1097,101 @@ export class AutoExecutionService {
 
     if (validationType) {
       try {
-        console.log(`[AutoExecutionService] Executing validation: ${validationType}`);
-        this.setStatus('paused');
+        console.log(`[AutoExecutionService] Executing validation: ${validationType} for spec ${context.specId}`);
+        this.setStatusForSpec(context.specId, 'paused');
 
         await window.electronAPI.executeValidation(
-          specDetail.metadata.name,
+          context.specId,
           validationType,
-          specDetail.metadata.name
+          context.specId
         );
 
-        this.executedValidations.push(validationType);
-
-        // Wait for validation to complete (simplified - in real implementation we'd listen for agent completion)
-        // For now, we'll continue after a short delay
+        // Wait for validation to complete
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        this.setStatus('running');
+        this.setStatusForSpec(context.specId, 'running');
       } catch (error) {
         console.error(`[AutoExecutionService] Validation ${validationType} failed:`, error);
-        this.errors.push(`Validation ${validationType} failed`);
-        // Note: We don't stop on validation failure in this implementation
-        // Task 7.2 would add more sophisticated handling
+        context.errors.push(`Validation ${validationType} failed`);
       }
     }
   }
 
   // ============================================================
-  // Task 8.1: Complete auto execution
-  // Requirements: 1.4
-  // Task 5.1: Use specStore for auto execution state
+  // Task 7.1: Complete auto execution for ExecutionContext
+  // Requirements: 1.4, 6.1
   // ============================================================
-  private completeAutoExecution(): void {
-    console.log('[AutoExecutionService] Auto execution completed');
+  private completeAutoExecutionForContext(context: ExecutionContext): void {
+    console.log(`[AutoExecutionService] Auto execution completed for spec ${context.specId}`);
 
-    const workflowStore = useWorkflowStore.getState();
+    context.executionStatus = 'completed';
+    this.setStatusForSpec(context.specId, 'completed');
 
-    this.setStatus('completed');
-
-    this.generateSummary();
+    this.generateSummaryFromContext(context);
 
     // Show completion notification
+    const workflowStore = useWorkflowStore.getState();
     const summary = workflowStore.executionSummary;
     if (summary) {
       notify.showCompletionSummary(summary);
     }
 
-    // Reset after a delay
-    const specIdToReset = this.currentExecutingSpecId;
+    // Task 6.1: Clean up after a delay
+    const specId = context.specId;
     setTimeout(() => {
-      if (specIdToReset) {
-        useSpecStore.getState().stopAutoExecution(specIdToReset);
-      }
+      this.cleanupCompletedContext(specId);
     }, 2000);
   }
 
+  /**
+   * Clean up a completed context
+   */
+  private cleanupCompletedContext(specId: string): void {
+    const context = this.executionContexts.get(specId);
+    if (context) {
+      disposeExecutionContext(context);
+      this.executionContexts.delete(specId);
+
+      // Clean up agentToSpecMap entries
+      for (const [agentId, mappedSpecId] of this.agentToSpecMap) {
+        if (mappedSpecId === specId) {
+          this.agentToSpecMap.delete(agentId);
+          this.trackedAgentIds.delete(agentId);
+        }
+      }
+    }
+
+    useSpecStore.getState().stopAutoExecution(specId);
+
+    if (this.currentExecutingSpecId === specId) {
+      this.currentExecutingSpecId = null;
+    }
+  }
+
   // ============================================================
-  // Task 8.2: Generate execution summary
+  // Generate execution summary from ExecutionContext
   // Requirements: 5.4
   // ============================================================
-  private generateSummary(): void {
-    const totalDuration = this.executionStartTime
-      ? Date.now() - this.executionStartTime
-      : 0;
+  private generateSummaryFromContext(context: ExecutionContext): void {
+    const totalDuration = Date.now() - context.startTime;
 
     useWorkflowStore.getState().setExecutionSummary({
-      executedPhases: [...this.executedPhases],
-      executedValidations: [...this.executedValidations],
+      executedPhases: [...context.executedPhases],
+      executedValidations: [], // TODO: Track validations per context
       totalDuration,
-      errors: [...this.errors],
+      errors: [...context.errors],
     });
   }
 
   // ============================================================
-  // Private: Execute a phase
-  // Task 2.2, 4.3: AgentId tracking and race condition prevention
-  // Requirements: 2.1, 4.3
-  // Task 5.1: Use specStore for auto execution state
+  // Task 3.2: Execute phase for ExecutionContext
+  // Requirements: 2.1, 2.2, 4.3
   // ============================================================
-  private async executePhase(phase: WorkflowPhase): Promise<void> {
-    const specStore = useSpecStore.getState();
-    const specDetail = specStore.specDetail;
+  private async executePhaseForContext(context: ExecutionContext, phase: WorkflowPhase): Promise<void> {
+    console.log(`[AutoExecutionService] Executing phase: ${phase} for spec ${context.specId}`);
 
-    if (!specDetail) {
-      this.handleAgentFailed(phase, 'specDetail is not available');
-      return;
-    }
-
-    console.log(`[AutoExecutionService] Executing phase: ${phase}`);
-
-    // Validate preconditions
-    const precondition = await this.validatePreconditions(phase);
+    // Validate preconditions using snapshot
+    const precondition = await this.validatePreconditions(phase, context.specDetailSnapshot);
 
     if (!precondition.valid) {
       if (precondition.requiresApproval) {
@@ -1100,54 +1202,54 @@ export class AutoExecutionService {
             prevPhase as 'requirements' | 'design' | 'tasks'
           );
           if (!approved) {
-            this.handleAgentFailed(phase, `Failed to auto-approve ${prevPhase}`);
+            this.handleAgentFailedForContext(context, phase, `Failed to auto-approve ${prevPhase}`);
             return;
           }
         }
       } else if (precondition.waitingForAgent) {
-        // Wait for agent to complete - Task 5.1: use specStore
-        this.setStatus('paused');
+        this.setStatusForSpec(context.specId, 'paused');
         return;
       } else {
-        this.handleAgentFailed(phase, precondition.error || 'Precondition validation failed');
+        this.handleAgentFailedForContext(context, phase, precondition.error || 'Precondition validation failed');
         return;
       }
     }
 
-    // Update current phase - Task 5.1: use specStore
-    this.setPhase(phase);
+    // Update current phase
+    context.currentPhase = phase;
+    this.setPhaseForSpec(context.specId, phase);
 
     // Setup timeout
-    this.setupTimeout(phase);
+    this.setupTimeoutForContext(context, phase);
 
     try {
       // Execute the phase and get agent info with agentId
       const agentInfo = await window.electronAPI.executePhase(
-        specDetail.metadata.name,
+        context.specId,
         phase,
-        specDetail.metadata.name
+        context.specId
       );
 
-      // Task 2.2: Add agentId to tracked set immediately after getting the response
+      // Task 3.2: Register agentId to specId mapping
       if (agentInfo && agentInfo.agentId) {
-        console.log(`[AutoExecutionService] executePhase returned agentId=${agentInfo.agentId}, adding to trackedAgentIds`);
+        console.log(`[AutoExecutionService] executePhase returned agentId=${agentInfo.agentId}, mapping to specId=${context.specId}`);
+        this.agentToSpecMap.set(agentInfo.agentId, context.specId);
+        context.trackedAgentIds.add(agentInfo.agentId);
         this.trackedAgentIds.add(agentInfo.agentId);
 
-        // Race condition fix: Process any buffered events for this agentId
-        // Events may have arrived before we knew the agentId
+        // Process any buffered events for this agentId
         const bufferedStatus = this.pendingEvents.get(agentInfo.agentId);
-        console.log(`[AutoExecutionService] Checking pendingEvents for ${agentInfo.agentId}: bufferedStatus=${bufferedStatus}`);
         if (bufferedStatus) {
           console.log(`[AutoExecutionService] Processing buffered status=${bufferedStatus} for agentId=${agentInfo.agentId}`);
           this.pendingEvents.delete(agentInfo.agentId);
-          // Process immediately since trackedAgentIds now contains this agentId
           this.handleDirectStatusChange(agentInfo.agentId, bufferedStatus);
         }
       } else {
         console.warn('[AutoExecutionService] executePhase did not return agentId', agentInfo);
       }
     } catch (error) {
-      this.handleAgentFailed(
+      this.handleAgentFailedForContext(
+        context,
         phase,
         error instanceof Error ? error.message : 'Phase execution failed'
       );

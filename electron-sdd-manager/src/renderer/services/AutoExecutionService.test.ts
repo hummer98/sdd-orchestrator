@@ -10,7 +10,8 @@ import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/
 import { useAgentStore } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import type { WorkflowPhase } from '../types/workflow';
-import type { SpecAutoExecutionState } from '../types/index';
+import type { SpecAutoExecutionState, SpecDetail } from '../types/index';
+import { createExecutionContext } from '../types/executionContext';
 
 // Mock electronAPI
 const mockElectronAPI = {
@@ -1408,6 +1409,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('review-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('review-agent-1', 'test-spec');
+      const ctxReview = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      ctxReview.trackedAgentIds.add('review-agent-1');
+      (service as any).executionContexts.set('test-spec', ctxReview);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review completion via IPC callback
@@ -1943,6 +1952,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('review-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('review-agent-1', 'test-spec');
+      const ctxAutofix = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      ctxAutofix.trackedAgentIds.add('review-agent-1');
+      (service as any).executionContexts.set('test-spec', ctxAutofix);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review completion via IPC callback
@@ -2036,6 +2053,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('reply-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('reply-agent-1', 'test-spec');
+      const context = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      context.trackedAgentIds.add('reply-agent-1');
+      (service as any).executionContexts.set('test-spec', context);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review-reply completion via IPC callback
@@ -2092,6 +2117,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('reply-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('reply-agent-1', 'test-spec');
+      const context2 = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      context2.trackedAgentIds.add('reply-agent-1');
+      (service as any).executionContexts.set('test-spec', context2);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review-reply completion
@@ -2178,6 +2211,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('reply-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('reply-agent-1', 'test-spec');
+      const context3 = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      context3.trackedAgentIds.add('reply-agent-1');
+      (service as any).executionContexts.set('test-spec', context3);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review-reply completion via IPC callback
@@ -2234,6 +2275,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('reply-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('reply-agent-1', 'test-spec');
+      const context4 = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      context4.trackedAgentIds.add('reply-agent-1');
+      (service as any).executionContexts.set('test-spec', context4);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Simulate document-review-reply completion
@@ -2298,6 +2347,14 @@ describe('AutoExecutionService', () => {
       // Manually set currentExecutingSpecId and add agent to tracked set
       (service as any).currentExecutingSpecId = 'test-spec';
       (service as any).trackedAgentIds.add('reply-agent-1');
+      // auto-execution-parallel-spec: Also set agentToSpecMap and executionContext
+      (service as any).agentToSpecMap.set('reply-agent-1', 'test-spec');
+      const context5 = createExecutionContext({
+        specId: 'test-spec',
+        specDetail: mockSpecDetail as SpecDetail,
+      });
+      context5.trackedAgentIds.add('reply-agent-1');
+      (service as any).executionContexts.set('test-spec', context5);
       useSpecStore.getState().startAutoExecution('test-spec');
 
       // Verify callback is set

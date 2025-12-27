@@ -375,6 +375,110 @@ describe('Mobile UI Static Files', () => {
     });
   });
 
+  describe('Hash-based Router', () => {
+    let appContent: string;
+
+    beforeAll(async () => {
+      appContent = await readFile(join(REMOTE_UI_DIR, 'app.js'), 'utf-8');
+    });
+
+    it('should define Router class', () => {
+      expect(appContent).toContain('class Router');
+    });
+
+    it('should implement route registration with on() method', () => {
+      expect(appContent).toContain('on(pattern, handler)');
+    });
+
+    it('should implement navigation with navigate() method', () => {
+      expect(appContent).toContain('navigate(path)');
+      expect(appContent).toContain('window.location.hash');
+    });
+
+    it('should listen to hashchange events', () => {
+      expect(appContent).toContain("window.addEventListener('hashchange'");
+    });
+
+    it('should implement route matching with params extraction', () => {
+      expect(appContent).toContain('matchRoute(pattern, path)');
+      expect(appContent).toContain("patternParts[i].startsWith(':')");
+    });
+
+    it('should define list view route (/)' , () => {
+      expect(appContent).toContain("this.router.on('/'");
+    });
+
+    it('should define spec detail route (/spec/:name)', () => {
+      expect(appContent).toContain("this.router.on('/spec/:name'");
+    });
+
+    it('should define bug detail route (/bug/:name)', () => {
+      expect(appContent).toContain("this.router.on('/bug/:name'");
+    });
+
+    it('should implement back() method for returning to list', () => {
+      expect(appContent).toContain('back()');
+      expect(appContent).toContain("this.navigate('/')");
+    });
+  });
+
+  describe('View Management', () => {
+    let appContent: string;
+    let htmlContent: string;
+
+    beforeAll(async () => {
+      appContent = await readFile(join(REMOTE_UI_DIR, 'app.js'), 'utf-8');
+      htmlContent = await readFile(join(REMOTE_UI_DIR, 'index.html'), 'utf-8');
+    });
+
+    it('should have view-list wrapper in HTML', () => {
+      expect(htmlContent).toContain('id="view-list"');
+    });
+
+    it('should implement showView() method', () => {
+      expect(appContent).toContain('showView(viewName)');
+    });
+
+    it('should support list, spec-detail, and bug-detail views', () => {
+      expect(appContent).toContain("case 'list':");
+      expect(appContent).toContain("case 'spec-detail':");
+      expect(appContent).toContain("case 'bug-detail':");
+    });
+
+    it('should hide all views before showing requested view', () => {
+      expect(appContent).toContain("this.viewList.classList.add('hidden')");
+      expect(appContent).toContain("this.specDetail.sectionEl.classList.add('hidden')");
+      expect(appContent).toContain("this.bugDetail.sectionEl.classList.add('hidden')");
+    });
+
+    it('should scroll to top when changing views', () => {
+      expect(appContent).toContain('window.scrollTo(0, 0)');
+    });
+
+    it('should not use fixed positioning for detail sections', () => {
+      // Detail sections should not have fixed inset-0 (old overlay pattern)
+      const specDetailMatch = htmlContent.match(/id="spec-detail-section"[^>]*>/);
+      const bugDetailMatch = htmlContent.match(/id="bug-detail-section"[^>]*>/);
+
+      expect(specDetailMatch?.[0]).not.toContain('fixed');
+      expect(specDetailMatch?.[0]).not.toContain('inset-0');
+      expect(bugDetailMatch?.[0]).not.toContain('fixed');
+      expect(bugDetailMatch?.[0]).not.toContain('inset-0');
+    });
+
+    it('should use router.navigate() for spec selection', () => {
+      expect(appContent).toContain("this.router.navigate(`/spec/");
+    });
+
+    it('should use router.navigate() for bug selection', () => {
+      expect(appContent).toContain("this.router.navigate(`/bug/");
+    });
+
+    it('should use router.back() for back button handlers', () => {
+      expect(appContent).toContain('this.router.back()');
+    });
+  });
+
   describe('App Integration', () => {
     let appContent: string;
 

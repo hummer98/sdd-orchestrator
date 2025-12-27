@@ -473,7 +473,7 @@ class BugDetail {
   }
 
   /**
-   * Show bug detail panel
+   * Show bug detail panel (data setup only, view switching handled by router)
    * @param {Object} bug
    */
   show(bug) {
@@ -483,17 +483,15 @@ class BugDetail {
     if (this.titleEl) this.titleEl.textContent = bug.name;
     this.updatePhaseTag(bug.phase);
     this.updateActionButton(bug.phase);
-    this.sectionEl.classList.remove('hidden');
+    // Note: View visibility is now managed by App.showView() via router
   }
 
   /**
-   * Hide bug detail panel
+   * Hide bug detail panel (called when navigating away)
    */
   hide() {
-    if (this.sectionEl) {
-      this.sectionEl.classList.add('hidden');
-    }
     this.currentBug = null;
+    // Note: View visibility is now managed by App.showView() via router
   }
 
   /**
@@ -703,7 +701,7 @@ class SpecDetail {
   }
 
   /**
-   * Show spec detail panel
+   * Show spec detail panel (data setup only, view switching handled by router)
    * @param {Object} spec
    */
   show(spec) {
@@ -711,15 +709,15 @@ class SpecDetail {
     this.titleEl.textContent = spec.feature_name;
     this.updatePhaseTag(spec);
     this.updateNextActionButton(spec);
-    this.sectionEl.classList.remove('hidden');
+    // Note: View visibility is now managed by App.showView() via router
   }
 
   /**
-   * Hide spec detail panel
+   * Hide spec detail panel (called when navigating away)
    */
   hide() {
-    this.sectionEl.classList.add('hidden');
     this.currentSpec = null;
+    // Note: View visibility is now managed by App.showView() via router
   }
 
   /**

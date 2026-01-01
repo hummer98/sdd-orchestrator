@@ -23,8 +23,10 @@ vi.mock('../stores/bugStore', () => ({
   useBugStore: vi.fn(),
 }));
 
+// Mock electronAPI
+const mockExecuteBugCreate = vi.fn();
+
 describe('CreateBugDialog', () => {
-  const mockStartAgent = vi.fn();
   const mockSelectForProjectAgents = vi.fn();
   const mockSelectAgent = vi.fn();
   const mockAddAgent = vi.fn();
@@ -34,12 +36,19 @@ describe('CreateBugDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Mock window.electronAPI
+    Object.defineProperty(window, 'electronAPI', {
+      value: {
+        executeBugCreate: mockExecuteBugCreate,
+      },
+      writable: true,
+    });
+
     (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       currentProject: '/test/project',
     });
 
     (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      startAgent: mockStartAgent,
       selectForProjectAgents: mockSelectForProjectAgents,
       selectAgent: mockSelectAgent,
       addAgent: mockAddAgent,
@@ -156,8 +165,8 @@ describe('CreateBugDialog', () => {
   // Requirements: 4.4, 4.5, 4.6
   // ============================================================
   describe('bug creation', () => {
-    it('should call startAgent with auto-generated bug name', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
+    it('should call executeBugCreate with project path and description', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -166,38 +175,15 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(mockStartAgent).toHaveBeenCalledWith(
-          '', // specId
-          'bug-create', // phase
-          '/kiro:bug-create', // command
-          expect.arrayContaining([
-            expect.stringMatching(/^bug-\d{8}-\d{6}$/), // auto-generated name
-            '"Bug description here"',
-          ]),
-          undefined, // group
-          undefined // sessionId
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project', // projectPath
+          'Bug description here' // description
         );
       });
     });
 
-    it('should generate bug name in format bug-YYYYMMDD-HHmmss', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      fireEvent.change(screen.getByTestId('bug-description-input'), {
-        target: { value: 'Test bug' },
-      });
-      fireEvent.click(screen.getByTestId('create-button'));
-
-      await waitFor(() => {
-        const callArgs = mockStartAgent.mock.calls[0];
-        const args = callArgs[3] as string[];
-        expect(args[0]).toMatch(/^bug-\d{8}-\d{6}$/);
-      });
-    });
-
     it('should show loading state during creation', async () => {
-      mockStartAgent.mockImplementation(() => new Promise(() => {}));
+      mockExecuteBugCreate.mockImplementation(() => new Promise(() => {}));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -210,7 +196,7 @@ describe('CreateBugDialog', () => {
     });
 
     it('should call onClose on successful creation', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -224,7 +210,7 @@ describe('CreateBugDialog', () => {
     });
 
     it('should show success notification on creation', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -233,12 +219,12 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
-        expect(notify.success).toHaveBeenCalledWith('バグレポート作成を開始しました');
+        expect(notify.success).toHaveBeenCalledWith('バグレポート作成を開始しました（プロジェクトAgentパネルで進捗を確認できます）');
       });
     });
 
     it('should schedule refresh bugs after creation', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -254,8 +240,9 @@ describe('CreateBugDialog', () => {
       // and the agent flow completing successfully
     });
 
-    it('should switch to project agents panel on creation', async () => {
-      mockStartAgent.mockResolvedValue('agent-123');
+    it('should add agent to store and switch to project agents panel on creation', async () => {
+      const mockAgentInfo = { agentId: 'agent-123', specId: '', phase: 'bug-create' };
+      mockExecuteBugCreate.mockResolvedValue(mockAgentInfo);
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -264,6 +251,7 @@ describe('CreateBugDialog', () => {
       fireEvent.click(screen.getByTestId('create-button'));
 
       await waitFor(() => {
+        expect(mockAddAgent).toHaveBeenCalledWith('', mockAgentInfo);
         expect(mockSelectForProjectAgents).toHaveBeenCalled();
         expect(mockSelectAgent).toHaveBeenCalledWith('agent-123');
       });
@@ -274,23 +262,8 @@ describe('CreateBugDialog', () => {
   // Error handling
   // ============================================================
   describe('error handling', () => {
-    it('should show error when startAgent returns null', async () => {
-      mockStartAgent.mockResolvedValue(null);
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      fireEvent.change(screen.getByTestId('bug-description-input'), {
-        target: { value: 'Bug description' },
-      });
-      fireEvent.click(screen.getByTestId('create-button'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('error-message')).toBeInTheDocument();
-        expect(screen.getByText('バグレポートの作成に失敗しました')).toBeInTheDocument();
-      });
-    });
-
-    it('should show error when startAgent throws', async () => {
-      mockStartAgent.mockRejectedValue(new Error('Test error'));
+    it('should show error when executeBugCreate throws', async () => {
+      mockExecuteBugCreate.mockRejectedValue(new Error('Test error'));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {
@@ -305,7 +278,7 @@ describe('CreateBugDialog', () => {
     });
 
     it('should not close dialog on error', async () => {
-      mockStartAgent.mockRejectedValue(new Error('Test error'));
+      mockExecuteBugCreate.mockRejectedValue(new Error('Test error'));
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.change(screen.getByTestId('bug-description-input'), {

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-01-01
+
+### Fixed
+- **検査フェーズ重複表示解消**: 検査フェーズの重複表示を解消し、spec-inspectionコマンドを使用するように修正
+- **ファイル監視ベースUI同期**: ファイル監視ベースの粒度細かいUI同期を実装
+- **document-review自動連携**: document-review → document-review-reply をワンセットで実行するように修正
+- **Bug新規作成ダイアログ修正**: Bug新規作成ダイアログのコマンド実行を修正
+
 ## [0.15.0] - 2025-12-27
 
 ### Added

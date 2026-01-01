@@ -5,6 +5,7 @@
  */
 
 import type { SpecJson } from './index';
+import { normalizeInspectionState } from './inspection';
 
 // ============================================================
 // Task 1.1: WorkflowPhase Type
@@ -128,12 +129,13 @@ export function getPhaseStatus(
   phase: WorkflowPhase,
   specJson: ExtendedSpecJson
 ): PhaseStatus {
-  // 検査フェーズ - MultiRoundInspectionState構造をサポート
+  // 検査フェーズ - MultiRoundInspectionState構造をサポート（旧形式も自動変換）
+  // Bug fix: inspection-panel-display
   if (phase === 'inspection') {
-    const inspection = specJson.inspection;
+    const inspection = normalizeInspectionState(specJson.inspection);
     if (!inspection) return 'pending';
 
-    // Check new structure: status === 'completed' with GO result
+    // Check normalized structure: status === 'completed' with GO result
     if (inspection.status === 'completed') {
       const roundDetails = inspection.roundDetails;
       if (roundDetails && roundDetails.length > 0) {

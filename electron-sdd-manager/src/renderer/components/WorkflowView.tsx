@@ -20,6 +20,7 @@ import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { InspectionPanel } from './InspectionPanel';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { MultiRoundInspectionState } from '../types/inspection';
+import { normalizeInspectionState } from '../types/inspection';
 import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
 import {
   WORKFLOW_PHASES,
@@ -77,15 +78,12 @@ export function WorkflowView() {
     return reviewData || null;
   }, [specJson]);
 
-  // Get inspection state from spec.json (multi-round structure)
+  // Get inspection state from spec.json (supports both new and legacy format)
   // Task 4: InspectionPanel integration (inspection-workflow-ui feature)
+  // Bug fix: inspection-panel-display - normalize legacy format to multi-round structure
   const inspectionState = useMemo((): MultiRoundInspectionState | null => {
-    const inspectionData = (specJson as ExtendedSpecJson & { inspection?: MultiRoundInspectionState })?.inspection;
-    // Check if it's the new multi-round structure (has roundDetails)
-    if (inspectionData && 'roundDetails' in inspectionData) {
-      return inspectionData;
-    }
-    return null;
+    const inspectionData = specJson?.inspection;
+    return normalizeInspectionState(inspectionData);
   }, [specJson]);
 
   // Calculate phase statuses

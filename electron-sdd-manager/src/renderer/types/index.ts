@@ -20,9 +20,9 @@ export interface ApprovalStatus {
   tasks: PhaseApproval;
 }
 
-// Note: Legacy InspectionState (passed, inspected_at, report_file) has been removed.
-// Use MultiRoundInspectionState from './inspection' instead.
-import type { MultiRoundInspectionState } from './inspection';
+// Note: LegacyInspectionState is supported for backward compatibility with existing spec.json files.
+// Bug fix: inspection-panel-display
+import type { MultiRoundInspectionState, LegacyInspectionState } from './inspection';
 
 export interface SpecJson {
   feature_name: string;
@@ -45,8 +45,8 @@ export interface SpecJson {
   };
   /** Auto execution state (optional for backward compatibility) */
   autoExecution?: SpecAutoExecutionState;
-  /** Inspection state - uses MultiRoundInspectionState for multi-round inspection support */
-  inspection?: MultiRoundInspectionState;
+  /** Inspection state - supports both MultiRoundInspectionState and LegacyInspectionState for backward compatibility */
+  inspection?: MultiRoundInspectionState | LegacyInspectionState;
 }
 
 export interface SpecMetadata {

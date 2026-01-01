@@ -93,6 +93,110 @@ export function isInspectionRoundDetail(value: unknown): value is InspectionRoun
 }
 
 // ============================================================
+// Legacy Inspection State (for backward compatibility)
+// Bug fix: inspection-panel-display
+// ============================================================
+
+/**
+ * Legacy inspection state stored in spec.json (old structure)
+ * Used for backward compatibility with existing spec.json files
+ */
+export interface LegacyInspectionState {
+  /** Status: passed/failed or similar legacy values */
+  status: string;
+  /** Date of inspection (YYYY-MM-DD or ISO 8601) */
+  date?: string;
+  /** Report file name (e.g., "inspection-1.md") */
+  report?: string;
+}
+
+/**
+ * Type guard to check if an object is a legacy inspection state
+ */
+export function isLegacyInspectionState(value: unknown): value is LegacyInspectionState {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return false;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  // Legacy format has 'report' or 'date' but no 'roundDetails'
+  if ('roundDetails' in obj) {
+    return false;
+  }
+
+  // Must have status and optionally report/date
+  if (typeof obj.status !== 'string') {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Convert legacy inspection state to multi-round format
+ * Bug fix: inspection-panel-display
+ * @param legacy Legacy inspection state
+ * @returns MultiRoundInspectionState equivalent
+ */
+export function convertLegacyToMultiRound(legacy: LegacyInspectionState): MultiRoundInspectionState {
+  // Determine if there's a completed round based on report file
+  const hasCompletedRound = Boolean(legacy.report);
+
+  // Extract round number from report file (e.g., "inspection-1.md" -> 1)
+  const reportMatch = legacy.report?.match(/inspection-(\d+)\.md/);
+  const roundNumber = reportMatch ? parseInt(reportMatch[1], 10) : 1;
+
+  // Determine passed status from legacy status field
+  const passed = legacy.status === 'passed';
+
+  // Map legacy status to new status
+  let status: InspectionStatus = 'pending';
+  if (legacy.status === 'passed' || legacy.status === 'failed') {
+    status = 'completed';
+  } else if (legacy.status === 'in_progress') {
+    status = 'in_progress';
+  }
+
+  return {
+    status,
+    rounds: hasCompletedRound ? roundNumber : 0,
+    currentRound: null,
+    roundDetails: hasCompletedRound ? [{
+      roundNumber,
+      passed,
+      completedAt: legacy.date,
+    }] : [],
+  };
+}
+
+/**
+ * Get inspection state in MultiRoundInspectionState format, converting from legacy if needed
+ * Bug fix: inspection-panel-display
+ * @param state Inspection state (new or legacy format) or null/undefined
+ * @returns MultiRoundInspectionState or null
+ */
+export function normalizeInspectionState(
+  state: MultiRoundInspectionState | LegacyInspectionState | null | undefined
+): MultiRoundInspectionState | null {
+  if (!state) {
+    return null;
+  }
+
+  // Already in new format
+  if (isMultiRoundInspectionState(state)) {
+    return state;
+  }
+
+  // Convert from legacy format
+  if (isLegacyInspectionState(state)) {
+    return convertLegacyToMultiRound(state);
+  }
+
+  return null;
+}
+
+// ============================================================
 // Task 1: MultiRoundInspectionState Type (New Structure)
 // Requirements: 2.1, 2.2
 // ============================================================
@@ -221,15 +325,31 @@ export function getInspectionProgressIndicatorState(
 /**
  * Get the latest inspection report file name from inspection state
  * Report files follow the pattern: inspection-{roundNumber}.md
- * @param state Multi-round inspection state or null/undefined
+ * Supports both new MultiRoundInspectionState and legacy format for backward compatibility.
+ * Bug fix: inspection-panel-display
+ * @param state Multi-round inspection state, legacy state, or null/undefined
  * @returns Latest report file name (e.g., "inspection-1.md") or null if no rounds exist
  */
 export function getLatestInspectionReportFile(
-  state: MultiRoundInspectionState | null | undefined
+  state: MultiRoundInspectionState | LegacyInspectionState | null | undefined
 ): string | null {
-  const latestRound = getLatestRoundDetail(state);
-  if (!latestRound) {
+  if (!state) {
     return null;
   }
-  return `inspection-${latestRound.roundNumber}.md`;
+
+  // Check for new multi-round structure first
+  if (isMultiRoundInspectionState(state)) {
+    const latestRound = getLatestRoundDetail(state);
+    if (!latestRound) {
+      return null;
+    }
+    return `inspection-${latestRound.roundNumber}.md`;
+  }
+
+  // Handle legacy format (has 'report' field)
+  if (isLegacyInspectionState(state) && state.report) {
+    return state.report;
+  }
+
+  return null;
 }

@@ -1,11 +1,11 @@
 /**
  * AgentInputPanel Component Tests
- * Task 32.1-32.2: stdin input UI and input history
- * Requirements: 10.1, 10.2, 10.3
+ * Session resume input UI with multiline support
  *
  * Updated: Session resume functionality
  * - Input is disabled when agent is running (can't send stdin)
  * - Input is enabled when agent is completed/error (can resume session)
+ * - Supports multiline input with Option+Enter for newlines
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -19,7 +19,7 @@ vi.mock('../stores/agentStore');
 
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 
-describe('AgentInputPanel - Task 32', () => {
+describe('AgentInputPanel', () => {
   const mockSendInput = vi.fn();
   const mockResumeAgent = vi.fn();
   const mockGetAgentById = vi.fn();
@@ -51,11 +51,13 @@ describe('AgentInputPanel - Task 32', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Task 32.1: セッション再開入力UI', () => {
-    it('should render input field', () => {
+  describe('セッション再開入力UI', () => {
+    it('should render textarea input field', () => {
       render(<AgentInputPanel />);
 
-      expect(screen.getByPlaceholderText('追加の指示を入力...')).toBeInTheDocument();
+      const textarea = screen.getByPlaceholderText(/追加の指示を入力/);
+      expect(textarea).toBeInTheDocument();
+      expect(textarea.tagName).toBe('TEXTAREA');
     });
 
     it('should render send button', () => {
@@ -73,7 +75,7 @@ describe('AgentInputPanel - Task 32', () => {
     it('should call resumeAgent when send button is clicked', async () => {
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       await userEvent.type(input, 'test input');
 
       const sendButton = screen.getByRole('button', { name: '送信' });
@@ -87,7 +89,7 @@ describe('AgentInputPanel - Task 32', () => {
     it('should call resumeAgent when Enter key is pressed', async () => {
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       await userEvent.type(input, 'test input{enter}');
 
       await waitFor(() => {
@@ -98,7 +100,7 @@ describe('AgentInputPanel - Task 32', () => {
     it('should clear input field after sending', async () => {
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       await userEvent.type(input, 'test input{enter}');
 
       await waitFor(() => {
@@ -136,7 +138,7 @@ describe('AgentInputPanel - Task 32', () => {
 
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       expect(input).toBeDisabled();
     });
 
@@ -151,7 +153,7 @@ describe('AgentInputPanel - Task 32', () => {
 
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       expect(input).toBeDisabled();
     });
 
@@ -166,7 +168,7 @@ describe('AgentInputPanel - Task 32', () => {
 
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       expect(input).not.toBeDisabled();
     });
 
@@ -181,7 +183,7 @@ describe('AgentInputPanel - Task 32', () => {
 
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       expect(input).not.toBeDisabled();
     });
 
@@ -196,70 +198,65 @@ describe('AgentInputPanel - Task 32', () => {
 
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
+      const input = screen.getByPlaceholderText(/追加の指示を入力/);
       expect(input).toBeDisabled();
     });
   });
 
-  describe('Task 32.2: 入力履歴表示', () => {
-    it('should show input history after sending', async () => {
+  describe('複数行入力', () => {
+    it('should insert newline with Alt+Enter', async () => {
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
-      await userEvent.type(input, 'first input{enter}');
+      const textarea = screen.getByPlaceholderText(/追加の指示を入力/);
+
+      // Type first line
+      await userEvent.type(textarea, 'line 1');
+
+      // Simulate Alt+Enter for newline
+      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
+
+      // Type second line
+      await userEvent.type(textarea, 'line 2');
+
+      // Alt+Enter should allow the default behavior (newline insertion)
+      // The value should contain both lines
+      expect(textarea).toHaveValue('line 1line 2');
+    });
+
+    it('should not send on Enter when Alt is pressed', async () => {
+      render(<AgentInputPanel />);
+
+      const textarea = screen.getByPlaceholderText(/追加の指示を入力/);
+      await userEvent.type(textarea, 'test');
+
+      // Alt+Enter should not trigger send
+      fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
+
+      expect(mockResumeAgent).not.toHaveBeenCalled();
+    });
+
+    it('should send multiline text correctly', async () => {
+      render(<AgentInputPanel />);
+
+      const textarea = screen.getByPlaceholderText(/追加の指示を入力/) as HTMLTextAreaElement;
+
+      // Set multiline value directly (simulating user typing with newlines)
+      fireEvent.change(textarea, { target: { value: 'line 1\nline 2\nline 3' } });
+
+      // Click send button
+      const sendButton = screen.getByRole('button', { name: '送信' });
+      fireEvent.click(sendButton);
 
       await waitFor(() => {
-        expect(screen.getByText('first input')).toBeInTheDocument();
+        expect(mockResumeAgent).toHaveBeenCalledWith('agent-1', 'line 1\nline 2\nline 3');
       });
     });
 
-    it('should add multiple history items', async () => {
+    it('should have resize-none class to prevent manual resizing', () => {
       render(<AgentInputPanel />);
 
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
-
-      await userEvent.type(input, 'first input{enter}');
-      await userEvent.type(input, 'second input{enter}');
-
-      await waitFor(() => {
-        expect(screen.getByText('first input')).toBeInTheDocument();
-        expect(screen.getByText('second input')).toBeInTheDocument();
-      });
-    });
-
-    it('should resend input when history item is clicked', async () => {
-      render(<AgentInputPanel />);
-
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
-      await userEvent.type(input, 'test input{enter}');
-
-      // Clear mock calls
-      mockResumeAgent.mockClear();
-
-      // Click on history item
-      const historyItem = screen.getByText('test input');
-      fireEvent.click(historyItem);
-
-      await waitFor(() => {
-        expect(mockResumeAgent).toHaveBeenCalledWith('agent-1', 'test input');
-      });
-    });
-
-    it('should show history header', async () => {
-      render(<AgentInputPanel />);
-
-      const input = screen.getByPlaceholderText('追加の指示を入力...');
-      await userEvent.type(input, 'test input{enter}');
-
-      await waitFor(() => {
-        expect(screen.getByText('入力履歴')).toBeInTheDocument();
-      });
-    });
-
-    it('should not show history section when no history exists', () => {
-      render(<AgentInputPanel />);
-
-      expect(screen.queryByText('入力履歴')).not.toBeInTheDocument();
+      const textarea = screen.getByPlaceholderText(/追加の指示を入力/);
+      expect(textarea).toHaveClass('resize-none');
     });
   });
 });

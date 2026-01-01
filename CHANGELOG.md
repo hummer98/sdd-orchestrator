@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.4] - 2026-01-02
+
+### Fixed
+- **旧形式spec.json後方互換性**: 旧形式のspec.json inspectionに対する後方互換性を追加
+
 ## [0.15.3] - 2026-01-02
 
 ### Fixed

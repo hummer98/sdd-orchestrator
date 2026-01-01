@@ -863,6 +863,76 @@ describe('useSpecStore', () => {
         // readSpecs should have been called to update metadata
         expect(window.electronAPI.readSpecs).toHaveBeenCalled();
       });
+
+      // Bug fix: inspection-tab-not-displayed
+      it('should reload inspection artifact when spec.json has inspection field', async () => {
+        const mockInspectionContent = '# Inspection Report\n\n## Result: GO';
+        const specJsonWithInspection = {
+          ...mockSpecJson,
+          inspection: {
+            passed: true,
+            inspected_at: '2026-01-02T00:00:00Z',
+            report_file: 'inspection-1.md',
+          },
+        };
+        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
+        window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
+          if (path.endsWith('inspection-1.md')) {
+            return Promise.resolve(mockInspectionContent);
+          }
+          return Promise.reject(new Error('Not found'));
+        });
+
+        await useSpecStore.getState().updateSpecJson();
+
+        const state = useSpecStore.getState();
+        // spec.json should be updated with inspection field
+        expect(state.specDetail?.specJson.inspection).toBeTruthy();
+        expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+        // inspection artifact should be loaded
+        expect(state.specDetail?.artifacts.inspection).toBeTruthy();
+        expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
+        expect(state.specDetail?.artifacts.inspection?.content).toBe(mockInspectionContent);
+      });
+
+      it('should set inspection artifact to null when file read fails', async () => {
+        const specJsonWithInspection = {
+          ...mockSpecJson,
+          inspection: {
+            passed: true,
+            inspected_at: '2026-01-02T00:00:00Z',
+            report_file: 'inspection-1.md',
+          },
+        };
+        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
+        window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+
+        await useSpecStore.getState().updateSpecJson();
+
+        const state = useSpecStore.getState();
+        // spec.json should still be updated
+        expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+        // inspection artifact should be null due to read error
+        expect(state.specDetail?.artifacts.inspection).toBeNull();
+      });
+
+      it('should preserve existing artifacts when spec.json has no inspection field', async () => {
+        const specJsonWithoutInspection = {
+          ...mockSpecJson,
+          // No inspection field
+        };
+        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithoutInspection);
+
+        // Store original artifacts
+        const originalArtifacts = useSpecStore.getState().specDetail?.artifacts;
+
+        await useSpecStore.getState().updateSpecJson();
+
+        const state = useSpecStore.getState();
+        // artifacts should be preserved
+        expect(state.specDetail?.artifacts.requirements).toEqual(originalArtifacts?.requirements);
+        expect(state.specDetail?.artifacts.design).toEqual(originalArtifacts?.design);
+      });
     });
 
     describe('updateArtifact', () => {

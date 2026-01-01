@@ -519,6 +519,7 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
   /**
    * Update only spec.json without reloading artifacts
    * Used when spec.json changes (phase, approvals, etc.)
+   * Bug fix: inspection-tab-not-displayed - Also reload inspection artifact when spec.json has inspection field
    */
   updateSpecJson: async () => {
     const { selectedSpec, specDetail } = get();
@@ -531,11 +532,34 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       console.log('[specStore] updateSpecJson: Updating spec.json only', selectedSpec.name);
       const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
 
-      // Update only specJson field, preserve artifacts
+      // Bug fix: inspection-tab-not-displayed
+      // Also reload inspection artifact if spec.json has inspection field
+      let updatedArtifacts = specDetail.artifacts;
+      if (specJson.inspection?.report_file) {
+        try {
+          const artifactPath = `${selectedSpec.path}/${specJson.inspection.report_file}`;
+          const content = await window.electronAPI.readArtifact(artifactPath);
+          updatedArtifacts = {
+            ...specDetail.artifacts,
+            inspection: { exists: true, updatedAt: null, content },
+          };
+          console.log('[specStore] updateSpecJson: Loaded inspection artifact', specJson.inspection.report_file);
+        } catch {
+          // File doesn't exist yet or read error - set to null
+          updatedArtifacts = {
+            ...specDetail.artifacts,
+            inspection: null,
+          };
+          console.log('[specStore] updateSpecJson: Inspection file not found', specJson.inspection.report_file);
+        }
+      }
+
+      // Update specJson field and optionally updated artifacts
       set({
         specDetail: {
           ...specDetail,
           specJson,
+          artifacts: updatedArtifacts,
         },
       });
 

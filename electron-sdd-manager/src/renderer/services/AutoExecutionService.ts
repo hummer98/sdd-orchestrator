@@ -706,6 +706,47 @@ export class AutoExecutionService {
   }
 
   // ============================================================
+  // Bug Fix: Track manual document-review agent for one-set execution
+  // document-review -> document-review-reply should always run as a set
+  // ============================================================
+  /**
+   * Track a manually executed document-review agent.
+   * This enables document-review-reply to automatically run after document-review completes,
+   * even when executed manually (not through auto-execution).
+   */
+  trackManualDocumentReviewAgent(agentId: string, specId: string): void {
+    // Get or create ExecutionContext for this spec
+    let context = this.executionContexts.get(specId);
+    if (!context) {
+      const specStore = useSpecStore.getState();
+      if (!specStore.specDetail || specStore.specDetail.metadata.name !== specId) {
+        console.warn(`[AutoExecutionService] Cannot track agent: specDetail not available for ${specId}`);
+        return;
+      }
+      context = createExecutionContext({
+        specId,
+        specDetail: specStore.specDetail,
+      });
+      this.executionContexts.set(specId, context);
+    }
+
+    // Track the agent
+    this.agentToSpecMap.set(agentId, specId);
+    context.trackedAgentIds.add(agentId);
+    this.trackedAgentIds.add(agentId);
+
+    console.log(`[AutoExecutionService] Tracking manual document-review agent: ${agentId} -> ${specId}`);
+
+    // Process any buffered events for this agent
+    const bufferedStatus = this.pendingEvents.get(agentId);
+    if (bufferedStatus) {
+      console.log(`[AutoExecutionService] Processing buffered status=${bufferedStatus} for manual agent ${agentId}`);
+      this.pendingEvents.delete(agentId);
+      this.handleDirectStatusChange(agentId, bufferedStatus);
+    }
+  }
+
+  // ============================================================
   // Helper: Set auto execution status for a specific spec
   // ============================================================
   private setStatusForSpec(specId: string, status: import('../types').AutoExecutionStatus): void {
@@ -857,14 +898,9 @@ export class AutoExecutionService {
       context.timeoutId = null;
     }
 
-    const workflowStore = useWorkflowStore.getState();
-    const { documentReviewOptions } = workflowStore;
-
-    if (documentReviewOptions.autoExecutionFlag === 'run') {
-      await this.executeDocumentReviewReplyForContext(context);
-    } else {
-      this.setStatusForSpec(context.specId, 'paused');
-    }
+    // Bug Fix: document-review -> document-review-reply should always run as a set
+    // regardless of autoExecutionFlag setting
+    await this.executeDocumentReviewReplyForContext(context);
   }
 
   private async executeDocumentReviewReplyForContext(context: ExecutionContext): Promise<void> {

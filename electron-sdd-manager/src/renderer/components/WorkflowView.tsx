@@ -315,11 +315,21 @@ export function WorkflowView() {
 
     try {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeDocumentReview(
+      const agentInfo = await window.electronAPI.executeDocumentReview(
         specDetail.metadata.name,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
+
+      // Bug Fix: Track manual document-review agent for one-set execution
+      // document-review -> document-review-reply should always run as a set
+      if (agentInfo?.agentId) {
+        const autoExecutionService = getAutoExecutionService();
+        autoExecutionService.trackManualDocumentReviewAgent(
+          agentInfo.agentId,
+          specDetail.metadata.name
+        );
+      }
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'ドキュメントレビューの実行に失敗しました');
     }

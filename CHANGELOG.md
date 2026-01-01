@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.2] - 2026-01-02
+
+### Fixed
+- **ワークフロー右ペイン改善**: パネル間の矢印表示を追加し、ワークフローの進行をより視覚的に
+- **Inspection完了後のタブ表示**: inspection完了後にタブが表示されない問題を修正
+- **AgentInputPanel機能強化**: 入力履歴削除と複数行入力に対応
+
+### Testing
+- **E2Eテスト改善**: bug関連テストにタブ切り替えヘルパーを追加、layout-persistenceテストの安定化
+
 ## [0.15.1] - 2026-01-01
 
 ### Fixed

@@ -183,27 +183,57 @@ describe('Layout Persistence E2E', () => {
 
   // ============================================================
   // ProjectAgentPanelコンポーネント (project-agent-panel-always-visible feature)
+  // Note: ProjectAgentPanel is only rendered when a project is selected
   // ============================================================
   describe('ProjectAgentPanelコンポーネント', () => {
+    // Test project path
+    const FIXTURE_PROJECT_PATH = require('path').resolve(__dirname, 'fixtures/test-project');
+
+    // Select project before ProjectAgentPanel tests
+    beforeEach(async () => {
+      await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+        try {
+          const stores = (window as any).__STORES__;
+          if (stores?.projectStore?.getState) {
+            await stores.projectStore.getState().selectProject(projPath);
+            done(true);
+          } else {
+            done(false);
+          }
+        } catch {
+          done(false);
+        }
+      }, FIXTURE_PROJECT_PATH);
+      // Wait for React to re-render after project selection
+      await browser.pause(500);
+    });
+
     it('ProjectAgentPanelが常に表示される（0件時も）', async () => {
       const panel = await $('[data-testid="project-agent-panel"]');
+      await panel.waitForExist({ timeout: 5000 });
       const exists = await panel.isExisting();
       expect(exists).toBe(true);
     });
 
     it('ProjectAgentPanelのコンテナが存在する', async () => {
       const container = await $('[data-testid="project-agent-panel-container"]');
+      await container.waitForExist({ timeout: 5000 });
       const exists = await container.isExisting();
       expect(exists).toBe(true);
     });
 
     it('ProjectAgentPanelのヘッダーが存在する', async () => {
       const header = await $('[data-testid="project-agent-panel-header"]');
+      await header.waitForExist({ timeout: 5000 });
       const exists = await header.isExisting();
       expect(exists).toBe(true);
     });
 
     it('ProjectAgentPanelに0件時の空状態メッセージまたはエージェントリストが表示される', async () => {
+      // First wait for the panel to exist
+      const panel = await $('[data-testid="project-agent-panel"]');
+      await panel.waitForExist({ timeout: 5000 });
+
       const emptyState = await $('[data-testid="project-agent-panel-empty"]');
       const emptyExists = await emptyState.isExisting();
 
@@ -213,7 +243,6 @@ describe('Layout Persistence E2E', () => {
         expect(text).toContain('プロジェクトエージェントなし');
       } else {
         // エージェントが存在する場合はパネル自体が表示されている
-        const panel = await $('[data-testid="project-agent-panel"]');
         expect(await panel.isExisting()).toBe(true);
       }
     });
@@ -221,11 +250,10 @@ describe('Layout Persistence E2E', () => {
     it('ProjectAgentPanel上部にリサイズハンドルが配置されている', async () => {
       // ProjectAgentPanelコンテナの直前にリサイズハンドルがある
       const container = await $('[data-testid="project-agent-panel-container"]');
-      if (await container.isExisting()) {
-        // コンテナが存在すればリサイズハンドルも配置済み
-        const verticalHandles = await $$('[data-testid="resize-handle-vertical"]');
-        expect(verticalHandles.length).toBeGreaterThan(0);
-      }
+      await container.waitForExist({ timeout: 5000 });
+      // コンテナが存在すればリサイズハンドルも配置済み
+      const verticalHandles = await $$('[data-testid="resize-handle-vertical"]');
+      expect(verticalHandles.length).toBeGreaterThan(0);
     });
   });
 

@@ -480,7 +480,7 @@ describe('WorkflowView', () => {
       expect(screen.getByRole('heading', { name: 'Inspection' })).toBeInTheDocument();
     });
 
-    it('should not show InspectionPanel when task progress is less than 100%', () => {
+    it('should show InspectionPanel with disabled button when task progress is less than 100%', () => {
       mockSpecStoreStateForSelector = {
         ...mockSpecStoreState,
         specDetail: {
@@ -491,11 +491,13 @@ describe('WorkflowView', () => {
 
       render(<WorkflowView />);
 
-      // InspectionPanel should not be visible
-      expect(screen.queryByRole('heading', { name: 'Inspection' })).not.toBeInTheDocument();
+      // InspectionPanel should be visible (always shown now)
+      expect(screen.getByRole('heading', { name: 'Inspection' })).toBeInTheDocument();
+      // Start button should be disabled
+      expect(screen.getByTestId('start-inspection-button')).toBeDisabled();
     });
 
-    it('should not show InspectionPanel when tasks are not approved', () => {
+    it('should show InspectionPanel with disabled button when tasks are not approved', () => {
       const specWithUnapprovedTasks = {
         ...mockSpecDetail,
         specJson: {
@@ -515,8 +517,10 @@ describe('WorkflowView', () => {
 
       render(<WorkflowView />);
 
-      // InspectionPanel should not be visible because tasks are not approved
-      expect(screen.queryByRole('heading', { name: 'Inspection' })).not.toBeInTheDocument();
+      // InspectionPanel should be visible (always shown now)
+      expect(screen.getByRole('heading', { name: 'Inspection' })).toBeInTheDocument();
+      // Start button should be disabled because tasks are not approved
+      expect(screen.getByTestId('start-inspection-button')).toBeDisabled();
     });
   });
 });

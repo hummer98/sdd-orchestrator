@@ -38,6 +38,8 @@ export interface InspectionPanelProps {
   isAutoExecuting?: boolean;
   /** Auto execution flag (run/pause/skip) */
   autoExecutionFlag?: InspectionAutoExecutionFlag;
+  /** Whether inspection can be executed (tasks approved and 100% complete) */
+  canExecuteInspection?: boolean;
   /** Handler for starting a new inspection round */
   onStartInspection: () => void;
   /** Handler for executing fix for a specific round */
@@ -180,6 +182,7 @@ export function InspectionPanel({
   isExecuting,
   isAutoExecuting = false,
   autoExecutionFlag = 'run',
+  canExecuteInspection = true,
   onStartInspection,
   onExecuteFix,
   onAutoExecutionFlagChange,
@@ -187,8 +190,8 @@ export function InspectionPanel({
   const rounds = inspectionState?.rounds ?? 0;
   const currentRound = inspectionState?.currentRound;
 
-  // Buttons are disabled when executing or auto-executing
-  const canExecute = !isExecuting && !isAutoExecuting;
+  // Buttons are disabled when executing, auto-executing, or inspection not allowed
+  const canExecute = !isExecuting && !isAutoExecuting && canExecuteInspection;
 
   // Get latest round to determine GO/NOGO status and action buttons
   const latestRound = getLatestRoundDetail(inspectionState);

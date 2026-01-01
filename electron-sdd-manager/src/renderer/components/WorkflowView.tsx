@@ -518,6 +518,13 @@ export function WorkflowView() {
               return null;
             })}
 
+            {/* Arrow to DocumentReviewPanel */}
+            {phase === 'tasks' && (
+              <div className="flex justify-center py-1">
+                <ArrowDown className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+
             {/* Task 6.3: Document Review Panel (between tasks and impl) */}
             {/* Task 6.1: Progress indicator and auto execution flag control added */}
             {/* Requirements: 6.1, 6.4, 6.5, 6.6, 6.7, 6.8 */}
@@ -550,20 +557,24 @@ export function WorkflowView() {
               </div>
             )}
 
+            {/* Arrow to InspectionPanel */}
+            {phase === 'impl' && (
+              <div className="flex justify-center py-1">
+                <ArrowDown className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+
             {/* Task 4: InspectionPanel (after impl, before deploy) */}
             {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
-            {/* Show InspectionPanel when:
-                1. Current phase is 'impl'
-                2. Tasks are approved (phaseStatuses.tasks === 'approved')
-                3. Task progress is 100%
-            */}
-            {phase === 'impl' && phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100 && (
+            {/* Bug fix: Always show panel, control button enabled state via canExecuteInspection prop */}
+            {phase === 'impl' && (
               <div className="my-3">
                 <InspectionPanel
                   inspectionState={inspectionState}
                   isExecuting={isInspectionExecuting}
                   isAutoExecuting={isAutoExecuting}
                   autoExecutionFlag={workflowStore.autoExecutionPermissions.inspection ? 'run' : 'pause'}
+                  canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
                   onStartInspection={handleStartInspection}
                   onExecuteFix={handleExecuteInspectionFix}
                   onAutoExecutionFlagChange={handleInspectionAutoExecutionFlagChange}

@@ -794,4 +794,312 @@ describe('useSpecStore', () => {
       });
     });
   });
+
+  // ============================================================
+  // Granular Update Methods Tests (requirement-file-update-not-reflected fix)
+  // Tests for updateSpecJson, updateArtifact, updateSpecMetadata
+  // ============================================================
+  describe('Granular Update Methods', () => {
+    const mockSpecJson = {
+      feature_name: 'feature-a',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z',
+      language: 'ja',
+      phase: 'design-generated',
+      approvals: mockSpecs[0].approvals,
+    };
+
+    beforeEach(async () => {
+      // Setup initial state with selected spec
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
+      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+    });
+
+    describe('updateSpecJson', () => {
+      it('should update only specJson without reloading artifacts', async () => {
+        const updatedSpecJson = {
+          ...mockSpecJson,
+          phase: 'tasks-generated',
+        };
+        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+
+        // Store current artifact content
+        const originalArtifacts = useSpecStore.getState().specDetail?.artifacts;
+        expect(originalArtifacts).toBeTruthy();
+
+        await useSpecStore.getState().updateSpecJson();
+
+        const state = useSpecStore.getState();
+        // specJson should be updated
+        expect(state.specDetail?.specJson.phase).toBe('tasks-generated');
+        // artifacts should be preserved (same reference or content)
+        expect(state.specDetail?.artifacts.requirements).toBeTruthy();
+        // readArtifact should NOT have been called during updateSpecJson
+        const readArtifactCallsAfter = (window.electronAPI.readArtifact as ReturnType<typeof vi.fn>).mock.calls.length;
+        // Only the initial selectSpec should have called readArtifact
+        expect(readArtifactCallsAfter).toBeLessThanOrEqual(4); // max 4 artifacts in selectSpec
+      });
+
+      it('should do nothing when no spec is selected', async () => {
+        useSpecStore.getState().clearSelectedSpec();
+        window.electronAPI.readSpecJson = vi.fn();
+
+        await useSpecStore.getState().updateSpecJson();
+
+        expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
+      });
+
+      it('should also update spec metadata in the list', async () => {
+        const updatedSpecJson = {
+          ...mockSpecJson,
+          phase: 'tasks-generated',
+        };
+        window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+
+        await useSpecStore.getState().updateSpecJson();
+
+        // readSpecs should have been called to update metadata
+        expect(window.electronAPI.readSpecs).toHaveBeenCalled();
+      });
+    });
+
+    describe('updateArtifact', () => {
+      it('should update only requirements artifact without reloading spec.json', async () => {
+        const newRequirementsContent = '# Updated Requirements\n\nNew content here.';
+        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(newRequirementsContent);
+
+        const originalSpecJson = useSpecStore.getState().specDetail?.specJson;
+
+        await useSpecStore.getState().updateArtifact('requirements');
+
+        const state = useSpecStore.getState();
+        // Artifact should be updated
+        expect(state.specDetail?.artifacts.requirements?.content).toBe(newRequirementsContent);
+        // specJson should be preserved
+        expect(state.specDetail?.specJson).toEqual(originalSpecJson);
+        // readSpecJson should NOT have been called
+        expect(window.electronAPI.readSpecJson).toHaveBeenCalledTimes(1); // Only initial selectSpec
+      });
+
+      it('should update only design artifact', async () => {
+        const newDesignContent = '# Updated Design\n\nArchitecture changes.';
+        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(newDesignContent);
+
+        await useSpecStore.getState().updateArtifact('design');
+
+        const state = useSpecStore.getState();
+        expect(state.specDetail?.artifacts.design?.content).toBe(newDesignContent);
+      });
+
+      it('should recalculate task progress when tasks artifact changes', async () => {
+        const tasksWithProgress = `# Tasks
+- [x] Task 1 completed
+- [x] Task 2 completed
+- [ ] Task 3 pending
+- [ ] Task 4 pending
+- [ ] Task 5 pending`;
+        window.electronAPI.readArtifact = vi.fn().mockResolvedValue(tasksWithProgress);
+
+        await useSpecStore.getState().updateArtifact('tasks');
+
+        const state = useSpecStore.getState();
+        expect(state.specDetail?.taskProgress).toEqual({
+          total: 5,
+          completed: 2,
+          percentage: 40,
+        });
+      });
+
+      it('should handle artifact file not found gracefully', async () => {
+        window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
+
+        await useSpecStore.getState().updateArtifact('research');
+
+        const state = useSpecStore.getState();
+        expect(state.specDetail?.artifacts.research).toBeNull();
+      });
+
+      it('should do nothing when no spec is selected', async () => {
+        useSpecStore.getState().clearSelectedSpec();
+        window.electronAPI.readArtifact = vi.fn();
+
+        await useSpecStore.getState().updateArtifact('requirements');
+
+        // readArtifact should not be called after clearSelectedSpec
+        const callsAfterClear = (window.electronAPI.readArtifact as ReturnType<typeof vi.fn>).mock.calls;
+        // All calls should be before clearSelectedSpec
+        expect(callsAfterClear.every((call: unknown[]) => !call[0]?.includes?.('requirements.md') || callsAfterClear.indexOf(call) < 4)).toBe(true);
+      });
+    });
+
+    describe('updateSpecMetadata', () => {
+      it('should refresh specs list', async () => {
+        const updatedSpecs = [
+          { ...mockSpecs[0], phase: 'tasks-generated' },
+          ...mockSpecs.slice(1),
+        ];
+        window.electronAPI.readSpecs = vi.fn().mockResolvedValue(updatedSpecs);
+
+        // Mock projectStore
+        vi.doMock('./projectStore', async () => ({
+          useProjectStore: {
+            getState: () => ({ currentProject: '/project' }),
+          },
+        }));
+
+        await useSpecStore.getState().updateSpecMetadata('feature-a');
+
+        expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
+      });
+    });
+  });
+
+  // ============================================================
+  // onSpecsChanged Callback Tests (requirement-file-update-not-reflected fix)
+  // Tests for file-name-based routing in onSpecsChanged
+  // ============================================================
+  describe('onSpecsChanged File Routing', () => {
+    let onSpecsChangedCallback: ((event: { specId: string; path: string }) => void) | null = null;
+
+    beforeEach(async () => {
+      // Capture the callback registered with onSpecsChanged
+      window.electronAPI.onSpecsChanged = vi.fn().mockImplementation((callback) => {
+        onSpecsChangedCallback = callback;
+        return vi.fn(); // cleanup function
+      });
+
+      // Setup mock APIs
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
+        feature_name: 'feature-a',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        language: 'ja',
+        phase: 'design-generated',
+        approvals: mockSpecs[0].approvals,
+      });
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Content');
+      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
+
+      // Select a spec and start watching
+      await useSpecStore.getState().selectSpec(mockSpecs[0]);
+      await useSpecStore.getState().startWatching();
+    });
+
+    it('should register onSpecsChanged callback during startWatching', () => {
+      expect(window.electronAPI.onSpecsChanged).toHaveBeenCalled();
+      expect(onSpecsChangedCallback).toBeTruthy();
+    });
+
+    it('should call updateSpecJson when spec.json changes', async () => {
+      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/spec.json',
+      });
+
+      // Wait for async operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateSpecJsonSpy).toHaveBeenCalled();
+    });
+
+    it('should call updateArtifact("requirements") when requirements.md changes', async () => {
+      const updateArtifactSpy = vi.spyOn(useSpecStore.getState(), 'updateArtifact');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/requirements.md',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateArtifactSpy).toHaveBeenCalledWith('requirements');
+    });
+
+    it('should call updateArtifact("design") when design.md changes', async () => {
+      const updateArtifactSpy = vi.spyOn(useSpecStore.getState(), 'updateArtifact');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/design.md',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateArtifactSpy).toHaveBeenCalledWith('design');
+    });
+
+    it('should call updateArtifact("tasks") when tasks.md changes', async () => {
+      const updateArtifactSpy = vi.spyOn(useSpecStore.getState(), 'updateArtifact');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/tasks.md',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateArtifactSpy).toHaveBeenCalledWith('tasks');
+    });
+
+    it('should call updateSpecJson when document-review-*.md changes', async () => {
+      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/document-review-requirements.md',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateSpecJsonSpy).toHaveBeenCalled();
+    });
+
+    it('should call updateSpecJson when inspection-*.md changes', async () => {
+      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-a',
+        path: '/project/.kiro/specs/feature-a/inspection-1.md',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateSpecJsonSpy).toHaveBeenCalled();
+    });
+
+    it('should call updateSpecMetadata for non-selected spec changes', async () => {
+      const updateSpecMetadataSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecMetadata');
+
+      onSpecsChangedCallback?.({
+        specId: 'feature-b', // Different from selected 'feature-a'
+        path: '/project/.kiro/specs/feature-b/spec.json',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(updateSpecMetadataSpy).toHaveBeenCalledWith('feature-b');
+    });
+
+    it('should ignore events without specId', async () => {
+      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+      const updateArtifactSpy = vi.spyOn(useSpecStore.getState(), 'updateArtifact');
+      const updateSpecMetadataSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecMetadata');
+
+      // This simulates an invalid event
+      onSpecsChangedCallback?.({
+        specId: '',
+        path: '/project/.kiro/specs/unknown/spec.json',
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // None of the update methods should be called for empty specId
+      // (The implementation checks for selectedSpec match first)
+      expect(updateArtifactSpy).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -199,8 +199,8 @@ export class AutoExecutionService {
       await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
         autoExecution: state,
       });
-      // Refresh spec detail to reflect the updated state
-      await specStore.selectSpec(specDetail.metadata);
+      // Note: File watcher will automatically trigger specStore.updateSpecJson()
+      // No need to manually call selectSpec here
       return true;
     } catch (error) {
       console.error('[AutoExecutionService] Failed to update spec autoExecution state:', error);
@@ -1067,11 +1067,8 @@ export class AutoExecutionService {
         phase as 'requirements' | 'design' | 'tasks',
         true
       );
-      // Refresh spec detail to reflect the updated approval status
-      const specStore = useSpecStore.getState();
-      if (specStore.specDetail?.metadata.name === context.specId) {
-        await specStore.selectSpec(context.specDetailSnapshot.metadata);
-      }
+      // Note: File watcher will automatically trigger specStore.updateSpecJson()
+      // No need to manually call selectSpec here
     } catch (error) {
       console.error(`[AutoExecutionService] Failed to auto-approve ${phase}:`, error);
       // Don't fail the execution, just log the error
@@ -1106,8 +1103,8 @@ export class AutoExecutionService {
 
     try {
       await window.electronAPI.updateApproval(specDetail.metadata.path, phase, true);
-      // Refresh spec detail
-      await specStore.selectSpec(specDetail.metadata);
+      // Note: File watcher will automatically trigger specStore.updateSpecJson()
+      // No need to manually call selectSpec here
       return true;
     } catch (error) {
       console.error(`[AutoExecutionService] Failed to auto-approve ${phase}:`, error);

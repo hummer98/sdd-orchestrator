@@ -221,8 +221,8 @@ export function WorkflowView() {
         phase as 'requirements' | 'design' | 'tasks',
         true
       );
-      // Refresh spec detail
-      useSpecStore.getState().selectSpec(specDetail.metadata);
+      // Note: File watcher will automatically trigger specStore.updateSpecJson()
+      // No need to manually call selectSpec here
     } catch (error) {
       console.error('Failed to approve phase:', error);
     }
@@ -426,33 +426,11 @@ export function WorkflowView() {
     }
   }, [specDetail, refreshSpecs]);
 
-  // Track previous runningPhases for detecting phase completion
-  const prevRunningPhasesRef = useRef<Set<string>>(new Set());
-
-  // Refresh specDetail when any agent phase completes
-  // Note: Auto-execution of document-review-reply is handled by AutoExecutionService (with --autofix flag)
-  useEffect(() => {
-    if (!specDetail) return;
-
-    const prevRunning = prevRunningPhasesRef.current;
-    const currentRunning = runningPhases;
-
-    // Check if any phase just completed - refresh specDetail to update UI
-    // This handles spec.json updates from any agent (document-review, phases, validations, etc.)
-    for (const phase of prevRunning) {
-      if (!currentRunning.has(phase)) {
-        console.log('[WorkflowView] Agent phase completed, refreshing specDetail', { phase });
-        // Delay refresh slightly to allow file system operations to complete
-        setTimeout(() => {
-          refreshSpecs();
-        }, 500);
-        break; // Only need to refresh once
-      }
-    }
-
-    // Update ref for next comparison
-    prevRunningPhasesRef.current = new Set(currentRunning);
-  }, [runningPhases, specDetail, refreshSpecs]);
+  // Bug fix: Removed Agent completion detection useEffect
+  // File watcher now handles granular UI updates via specStore.onSpecsChanged
+  // This eliminates unnecessary refreshSpecs() calls that caused:
+  // 1. User edits being overwritten during Agent execution
+  // 2. Redundant full reloads when single files changed
 
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;

@@ -76,6 +76,9 @@ interface SpecState {
   autoExecutionRuntimeMap: AutoExecutionRuntimeMap;
 }
 
+/** Artifact type for granular updates */
+export type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
+
 interface SpecActions {
   loadSpecs: (projectPath: string) => Promise<void>;
   selectSpec: (spec: SpecMetadata, options?: { silent?: boolean }) => Promise<void>;
@@ -93,6 +96,16 @@ interface SpecActions {
   // spec-scoped-auto-execution-state Task 4.3
   // Requirements: 6.3
   refreshSpecDetail: () => Promise<void>;
+  // ============================================================
+  // Granular Update Methods (requirement-file-update-not-reflected fix)
+  // Update only specific parts of spec without full reload
+  // ============================================================
+  /** Update only spec.json (phase, approvals, etc.) without reloading artifacts */
+  updateSpecJson: () => Promise<void>;
+  /** Update only a specific artifact (requirements.md, design.md, etc.) */
+  updateArtifact: (artifact: ArtifactType) => Promise<void>;
+  /** Update only spec metadata in the list (phase, updatedAt) */
+  updateSpecMetadata: (specId: string) => Promise<void>;
   // spec-scoped-auto-execution-state: Spec毎の自動実行runtime状態アクション
   getAutoExecutionRuntime: (specId: string) => AutoExecutionRuntimeState;
   setAutoExecutionRunning: (specId: string, isRunning: boolean) => void;
@@ -378,19 +391,43 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       // Here we only register the event listener
 
       // Subscribe to change events
+      // Bug fix: Use granular updates based on changed file instead of full refresh
       watcherCleanup = window.electronAPI.onSpecsChanged((event) => {
         console.log('[specStore] Specs changed:', event);
 
-        // Check if changed spec is the currently selected one
         const { selectedSpec } = get();
         const isSelectedSpecChanged = selectedSpec && event.specId === selectedSpec.name;
 
-        if (isSelectedSpecChanged) {
-          console.log('[specStore] Selected spec changed, refreshing specDetail:', event.specId);
-        }
+        if (isSelectedSpecChanged && event.path) {
+          // Granular update: Only update the changed file/field
+          const fileName = event.path.split('/').pop() || '';
+          console.log('[specStore] Selected spec changed, granular update:', { specId: event.specId, fileName });
 
-        // Refresh specs list and detail if selected
-        get().refreshSpecs();
+          if (fileName === 'spec.json') {
+            get().updateSpecJson();
+          } else if (fileName === 'requirements.md') {
+            get().updateArtifact('requirements');
+          } else if (fileName === 'design.md') {
+            get().updateArtifact('design');
+          } else if (fileName === 'tasks.md') {
+            get().updateArtifact('tasks');
+          } else if (fileName === 'research.md') {
+            get().updateArtifact('research');
+          } else if (fileName.startsWith('document-review-') || fileName.startsWith('inspection-')) {
+            // Document review and inspection files are tracked in spec.json
+            // Update spec.json to refresh their state in UI
+            console.log('[specStore] Document review/inspection file changed, updating spec.json:', fileName);
+            get().updateSpecJson();
+          } else {
+            // Unknown file, update spec.json as fallback (may contain references)
+            console.log('[specStore] Unknown file changed, updating spec.json as fallback:', fileName);
+            get().updateSpecJson();
+          }
+        } else if (event.specId) {
+          // Not the selected spec, just update metadata in the list
+          get().updateSpecMetadata(event.specId);
+        }
+        // If no specId, ignore the event (shouldn't happen for valid spec changes)
       });
 
       set({ isWatching: true });
@@ -471,6 +508,135 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
     } catch (error) {
       console.error('[specStore] Failed to refresh spec detail:', error);
       // Preserve existing specDetail on error (graceful failure)
+    }
+  },
+
+  // ============================================================
+  // Granular Update Methods (requirement-file-update-not-reflected fix)
+  // Update only specific parts of spec without full reload
+  // ============================================================
+
+  /**
+   * Update only spec.json without reloading artifacts
+   * Used when spec.json changes (phase, approvals, etc.)
+   */
+  updateSpecJson: async () => {
+    const { selectedSpec, specDetail } = get();
+
+    if (!selectedSpec || !specDetail) {
+      return;
+    }
+
+    try {
+      console.log('[specStore] updateSpecJson: Updating spec.json only', selectedSpec.name);
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+
+      // Update only specJson field, preserve artifacts
+      set({
+        specDetail: {
+          ...specDetail,
+          specJson,
+        },
+      });
+
+      // Also update metadata in specs list
+      await get().updateSpecMetadata(selectedSpec.name);
+
+      // Sync autoExecution state to workflowStore
+      try {
+        const { getAutoExecutionService } = await import('../services/AutoExecutionService');
+        const service = getAutoExecutionService();
+        service.syncFromSpecAutoExecution();
+      } catch (syncError) {
+        console.error('[specStore] Failed to sync autoExecution state:', syncError);
+      }
+
+      console.log('[specStore] updateSpecJson completed:', selectedSpec.name);
+    } catch (error) {
+      console.error('[specStore] Failed to update spec.json:', error);
+    }
+  },
+
+  /**
+   * Update only a specific artifact without reloading spec.json
+   * Used when individual .md files change
+   */
+  updateArtifact: async (artifact: ArtifactType) => {
+    const { selectedSpec, specDetail } = get();
+
+    if (!selectedSpec || !specDetail) {
+      return;
+    }
+
+    try {
+      console.log('[specStore] updateArtifact: Updating artifact only', { spec: selectedSpec.name, artifact });
+
+      const artifactPath = `${selectedSpec.path}/${artifact}.md`;
+      let artifactInfo: ArtifactInfo | null = null;
+
+      try {
+        const content = await window.electronAPI.readArtifact(artifactPath);
+        artifactInfo = { exists: true, updatedAt: null, content };
+      } catch {
+        artifactInfo = null;
+      }
+
+      // Update only the specific artifact, preserve others
+      const updatedArtifacts = {
+        ...specDetail.artifacts,
+        [artifact]: artifactInfo,
+      };
+
+      // Recalculate task progress if tasks.md changed
+      let taskProgress = specDetail.taskProgress;
+      if (artifact === 'tasks' && artifactInfo?.content) {
+        const completedMatches = artifactInfo.content.match(/^- \[x\]/gim) || [];
+        const pendingMatches = artifactInfo.content.match(/^- \[ \]/gm) || [];
+        const total = completedMatches.length + pendingMatches.length;
+        const completed = completedMatches.length;
+        taskProgress = {
+          total,
+          completed,
+          percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+        };
+        console.log('[specStore] Task progress recalculated:', { spec: selectedSpec.name, taskProgress });
+      }
+
+      set({
+        specDetail: {
+          ...specDetail,
+          artifacts: updatedArtifacts,
+          taskProgress,
+        },
+      });
+
+      console.log('[specStore] updateArtifact completed:', { spec: selectedSpec.name, artifact });
+    } catch (error) {
+      console.error('[specStore] Failed to update artifact:', { artifact, error });
+    }
+  },
+
+  /**
+   * Update only spec metadata in the list (phase, updatedAt)
+   * Used when a non-selected spec changes
+   */
+  updateSpecMetadata: async (specId: string) => {
+    try {
+      // Get current project path from projectStore
+      const { useProjectStore } = await import('./projectStore');
+      const currentProject = useProjectStore.getState().currentProject;
+
+      if (!currentProject) {
+        return;
+      }
+
+      // Re-read specs list
+      const specs = await window.electronAPI.readSpecs(currentProject);
+      set({ specs });
+
+      console.log('[specStore] updateSpecMetadata completed:', specId);
+    } catch (error) {
+      console.error('[specStore] Failed to update spec metadata:', error);
     }
   },
 

@@ -180,23 +180,56 @@ describe('Workflow Types', () => {
         expect(getPhaseStatus('inspection', specJson)).toBe('pending');
       });
 
-      it('should return pending when inspection.passed is false', () => {
+      it('should return pending when inspection has NOGO result (passed: false)', () => {
         const specJson = createMockSpecJson({
           inspection: {
-            passed: false,
-            inspected_at: '2024-01-01T00:00:00Z',
-            report_file: 'inspection-1.md',
+            status: 'completed',
+            rounds: 1,
+            currentRound: null,
+            roundDetails: [
+              { roundNumber: 1, passed: false, completedAt: '2024-01-01T00:00:00Z' },
+            ],
           },
         });
         expect(getPhaseStatus('inspection', specJson)).toBe('pending');
       });
 
-      it('should return approved when inspection.passed is true', () => {
+      it('should return approved when inspection has GO result (passed: true)', () => {
         const specJson = createMockSpecJson({
           inspection: {
-            passed: true,
-            inspected_at: '2024-01-01T00:00:00Z',
-            report_file: 'inspection-1.md',
+            status: 'completed',
+            rounds: 1,
+            currentRound: null,
+            roundDetails: [
+              { roundNumber: 1, passed: true, completedAt: '2024-01-01T00:00:00Z' },
+            ],
+          },
+        });
+        expect(getPhaseStatus('inspection', specJson)).toBe('approved');
+      });
+
+      it('should return pending when inspection is in_progress', () => {
+        const specJson = createMockSpecJson({
+          inspection: {
+            status: 'in_progress',
+            rounds: 0,
+            currentRound: 1,
+            roundDetails: [],
+          },
+        });
+        expect(getPhaseStatus('inspection', specJson)).toBe('pending');
+      });
+
+      it('should return approved for multi-round inspection with final GO', () => {
+        const specJson = createMockSpecJson({
+          inspection: {
+            status: 'completed',
+            rounds: 2,
+            currentRound: null,
+            roundDetails: [
+              { roundNumber: 1, passed: false, fixApplied: true, completedAt: '2024-01-01T00:00:00Z' },
+              { roundNumber: 2, passed: true, completedAt: '2024-01-01T01:00:00Z' },
+            ],
           },
         });
         expect(getPhaseStatus('inspection', specJson)).toBe('approved');

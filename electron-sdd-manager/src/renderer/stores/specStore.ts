@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import type { SpecMetadata, SpecDetail, SpecPhase, ArtifactInfo, TaskProgress, AutoExecutionStatus } from '../types';
 import type { WorkflowPhase } from '../types/workflow';
+import { getLatestInspectionReportFile } from '../types/inspection';
 
 /** spec-manager用フェーズタイプ */
 export type SpecManagerPhase = 'requirements' | 'design' | 'tasks' | 'impl';
@@ -219,15 +220,15 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         }
       };
 
-      // Helper to get inspection artifact from spec.json inspection field
+      // Helper to get inspection artifact from spec.json inspection field (MultiRoundInspectionState)
       const getInspectionArtifact = async (): Promise<ArtifactInfo | null> => {
-        const inspection = specJson.inspection;
-        if (!inspection?.report_file) {
+        const reportFile = getLatestInspectionReportFile(specJson.inspection);
+        if (!reportFile) {
           return null;
         }
 
         try {
-          const artifactPath = `${spec.path}/${inspection.report_file}`;
+          const artifactPath = `${spec.path}/${reportFile}`;
           const content = await window.electronAPI.readArtifact(artifactPath);
           return { exists: true, updatedAt: null, content };
         } catch {
@@ -533,24 +534,25 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
 
       // Bug fix: inspection-tab-not-displayed
-      // Also reload inspection artifact if spec.json has inspection field
+      // Also reload inspection artifact if spec.json has inspection field (MultiRoundInspectionState)
       let updatedArtifacts = specDetail.artifacts;
-      if (specJson.inspection?.report_file) {
+      const reportFile = getLatestInspectionReportFile(specJson.inspection);
+      if (reportFile) {
         try {
-          const artifactPath = `${selectedSpec.path}/${specJson.inspection.report_file}`;
+          const artifactPath = `${selectedSpec.path}/${reportFile}`;
           const content = await window.electronAPI.readArtifact(artifactPath);
           updatedArtifacts = {
             ...specDetail.artifacts,
             inspection: { exists: true, updatedAt: null, content },
           };
-          console.log('[specStore] updateSpecJson: Loaded inspection artifact', specJson.inspection.report_file);
+          console.log('[specStore] updateSpecJson: Loaded inspection artifact', reportFile);
         } catch {
           // File doesn't exist yet or read error - set to null
           updatedArtifacts = {
             ...specDetail.artifacts,
             inspection: null,
           };
-          console.log('[specStore] updateSpecJson: Inspection file not found', specJson.inspection.report_file);
+          console.log('[specStore] updateSpecJson: Inspection file not found', reportFile);
         }
       }
 

@@ -187,23 +187,58 @@ If NOGO judgment AND --autofix option:
 
 ### 6. Update spec.json
 
-**Always update spec.json** after inspection (both GO and NOGO):
+**Always update spec.json** after inspection (both GO and NOGO) using the MultiRoundInspectionState structure:
+
 ```json
 {
   "inspection": {
-    "passed": true,
-    "inspected_at": "2025-12-25T12:00:00Z",
-    "report_file": "inspection-{n}.md"
+    "status": "completed",
+    "rounds": 1,
+    "currentRound": null,
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "passed": true,
+        "completedAt": "2025-12-25T12:00:00Z"
+      }
+    ]
   }
 }
 ```
 
-Field definitions:
-- `passed`: boolean - true for GO, false for NOGO
-- `inspected_at`: ISO 8601 timestamp of inspection
-- `report_file`: filename of generated report (e.g., "inspection-1.md")
+**Field definitions**:
+- `status`: `"pending"` | `"in_progress"` | `"completed"` - current inspection status
+- `rounds`: number - total number of completed inspection rounds
+- `currentRound`: number | null - current round during execution, null when complete
+- `roundDetails`: array of round details:
+  - `roundNumber`: 1-indexed round number
+  - `passed`: boolean - true for GO, false for NOGO
+  - `fixApplied`: boolean (optional) - true if fix was applied after NOGO
+  - `completedAt`: ISO 8601 timestamp of inspection completion
 
-**Note**: The report_file must always be set so the UI can display the inspection report.
+**Update Logic**:
+1. Read existing `inspection` from spec.json (or initialize if missing)
+2. Increment `rounds` by 1
+3. Set `currentRound` to null (inspection complete)
+4. Append new round detail to `roundDetails` array
+5. Set `status` to `"completed"`
+
+**Example for subsequent rounds (NOGO → Fix → Re-inspect → GO)**:
+```json
+{
+  "inspection": {
+    "status": "completed",
+    "rounds": 2,
+    "currentRound": null,
+    "roundDetails": [
+      { "roundNumber": 1, "passed": false, "fixApplied": true, "completedAt": "2025-12-25T12:00:00Z" },
+      { "roundNumber": 2, "passed": true, "completedAt": "2025-12-25T14:00:00Z" }
+    ]
+  }
+}
+```
+
+**Note**: The UI relies on this structure to display round counts and enable the Deploy phase button.
 
 ## Important Constraints
 - **Semantic verification**: Use LLM understanding, not just static analysis

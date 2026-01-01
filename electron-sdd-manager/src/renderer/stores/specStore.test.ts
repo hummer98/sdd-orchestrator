@@ -516,9 +516,12 @@ describe('useSpecStore', () => {
         phase: 'implementation-complete',
         approvals: mockSpecs[0].approvals,
         inspection: {
-          passed: true,
-          inspected_at: '2024-01-15T12:00:00Z',
-          report_file: 'inspection-1.md',
+          status: 'completed',
+          rounds: 1,
+          currentRound: null,
+          roundDetails: [
+            { roundNumber: 1, passed: true, completedAt: '2024-01-15T12:00:00Z' },
+          ],
         },
       };
 
@@ -571,9 +574,12 @@ describe('useSpecStore', () => {
         phase: 'implementation-complete',
         approvals: mockSpecs[0].approvals,
         inspection: {
-          passed: true,
-          inspected_at: '2024-01-15T12:00:00Z',
-          report_file: 'inspection-1.md',
+          status: 'completed',
+          rounds: 1,
+          currentRound: null,
+          roundDetails: [
+            { roundNumber: 1, passed: true, completedAt: '2024-01-15T12:00:00Z' },
+          ],
         },
       };
 
@@ -597,9 +603,12 @@ describe('useSpecStore', () => {
         phase: 'implementation-complete',
         approvals: mockSpecs[0].approvals,
         inspection: {
-          passed: true,
-          inspected_at: '2024-01-15T12:00:00Z',
-          report_file: 'inspection-1.md',
+          status: 'completed',
+          rounds: 1,
+          currentRound: null,
+          roundDetails: [
+            { roundNumber: 1, passed: true, completedAt: '2024-01-15T12:00:00Z' },
+          ],
         },
       };
 
@@ -610,8 +619,8 @@ describe('useSpecStore', () => {
 
       const state = useSpecStore.getState();
       expect(state.specDetail?.specJson.inspection).toBeTruthy();
-      expect(state.specDetail?.specJson.inspection?.passed).toBe(true);
-      expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+      expect(state.specDetail?.specJson.inspection?.status).toBe('completed');
+      expect(state.specDetail?.specJson.inspection?.rounds).toBe(1);
     });
 
     // NOGO (passed: false) ケースのテスト
@@ -624,9 +633,12 @@ describe('useSpecStore', () => {
         phase: 'implementation-complete',
         approvals: mockSpecs[0].approvals,
         inspection: {
-          passed: false,
-          inspected_at: '2024-01-15T12:00:00Z',
-          report_file: 'inspection-1.md',
+          status: 'completed',
+          rounds: 1,
+          currentRound: null,
+          roundDetails: [
+            { roundNumber: 1, passed: false, completedAt: '2024-01-15T12:00:00Z' },
+          ],
         },
       };
 
@@ -647,7 +659,7 @@ describe('useSpecStore', () => {
       expect(state.specDetail?.artifacts.inspection).toBeTruthy();
       expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
       expect(state.specDetail?.artifacts.inspection?.content).toBe(mockInspectionContent);
-      expect(state.specDetail?.specJson.inspection?.passed).toBe(false);
+      expect(state.specDetail?.specJson.inspection?.roundDetails?.[0]?.passed).toBe(false);
     });
   });
 
@@ -870,9 +882,12 @@ describe('useSpecStore', () => {
         const specJsonWithInspection = {
           ...mockSpecJson,
           inspection: {
-            passed: true,
-            inspected_at: '2026-01-02T00:00:00Z',
-            report_file: 'inspection-1.md',
+            status: 'completed',
+            rounds: 1,
+            currentRound: null,
+            roundDetails: [
+              { roundNumber: 1, passed: true, completedAt: '2026-01-02T00:00:00Z' },
+            ],
           },
         };
         window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
@@ -888,7 +903,7 @@ describe('useSpecStore', () => {
         const state = useSpecStore.getState();
         // spec.json should be updated with inspection field
         expect(state.specDetail?.specJson.inspection).toBeTruthy();
-        expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+        expect(state.specDetail?.specJson.inspection?.rounds).toBe(1);
         // inspection artifact should be loaded
         expect(state.specDetail?.artifacts.inspection).toBeTruthy();
         expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
@@ -899,9 +914,12 @@ describe('useSpecStore', () => {
         const specJsonWithInspection = {
           ...mockSpecJson,
           inspection: {
-            passed: true,
-            inspected_at: '2026-01-02T00:00:00Z',
-            report_file: 'inspection-1.md',
+            status: 'completed',
+            rounds: 1,
+            currentRound: null,
+            roundDetails: [
+              { roundNumber: 1, passed: true, completedAt: '2026-01-02T00:00:00Z' },
+            ],
           },
         };
         window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
@@ -911,7 +929,7 @@ describe('useSpecStore', () => {
 
         const state = useSpecStore.getState();
         // spec.json should still be updated
-        expect(state.specDetail?.specJson.inspection?.report_file).toBe('inspection-1.md');
+        expect(state.specDetail?.specJson.inspection?.rounds).toBe(1);
         // inspection artifact should be null due to read error
         expect(state.specDetail?.artifacts.inspection).toBeNull();
       });

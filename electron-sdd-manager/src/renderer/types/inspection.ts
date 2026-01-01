@@ -217,3 +217,19 @@ export function getInspectionProgressIndicatorState(
   // Priority 4: unchecked (default)
   return 'unchecked';
 }
+
+/**
+ * Get the latest inspection report file name from inspection state
+ * Report files follow the pattern: inspection-{roundNumber}.md
+ * @param state Multi-round inspection state or null/undefined
+ * @returns Latest report file name (e.g., "inspection-1.md") or null if no rounds exist
+ */
+export function getLatestInspectionReportFile(
+  state: MultiRoundInspectionState | null | undefined
+): string | null {
+  const latestRound = getLatestRoundDetail(state);
+  if (!latestRound) {
+    return null;
+  }
+  return `inspection-${latestRound.roundNumber}.md`;
+}

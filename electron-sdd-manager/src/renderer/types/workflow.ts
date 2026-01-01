@@ -128,9 +128,25 @@ export function getPhaseStatus(
   phase: WorkflowPhase,
   specJson: ExtendedSpecJson
 ): PhaseStatus {
-  // 検査フェーズ
+  // 検査フェーズ - MultiRoundInspectionState構造をサポート
   if (phase === 'inspection') {
-    return specJson.inspection?.passed ? 'approved' : 'pending';
+    const inspection = specJson.inspection;
+    if (!inspection) return 'pending';
+
+    // Check new structure: status === 'completed' with GO result
+    if (inspection.status === 'completed') {
+      const roundDetails = inspection.roundDetails;
+      if (roundDetails && roundDetails.length > 0) {
+        const latestRound = roundDetails[roundDetails.length - 1];
+        if (latestRound.passed === true) {
+          return 'approved';
+        }
+      }
+    }
+
+    // in_progress status → executing state (not used here, but for clarity)
+    // pending or NOGO result → pending
+    return 'pending';
   }
 
   // デプロイフェーズ

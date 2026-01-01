@@ -15,6 +15,7 @@ import {
 } from './index';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
+import { getLatestInspectionReportFile } from '../types/inspection';
 
 /** Spec artifact tabs */
 const SPEC_TABS: TabInfo[] = [
@@ -80,14 +81,15 @@ export function SpecPane({
     return tabs;
   }, [specDetail?.specJson?.documentReview]);
 
-  // Build inspection tabs from spec.json inspection field
+  // Build inspection tabs from spec.json inspection field (MultiRoundInspectionState)
   const inspectionTabs = useMemo((): TabInfo[] => {
     const inspection = specDetail?.specJson?.inspection;
-    if (!inspection?.report_file) {
+    const reportFile = getLatestInspectionReportFile(inspection);
+    if (!reportFile) {
       return [];
     }
 
-    const match = inspection.report_file.match(/inspection-(\d+)\.md/);
+    const match = reportFile.match(/inspection-(\d+)\.md/);
     if (!match) {
       return [];
     }

@@ -170,6 +170,57 @@ async function safeClick(selector: string): Promise<boolean> {
   }
 }
 
+/**
+ * Helper: Switch to Bugs tab
+ * This is required because BugPane is only rendered when activeTab === 'bugs'
+ */
+async function switchToBugsTab(): Promise<boolean> {
+  try {
+    // First, wait for DocsTabs to be rendered
+    const docsTabs = await $('[data-testid="docs-tabs"]');
+    await docsTabs.waitForExist({ timeout: 10000 });
+
+    const bugsTab = await $('[data-testid="tab-bugs"]');
+    await bugsTab.waitForExist({ timeout: 5000 });
+
+    // Use JavaScript click to avoid interactability issues
+    await browser.execute((el: HTMLElement) => el.click(), bugsTab);
+    await browser.pause(500);
+    return true;
+  } catch (e) {
+    console.log('[E2E] switchToBugsTab failed:', e);
+    // Debug: check what elements exist
+    const docsTabsExists = await $('[data-testid="docs-tabs"]').isExisting();
+    console.log('[E2E] docs-tabs exists:', docsTabsExists);
+    const bugsTabExists = await $('[data-testid="tab-bugs"]').isExisting();
+    console.log('[E2E] tab-bugs exists:', bugsTabExists);
+    return false;
+  }
+}
+
+/**
+ * Helper: Switch to Specs tab
+ * This is required because SpecPane is only rendered when activeTab === 'specs'
+ */
+async function switchToSpecsTab(): Promise<boolean> {
+  try {
+    // First, wait for DocsTabs to be rendered
+    const docsTabs = await $('[data-testid="docs-tabs"]');
+    await docsTabs.waitForExist({ timeout: 10000 });
+
+    const specsTab = await $('[data-testid="tab-specs"]');
+    await specsTab.waitForExist({ timeout: 5000 });
+
+    // Use JavaScript click to avoid interactability issues
+    await browser.execute((el: HTMLElement) => el.click(), specsTab);
+    await browser.pause(500);
+    return true;
+  } catch (e) {
+    console.log('[E2E] switchToSpecsTab failed:', e);
+    return false;
+  }
+}
+
 describe('Bugs Pane Integration E2E', () => {
   // ============================================================
   // Test Setup Verification
@@ -253,6 +304,10 @@ describe('Bugs Pane Integration E2E', () => {
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
+      // Bugsタブに切り替え（BugPaneを表示するために必要）
+      const tabSwitched = await switchToBugsTab();
+      expect(tabSwitched).toBe(true);
+
       // Specの選択を解除
       await clearSelectedSpecViaStore();
       await browser.pause(300);
@@ -312,6 +367,10 @@ describe('Bugs Pane Integration E2E', () => {
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
+      // Bugsタブに切り替え（BugPaneを表示するために必要）
+      const tabSwitched = await switchToBugsTab();
+      expect(tabSwitched).toBe(true);
+
       await clearSelectedSpecViaStore();
       await browser.pause(300);
 
@@ -321,21 +380,31 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(500);
     });
 
-    it('4つのドキュメントタブが表示される', async () => {
-      const expectedTabs = ['report', 'analysis', 'fix', 'verification'];
+    it('存在するドキュメントのタブが表示される', async () => {
+      // ArtifactEditorのタブはtestId="bug-artifact-editor"を渡しているので
+      // bug-artifact-editor-tab-{key} 形式になる
+      // フィクスチャにはreport.mdとanalysis.mdのみ存在
+      // ArtifactEditorは存在するファイルのタブのみ表示する
+      const expectedTabs = ['report', 'analysis'];
 
       for (const tab of expectedTabs) {
-        const tabButton = await $(`[data-testid="bug-tab-${tab}"]`);
+        const tabButton = await $(`[data-testid="bug-artifact-editor-tab-${tab}"]`);
         await tabButton.waitForExist({ timeout: 5000 });
         expect(await tabButton.isDisplayed()).toBe(true);
       }
+
+      // fix.mdとverification.mdは存在しないのでタブは表示されない
+      const fixTab = await $('[data-testid="bug-artifact-editor-tab-fix"]');
+      expect(await fixTab.isExisting()).toBe(false);
+      const verificationTab = await $('[data-testid="bug-artifact-editor-tab-verification"]');
+      expect(await verificationTab.isExisting()).toBe(false);
     });
 
     it('タブをクリックすると対応するドキュメントが表示される', async () => {
-      const clicked = await safeClick('[data-testid="bug-tab-report"]');
+      const clicked = await safeClick('[data-testid="bug-artifact-editor-tab-report"]');
       if (clicked) {
         await browser.pause(300);
-        const reportTab = await $('[data-testid="bug-tab-report"]');
+        const reportTab = await $('[data-testid="bug-artifact-editor-tab-report"]');
         // タブがaria-selected="true"になっている
         const isSelected = await reportTab.getAttribute('aria-selected');
         expect(isSelected).toBe('true');
@@ -355,6 +424,10 @@ describe('Bugs Pane Integration E2E', () => {
       const projectSuccess = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
+
+      // Bugsタブに切り替え（BugPaneを表示するために必要）
+      const tabSwitched = await switchToBugsTab();
+      expect(tabSwitched).toBe(true);
 
       await clearSelectedSpecViaStore();
       await browser.pause(300);
@@ -382,10 +455,12 @@ describe('Bugs Pane Integration E2E', () => {
       expect(exists).toBe(false);
     });
 
-    it('Analyzeフェーズには実行ボタンがある', async () => {
-      const analyzeExecuteButton = await $('[data-testid="bug-phase-execute-button-analyze"]');
-      await analyzeExecuteButton.waitForExist({ timeout: 5000 });
-      expect(await analyzeExecuteButton.isExisting()).toBe(true);
+    it('未完了フェーズには実行ボタンがある', async () => {
+      // fixtureにはreport.mdとanalysis.mdがあるのでreportとanalyzeは完了状態
+      // fixフェーズは未完了なので実行ボタンがある
+      const fixExecuteButton = await $('[data-testid="bug-phase-execute-button-fix"]');
+      await fixExecuteButton.waitForExist({ timeout: 5000 });
+      expect(await fixExecuteButton.isExisting()).toBe(true);
     });
 
     it('フェーズ間にコネクタがある', async () => {
@@ -487,6 +562,9 @@ describe('Bugs Pane Integration E2E', () => {
     });
 
     it('Bug選択時のレイアウトがSpec選択時と同様の構成', async () => {
+      // Specsタブに切り替え
+      await switchToSpecsTab();
+
       // まずSpecを選択してレイアウトを確認
       const specSuccess = await selectSpecViaStore('test-feature');
       expect(specSuccess).toBe(true);
@@ -494,6 +572,9 @@ describe('Bugs Pane Integration E2E', () => {
 
       const specWorkflowView = await $('[data-testid="workflow-view"]');
       const specHasWorkflow = await specWorkflowView.isExisting();
+
+      // Bugsタブに切り替え
+      await switchToBugsTab();
 
       // Spec選択解除してBugを選択
       await clearSelectedSpecViaStore();
@@ -522,6 +603,10 @@ describe('Bugs Pane Integration E2E', () => {
       expect(projectSuccess).toBe(true);
       await browser.pause(1000);
 
+      // Bugsタブに切り替え（BugPaneを表示するために必要）
+      const tabSwitched = await switchToBugsTab();
+      expect(tabSwitched).toBe(true);
+
       await clearSelectedSpecViaStore();
       await browser.pause(300);
 
@@ -531,13 +616,15 @@ describe('Bugs Pane Integration E2E', () => {
       await browser.pause(500);
     });
 
-    it('Analyzeボタンが存在し、disabled属性を持つ', async () => {
-      const analyzeButton = await $('[data-testid="bug-phase-execute-button-analyze"]');
-      await analyzeButton.waitForExist({ timeout: 5000 });
-      // ボタンが存在し、disabled状態であることを確認
-      // （前のフェーズ=reportが完了している場合のみ有効）
-      const isDisabled = await analyzeButton.getAttribute('disabled');
-      expect(typeof isDisabled === 'string' || isDisabled === null).toBe(true);
+    it('Fixボタンが存在し、enabled状態である', async () => {
+      // fixtureにはreport.mdとanalysis.mdがあるのでanalyzeまで完了
+      // fixフェーズのボタンはenabled状態になるはず
+      const fixButton = await $('[data-testid="bug-phase-execute-button-fix"]');
+      await fixButton.waitForExist({ timeout: 5000 });
+      // ボタンが存在し、enabled状態であることを確認
+      // （前のフェーズ=analyzeが完了しているので有効）
+      const isDisabled = await fixButton.getAttribute('disabled');
+      expect(isDisabled).toBe(null); // enabled状態
     });
 
     it('Fixボタンが存在する', async () => {

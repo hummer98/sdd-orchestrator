@@ -278,6 +278,29 @@ async function clearSelectedSpecViaStore(): Promise<void> {
   });
 }
 
+/**
+ * Helper: Switch to Bugs tab
+ * This is required because BugPane is only rendered when activeTab === 'bugs'
+ */
+async function switchToBugsTab(): Promise<boolean> {
+  try {
+    // First, wait for DocsTabs to be rendered
+    const docsTabs = await $('[data-testid="docs-tabs"]');
+    await docsTabs.waitForExist({ timeout: 10000 });
+
+    const bugsTab = await $('[data-testid="tab-bugs"]');
+    await bugsTab.waitForExist({ timeout: 5000 });
+
+    // Use JavaScript click to avoid interactability issues
+    await browser.execute((el: HTMLElement) => el.click(), bugsTab);
+    await browser.pause(500);
+    return true;
+  } catch (e) {
+    console.log('[E2E] switchToBugsTab failed:', e);
+    return false;
+  }
+}
+
 describe('Bug Auto Execution E2E Tests', () => {
   before(async () => {
     resetFixture();
@@ -300,6 +323,10 @@ describe('Bug Auto Execution E2E Tests', () => {
     const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
     await browser.pause(500);
+
+    // Switch to Bugs tab (required for BugPane/BugWorkflowView to render)
+    const tabSwitched = await switchToBugsTab();
+    expect(tabSwitched).toBe(true);
 
     // Refresh bug store
     await refreshBugStore();

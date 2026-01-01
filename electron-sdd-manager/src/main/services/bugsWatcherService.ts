@@ -18,7 +18,7 @@ export class BugsWatcherService {
   private watcher: chokidar.FSWatcher | null = null;
   private projectPath: string;
   private callbacks: BugsChangeCallback[] = [];
-  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private debounceMs = 300;
 
   constructor(projectPath: string) {
@@ -86,15 +86,19 @@ export class BugsWatcherService {
 
     logger.debug('[BugsWatcherService] File event', { type, filePath, bugName });
 
-    // Debounce to avoid multiple rapid events
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+    // Debounce per file path to avoid dropping concurrent events for different files
+    const existingTimer = this.debounceTimers.get(filePath);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
 
-    this.debounceTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(filePath);
       const event: BugsChangeEvent = { type, path: filePath, bugName };
       this.callbacks.forEach((cb) => cb(event));
     }, this.debounceMs);
+
+    this.debounceTimers.set(filePath, timer);
   }
 
   /**
@@ -121,10 +125,11 @@ export class BugsWatcherService {
       this.watcher = null;
     }
 
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+    // Clear all debounce timers
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
     }
+    this.debounceTimers.clear();
 
     this.callbacks = [];
   }

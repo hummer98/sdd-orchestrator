@@ -25,7 +25,7 @@ export class SpecsWatcherService {
   private watcher: chokidar.FSWatcher | null = null;
   private projectPath: string;
   private callbacks: SpecsChangeCallback[] = [];
-  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private debounceMs = 300;
   private fileService: FileService | null = null;
 
@@ -103,15 +103,19 @@ export class SpecsWatcherService {
       });
     }
 
-    // Debounce to avoid multiple rapid events
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+    // Debounce per file path to avoid dropping concurrent events for different files
+    const existingTimer = this.debounceTimers.get(filePath);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
 
-    this.debounceTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(filePath);
       const event: SpecsChangeEvent = { type, path: filePath, specId };
       this.callbacks.forEach((cb) => cb(event));
     }, this.debounceMs);
+
+    this.debounceTimers.set(filePath, timer);
   }
 
   /**
@@ -198,10 +202,11 @@ export class SpecsWatcherService {
       this.watcher = null;
     }
 
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+    // Clear all debounce timers
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
     }
+    this.debounceTimers.clear();
 
     this.callbacks = [];
   }

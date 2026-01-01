@@ -636,6 +636,21 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         },
       });
 
+      // Bug fix: e2e-file-watcher-test-bypass
+      // Sync editorStore when the active tab matches the updated artifact
+      // This ensures the editor UI reflects the file changes from file watcher
+      try {
+        const { useEditorStore } = await import('./editorStore');
+        const editorState = useEditorStore.getState();
+        if (editorState.activeTab === artifact && !editorState.isDirty) {
+          // Only reload if editor is not dirty (user hasn't made changes)
+          console.log('[specStore] Syncing editorStore with updated artifact:', artifact);
+          await editorState.loadArtifact(selectedSpec.path, artifact);
+        }
+      } catch (editorError) {
+        console.error('[specStore] Failed to sync editorStore:', editorError);
+      }
+
       console.log('[specStore] updateArtifact completed:', { spec: selectedSpec.name, artifact });
     } catch (error) {
       console.error('[specStore] Failed to update artifact:', { artifact, error });

@@ -87,10 +87,12 @@ export function WorkflowView() {
   }, [specJson]);
 
   // Calculate phase statuses
+  // Bug fix: Use ALL_WORKFLOW_PHASES instead of WORKFLOW_PHASES to include 'inspection'
+  // This ensures phaseStatuses['inspection'] is set, which is required for canExecutePhase('deploy')
   const phaseStatuses = useMemo(() => {
     if (!specJson) return {} as Record<WorkflowPhase, PhaseStatus>;
     const statuses: Record<WorkflowPhase, PhaseStatus> = {} as Record<WorkflowPhase, PhaseStatus>;
-    for (const phase of WORKFLOW_PHASES) {
+    for (const phase of ALL_WORKFLOW_PHASES) {
       statuses[phase] = getPhaseStatus(phase, specJson);
     }
     // タスク進捗100%の場合、implフェーズをapprovedにする

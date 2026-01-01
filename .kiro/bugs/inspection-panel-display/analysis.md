@@ -147,6 +147,30 @@ function migrateInspectionToMultiRound(oldInspection: {
 - `specStore.ts` - spec.json更新ロジック
 - `specManagerService.ts` - spec.json読み込みロジック
 
+## 追加問題: Deployボタンが有効にならない
+
+### 根本原因
+`WorkflowView.tsx`の`phaseStatuses`計算で`WORKFLOW_PHASES`を使用しているが、これには`inspection`フェーズが含まれていない。
+
+```typescript
+// 問題のコード
+for (const phase of WORKFLOW_PHASES) {  // WORKFLOW_PHASESにはinspectionが含まれない
+  statuses[phase] = getPhaseStatus(phase, specJson);
+}
+```
+
+`canExecutePhase('deploy')`は`ALL_WORKFLOW_PHASES`を使用して前フェーズを判定するため、`inspection`のステータスを参照するが、`phaseStatuses['inspection']`は`undefined`になり、常に`false`が返される。
+
+### 解決策
+`WORKFLOW_PHASES`を`ALL_WORKFLOW_PHASES`に変更し、`inspection`フェーズのステータスも計算に含める。
+
+```typescript
+// 修正後
+for (const phase of ALL_WORKFLOW_PHASES) {  // inspectionも含む
+  statuses[phase] = getPhaseStatus(phase, specJson);
+}
+```
+
 ## Testing Strategy
 1. 旧形式のspec.jsonを持つテストフィクスチャを作成
 2. アプリ起動後に自動的に新形式に変換されることを確認

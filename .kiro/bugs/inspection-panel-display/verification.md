@@ -73,3 +73,48 @@ Test Files  146 passed (146)
 - 修正は後方互換性を維持し、既存の新形式spec.jsonには影響なし
 - UI表示時のみの変換を行い、spec.jsonファイル自体は変更しない設計を採用
 - すべての関連テストがパスしていることを確認済み
+
+---
+
+# 追加修正: Deployボタンが有効にならない問題
+
+## 問題
+`inspection.status === "completed"`かつ最新ラウンドが`passed: true`でも、Deployボタンがdisabledのまま。
+
+## 根本原因
+`WorkflowView.tsx`の`phaseStatuses`計算で`WORKFLOW_PHASES`（inspectionを含まない）を使用していた。
+
+```typescript
+for (const phase of WORKFLOW_PHASES) {  // inspectionが含まれない
+  statuses[phase] = getPhaseStatus(phase, specJson);
+}
+```
+
+`canExecutePhase('deploy')`は`ALL_WORKFLOW_PHASES`を使用して前フェーズ（inspection）を判定するが、`phaseStatuses['inspection']`が`undefined`となり、常にDeployボタンがdisabledになった。
+
+## 修正
+`WORKFLOW_PHASES`を`ALL_WORKFLOW_PHASES`に変更:
+
+```typescript
+for (const phase of ALL_WORKFLOW_PHASES) {  // inspectionも含む
+  statuses[phase] = getPhaseStatus(phase, specJson);
+}
+```
+
+## Verification (追加修正分)
+- [x] TypeScriptコンパイル: PASS
+- [x] WorkflowView.test.tsx: 20 tests passed
+- [x] workflow.test.ts: 33 tests passed
+
+**テスト結果**:
+```
+✓ src/renderer/types/workflow.test.ts (33 tests) 6ms
+✓ src/renderer/components/WorkflowView.test.tsx (20 tests) 623ms
+Test Files  2 passed (2)
+     Tests  53 passed (53)
+```
+
+## Sign-off (追加修正分)
+- Verified by: Claude Code
+- Date: 2026-01-02
+- Environment: Development

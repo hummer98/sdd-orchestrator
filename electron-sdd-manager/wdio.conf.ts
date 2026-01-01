@@ -47,6 +47,11 @@ export const config: Options.Testrunner = {
         appBinaryPath,
         // E2Eテストモードを示すカスタム引数のみ
         appArgs: ['--e2e-test'],
+        // Pass mock Claude CLI environment variables to the Electron app
+        appEnv: {
+          E2E_MOCK_CLAUDE_COMMAND: mockClaudePath,
+          E2E_MOCK_CLAUDE_DELAY: process.env.E2E_MOCK_CLAUDE_DELAY || '0.1',
+        },
       },
     },
   ],

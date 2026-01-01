@@ -267,6 +267,25 @@ async function resetBugAutoExecutionService(): Promise<void> {
 }
 
 /**
+ * Helper: Reset bugAutoExecutionPermissions to default values
+ * This is needed because workflowStore uses persist middleware (localStorage)
+ */
+async function resetBugAutoExecutionPermissions(): Promise<void> {
+  await browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (stores?.workflowStore?.getState) {
+      // Reset to default values
+      stores.workflowStore.getState().setBugAutoExecutionPermissions({
+        analyze: true,
+        fix: true,
+        verify: true,
+        deploy: false,
+      });
+    }
+  });
+}
+
+/**
  * Helper: Clear selected spec
  */
 async function clearSelectedSpecViaStore(): Promise<void> {
@@ -276,6 +295,20 @@ async function clearSelectedSpecViaStore(): Promise<void> {
       stores.specStore.getState().clearSelectedSpec();
     }
   });
+}
+
+/**
+ * Helper: Wait for bugDetail to be loaded
+ * This is needed because bugStore.selectBug() loads bugDetail asynchronously
+ */
+async function waitForBugDetail(): Promise<boolean> {
+  return waitForCondition(async () => {
+    const hasDetail = await browser.execute(() => {
+      const stores = (window as any).__STORES__;
+      return stores?.bugStore?.getState()?.bugDetail !== null;
+    });
+    return hasDetail;
+  }, 5000, 100, 'bugDetail-loaded');
 }
 
 /**
@@ -316,6 +349,9 @@ describe('Bug Auto Execution E2E Tests', () => {
     // Reset BugAutoExecutionService
     await resetBugAutoExecutionService();
 
+    // Reset bugAutoExecutionPermissions to default (important: localStorage persists between tests)
+    await resetBugAutoExecutionPermissions();
+
     // Clear selected spec
     await clearSelectedSpecViaStore();
 
@@ -336,6 +372,10 @@ describe('Bug Auto Execution E2E Tests', () => {
     const bugSuccess = await selectBugViaStore(BUG_NAME);
     expect(bugSuccess).toBe(true);
     await browser.pause(500);
+
+    // Wait for bugDetail to be loaded (required for auto-execution to start)
+    const bugDetailLoaded = await waitForBugDetail();
+    expect(bugDetailLoaded).toBe(true);
 
     // Wait for BugWorkflowView
     const workflowView = await $('[data-testid="bug-workflow-view"]');
@@ -463,9 +503,37 @@ describe('Bug Auto Execution E2E Tests', () => {
         deploy: false,
       });
 
+      // Debug: Check bugStore state before clicking
+      const bugStoreState = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        const bugStore = stores?.bugStore?.getState();
+        return {
+          selectedBug: bugStore?.selectedBug?.name ?? null,
+          hasBugDetail: bugStore?.bugDetail !== null,
+          bugDetailArtifacts: bugStore?.bugDetail?.artifacts ?? null,
+        };
+      });
+      console.log(`[E2E] Bug store state before click: ${JSON.stringify(bugStoreState)}`);
+
+      // Debug: Check workflowStore permissions
+      const permissionsState = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        const workflowStore = stores?.workflowStore?.getState();
+        return workflowStore?.bugAutoExecutionPermissions ?? null;
+      });
+      console.log(`[E2E] Permissions before click: ${JSON.stringify(permissionsState)}`);
+
       // Click auto-execute button
       const autoButton = await $('[data-testid="bug-auto-execute-button"]');
       await autoButton.click();
+
+      // Wait a moment for auto-execution to start
+      await browser.pause(500);
+
+      // Verify auto-execution started
+      const startedStatus = await getBugAutoExecutionStatus();
+      console.log(`[E2E] Auto-execution status after click: isAutoExecuting=${startedStatus.isAutoExecuting}, status=${startedStatus.autoExecutionStatus}, phase=${startedStatus.currentAutoPhase}`);
+      expect(startedStatus.isAutoExecuting).toBe(true);
 
       // Wait for execution to complete
       const completed = await waitForCondition(async () => {
@@ -481,9 +549,9 @@ describe('Bug Auto Execution E2E Tests', () => {
       const analysisPath = path.join(BUG_DIR, 'analysis.md');
       expect(fs.existsSync(analysisPath)).toBe(true);
 
-      // Verify content
+      // Verify content (Mock Claude CLI generates "# Bug Analysis: {bug-name}" header)
       const content = fs.readFileSync(analysisPath, 'utf-8');
-      expect(content).toContain('# Analysis');
+      expect(content).toContain('# Bug Analysis');
     });
 
     it('should execute analyze and fix phases when both are permitted', async () => {

@@ -170,3 +170,70 @@ npx wdio run wdio.conf.ts --spec e2e-wdio/bugs-pane-integration.e2e.spec.ts
 | [bugs-pane-integration.e2e.spec.ts](../../electron-sdd-manager/e2e-wdio/bugs-pane-integration.e2e.spec.ts) | 修正されたテスト（タブ切り替え追加） |
 | [layout-persistence.e2e.spec.ts](../../electron-sdd-manager/e2e-wdio/layout-persistence.e2e.spec.ts) | 修正されたテスト（プロジェクト選択追加） |
 | [fix.md](../../.kiro/bugs/document-review-auto-reply-not-triggered/fix.md) | バグ修正ドキュメント |
+
+---
+
+## 解決した問題（続き）
+
+### 4. bug-auto-execution.e2e.spec.ts の問題
+
+**状態**: ✅ 主要問題解決（テストは追加調整が必要）
+
+#### 問題1: Mock CLI が使用されない（根本原因）
+
+**症状**:
+- `BugAutoExecutionService` が `window.electronAPI.startAgent()` に `'claude'` をハードコード
+- Mock CLI (`scripts/e2e-mock/mock-claude.sh`) が使用されず、実際の Claude CLI が呼ばれる
+- 実際の API 呼び出しのため実行に約1分かかり、30秒のタイムアウトに失敗
+
+**修正内容**:
+
+1. **wdio.conf.ts に `appEnv` を追加** - Electron アプリに環境変数を渡す:
+```typescript
+'wdio:electronServiceOptions': {
+  appBinaryPath,
+  appArgs: ['--e2e-test'],
+  appEnv: {
+    E2E_MOCK_CLAUDE_COMMAND: mockClaudePath,
+    E2E_MOCK_CLAUDE_DELAY: process.env.E2E_MOCK_CLAUDE_DELAY || '0.1',
+  },
+},
+```
+
+2. **IPC handlers で command 置換** - `command === 'claude'` の場合に `getClaudeCommand()` を使用:
+```typescript
+// src/main/ipc/handlers.ts
+const resolvedCommand = command === 'claude' ? getClaudeCommand() : command;
+```
+
+#### 問題2: bugDetail がロードされる前に自動実行開始
+
+**症状**:
+- `BugAutoExecutionService.start()` が `false` を返す（`bugDetail` が `null`）
+
+**修正内容**:
+- `waitForBugDetail()` ヘルパー関数を追加
+- `beforeEach` で `bugDetail` ロード完了を待機
+
+#### 問題3: workflowStore の localStorage 永続化
+
+**症状**:
+- テスト間で `bugAutoExecutionPermissions` が前のテストの設定を引き継ぐ
+
+**修正内容**:
+- `resetBugAutoExecutionPermissions()` ヘルパー関数を追加
+- `beforeEach` で呼び出すように修正
+
+#### 問題4: テスト期待値の不一致
+
+**症状**:
+- `expect(content).toContain('# Analysis')` が失敗
+- Mock Claude CLI は `# Bug Analysis: test-bug` を生成
+
+**修正内容**:
+- 期待値を `'# Bug Analysis'` に変更
+
+#### 残りの問題（テスト側の調整が必要）
+
+1. **フィクスチャリセットのタイミング**: 前のテストで生成された `analysis.md` が残っているため、`getLastCompletedPhase()` が `analyze` を返し、次のフェーズ `fix` から開始する
+2. **ステータス確認タイミング**: Mock CLI が高速すぎて `running` ステータスをキャッチできない場合がある

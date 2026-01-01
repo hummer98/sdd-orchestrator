@@ -23,6 +23,7 @@ import { addShellPermissions, checkRequiredPermissions, addPermissionsToProject 
 import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugService } from '../services/bugService';
+import { getClaudeCommand } from '../services/agentProcess';
 import { BugsWatcherService } from '../services/bugsWatcherService';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
 import { BugWorkflowInstaller } from '../services/bugWorkflowInstaller';
@@ -658,7 +659,9 @@ export function registerIpcHandlers(): void {
       sessionId?: string,
       skipPermissions?: boolean
     ) => {
-      logger.info('[handlers] START_AGENT called', { specId, phase, command, args, group, sessionId, skipPermissions });
+      // Replace 'claude' command with mock CLI command if configured (for E2E testing)
+      const resolvedCommand = command === 'claude' ? getClaudeCommand() : command;
+      logger.info('[handlers] START_AGENT called', { specId, phase, command: resolvedCommand, args, group, sessionId, skipPermissions });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -713,7 +716,7 @@ export function registerIpcHandlers(): void {
       const result = await service.startAgent({
         specId,
         phase,
-        command,
+        command: resolvedCommand,
         args,
         group,
         sessionId,

@@ -11,17 +11,29 @@ import type { SpecJson } from './index';
 // Requirements: 1.1, 1.3
 // ============================================================
 
-/** SDDワークフローの6フェーズ */
+/** SDDワークフローのフェーズ */
 export type WorkflowPhase =
   | 'requirements' // 要件定義
   | 'design' // 設計
   | 'tasks' // タスク
   | 'impl' // 実装
-  | 'inspection' // 検査
+  | 'inspection' // 検査（InspectionPanelで表示）
   | 'deploy'; // デプロイ
 
-/** フェーズ順序定義 */
-export const WORKFLOW_PHASES: WorkflowPhase[] = [
+/** PhaseItemとして表示されるフェーズ（inspectionはInspectionPanelで別途表示） */
+export type DisplayablePhase = Exclude<WorkflowPhase, 'inspection'>;
+
+/** PhaseItemとして表示されるフェーズ順序定義 */
+export const WORKFLOW_PHASES: DisplayablePhase[] = [
+  'requirements',
+  'design',
+  'tasks',
+  'impl',
+  'deploy',
+];
+
+/** 全フェーズ順序定義（inspectionを含む、状態判定用） */
+export const ALL_WORKFLOW_PHASES: WorkflowPhase[] = [
   'requirements',
   'design',
   'tasks',
@@ -154,7 +166,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     design: '/kiro:spec-design',
     tasks: '/kiro:spec-tasks',
     impl: '/kiro:spec-impl',
-    inspection: '/kiro:validate-impl',
+    inspection: '/kiro:spec-inspection',
     deploy: '/kiro:deployment',
   },
   'spec-manager': {
@@ -162,7 +174,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     design: '/spec-manager:design',
     tasks: '/spec-manager:tasks',
     impl: '/spec-manager:impl',
-    inspection: '/spec-manager:validate-impl',
+    inspection: '/spec-manager:inspection',
     deploy: '/spec-manager:deployment',
   },
 };

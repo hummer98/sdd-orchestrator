@@ -13,7 +13,7 @@ import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useSpecStore } from '../stores/specStore';
 import { notify } from '../stores/notificationStore';
-import { WORKFLOW_PHASES, type WorkflowPhase, type ValidationType } from '../types/workflow';
+import { ALL_WORKFLOW_PHASES, type WorkflowPhase, type ValidationType } from '../types/workflow';
 import type { ApprovalStatus, SpecAutoExecutionState, SpecDetail } from '../types';
 import { DEFAULT_SPEC_AUTO_EXECUTION_STATE, createSpecAutoExecutionState } from '../types';
 import {
@@ -283,14 +283,14 @@ export class AutoExecutionService {
     // Find starting index
     let startIndex = 0;
     if (currentPhase !== null) {
-      const currentIndex = WORKFLOW_PHASES.indexOf(currentPhase);
+      const currentIndex = ALL_WORKFLOW_PHASES.indexOf(currentPhase);
       if (currentIndex === -1) return null;
       startIndex = currentIndex + 1;
     }
 
     // Find next permitted phase
-    for (let i = startIndex; i < WORKFLOW_PHASES.length; i++) {
-      const phase = WORKFLOW_PHASES[i];
+    for (let i = startIndex; i < ALL_WORKFLOW_PHASES.length; i++) {
+      const phase = ALL_WORKFLOW_PHASES[i];
       if (autoExecutionPermissions[phase]) {
         return phase;
       }
@@ -353,10 +353,10 @@ export class AutoExecutionService {
     }
 
     // Check previous phase approval for design/tasks phases
-    const phaseIndex = WORKFLOW_PHASES.indexOf(phase);
+    const phaseIndex = ALL_WORKFLOW_PHASES.indexOf(phase);
     if (phaseIndex > 0 && phaseIndex < 3) {
       // design or tasks
-      const prevPhase = WORKFLOW_PHASES[phaseIndex - 1] as 'requirements' | 'design';
+      const prevPhase = ALL_WORKFLOW_PHASES[phaseIndex - 1] as 'requirements' | 'design';
       const prevApproval = specJson.approvals[prevPhase];
 
       if (!prevApproval.approved) {
@@ -1230,7 +1230,7 @@ export class AutoExecutionService {
     // When requiresApproval is true, we need to auto-approve the previous phase
     // even if valid is true (valid means "can proceed if we auto-approve")
     if (precondition.requiresApproval) {
-      const prevPhase = WORKFLOW_PHASES[WORKFLOW_PHASES.indexOf(phase) - 1];
+      const prevPhase = ALL_WORKFLOW_PHASES[ALL_WORKFLOW_PHASES.indexOf(phase) - 1];
       if (prevPhase && ['requirements', 'design', 'tasks'].includes(prevPhase)) {
         console.log(`[AutoExecutionService] Auto-approving ${prevPhase} before executing ${phase}`);
         const approved = await this.autoApprovePhase(

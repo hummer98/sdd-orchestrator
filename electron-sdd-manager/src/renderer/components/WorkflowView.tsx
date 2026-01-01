@@ -23,6 +23,7 @@ import type { MultiRoundInspectionState } from '../types/inspection';
 import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
 import {
   WORKFLOW_PHASES,
+  ALL_WORKFLOW_PHASES,
   PHASE_LABELS,
   VALIDATION_LABELS,
   getPhaseStatus,
@@ -148,11 +149,11 @@ export function WorkflowView() {
       // implフェーズの場合、同じspec内でvalidateグループが実行中なら不可
       if (phase === 'impl' && runningGroupInSpec === 'validate') return false;
 
-      const index = WORKFLOW_PHASES.indexOf(phase);
+      const index = ALL_WORKFLOW_PHASES.indexOf(phase);
       if (index === 0) return true; // requirements は常に実行可能
 
       // 前のフェーズが approved でなければ不可
-      const prevPhase = WORKFLOW_PHASES[index - 1];
+      const prevPhase = ALL_WORKFLOW_PHASES[index - 1];
       return phaseStatuses[prevPhase] === 'approved';
     },
     [runningPhases, runningGroupInSpec, phaseStatuses]
@@ -189,9 +190,9 @@ export function WorkflowView() {
 
   // Get previous phase status
   const getPreviousStatus = (phase: WorkflowPhase): PhaseStatus | null => {
-    const index = WORKFLOW_PHASES.indexOf(phase);
+    const index = ALL_WORKFLOW_PHASES.indexOf(phase);
     if (index <= 0) return null;
-    return phaseStatuses[WORKFLOW_PHASES[index - 1]];
+    return phaseStatuses[ALL_WORKFLOW_PHASES[index - 1]];
   };
 
   // Handlers
@@ -229,7 +230,7 @@ export function WorkflowView() {
   }, [specDetail]);
 
   const handleApproveAndExecutePhase = useCallback(async (phase: WorkflowPhase) => {
-    const previousPhase = WORKFLOW_PHASES[WORKFLOW_PHASES.indexOf(phase) - 1];
+    const previousPhase = ALL_WORKFLOW_PHASES[ALL_WORKFLOW_PHASES.indexOf(phase) - 1];
     if (previousPhase) {
       await handleApprovePhase(previousPhase);
     }

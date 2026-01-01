@@ -1170,12 +1170,12 @@ export class SpecManagerService {
   // ============================================================
 
   /**
-   * Execute inspection agent (validate-impl)
+   * Execute inspection agent (spec-inspection)
    * Requirements: 4.2 (inspection-workflow-ui)
    */
   async executeInspection(options: ExecuteInspectionOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, commandPrefix = 'kiro' } = options;
-    const slashCommand = commandPrefix === 'kiro' ? '/kiro:validate-impl' : '/spec-manager:validate-impl';
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
 
     logger.info('[SpecManagerService] executeInspection called', { specId, featureName, slashCommand, commandPrefix });
 

@@ -197,23 +197,23 @@ describe('WorkflowView', () => {
   // Requirements: 1.1, 1.2, 1.3
   // ============================================================
   describe('Task 7.1: 6 phases vertical display', () => {
-    it('should display all 6 phases', () => {
+    it('should display 5 phases as PhaseItems (inspection is shown via InspectionPanel)', () => {
       render(<WorkflowView />);
 
       expect(screen.getByText('要件定義')).toBeInTheDocument();
       expect(screen.getByText('設計')).toBeInTheDocument();
       expect(screen.getByText('タスク')).toBeInTheDocument();
       expect(screen.getByText('実装')).toBeInTheDocument();
-      expect(screen.getByText('検査')).toBeInTheDocument();
+      // 検査フェーズはInspectionPanelで表示されるため、PhaseItemには含まれない
       expect(screen.getByText('デプロイ')).toBeInTheDocument();
     });
 
     it('should display phase connectors (arrows)', () => {
       render(<WorkflowView />);
 
-      // Should have 5 connectors for 6 phases
+      // Should have 4 connectors for 5 displayable phases
       const connectors = screen.getAllByTestId('phase-connector');
-      expect(connectors.length).toBe(5);
+      expect(connectors.length).toBe(4);
     });
 
     it('should display approved status for approved phases', () => {

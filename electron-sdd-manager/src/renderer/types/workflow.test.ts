@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   WORKFLOW_PHASES,
+  ALL_WORKFLOW_PHASES,
   PHASE_LABELS,
   VALIDATION_COMMANDS,
   getPhaseStatus,
@@ -24,9 +25,25 @@ describe('Workflow Types', () => {
   // Requirements: 1.1, 1.3
   // ============================================================
   describe('Task 1.1: WorkflowPhase type and constants', () => {
-    describe('WORKFLOW_PHASES', () => {
-      it('should contain all 6 phases in order', () => {
+    describe('WORKFLOW_PHASES (displayable phases)', () => {
+      it('should contain 5 displayable phases (inspection is shown via InspectionPanel)', () => {
         expect(WORKFLOW_PHASES).toEqual([
+          'requirements',
+          'design',
+          'tasks',
+          'impl',
+          'deploy',
+        ]);
+      });
+
+      it('should have exactly 5 phases', () => {
+        expect(WORKFLOW_PHASES.length).toBe(5);
+      });
+    });
+
+    describe('ALL_WORKFLOW_PHASES', () => {
+      it('should contain all 6 phases in order', () => {
+        expect(ALL_WORKFLOW_PHASES).toEqual([
           'requirements',
           'design',
           'tasks',
@@ -37,7 +54,7 @@ describe('Workflow Types', () => {
       });
 
       it('should have exactly 6 phases', () => {
-        expect(WORKFLOW_PHASES.length).toBe(6);
+        expect(ALL_WORKFLOW_PHASES.length).toBe(6);
       });
     });
 
@@ -52,7 +69,7 @@ describe('Workflow Types', () => {
       });
 
       it('should have labels for all phases', () => {
-        for (const phase of WORKFLOW_PHASES) {
+        for (const phase of ALL_WORKFLOW_PHASES) {
           expect(PHASE_LABELS[phase]).toBeDefined();
         }
       });

@@ -12,7 +12,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WorkflowPhase, ValidationType } from '../types/workflow';
-import { WORKFLOW_PHASES } from '../types/workflow';
+import { ALL_WORKFLOW_PHASES } from '../types/workflow';
 import type { SpecAutoExecutionState } from '../types';
 import type { BugWorkflowPhase } from '../types/bug';
 import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
@@ -411,15 +411,15 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
       getNextAutoPhase: (currentPhase: WorkflowPhase | null) => {
         if (currentPhase === null) {
-          return WORKFLOW_PHASES[0]; // requirements
+          return ALL_WORKFLOW_PHASES[0]; // requirements
         }
 
-        const currentIndex = WORKFLOW_PHASES.indexOf(currentPhase);
-        if (currentIndex === -1 || currentIndex === WORKFLOW_PHASES.length - 1) {
+        const currentIndex = ALL_WORKFLOW_PHASES.indexOf(currentPhase);
+        if (currentIndex === -1 || currentIndex === ALL_WORKFLOW_PHASES.length - 1) {
           return null;
         }
 
-        return WORKFLOW_PHASES[currentIndex + 1];
+        return ALL_WORKFLOW_PHASES[currentIndex + 1];
       },
 
       // ============================================================

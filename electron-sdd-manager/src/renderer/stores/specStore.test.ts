@@ -1133,8 +1133,10 @@ describe('useSpecStore', () => {
       expect(updateArtifactSpy).toHaveBeenCalledWith('tasks');
     });
 
-    it('should call updateSpecJson when document-review-*.md changes', async () => {
-      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+    it('should call syncDocumentReviewState when document-review-*.md changes', async () => {
+      // Bug fix: document-review-panel-update-issues
+      // Now calls dedicated sync method instead of updateSpecJson
+      const syncDocumentReviewStateSpy = vi.spyOn(useSpecStore.getState(), 'syncDocumentReviewState');
 
       onSpecsChangedCallback?.({
         specId: 'feature-a',
@@ -1143,11 +1145,13 @@ describe('useSpecStore', () => {
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(updateSpecJsonSpy).toHaveBeenCalled();
+      expect(syncDocumentReviewStateSpy).toHaveBeenCalled();
     });
 
-    it('should call updateSpecJson when inspection-*.md changes', async () => {
-      const updateSpecJsonSpy = vi.spyOn(useSpecStore.getState(), 'updateSpecJson');
+    it('should call syncInspectionState when inspection-*.md changes', async () => {
+      // Bug fix: document-review-panel-update-issues
+      // Now calls dedicated sync method instead of updateSpecJson
+      const syncInspectionStateSpy = vi.spyOn(useSpecStore.getState(), 'syncInspectionState');
 
       onSpecsChangedCallback?.({
         specId: 'feature-a',
@@ -1156,7 +1160,7 @@ describe('useSpecStore', () => {
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(updateSpecJsonSpy).toHaveBeenCalled();
+      expect(syncInspectionStateSpy).toHaveBeenCalled();
     });
 
     it('should call updateSpecMetadata for non-selected spec changes', async () => {

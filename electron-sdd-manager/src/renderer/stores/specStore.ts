@@ -107,6 +107,16 @@ interface SpecActions {
   updateArtifact: (artifact: ArtifactType) => Promise<void>;
   /** Update only spec metadata in the list (phase, updatedAt) */
   updateSpecMetadata: (specId: string) => Promise<void>;
+  // ============================================================
+  // Bug fix: document-review-panel-update-issues
+  // Sync methods for file watcher granular updates
+  // ============================================================
+  /** Sync documentReview state from file system to spec.json and update UI */
+  syncDocumentReviewState: () => Promise<void>;
+  /** Sync inspection state and load inspection artifact */
+  syncInspectionState: () => Promise<void>;
+  /** Calculate task progress and auto-fix phase if needed */
+  syncTaskProgress: () => Promise<void>;
   // spec-scoped-auto-execution-state: Spec毎の自動実行runtime状態アクション
   getAutoExecutionRuntime: (specId: string) => AutoExecutionRuntimeState;
   setAutoExecutionRunning: (specId: string, isRunning: boolean) => void;
@@ -412,13 +422,20 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
             get().updateArtifact('design');
           } else if (fileName === 'tasks.md') {
             get().updateArtifact('tasks');
+            // Bug fix: document-review-panel-update-issues
+            // Also sync task progress for phase auto-fix
+            get().syncTaskProgress();
           } else if (fileName === 'research.md') {
             get().updateArtifact('research');
-          } else if (fileName.startsWith('document-review-') || fileName.startsWith('inspection-')) {
-            // Document review and inspection files are tracked in spec.json
-            // Update spec.json to refresh their state in UI
-            console.log('[specStore] Document review/inspection file changed, updating spec.json:', fileName);
-            get().updateSpecJson();
+          } else if (fileName.startsWith('document-review-')) {
+            // Bug fix: document-review-panel-update-issues
+            // Use dedicated sync method for document review files
+            console.log('[specStore] Document review file changed, syncing documentReview state:', fileName);
+            get().syncDocumentReviewState();
+          } else if (fileName.startsWith('inspection-')) {
+            // Use dedicated sync method for inspection files
+            console.log('[specStore] Inspection file changed, syncing inspection state:', fileName);
+            get().syncInspectionState();
           } else {
             // Unknown file, update spec.json as fallback (may contain references)
             console.log('[specStore] Unknown file changed, updating spec.json as fallback:', fileName);
@@ -678,6 +695,161 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       console.log('[specStore] updateSpecMetadata completed:', specId);
     } catch (error) {
       console.error('[specStore] Failed to update spec metadata:', error);
+    }
+  },
+
+  // ============================================================
+  // Bug fix: document-review-panel-update-issues
+  // Sync methods for file watcher granular updates
+  // ============================================================
+
+  /**
+   * Sync documentReview state from file system to spec.json and update UI
+   * Called when document-review-*.md files change
+   */
+  syncDocumentReviewState: async () => {
+    const { selectedSpec, specDetail } = get();
+
+    if (!selectedSpec || !specDetail) {
+      return;
+    }
+
+    try {
+      console.log('[specStore] syncDocumentReviewState: Syncing documentReview state', selectedSpec.name);
+
+      // Sync file system state to spec.json
+      const wasModified = await window.electronAPI.syncDocumentReview(selectedSpec.path);
+      if (wasModified) {
+        console.log('[specStore] syncDocumentReviewState: spec.json was updated');
+      }
+
+      // Always re-read spec.json to get current state
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+
+      // Update specDetail with new specJson
+      set({
+        specDetail: {
+          ...specDetail,
+          specJson,
+        },
+      });
+
+      console.log('[specStore] syncDocumentReviewState completed:', selectedSpec.name);
+    } catch (error) {
+      console.error('[specStore] Failed to sync documentReview state:', error);
+    }
+  },
+
+  /**
+   * Sync inspection state and load inspection artifact
+   * Called when inspection-*.md files change
+   */
+  syncInspectionState: async () => {
+    const { selectedSpec, specDetail } = get();
+
+    if (!selectedSpec || !specDetail) {
+      return;
+    }
+
+    try {
+      console.log('[specStore] syncInspectionState: Syncing inspection state', selectedSpec.name);
+
+      // Re-read spec.json to get current inspection field
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+
+      // Load inspection artifact if exists
+      let updatedArtifacts = specDetail.artifacts;
+      const reportFile = getLatestInspectionReportFile(specJson.inspection);
+      if (reportFile) {
+        try {
+          const artifactPath = `${selectedSpec.path}/${reportFile}`;
+          const content = await window.electronAPI.readArtifact(artifactPath);
+          updatedArtifacts = {
+            ...specDetail.artifacts,
+            inspection: { exists: true, updatedAt: null, content },
+          };
+          console.log('[specStore] syncInspectionState: Loaded inspection artifact', reportFile);
+        } catch {
+          updatedArtifacts = {
+            ...specDetail.artifacts,
+            inspection: null,
+          };
+          console.log('[specStore] syncInspectionState: Inspection file not found', reportFile);
+        }
+      }
+
+      // Update specDetail
+      set({
+        specDetail: {
+          ...specDetail,
+          specJson,
+          artifacts: updatedArtifacts,
+        },
+      });
+
+      console.log('[specStore] syncInspectionState completed:', selectedSpec.name);
+    } catch (error) {
+      console.error('[specStore] Failed to sync inspection state:', error);
+    }
+  },
+
+  /**
+   * Calculate task progress and auto-fix phase if needed
+   * Called when tasks.md changes
+   */
+  syncTaskProgress: async () => {
+    const { selectedSpec, specDetail } = get();
+
+    if (!selectedSpec || !specDetail) {
+      return;
+    }
+
+    try {
+      console.log('[specStore] syncTaskProgress: Syncing task progress', selectedSpec.name);
+
+      const tasksArtifact = specDetail.artifacts.tasks;
+      if (!tasksArtifact?.content) {
+        return;
+      }
+
+      // Calculate task progress
+      const completedMatches = tasksArtifact.content.match(/^- \[x\]/gim) || [];
+      const pendingMatches = tasksArtifact.content.match(/^- \[ \]/gm) || [];
+      const total = completedMatches.length + pendingMatches.length;
+      const completed = completedMatches.length;
+      const taskProgress: TaskProgress = {
+        total,
+        completed,
+        percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+      };
+
+      // Auto-fix phase if all tasks complete
+      let specJson = specDetail.specJson;
+      if (total > 0) {
+        const isAllComplete = completed === total;
+        if (isAllComplete && specJson.phase !== 'implementation-complete') {
+          console.log('[specStore] syncTaskProgress: Auto-fixing phase to implementation-complete');
+          try {
+            await window.electronAPI.syncSpecPhase(selectedSpec.path, 'impl-complete', { skipTimestamp: true });
+            specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+          } catch (error) {
+            console.error('[specStore] syncTaskProgress: Failed to auto-fix phase:', error);
+          }
+        }
+      }
+
+      // Update specDetail
+      set({
+        specDetail: {
+          ...specDetail,
+          specJson,
+          taskProgress,
+        },
+      });
+
+      console.log('[specStore] syncTaskProgress completed:', { spec: selectedSpec.name, taskProgress });
+    } catch (error) {
+      console.error('[specStore] Failed to sync task progress:', error);
     }
   },
 

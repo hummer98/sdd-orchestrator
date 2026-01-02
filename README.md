@@ -211,7 +211,13 @@ For development environment setup, build instructions, and project structure, se
 
 ## ToDo
 
-- **エスカレーション機能**: エージェントが処理できない問題を人間にエスカレーションする仕組みの実装
+- **Discord Bot Integration**: Completion notifications and AI Agent command interface
+- **Deploy Phase Bug Fixes**: Improve stability of the Deploy phase
+- **Insight to Steering UI**: UI to help reflect inspection insights into steering
+- **Steering Management UI**: Dedicated UI for managing and editing steering files
+- **Plan → Requirements UX**: Improve the currently external-tool-dependent workflow
+- **Project Agent UI**: UI to start project agent without specifying commands
+- **Escalation Feature**: Mechanism for agents to escalate issues to humans
 
 ## License
 

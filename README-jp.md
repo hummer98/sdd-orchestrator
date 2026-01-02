@@ -216,6 +216,12 @@ SDD Orchestratorは、**人間とAIの双方が学ぶ**ことでAI Agent Coding�
 
 ## ToDo
 
+- **Discord Bot連携**: 完了通知およびAI Agentコマンドインターフェースの提供
+- **Deploy周りのバグフィックス**: Deployフェーズの安定性向上
+- **洞察のSteering反映UI**: inspection結果からsteeringへの反映を支援するUI
+- **Steering専用UI**: steeringファイルの管理・編集UI
+- **Plan → Requirements UX向上**: 現在は外部ツール頼りの部分を改善
+- **Project Agent UI**: コマンド指定無しでproject agentを開始するUI
 - **エスカレーション機能**: エージェントが処理できない問題を人間にエスカレーションする仕組みの実装
 
 ## ライセンス

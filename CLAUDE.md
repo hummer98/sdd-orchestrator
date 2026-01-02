@@ -75,6 +75,9 @@ Report → Analyze → Fix → Verify
 - **YAGNI** (You Aren't Gonna Need It): 現時点で不要な機能は実装しない
 - **関心の分離**: 各モジュールは単一の責務を持つ
 
+**重要**: AI設計判断の詳細原則は `.kiro/steering/design-principles.md` を参照。
+AIは「人間の実装コスト」を理由に設計判断を歪めてはならない。
+
 ## Development Rules
 
 - 3-phase approval workflow: Requirements → Design → Tasks → Implementation

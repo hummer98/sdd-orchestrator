@@ -2,45 +2,84 @@
 
 日本語 | [English](README.md)
 
-Spec-Driven Development (SDD) ワークフローを管理・実行するためのデスクトップアプリケーション。
+Spec-Driven Development (SDD) ワークフローの**コマンドセンター**となるデスクトップアプリケーション。
 
-AIエージェント（Claude Code等）と協調して、仕様駆動開発のライフサイクルを自動化・可視化します。
+## 目次
+
+- [概要](#概要)
+- [主な機能](#主な機能)
+- [SDD-Orchestratorワークフロー](#sdd-orchestratorワークフロー)
+- [クイックスタート](#クイックスタート)
+- [Cloudflare Tunnelによるリモートアクセス](#cloudflare-tunnelによるリモートアクセス)
+- [設計思想](#設計思想)
+- [開発者向け](#開発者向け)
 
 ## 概要
 
-SDD Orchestratorは、**Claude Code**と連携してSpec-Driven Development（SDD）を実践するためのデスクトップアプリケーションです。
+SDD Orchestratorは、[kiro](https://kiro.dev/)/[SpecKit](https://speckit.dev/)/[cc-sdd](https://github.com/gotalab/cc-sdd)の手法を拡張し、視覚的な管理機能を備えた統合開発ワークフローを提供します。
 
-### Spec-Driven Development（SDD）とは
+**なぜSDD Orchestratorか？**
 
-SDDは、AIエージェントと人間が協調してソフトウェアを開発する手法です。実装前に仕様（Spec）を明確に定義し、段階的にレビューを行うことで、AI生成コードの品質と一貫性を確保します。
+Claude Code for VSCodeやAntigravityなどのツールでは、対話セッションと進捗状況を仕様毎に管理・把握するのが困難です。SDD Orchestratorは**ダッシュボード**を提供し、以下を即座に把握できます：
+- プロジェクト内のすべての仕様
+- 各Specの現在のフェーズと状態
+- ドキュメントレビューの課題と解決状況
+- 実装の進捗とInspection結果
 
-```
-要件定義 → 設計 → タスク分解 → 実装（TDD）
-    ↑         ↑        ↑          ↑
-  人間レビュー（各フェーズで承認）
-```
+このコマンドセンターアプローチにより、複数の仕様が並行して進む複雑なプロジェクトを容易に管理できます。
 
-### SDDの4つのフェーズ
+### SDDについて詳しく
 
-| フェーズ | 内容 | 成果物 |
-|---------|------|--------|
-| **Requirements** | 機能要件をEARS形式で定義 | `requirements.md` |
-| **Design** | 技術設計・アーキテクチャ決定 | `design.md` |
-| **Tasks** | 実装タスクへの分解 | `tasks.md` |
-| **Implementation** | TDD手法による実装 | ソースコード |
-
-### ドキュメントレビュー
-
-各フェーズの成果物は、AIによる自動レビュー（`document-review`）と人間によるレビューを経て承認されます。課題が発見された場合は、`document-review-reply`で対応を生成し、課題解決までのワークフローをGUIで管理できます。
+- [Anthropic: Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) - Spec駆動開発の手法
+- [SpecKit](https://speckit.dev/) - GitHubの仕様駆動開発ツールキット
+- [cc-sdd](https://github.com/gotalab/cc-sdd) - Claude Code SDDワークフローコマンド
 
 ## 主な機能
 
-- **Claude Code連携**: スラッシュコマンドでSDDワークフローを実行
-- **Specライフサイクル管理**: 各フェーズの進捗を可視化
-- **ドキュメントレビュー**: 整合性・完全性の自動チェックと課題追跡
-- **人間-AI協調ワークフロー**: 各フェーズで人間の承認を挟む品質管理
-- **Kiro形式（`.kiro/specs/`）準拠**
-- **リモートアクセス**: Cloudflare Tunnel対応でLAN外からもセキュアに操作可能
+- **ダッシュボード＆コマンドセンター**: 全Specのライフサイクル状態を視覚的に把握
+- **8フェーズの完全なワークフロー**: Plan → Requirements → Design → Tasks → Review → Implementation → Inspection → Deploy
+- **柔軟な人間-AI協調**: 人間がどこで介入するか、どこを自動化するかを選択可能
+- **ドキュメントレビューシステム**: 課題追跡と解決ワークフロー
+- **Claude Code連携**: スラッシュコマンドでSDDフェーズを実行
+- **Kiro形式準拠**: `.kiro/specs/`ディレクトリ構造を使用
+- **リモートアクセス**: LAN内アクセス、またはCloudflare Tunnel経由で外部からもアクセス可能
+
+## SDD-Orchestratorワークフロー
+
+完全な開発フローは8つのフェーズで構成されます。人間がどこで介入するか、どこを自動化するかを選択できます：
+
+![SDD-Orchestratorワークフロー](.github/images/sdd-orchestrator-workflow.png)
+
+| フェーズ | コマンド | 説明 | 成果物 |
+|---------|---------|------|--------|
+| 1. Plan | (GUI) | 説明付きでSpecを作成 | `spec.json` |
+| 2. Requirements | `spec-requirements` | EARS形式で要件を定義 | `requirements.md` |
+| 3. Design | `spec-design` | 技術設計を作成 | `design.md` |
+| 4. Tasks | `spec-tasks` | 実装タスクに分解 | `tasks.md` |
+| 5. Review | `document-review` | ドキュメントの整合性をレビュー | `document-review-{n}.md`, `document-review-{n}-reply.md` |
+| 6. Implementation | `spec-impl` | TDD手法で実装 | ソースコード |
+| 7. Inspection | `spec-inspection` | 仕様に対する実装を検証 | `inspection-{n}.md` |
+| 8. Deploy | (GUI) | 完了としてマーク | `spec.json`のステータス更新 |
+
+### オプションのバリデーション（cc-sdd準拠）
+
+- **validate-gap**: 既存コードベースとのギャップ分析（Requirements後）
+- **validate-design**: 設計品質レビュー（Design後）
+- **validate-impl**: 実装検証（Implementation後）
+
+### バグ修正（軽量ワークフロー）
+
+フルSDDプロセスを必要としない小規模なバグ修正向け：
+
+1. **bug-create**: バグレポート作成
+2. **bug-analyze**: 根本原因の調査
+3. **bug-fix**: 修正の実装
+4. **bug-verify**: 修正の検証
+5. **bug-status**: 進捗確認
+
+**使い分け：**
+- **小規模バグ**: Bug Fixワークフロー（軽量・高速）
+- **設計変更を伴う複雑なバグ**: フルSDDワークフロー
 
 ## クイックスタート
 
@@ -59,63 +98,35 @@ SDD Orchestratorを起動し、開発対象のプロジェクトディレクト�
 
 ### 3. コマンドセットのインストール
 
-GUIの「Install Commands」ボタンをクリックして、プロジェクトに `/kiro:*` スラッシュコマンドをインストールします。
+SDD Orchestratorの**ツール**メニュー → **コマンドセットをインストール...** を選択し、プロジェクトに `/kiro:*` スラッシュコマンドをインストールします。
 
-インストールされるもの：
+**利用可能なプロファイル：**
+
+| プロファイル | 含まれるコマンドセット | 用途 |
+|-------------|----------------------|------|
+| cc-sdd | cc-sdd + bug + document-review | 標準的なSDDワークフロー |
+| cc-sdd-agent | cc-sdd-agent + bug + document-review | エージェントベースのSDD |
+| spec-manager | spec-manager + bug + document-review | Spec Managerワークフロー |
+
+**インストールされるもの：**
 - **スラッシュコマンド**: `.claude/commands/kiro/` 配下に配置
 - **エージェント**: `.claude/agents/` 配下に配置
-- **設定ファイル**: `.claude/settings.json` にマージ
+- **設定ファイル**: `.claude/settings.json` および `.claude/settings.local.json` にマージ
+- **CLAUDE.md**: プロジェクト指示が自動的にマージ
 
 ### 4. 最初のSpecを作成
 
-Claude Codeで以下を実行：
+Specタブの **+** ボタンをクリックして新規仕様を作成します。
 
-```
-/kiro:spec-init "機能の説明"
-```
+### 実験的ツール
 
-## ワークフロー
+SDD Orchestratorでは、**ツール**メニュー → **実験的ツール** から実験的なスラッシュコマンドやエージェントをインストールできます。
 
-### 新規プロジェクトのセットアップ
-
-1. **SDD Orchestratorを起動**してプロジェクトディレクトリを選択
-2. **コマンドをインストール**: GUIの「Install Commands」ボタンをクリック
-3. **最初のSpecを作成**: Claude Codeで `/kiro:spec-init "機能の説明"` を実行
-4. **開発開始**: 以下のSDDフェーズに従って進める
-
-### SDDフェーズ
-
-1. **spec-init**: 新規仕様の初期化
-2. **spec-requirements**: 要件定義の生成
-3. **spec-design**: 技術設計の作成
-4. **spec-tasks**: 実装タスクの生成
-5. **spec-impl**: TDDによる実装
-
-### バリデーション
-
-- **validate-gap**: 既存コードベースとのギャップ分析
-- **validate-design**: 設計レビュー
-- **validate-impl**: 実装検証
-
-### ドキュメントレビュー
-
-- **document-review**: Specドキュメントの整合性・完全性をレビュー
-- **document-review-reply**: レビュー課題への対応を生成
-- GUIに統合された課題追跡・解決ワークフロー
-
-### バグ修正（軽量ワークフロー）
-
-フルSDDプロセスを必要としない小規模なバグ修正向け：
-
-1. **bug-create**: バグレポート作成
-2. **bug-analyze**: 根本原因の調査
-3. **bug-fix**: 修正の実装
-4. **bug-verify**: 修正の検証
-5. **bug-status**: 進捗確認
-
-**使い分け：**
-- **小規模バグ**: Bug Fixワークフロー（軽量・高速）
-- **設計変更を伴う複雑なバグ**: フルSDDワークフロー
+| メニュー項目 | インストール先 | 用途 |
+|-------------|--------------|------|
+| Planコマンドをインストール | `.claude/commands/plan.md` | 実装前のプランニング |
+| Debugエージェントをインストール | `.claude/agents/debug.md` | デバッグ・トラブルシューティング |
+| Commitコマンドをインストール | `.claude/commands/commit.md` | 構造化されたコミットメッセージ生成 |
 
 ## Cloudflare Tunnelによるリモートアクセス
 
@@ -162,82 +173,39 @@ sudo port install cloudflared
 
 詳細な設定手順は[Cloudflare Tunnel設定ガイド](docs/guides/cloudflare-tunnel-setup.md)を参照してください。
 
-## アーキテクチャ
+## 設計思想
 
-```
-┌─────────────────────────────────────────┐
-│         SDD Orchestrator GUI            │
-├─────────────────────────────────────────┤
-│  Spec List │ Editor │ Workflow Status   │
-├─────────────────────────────────────────┤
-│         Agent Orchestration             │
-├─────────────────────────────────────────┤
-│  Claude Code / AI Agent Integration     │
-└─────────────────────────────────────────┘
-```
+### 背景：SDDの限界
 
-## 技術スタック
+kiro、cc-sdd、SpecKit、OpenSpecなど、現在公開されているSDDワークフローは基本的に**ドキュメントドリブン**でAIエージェントに開発させる手法です。これはVibe Codingの問題点であった「ユーザーからのコンテキスト乖離」を減らすことを目的としています。
 
-- **フロントエンド**: React 19 + TypeScript + Tailwind CSS 4
-- **デスクトップ**: Electron 35
-- **状態管理**: Zustand
-- **テスト**: Vitest + WebdriverIO
+しかし、コンテキストの一致性を厳密に追求すると、人間に膨大なレビュー作業が発生し、結果的に生産性向上は限定的になります。
+
+### アプローチ：レビューを観察可能にする
+
+Opus 4.5やGemini 3 Proなどの登場により、レビュー行為自体はAIエージェントでも人間に伍する精度で実行できるようになりました。ただし、**暗黙的なコンテキスト**を見つける能力は依然として不安定です。
+
+従来のSDDでは、検査プロセス（document-review、inspection）は刹那的に処理され、その結果からAIが「何を見て、何を気にして、何を見落としたか」を人間が観察するプロセスになっていませんでした。
+
+SDD Orchestratorは、これらの検査結果を**ドキュメントとして残し**、人間が観察・洞察を繰り返すことで、プロジェクト固有・チーム固有・個人固有のコンテキストを発見し、AIの精度を向上させるという試みです。
+
+### 目指すもの：人間とAIの相互学習
+
+![人間とAIの相互学習サイクル](.github/images/mutual-learning-cycle.png)
+
+SDD Orchestratorは、**人間とAIの双方が学ぶ**ことでAI Agent Codingの生産性を持続的に向上させることを目指しています。
+
+- **人間の学び**：AIが何を見て、何を見落とすかを観察し、パターンを理解する
+- **AIの学び**：観察から得た洞察をプリセットコンテキストに反映し、精度を向上させる
+  - **Steering**（`.kiro/steering/`）：プロジェクト固有の知識・ルール
+  - **Rules**（`.claude/rules/`）：条件付きの行動指針
+  - **Skills**（`.claude/commands/`）：再利用可能なワークフロー
+
+この相互学習サイクルにより、使い込むほどAIエージェントがプロジェクトに適応し、生産性が向上していきます。
 
 ## 開発者向け
 
-### インストール
-
-```bash
-# リポジトリのクローン
-git clone https://github.com/hummer98/sdd-orchestrator.git
-cd sdd-orchestrator
-
-# Electron版のセットアップ
-cd electron-sdd-manager
-npm install
-```
-
-### 開発
-
-```bash
-# 開発サーバー起動
-npm run dev
-
-# Electronアプリ起動（別ターミナル）
-npm run dev:electron
-```
-
-### テスト
-
-```bash
-# ユニットテスト
-npm run test
-
-# E2Eテスト
-npm run test:e2e
-```
-
-### ビルド
-
-```bash
-npm run build:electron
-```
-
-### プロジェクト構造
-
-```
-sdd-orchestrator/
-├── .kiro/
-│   ├── steering/     # プロジェクト設定（product.md, tech.md）
-│   └── specs/        # 仕様ドキュメント
-├── electron-sdd-manager/  # Electronアプリ
-│   ├── src/
-│   │   ├── renderer/     # Reactフロントエンド
-│   │   └── main/         # Electronメインプロセス
-│   └── test/
-├── docs/             # ドキュメント
-└── scripts/          # ユーティリティスクリプト
-```
+開発環境のセットアップ、ビルド方法、プロジェクト構造については [CONTRIBUTING-jp.md](CONTRIBUTING-jp.md) を参照してください。
 
 ## ToDo
 

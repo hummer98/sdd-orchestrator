@@ -2,49 +2,84 @@
 
 [日本語](README-jp.md) | English
 
-A desktop application for managing and executing Spec-Driven Development (SDD) workflows.
+A desktop application that serves as a **command center** for Spec-Driven Development (SDD) workflows.
 
-Automates and visualizes the software development lifecycle by coordinating with AI agents such as Claude Code.
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [SDD-Orchestrator Workflow](#sdd-orchestrator-workflow)
+- [Quick Start](#quick-start)
+- [Remote Access with Cloudflare Tunnel](#remote-access-with-cloudflare-tunnel)
+- [Design Philosophy](#design-philosophy)
+- [For Developers](#for-developers)
 
 ## Overview
 
-SDD Orchestrator is a tool for managing the lifecycle of software specifications (Specs).
+SDD Orchestrator extends [kiro](https://kiro.dev/)/[SpecKit](https://speckit.dev/)/[cc-sdd](https://github.com/gotalab/cc-sdd) methodologies into a complete, integrated development workflow with visual management.
 
-- **Requirements**: Define functional requirements in EARS format
-- **Design**: Create technical design documents
-- **Tasks**: Generate and manage implementation tasks
-- **Implementation**: Execute implementation using TDD methodology
+**Why SDD Orchestrator?**
+
+Tools like Claude Code for VSCode or Antigravity make it difficult to manage and track conversation sessions and progress per specification. SDD Orchestrator provides a **dashboard view** that gives you instant visibility into:
+- All specifications across your project
+- Current phase and status of each spec
+- Document review issues and their resolution status
+- Implementation progress with inspection results
+
+This command center approach makes it easy to manage complex projects with multiple specifications running in parallel.
+
+### Learn More About SDD
+
+- [Anthropic: Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) - Spec-driven development methodology
+- [SpecKit](https://speckit.dev/) - GitHub's specification-driven development toolkit
+- [cc-sdd](https://github.com/gotalab/cc-sdd) - Claude Code SDD workflow commands
 
 ## Key Features
 
-- Visualization and management of Spec lifecycle
-- Automated execution via AI agents
-- Dependency management across multiple Specs
-- Human-AI collaborative workflow
-- Document review system with issue tracking and resolution workflow
-- Kiro format (`.kiro/specs/`) compliant
-- Remote access via smartphone with Cloudflare Tunnel support
+- **Dashboard & Command Center**: Visual overview of all specs and their lifecycle status
+- **Complete 8-Phase Workflow**: Plan → Requirements → Design → Tasks → Review → Implementation → Inspection → Deploy
+- **Flexible Human-AI Collaboration**: Choose where humans intervene and what to automate
+- **Document Review System**: Issue tracking with resolution workflow
+- **Claude Code Integration**: Execute SDD phases via slash commands
+- **Kiro Format Compliant**: Uses `.kiro/specs/` directory structure
+- **Remote Access**: LAN access, or external access via Cloudflare Tunnel
 
-## Architecture
+## SDD-Orchestrator Workflow
 
-```
-┌─────────────────────────────────────────┐
-│         SDD Orchestrator GUI            │
-├─────────────────────────────────────────┤
-│  Spec List │ Editor │ Workflow Status   │
-├─────────────────────────────────────────┤
-│         Agent Orchestration             │
-├─────────────────────────────────────────┤
-│  Claude Code / AI Agent Integration     │
-└─────────────────────────────────────────┘
-```
+The complete development flow consists of 8 phases. You can choose where humans intervene and what to automate:
 
-## Tech Stack
+![SDD-Orchestrator Workflow](.github/images/sdd-orchestrator-workflow.png)
 
-- **Frontend**: React 19 + TypeScript + Tailwind CSS 4
-- **Desktop**: Electron 35
-- **State Management**: Zustand
-- **Testing**: Vitest + WebdriverIO
+| Phase | Command | Description | Output |
+|-------|---------|-------------|--------|
+| 1. Plan | (GUI) | Create spec with description | `spec.json` |
+| 2. Requirements | `spec-requirements` | Define requirements in EARS format | `requirements.md` |
+| 3. Design | `spec-design` | Create technical design | `design.md` |
+| 4. Tasks | `spec-tasks` | Break down into implementation tasks | `tasks.md` |
+| 5. Review | `document-review` | Review documents for consistency | `document-review-{n}.md`, `document-review-{n}-reply.md` |
+| 6. Implementation | `spec-impl` | Implement using TDD methodology | Source code |
+| 7. Inspection | `spec-inspection` | Verify implementation against spec | `inspection-{n}.md` |
+| 8. Deploy | (GUI) | Mark as complete | Status update in `spec.json` |
+
+### Optional Validation (cc-sdd)
+
+- **validate-gap**: Gap analysis against existing codebase (after Requirements)
+- **validate-design**: Design quality review (after Design)
+- **validate-impl**: Implementation verification (after Implementation)
+
+### Bug Fix (Lightweight Workflow)
+
+For small-scale bug fixes without requiring full SDD process:
+
+1. **bug-create**: Create bug report
+2. **bug-analyze**: Investigate root cause
+3. **bug-fix**: Implement fix
+4. **bug-verify**: Verify resolution
+5. **bug-status**: Check progress
+
+**When to use:**
+- **Small bugs**: Bug Fix workflow (lightweight & fast)
+- **Complex bugs requiring design changes**: Full SDD workflow
 
 ## Quick Start
 
@@ -63,63 +98,35 @@ Launch SDD Orchestrator and select your project directory.
 
 ### 3. Install Command Set
 
-Click the "Install Commands" button in the GUI to install `/kiro:*` slash commands in your project.
+From SDD Orchestrator's **Tools** menu, select **Install Commandset...** to install `/kiro:*` slash commands in your project.
 
-What gets installed:
+**Available Profiles:**
+
+| Profile | Included Commandsets | Use Case |
+|---------|---------------------|----------|
+| cc-sdd | cc-sdd + bug + document-review | Standard SDD workflow |
+| cc-sdd-agent | cc-sdd-agent + bug + document-review | SDD with agent-based commands |
+| spec-manager | spec-manager + bug + document-review | Spec manager workflow |
+
+**What gets installed:**
 - **Slash commands**: placed in `.claude/commands/kiro/`
 - **Agents**: placed in `.claude/agents/`
-- **Settings**: merged into `.claude/settings.json`
+- **Settings**: merged into `.claude/settings.json` and `.claude/settings.local.json`
+- **CLAUDE.md**: Project instructions are automatically merged
 
 ### 4. Create Your First Spec
 
-Run the following in Claude Code:
+Click the **+** button in the Spec tab to create a new specification.
 
-```
-/kiro:spec-init "feature description"
-```
+### Experimental Tools
 
-## Workflow
+SDD Orchestrator provides experimental slash commands and agents via **Tools** menu → **Experimental Tools**.
 
-### Setting Up a New Project
-
-1. **Launch SDD Orchestrator** and select your project directory
-2. **Install Commands**: Click "Install Commands" button in the GUI
-3. **Create Your First Spec**: Run `/kiro:spec-init "feature description"` in Claude Code
-4. **Start Development**: Follow the SDD Phases below
-
-### SDD Phases
-
-1. **spec-init**: Initialize new specification
-2. **spec-requirements**: Generate requirements definition
-3. **spec-design**: Create technical design
-4. **spec-tasks**: Generate implementation tasks
-5. **spec-impl**: Implement using TDD
-
-### Validation
-
-- **validate-gap**: Gap analysis against existing codebase
-- **validate-design**: Design review
-- **validate-impl**: Implementation verification
-
-### Document Review
-
-- **document-review**: Review spec documents for consistency and completeness
-- **document-review-reply**: Generate responses to review issues
-- Issue tracking and resolution workflow integrated into GUI
-
-### Bug Fix (Lightweight Workflow)
-
-For small-scale bug fixes without requiring full SDD process:
-
-1. **bug-create**: Create bug report
-2. **bug-analyze**: Investigate root cause
-3. **bug-fix**: Implement fix
-4. **bug-verify**: Verify resolution
-5. **bug-status**: Check progress
-
-**When to use:**
-- **Small bugs**: Bug Fix workflow (lightweight & fast)
-- **Complex bugs requiring design changes**: Full SDD workflow
+| Menu Item | Install Location | Purpose |
+|-----------|-----------------|---------|
+| Install Plan Command | `.claude/commands/plan.md` | Pre-implementation planning |
+| Install Debug Agent | `.claude/agents/debug.md` | Debugging & troubleshooting |
+| Install Commit Command | `.claude/commands/commit.md` | Structured commit message generation |
 
 ## Remote Access with Cloudflare Tunnel
 
@@ -166,75 +173,39 @@ Download from the [official Cloudflare download page](https://developers.cloudfl
 
 For detailed setup instructions, see [Cloudflare Tunnel Setup Guide](docs/guides/cloudflare-tunnel-setup.md).
 
-## Architecture
+## Design Philosophy
 
-```
-┌─────────────────────────────────────────┐
-│         SDD Orchestrator GUI            │
-├─────────────────────────────────────────┤
-│  Spec List │ Editor │ Workflow Status   │
-├─────────────────────────────────────────┤
-│         Agent Orchestration             │
-├─────────────────────────────────────────┤
-│  Claude Code / AI Agent Integration     │
-└─────────────────────────────────────────┘
-```
+### Background: Limitations of SDD
+
+SDD workflows like kiro, cc-sdd, SpecKit, and OpenSpec are fundamentally **document-driven** approaches to AI agent development. They aim to reduce the "context drift from user intent" problem inherent in Vibe Coding.
+
+However, strictly pursuing context alignment results in massive review workload for humans, ultimately limiting productivity gains.
+
+### Approach: Making Reviews Observable
+
+With the advent of models like Opus 4.5 and Gemini 3 Pro, AI agents can now perform reviews at human-comparable accuracy. However, their ability to find **implicit context** remains unstable.
+
+In traditional SDD, inspection processes (document-review, inspection) are handled transiently. There was no process for humans to observe "what the AI looked at, what it cared about, and what it missed."
+
+SDD Orchestrator **persists these inspection results as documents**, allowing humans to repeatedly observe and gain insights, discovering project-specific, team-specific, and individual-specific contexts to improve AI accuracy.
+
+### Goal: Mutual Learning Between Humans and AI
+
+![Mutual Learning Cycle Between Humans and AI](.github/images/mutual-learning-cycle-en.png)
+
+SDD Orchestrator aims to sustainably improve AI Agent Coding productivity through **mutual learning between humans and AI**.
+
+- **Human Learning**: Observe what AI sees and misses, understand patterns
+- **AI Learning**: Reflect insights into preset contexts to improve accuracy
+  - **Steering** (`.kiro/steering/`): Project-specific knowledge and rules
+  - **Rules** (`.claude/rules/`): Conditional behavioral guidelines
+  - **Skills** (`.claude/commands/`): Reusable workflows
+
+Through this mutual learning cycle, the AI agent adapts to your project over time, continuously improving productivity.
 
 ## For Developers
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/hummer98/sdd-orchestrator.git
-cd sdd-orchestrator
-
-# Setup Electron app
-cd electron-sdd-manager
-npm install
-```
-
-### Development
-
-```bash
-# Start development server
-npm run dev
-
-# Launch Electron app (in another terminal)
-npm run dev:electron
-```
-
-### Testing
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-```
-
-### Build
-
-```bash
-npm run build:electron
-```
-
-### Project Structure
-
-```
-sdd-orchestrator/
-├── .kiro/
-│   ├── steering/     # Project settings (product.md, tech.md)
-│   └── specs/        # Specification documents
-├── electron-sdd-manager/  # Electron app
-│   ├── src/
-│   │   ├── renderer/     # React frontend
-│   │   └── main/         # Electron main process
-│   └── test/
-├── docs/             # Documentation
-└── scripts/          # Utility scripts
-```
+For development environment setup, build instructions, and project structure, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## ToDo
 

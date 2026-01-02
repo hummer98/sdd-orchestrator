@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.6] - 2026-01-03
+
+### Fixed
+- **/commitコマンド引数サポート**: /commit コマンドに引数サポートを追加
+- **Claude CLIベースフラグ統一**: Claude CLIベースフラグの統一処理を追加
+- **ファイル監視状態同期**: ファイル監視時にdocumentReview/inspection/tasks状態を同期
+
+### Changed
+- **documentReviewリファクタリング**: roundsフィールドを廃止しroundDetailsに統一
+- **AutoExecutionService削除**: 非推奨のAutoExecutionServiceを削除
+- **WorkflowView簡素化**: WorkflowView/specStoreから非推奨AutoExecutionService参照を削除
+
+### Documentation
+- READMEにプロファイル詳細セクションを追加
+- AI設計判断の原則をsteeringに追加
+- READMEのToDoセクションに今後の開発計画を追加
+
 ## [0.15.5] - 2026-01-02
 
 ### Fixed

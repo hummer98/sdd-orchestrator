@@ -4,6 +4,8 @@
 
 A desktop application that serves as a **command center** for Spec-Driven Development (SDD) workflows.
 
+![SDD Orchestrator Screenshot](.github/images/screenshot.png)
+
 ## Table of Contents
 
 - [Overview](#overview)

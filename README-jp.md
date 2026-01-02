@@ -4,6 +4,8 @@
 
 Spec-Driven Development (SDD) ワークフローの**コマンドセンター**となるデスクトップアプリケーション。
 
+![SDD Orchestrator Screenshot](.github/images/screenshot.png)
+
 ## 目次
 
 - [概要](#概要)

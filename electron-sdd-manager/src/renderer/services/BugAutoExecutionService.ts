@@ -230,11 +230,12 @@ export class BugAutoExecutionService {
         fullCommand = `${commandTemplate} ${selectedBug.name}`;
       }
 
+      // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       const agentInfo = await window.electronAPI.startAgent(
         `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
         phase,
         'claude',
-        ['-p', fullCommand],
+        [fullCommand], // Args: full command (base flags added by service)
         undefined,
         undefined
       );

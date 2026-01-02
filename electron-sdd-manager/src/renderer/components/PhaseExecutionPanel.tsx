@@ -94,13 +94,13 @@ export function PhaseExecutionPanel() {
 
     try {
       // Use startAgent to run spec-status via claude agent
-      // claude -p "/kiro:spec-status <spec-name>"
+      // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       console.log('[PhaseExecutionPanel] Starting agent for spec:', specName);
       const agentId = await startAgent(
         specName,           // specId
         'status',           // phase
         'claude',           // command
-        ['-p', '--output-format', 'stream-json', '--verbose', `/kiro:spec-status ${specName}`],  // args
+        [`/kiro:spec-status ${specName}`],  // args (base flags added by service)
         'doc'               // group
       );
       console.log('[PhaseExecutionPanel] startAgent returned agentId:', agentId);

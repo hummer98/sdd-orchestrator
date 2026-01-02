@@ -127,11 +127,12 @@ describe('BugActionButtons', () => {
       fireEvent.click(screen.getByTestId('action-analyze'));
 
       await waitFor(() => {
+        // Base flags are added by specManagerService, args contain full command
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-analyze', // phase
-          '/kiro:bug-analyze', // command
-          ['test-bug'], // args
+          'claude', // command (normalized)
+          ['/kiro:bug-analyze test-bug'], // args: full command (base flags added by service)
           undefined, // group
           undefined // sessionId
         );
@@ -146,11 +147,12 @@ describe('BugActionButtons', () => {
       fireEvent.click(screen.getByTestId('action-fix'));
 
       await waitFor(() => {
+        // Base flags are added by specManagerService, args contain full command
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-fix',
-          '/kiro:bug-fix',
-          ['test-bug'],
+          'claude', // command (normalized)
+          ['/kiro:bug-fix test-bug'], // args: full command (base flags added by service)
           undefined,
           undefined
         );
@@ -165,11 +167,12 @@ describe('BugActionButtons', () => {
       fireEvent.click(screen.getByTestId('action-verify'));
 
       await waitFor(() => {
+        // Base flags are added by specManagerService, args contain full command
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-verify',
-          '/kiro:bug-verify',
-          ['test-bug'],
+          'claude', // command (normalized)
+          ['/kiro:bug-verify test-bug'], // args: full command (base flags added by service)
           undefined,
           undefined
         );

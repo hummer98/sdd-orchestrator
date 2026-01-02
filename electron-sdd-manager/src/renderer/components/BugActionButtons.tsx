@@ -58,11 +58,12 @@ export function BugActionButtons({
     try {
       // Start agent with bug workflow command
       // Use bug:{name} format for specId to match BugPane's AgentListPanel filtering
+      // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       const agentId = await startAgent(
         `bug:${bug.name}`, // Bug-specific agent with consistent naming
         `bug-${config.action}`, // Phase name
-        config.command, // Command to execute
-        [bug.name], // Args: bug name
+        'claude', // Command
+        [`${config.command} ${bug.name}`], // Args: full command (base flags added by service)
         undefined, // No group
         undefined // No session
       );

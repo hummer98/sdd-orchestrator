@@ -463,6 +463,48 @@ export class SpecManagerService {
   }
 
   /**
+   * Normalize Claude CLI arguments to ensure base flags are always present
+   * This is the Single Source of Truth (SSOT) for Claude CLI flag normalization.
+   *
+   * Handles various input formats from different callers:
+   * - `[cmd]` → `['-p', '--verbose', '--output-format', 'stream-json', cmd]`
+   * - `['-p', cmd]` → `['-p', '--verbose', '--output-format', 'stream-json', cmd]`
+   * - `['-p', '--output-format', 'stream-json', '--verbose', cmd]` → same (idempotent)
+   *
+   * @param args - Original arguments from caller
+   * @param skipPermissions - Whether to add --dangerously-skip-permissions flag
+   * @returns Normalized arguments with base flags guaranteed
+   */
+  private normalizeClaudeArgs(args: string[], skipPermissions?: boolean): string[] {
+    // Extract command part: filter out known base flags to get the actual command
+    const baseFlags = new Set(['-p', '--verbose', '--output-format', 'stream-json', '--dangerously-skip-permissions']);
+    const commandParts: string[] = [];
+
+    let i = 0;
+    while (i < args.length) {
+      const arg = args[i];
+      if (baseFlags.has(arg)) {
+        // Skip known base flags
+        // Special case: --output-format has a value following it
+        if (arg === '--output-format' && i + 1 < args.length) {
+          i += 2; // Skip both --output-format and its value
+        } else {
+          i += 1;
+        }
+      } else {
+        // This is a command part
+        commandParts.push(arg);
+        i += 1;
+      }
+    }
+
+    // Rebuild args using buildClaudeArgs to ensure consistency
+    // Join command parts to form the full command string
+    const command = commandParts.join(' ');
+    return buildClaudeArgs({ command: command || undefined, skipPermissions });
+  }
+
+  /**
    * Start a new SDD Agent
    * Requirements: 5.1, 6.1
    * Now supports both local and SSH providers for transparent remote execution
@@ -471,10 +513,9 @@ export class SpecManagerService {
     const { specId, phase, command, args, group, sessionId, providerType, skipPermissions } = options;
     const effectiveProviderType = providerType ?? this.providerType;
 
-    // Add --dangerously-skip-permissions flag if enabled
-    const effectiveArgs = skipPermissions
-      ? ['--dangerously-skip-permissions', ...args]
-      : args;
+    // Normalize args: ensure base flags are always present (SSOT for Claude CLI flags)
+    // This allows callers to pass just the command without worrying about base flags
+    const effectiveArgs = this.normalizeClaudeArgs(args, skipPermissions);
 
     logger.info('[SpecManagerService] startAgent called', {
       specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions,

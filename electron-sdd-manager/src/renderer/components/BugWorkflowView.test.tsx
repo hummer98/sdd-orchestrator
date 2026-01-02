@@ -177,11 +177,12 @@ describe('BugWorkflowView', () => {
       fireEvent.click(button);
 
       // startAgent is called asynchronously, but we can verify it was called
+      // Base flags are added by specManagerService, so args only contain the command
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
         'bug:test-bug', // bug:{name} format for AgentListPanel filtering
         'analyze',
         'claude',
-        ['-p', '/kiro:bug-analyze test-bug'],
+        ['/kiro:bug-analyze test-bug'], // Base flags added by service
         undefined,
         undefined
       );
@@ -217,11 +218,12 @@ describe('BugWorkflowView', () => {
       const button = screen.getByTestId('bug-phase-execute-button-deploy');
       fireEvent.click(button);
 
+      // Base flags are added by specManagerService, so args only contain the command
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
         'bug:test-bug', // bug:{name} format for AgentListPanel filtering
         'deploy',
         'claude',
-        ['-p', '/commit'],
+        ['/commit'], // Base flags added by service
         undefined,
         undefined
       );

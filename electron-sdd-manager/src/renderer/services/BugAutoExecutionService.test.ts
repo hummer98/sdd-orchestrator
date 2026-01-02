@@ -262,6 +262,37 @@ describe('BugAutoExecutionService', () => {
 
       expect(nextPhase).toBe('verify');
     });
+
+    it('should return deploy when deploy is permitted after verify', () => {
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: true,
+        },
+      });
+
+      const nextPhase = service.getNextPermittedPhase('verify');
+
+      // Bug fix: commit-unclear-target-files - deploy phase is now supported
+      expect(nextPhase).toBe('deploy');
+    });
+
+    it('should return null after deploy phase', () => {
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: true,
+        },
+      });
+
+      const nextPhase = service.getNextPermittedPhase('deploy');
+
+      expect(nextPhase).toBeNull();
+    });
   });
 
   describe('Task 2.4: stop() method', () => {

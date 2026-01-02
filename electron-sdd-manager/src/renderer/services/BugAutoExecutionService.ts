@@ -220,15 +220,9 @@ export class BugAutoExecutionService {
         return;
       }
 
-      // Build the command
-      let fullCommand: string;
-      if (phase === 'deploy') {
-        // Deploy uses /commit without bug name
-        fullCommand = commandTemplate;
-      } else {
-        // Other phases append bug name
-        fullCommand = `${commandTemplate} ${selectedBug.name}`;
-      }
+      // Build the command: all phases include bug name
+      // Bug fix: commit-unclear-target-files - deploy phase now passes bug name to /commit
+      const fullCommand = `${commandTemplate} ${selectedBug.name}`;
 
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       const agentInfo = await window.electronAPI.startAgent(
@@ -315,11 +309,7 @@ export class BugAutoExecutionService {
 
       // Check if phase is permitted
       if (bugAutoExecutionPermissions[phase as keyof typeof bugAutoExecutionPermissions]) {
-        // Note: deploy is skipped until /kiro:bug-deploy is implemented
-        if (phase === 'deploy') {
-          console.log('[BugAutoExecutionService] deploy phase skipped (not yet implemented)');
-          continue;
-        }
+        // Bug fix: commit-unclear-target-files - deploy phase now uses /commit with bug name
         return phase;
       }
     }

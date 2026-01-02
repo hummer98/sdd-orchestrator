@@ -61,13 +61,11 @@ export interface RoundDetail {
 
 /** Document review state stored in spec.json */
 export interface DocumentReviewState {
-  /** Number of completed rounds */
-  rounds: number;
   /** Overall review status */
   status: ReviewStatus;
   /** Current round number if review is in progress */
   currentRound?: number;
-  /** Details for each round (optional) */
+  /** Details for each round */
   roundDetails?: RoundDetail[];
 }
 
@@ -86,11 +84,7 @@ export function isDocumentReviewState(value: unknown): value is DocumentReviewSt
 
   const obj = value as Record<string, unknown>;
 
-  // Check required fields
-  if (typeof obj.rounds !== 'number') {
-    return false;
-  }
-
+  // Check required field: status
   if (typeof obj.status !== 'string') {
     return false;
   }
@@ -110,9 +104,15 @@ export function isDocumentReviewState(value: unknown): value is DocumentReviewSt
  */
 export function createInitialReviewState(): DocumentReviewState {
   return {
-    rounds: 0,
     status: 'pending',
   };
+}
+
+/**
+ * Get the number of completed rounds from roundDetails
+ */
+export function getRoundsCount(state: DocumentReviewState | null | undefined): number {
+  return state?.roundDetails?.length ?? 0;
 }
 
 // ============================================================

@@ -64,8 +64,8 @@ function getProgressIndicatorState(
     return 'executing';
   }
 
-  // Priority 3: Checked (rounds >= 1)
-  if (reviewState && reviewState.rounds >= 1) {
+  // Priority 3: Checked (has roundDetails)
+  if (reviewState && (reviewState.roundDetails?.length ?? 0) >= 1) {
     return 'checked';
   }
 
@@ -175,7 +175,7 @@ export function DocumentReviewPanel({
   onApplyFix,
   onAutoExecutionFlagChange,
 }: DocumentReviewPanelProps) {
-  const rounds = reviewState?.rounds ?? 0;
+  const rounds = reviewState?.roundDetails?.length ?? 0;
   // Review start button is enabled when:
   // - Not currently executing (document review agent running)
   // - Not in auto execution mode (global workflow auto execution)

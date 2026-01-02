@@ -104,7 +104,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'approved' as const,
         },
       };
@@ -118,7 +117,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'pending' as const,
         },
       };
@@ -192,7 +190,7 @@ describe('DocumentReviewService', () => {
   // Requirements: 4.2, 5.5
   // ============================================================
   describe('Task 2.2: initializeReviewState', () => {
-    it('should initialize documentReview field with rounds: 0, status: pending', async () => {
+    it('should initialize documentReview field with status: pending', async () => {
       const specJson = createMockSpecJson();
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
@@ -203,7 +201,6 @@ describe('DocumentReviewService', () => {
       const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
       expect(writtenContent.documentReview).toEqual({
-        rounds: 0,
         status: 'pending',
       });
     });
@@ -212,7 +209,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'in_progress' as const,
         },
       };
@@ -229,7 +225,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 0,
           status: 'pending' as const,
         },
       };
@@ -244,11 +239,10 @@ describe('DocumentReviewService', () => {
       expect(writtenContent.documentReview.status).toBe('in_progress');
     });
 
-    it('should increment rounds and update roundDetails', async () => {
+    it('should update roundDetails', async () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'in_progress' as const,
           roundDetails: [
             { roundNumber: 1, status: 'reply_complete' as const },
@@ -258,12 +252,14 @@ describe('DocumentReviewService', () => {
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-      const result = await service.updateReviewState(mockSpecPath, { incrementRounds: true });
+      const result = await service.updateReviewState(mockSpecPath, {
+        roundDetail: { roundNumber: 2, status: 'incomplete' },
+      });
       expect(result.ok).toBe(true);
 
       const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
-      expect(writtenContent.documentReview.rounds).toBe(2);
+      expect(writtenContent.documentReview.roundDetails.length).toBe(2);
     });
   });
 
@@ -339,7 +335,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'in_progress' as const,
         },
       };
@@ -358,7 +353,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'approved' as const,
         },
       };
@@ -394,7 +388,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'approved' as const,
         },
       };
@@ -417,7 +410,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'in_progress' as const,
           roundDetails: [
             { roundNumber: 1, status: 'incomplete' as const },
@@ -434,7 +426,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'in_progress' as const,
           roundDetails: [
             { roundNumber: 1, status: 'reply_complete' as const },
@@ -451,7 +442,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'approved' as const,
           roundDetails: [
             { roundNumber: 1, status: 'reply_complete' as const },
@@ -481,7 +471,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'approved' as const,
         },
       };
@@ -489,7 +478,6 @@ describe('DocumentReviewService', () => {
 
       const state = await service.getReviewState(mockSpecPath);
       expect(state).toEqual({
-        rounds: 2,
         status: 'approved',
       });
     });
@@ -537,7 +525,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 0,
           status: 'in_progress' as const,
           currentRound: 1,
           roundDetails: [{ roundNumber: 1, status: 'incomplete' as const }],
@@ -557,11 +544,10 @@ describe('DocumentReviewService', () => {
   });
 
   describe('Task 3.3: completeRound', () => {
-    it('should complete round and increment rounds count', async () => {
+    it('should complete round', async () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 0,
           status: 'in_progress' as const,
           currentRound: 1,
           roundDetails: [{ roundNumber: 1, status: 'review_complete' as const }],
@@ -575,7 +561,6 @@ describe('DocumentReviewService', () => {
 
       const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
       const writtenContent = JSON.parse(writeCall[1] as string);
-      expect(writtenContent.documentReview.rounds).toBe(1);
       expect(writtenContent.documentReview.roundDetails[0].status).toBe('reply_complete');
       expect(writtenContent.documentReview.roundDetails[0].replyCompletedAt).toBeDefined();
     });
@@ -586,7 +571,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'pending' as const,
         },
       };
@@ -600,7 +584,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 2,
           status: 'approved' as const,
         },
       };
@@ -614,7 +597,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 1,
           status: 'in_progress' as const,
           currentRound: 2,
         },
@@ -631,7 +613,6 @@ describe('DocumentReviewService', () => {
       const specJson = {
         ...createMockSpecJson(),
         documentReview: {
-          rounds: 0,
           status: 'in_progress' as const,
           currentRound: 1,
           roundDetails: [],

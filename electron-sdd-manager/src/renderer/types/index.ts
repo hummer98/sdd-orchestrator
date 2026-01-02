@@ -33,14 +33,14 @@ export interface SpecJson {
   approvals: ApprovalStatus;
   /** Document review state (optional for backward compatibility) */
   documentReview?: {
-    rounds: number;
-    status?: string;
+    status: string;
     currentRound?: number;
     roundDetails?: Array<{
       roundNumber: number;
       status: string;
       reviewCompletedAt?: string;
       replyCompletedAt?: string;
+      fixApplied?: boolean;
     }>;
   };
   /** Auto execution state (optional for backward compatibility) */

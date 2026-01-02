@@ -34,7 +34,6 @@ export type Result<T, E> =
 export interface UpdateReviewStateOptions {
   status?: ReviewStatus;
   currentRound?: number;
-  incrementRounds?: boolean;
   roundDetail?: Partial<RoundDetail>;
 }
 
@@ -181,11 +180,6 @@ export class DocumentReviewService {
         } else {
           specJson.documentReview.currentRound = options.currentRound;
         }
-      }
-
-      // Increment rounds
-      if (options.incrementRounds) {
-        specJson.documentReview.rounds += 1;
       }
 
       // Update round detail
@@ -471,7 +465,6 @@ export class DocumentReviewService {
    */
   async completeRound(specPath: string, roundNumber: number): Promise<Result<void, ReviewError>> {
     return this.updateReviewState(specPath, {
-      incrementRounds: true,
       currentRound: undefined,
       roundDetail: {
         roundNumber,
@@ -548,37 +541,19 @@ export class DocumentReviewService {
           roundsFromFiles: currentRoundFromFiles,
         });
         specJson.documentReview = {
-          rounds: currentRoundFromFiles,
           status: 'pending',
         };
         modified = true;
       }
-      // Case 2: documentReview exists but rounds count doesn't match files
-      else if (specJson.documentReview && specJson.documentReview.rounds !== currentRoundFromFiles) {
-        // Only sync if file count is greater (files were added externally)
-        // Don't decrease rounds if files are missing (could be intentional deletion)
-        if (currentRoundFromFiles > specJson.documentReview.rounds) {
-          logger.info('[DocumentReviewService] Syncing: Rounds mismatch', {
-            specPath,
-            specJsonRounds: specJson.documentReview.rounds,
-            roundsFromFiles: currentRoundFromFiles,
-          });
-          specJson.documentReview.rounds = currentRoundFromFiles;
-          modified = true;
-        }
-      }
 
-      // Also check for reply files to update roundDetails if they exist
-      if (modified || specJson.documentReview) {
+      // Sync roundDetails from file system
+      if (specJson.documentReview) {
         const roundDetails = await this.detectRoundDetails(specPath, currentRoundFromFiles);
-        if (roundDetails.length > 0 && specJson.documentReview) {
-          // Merge detected details with existing ones
-          const existingDetails = specJson.documentReview.roundDetails || [];
-          const mergedDetails = this.mergeRoundDetails(existingDetails, roundDetails);
-          if (JSON.stringify(existingDetails) !== JSON.stringify(mergedDetails)) {
-            specJson.documentReview.roundDetails = mergedDetails;
-            modified = true;
-          }
+        const existingDetails = specJson.documentReview.roundDetails || [];
+        const mergedDetails = this.mergeRoundDetails(existingDetails, roundDetails);
+        if (JSON.stringify(existingDetails) !== JSON.stringify(mergedDetails)) {
+          specJson.documentReview.roundDetails = mergedDetails;
+          modified = true;
         }
       }
 

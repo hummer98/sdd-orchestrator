@@ -41,7 +41,6 @@ describe('Document Review Types', () => {
     describe('isDocumentReviewState type guard', () => {
       it('should return true for valid DocumentReviewState', () => {
         const validState: DocumentReviewState = {
-          rounds: 2,
           status: 'approved',
         };
         expect(isDocumentReviewState(validState)).toBe(true);
@@ -49,7 +48,6 @@ describe('Document Review Types', () => {
 
       it('should return true for state with optional fields', () => {
         const stateWithOptional: DocumentReviewState = {
-          rounds: 1,
           status: 'in_progress',
           currentRound: 1,
           roundDetails: [
@@ -65,15 +63,14 @@ describe('Document Review Types', () => {
 
       it('should return false for invalid status', () => {
         const invalidState = {
-          rounds: 1,
           status: 'invalid_status',
         };
         expect(isDocumentReviewState(invalidState)).toBe(false);
       });
 
-      it('should return false for missing rounds', () => {
+      it('should return false for missing status', () => {
         const invalidState = {
-          status: 'pending',
+          roundDetails: [],
         };
         expect(isDocumentReviewState(invalidState)).toBe(false);
       });
@@ -87,9 +84,8 @@ describe('Document Review Types', () => {
     });
 
     describe('createInitialReviewState', () => {
-      it('should create initial state with rounds: 0 and status: pending', () => {
+      it('should create initial state with status: pending', () => {
         const state = createInitialReviewState();
-        expect(state.rounds).toBe(0);
         expect(state.status).toBe('pending');
         expect(state.currentRound).toBeUndefined();
         expect(state.roundDetails).toBeUndefined();

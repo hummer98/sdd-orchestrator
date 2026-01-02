@@ -65,8 +65,11 @@ describe('DocumentReviewPanel', () => {
 
     it('should show round count when review state exists', () => {
       const reviewState: DocumentReviewState = {
-        rounds: 2,
         status: 'pending',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete' },
+          { roundNumber: 2, status: 'reply_complete' },
+        ],
       };
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
       expect(screen.getByText('2')).toBeInTheDocument();
@@ -116,7 +119,6 @@ describe('DocumentReviewPanel', () => {
 
     it('should show executing indicator during review', () => {
       const reviewState: DocumentReviewState = {
-        rounds: 0,
         status: 'in_progress',
         currentRound: 1,
       };
@@ -130,18 +132,20 @@ describe('DocumentReviewPanel', () => {
   // Requirements: 6.5, 6.6
   // ============================================================
   describe('Task 6.1: Progress indicator', () => {
-    it('should show checked state when rounds >= 1', () => {
+    it('should show checked state when has roundDetails', () => {
       const reviewState: DocumentReviewState = {
-        rounds: 2,
         status: 'pending',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete' },
+          { roundNumber: 2, status: 'reply_complete' },
+        ],
       };
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
       expect(screen.getByTestId('progress-indicator-checked')).toBeInTheDocument();
     });
 
-    it('should show unchecked state when rounds === 0 and not executing', () => {
+    it('should show unchecked state when no roundDetails and not executing', () => {
       const reviewState: DocumentReviewState = {
-        rounds: 0,
         status: 'pending',
       };
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} isExecuting={false} />);
@@ -150,7 +154,6 @@ describe('DocumentReviewPanel', () => {
 
     it('should show executing state when status is in_progress', () => {
       const reviewState: DocumentReviewState = {
-        rounds: 0,
         status: 'in_progress',
       };
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} isExecuting={true} />);

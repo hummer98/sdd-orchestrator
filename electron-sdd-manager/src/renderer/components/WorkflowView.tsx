@@ -5,7 +5,7 @@
  * Task 5.1: Use specStore.autoExecutionRuntime instead of workflowStore for auto execution state
  */
 
-import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
 import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
@@ -21,7 +21,7 @@ import { InspectionPanel } from './InspectionPanel';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { MultiRoundInspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
-import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
+import { useAutoExecution } from '../hooks/useAutoExecution';
 import {
   WORKFLOW_PHASES,
   ALL_WORKFLOW_PHASES,
@@ -48,7 +48,9 @@ export function WorkflowView() {
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
-  const autoExecutionServiceRef = useRef(getAutoExecutionService());
+
+  // Auto Execution Hook (Main Process IPC)
+  const autoExecution = useAutoExecution();
 
   // Spec毎の自動実行runtime状態を取得
   const specId = specDetail?.metadata.name ?? '';
@@ -62,12 +64,6 @@ export function WorkflowView() {
   }, [autoExecutionRuntimeMap, specId]);
   const { isAutoExecuting, currentAutoPhase, autoExecutionStatus } = autoExecutionRuntime;
 
-  // Cleanup AutoExecutionService on unmount
-  useEffect(() => {
-    return () => {
-      disposeAutoExecutionService();
-    };
-  }, []);
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
@@ -257,30 +253,45 @@ export function WorkflowView() {
   // Task 10.1: Auto execution button handler
   // Requirements: 1.1, 1.2
   // Task 5.1: Use isAutoExecuting from specStore
-  const handleAutoExecution = useCallback(() => {
-    const service = autoExecutionServiceRef.current;
+  // Bug fix: deprecated-auto-execution-service-cleanup - Use Main Process IPC instead of old Renderer service
+  const handleAutoExecution = useCallback(async () => {
+    if (!specDetail) return;
+
     if (isAutoExecuting) {
-      service.stop();
+      const result = await autoExecution.stopAutoExecution(specDetail.metadata.path);
+      if (!result.ok) {
+        notify.error('自動実行の停止に失敗しました。');
+      }
     } else {
-      const started = service.start();
-      if (!started) {
+      const result = await autoExecution.startAutoExecution(
+        specDetail.metadata.path,
+        specDetail.metadata.name,
+        {
+          permissions: workflowStore.autoExecutionPermissions,
+          documentReviewFlag: workflowStore.documentReviewOptions.autoExecutionFlag,
+          validationOptions: workflowStore.validationOptions,
+        }
+      );
+      if (!result.ok) {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [isAutoExecuting]);
+  }, [isAutoExecuting, specDetail, autoExecution, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag, workflowStore.validationOptions]);
 
   // Task 10.4: Retry handler
   // Requirements: 8.2, 8.3
-  const handleRetry = useCallback(() => {
-    const service = autoExecutionServiceRef.current;
+  // Bug fix: deprecated-auto-execution-service-cleanup - Use Main Process IPC instead of old Renderer service
+  const handleRetry = useCallback(async () => {
+    if (!specDetail) return;
+
     const lastFailedPhase = workflowStore.lastFailedPhase;
     if (lastFailedPhase) {
-      const retried = service.retryFrom(lastFailedPhase);
-      if (!retried) {
+      const result = await autoExecution.retryFromPhase(specDetail.metadata.path, lastFailedPhase);
+      if (!result.ok) {
         notify.error('リトライできませんでした。');
       }
     }
-  }, [workflowStore.lastFailedPhase]);
+  }, [workflowStore.lastFailedPhase, specDetail, autoExecution]);
 
   const handleSpecStatus = useCallback(async () => {
     if (!specDetail) return;
@@ -316,21 +327,14 @@ export function WorkflowView() {
 
     try {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      const agentInfo = await window.electronAPI.executeDocumentReview(
+      await window.electronAPI.executeDocumentReview(
         specDetail.metadata.name,
         specDetail.metadata.name,
         workflowStore.commandPrefix
       );
-
-      // Bug Fix: Track manual document-review agent for one-set execution
-      // document-review -> document-review-reply should always run as a set
-      if (agentInfo?.agentId) {
-        const autoExecutionService = getAutoExecutionService();
-        autoExecutionService.trackManualDocumentReviewAgent(
-          agentInfo.agentId,
-          specDetail.metadata.name
-        );
-      }
+      // Note: Manual document-review agent tracking was removed as part of
+      // deprecated-auto-execution-service-cleanup. Main Process AutoExecutionCoordinator
+      // now handles document-review workflow orchestration.
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'ドキュメントレビューの実行に失敗しました');
     }
@@ -604,13 +608,18 @@ export function WorkflowView() {
         {/* Task 11.2: Auto Execution Status Display */}
         {/* Requirements: 5.1, 5.5, 8.2 */}
         {/* Task 5.1: Use autoExecutionStatus and currentAutoPhase from specStore */}
+        {/* Bug fix: deprecated-auto-execution-service-cleanup - Use Main Process IPC for stop */}
         <AutoExecutionStatusDisplay
           status={autoExecutionStatus}
           currentPhase={currentAutoPhase}
           lastFailedPhase={workflowStore.lastFailedPhase}
           retryCount={workflowStore.failedRetryCount}
           onRetry={handleRetry}
-          onStop={() => autoExecutionServiceRef.current.stop()}
+          onStop={async () => {
+            if (specDetail) {
+              await autoExecution.stopAutoExecution(specDetail.metadata.path);
+            }
+          }}
         />
 
       </div>

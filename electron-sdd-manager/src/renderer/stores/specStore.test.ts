@@ -7,7 +7,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSpecStore } from './specStore';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from './workflowStore';
-import { getAutoExecutionService, disposeAutoExecutionService } from '../services/AutoExecutionService';
+// Note: AutoExecutionService import was removed as part of deprecated-auto-execution-service-cleanup.
+// Main Process AutoExecutionCoordinator now handles auto-execution via IPC.
 import type { SpecMetadata } from '../types';
 
 const mockSpecs: SpecMetadata[] = [
@@ -163,102 +164,11 @@ describe('useSpecStore', () => {
   });
 
   // ============================================================
-  // spec-scoped-auto-execution-state Task 4: UI integration
-  // Requirements: 4.1, 4.2, 4.3
+  // NOTE: spec-scoped-auto-execution-state tests removed
+  // These tests were for the deprecated Renderer-side AutoExecutionService sync.
+  // Auto-execution state sync is now managed by Main Process AutoExecutionCoordinator via IPC.
+  // See: auto-execution-main-process feature, deprecated-auto-execution-service-cleanup bug fix
   // ============================================================
-  describe('Spec-Scoped Auto Execution State Integration', () => {
-    beforeEach(() => {
-      // Reset workflow store
-      useWorkflowStore.setState({
-        autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
-        validationOptions: { gap: false, design: false, impl: false },
-        documentReviewOptions: { autoExecutionFlag: 'run' },
-        isAutoExecuting: false,
-        currentAutoPhase: null,
-        autoExecutionStatus: 'idle',
-        lastFailedPhase: null,
-        failedRetryCount: 0,
-        executionSummary: null,
-        pendingReviewConfirmation: false,
-      });
-      // Dispose and re-create AutoExecutionService
-      disposeAutoExecutionService();
-    });
-
-    it('should sync autoExecution state when selecting a spec with autoExecution', async () => {
-      const mockSpecJson = {
-        feature_name: 'feature-auto',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        language: 'ja',
-        phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
-        autoExecution: {
-          enabled: true,
-          permissions: {
-            requirements: true,
-            design: true,
-            tasks: true,
-            impl: false,
-            inspection: false,
-            deploy: false,
-          },
-          documentReviewFlag: 'run',
-          validationOptions: {
-            gap: true,
-            design: false,
-            impl: false,
-          },
-        },
-      };
-
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-
-      await useSpecStore.getState().selectSpec(mockSpecs[0]);
-
-      // Verify workflow store is synced with spec autoExecution
-      const workflowState = useWorkflowStore.getState();
-      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
-      expect(workflowState.autoExecutionPermissions.design).toBe(true);
-      expect(workflowState.autoExecutionPermissions.tasks).toBe(true);
-      expect(workflowState.autoExecutionPermissions.impl).toBe(false);
-      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('run');
-      expect(workflowState.validationOptions.gap).toBe(true);
-    });
-
-    it('should not modify workflowStore when spec has no autoExecution', async () => {
-      const mockSpecJson = {
-        feature_name: 'feature-no-auto',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        language: 'ja',
-        phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
-        // No autoExecution field
-      };
-
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-
-      // Set some initial values
-      useWorkflowStore.setState({
-        autoExecutionPermissions: {
-          requirements: false,
-          design: false,
-          tasks: false,
-          impl: false,
-          inspection: false,
-          deploy: false,
-        },
-      });
-
-      await useSpecStore.getState().selectSpec(mockSpecs[0]);
-
-      // Verify workflow store uses defaults (not synced from spec)
-      const workflowState = useWorkflowStore.getState();
-      expect(workflowState.autoExecutionPermissions.requirements).toBe(false);
-      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('pause'); // Default changed from 'skip' to 'pause'
-    });
-  });
 
   // ============================================================
   // spec-scoped-auto-execution-state Task 4.3: refreshSpecDetail
@@ -326,60 +236,10 @@ describe('useSpecStore', () => {
       expect(useSpecStore.getState().specDetail).toBeNull();
     });
 
-    it('should sync autoExecution state to workflowStore after refresh', async () => {
-      // Reset workflow store
-      useWorkflowStore.setState({
-        autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
-        validationOptions: { gap: false, design: false, impl: false },
-        documentReviewOptions: { autoExecutionFlag: 'skip' },
-      });
-
-      // First select a spec without autoExecution
-      const mockSpecJson = {
-        feature_name: 'feature-a',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        language: 'ja',
-        phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
-      };
-
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      await useSpecStore.getState().selectSpec(mockSpecs[0]);
-
-      // Simulate external change - autoExecution added
-      const updatedSpecJson = {
-        ...mockSpecJson,
-        autoExecution: {
-          enabled: true,
-          permissions: {
-            requirements: true,
-            design: true,
-            tasks: true,
-            impl: false,
-            inspection: false,
-            deploy: false,
-          },
-          documentReviewFlag: 'run',
-          validationOptions: { gap: true, design: true, impl: false },
-        },
-      };
-
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
-      disposeAutoExecutionService(); // Reset service to ensure fresh sync
-
-      // Call refreshSpecDetail
-      await useSpecStore.getState().refreshSpecDetail();
-
-      // Verify workflowStore is synced with updated autoExecution
-      const workflowState = useWorkflowStore.getState();
-      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
-      expect(workflowState.autoExecutionPermissions.design).toBe(true);
-      expect(workflowState.autoExecutionPermissions.tasks).toBe(true);
-      expect(workflowState.documentReviewOptions.autoExecutionFlag).toBe('run');
-      expect(workflowState.validationOptions.gap).toBe(true);
-      expect(workflowState.validationOptions.design).toBe(true);
-    });
+    // NOTE: 'should sync autoExecution state to workflowStore after refresh' test removed
+    // This test was for the deprecated Renderer-side AutoExecutionService sync.
+    // Auto-execution state sync is now managed by Main Process AutoExecutionCoordinator via IPC.
+    // See: auto-execution-main-process feature, deprecated-auto-execution-service-cleanup bug fix
 
     it('should handle errors gracefully during refresh', async () => {
       // First select a spec
@@ -493,12 +353,8 @@ describe('useSpecStore', () => {
       expect(useSpecStore.getState().specDetail?.specJson.phase).toBe('tasks-generated');
       expect(useSpecStore.getState().specDetail?.specJson.autoExecution?.enabled).toBe(true);
 
-      // workflowStore should be synced
-      const workflowState = useWorkflowStore.getState();
-      expect(workflowState.autoExecutionPermissions.requirements).toBe(true);
-      expect(workflowState.autoExecutionPermissions.design).toBe(true);
-      expect(workflowState.autoExecutionPermissions.tasks).toBe(true);
-      expect(workflowState.validationOptions.gap).toBe(true);
+      // NOTE: workflowStore sync assertions removed as part of deprecated-auto-execution-service-cleanup.
+      // Auto-execution state sync is now managed by Main Process AutoExecutionCoordinator via IPC.
     });
   });
 

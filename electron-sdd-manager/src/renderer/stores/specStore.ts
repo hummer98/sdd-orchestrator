@@ -324,15 +324,9 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
         set({ specDetail, isLoading: false });
       }
 
-      // spec-scoped-auto-execution-state: Sync autoExecution state to workflowStore
-      // Import and sync after setting specDetail to avoid circular dependency issues
-      try {
-        const { getAutoExecutionService } = await import('../services/AutoExecutionService');
-        const service = getAutoExecutionService();
-        service.syncFromSpecAutoExecution();
-      } catch (syncError) {
-        console.error('[specStore] Failed to sync autoExecution state:', syncError);
-      }
+      // Note: spec-scoped-auto-execution-state sync was removed as part of
+      // deprecated-auto-execution-service-cleanup. Main Process AutoExecutionCoordinator
+      // now handles state management via IPC events.
     } catch (error) {
       if (!silent) {
         set({
@@ -585,14 +579,9 @@ export const useSpecStore = create<SpecStore>((set, get) => ({
       // Also update metadata in specs list
       await get().updateSpecMetadata(selectedSpec.name);
 
-      // Sync autoExecution state to workflowStore
-      try {
-        const { getAutoExecutionService } = await import('../services/AutoExecutionService');
-        const service = getAutoExecutionService();
-        service.syncFromSpecAutoExecution();
-      } catch (syncError) {
-        console.error('[specStore] Failed to sync autoExecution state:', syncError);
-      }
+      // Note: autoExecution state sync was removed as part of
+      // deprecated-auto-execution-service-cleanup. Main Process AutoExecutionCoordinator
+      // now handles state management via IPC events.
 
       console.log('[specStore] updateSpecJson completed:', selectedSpec.name);
     } catch (error) {

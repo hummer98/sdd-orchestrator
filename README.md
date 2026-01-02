@@ -12,6 +12,7 @@ A desktop application that serves as a **command center** for Spec-Driven Develo
 - [Key Features](#key-features)
 - [SDD-Orchestrator Workflow](#sdd-orchestrator-workflow)
 - [Quick Start](#quick-start)
+  - [Profile Details](#profile-details)
 - [Remote Access with Cloudflare Tunnel](#remote-access-with-cloudflare-tunnel)
 - [Design Philosophy](#design-philosophy)
 - [For Developers](#for-developers)
@@ -110,6 +111,8 @@ From SDD Orchestrator's **Tools** menu, select **Install Commandset...** to inst
 | cc-sdd-agent | cc-sdd-agent + bug + document-review | SDD with agent-based commands |
 | spec-manager | spec-manager + bug + document-review | Spec manager workflow |
 
+> ⚠️ **Note**: The `cc-sdd-agent` profile requires **Skip Permissions** to be enabled. See [Profile Details](#profile-details) for more information.
+
 **What gets installed:**
 - **Slash commands**: placed in `.claude/commands/kiro/`
 - **Agents**: placed in `.claude/agents/`
@@ -129,6 +132,37 @@ SDD Orchestrator provides experimental slash commands and agents via **Tools** m
 | Install Plan Command | `.claude/commands/plan.md` | Pre-implementation planning |
 | Install Debug Agent | `.claude/agents/debug.md` | Debugging & troubleshooting |
 | Install Commit Command | `.claude/commands/commit.md` | Structured commit message generation |
+
+### Profile Details
+
+A **profile** defines which slash commands/skills SDD Orchestrator uses for each SDD phase. All profiles are compatible with the standard [cc-sdd](https://github.com/gotalab/cc-sdd) workflow, with some enhancements for better integration with SDD Orchestrator.
+
+#### cc-sdd
+
+The traditional cc-sdd workflow using slash commands/skills. This is the most stable and well-tested approach.
+
+- **Commands**: Uses `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`, `/kiro:spec-impl`, etc.
+- **Execution**: Each command runs within the main conversation context
+- **Permissions**: Works with default Claude Code permission settings
+- **Best for**: Users who prefer explicit control over each SDD phase
+
+#### cc-sdd-agent
+
+A Claude Code-native workflow using subagents for SDD phases. Each phase runs as an independent agent with full context.
+
+- **Commands**: Uses the same `/kiro:*` commands but internally spawns dedicated subagents
+- **Execution**: Each phase runs as an autonomous subagent with isolated context
+- **Permissions**: ⚠️ **Requires Skip Permissions** - Subagents need broad file access to function properly. Enable via Claude Code settings or `--dangerously-skip-permissions` flag.
+- **Best for**: Users who want more autonomous AI execution with less manual intervention
+
+#### spec-manager
+
+An experimental workflow specifically designed for this project. Uses a different internal architecture.
+
+- **Commands**: Uses `spec-manager:*` skill variants
+- **Execution**: Integrated skill-based execution
+- **Permissions**: Works with default permission settings
+- **Best for**: Experimental use and testing new SDD approaches
 
 ## Remote Access with Cloudflare Tunnel
 

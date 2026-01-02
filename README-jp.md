@@ -12,6 +12,7 @@ Spec-Driven Development (SDD) ワークフローの**コマンドセンター**�
 - [主な機能](#主な機能)
 - [SDD-Orchestratorワークフロー](#sdd-orchestratorワークフロー)
 - [クイックスタート](#クイックスタート)
+  - [プロファイル詳細](#プロファイル詳細)
 - [Cloudflare Tunnelによるリモートアクセス](#cloudflare-tunnelによるリモートアクセス)
 - [設計思想](#設計思想)
 - [開発者向け](#開発者向け)
@@ -112,6 +113,8 @@ SDD Orchestratorの**ツール**メニュー → **コマンドセットをイ�
 | cc-sdd-agent | cc-sdd-agent + bug + document-review | エージェントベースのSDD  |
 | spec-manager | spec-manager + bug + document-review | Spec Managerワークフロー |
 
+> ⚠️ **注意**: `cc-sdd-agent` プロファイルを使用する場合は、**Skip Permissions** を有効にする必要があります。詳細は[プロファイル詳細](#プロファイル詳細)を参照してください。
+
 **インストールされるもの：**
 
 - **スラッシュコマンド**: `.claude/commands/kiro/` 配下に配置
@@ -132,6 +135,37 @@ SDD Orchestratorでは、**ツール**メニュー → **実験的ツール** �
 | Planコマンドをインストール      | `.claude/commands/plan.md`   | 実装前のプランニング               |
 | Debugエージェントをインストール | `.claude/agents/debug.md`    | デバッグ・トラブルシューティング   |
 | Commitコマンドをインストール    | `.claude/commands/commit.md` | 構造化されたコミットメッセージ生成 |
+
+### プロファイル詳細
+
+**プロファイル**は、SDD Orchestratorが各SDDフェーズでどのslash commands/skillsを使用するかを定義します。すべてのプロファイルは標準の[cc-sdd](https://github.com/gotalab/cc-sdd)ワークフローと互換性があり、SDD Orchestratorとの連携を向上させるための改良が加えられています。
+
+#### cc-sdd
+
+従来のcc-sddのslash commands/skillsを使用したワークフロー。最も安定しており、十分にテストされています。
+
+- **コマンド**: `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`, `/kiro:spec-impl` 等を使用
+- **実行方式**: 各コマンドはメインの会話コンテキスト内で実行
+- **パーミッション**: デフォルトのClaude Codeパーミッション設定で動作
+- **推奨ユーザー**: SDDの各フェーズを明示的にコントロールしたい方
+
+#### cc-sdd-agent
+
+Claude Code専用のsubagentを使ったワークフロー。各フェーズが独立したエージェントとして実行されます。
+
+- **コマンド**: 同じ `/kiro:*` コマンドを使用するが、内部で専用のsubagentを起動
+- **実行方式**: 各フェーズが独立したコンテキストを持つ自律的なsubagentとして実行
+- **パーミッション**: ⚠️ **Skip Permissionsが必須** - subagentが適切に動作するには広範なファイルアクセス権限が必要です。Claude Codeの設定または `--dangerously-skip-permissions` フラグで有効化してください。
+- **推奨ユーザー**: より自律的なAI実行を望み、手動介入を減らしたい方
+
+#### spec-manager
+
+本プロジェクト専用の実験的なワークフロー。異なる内部アーキテクチャを使用しています。
+
+- **コマンド**: `spec-manager:*` skillバリアントを使用
+- **実行方式**: 統合されたskillベースの実行
+- **パーミッション**: デフォルトのパーミッション設定で動作
+- **推奨ユーザー**: 新しいSDDアプローチの実験・テスト用途
 
 ## Cloudflare Tunnelによるリモートアクセス
 

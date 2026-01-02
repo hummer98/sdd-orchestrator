@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.5] - 2026-01-02
+
+### Fixed
+- **ファイル監視時editorStore同期**: ファイル監視時にeditorStoreを同期してUI表示を更新
+- **cc-sddプロファイルspec-inspection修正**: cc-sddプロファイルのspec-inspectionをSubagent委譲型に変更
+- **Deployボタン有効化修正**: phaseStatusesにinspectionを含めてDeployボタンを正しく有効化
+
+### Changed
+- **README刷新**: READMEを刷新し設計思想セクションを追加
+
+### Testing
+- **E2Eテスト追加**: tasks.md更新時のeditorStore同期テストを追加
+
 ## [0.15.4] - 2026-01-02
 
 ### Fixed

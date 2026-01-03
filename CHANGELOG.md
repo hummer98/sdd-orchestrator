@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-01-04
+
+### Added
+- **マルチフェーズ自動実行**: 複数フェーズの連続自動実行機能を実装
+- **コマンドセットバージョン検出**: コマンドセットのバージョン検出・更新通知機能を追加
+- **E2Eテスト分離機能**: E2Eテストの分離機能を追加し、テスト実行を安定化
+
+### Fixed
+- **IPCイベント同期**: IPCイベントをspecStoreに同期するSSoTパターンを実装
+- **InspectionState簡素化**: InspectionStateデータ構造を簡素化し責務を明確化
+- **Inspection/Deploy完了時のphase自動更新**: 検査・デプロイ完了時にspec.jsonのphaseを自動更新
+
+### Changed
+- **SpecStoreリファクタリング**: SpecStoreを責務別に分割しFacadeパターンで統合
+- **レガシー実行システム削除**: ExecutionStore/CommandServiceを削除
+
+### Testing
+- **E2Eテスト改善**: マルチフェーズ自動実行のE2Eテストを追加・修正
+- **Bugワークフローテスト**: フェーズコマンド実行時のbug名引数検証テストを追加
+
+### Documentation
+- マルチフェーズ自動実行のアーキテクチャ分析を追加
+
 ## [0.15.6] - 2026-01-03
 
 ### Fixed

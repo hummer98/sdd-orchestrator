@@ -4,7 +4,7 @@
  * Requirements (commandset-version-detection): 2.1, 2.2, 2.3, 2.4, 2.5
  */
 
-import { projectConfigService, CommandsetVersionRecord } from './layoutConfigService';
+import { projectConfigService } from './layoutConfigService';
 import { CommandsetDefinitionManager } from './commandsetDefinitionManager';
 import type { CommandsetName } from './unifiedCommandsetInstaller';
 

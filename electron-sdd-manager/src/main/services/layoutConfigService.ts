@@ -225,28 +225,6 @@ async function loadProjectConfigV3(projectPath: string): Promise<ProjectConfigV3
 }
 
 /**
- * 設定ファイル全体を保存する（内部用）
- */
-async function saveProjectConfig(projectPath: string, config: ProjectConfig): Promise<void> {
-  const configFilePath = getConfigFilePath(projectPath);
-
-  try {
-    await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf-8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      try {
-        await fs.mkdir(path.join(projectPath, '.kiro'), { recursive: true });
-        await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf-8');
-      } catch (mkdirError) {
-        console.error('[projectConfigService] Failed to create .kiro directory:', mkdirError);
-      }
-    } else {
-      console.error('[projectConfigService] Failed to save config:', error);
-    }
-  }
-}
-
-/**
  * 設定ファイル全体を保存する（v3形式、内部用）
  * Requirements (commandset-version-detection): 6.4
  */

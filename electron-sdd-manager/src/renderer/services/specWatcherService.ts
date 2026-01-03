@@ -5,8 +5,8 @@
  */
 
 import type { SpecMetadata } from '../types';
+import type { SpecsChangeEvent } from '../types/electron';
 import type { SpecSyncService } from './specSyncService';
-import type { ArtifactType } from '../stores/spec/types';
 
 /**
  * Dependencies for SpecWatcherService initialization
@@ -93,7 +93,7 @@ export class SpecWatcherService {
    * Handle specs changed event
    * Routes to appropriate sync method based on file type
    */
-  private handleSpecsChanged(event: { specId: string; path: string }): void {
+  private handleSpecsChanged(event: SpecsChangeEvent): void {
     if (!this.deps) {
       return;
     }

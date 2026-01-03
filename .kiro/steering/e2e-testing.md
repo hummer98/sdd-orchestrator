@@ -530,6 +530,68 @@ const result = await browser.execute(async (projectPath) => {
 
 ---
 
+## 共通ヘルパー関数
+
+E2Eテストで共通で使用するヘルパー関数は `e2e-wdio/helpers/` に集約されています。
+
+### ヘルパーファイル
+
+| ファイル | 用途 |
+|---------|------|
+| `auto-execution.helpers.ts` | 自動実行関連のヘルパー関数 |
+
+### 使用方法
+
+新しいE2Eテストファイルを作成する際は、共通ヘルパーをインポートして使用してください:
+
+```typescript
+import {
+  selectProjectViaStore,
+  selectSpecViaStore,
+  setAutoExecutionPermissions,
+  getAutoExecutionStatus,
+  waitForCondition,
+  refreshSpecStore,
+  clearAgentStore,
+  resetAutoExecutionService,
+  resetSpecStoreAutoExecution,
+  stopAutoExecution,
+  waitForAgentInStore,
+  waitForRunningAgent,
+} from './helpers/auto-execution.helpers';
+```
+
+### 主要なヘルパー関数
+
+| 関数 | 説明 |
+|-----|------|
+| `selectProjectViaStore(path)` | Zustand store経由でプロジェクトを選択 |
+| `selectSpecViaStore(specId)` | Zustand store経由でSpecを選択 |
+| `setAutoExecutionPermissions(permissions)` | 自動実行許可設定を更新 |
+| `getAutoExecutionStatus()` | 現在選択中のSpecの自動実行状態を取得 |
+| `waitForCondition(condition, timeout, interval, label)` | 条件が満たされるまで待機 |
+| `refreshSpecStore()` | Specストアを更新 |
+| `clearAgentStore()` | Agentストアをクリア |
+| `resetAutoExecutionService()` | AutoExecutionServiceをリセット |
+| `resetSpecStoreAutoExecution()` | Specストアの自動実行状態をリセット |
+| `stopAutoExecution()` | 現在の自動実行を停止 |
+| `waitForAgentInStore(specName, timeout)` | AgentStoreにエージェントが追加されるまで待機 |
+| `waitForRunningAgent(specName, timeout)` | 実行中エージェントが現れるまで待機 |
+
+### 重要な注意点
+
+**ローカル関数を作成せず、共通ヘルパーを使用してください。**
+
+共通ヘルパーは以下のメリットがあります:
+- 新しいstore API（`specStore.getAutoExecutionRuntime`）を使用
+- 重複コードの削減
+- メンテナンス性の向上
+- API変更時の一括更新が可能
+
+テスト固有のヘルパー関数（例: `readSpecJson`、`resetFixture`）はテストファイル内に定義しても問題ありません。
+
+---
+
 ## 共通テストパターン
 
 ### 要素選択

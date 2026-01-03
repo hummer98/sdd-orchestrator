@@ -10,10 +10,13 @@
 | ログ種別 | 開発環境 | 本番環境 (macOS) |
 |----------|----------|------------------|
 | グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/SDD Orchestrator/main.log` |
+| **E2Eテストログ** | `electron-sdd-manager/logs/main-e2e.log` | `~/Library/Logs/SDD Orchestrator/main-e2e.log` |
 | **プロジェクトログ** | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
 | アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
 | エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左（プロジェクト内） |
 | SSH接続ログ | メモリ内バッファ（最大1000エントリ） | 同左 |
+
+**E2Eテストログの分離**: `--e2e-test` フラグで起動されたインスタンスは `main-e2e.log` に出力されるため、通常のアプリインスタンスのログと混在しない。
 
 ### プロジェクト別ログ（project-log-separation機能）
 
@@ -61,6 +64,27 @@ cat /path/to/project/.kiro/logs/main.log
 
 # 特定プロジェクトのログをリアルタイム監視
 tail -f /path/to/project/.kiro/logs/main.log
+```
+
+### E2Eテスト時のログ確認
+
+E2Eテストは `--e2e-test` フラグ付きでパッケージ済みアプリを起動するため、専用のログファイルに出力される。
+
+```bash
+# E2Eテストログをリアルタイム監視（テスト実行中に別ターミナルで）
+tail -f ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+
+# 最新200行を確認
+tail -200 ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+
+# エラーのみ抽出
+grep "\[ERROR\]" ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+
+# AutoExecution関連のログを確認
+grep -E "(AutoExecution|ALREADY_EXECUTING)" ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+
+# テスト実行前にログをクリア（任意）
+: > ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
 ```
 
 ### ログ実装詳細

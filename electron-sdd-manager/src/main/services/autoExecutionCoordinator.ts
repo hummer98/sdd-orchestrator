@@ -164,6 +164,7 @@ export interface AutoExecutionEvents {
   'phase-error': (specPath: string, phase: WorkflowPhase, error: string) => void;
   'execution-completed': (specPath: string, summary: ExecutionSummary) => void;
   'execution-error': (specPath: string, error: AutoExecutionError) => void;
+  'execute-document-review': (specPath: string, context: { specId: string }) => void;
 }
 
 /**
@@ -625,6 +626,18 @@ export class AutoExecutionCoordinator extends EventEmitter {
         // 次フェーズを自動実行
         const options = this.executionOptions.get(specPath);
         if (options) {
+          // tasksフェーズ完了時のDocument Review処理
+          if (currentPhase === 'tasks' && options.documentReviewFlag !== 'skip') {
+            logger.info('[AutoExecutionCoordinator] Tasks completed, triggering document review', {
+              specPath,
+              documentReviewFlag: options.documentReviewFlag,
+            });
+            this.emit('execute-document-review', specPath, {
+              specId: state.specId,
+            });
+            return; // Document Review完了後に次フェーズへ進む
+          }
+
           const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions);
           if (nextPhase) {
             // 次フェーズ実行イベントを発火
@@ -1071,6 +1084,53 @@ export class AutoExecutionCoordinator extends EventEmitter {
     }
 
     return false;
+  }
+
+  // ============================================================
+  // Document Review Completion Handler
+  // ============================================================
+
+  /**
+   * Document Review完了後に次フェーズへ進む
+   * @param specPath specのパス
+   * @param approved レビューが承認されたか（falseの場合はpaused状態で待機）
+   */
+  handleDocumentReviewCompleted(specPath: string, approved: boolean): void {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] handleDocumentReviewCompleted: state not found', { specPath });
+      return;
+    }
+
+    const options = this.executionOptions.get(specPath);
+    if (!options) {
+      logger.warn('[AutoExecutionCoordinator] handleDocumentReviewCompleted: options not found', { specPath });
+      return;
+    }
+
+    if (approved) {
+      // Document Review承認済み、次フェーズへ進む
+      const nextPhase = this.getNextPermittedPhase('tasks', options.permissions);
+      if (nextPhase) {
+        logger.info('[AutoExecutionCoordinator] Document review approved, proceeding to next phase', {
+          specPath,
+          nextPhase,
+        });
+        this.emit('execute-next-phase', specPath, nextPhase, {
+          specId: state.specId,
+          featureName: state.specId,
+        });
+      } else {
+        // implフェーズが許可されていない場合は完了
+        this.completeExecution(specPath);
+      }
+    } else {
+      // Document Reviewが承認待ち、paused状態で待機
+      logger.info('[AutoExecutionCoordinator] Document review pending approval, pausing execution', { specPath });
+      this.updateState(specPath, {
+        status: 'paused',
+      });
+    }
   }
 
   // ============================================================

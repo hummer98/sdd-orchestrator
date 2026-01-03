@@ -1755,7 +1755,134 @@ export function registerIpcHandlers(): void {
       coordinator.handleAgentCompleted('', specPath, 'failed');
     }
   });
+
+  // ============================================================
+  // Document Review Auto-Execution: execute document-review workflow
+  // When coordinator emits 'execute-document-review', execute the document review via specManagerService
+  // ============================================================
+  coordinator.on('execute-document-review', async (specPath: string, context: { specId: string }) => {
+    logger.info('[handlers] execute-document-review event received', { specPath, context });
+
+    try {
+      const service = getSpecManagerService();
+      const window = BrowserWindow.getAllWindows()[0];
+
+      if (!window) {
+        logger.error('[handlers] No window available for execute-document-review');
+        coordinator.handleDocumentReviewCompleted(specPath, false);
+        return;
+      }
+
+      // Execute document-review
+      const reviewResult = await service.executeDocumentReview({
+        specId: context.specId,
+        featureName: context.specId,
+        commandPrefix: 'kiro',
+      });
+
+      if (!reviewResult.ok) {
+        logger.error('[handlers] execute-document-review: document-review failed', { error: reviewResult.error });
+        coordinator.handleDocumentReviewCompleted(specPath, false);
+        return;
+      }
+
+      const reviewAgentId = reviewResult.value.agentId;
+      logger.info('[handlers] execute-document-review: document-review started', { reviewAgentId });
+
+      // Listen for document-review agent completion
+      const handleReviewStatusChange = async (changedAgentId: string, status: string) => {
+        if (changedAgentId === reviewAgentId) {
+          if (status === 'completed') {
+            logger.info('[handlers] execute-document-review: document-review completed', { reviewAgentId });
+            service.offStatusChange(handleReviewStatusChange);
+
+            // Execute document-review-reply with autofix=true
+            await executeDocumentReviewReply(service, specPath, context.specId, coordinator);
+          } else if (status === 'failed' || status === 'stopped') {
+            logger.error('[handlers] execute-document-review: document-review failed/stopped', { reviewAgentId, status });
+            service.offStatusChange(handleReviewStatusChange);
+            coordinator.handleDocumentReviewCompleted(specPath, false);
+          }
+        }
+      };
+      service.onStatusChange(handleReviewStatusChange);
+    } catch (error) {
+      logger.error('[handlers] execute-document-review: unexpected error', { specPath, error });
+      coordinator.handleDocumentReviewCompleted(specPath, false);
+    }
+  });
+
   logger.info('[handlers] Multi-phase auto-execution connected');
+}
+
+/**
+ * Execute document-review-reply and handle the result
+ */
+async function executeDocumentReviewReply(
+  service: SpecManagerService,
+  specPath: string,
+  specId: string,
+  coordinator: AutoExecutionCoordinator
+): Promise<void> {
+  try {
+    // Get current round number from spec.json
+    const { DocumentReviewService } = await import('../services/documentReviewService');
+    const docReviewService = new DocumentReviewService(currentProjectPath || '');
+    const roundNumber = await docReviewService.getNextRoundNumber(specPath);
+    const currentRound = Math.max(1, roundNumber - 1); // getNextRoundNumber returns next round, we want current
+
+    logger.info('[handlers] executeDocumentReviewReply: starting', { specPath, currentRound });
+
+    const replyResult = await service.executeDocumentReviewReply({
+      specId,
+      featureName: specId,
+      reviewNumber: currentRound,
+      commandPrefix: 'kiro',
+      autofix: true,
+    });
+
+    if (!replyResult.ok) {
+      logger.error('[handlers] executeDocumentReviewReply: failed', { error: replyResult.error });
+      coordinator.handleDocumentReviewCompleted(specPath, false);
+      return;
+    }
+
+    const replyAgentId = replyResult.value.agentId;
+    logger.info('[handlers] executeDocumentReviewReply: started', { replyAgentId });
+
+    // Listen for document-review-reply agent completion
+    const handleReplyStatusChange = async (changedAgentId: string, status: string) => {
+      if (changedAgentId === replyAgentId) {
+        if (status === 'completed') {
+          logger.info('[handlers] executeDocumentReviewReply: completed', { replyAgentId });
+          service.offStatusChange(handleReplyStatusChange);
+
+          // Parse reply file to check if fixes are required
+          const parseResult = await docReviewService.parseReplyFile(specPath, currentRound);
+
+          if (parseResult.ok && parseResult.value.fixRequiredCount === 0) {
+            // No fixes required, auto-approve and continue to impl
+            logger.info('[handlers] executeDocumentReviewReply: no fixes required, auto-approving');
+            await docReviewService.approveReview(specPath);
+            coordinator.handleDocumentReviewCompleted(specPath, true);
+          } else {
+            // Fixes required, pause for user confirmation
+            const fixCount = parseResult.ok ? parseResult.value.fixRequiredCount : 'unknown';
+            logger.info('[handlers] executeDocumentReviewReply: fixes required, pausing', { fixCount });
+            coordinator.handleDocumentReviewCompleted(specPath, false);
+          }
+        } else if (status === 'failed' || status === 'stopped') {
+          logger.error('[handlers] executeDocumentReviewReply: failed/stopped', { replyAgentId, status });
+          service.offStatusChange(handleReplyStatusChange);
+          coordinator.handleDocumentReviewCompleted(specPath, false);
+        }
+      }
+    };
+    service.onStatusChange(handleReplyStatusChange);
+  } catch (error) {
+    logger.error('[handlers] executeDocumentReviewReply: unexpected error', { specPath, error });
+    coordinator.handleDocumentReviewCompleted(specPath, false);
+  }
 }
 
 /**

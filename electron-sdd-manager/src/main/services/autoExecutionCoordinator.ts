@@ -987,4 +987,32 @@ export class AutoExecutionCoordinator extends EventEmitter {
     this.removeAllListeners();
     logger.info('[AutoExecutionCoordinator] Disposed');
   }
+
+  // ============================================================
+  // Test Support: Reset for E2E Test Isolation
+  // ============================================================
+
+  /**
+   * Reset all execution states for E2E test isolation
+   * This clears all internal state without disposing the coordinator itself
+   *
+   * WARNING: This method is intended for E2E tests only.
+   * Do not use in production code.
+   */
+  resetAll(): void {
+    logger.info('[AutoExecutionCoordinator] resetAll called (E2E test support)');
+
+    // Clear all timeouts
+    for (const state of this.executionStates.values()) {
+      if (state.timeoutId) {
+        clearTimeout(state.timeoutId);
+      }
+    }
+
+    // Clear all state maps
+    this.executionStates.clear();
+    this.executionOptions.clear();
+
+    logger.info('[AutoExecutionCoordinator] All states reset');
+  }
 }

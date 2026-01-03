@@ -113,10 +113,15 @@ export class ProjectLogger implements ProjectLoggerService {
   private currentProjectPath: string | null = null;
   /** LogRotationManager instance for rotation and cleanup (Requirement 7.1) */
   private rotationManager: LogRotationManagerService;
+  /** E2E test mode flag - uses separate log file to avoid log mixing */
+  private isE2EMode: boolean;
 
-  constructor() {
+  constructor(isE2EMode?: boolean) {
     // Initialize LogRotationManager (Requirement 7.1)
     this.rotationManager = new LogRotationManager();
+    // E2E mode detection: explicit parameter or command line argument
+    this.isE2EMode = isE2EMode ?? process.argv.includes('--e2e-test');
+
     // Determine global logs directory based on whether app is packaged
     let logsDir: string;
 
@@ -135,7 +140,9 @@ export class ProjectLogger implements ProjectLoggerService {
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    this.globalLogPath = path.join(logsDir, 'main.log');
+    // Use separate log file for E2E tests to avoid mixing with other instances
+    const logFileName = this.isE2EMode ? 'main-e2e.log' : 'main.log';
+    this.globalLogPath = path.join(logsDir, logFileName);
     this.initGlobalStream();
   }
 
@@ -148,7 +155,11 @@ export class ProjectLogger implements ProjectLoggerService {
       this.globalStream.on('error', (err) => {
         console.error('Global log stream error:', err);
       });
-      this.write('INFO', 'Logger initialized', { logPath: this.globalLogPath });
+      this.write('INFO', 'Logger initialized', {
+        logPath: this.globalLogPath,
+        isE2EMode: this.isE2EMode,
+        pid: process.pid,
+      });
     } catch (error) {
       console.error('Failed to initialize global log stream:', error);
     }

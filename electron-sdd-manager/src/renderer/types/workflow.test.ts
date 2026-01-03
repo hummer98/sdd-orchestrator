@@ -423,4 +423,56 @@ describe('Workflow Types', () => {
       expect((specJson as any).autoExecution).toBeUndefined();
     });
   });
+
+  // ============================================================
+  // spec-phase-auto-update Task 1.1: SpecPhase型の拡張
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+  describe('SpecPhase extended values (spec-phase-auto-update)', () => {
+    it('should accept inspection-complete as a valid SpecPhase value', () => {
+      const specJson = createMockSpecJson({
+        phase: 'inspection-complete' as any, // Cast for testing new value
+      });
+      expect(specJson.phase).toBe('inspection-complete');
+    });
+
+    it('should accept deploy-complete as a valid SpecPhase value', () => {
+      const specJson = createMockSpecJson({
+        phase: 'deploy-complete' as any, // Cast for testing new value
+      });
+      expect(specJson.phase).toBe('deploy-complete');
+    });
+  });
+
+  // ============================================================
+  // spec-phase-auto-update Task 1.1: SpecList表示用のPHASE_LABELS/PHASE_COLORS拡張テスト
+  // Requirements: 4.1, 4.2
+  // ============================================================
+  describe('PHASE_LABELS for SpecList (spec-phase-auto-update)', () => {
+    it('should be tested in SpecList.test.tsx', () => {
+      // PHASE_LABELSはSpecList.tsx内に定義されており、
+      // WorkflowViewで使用されるPHASE_LABELS（WorkflowPhase用）とは別物。
+      // SpecList.test.tsxでテストする。
+      expect(true).toBe(true);
+    });
+  });
+
+  // Helper function for creating mock spec.json
+  function createMockSpecJson(
+    overrides: Partial<ExtendedSpecJson> = {}
+  ): ExtendedSpecJson {
+    return {
+      feature_name: 'test-feature',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+      language: 'ja',
+      phase: 'initialized',
+      approvals: {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      },
+      ...overrides,
+    };
+  }
 });

@@ -496,9 +496,13 @@ ${description}
    * @param options - Options for the update
    * @param options.skipTimestamp - If true, do not update updated_at (used for UI auto-correction)
    */
+  /**
+   * CompletedPhase type for updateSpecJsonFromPhase
+   * spec-phase-auto-update: Added 'inspection-complete' and 'deploy-complete'
+   */
   async updateSpecJsonFromPhase(
     specPath: string,
-    completedPhase: 'requirements' | 'design' | 'tasks' | 'impl' | 'impl-complete',
+    completedPhase: 'requirements' | 'design' | 'tasks' | 'impl' | 'impl-complete' | 'inspection-complete' | 'deploy-complete',
     options?: { skipTimestamp?: boolean }
   ): Promise<Result<void, FileError>> {
     try {
@@ -527,6 +531,15 @@ ${description}
           // Update phase to implementation-complete when all tasks are done
           specJson.phase = 'implementation-complete';
           break;
+        // spec-phase-auto-update: Added new completion phases
+        case 'inspection-complete':
+          // Update phase when inspection passes (GO judgment)
+          specJson.phase = 'inspection-complete';
+          break;
+        case 'deploy-complete':
+          // Update phase when deployment is complete
+          specJson.phase = 'deploy-complete';
+          break;
       }
 
       // Update timestamp (unless skipTimestamp is true)
@@ -552,5 +565,70 @@ ${description}
         },
       };
     }
+  }
+
+  /**
+   * Validate phase transition for spec-phase-auto-update
+   * Ensures proper phase ordering: implementation-complete -> inspection-complete -> deploy-complete
+   * Requirements: 3.2 (Phase transition validation)
+   *
+   * @param fromPhase - Current phase
+   * @param toPhase - Target phase
+   * @returns Result indicating if transition is valid
+   */
+  validatePhaseTransition(
+    fromPhase: SpecPhase,
+    toPhase: SpecPhase
+  ): Result<void, FileError> {
+    // Same phase is always allowed (no-op)
+    if (fromPhase === toPhase) {
+      return { ok: true, value: undefined };
+    }
+
+    // Define phase ordering for validation
+    const PHASE_ORDER: SpecPhase[] = [
+      'initialized',
+      'requirements-generated',
+      'design-generated',
+      'tasks-generated',
+      'implementation-complete',
+      'inspection-complete',
+      'deploy-complete',
+    ];
+
+    const fromIndex = PHASE_ORDER.indexOf(fromPhase);
+    const toIndex = PHASE_ORDER.indexOf(toPhase);
+
+    // Unknown phases are not allowed
+    if (fromIndex === -1 || toIndex === -1) {
+      return {
+        ok: false,
+        error: {
+          type: 'INVALID_TRANSITION',
+          path: '',
+          message: `Unknown phase: ${fromIndex === -1 ? fromPhase : toPhase}`,
+        },
+      };
+    }
+
+    // Backward transitions are allowed (for reset/rollback scenarios)
+    if (toIndex < fromIndex) {
+      return { ok: true, value: undefined };
+    }
+
+    // Forward transitions must be exactly one step
+    if (toIndex === fromIndex + 1) {
+      return { ok: true, value: undefined };
+    }
+
+    // Skip transitions are not allowed
+    return {
+      ok: false,
+      error: {
+        type: 'INVALID_TRANSITION',
+        path: '',
+        message: `Cannot transition from ${fromPhase} to ${toPhase}. Must go through intermediate phases.`,
+      },
+    };
   }
 }

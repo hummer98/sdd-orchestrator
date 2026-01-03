@@ -288,5 +288,83 @@ describe('FileService - updateSpecJsonFromPhase', () => {
       expect(specJson.phase).toBe('implementation-complete');
       expect(specJson.updated_at).not.toBe(oldTimestamp);
     });
+
+    // ============================================================
+    // spec-phase-auto-update Task 1.2, Task 3: CompletedPhase型の拡張
+    // Requirements: 1.3, 2.1, 3.1
+    // ============================================================
+
+    it('should update phase to inspection-complete', async () => {
+      await createSpecJson('implementation-complete', {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'inspection-complete');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('inspection-complete');
+    });
+
+    it('should update phase to deploy-complete', async () => {
+      await createSpecJson('inspection-complete' as SpecPhase, {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      });
+
+      const result = await fileService.updateSpecJsonFromPhase(specPath, 'deploy-complete');
+
+      expect(result.ok).toBe(true);
+
+      const specJson = await readSpecJson();
+      expect(specJson.phase).toBe('deploy-complete');
+    });
+  });
+
+  // ============================================================
+  // spec-phase-auto-update Task 4: フェーズ遷移検証
+  // Requirements: 3.2
+  // ============================================================
+  describe('validatePhaseTransition', () => {
+    it('should allow transition from implementation-complete to inspection-complete', () => {
+      const result = fileService.validatePhaseTransition('implementation-complete', 'inspection-complete');
+      expect(result.ok).toBe(true);
+    });
+
+    it('should allow transition from inspection-complete to deploy-complete', () => {
+      const result = fileService.validatePhaseTransition('inspection-complete', 'deploy-complete');
+      expect(result.ok).toBe(true);
+    });
+
+    it('should NOT allow transition from tasks-generated to inspection-complete', () => {
+      const result = fileService.validatePhaseTransition('tasks-generated', 'inspection-complete');
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_TRANSITION');
+      }
+    });
+
+    it('should NOT allow transition from implementation-complete to deploy-complete (skip inspection)', () => {
+      const result = fileService.validatePhaseTransition('implementation-complete', 'deploy-complete');
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_TRANSITION');
+      }
+    });
+
+    it('should allow any transition to same phase (no-op)', () => {
+      const result = fileService.validatePhaseTransition('inspection-complete', 'inspection-complete');
+      expect(result.ok).toBe(true);
+    });
+
+    it('should allow backward transition (for reset scenarios)', () => {
+      // Backward transitions should be allowed for reset/rollback scenarios
+      const result = fileService.validatePhaseTransition('deploy-complete', 'inspection-complete');
+      expect(result.ok).toBe(true);
+    });
   });
 });

@@ -21,7 +21,7 @@
 | **定義** | 1つの機能に対するSDD文書のセット。Requirements, Design, Tasksの3つのアーティファクトで構成 |
 | **別名** | Feature（機能）と1:1対応 |
 | **識別子** | Feature名（例: `user-authentication`）、`.kiro/specs/{feature-name}/` に格納 |
-| **ライフサイクル** | `initialized` → `requirements-generated` → `design-generated` → `tasks-generated` → `implementation-in-progress` → `implementation-complete` |
+| **ライフサイクル** | `initialized` → `requirements-generated` → `design-generated` → `tasks-generated` → `implementation-complete` → `inspection-complete` → `deploy-complete` |
 | **コードシンボル** | `Spec`, `SpecMetadata`, `SpecDetail`, `SpecJson`, `SpecPhase` |
 | **Store** | `specStore.ts` |
 | **Service** | `specManagerService.ts` |
@@ -175,4 +175,28 @@
 
 ---
 
-_updated_at: 2025-12-26_
+---
+
+## SpecPhase Values（Specフェーズ値の詳細）
+
+`SpecPhase` 型は以下の値を持つ：
+
+| 値 | 意味 | 遷移条件 |
+|---|------|---------|
+| `initialized` | 初期化済み | spec-initで作成時 |
+| `requirements-generated` | 要件定義生成済み | requirements.md生成後 |
+| `design-generated` | 設計生成済み | design.md生成後 |
+| `tasks-generated` | タスク生成済み | tasks.md生成後 |
+| `implementation-complete` | 実装完了 | 全タスク完了時（自動検出） |
+| `inspection-complete` | 検査完了 | InspectionでGO判定時（自動検出） |
+| `deploy-complete` | デプロイ完了 | deploy_completed: true設定時（自動検出） |
+
+**自動検出の仕組み**: `SpecsWatcherService` がファイル変更を監視し、以下のタイミングでphaseを自動更新：
+- `tasks.md` 変更時: 全タスク完了で `implementation-complete` に遷移
+- `spec.json` 変更時:
+  - `inspection.roundDetails[-1].passed: true` で `inspection-complete` に遷移
+  - `deploy_completed: true` で `deploy-complete` に遷移
+
+---
+
+_updated_at: 2026-01-04_

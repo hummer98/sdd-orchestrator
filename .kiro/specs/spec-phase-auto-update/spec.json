@@ -1,0 +1,69 @@
+{
+  "feature_name": "spec-phase-auto-update",
+  "created_at": "2026-01-03T12:45:00Z",
+  "updated_at": "2026-01-04T05:50:00Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "implementation": {
+    "completed": true,
+    "completedAt": "2026-01-04T12:00:00Z"
+  },
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "validationOptions": {
+      "gap": false,
+      "design": false,
+      "impl": false
+    }
+  },
+  "documentReview": {
+    "status": "reply_complete",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixApplied": true
+      }
+    ]
+  },
+  "inspection": {
+    "status": "completed",
+    "rounds": 1,
+    "currentRound": null,
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "passed": true,
+        "completedAt": "2026-01-04T05:50:00Z"
+      }
+    ]
+  }
+}

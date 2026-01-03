@@ -1861,3 +1861,98 @@ describe('WebSocketHandler - Token Authentication (Task 5.1)', () => {
     });
   });
 });
+
+// ============================================================
+// spec-phase-auto-update Task 7: Phase update broadcast tests
+// Requirements: 5.3, 5.4
+// ============================================================
+
+describe('WebSocketHandler - Phase Update Broadcasts (spec-phase-auto-update)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  // Helper function to create mock WebSocket
+  function createMockWebSocket(): WebSocket {
+    return {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+      close: vi.fn(),
+      on: vi.fn(),
+    } as unknown as WebSocket;
+  }
+
+  // Helper function to create mock request
+  function createMockRequest(ip: string): IncomingMessage {
+    return {
+      socket: { remoteAddress: ip },
+      headers: {},
+    } as unknown as IncomingMessage;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  describe('broadcastPhaseUpdated', () => {
+    it('should broadcast phase update to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // Connect multiple clients
+      const mockWs1 = createMockWebSocket();
+      const mockWs2 = createMockWebSocket();
+      connectionHandler!(mockWs1, createMockRequest('192.168.1.1'));
+      connectionHandler!(mockWs2, createMockRequest('192.168.1.2'));
+
+      // Clear send mocks (to ignore INIT messages)
+      mockWs1.send = vi.fn();
+      mockWs2.send = vi.fn();
+
+      // Broadcast phase update
+      handler.broadcastSpecUpdated('test-feature', { phase: 'inspection-complete' });
+
+      // Both clients should receive the broadcast
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"SPEC_UPDATED"')
+      );
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"phase":"inspection-complete"')
+      );
+      expect(mockWs2.send).toHaveBeenCalledWith(
+        expect.stringContaining('"specId":"test-feature"')
+      );
+    });
+
+    it('should broadcast deploy-complete phase update', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send = vi.fn();
+
+      handler.broadcastSpecUpdated('my-spec', { phase: 'deploy-complete' });
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"phase":"deploy-complete"')
+      );
+    });
+  });
+});

@@ -134,4 +134,74 @@ describe('SpecList - Task 33.1', () => {
       expect(filterSelect.className).toContain('dark:text-gray-300');
     });
   });
+
+  // ============================================================
+  // spec-phase-auto-update Task 2: SpecListステータス表示更新
+  // Requirements: 4.1, 4.2
+  // ============================================================
+  describe('SpecPhase display for new phases', () => {
+    it('should display inspection-complete phase with correct label', () => {
+      const inspectionCompleteSpec: SpecMetadata = {
+        ...baseSpec,
+        name: 'inspection-complete-feature',
+        phase: 'inspection-complete' as SpecPhase,
+      };
+
+      mockGetSortedFilteredSpecs.mockReturnValue([inspectionCompleteSpec]);
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        statusFilter: 'all',
+        isLoading: false,
+        error: null,
+        selectSpec: mockSelectSpec,
+        setSortBy: mockSetSortBy,
+        setSortOrder: mockSetSortOrder,
+        setStatusFilter: mockSetStatusFilter,
+        getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+      });
+
+      render(<SpecList />);
+
+      expect(screen.getByText('inspection-complete-feature')).toBeInTheDocument();
+      // Use getAllByText because the label appears in both filter options and spec badge
+      const labels = screen.getAllByText('検査完了');
+      expect(labels.length).toBeGreaterThanOrEqual(1);
+      // Verify there's a span element with the label (the badge in spec item)
+      expect(labels.some(el => el.tagName === 'SPAN')).toBe(true);
+    });
+
+    it('should display deploy-complete phase with correct label', () => {
+      const deployCompleteSpec: SpecMetadata = {
+        ...baseSpec,
+        name: 'deploy-complete-feature',
+        phase: 'deploy-complete' as SpecPhase,
+      };
+
+      mockGetSortedFilteredSpecs.mockReturnValue([deployCompleteSpec]);
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        statusFilter: 'all',
+        isLoading: false,
+        error: null,
+        selectSpec: mockSelectSpec,
+        setSortBy: mockSetSortBy,
+        setSortOrder: mockSetSortOrder,
+        setStatusFilter: mockSetStatusFilter,
+        getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+      });
+
+      render(<SpecList />);
+
+      expect(screen.getByText('deploy-complete-feature')).toBeInTheDocument();
+      // Use getAllByText because the label appears in both filter options and spec badge
+      const labels = screen.getAllByText('デプロイ完了');
+      expect(labels.length).toBeGreaterThanOrEqual(1);
+      // Verify there's a span element with the label (the badge in spec item)
+      expect(labels.some(el => el.tagName === 'SPAN')).toBe(true);
+    });
+  });
 });

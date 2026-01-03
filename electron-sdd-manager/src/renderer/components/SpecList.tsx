@@ -12,20 +12,32 @@ import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
 import type { SpecMetadata, SpecPhase } from '../types';
 
+/**
+ * Phase labels for SpecList display
+ * spec-phase-auto-update: Added 'inspection-complete' and 'deploy-complete'
+ */
 const PHASE_LABELS: Record<SpecPhase, string> = {
   initialized: '初期化',
   'requirements-generated': '要件定義済',
   'design-generated': '設計済',
   'tasks-generated': 'タスク済',
   'implementation-complete': '実装完了',
+  'inspection-complete': '検査完了',   // spec-phase-auto-update
+  'deploy-complete': 'デプロイ完了',   // spec-phase-auto-update
 };
 
+/**
+ * Phase colors for SpecList display
+ * spec-phase-auto-update: Added 'inspection-complete' and 'deploy-complete'
+ */
 const PHASE_COLORS: Record<SpecPhase, string> = {
   initialized: 'bg-gray-200 text-gray-700',
   'requirements-generated': 'bg-blue-100 text-blue-700',
   'design-generated': 'bg-yellow-100 text-yellow-700',
   'tasks-generated': 'bg-orange-100 text-orange-700',
   'implementation-complete': 'bg-green-100 text-green-700',
+  'inspection-complete': 'bg-purple-100 text-purple-700',  // spec-phase-auto-update
+  'deploy-complete': 'bg-emerald-100 text-emerald-700',    // spec-phase-auto-update
 };
 
 export function SpecList() {
@@ -68,6 +80,8 @@ export function SpecList() {
             <option value="design-generated">設計済</option>
             <option value="tasks-generated">タスク済</option>
             <option value="implementation-complete">実装完了</option>
+            <option value="inspection-complete">検査完了</option>
+            <option value="deploy-complete">デプロイ完了</option>
           </select>
         </div>
       </div>

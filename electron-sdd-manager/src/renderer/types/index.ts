@@ -5,7 +5,9 @@ export type SpecPhase =
   | 'requirements-generated'
   | 'design-generated'
   | 'tasks-generated'
-  | 'implementation-complete';
+  | 'implementation-complete'
+  | 'inspection-complete'   // spec-phase-auto-update: Inspection GO判定完了
+  | 'deploy-complete';      // spec-phase-auto-update: デプロイ完了
 
 export type Phase = 'requirements' | 'design' | 'tasks';
 
@@ -114,7 +116,8 @@ export type FileError =
   | { type: 'PERMISSION_DENIED'; path: string }
   | { type: 'INVALID_PATH'; path: string; reason: string }
   | { type: 'PARSE_ERROR'; path: string; message: string }
-  | { type: 'WRITE_ERROR'; path: string; message: string };
+  | { type: 'WRITE_ERROR'; path: string; message: string }
+  | { type: 'INVALID_TRANSITION'; path: string; message: string };  // spec-phase-auto-update
 
 // Command error types
 export type CommandError =

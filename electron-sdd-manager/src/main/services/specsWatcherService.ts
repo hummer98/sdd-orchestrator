@@ -103,6 +103,16 @@ export class SpecsWatcherService {
       });
     }
 
+    // spec-phase-auto-update: Check inspection and deploy completion when spec.json changes
+    if ((type === 'change' || type === 'add') && fileName === 'spec.json' && specId) {
+      this.checkInspectionCompletion(filePath, specId).catch((error) => {
+        logger.error('[SpecsWatcherService] Failed to check inspection completion', { error, specId });
+      });
+      this.checkDeployCompletion(filePath, specId).catch((error) => {
+        logger.error('[SpecsWatcherService] Failed to check deploy completion', { error, specId });
+      });
+    }
+
     // Debounce per file path to avoid dropping concurrent events for different files
     const existingTimer = this.debounceTimers.get(filePath);
     if (existingTimer) {
@@ -175,6 +185,114 @@ export class SpecsWatcherService {
       }
     } catch (error) {
       logger.error('[SpecsWatcherService] Failed to read tasks.md', { specId, error });
+    }
+  }
+
+  /**
+   * spec-phase-auto-update Task 5: Check inspection completion and update phase
+   * Detects GO judgment from spec.json.inspection and updates phase to inspection-complete
+   * Requirements: 2.1, 5.1
+   */
+  private async checkInspectionCompletion(specJsonPath: string, specId: string): Promise<void> {
+    if (!this.fileService) {
+      logger.debug('[SpecsWatcherService] FileService not available, skipping inspection completion check');
+      return;
+    }
+
+    try {
+      const specJsonContent = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(specJsonContent);
+
+      // Skip if already at or past inspection-complete
+      if (specJson.phase === 'inspection-complete' || specJson.phase === 'deploy-complete') {
+        logger.debug('[SpecsWatcherService] Phase already at or past inspection-complete', { specId, phase: specJson.phase });
+        return;
+      }
+
+      // Check if phase is at implementation-complete (required to proceed)
+      if (specJson.phase !== 'implementation-complete') {
+        logger.debug('[SpecsWatcherService] Phase not at implementation-complete, skipping inspection check', { specId, phase: specJson.phase });
+        return;
+      }
+
+      // Check inspection state for GO judgment (passed: true in latest round)
+      const inspection = specJson.inspection;
+      if (!inspection) {
+        logger.debug('[SpecsWatcherService] No inspection data found', { specId });
+        return;
+      }
+
+      // Handle both new format (roundDetails) and legacy format
+      let hasPassed = false;
+      if (inspection.roundDetails && Array.isArray(inspection.roundDetails) && inspection.roundDetails.length > 0) {
+        const latestRound = inspection.roundDetails[inspection.roundDetails.length - 1];
+        hasPassed = latestRound.passed === true;
+      } else if (inspection.result === 'GO') {
+        // Legacy format
+        hasPassed = true;
+      }
+
+      if (!hasPassed) {
+        logger.debug('[SpecsWatcherService] Inspection not passed (no GO judgment)', { specId });
+        return;
+      }
+
+      // Update phase to inspection-complete
+      const specPath = path.dirname(specJsonPath);
+      logger.info('[SpecsWatcherService] Inspection passed (GO), updating phase to inspection-complete', { specId, previousPhase: specJson.phase });
+      const result = await this.fileService.updateSpecJsonFromPhase(specPath, 'inspection-complete', { skipTimestamp: true });
+
+      if (!result.ok) {
+        logger.error('[SpecsWatcherService] Failed to update spec.json phase to inspection-complete', { specId, error: result.error });
+      }
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to check inspection completion', { specId, error });
+    }
+  }
+
+  /**
+   * spec-phase-auto-update Task 6: Check deploy completion and update phase
+   * Detects deploy_completed flag from spec.json and updates phase to deploy-complete
+   * Requirements: 2.2, 5.2
+   */
+  private async checkDeployCompletion(specJsonPath: string, specId: string): Promise<void> {
+    if (!this.fileService) {
+      logger.debug('[SpecsWatcherService] FileService not available, skipping deploy completion check');
+      return;
+    }
+
+    try {
+      const specJsonContent = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(specJsonContent);
+
+      // Skip if already at deploy-complete
+      if (specJson.phase === 'deploy-complete') {
+        logger.debug('[SpecsWatcherService] Phase already deploy-complete', { specId });
+        return;
+      }
+
+      // Check if phase is at inspection-complete (required to proceed)
+      if (specJson.phase !== 'inspection-complete') {
+        logger.debug('[SpecsWatcherService] Phase not at inspection-complete, skipping deploy check', { specId, phase: specJson.phase });
+        return;
+      }
+
+      // Check deploy_completed flag
+      if (!specJson.deploy_completed) {
+        logger.debug('[SpecsWatcherService] deploy_completed not set', { specId });
+        return;
+      }
+
+      // Update phase to deploy-complete
+      const specPath = path.dirname(specJsonPath);
+      logger.info('[SpecsWatcherService] Deploy completed, updating phase to deploy-complete', { specId, previousPhase: specJson.phase });
+      const result = await this.fileService.updateSpecJsonFromPhase(specPath, 'deploy-complete', { skipTimestamp: true });
+
+      if (!result.ok) {
+        logger.error('[SpecsWatcherService] Failed to update spec.json phase to deploy-complete', { specId, error: result.error });
+      }
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to check deploy completion', { specId, error });
     }
   }
 

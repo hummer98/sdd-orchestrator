@@ -97,17 +97,6 @@ export interface LogEntry {
   timestamp: number;
 }
 
-export interface ExecutionResult {
-  readonly exitCode: number;
-  readonly executionTimeMs: number;
-}
-
-export interface CommandOutputEvent {
-  stream: 'stdout' | 'stderr';
-  data: string;
-  timestamp: number;
-}
-
 export interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';

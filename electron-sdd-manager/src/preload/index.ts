@@ -6,7 +6,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
-import type { Phase, CommandOutputEvent, SelectProjectResult } from '../renderer/types';
+import type { Phase, SelectProjectResult } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
@@ -85,24 +85,6 @@ const electronAPI = {
   // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
   updateSpecJson: (specPath: string, updates: Record<string, unknown>): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATE_SPEC_JSON, specPath, updates),
-
-  // Command Execution
-  executeCommand: (command: string, workingDirectory: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_COMMAND, command, workingDirectory),
-
-  cancelExecution: () => ipcRenderer.invoke(IPC_CHANNELS.CANCEL_EXECUTION),
-
-  onCommandOutput: (callback: (event: CommandOutputEvent) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: CommandOutputEvent) => {
-      callback(data);
-    };
-    ipcRenderer.on(IPC_CHANNELS.COMMAND_OUTPUT, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.COMMAND_OUTPUT, handler);
-    };
-  },
 
   // Agent Management (Task 27.1, 28.1)
   // Requirements: 5.1-5.8

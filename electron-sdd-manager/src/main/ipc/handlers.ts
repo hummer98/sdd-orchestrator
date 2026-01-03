@@ -6,7 +6,6 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { FileService } from '../services/fileService';
-import { CommandService } from '../services/commandService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase, SelectProjectResult, SelectProjectError } from '../../renderer/types';
@@ -55,7 +54,6 @@ import {
 import { CommandsetVersionService } from '../services/commandsetVersionService';
 
 const fileService = new FileService();
-const commandService = new CommandService();
 const projectChecker = new ProjectChecker();
 const experimentalToolsInstaller = new ExperimentalToolsInstallerService(getExperimentalTemplateDir());
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
@@ -575,36 +573,6 @@ export function registerIpcHandlers(): void {
       }
     }
   );
-
-  // Command Execution Handlers
-  ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_COMMAND,
-    async (event, command: string, workingDirectory: string) => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      if (!window) {
-        throw new Error('No window found for command execution');
-      }
-
-      const result = await commandService.executeCommand(
-        command,
-        workingDirectory,
-        window.webContents
-      );
-
-      if (!result.ok) {
-        throw new Error(`Command execution failed: ${result.error.type}`);
-      }
-
-      return result.value;
-    }
-  );
-
-  ipcMain.handle(IPC_CHANNELS.CANCEL_EXECUTION, async () => {
-    const result = commandService.cancelExecution();
-    if (!result.ok) {
-      throw new Error(`Cancel execution failed: ${result.error.type}`);
-    }
-  });
 
   // Config Handlers
   ipcMain.handle(IPC_CHANNELS.GET_RECENT_PROJECTS, async () => {

@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { SpecMetadata, SpecDetail, AutoExecutionStatus } from '../../types';
+import type { SpecMetadata, AutoExecutionStatus } from '../../types';
 import type { WorkflowPhase } from '../../types/workflow';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
@@ -23,7 +23,6 @@ import type {
   ImplTaskStatus,
   CheckImplResult,
   AutoExecutionRuntimeState,
-  SpecManagerExecutionState,
 } from './types';
 
 type SpecStoreFacade = SpecStoreState & SpecStoreActions;
@@ -129,7 +128,7 @@ export function initSpecStoreFacade(): void {
  * Facade store that aggregates all child stores
  */
 export const useSpecStoreFacade = create<SpecStoreFacade>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set) => ({
     // Initial aggregated state
     ...getAggregatedState(),
 

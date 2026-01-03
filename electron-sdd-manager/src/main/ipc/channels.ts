@@ -16,12 +16,6 @@ export const IPC_CHANNELS = {
   // spec-scoped-auto-execution-state: Update spec.json
   UPDATE_SPEC_JSON: 'ipc:update-spec-json',
 
-  // Command Execution
-  EXECUTE_COMMAND: 'ipc:execute-command',
-  CANCEL_EXECUTION: 'ipc:cancel-execution',
-  COMMAND_OUTPUT: 'ipc:command-output',
-  COMMAND_COMPLETE: 'ipc:command-complete',
-
   // Agent Management (Task 27.1)
   START_AGENT: 'ipc:start-agent',
   STOP_AGENT: 'ipc:stop-agent',

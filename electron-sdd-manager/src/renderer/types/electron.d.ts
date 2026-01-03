@@ -3,8 +3,6 @@ import type {
   SpecMetadata,
   SpecJson,
   Phase,
-  ExecutionResult,
-  CommandOutputEvent,
   BugMetadata,
   BugDetail,
   BugsChangeEvent,
@@ -380,11 +378,6 @@ export interface ElectronAPI {
 
   // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
   updateSpecJson(specPath: string, updates: Record<string, unknown>): Promise<void>;
-
-  // Command Execution
-  executeCommand(command: string, workingDirectory: string): Promise<ExecutionResult>;
-  cancelExecution(): Promise<void>;
-  onCommandOutput(callback: (event: CommandOutputEvent) => void): () => void;
 
   // Agent Management (Task 27.1)
   // Requirements: 5.1-5.8

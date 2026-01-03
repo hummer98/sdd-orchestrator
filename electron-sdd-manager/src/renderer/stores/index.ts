@@ -5,7 +5,6 @@
 import { useProjectStore } from './projectStore';
 import { useSpecStore } from './specStore';
 import { useEditorStore } from './editorStore';
-import { useExecutionStore } from './executionStore';
 import { useNotificationStore } from './notificationStore';
 import { useAgentStore } from './agentStore';
 import { useWorkflowStore } from './workflowStore';
@@ -18,7 +17,6 @@ import { useVersionStatusStore } from './versionStatusStore';
 export { useProjectStore } from './projectStore';
 export { useSpecStore } from './specStore';
 export { useEditorStore } from './editorStore';
-export { useExecutionStore } from './executionStore';
 export { useNotificationStore, notify } from './notificationStore';
 export { useAgentStore } from './agentStore';
 export type { AgentInfo, AgentStatus, LogEntry } from './agentStore';
@@ -45,7 +43,6 @@ export { useVersionStatusStore } from './versionStatusStore';
   projectStore: useProjectStore,
   specStore: useSpecStore,
   editorStore: useEditorStore,
-  executionStore: useExecutionStore,
   notificationStore: useNotificationStore,
   agentStore: useAgentStore,
   workflowStore: useWorkflowStore,

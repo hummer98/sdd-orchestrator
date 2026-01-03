@@ -1101,6 +1101,14 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM, params),
 
   /**
+   * Reset auto-execution coordinator state (E2E test support)
+   * WARNING: This API is intended for E2E tests only.
+   * Do not use in production code.
+   */
+  autoExecutionReset: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RESET),
+
+  /**
    * Subscribe to auto-execution status changes
    * @param callback Function called when status changes
    * @returns Cleanup function to unsubscribe

@@ -153,6 +153,16 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
     }
   );
 
+  // AUTO_EXECUTION_RESET (E2E Test Support)
+  // WARNING: This handler is intended for E2E tests only.
+  ipcMain.handle(
+    IPC_CHANNELS.AUTO_EXECUTION_RESET,
+    async (): Promise<void> => {
+      logger.info('[autoExecutionHandlers] AUTO_EXECUTION_RESET (E2E test support)');
+      coordinator.resetAll();
+    }
+  );
+
   // Register event forwarding to Renderer
   setupEventForwarding(coordinator);
 
@@ -170,6 +180,7 @@ export function unregisterAutoExecutionHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM);
+  ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RESET);
 
   logger.info('[autoExecutionHandlers] IPC handlers unregistered');
 }
@@ -186,6 +197,11 @@ export function unregisterAutoExecutionHandlers(): void {
 function setupEventForwarding(coordinator: AutoExecutionCoordinator): void {
   // Forward state-changed events (serialize to avoid circular references)
   coordinator.on('state-changed', (specPath: string, state: AutoExecutionState) => {
+    logger.debug('[autoExecutionHandlers] state-changed event received', {
+      specPath,
+      status: state.status,
+      currentPhase: state.currentPhase,
+    });
     broadcastToRenderers(IPC_CHANNELS.AUTO_EXECUTION_STATUS_CHANGED, {
       specPath,
       state: toSerializableState(state),

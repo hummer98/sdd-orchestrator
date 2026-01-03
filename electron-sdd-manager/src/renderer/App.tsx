@@ -36,6 +36,7 @@ import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
 import type { CommandPrefix } from './stores';
+import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -246,6 +247,21 @@ export function App() {
     remoteAccessInitialized.current = true;
     initializeRemoteAccess();
   }, [initializeRemoteAccess]);
+
+  // Initialize auto-execution IPC listeners on mount
+  // This enables specStore to receive state updates from Main Process (bug fix: auto-execution-state-sync)
+  const autoExecutionIpcInitialized = useRef(false);
+  useEffect(() => {
+    if (autoExecutionIpcInitialized.current) {
+      return;
+    }
+    autoExecutionIpcInitialized.current = true;
+    initAutoExecutionIpcListeners();
+    return () => {
+      autoExecutionIpcInitialized.current = false;
+      cleanupAutoExecutionIpcListeners();
+    };
+  }, []);
 
   // Setup menu event listeners
   const menuListenersSetup = useRef(false);

@@ -643,6 +643,12 @@ export interface ElectronAPI {
   autoExecutionRetryFrom(params: { specPath: string; phase: WorkflowPhase }): Promise<{ ok: true; value: AutoExecutionState } | { ok: false; error: AutoExecutionError }>;
 
   /**
+   * Reset auto-execution coordinator state (E2E test support)
+   * WARNING: This API is intended for E2E tests only.
+   */
+  autoExecutionReset(): Promise<void>;
+
+  /**
    * Subscribe to auto-execution status changes
    */
   onAutoExecutionStatusChanged(callback: (data: { specPath: string; state: AutoExecutionState }) => void): () => void;

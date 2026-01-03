@@ -4,7 +4,7 @@
  * Requirements: 3.1, 3.4, 3.5
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { WorkflowPhase } from '../types/workflow';
 import type { AutoExecutionStatus } from '../types';
 
@@ -240,51 +240,12 @@ export function useAutoExecution(): UseAutoExecutionReturn {
   }, []);
 
   // ============================================================
-  // Event Listeners (Task 4.2)
+  // Event Listeners
   // ============================================================
-
-  useEffect(() => {
-    // Listen for status changed events
-    const handleStatusChanged = (data: { specPath: string; state: AutoExecutionState }) => {
-      setState(data.state);
-    };
-
-    // Listen for phase completed events
-    const handlePhaseCompleted = (data: { specPath: string; phase: WorkflowPhase }) => {
-      setState((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          executedPhases: [...prev.executedPhases, data.phase],
-          currentPhase: null,
-        };
-      });
-    };
-
-    // Listen for error events
-    const handleError = (data: { specPath: string; error: AutoExecutionError }) => {
-      setState((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: 'error',
-          errors: [...prev.errors, data.error.type],
-        };
-      });
-    };
-
-    // Register listeners
-    const unsubscribeStatus = window.electronAPI.onAutoExecutionStatusChanged?.(handleStatusChanged);
-    const unsubscribePhase = window.electronAPI.onAutoExecutionPhaseCompleted?.(handlePhaseCompleted);
-    const unsubscribeError = window.electronAPI.onAutoExecutionError?.(handleError);
-
-    // Cleanup
-    return () => {
-      unsubscribeStatus?.();
-      unsubscribePhase?.();
-      unsubscribeError?.();
-    };
-  }, []);
+  // NOTE: IPC event listeners are now registered in autoExecutionStore.ts
+  // and initialized in App.tsx via initAutoExecutionIpcListeners().
+  // This ensures specStore is the SSoT for auto-execution state.
+  // (bug fix: auto-execution-state-sync)
 
   return {
     // State

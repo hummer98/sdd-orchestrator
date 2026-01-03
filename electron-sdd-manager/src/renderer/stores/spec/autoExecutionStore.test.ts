@@ -4,8 +4,8 @@
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useAutoExecutionStore } from './autoExecutionStore';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { useAutoExecutionStore, initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './autoExecutionStore';
 import { DEFAULT_AUTO_EXECUTION_RUNTIME } from './types';
 
 const TEST_SPEC_ID = 'test-feature';
@@ -222,6 +222,273 @@ describe('useAutoExecutionStore', () => {
 
       expect(runtimeB.currentAutoPhase).toBe('design');
       expect(runtimeB.autoExecutionStatus).toBe('paused');
+    });
+  });
+});
+
+// ============================================================
+// IPC Listener Tests (bug fix: auto-execution-state-sync)
+// ============================================================
+
+describe('IPC Listeners for Auto-Execution State Sync', () => {
+  // Store callbacks registered via mock electronAPI
+  let statusChangedCallback: ((data: { specPath: string; state: unknown }) => void) | null = null;
+  let phaseCompletedCallback: ((data: { specPath: string; phase: string }) => void) | null = null;
+  let errorCallback: ((data: { specPath: string; error: { type: string; message?: string } }) => void) | null = null;
+
+  // Mock unsubscribe functions
+  const mockUnsubscribeStatus = vi.fn();
+  const mockUnsubscribePhase = vi.fn();
+  const mockUnsubscribeError = vi.fn();
+
+  beforeEach(() => {
+    // Reset store state
+    useAutoExecutionStore.setState({
+      autoExecutionRuntimeMap: new Map(),
+    });
+
+    // Reset callbacks
+    statusChangedCallback = null;
+    phaseCompletedCallback = null;
+    errorCallback = null;
+
+    // Reset mocks
+    mockUnsubscribeStatus.mockClear();
+    mockUnsubscribePhase.mockClear();
+    mockUnsubscribeError.mockClear();
+
+    // Mock window.electronAPI
+    (global as unknown as { window: { electronAPI: unknown } }).window = {
+      electronAPI: {
+        onAutoExecutionStatusChanged: vi.fn((callback) => {
+          statusChangedCallback = callback;
+          return mockUnsubscribeStatus;
+        }),
+        onAutoExecutionPhaseCompleted: vi.fn((callback) => {
+          phaseCompletedCallback = callback;
+          return mockUnsubscribePhase;
+        }),
+        onAutoExecutionError: vi.fn((callback) => {
+          errorCallback = callback;
+          return mockUnsubscribeError;
+        }),
+      },
+    };
+  });
+
+  afterEach(() => {
+    // Cleanup listeners after each test
+    cleanupAutoExecutionIpcListeners();
+  });
+
+  describe('initAutoExecutionIpcListeners', () => {
+    it('should register all IPC event listeners', () => {
+      initAutoExecutionIpcListeners();
+
+      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
+      expect(window.electronAPI.onAutoExecutionPhaseCompleted).toHaveBeenCalledTimes(1);
+      expect(window.electronAPI.onAutoExecutionError).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not register duplicate listeners on second call', () => {
+      initAutoExecutionIpcListeners();
+      initAutoExecutionIpcListeners();
+
+      // Should only be called once due to duplicate prevention
+      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('cleanupAutoExecutionIpcListeners', () => {
+    it('should call unsubscribe functions for all listeners', () => {
+      initAutoExecutionIpcListeners();
+      cleanupAutoExecutionIpcListeners();
+
+      expect(mockUnsubscribeStatus).toHaveBeenCalledTimes(1);
+      expect(mockUnsubscribePhase).toHaveBeenCalledTimes(1);
+      expect(mockUnsubscribeError).toHaveBeenCalledTimes(1);
+    });
+
+    it('should allow re-registration after cleanup', () => {
+      initAutoExecutionIpcListeners();
+      cleanupAutoExecutionIpcListeners();
+      initAutoExecutionIpcListeners();
+
+      expect(window.electronAPI.onAutoExecutionStatusChanged).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('IPC event handling', () => {
+    it('should update specStore when status changed event is received with running status', () => {
+      initAutoExecutionIpcListeners();
+
+      // Simulate IPC event from Main Process
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'running',
+          currentPhase: 'design',
+          executedPhases: ['requirements'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtime = useAutoExecutionStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+      expect(runtime.isAutoExecuting).toBe(true);
+      expect(runtime.autoExecutionStatus).toBe('running');
+      expect(runtime.currentAutoPhase).toBe('design');
+    });
+
+    it('should update specStore when status changed event is received with completed status', () => {
+      initAutoExecutionIpcListeners();
+
+      // First set to running
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'running',
+          currentPhase: 'impl',
+          executedPhases: ['requirements', 'design', 'tasks'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      // Then complete
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'completed',
+          currentPhase: null,
+          executedPhases: ['requirements', 'design', 'tasks', 'impl'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtime = useAutoExecutionStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+      expect(runtime.isAutoExecuting).toBe(false);
+      expect(runtime.autoExecutionStatus).toBe('completed');
+      expect(runtime.currentAutoPhase).toBeNull();
+    });
+
+    it('should update specStore when status changed event is received with error status', () => {
+      initAutoExecutionIpcListeners();
+
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'error',
+          currentPhase: 'design',
+          executedPhases: ['requirements'],
+          errors: ['PHASE_EXECUTION_FAILED'],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtime = useAutoExecutionStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+      expect(runtime.isAutoExecuting).toBe(false);
+      expect(runtime.autoExecutionStatus).toBe('error');
+    });
+
+    it('should handle paused status as still executing', () => {
+      initAutoExecutionIpcListeners();
+
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'paused',
+          currentPhase: 'design',
+          executedPhases: ['requirements'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtime = useAutoExecutionStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+      expect(runtime.isAutoExecuting).toBe(true);
+      expect(runtime.autoExecutionStatus).toBe('paused');
+    });
+
+    it('should handle completing status as still executing', () => {
+      initAutoExecutionIpcListeners();
+
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/test-feature',
+        state: {
+          specPath: '/project/.kiro/specs/test-feature',
+          specId: TEST_SPEC_ID,
+          status: 'completing',
+          currentPhase: null,
+          executedPhases: ['requirements', 'design', 'tasks', 'impl'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtime = useAutoExecutionStore.getState().getAutoExecutionRuntime(TEST_SPEC_ID);
+      expect(runtime.isAutoExecuting).toBe(true);
+      expect(runtime.autoExecutionStatus).toBe('completing');
+    });
+
+    it('should maintain independent state for multiple specs via IPC events', () => {
+      initAutoExecutionIpcListeners();
+
+      // Start spec-a
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/spec-a',
+        state: {
+          specPath: '/project/.kiro/specs/spec-a',
+          specId: 'spec-a',
+          status: 'running',
+          currentPhase: 'requirements',
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      // Start spec-b
+      statusChangedCallback?.({
+        specPath: '/project/.kiro/specs/spec-b',
+        state: {
+          specPath: '/project/.kiro/specs/spec-b',
+          specId: 'spec-b',
+          status: 'running',
+          currentPhase: 'design',
+          executedPhases: ['requirements'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      });
+
+      const runtimeA = useAutoExecutionStore.getState().getAutoExecutionRuntime('spec-a');
+      const runtimeB = useAutoExecutionStore.getState().getAutoExecutionRuntime('spec-b');
+
+      expect(runtimeA.isAutoExecuting).toBe(true);
+      expect(runtimeA.currentAutoPhase).toBe('requirements');
+
+      expect(runtimeB.isAutoExecuting).toBe(true);
+      expect(runtimeB.currentAutoPhase).toBe('design');
     });
   });
 });

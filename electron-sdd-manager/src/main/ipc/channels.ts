@@ -201,6 +201,8 @@ export const IPC_CHANNELS = {
   AUTO_EXECUTION_STATUS: 'auto-execution:status',
   AUTO_EXECUTION_ALL_STATUS: 'auto-execution:all-status',
   AUTO_EXECUTION_RETRY_FROM: 'auto-execution:retry-from',
+  // E2E Test Support: Reset all coordinator state
+  AUTO_EXECUTION_RESET: 'auto-execution:reset',
   // Events (Renderer -> Main)
   AUTO_EXECUTION_STATUS_CHANGED: 'auto-execution:status-changed',
   AUTO_EXECUTION_PHASE_COMPLETED: 'auto-execution:phase-completed',

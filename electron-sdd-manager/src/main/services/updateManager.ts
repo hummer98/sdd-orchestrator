@@ -3,12 +3,16 @@
  * インストール済みコマンドセットのバージョン検出とアップデート機能
  * Requirements: 14.1, 14.2, 14.4
  * Note: Phase 2スケルトン実装 - 将来的に完全実装
+ *
+ * SSOT (commandset-version-detection): バージョン情報はCommandsetDefinitionManagerから取得
+ * LATEST_VERSIONSは削除済み - CommandsetDefinitionManager.getVersion()を使用
  */
 
 import { readFile, readdir, access } from 'fs/promises';
 import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
+import { CommandsetDefinitionManager } from './commandsetDefinitionManager';
 
 /**
  * Version information
@@ -61,18 +65,6 @@ const VERSION_PATTERN = /<!--\s*version:\s*(\d+\.\d+\.\d+(?:-[\w.]+)?)\s*-->/;
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
 /**
- * Current latest versions (will be fetched from remote in future)
- * This is a placeholder for Phase 2 complete implementation
- */
-const LATEST_VERSIONS: Record<CommandsetName, string> = {
-  'cc-sdd': '1.0.0',
-  'cc-sdd-agent': '1.0.0',
-  'bug': '1.0.0',
-  'document-review': '1.0.0',
-  'spec-manager': '1.0.0',
-};
-
-/**
  * Check if a file exists
  */
 async function fileExists(filePath: string): Promise<boolean> {
@@ -104,11 +96,19 @@ function compareVersions(a: string, b: string): number {
  * UpdateManager
  * コマンドセットのバージョン管理とアップデート機能を提供
  * Requirements: 14.1, 14.2, 14.4
+ * SSOT: バージョン情報はCommandsetDefinitionManagerから取得
  */
 export class UpdateManager {
+  private readonly definitionManager: CommandsetDefinitionManager;
+
+  constructor(definitionManager?: CommandsetDefinitionManager) {
+    this.definitionManager = definitionManager ?? new CommandsetDefinitionManager();
+  }
+
   /**
    * Detect version of installed commandset
    * Requirements: 14.2
+   * SSOT (commandset-version-detection): Uses CommandsetDefinitionManager.getVersion() for latest version
    * @param projectPath - Project root path
    * @param commandsetName - Commandset name
    */
@@ -116,7 +116,8 @@ export class UpdateManager {
     projectPath: string,
     commandsetName: CommandsetName
   ): Promise<VersionInfo> {
-    const latest = LATEST_VERSIONS[commandsetName] || '1.0.0';
+    // Get latest version from CommandsetDefinitionManager (SSOT)
+    const latest = this.definitionManager.getVersion(commandsetName);
     let current = '0.0.0';
 
     try {

@@ -8,7 +8,8 @@ import { CcSddWorkflowInstaller, InstallOptions, InstallResult, InstallError, Re
 import { BugWorkflowInstaller } from './bugWorkflowInstaller';
 import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
-import { projectConfigService, ProfileConfig } from './layoutConfigService';
+import { projectConfigService, ProfileConfig, CommandsetVersionRecord } from './layoutConfigService';
+import { CommandsetDefinitionManager } from './commandsetDefinitionManager';
 
 /**
  * Commandset names
@@ -102,6 +103,7 @@ interface Profile {
 export class UnifiedCommandsetInstaller {
   private ccSddInstaller: CcSddWorkflowInstaller;
   private bugInstaller: BugWorkflowInstaller;
+  private definitionManager: CommandsetDefinitionManager;
 
   /**
    * Predefined profiles
@@ -137,6 +139,7 @@ export class UnifiedCommandsetInstaller {
   ) {
     this.ccSddInstaller = ccSddInstaller;
     this.bugInstaller = bugInstaller;
+    this.definitionManager = new CommandsetDefinitionManager();
   }
 
   /**
@@ -291,6 +294,8 @@ export class UnifiedCommandsetInstaller {
 
   /**
    * Save profile configuration to .kiro/sdd-orchestrator.json
+   * NOTE: This method is deprecated as profile config is now saved separately from commandset versions.
+   * The profile is saved via projectConfigService.saveProfile which preserves v3 format.
    * @param projectPath - Project root path
    * @param profileName - Profile name
    */
@@ -304,6 +309,7 @@ export class UnifiedCommandsetInstaller {
     };
 
     try {
+      // Note: saveProfile now preserves v3 format after commandset versions are recorded
       await projectConfigService.saveProfile(projectPath, config);
     } catch (error) {
       // Log but don't fail installation if config can't be saved
@@ -335,6 +341,7 @@ export class UnifiedCommandsetInstaller {
    * @param options - Install options
    * @param progressCallback - Progress callback
    * Requirements: 3.1, 3.3, 3.4
+   * Requirements (commandset-version-detection): 1.1, 1.2, 1.3, 1.4
    */
   private async installMultiple(
     projectPath: string,
@@ -343,6 +350,7 @@ export class UnifiedCommandsetInstaller {
     progressCallback?: ProgressCallback
   ): Promise<Result<UnifiedInstallResult, InstallError>> {
     const resultMap = new Map<CommandsetName, InstallResult>();
+    const successfullyInstalled: CommandsetName[] = [];
     let totalInstalled = 0;
     let totalSkipped = 0;
     let totalFailed = 0;
@@ -363,11 +371,21 @@ export class UnifiedCommandsetInstaller {
         resultMap.set(commandset, value);
         totalInstalled += value.installed.length;
         totalSkipped += value.skipped.length;
+        // Track successfully installed commandsets for version recording
+        if (value.installed.length > 0 || value.overwritten.length > 0) {
+          successfullyInstalled.push(commandset);
+        }
       } else {
         // Continue on failure
         totalFailed++;
         resultMap.set(commandset, { installed: [], skipped: [], overwritten: [] });
       }
+    }
+
+    // Record versions for successfully installed commandsets
+    // Requirements (commandset-version-detection): 1.1, 1.2, 1.3, 1.4
+    if (successfullyInstalled.length > 0) {
+      await this.recordCommandsetVersions(projectPath, successfullyInstalled);
     }
 
     return {
@@ -384,6 +402,35 @@ export class UnifiedCommandsetInstaller {
         }
       }
     };
+  }
+
+  /**
+   * Record commandset versions to sdd-orchestrator.json
+   * Requirements (commandset-version-detection): 1.1, 1.2, 1.3, 1.4
+   * @param projectPath - Project root path
+   * @param commandsets - Successfully installed commandset names
+   */
+  private async recordCommandsetVersions(
+    projectPath: string,
+    commandsets: CommandsetName[]
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    const versionRecords: Record<string, CommandsetVersionRecord> = {};
+
+    for (const name of commandsets) {
+      const version = this.definitionManager.getVersion(name);
+      versionRecords[name] = {
+        version,
+        installedAt: now,
+      };
+    }
+
+    try {
+      await projectConfigService.saveCommandsetVersions(projectPath, versionRecords);
+    } catch (error) {
+      // Log but don't fail installation if version recording fails
+      console.warn('[UnifiedCommandsetInstaller] Failed to record commandset versions:', error);
+    }
   }
 
   /**

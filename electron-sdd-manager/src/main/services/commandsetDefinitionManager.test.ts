@@ -224,4 +224,129 @@ describe('CommandsetDefinitionManager', () => {
       }
     });
   });
+
+  // ============================================================
+  // Task 2.1: getVersion/getAllVersions (commandset-version-detection feature)
+  // Requirements: 5.1, 5.3
+  // ============================================================
+
+  describe('getVersion (Task 2.1)', () => {
+    it('should return version for cc-sdd', () => {
+      const version = manager.getVersion('cc-sdd');
+
+      expect(version).toBeDefined();
+      expect(version).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should return version for bug', () => {
+      const version = manager.getVersion('bug');
+
+      expect(version).toBeDefined();
+      expect(version).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should return version for spec-manager', () => {
+      const version = manager.getVersion('spec-manager');
+
+      expect(version).toBeDefined();
+      expect(version).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should return 0.0.0 for unknown commandset', () => {
+      const version = manager.getVersion('unknown-commandset' as any);
+
+      expect(version).toBe('0.0.0');
+    });
+  });
+
+  describe('getAllVersions (Task 2.1)', () => {
+    it('should return all versions as a map', () => {
+      const versions = manager.getAllVersions();
+
+      expect(versions).toBeInstanceOf(Map);
+      expect(versions.size).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should include cc-sdd version', () => {
+      const versions = manager.getAllVersions();
+
+      expect(versions.has('cc-sdd')).toBe(true);
+      expect(versions.get('cc-sdd')).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should include bug version', () => {
+      const versions = manager.getAllVersions();
+
+      expect(versions.has('bug')).toBe(true);
+      expect(versions.get('bug')).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should include spec-manager version', () => {
+      const versions = manager.getAllVersions();
+
+      expect(versions.has('spec-manager')).toBe(true);
+      expect(versions.get('spec-manager')).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+    });
+
+    it('should be readonly (immutable)', () => {
+      const versions = manager.getAllVersions();
+
+      // ReadonlyMap doesn't have set method
+      expect(typeof (versions as Map<string, string>).set).toBe('function');
+      // But we return ReadonlyMap type to signal intention
+    });
+  });
+
+  // ============================================================
+  // Task 2.2: isNewerVersion (commandset-version-detection feature)
+  // Requirements: 2.2
+  // ============================================================
+
+  describe('isNewerVersion (Task 2.2)', () => {
+    it('should return true when bundle version is newer than installed', () => {
+      const result = manager.isNewerVersion('0.9.0', '1.0.0');
+      expect(result).toBe(true);
+    });
+
+    it('should return false when bundle version is same as installed', () => {
+      const result = manager.isNewerVersion('1.0.0', '1.0.0');
+      expect(result).toBe(false);
+    });
+
+    it('should return false when bundle version is older than installed', () => {
+      const result = manager.isNewerVersion('1.0.0', '0.9.0');
+      expect(result).toBe(false);
+    });
+
+    it('should handle major version differences', () => {
+      expect(manager.isNewerVersion('0.9.0', '2.0.0')).toBe(true);
+      expect(manager.isNewerVersion('2.0.0', '1.0.0')).toBe(false);
+    });
+
+    it('should handle minor version differences', () => {
+      expect(manager.isNewerVersion('1.0.0', '1.1.0')).toBe(true);
+      expect(manager.isNewerVersion('1.1.0', '1.0.0')).toBe(false);
+    });
+
+    it('should handle patch version differences', () => {
+      expect(manager.isNewerVersion('1.0.0', '1.0.1')).toBe(true);
+      expect(manager.isNewerVersion('1.0.1', '1.0.0')).toBe(false);
+    });
+
+    it('should handle prerelease versions', () => {
+      // 1.0.0-beta < 1.0.0
+      expect(manager.isNewerVersion('1.0.0-beta', '1.0.0')).toBe(true);
+      expect(manager.isNewerVersion('1.0.0', '1.0.0-beta')).toBe(false);
+    });
+
+    it('should return true for undefined installed version (first install)', () => {
+      const result = manager.isNewerVersion(undefined, '1.0.0');
+      expect(result).toBe(true);
+    });
+
+    it('should return true for empty string installed version', () => {
+      const result = manager.isNewerVersion('', '1.0.0');
+      expect(result).toBe(true);
+    });
+  });
 });

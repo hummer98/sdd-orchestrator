@@ -9,6 +9,8 @@ import * as path from 'path';
 import {
   LayoutConfigSchemaV1,
   ProjectConfigSchema,
+  ProjectConfigSchemaV3,
+  CommandsetVersionRecordSchema,
   ProfileConfigSchema,
   LayoutValuesSchema,
   DEFAULT_LAYOUT,
@@ -16,6 +18,7 @@ import {
   layoutConfigService,
   type LayoutValues,
   type ProfileConfig,
+  type CommandsetVersionRecord,
 } from './layoutConfigService';
 
 // Mock fs/promises
@@ -327,10 +330,12 @@ describe('projectConfigService', () => {
 
       await projectConfigService.saveProfile(testProjectPath, profile);
 
+      // v3 format is now used for all saves to preserve commandsets
       const expectedConfig = {
-        version: 2,
+        version: 3,
         profile,
         layout: existingConfig.layout,
+        commandsets: undefined,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,
@@ -352,10 +357,12 @@ describe('projectConfigService', () => {
 
       await projectConfigService.saveProfile(testProjectPath, profile);
 
+      // v3 format is now used for all saves
       const expectedConfig = {
-        version: 2,
+        version: 3,
         profile,
         layout: undefined,
+        commandsets: undefined,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,
@@ -453,10 +460,12 @@ describe('projectConfigService', () => {
 
       await projectConfigService.saveLayoutConfig(testProjectPath, layout);
 
+      // v3 format is now used for all saves to preserve commandsets
       const expectedConfig = {
-        version: 2,
+        version: 3,
         profile: existingConfig.profile,
         layout,
+        commandsets: undefined,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,
@@ -523,10 +532,12 @@ describe('projectConfigService', () => {
 
       await projectConfigService.resetLayoutConfig(testProjectPath);
 
+      // v3 format is now used for all saves
       const expectedConfig = {
-        version: 2,
+        version: 3,
         profile: undefined,
         layout: DEFAULT_LAYOUT,
+        commandsets: undefined,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,
@@ -539,6 +550,326 @@ describe('projectConfigService', () => {
   describe('layoutConfigService (後方互換エイリアス)', () => {
     it('projectConfigServiceと同じオブジェクト', () => {
       expect(layoutConfigService).toBe(projectConfigService);
+    });
+  });
+
+  // ============================================================
+  // Task 1.1: v3スキーマ定義テスト (commandset-version-detection feature)
+  // Requirements: 6.1, 6.2, 6.3
+  // ============================================================
+
+  describe('CommandsetVersionRecordSchema (Task 1.1)', () => {
+    it('有効なバージョン記録を検証できる', () => {
+      const record = {
+        version: '1.0.0',
+        installedAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = CommandsetVersionRecordSchema.safeParse(record);
+      expect(result.success).toBe(true);
+    });
+
+    it('セマンティックバージョン形式を要求する', () => {
+      const record = {
+        version: 'invalid-version',
+        installedAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = CommandsetVersionRecordSchema.safeParse(record);
+      expect(result.success).toBe(false);
+    });
+
+    it('プレリリースサフィックスを許可する', () => {
+      const record = {
+        version: '1.0.0-beta.1',
+        installedAt: '2024-01-01T00:00:00.000Z',
+      };
+      const result = CommandsetVersionRecordSchema.safeParse(record);
+      expect(result.success).toBe(true);
+    });
+
+    it('installedAtが必須', () => {
+      const record = {
+        version: '1.0.0',
+      };
+      const result = CommandsetVersionRecordSchema.safeParse(record);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('ProjectConfigSchemaV3 (Task 1.1)', () => {
+    it('有効なv3設定を検証できる', () => {
+      const config = {
+        version: 3,
+        profile: {
+          name: 'cc-sdd-agent',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 288,
+          rightPaneWidth: 320,
+          bottomPaneHeight: 192,
+          agentListHeight: 160,
+        },
+        commandsets: {
+          'cc-sdd': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+          'bug': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      };
+      const result = ProjectConfigSchemaV3.safeParse(config);
+      expect(result.success).toBe(true);
+    });
+
+    it('commandsetsフィールドはオプショナル', () => {
+      const config = {
+        version: 3,
+        profile: {
+          name: 'cc-sdd',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+      };
+      const result = ProjectConfigSchemaV3.safeParse(config);
+      expect(result.success).toBe(true);
+    });
+
+    it('profile/layoutもオプショナル', () => {
+      const config = {
+        version: 3,
+        commandsets: {
+          'spec-manager': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      };
+      const result = ProjectConfigSchemaV3.safeParse(config);
+      expect(result.success).toBe(true);
+    });
+
+    it('version 3のみを許可する', () => {
+      const config = {
+        version: 2,
+        commandsets: {},
+      };
+      const result = ProjectConfigSchemaV3.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+
+    it('無効なコマンドセット名を拒否する', () => {
+      const config = {
+        version: 3,
+        commandsets: {
+          'invalid-commandset-name': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      };
+      const result = ProjectConfigSchemaV3.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // ============================================================
+  // Task 1.2: v2からv3へのマイグレーション処理テスト
+  // Requirements: 6.3, 6.4
+  // ============================================================
+
+  describe('v2 to v3 migration (Task 1.2)', () => {
+    it('v2設定ファイルを読み込んでも正常に動作する', async () => {
+      const v2Config = {
+        version: 2,
+        profile: {
+          name: 'cc-sdd',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 350,
+          rightPaneWidth: 400,
+          bottomPaneHeight: 250,
+          agentListHeight: 180,
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(v2Config));
+
+      const result = await projectConfigService.loadLayoutConfig(testProjectPath);
+
+      expect(result).toEqual(v2Config.layout);
+    });
+
+    it('v3設定ファイルを正常に読み込む', async () => {
+      const v3Config = {
+        version: 3,
+        profile: {
+          name: 'cc-sdd-agent',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 350,
+          rightPaneWidth: 400,
+          bottomPaneHeight: 250,
+          agentListHeight: 180,
+        },
+        commandsets: {
+          'cc-sdd': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(v3Config));
+
+      const result = await projectConfigService.loadLayoutConfig(testProjectPath);
+
+      expect(result).toEqual(v3Config.layout);
+    });
+
+    it('v3設定の保存時はversion: 3で書き込む', async () => {
+      const error = new Error('ENOENT') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      mockFs.readFile.mockRejectedValue(error);
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const commandsets: Record<string, CommandsetVersionRecord> = {
+        'cc-sdd': {
+          version: '1.0.0',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+      };
+
+      await projectConfigService.saveCommandsetVersions(testProjectPath, commandsets);
+
+      expect(mockFs.writeFile).toHaveBeenCalled();
+      const writeCall = mockFs.writeFile.mock.calls[0];
+      const savedContent = JSON.parse(writeCall[1] as string);
+      expect(savedContent.version).toBe(3);
+      expect(savedContent.commandsets).toEqual(commandsets);
+    });
+  });
+
+  // ============================================================
+  // Task 1.3: loadCommandsetVersions/saveCommandsetVersionsメソッドテスト
+  // Requirements: 1.1, 1.2, 1.3, 6.2
+  // ============================================================
+
+  describe('loadCommandsetVersions (Task 1.3)', () => {
+    it('v3設定ファイルからcommandsetsフィールドを読み込む', async () => {
+      const v3Config = {
+        version: 3,
+        commandsets: {
+          'cc-sdd': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+          'bug': {
+            version: '1.0.0',
+            installedAt: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(v3Config));
+
+      const result = await projectConfigService.loadCommandsetVersions(testProjectPath);
+
+      expect(result).toEqual(v3Config.commandsets);
+    });
+
+    it('v2設定ファイル（レガシー）の場合はundefinedを返す', async () => {
+      const v2Config = {
+        version: 2,
+        profile: {
+          name: 'cc-sdd',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(v2Config));
+
+      const result = await projectConfigService.loadCommandsetVersions(testProjectPath);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('ファイルが存在しない場合はundefinedを返す', async () => {
+      const error = new Error('ENOENT') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      mockFs.readFile.mockRejectedValue(error);
+
+      const result = await projectConfigService.loadCommandsetVersions(testProjectPath);
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('saveCommandsetVersions (Task 1.3)', () => {
+    it('既存のprofile/layoutを保持しながらcommandsetsを保存する', async () => {
+      const existingConfig = {
+        version: 2,
+        profile: {
+          name: 'cc-sdd-agent',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 350,
+          rightPaneWidth: 400,
+          bottomPaneHeight: 250,
+          agentListHeight: 180,
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const commandsets: Record<string, CommandsetVersionRecord> = {
+        'cc-sdd': {
+          version: '1.0.0',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+      };
+
+      await projectConfigService.saveCommandsetVersions(testProjectPath, commandsets);
+
+      const writeCall = mockFs.writeFile.mock.calls[0];
+      const savedContent = JSON.parse(writeCall[1] as string);
+      expect(savedContent.version).toBe(3);
+      expect(savedContent.profile).toEqual(existingConfig.profile);
+      expect(savedContent.layout).toEqual(existingConfig.layout);
+      expect(savedContent.commandsets).toEqual(commandsets);
+    });
+
+    it('既存のcommandsetsがある場合はマージする', async () => {
+      const existingConfig = {
+        version: 3,
+        commandsets: {
+          'bug': {
+            version: '0.9.0',
+            installedAt: '2023-12-01T00:00:00.000Z',
+          },
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const newCommandsets: Record<string, CommandsetVersionRecord> = {
+        'cc-sdd': {
+          version: '1.0.0',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        'bug': {
+          version: '1.0.0',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+      };
+
+      await projectConfigService.saveCommandsetVersions(testProjectPath, newCommandsets);
+
+      const writeCall = mockFs.writeFile.mock.calls[0];
+      const savedContent = JSON.parse(writeCall[1] as string);
+      // bug should be updated, cc-sdd should be added
+      expect(savedContent.commandsets['cc-sdd'].version).toBe('1.0.0');
+      expect(savedContent.commandsets['bug'].version).toBe('1.0.0');
     });
   });
 
@@ -598,10 +929,12 @@ describe('projectConfigService', () => {
 
       await projectConfigService.saveLayoutConfig(testProjectPath, layout);
 
+      // v3 format is now used for all saves
       const expectedConfig = {
-        version: 2,
+        version: 3,
         profile: undefined,
         layout,
+        commandsets: undefined,
       };
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         configFilePath,

@@ -228,4 +228,91 @@ export class CommandsetDefinitionManager {
     const definition = this.definitions.get(commandsetName);
     return definition?.dependencies ?? [];
   }
+
+  /**
+   * Get version for a specific commandset
+   * Requirements (commandset-version-detection): 5.1, 5.3
+   * @param commandsetName - Commandset name
+   * @returns Version string (e.g., "1.0.0"), or "0.0.0" for unknown commandset
+   */
+  getVersion(commandsetName: CommandsetName): string {
+    const definition = this.definitions.get(commandsetName);
+    return definition?.version ?? '0.0.0';
+  }
+
+  /**
+   * Get all commandset versions as a map
+   * Requirements (commandset-version-detection): 5.1, 5.3
+   * @returns ReadonlyMap of commandset name to version
+   */
+  getAllVersions(): ReadonlyMap<CommandsetName, string> {
+    const versions = new Map<CommandsetName, string>();
+    for (const [name, definition] of this.definitions) {
+      versions.set(name, definition.version);
+    }
+    return versions;
+  }
+
+  /**
+   * Compare versions to determine if bundle version is newer than installed
+   * Requirements (commandset-version-detection): 2.2
+   * @param installedVersion - Currently installed version (undefined/empty means not installed)
+   * @param bundleVersion - Version bundled in the app
+   * @returns true if bundleVersion > installedVersion
+   */
+  isNewerVersion(installedVersion: string | undefined, bundleVersion: string): boolean {
+    // If not installed, any bundle version is newer
+    if (!installedVersion || installedVersion === '') {
+      return true;
+    }
+
+    return this.compareVersions(installedVersion, bundleVersion) < 0;
+  }
+
+  /**
+   * Compare two semantic versions
+   * @param a - First version
+   * @param b - Second version
+   * @returns -1 if a < b, 0 if a === b, 1 if a > b
+   */
+  private compareVersions(a: string, b: string): number {
+    // Parse version strings
+    const parseVersion = (v: string) => {
+      const [main, prerelease] = v.split('-');
+      const [major, minor, patch] = main.split('.').map(Number);
+      return { major, minor, patch, prerelease };
+    };
+
+    const av = parseVersion(a);
+    const bv = parseVersion(b);
+
+    // Compare major
+    if (av.major !== bv.major) {
+      return av.major < bv.major ? -1 : 1;
+    }
+
+    // Compare minor
+    if (av.minor !== bv.minor) {
+      return av.minor < bv.minor ? -1 : 1;
+    }
+
+    // Compare patch
+    if (av.patch !== bv.patch) {
+      return av.patch < bv.patch ? -1 : 1;
+    }
+
+    // Compare prerelease (versions with prerelease are older than release)
+    if (av.prerelease && !bv.prerelease) {
+      return -1; // a is prerelease, b is release => a < b
+    }
+    if (!av.prerelease && bv.prerelease) {
+      return 1; // a is release, b is prerelease => a > b
+    }
+    if (av.prerelease && bv.prerelease) {
+      // Both have prerelease, compare alphabetically
+      return av.prerelease.localeCompare(bv.prerelease);
+    }
+
+    return 0;
+  }
 }

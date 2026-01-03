@@ -1,12 +1,14 @@
 /**
  * Project Config Service
- * プロジェクト固有の設定（プロファイル・レイアウト）をファイルシステムで管理
+ * プロジェクト固有の設定（プロファイル・レイアウト・コマンドセットバージョン）をファイルシステムで管理
  * Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2, 4.1-4.4, 5.1-5.3
+ * Requirements (commandset-version-detection): 1.1-1.4, 6.1-6.4
  */
 
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import type { CommandsetName } from './unifiedCommandsetInstaller';
 
 /**
  * プロファイル名の型定義
@@ -55,6 +57,36 @@ export const ProjectConfigSchema = z.object({
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
 /**
+ * コマンドセットバージョン記録のスキーマ
+ * Requirements (commandset-version-detection): 1.1, 6.2
+ */
+export const CommandsetVersionRecordSchema = z.object({
+  version: z.string().regex(/^\d+\.\d+\.\d+(-[\w.]+)?$/),
+  installedAt: z.string(),
+});
+
+export type CommandsetVersionRecord = z.infer<typeof CommandsetVersionRecordSchema>;
+
+/**
+ * 統合設定ファイルのスキーマ（version 3）
+ * profile: コマンドセットのインストール状態
+ * layout: UIレイアウト設定
+ * commandsets: コマンドセットバージョン情報
+ * Requirements (commandset-version-detection): 6.1, 6.2, 6.4
+ */
+export const ProjectConfigSchemaV3 = z.object({
+  version: z.literal(3),
+  profile: ProfileConfigSchema.optional(),
+  layout: LayoutValuesSchema.optional(),
+  commandsets: z.record(
+    z.enum(['cc-sdd', 'cc-sdd-agent', 'bug', 'document-review', 'spec-manager']),
+    CommandsetVersionRecordSchema
+  ).optional(),
+});
+
+export type ProjectConfigV3 = z.infer<typeof ProjectConfigSchemaV3>;
+
+/**
  * @deprecated version 1のスキーマ（後方互換のため保持）
  */
 export const LayoutConfigSchemaV1 = z.object({
@@ -90,6 +122,8 @@ function getConfigFilePath(projectPath: string): string {
 
 /**
  * 設定ファイル全体を読み込む（内部用）
+ * v1, v2, v3全てに対応し、v2形式で返す
+ * Requirements (commandset-version-detection): 6.3
  */
 async function loadProjectConfig(projectPath: string): Promise<ProjectConfig | null> {
   const configFilePath = getConfigFilePath(projectPath);
@@ -97,6 +131,16 @@ async function loadProjectConfig(projectPath: string): Promise<ProjectConfig | n
   try {
     const content = await fs.readFile(configFilePath, 'utf-8');
     const data = JSON.parse(content);
+
+    // version 3の場合 - v2形式で返す（profile/layoutのみ）
+    const v3Result = ProjectConfigSchemaV3.safeParse(data);
+    if (v3Result.success) {
+      return {
+        version: 2,
+        profile: v3Result.data.profile,
+        layout: v3Result.data.layout,
+      };
+    }
 
     // version 2の場合
     const v2Result = ProjectConfigSchema.safeParse(data);
@@ -129,9 +173,84 @@ async function loadProjectConfig(projectPath: string): Promise<ProjectConfig | n
 }
 
 /**
+ * 設定ファイル全体を読み込む（v3形式、内部用）
+ * Requirements (commandset-version-detection): 6.3
+ */
+async function loadProjectConfigV3(projectPath: string): Promise<ProjectConfigV3 | null> {
+  const configFilePath = getConfigFilePath(projectPath);
+
+  try {
+    const content = await fs.readFile(configFilePath, 'utf-8');
+    const data = JSON.parse(content);
+
+    // version 3の場合
+    const v3Result = ProjectConfigSchemaV3.safeParse(data);
+    if (v3Result.success) {
+      return v3Result.data;
+    }
+
+    // version 2の場合 - v3形式に変換（commandsetsはundefined）
+    const v2Result = ProjectConfigSchema.safeParse(data);
+    if (v2Result.success) {
+      return {
+        version: 3,
+        profile: v2Result.data.profile,
+        layout: v2Result.data.layout,
+        // commandsetsはundefined（レガシー）
+      };
+    }
+
+    // version 1の場合 - v3形式に変換
+    const v1Result = LayoutConfigSchemaV1.safeParse(data);
+    if (v1Result.success) {
+      return {
+        version: 3,
+        layout: v1Result.data.layout,
+      };
+    }
+
+    console.warn('[projectConfigService] Invalid config format for V3 load');
+    return null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      console.warn('[projectConfigService] Failed to parse config JSON:', error);
+      return null;
+    }
+    console.error('[projectConfigService] Failed to read config:', error);
+    return null;
+  }
+}
+
+/**
  * 設定ファイル全体を保存する（内部用）
  */
 async function saveProjectConfig(projectPath: string, config: ProjectConfig): Promise<void> {
+  const configFilePath = getConfigFilePath(projectPath);
+
+  try {
+    await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      try {
+        await fs.mkdir(path.join(projectPath, '.kiro'), { recursive: true });
+        await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf-8');
+      } catch (mkdirError) {
+        console.error('[projectConfigService] Failed to create .kiro directory:', mkdirError);
+      }
+    } else {
+      console.error('[projectConfigService] Failed to save config:', error);
+    }
+  }
+}
+
+/**
+ * 設定ファイル全体を保存する（v3形式、内部用）
+ * Requirements (commandset-version-detection): 6.4
+ */
+async function saveProjectConfigV3(projectPath: string, config: ProjectConfigV3): Promise<void> {
   const configFilePath = getConfigFilePath(projectPath);
 
   try {
@@ -174,17 +293,20 @@ export const projectConfigService = {
 
   /**
    * プロファイル設定を保存する
+   * Requirements (commandset-version-detection): 6.4 - 既存のcommandsetsを維持
    * @param projectPath プロジェクトルートパス
    * @param profile プロファイル設定
    */
   async saveProfile(projectPath: string, profile: ProfileConfig): Promise<void> {
-    const existing = await loadProjectConfig(projectPath);
-    const config: ProjectConfig = {
-      version: 2,
+    // Use v3 loading to preserve commandsets field
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
       profile,
       layout: existing?.layout,
+      commandsets: existing?.commandsets,
     };
-    await saveProjectConfig(projectPath, config);
+    await saveProjectConfigV3(projectPath, config);
   },
 
   /**
@@ -199,17 +321,20 @@ export const projectConfigService = {
 
   /**
    * レイアウト設定を保存する
+   * Requirements (commandset-version-detection): 6.4 - 既存のcommandsetsを維持
    * @param projectPath プロジェクトルートパス
    * @param layout レイアウト値
    */
   async saveLayoutConfig(projectPath: string, layout: LayoutValues): Promise<void> {
-    const existing = await loadProjectConfig(projectPath);
-    const config: ProjectConfig = {
-      version: 2,
+    // Use v3 loading to preserve commandsets field
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
       profile: existing?.profile,
       layout,
+      commandsets: existing?.commandsets,
     };
-    await saveProjectConfig(projectPath, config);
+    await saveProjectConfigV3(projectPath, config);
   },
 
   /**
@@ -225,6 +350,42 @@ export const projectConfigService = {
    */
   getConfigFilePath(projectPath: string): string {
     return getConfigFilePath(projectPath);
+  },
+
+  /**
+   * コマンドセットバージョン情報を読み込む
+   * Requirements (commandset-version-detection): 1.3, 6.2
+   * @param projectPath プロジェクトルートパス
+   * @returns commandsetsフィールド、またはレガシーの場合undefined
+   */
+  async loadCommandsetVersions(projectPath: string): Promise<Record<CommandsetName, CommandsetVersionRecord> | undefined> {
+    const config = await loadProjectConfigV3(projectPath);
+    return config?.commandsets as Record<CommandsetName, CommandsetVersionRecord> | undefined;
+  },
+
+  /**
+   * コマンドセットバージョン情報を保存
+   * 既存のprofile/layoutは維持、既存のcommandsetsとマージ
+   * Requirements (commandset-version-detection): 1.1, 1.2, 1.3, 1.4, 6.4
+   * @param projectPath プロジェクトルートパス
+   * @param commandsets コマンドセットバージョン情報
+   */
+  async saveCommandsetVersions(
+    projectPath: string,
+    commandsets: Record<string, CommandsetVersionRecord>
+  ): Promise<void> {
+    const existing = await loadProjectConfigV3(projectPath);
+    const mergedCommandsets = {
+      ...(existing?.commandsets ?? {}),
+      ...commandsets,
+    };
+    const config: ProjectConfigV3 = {
+      version: 3,
+      profile: existing?.profile,
+      layout: existing?.layout,
+      commandsets: mergedCommandsets as Record<CommandsetName, CommandsetVersionRecord>,
+    };
+    await saveProjectConfigV3(projectPath, config);
   },
 };
 

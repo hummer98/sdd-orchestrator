@@ -390,4 +390,108 @@ describe('UnifiedCommandsetInstaller', () => {
       }
     });
   });
+
+  // ============================================================
+  // Task 3.1: バージョン記録機能テスト (commandset-version-detection feature)
+  // Requirements: 1.1, 1.2, 1.3, 1.4
+  // ============================================================
+
+  describe('version recording (Task 3.1)', () => {
+    it('should record commandset versions after installByProfile', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+
+      // Check that sdd-orchestrator.json was created with commandsets
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const configExists = await fs.access(configPath).then(() => true).catch(() => false);
+      expect(configExists).toBe(true);
+
+      if (configExists) {
+        const content = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(content);
+        expect(config.version).toBe(3);
+        expect(config.commandsets).toBeDefined();
+        // cc-sdd profile should record cc-sdd, bug, document-review
+        expect(config.commandsets['cc-sdd']).toBeDefined();
+        expect(config.commandsets['cc-sdd'].version).toMatch(/^\d+\.\d+\.\d+/);
+        expect(config.commandsets['cc-sdd'].installedAt).toBeDefined();
+      }
+    });
+
+    it('should record all installed commandsets with version and timestamp', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd-agent');
+
+      expect(result.ok).toBe(true);
+
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const content = await fs.readFile(configPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      // All commandsets in the profile should be recorded
+      const expectedCommandsets = ['cc-sdd-agent', 'bug', 'document-review'];
+      for (const name of expectedCommandsets) {
+        expect(config.commandsets[name]).toBeDefined();
+        expect(config.commandsets[name].version).toBeDefined();
+        expect(config.commandsets[name].installedAt).toBeDefined();
+      }
+    });
+
+    it('should only record successfully installed commandsets', async () => {
+      // Remove bug templates to cause partial failure
+      await fs.rm(path.join(templateDir, 'commands', 'bug'), { recursive: true, force: true });
+      await fs.rm(path.join(templateDir, 'settings', 'templates', 'bugs'), { recursive: true, force: true });
+
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Verify that at least bug failed
+        expect(result.value.summary.totalFailed).toBeGreaterThanOrEqual(1);
+      }
+
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const content = await fs.readFile(configPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      // bug should NOT be recorded (failed to install)
+      expect(config.commandsets?.['bug']).toBeUndefined();
+      // At least one commandset should be recorded
+      const recordedCount = config.commandsets ? Object.keys(config.commandsets).length : 0;
+      expect(recordedCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should preserve existing config fields when recording versions', async () => {
+      // Create existing v2 config with layout
+      await fs.mkdir(path.join(tempDir, '.kiro'), { recursive: true });
+      await fs.writeFile(
+        path.join(tempDir, '.kiro', 'sdd-orchestrator.json'),
+        JSON.stringify({
+          version: 2,
+          layout: {
+            leftPaneWidth: 300,
+            rightPaneWidth: 400,
+            bottomPaneHeight: 200,
+            agentListHeight: 150,
+          },
+        }),
+        'utf-8'
+      );
+
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+      expect(result.ok).toBe(true);
+
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const content = await fs.readFile(configPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      // Version should be upgraded to 3
+      expect(config.version).toBe(3);
+      // Layout should be preserved
+      expect(config.layout).toBeDefined();
+      expect(config.layout.leftPaneWidth).toBe(300);
+      // Commandsets should be added
+      expect(config.commandsets).toBeDefined();
+    });
+  });
 });

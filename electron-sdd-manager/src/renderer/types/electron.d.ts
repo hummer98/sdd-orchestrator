@@ -9,6 +9,7 @@ import type {
   BugDetail,
   BugsChangeEvent,
   SelectProjectResult,
+  VersionCheckResult,
 } from './index';
 
 /**
@@ -686,6 +687,17 @@ export interface ElectronAPI {
    * Set inspection auto execution flag
    */
   setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void>;
+
+  // ============================================================
+  // Commandset Version Check (commandset-version-detection feature)
+  // Requirements: 2.1
+  // ============================================================
+
+  /**
+   * Check commandset versions for a project
+   * Returns version status including update requirements
+   */
+  checkCommandsetVersions(projectPath: string): Promise<VersionCheckResult>;
 }
 
 declare global {

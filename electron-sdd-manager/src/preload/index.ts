@@ -1261,6 +1261,31 @@ const electronAPI = {
     flag: 'run' | 'pause' | 'skip'
   ): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG, specPath, flag),
+
+  // ============================================================
+  // Commandset Version Check (commandset-version-detection feature)
+  // Requirements: 2.1
+  // ============================================================
+
+  /**
+   * Check commandset versions for a project
+   * @param projectPath Project root path
+   * @returns VersionCheckResult with version status
+   */
+  checkCommandsetVersions: (projectPath: string): Promise<{
+    projectPath: string;
+    commandsets: readonly {
+      name: string;
+      bundleVersion: string;
+      installedVersion?: string;
+      installedAt?: string;
+      updateRequired: boolean;
+    }[];
+    anyUpdateRequired: boolean;
+    hasCommandsets: boolean;
+    legacyProject: boolean;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_COMMANDSET_VERSIONS, projectPath),
 };
 
 // Expose API to renderer

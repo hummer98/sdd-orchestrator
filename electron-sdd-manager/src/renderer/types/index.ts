@@ -291,3 +291,42 @@ export function createSpecAutoExecutionState(
     },
   };
 }
+
+// ============================================================
+// Commandset Version Detection Types (commandset-version-detection feature)
+// Requirements: 2.1, 3.1
+// ============================================================
+
+/**
+ * Commandset names supported by the application
+ */
+export type CommandsetName =
+  | 'cc-sdd'
+  | 'cc-sdd-agent'
+  | 'bug'
+  | 'document-review'
+  | 'spec-manager';
+
+/**
+ * Version information for a single commandset
+ * Requirements: 2.1
+ */
+export interface CommandsetVersionInfo {
+  readonly name: CommandsetName;
+  readonly bundleVersion: string;
+  readonly installedVersion?: string;
+  readonly installedAt?: string;
+  readonly updateRequired: boolean;
+}
+
+/**
+ * Result of version check for a project
+ * Requirements: 2.1, 2.5
+ */
+export interface VersionCheckResult {
+  readonly projectPath: string;
+  readonly commandsets: readonly CommandsetVersionInfo[];
+  readonly anyUpdateRequired: boolean;
+  readonly hasCommandsets: boolean;
+  readonly legacyProject: boolean;
+}

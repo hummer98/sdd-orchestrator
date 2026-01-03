@@ -219,6 +219,10 @@ export const IPC_CHANNELS = {
   EXECUTE_INSPECTION: 'ipc:execute-inspection',
   EXECUTE_INSPECTION_FIX: 'ipc:execute-inspection-fix',
   SET_INSPECTION_AUTO_EXECUTION_FLAG: 'ipc:set-inspection-auto-execution-flag',
+
+  // Commandset Version Check (commandset-version-detection feature)
+  // Requirements: 2.1
+  CHECK_COMMANDSET_VERSIONS: 'ipc:check-commandset-versions',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

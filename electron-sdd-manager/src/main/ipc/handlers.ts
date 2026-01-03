@@ -52,6 +52,7 @@ import {
   type CheckResult as ExperimentalCheckResult,
   type Result as ExperimentalResult,
 } from '../services/experimentalToolsInstallerService';
+import { CommandsetVersionService } from '../services/commandsetVersionService';
 
 const fileService = new FileService();
 const commandService = new CommandService();
@@ -66,6 +67,7 @@ const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(
   getTemplateDir()
 );
 const bugService = new BugService();
+const commandsetVersionService = new CommandsetVersionService();
 
 // SpecManagerService instance (lazily initialized with project path)
 let specManagerService: SpecManagerService | null = null;
@@ -1700,6 +1702,23 @@ export function registerIpcHandlers(): void {
       const service = getSpecManagerService();
       await service.setInspectionAutoExecutionFlag(specPath, flag);
       logger.info('[handlers] setInspectionAutoExecutionFlag succeeded', { specPath, flag });
+    }
+  );
+
+  // ============================================================
+  // Commandset Version Check (commandset-version-detection feature)
+  // Requirements: 2.1
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_COMMANDSET_VERSIONS,
+    async (_event, projectPath: string) => {
+      logger.info('[handlers] CHECK_COMMANDSET_VERSIONS called', { projectPath });
+      const result = await commandsetVersionService.checkVersions(projectPath);
+      logger.info('[handlers] checkCommandsetVersions succeeded', {
+        anyUpdateRequired: result.anyUpdateRequired,
+        hasCommandsets: result.hasCommandsets,
+      });
+      return result;
     }
   );
 

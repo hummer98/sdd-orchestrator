@@ -12,7 +12,7 @@ import { tmpdir } from 'os';
 import {
   layoutConfigService,
   DEFAULT_LAYOUT,
-  ProjectConfigSchema,
+  ProjectConfigSchemaV3,
   type LayoutValues,
 } from './layoutConfigService';
 
@@ -59,12 +59,12 @@ describe('layoutConfigService integration tests', () => {
       const content = await fs.readFile(configFilePath, 'utf-8');
       const data = JSON.parse(content);
 
-      // スキーマで検証 (version 2)
-      const result = ProjectConfigSchema.safeParse(data);
+      // スキーマで検証 (version 3 - commandset-version-detection feature migrated to v3)
+      const result = ProjectConfigSchemaV3.safeParse(data);
       expect(result.success).toBe(true);
 
       // 値が正しいことを確認
-      expect(data.version).toBe(2);
+      expect(data.version).toBe(3);
       expect(data.layout).toEqual(layout);
     });
 

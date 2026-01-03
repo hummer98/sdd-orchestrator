@@ -1,0 +1,23 @@
+{
+  "feature_name": "resume-feature",
+  "name": "resume-feature",
+  "description": "E2Eテスト用：途中から再開するテスト機能",
+  "phase": "requirements",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

@@ -733,16 +733,14 @@ describe('useSpecStore', () => {
       });
 
       // Bug fix: inspection-tab-not-displayed
+      // Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
       it('should reload inspection artifact when spec.json has inspection field', async () => {
         const mockInspectionContent = '# Inspection Report\n\n## Result: GO';
         const specJsonWithInspection = {
           ...mockSpecJson,
           inspection: {
-            status: 'completed',
-            rounds: 1,
-            currentRound: null,
-            roundDetails: [
-              { roundNumber: 1, passed: true, completedAt: '2026-01-02T00:00:00Z' },
+            rounds: [
+              { number: 1, result: 'go' as const, inspectedAt: '2026-01-02T00:00:00Z' },
             ],
           },
         };
@@ -759,22 +757,21 @@ describe('useSpecStore', () => {
         const state = useSpecStore.getState();
         // spec.json should be updated with inspection field
         expect(state.specDetail?.specJson.inspection).toBeTruthy();
-        expect(state.specDetail?.specJson.inspection?.rounds).toBe(1);
-        // inspection artifact should be loaded
-        expect(state.specDetail?.artifacts.inspection).toBeTruthy();
-        expect(state.specDetail?.artifacts.inspection?.exists).toBe(true);
-        expect(state.specDetail?.artifacts.inspection?.content).toBe(mockInspectionContent);
+        expect(state.specDetail?.specJson.inspection?.rounds).toHaveLength(1);
+        // inspection artifact should be loaded with dynamic key based on report file
+        const inspectionArtifact = state.specDetail?.artifacts['inspection-1' as keyof typeof state.specDetail.artifacts];
+        expect(inspectionArtifact).toBeTruthy();
+        expect(inspectionArtifact?.exists).toBe(true);
+        expect(inspectionArtifact?.content).toBe(mockInspectionContent);
       });
 
+      // Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
       it('should set inspection artifact to null when file read fails', async () => {
         const specJsonWithInspection = {
           ...mockSpecJson,
           inspection: {
-            status: 'completed',
-            rounds: 1,
-            currentRound: null,
-            roundDetails: [
-              { roundNumber: 1, passed: true, completedAt: '2026-01-02T00:00:00Z' },
+            rounds: [
+              { number: 1, result: 'go' as const, inspectedAt: '2026-01-02T00:00:00Z' },
             ],
           },
         };
@@ -785,9 +782,10 @@ describe('useSpecStore', () => {
 
         const state = useSpecStore.getState();
         // spec.json should still be updated
-        expect(state.specDetail?.specJson.inspection?.rounds).toBe(1);
+        expect(state.specDetail?.specJson.inspection?.rounds).toHaveLength(1);
         // inspection artifact should be null due to read error
-        expect(state.specDetail?.artifacts.inspection).toBeNull();
+        const inspectionArtifact = state.specDetail?.artifacts['inspection-1' as keyof typeof state.specDetail.artifacts];
+        expect(inspectionArtifact).toBeNull();
       });
 
       it('should preserve existing artifacts when spec.json has no inspection field', async () => {

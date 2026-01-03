@@ -5,7 +5,7 @@
  */
 
 import type { SpecJson } from './index';
-import { normalizeInspectionState } from './inspection';
+import { normalizeInspectionState, hasPassed } from './inspection';
 
 // ============================================================
 // Task 1.1: WorkflowPhase Type
@@ -129,25 +129,19 @@ export function getPhaseStatus(
   phase: WorkflowPhase,
   specJson: ExtendedSpecJson
 ): PhaseStatus {
-  // 検査フェーズ - MultiRoundInspectionState構造をサポート（旧形式も自動変換）
+  // 検査フェーズ - InspectionState構造をサポート（旧形式も自動変換）
   // Bug fix: inspection-panel-display
+  // Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
   if (phase === 'inspection') {
     const inspection = normalizeInspectionState(specJson.inspection);
     if (!inspection) return 'pending';
 
-    // Check normalized structure: status === 'completed' with GO result
-    if (inspection.status === 'completed') {
-      const roundDetails = inspection.roundDetails;
-      if (roundDetails && roundDetails.length > 0) {
-        const latestRound = roundDetails[roundDetails.length - 1];
-        if (latestRound.passed === true) {
-          return 'approved';
-        }
-      }
+    // Check if latest round is GO using helper function
+    if (hasPassed(inspection)) {
+      return 'approved';
     }
 
-    // in_progress status → executing state (not used here, but for clarity)
-    // pending or NOGO result → pending
+    // No rounds or NOGO result → pending
     return 'pending';
   }
 

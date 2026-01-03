@@ -154,14 +154,14 @@ describe('SpecSyncService', () => {
       expect(mockUpdateSpecMetadata).toHaveBeenCalledWith(mockSpec.name);
     });
 
+    // Bug fix: inspection-state-data-model - Use new InspectionState structure
     it('should load inspection artifact when spec.json has inspection field', async () => {
       const specJsonWithInspection = {
         ...mockSpecJson,
         inspection: {
-          status: 'completed',
-          rounds: 1,
-          currentRound: null,
-          roundDetails: [{ roundNumber: 1, passed: true }],
+          rounds: [
+            { number: 1, result: 'go' as const, inspectedAt: '2025-01-01T00:00:00Z' },
+          ],
         },
       };
       const inspectionContent = '# Inspection Report\n\nGO';
@@ -171,7 +171,8 @@ describe('SpecSyncService', () => {
 
       await service.updateSpecJson();
 
-      expect(mockSetArtifact).toHaveBeenCalledWith('inspection', {
+      // Artifact type is now 'inspection-1' based on report file name
+      expect(mockSetArtifact).toHaveBeenCalledWith('inspection-1', {
         exists: true,
         updatedAt: null,
         content: inspectionContent,
@@ -314,13 +315,13 @@ describe('SpecSyncService', () => {
     });
 
     it('should read spec.json and load inspection artifact', async () => {
+      // Bug fix: inspection-state-data-model - Use new InspectionState structure
       const specJsonWithInspection = {
         ...mockSpecJson,
         inspection: {
-          status: 'completed',
-          rounds: 1,
-          currentRound: null,
-          roundDetails: [{ roundNumber: 1, passed: true }],
+          rounds: [
+            { number: 1, result: 'go' as const, inspectedAt: '2025-01-01T00:00:00Z' },
+          ],
         },
       };
       const inspectionContent = '# Inspection Report\n\nGO';
@@ -331,7 +332,8 @@ describe('SpecSyncService', () => {
       await service.syncInspectionState();
 
       expect(mockSetSpecJson).toHaveBeenCalledWith(specJsonWithInspection);
-      expect(mockSetArtifact).toHaveBeenCalledWith('inspection', {
+      // Artifact type is now 'inspection-1' based on report file name
+      expect(mockSetArtifact).toHaveBeenCalledWith('inspection-1', {
         exists: true,
         updatedAt: null,
         content: inspectionContent,

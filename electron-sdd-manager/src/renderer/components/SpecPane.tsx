@@ -15,7 +15,7 @@ import {
 } from './index';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
-import { getLatestInspectionReportFile } from '../types/inspection';
+import { getLatestInspectionReportFile, normalizeInspectionState } from '../types/inspection';
 
 /** Spec artifact tabs */
 const SPEC_TABS: TabInfo[] = [
@@ -81,9 +81,10 @@ export function SpecPane({
     return tabs;
   }, [specDetail?.specJson?.documentReview]);
 
-  // Build inspection tabs from spec.json inspection field (MultiRoundInspectionState)
+  // Build inspection tabs from spec.json inspection field (InspectionState)
+  // Bug fix: inspection-state-data-model - normalize inspection state before use
   const inspectionTabs = useMemo((): TabInfo[] => {
-    const inspection = specDetail?.specJson?.inspection;
+    const inspection = normalizeInspectionState(specDetail?.specJson?.inspection);
     const reportFile = getLatestInspectionReportFile(inspection);
     if (!reportFile) {
       return [];

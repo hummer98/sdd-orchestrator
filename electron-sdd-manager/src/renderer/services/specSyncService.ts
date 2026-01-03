@@ -5,7 +5,7 @@
  */
 
 import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress, SpecJson } from '../types';
-import { getLatestInspectionReportFile } from '../types/inspection';
+import { getLatestInspectionReportFile, normalizeInspectionState } from '../types/inspection';
 import type { ArtifactType } from '../stores/spec/types';
 
 /**
@@ -59,16 +59,18 @@ export class SpecSyncService {
       this.callbacks.setSpecJson(specJson);
 
       // Bug fix: inspection-tab-not-displayed
+      // Bug fix: inspection-state-data-model - normalize inspection state
       // Also reload inspection artifact if spec.json has inspection field
-      const reportFile = getLatestInspectionReportFile(specJson.inspection);
+      const normalizedInspection = normalizeInspectionState(specJson.inspection);
+      const reportFile = getLatestInspectionReportFile(normalizedInspection);
       if (reportFile) {
         try {
           const artifactPath = `${selectedSpec.path}/${reportFile}`;
           const content = await window.electronAPI.readArtifact(artifactPath);
-          this.callbacks.setArtifact('inspection', { exists: true, updatedAt: null, content });
+          this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] updateSpecJson: Loaded inspection artifact', reportFile);
         } catch {
-          this.callbacks.setArtifact('inspection', null);
+          this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, null);
           console.log('[specSyncService] updateSpecJson: Inspection file not found', reportFile);
         }
       }
@@ -188,15 +190,17 @@ export class SpecSyncService {
       this.callbacks.setSpecJson(specJson);
 
       // Load inspection artifact if exists
-      const reportFile = getLatestInspectionReportFile(specJson.inspection);
+      // Bug fix: inspection-state-data-model - normalize inspection state
+      const normalizedInspection = normalizeInspectionState(specJson.inspection);
+      const reportFile = getLatestInspectionReportFile(normalizedInspection);
       if (reportFile) {
         try {
           const artifactPath = `${selectedSpec.path}/${reportFile}`;
           const content = await window.electronAPI.readArtifact(artifactPath);
-          this.callbacks.setArtifact('inspection', { exists: true, updatedAt: null, content });
+          this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] Loaded inspection artifact:', reportFile);
         } catch {
-          this.callbacks.setArtifact('inspection', null);
+          this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, null);
           console.log('[specSyncService] Inspection file not found:', reportFile);
         }
       }

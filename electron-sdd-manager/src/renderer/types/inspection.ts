@@ -3,25 +3,11 @@
  * Type definitions for inspection workflow UI
  * Feature: inspection-workflow-ui Task 1
  * Requirements: 2.1, 2.2, 2.3, 2.4
+ * Bug fix: inspection-state-data-model - Simplified data structure
  */
 
 // ============================================================
-// Task 1: InspectionStatus Constants
-// Requirements: 2.1
-// ============================================================
-
-/** Inspection status constants */
-export const INSPECTION_STATUS = {
-  PENDING: 'pending',
-  IN_PROGRESS: 'in_progress',
-  COMPLETED: 'completed',
-} as const;
-
-/** Valid inspection status values */
-export type InspectionStatus = (typeof INSPECTION_STATUS)[keyof typeof INSPECTION_STATUS];
-
-// ============================================================
-// Task 1: InspectionAutoExecutionFlag Constants
+// InspectionAutoExecutionFlag Constants
 // Requirements: 2.3
 // ============================================================
 
@@ -37,7 +23,7 @@ export type InspectionAutoExecutionFlag =
   (typeof INSPECTION_AUTO_EXECUTION_FLAG)[keyof typeof INSPECTION_AUTO_EXECUTION_FLAG];
 
 // ============================================================
-// Task 1: InspectionProgressIndicatorState Constants
+// InspectionProgressIndicatorState Constants
 // Requirements: 2.4
 // ============================================================
 
@@ -54,38 +40,52 @@ export type InspectionProgressIndicatorState =
   (typeof INSPECTION_PROGRESS_INDICATOR_STATE)[keyof typeof INSPECTION_PROGRESS_INDICATOR_STATE];
 
 // ============================================================
-// Task 1: InspectionRoundDetail Type
-// Requirements: 2.2
+// InspectionRound Type (New Simplified Structure)
+// Bug fix: inspection-state-data-model
 // ============================================================
 
-/** Details of a single inspection round */
-export interface InspectionRoundDetail {
+/** Result of an inspection round */
+export type InspectionResult = 'go' | 'nogo';
+
+/**
+ * Details of a single inspection round (new simplified structure)
+ * Bug fix: inspection-state-data-model
+ */
+export interface InspectionRound {
   /** Round number (1-indexed) */
-  roundNumber: number;
-  /** GO/NOGO result (true=GO, false=NOGO) */
-  passed: boolean;
-  /** Fix applied flag (NOGO cases only) */
-  fixApplied?: boolean;
-  /** Inspection completion timestamp */
-  completedAt?: string;
+  number: number;
+  /** GO/NOGO result */
+  result: InspectionResult;
+  /** Inspection completion timestamp (ISO 8601) */
+  inspectedAt: string;
+  /** Fix completion timestamp (ISO 8601) - set by spec-impl agent after --inspection-fix */
+  fixedAt?: string;
 }
 
 /**
- * Type guard to check if an object is a valid InspectionRoundDetail
+ * Type guard to check if an object is a valid InspectionRound
  */
-export function isInspectionRoundDetail(value: unknown): value is InspectionRoundDetail {
+export function isInspectionRound(value: unknown): value is InspectionRound {
   if (value === null || value === undefined || typeof value !== 'object') {
     return false;
   }
 
   const obj = value as Record<string, unknown>;
 
-  // Check required fields
-  if (typeof obj.roundNumber !== 'number') {
+  if (typeof obj.number !== 'number') {
     return false;
   }
 
-  if (typeof obj.passed !== 'boolean') {
+  if (obj.result !== 'go' && obj.result !== 'nogo') {
+    return false;
+  }
+
+  if (typeof obj.inspectedAt !== 'string') {
+    return false;
+  }
+
+  // fixedAt is optional but must be string if present
+  if (obj.fixedAt !== undefined && typeof obj.fixedAt !== 'string') {
     return false;
   }
 
@@ -93,162 +93,40 @@ export function isInspectionRoundDetail(value: unknown): value is InspectionRoun
 }
 
 // ============================================================
-// Legacy Inspection State (for backward compatibility)
-// Bug fix: inspection-panel-display
+// InspectionState Type (New Simplified Structure)
+// Bug fix: inspection-state-data-model
 // ============================================================
 
 /**
- * Legacy inspection state stored in spec.json (old structure)
- * Used for backward compatibility with existing spec.json files
+ * Inspection state stored in spec.json (new simplified structure)
+ * Bug fix: inspection-state-data-model
+ *
+ * Removed fields (now managed by AgentStore or computed):
+ * - status: Execution state managed by AgentStore
+ * - currentRound: Execution state managed by AgentStore
+ * - rounds: Computed from rounds.length
  */
-export interface LegacyInspectionState {
-  /** Status: passed/failed or similar legacy values */
-  status: string;
-  /** Date of inspection (YYYY-MM-DD or ISO 8601) */
-  date?: string;
-  /** Report file name (e.g., "inspection-1.md") */
-  report?: string;
+export interface InspectionState {
+  /** Completed inspection rounds */
+  rounds: InspectionRound[];
 }
 
 /**
- * Type guard to check if an object is a legacy inspection state
+ * Type guard to check if an object is a valid InspectionState
  */
-export function isLegacyInspectionState(value: unknown): value is LegacyInspectionState {
+export function isInspectionState(value: unknown): value is InspectionState {
   if (value === null || value === undefined || typeof value !== 'object') {
     return false;
   }
 
   const obj = value as Record<string, unknown>;
 
-  // Legacy format has 'report' or 'date' but no 'roundDetails'
-  if ('roundDetails' in obj) {
+  if (!Array.isArray(obj.rounds)) {
     return false;
   }
 
-  // Must have status and optionally report/date
-  if (typeof obj.status !== 'string') {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Convert legacy inspection state to multi-round format
- * Bug fix: inspection-panel-display
- * @param legacy Legacy inspection state
- * @returns MultiRoundInspectionState equivalent
- */
-export function convertLegacyToMultiRound(legacy: LegacyInspectionState): MultiRoundInspectionState {
-  // Determine if there's a completed round based on report file
-  const hasCompletedRound = Boolean(legacy.report);
-
-  // Extract round number from report file (e.g., "inspection-1.md" -> 1)
-  const reportMatch = legacy.report?.match(/inspection-(\d+)\.md/);
-  const roundNumber = reportMatch ? parseInt(reportMatch[1], 10) : 1;
-
-  // Determine passed status from legacy status field
-  const passed = legacy.status === 'passed';
-
-  // Map legacy status to new status
-  let status: InspectionStatus = 'pending';
-  if (legacy.status === 'passed' || legacy.status === 'failed') {
-    status = 'completed';
-  } else if (legacy.status === 'in_progress') {
-    status = 'in_progress';
-  }
-
-  return {
-    status,
-    rounds: hasCompletedRound ? roundNumber : 0,
-    currentRound: null,
-    roundDetails: hasCompletedRound ? [{
-      roundNumber,
-      passed,
-      completedAt: legacy.date,
-    }] : [],
-  };
-}
-
-/**
- * Get inspection state in MultiRoundInspectionState format, converting from legacy if needed
- * Bug fix: inspection-panel-display
- * @param state Inspection state (new or legacy format) or null/undefined
- * @returns MultiRoundInspectionState or null
- */
-export function normalizeInspectionState(
-  state: MultiRoundInspectionState | LegacyInspectionState | null | undefined
-): MultiRoundInspectionState | null {
-  if (!state) {
-    return null;
-  }
-
-  // Already in new format
-  if (isMultiRoundInspectionState(state)) {
-    return state;
-  }
-
-  // Convert from legacy format
-  if (isLegacyInspectionState(state)) {
-    return convertLegacyToMultiRound(state);
-  }
-
-  return null;
-}
-
-// ============================================================
-// Task 1: MultiRoundInspectionState Type (New Structure)
-// Requirements: 2.1, 2.2
-// ============================================================
-
-/**
- * Multi-round inspection state stored in spec.json (new structure)
- * Note: This is separate from the legacy InspectionState (passed, inspected_at, report_file)
- * defined in index.ts. The legacy structure is maintained for backward compatibility.
- */
-export interface MultiRoundInspectionState {
-  /** Status: pending/in_progress/completed */
-  status: InspectionStatus;
-  /** Number of completed rounds */
-  rounds: number;
-  /** Current round number during execution (null when not executing) */
-  currentRound: number | null;
-  /** Round details array */
-  roundDetails: InspectionRoundDetail[];
-}
-
-/**
- * Type guard to check if an object is a valid MultiRoundInspectionState
- */
-export function isMultiRoundInspectionState(value: unknown): value is MultiRoundInspectionState {
-  if (value === null || value === undefined || typeof value !== 'object') {
-    return false;
-  }
-
-  const obj = value as Record<string, unknown>;
-
-  // Check required fields
-  if (typeof obj.status !== 'string') {
-    return false;
-  }
-
-  // Validate status value
-  const validStatuses = Object.values(INSPECTION_STATUS);
-  if (!validStatuses.includes(obj.status as InspectionStatus)) {
-    return false;
-  }
-
-  if (typeof obj.rounds !== 'number') {
-    return false;
-  }
-
-  if (!Array.isArray(obj.roundDetails)) {
-    return false;
-  }
-
-  // Validate each round detail
-  for (const detail of obj.roundDetails) {
-    if (!isInspectionRoundDetail(detail)) {
+  for (const round of obj.rounds) {
+    if (!isInspectionRound(round)) {
       return false;
     }
   }
@@ -257,35 +135,222 @@ export function isMultiRoundInspectionState(value: unknown): value is MultiRound
 }
 
 /**
- * Create initial multi-round inspection state
- * Requirements: 2.1
+ * Create initial inspection state
  */
-export function createInitialMultiRoundInspectionState(): MultiRoundInspectionState {
+export function createInitialInspectionState(): InspectionState {
   return {
-    status: 'pending',
-    rounds: 0,
-    currentRound: null,
-    roundDetails: [],
+    rounds: [],
   };
 }
 
 // ============================================================
-// Task 1: Helper Functions
-// Requirements: 2.1, 2.2
+// Legacy Types (for backward compatibility)
+// ============================================================
+
+/** @deprecated Use InspectionRound instead */
+export interface InspectionRoundDetail {
+  roundNumber: number;
+  passed: boolean;
+  fixApplied?: boolean;
+  completedAt?: string;
+}
+
+/** @deprecated Use InspectionState instead */
+export interface MultiRoundInspectionState {
+  status: 'pending' | 'in_progress' | 'completed';
+  rounds: number;
+  currentRound: number | null;
+  roundDetails: InspectionRoundDetail[];
+}
+
+/** @deprecated Legacy inspection state from older spec.json files */
+export interface LegacyInspectionState {
+  status: string;
+  date?: string;
+  report?: string;
+}
+
+// Legacy status constants (deprecated but kept for compatibility)
+/** @deprecated No longer used - execution state managed by AgentStore */
+export const INSPECTION_STATUS = {
+  PENDING: 'pending',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+} as const;
+
+/** @deprecated No longer used */
+export type InspectionStatus = (typeof INSPECTION_STATUS)[keyof typeof INSPECTION_STATUS];
+
+// ============================================================
+// Backward Compatibility Functions
 // ============================================================
 
 /**
- * Get the latest round detail from inspection state
- * @param state Multi-round inspection state or null/undefined
- * @returns Latest round detail or null if no rounds exist
+ * Check if value is legacy InspectionRoundDetail format
  */
-export function getLatestRoundDetail(
-  state: MultiRoundInspectionState | null | undefined
-): InspectionRoundDetail | null {
-  if (!state || !state.roundDetails || state.roundDetails.length === 0) {
+function isLegacyRoundDetail(value: unknown): value is InspectionRoundDetail {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return typeof obj.roundNumber === 'number' && typeof obj.passed === 'boolean';
+}
+
+/**
+ * Check if value is legacy MultiRoundInspectionState format
+ */
+function isLegacyMultiRoundState(value: unknown): value is MultiRoundInspectionState {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return 'roundDetails' in obj && Array.isArray(obj.roundDetails);
+}
+
+/**
+ * Check if value is very old legacy format (status/date/report)
+ */
+function isVeryOldLegacyState(value: unknown): value is LegacyInspectionState {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return typeof obj.status === 'string' && !('rounds' in obj) && !('roundDetails' in obj);
+}
+
+/**
+ * Convert legacy InspectionRoundDetail to new InspectionRound format
+ */
+function convertLegacyRoundDetail(detail: InspectionRoundDetail): InspectionRound {
+  return {
+    number: detail.roundNumber,
+    result: detail.passed ? 'go' : 'nogo',
+    inspectedAt: detail.completedAt || new Date().toISOString(),
+    ...(detail.fixApplied ? { fixedAt: detail.completedAt || new Date().toISOString() } : {}),
+  };
+}
+
+/**
+ * Convert legacy MultiRoundInspectionState to new InspectionState format
+ */
+function convertLegacyMultiRoundState(legacy: MultiRoundInspectionState): InspectionState {
+  return {
+    rounds: legacy.roundDetails.map(convertLegacyRoundDetail),
+  };
+}
+
+/**
+ * Convert very old legacy format to new InspectionState format
+ */
+function convertVeryOldLegacyState(legacy: LegacyInspectionState): InspectionState {
+  if (!legacy.report) {
+    return { rounds: [] };
+  }
+
+  const reportMatch = legacy.report.match(/inspection-(\d+)\.md/);
+  const roundNumber = reportMatch ? parseInt(reportMatch[1], 10) : 1;
+  const passed = legacy.status === 'passed';
+
+  return {
+    rounds: [{
+      number: roundNumber,
+      result: passed ? 'go' : 'nogo',
+      inspectedAt: legacy.date || new Date().toISOString(),
+    }],
+  };
+}
+
+/**
+ * Normalize any inspection state format to new InspectionState
+ * Supports: new format, legacy MultiRoundInspectionState, very old legacy format
+ *
+ * @param state Any inspection state format or null/undefined
+ * @returns Normalized InspectionState or null
+ */
+export function normalizeInspectionState(
+  state: InspectionState | MultiRoundInspectionState | LegacyInspectionState | null | undefined
+): InspectionState | null {
+  if (!state) {
     return null;
   }
-  return state.roundDetails[state.roundDetails.length - 1];
+
+  // Already in new format
+  if (isInspectionState(state)) {
+    return state;
+  }
+
+  // Legacy MultiRoundInspectionState format
+  if (isLegacyMultiRoundState(state)) {
+    return convertLegacyMultiRoundState(state);
+  }
+
+  // Very old legacy format
+  if (isVeryOldLegacyState(state)) {
+    return convertVeryOldLegacyState(state);
+  }
+
+  return null;
+}
+
+// ============================================================
+// Helper Functions
+// ============================================================
+
+/**
+ * Get the latest round from inspection state
+ * @param state Inspection state or null/undefined
+ * @returns Latest round or null if no rounds exist
+ */
+export function getLatestRound(
+  state: InspectionState | null | undefined
+): InspectionRound | null {
+  if (!state || !state.rounds || state.rounds.length === 0) {
+    return null;
+  }
+  return state.rounds[state.rounds.length - 1];
+}
+
+/**
+ * Check if inspection can proceed to next round
+ * Returns true if: no rounds yet, latest is GO, or latest is NOGO with fix applied
+ */
+export function canStartNextInspection(state: InspectionState | null | undefined): boolean {
+  const latest = getLatestRound(state);
+  if (!latest) {
+    return true; // No rounds yet
+  }
+  if (latest.result === 'go') {
+    return true; // Last inspection passed
+  }
+  // NOGO case: can start next only if fix was applied
+  return !!latest.fixedAt;
+}
+
+/**
+ * Check if fix is required for the latest round
+ * Returns true if latest is NOGO and no fix applied yet
+ */
+export function needsFix(state: InspectionState | null | undefined): boolean {
+  const latest = getLatestRound(state);
+  if (!latest) {
+    return false;
+  }
+  return latest.result === 'nogo' && !latest.fixedAt;
+}
+
+/**
+ * Check if inspection has passed (latest round is GO)
+ */
+export function hasPassed(state: InspectionState | null | undefined): boolean {
+  const latest = getLatestRound(state);
+  return latest?.result === 'go';
+}
+
+/**
+ * Get the number of completed inspection rounds
+ */
+export function getRoundCount(state: InspectionState | null | undefined): number {
+  return state?.rounds?.length ?? 0;
 }
 
 /**
@@ -294,12 +359,12 @@ export function getLatestRoundDetail(
  *
  * Priority order:
  * 1. skip-scheduled: when autoExecutionFlag is 'skip'
- * 2. executing: when isExecuting is true OR status is 'in_progress'
- * 3. checked: when rounds >= 1
+ * 2. executing: when isExecuting is true
+ * 3. checked: when at least 1 round completed
  * 4. unchecked: otherwise
  */
 export function getInspectionProgressIndicatorState(
-  state: MultiRoundInspectionState | null | undefined,
+  state: InspectionState | null | undefined,
   isExecuting: boolean,
   autoExecutionFlag: InspectionAutoExecutionFlag
 ): InspectionProgressIndicatorState {
@@ -309,12 +374,12 @@ export function getInspectionProgressIndicatorState(
   }
 
   // Priority 2: executing
-  if (isExecuting || (state?.status === 'in_progress')) {
+  if (isExecuting) {
     return 'executing';
   }
 
   // Priority 3: checked (1 or more rounds completed)
-  if (state && state.rounds >= 1) {
+  if (getRoundCount(state) >= 1) {
     return 'checked';
   }
 
@@ -324,32 +389,72 @@ export function getInspectionProgressIndicatorState(
 
 /**
  * Get the latest inspection report file name from inspection state
- * Report files follow the pattern: inspection-{roundNumber}.md
- * Supports both new MultiRoundInspectionState and legacy format for backward compatibility.
- * Bug fix: inspection-panel-display
- * @param state Multi-round inspection state, legacy state, or null/undefined
+ * Report files follow the pattern: inspection-{number}.md
+ *
+ * @param state Inspection state or null/undefined
  * @returns Latest report file name (e.g., "inspection-1.md") or null if no rounds exist
  */
 export function getLatestInspectionReportFile(
-  state: MultiRoundInspectionState | LegacyInspectionState | null | undefined
+  state: InspectionState | null | undefined
 ): string | null {
-  if (!state) {
+  const latest = getLatestRound(state);
+  if (!latest) {
     return null;
   }
+  return `inspection-${latest.number}.md`;
+}
 
-  // Check for new multi-round structure first
-  if (isMultiRoundInspectionState(state)) {
-    const latestRound = getLatestRoundDetail(state);
-    if (!latestRound) {
-      return null;
-    }
-    return `inspection-${latestRound.roundNumber}.md`;
+// ============================================================
+// Deprecated exports for backward compatibility
+// ============================================================
+
+/** @deprecated Use getLatestRound instead */
+export function getLatestRoundDetail(
+  state: MultiRoundInspectionState | null | undefined
+): InspectionRoundDetail | null {
+  if (!state || !state.roundDetails || state.roundDetails.length === 0) {
+    return null;
   }
+  return state.roundDetails[state.roundDetails.length - 1];
+}
 
-  // Handle legacy format (has 'report' field)
-  if (isLegacyInspectionState(state) && state.report) {
-    return state.report;
-  }
+/** @deprecated Use isInspectionRound instead */
+export function isInspectionRoundDetail(value: unknown): value is InspectionRoundDetail {
+  return isLegacyRoundDetail(value);
+}
 
-  return null;
+/** @deprecated Use isInspectionState instead */
+export function isMultiRoundInspectionState(value: unknown): value is MultiRoundInspectionState {
+  return isLegacyMultiRoundState(value);
+}
+
+/** @deprecated Use isVeryOldLegacyState instead */
+export function isLegacyInspectionState(value: unknown): value is LegacyInspectionState {
+  return isVeryOldLegacyState(value);
+}
+
+/** @deprecated Use createInitialInspectionState instead */
+export function createInitialMultiRoundInspectionState(): MultiRoundInspectionState {
+  return {
+    status: 'pending',
+    rounds: 0,
+    currentRound: null,
+    roundDetails: [],
+  };
+}
+
+/** @deprecated No longer needed - use normalizeInspectionState directly */
+export function convertLegacyToMultiRound(legacy: LegacyInspectionState): MultiRoundInspectionState {
+  const newState = convertVeryOldLegacyState(legacy);
+  return {
+    status: 'completed',
+    rounds: newState.rounds.length,
+    currentRound: null,
+    roundDetails: newState.rounds.map(r => ({
+      roundNumber: r.number,
+      passed: r.result === 'go',
+      completedAt: r.inspectedAt,
+      ...(r.fixedAt ? { fixApplied: true } : {}),
+    })),
+  };
 }

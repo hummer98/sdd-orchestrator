@@ -19,7 +19,7 @@ import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { InspectionPanel } from './InspectionPanel';
 import type { DocumentReviewState } from '../types/documentReview';
-import type { MultiRoundInspectionState } from '../types/inspection';
+import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
 import { useAutoExecution } from '../hooks/useAutoExecution';
 import {
@@ -77,7 +77,8 @@ export function WorkflowView() {
   // Get inspection state from spec.json (supports both new and legacy format)
   // Task 4: InspectionPanel integration (inspection-workflow-ui feature)
   // Bug fix: inspection-panel-display - normalize legacy format to multi-round structure
-  const inspectionState = useMemo((): MultiRoundInspectionState | null => {
+  // Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
+  const inspectionState = useMemo((): InspectionState | null => {
     const inspectionData = specJson?.inspection;
     return normalizeInspectionState(inspectionData);
   }, [specJson]);

@@ -3,6 +3,7 @@
  * Displays inspection workflow controls and status
  * Feature: inspection-workflow-ui Task 2, 2.1, 2.2, 2.3, 2.4
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 5.1, 7.1, 7.2, 7.3, 7.4
+ * Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
  */
 
 import { clsx } from 'clsx';
@@ -18,20 +19,26 @@ import {
   Wrench,
 } from 'lucide-react';
 import type {
-  MultiRoundInspectionState,
+  InspectionState,
   InspectionAutoExecutionFlag,
   InspectionProgressIndicatorState,
 } from '../types/inspection';
-import { getLatestRoundDetail, getInspectionProgressIndicatorState } from '../types/inspection';
+import {
+  getLatestRound,
+  getRoundCount,
+  needsFix,
+  getInspectionProgressIndicatorState,
+} from '../types/inspection';
 
 // ============================================================
 // Task 2: Props interface
 // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10
+// Bug fix: inspection-state-data-model - Updated to use InspectionState
 // ============================================================
 
 export interface InspectionPanelProps {
-  /** Current inspection state from spec.json (multi-round structure) */
-  inspectionState: MultiRoundInspectionState | null;
+  /** Current inspection state from spec.json (new simplified structure) */
+  inspectionState: InspectionState | null;
   /** Whether inspection is currently executing (Agent running) */
   isExecuting: boolean;
   /** Whether auto execution is running (global workflow auto execution) */
@@ -144,14 +151,15 @@ function getAutoExecutionFlagTooltip(flag: InspectionAutoExecutionFlag): string 
 // ============================================================
 // Task 2.3: GO/NOGO badge rendering
 // Requirements: 1.4, 1.5
+// Bug fix: inspection-state-data-model - Updated to use 'go'/'nogo' result
 // ============================================================
 
-function renderGoNogoBadge(passed: boolean | null): React.ReactNode {
-  if (passed === null) {
+function renderGoNogoBadge(result: 'go' | 'nogo' | null): React.ReactNode {
+  if (result === null) {
     return null;
   }
 
-  if (passed) {
+  if (result === 'go') {
     return (
       <span
         data-testid="go-nogo-badge-go"
@@ -175,6 +183,7 @@ function renderGoNogoBadge(passed: boolean | null): React.ReactNode {
 // ============================================================
 // Task 2: InspectionPanel Component
 // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10
+// Bug fix: inspection-state-data-model - Updated to use new InspectionState structure
 // ============================================================
 
 export function InspectionPanel({
@@ -187,16 +196,15 @@ export function InspectionPanel({
   onExecuteFix,
   onAutoExecutionFlagChange,
 }: InspectionPanelProps) {
-  const rounds = inspectionState?.rounds ?? 0;
-  const currentRound = inspectionState?.currentRound;
+  // Get round count from new structure
+  const roundCount = getRoundCount(inspectionState);
 
   // Buttons are disabled when executing, auto-executing, or inspection not allowed
   const canExecute = !isExecuting && !isAutoExecuting && canExecuteInspection;
 
   // Get latest round to determine GO/NOGO status and action buttons
-  const latestRound = getLatestRoundDetail(inspectionState);
-  const latestPassed = latestRound?.passed ?? null;
-  const latestFixApplied = latestRound?.fixApplied ?? false;
+  const latestRound = getLatestRound(inspectionState);
+  const latestResult = latestRound?.result ?? null;
 
   // Calculate progress indicator state
   const progressIndicatorState = getInspectionProgressIndicatorState(
@@ -205,11 +213,10 @@ export function InspectionPanel({
     autoExecutionFlag
   );
 
-  // Determine which action button to show
-  // Priority:
-  // 1. Fix button: when NOGO and fixApplied is false
-  // 2. Inspection start button: when GO, or NOGO with fixApplied, or no rounds yet
-  const showFixButton = latestPassed === false && !latestFixApplied;
+  // Determine which action button to show using new helper function
+  // Fix button: when NOGO and fixedAt is not set
+  // Inspection button: when no rounds, GO, or NOGO with fixedAt set
+  const showFixButton = needsFix(inspectionState);
 
   // Handle auto execution flag toggle
   const handleAutoExecutionFlagClick = () => {
@@ -232,7 +239,7 @@ export function InspectionPanel({
           <h3 className="font-medium text-gray-800 dark:text-gray-200">Inspection</h3>
 
           {/* Task 2.3: GO/NOGO badge */}
-          {renderGoNogoBadge(latestPassed)}
+          {renderGoNogoBadge(latestResult)}
         </div>
 
         {/* Right side: Auto execution flag control */}
@@ -255,20 +262,15 @@ export function InspectionPanel({
       <div className="flex items-center gap-4 mb-3 text-sm text-gray-600 dark:text-gray-400">
         <span>
           ラウンド:{' '}
-          <strong className="text-gray-800 dark:text-gray-200">{rounds}</strong>
+          <strong className="text-gray-800 dark:text-gray-200">{roundCount}</strong>
         </span>
-        {currentRound && (
-          <span>
-            現在: <strong className="text-blue-500">Round {currentRound}</strong>
-          </span>
-        )}
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {showFixButton ? (
           <button
-            onClick={() => onExecuteFix?.(latestRound?.roundNumber ?? 1)}
+            onClick={() => onExecuteFix?.(latestRound?.number ?? 1)}
             disabled={!canExecute}
             data-testid="execute-fix-button"
             className={clsx(
@@ -279,7 +281,7 @@ export function InspectionPanel({
             )}
           >
             <Wrench className="w-4 h-4" />
-            Fix実行 (Round {latestRound?.roundNumber ?? 1})
+            Fix実行 (Round {latestRound?.number ?? 1})
           </button>
         ) : (
           <button

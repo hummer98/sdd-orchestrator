@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress } from '../../types';
-import { getLatestInspectionReportFile } from '../../types/inspection';
+import { getLatestInspectionReportFile, normalizeInspectionState } from '../../types/inspection';
 import type { SpecDetailState, SpecDetailActions, ArtifactType } from './types';
 import { DEFAULT_SPEC_DETAIL_STATE } from './types';
 
@@ -47,8 +47,10 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       };
 
       // Helper to get inspection artifact from spec.json inspection field
+      // Bug fix: inspection-state-data-model - normalize inspection state
       const getInspectionArtifact = async (): Promise<ArtifactInfo | null> => {
-        const reportFile = getLatestInspectionReportFile(specJson.inspection);
+        const normalizedInspection = normalizeInspectionState(specJson.inspection);
+        const reportFile = getLatestInspectionReportFile(normalizedInspection);
         if (!reportFile) {
           return null;
         }

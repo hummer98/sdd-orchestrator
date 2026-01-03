@@ -1205,4 +1205,197 @@ describe('AutoExecutionCoordinator', () => {
       });
     });
   });
+
+  // ============================================================
+  // Task: Multi-Phase Auto-Execution (TDD)
+  // 自動実行でフェーズ完了後に次フェーズを自動開始する機能
+  // ============================================================
+
+  describe('Multi-Phase Auto-Execution', () => {
+    // モックのSpecManagerService型
+    interface MockPhaseExecutor {
+      executePhase: (params: { specId: string; phase: WorkflowPhase; featureName: string }) => Promise<{ ok: true; value: { agentId: string } } | { ok: false; error: { type: string } }>;
+    }
+
+    describe('handleAgentCompleted() should trigger next phase', () => {
+      it('should emit execute-next-phase event when next phase exists', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options = createDefaultOptions();
+        // requirements: true, design: true, tasks: true, impl: false
+        const eventHandler = vi.fn();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.handleAgentCompleted('agent-123', specPath, 'completed');
+
+        // 次フェーズ(design)を実行するイベントが発火されるべき
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'design',
+          expect.objectContaining({
+            specId: 'test-feature',
+            featureName: 'test-feature',
+          })
+        );
+      });
+
+      it('should NOT emit execute-next-phase when no next phase permitted', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: false,
+            tasks: false,
+            impl: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.handleAgentCompleted('agent-123', specPath, 'completed');
+
+        // 次フェーズがないのでイベントは発火されない
+        expect(eventHandler).not.toHaveBeenCalled();
+
+        // 代わりに完了状態になる
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
+      });
+
+      it('should NOT emit execute-next-phase when agent failed', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options = createDefaultOptions();
+        const eventHandler = vi.fn();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
+        coordinator.on('execute-next-phase', eventHandler);
+
+        await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
+
+        // 失敗時は次フェーズを実行しない
+        expect(eventHandler).not.toHaveBeenCalled();
+      });
+
+      it('should execute all permitted phases in sequence via events', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const executedPhases: WorkflowPhase[] = [];
+
+        await coordinator.start(specPath, 'test-feature', options);
+
+        coordinator.on('execute-next-phase', (_specPath, phase) => {
+          executedPhases.push(phase);
+        });
+
+        // Phase 1: requirements完了
+        coordinator.setCurrentPhase(specPath, 'requirements', 'agent-1');
+        await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
+        expect(executedPhases).toContain('design');
+
+        // Phase 2: design完了
+        coordinator.setCurrentPhase(specPath, 'design', 'agent-2');
+        await coordinator.handleAgentCompleted('agent-2', specPath, 'completed');
+        expect(executedPhases).toContain('tasks');
+
+        // Phase 3: tasks完了 (impl is false, so no more phases)
+        coordinator.setCurrentPhase(specPath, 'tasks', 'agent-3');
+        await coordinator.handleAgentCompleted('agent-3', specPath, 'completed');
+
+        // impl は許可されていないので、ここで完了
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
+        expect(executedPhases).toEqual(['design', 'tasks']);
+      });
+    });
+
+    describe('start() should trigger initial phase', () => {
+      it('should emit execute-next-phase event for initial phase on start', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options = createDefaultOptions();
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // 最初の許可フェーズ(requirements)を実行するイベントが発火されるべき
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'requirements',
+          expect.objectContaining({
+            specId: 'test-feature',
+            featureName: 'test-feature',
+          })
+        );
+      });
+
+      it('should emit execute-next-phase for first permitted phase (skipping disabled)', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false, // disabled
+            design: true,       // first enabled
+            tasks: true,
+            impl: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // requirements はスキップされて design から開始
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'design',
+          expect.objectContaining({
+            specId: 'test-feature',
+          })
+        );
+      });
+
+      it('should NOT emit execute-next-phase when no phases permitted', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // 許可されたフェーズがないのでイベントは発火されない
+        expect(eventHandler).not.toHaveBeenCalled();
+
+        // 即座に完了状態になる
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
+      });
+    });
+  });
 });

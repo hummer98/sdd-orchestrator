@@ -368,6 +368,20 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     logger.info('[AutoExecutionCoordinator] Auto-execution started', { specPath, specId });
 
+    // 初期フェーズを決定して実行イベントを発火
+    const firstPhase = this.getNextPermittedPhase(null, options.permissions);
+    if (firstPhase) {
+      this.emit('execute-next-phase', specPath, firstPhase, {
+        specId,
+        featureName: specId,
+      });
+      logger.info('[AutoExecutionCoordinator] Triggering initial phase', { specPath, firstPhase });
+    } else {
+      // 許可されたフェーズがない場合は即座に完了
+      logger.info('[AutoExecutionCoordinator] No permitted phases, completing immediately', { specPath });
+      this.completeExecution(specPath);
+    }
+
     return { ok: true, value: state };
   }
 
@@ -548,6 +562,23 @@ export class AutoExecutionCoordinator extends EventEmitter {
         });
 
         this.emit('phase-completed', specPath, currentPhase);
+
+        // 次フェーズを自動実行
+        const options = this.executionOptions.get(specPath);
+        if (options) {
+          const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions);
+          if (nextPhase) {
+            // 次フェーズ実行イベントを発火
+            this.emit('execute-next-phase', specPath, nextPhase, {
+              specId: state.specId,
+              featureName: state.specId,
+            });
+            logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
+          } else {
+            // 全フェーズ完了
+            this.completeExecution(specPath);
+          }
+        }
       } else {
         this.updateState(specPath, {
           currentAgentId: undefined,
@@ -966,6 +997,53 @@ export class AutoExecutionCoordinator extends EventEmitter {
     }
 
     return false;
+  }
+
+  // ============================================================
+  // Execution Completion
+  // ============================================================
+
+  /**
+   * 自動実行を完了状態にする
+   * @param specPath specのパス
+   */
+  protected completeExecution(specPath: string): void {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] completeExecution: state not found', { specPath });
+      return;
+    }
+
+    // タイムアウトをクリア
+    if (state.timeoutId) {
+      clearTimeout(state.timeoutId);
+    }
+
+    const updatedState: AutoExecutionState = {
+      ...state,
+      status: 'completed',
+      currentPhase: null,
+      timeoutId: undefined,
+      lastActivityTime: Date.now(),
+    };
+
+    this.executionStates.set(specPath, updatedState);
+    this.emit('state-changed', specPath, updatedState);
+
+    // 実行完了サマリーを発火
+    const summary: ExecutionSummary = {
+      specId: state.specId,
+      executedPhases: state.executedPhases,
+      totalDuration: Date.now() - state.startTime,
+      errors: state.errors,
+      status: 'completed',
+    };
+    this.emit('execution-completed', specPath, summary);
+
+    logger.info('[AutoExecutionCoordinator] Execution completed', {
+      specPath,
+      executedPhases: state.executedPhases,
+    });
   }
 
   // ============================================================

@@ -1062,6 +1062,16 @@ export class SpecManagerService {
   }
 
   /**
+   * Unregister status change callback
+   */
+  offStatusChange(callback: (agentId: string, status: AgentStatus) => void): void {
+    const index = this.statusCallbacks.indexOf(callback);
+    if (index !== -1) {
+      this.statusCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
    * Execute a workflow phase
    * Builds the claude command internally
    */

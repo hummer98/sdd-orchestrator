@@ -1699,6 +1699,63 @@ export function registerIpcHandlers(): void {
   const coordinator = getAutoExecutionCoordinator();
   registerAutoExecutionHandlers(coordinator);
   logger.info('[handlers] Auto Execution handlers registered');
+
+  // ============================================================
+  // Multi-Phase Auto-Execution: connect coordinator to specManagerService
+  // When coordinator emits 'execute-next-phase', execute the phase via specManagerService
+  // ============================================================
+  coordinator.on('execute-next-phase', async (specPath: string, phase: WorkflowPhase, context: { specId: string; featureName: string }) => {
+    logger.info('[handlers] execute-next-phase event received', { specPath, phase, context });
+
+    try {
+      const service = getSpecManagerService();
+      const window = BrowserWindow.getAllWindows()[0];
+
+      if (!window) {
+        logger.error('[handlers] No window available for execute-next-phase');
+        return;
+      }
+
+      // Set current phase in coordinator before execution
+      coordinator.setCurrentPhase(specPath, phase);
+
+      // Execute the phase
+      const result = await service.executePhase({
+        specId: context.specId,
+        phase,
+        featureName: context.featureName,
+        commandPrefix: 'kiro', // Use kiro prefix by default for auto-execution
+      });
+
+      if (result.ok) {
+        const agentId = result.value.agentId;
+        logger.info('[handlers] execute-next-phase: phase started successfully', { specPath, phase, agentId });
+
+        // Update coordinator with agent ID
+        coordinator.setCurrentPhase(specPath, phase, agentId);
+
+        // Listen for this agent's completion
+        const handleStatusChange = (changedAgentId: string, status: string) => {
+          if (changedAgentId === agentId) {
+            if (status === 'completed' || status === 'failed' || status === 'stopped') {
+              logger.info('[handlers] execute-next-phase: agent completed', { agentId, status });
+              const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
+              coordinator.handleAgentCompleted(agentId, specPath, finalStatus as 'completed' | 'failed' | 'interrupted');
+              service.offStatusChange(handleStatusChange);
+            }
+          }
+        };
+        service.onStatusChange(handleStatusChange);
+      } else {
+        logger.error('[handlers] execute-next-phase: phase execution failed', { specPath, phase, error: result.error });
+        coordinator.handleAgentCompleted('', specPath, 'failed');
+      }
+    } catch (error) {
+      logger.error('[handlers] execute-next-phase: unexpected error', { specPath, phase, error });
+      coordinator.handleAgentCompleted('', specPath, 'failed');
+    }
+  });
+  logger.info('[handlers] Multi-phase auto-execution connected');
 }
 
 /**

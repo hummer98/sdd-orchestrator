@@ -6,32 +6,16 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSpecStore } from './specStore';
+import { useSpecManagerExecutionStore } from './spec/specManagerExecutionStore';
+import { DEFAULT_SPEC_MANAGER_EXECUTION_STATE } from './spec/types';
 
 describe('useSpecStore - spec-manager Extensions', () => {
   beforeEach(() => {
-    // Reset store to initial state
-    useSpecStore.setState({
-      specs: [],
-      selectedSpec: null,
-      specDetail: null,
-      sortBy: 'name',
-      sortOrder: 'asc',
-      statusFilter: 'all',
-      isLoading: false,
-      error: null,
-      isWatching: false,
-      // spec-manager extensions
-      specManagerExecution: {
-        isRunning: false,
-        currentPhase: null,
-        currentSpecId: null,
-        lastCheckResult: null,
-        error: null,
-        implTaskStatus: null,
-        retryCount: 0,
-        executionMode: null,
-      },
-    });
+    // Reset store to initial state via actions instead of setState (for Facade compatibility)
+    useSpecStore.getState().clearSelectedSpec();
+    useSpecStore.getState().setSpecs([]);
+    // Reset specManagerExecution state directly
+    useSpecManagerExecutionStore.setState(DEFAULT_SPEC_MANAGER_EXECUTION_STATE);
     vi.clearAllMocks();
   });
 
@@ -84,10 +68,10 @@ describe('useSpecStore - spec-manager Extensions', () => {
 
     describe('executeSpecManagerGeneration action', () => {
       it('should set isRunning to true', async () => {
-        const mockResult = { ok: true, value: { agentId: 'test-agent' } };
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockResolvedValue(mockResult);
+        window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
 
-        await useSpecStore.getState().executeSpecManagerGeneration(
+        // Start execution without awaiting
+        useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'requirements',
           'test-feature',
@@ -95,16 +79,16 @@ describe('useSpecStore - spec-manager Extensions', () => {
           'manual'
         );
 
-        // Note: isRunning should be true during execution
-        // After completion, it depends on implementation
+        // isRunning should be true during execution
+        expect(useSpecStore.getState().specManagerExecution.isRunning).toBe(true);
       });
 
       it('should set currentPhase to the executing phase', async () => {
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
+        window.electronAPI.executePhase = vi.fn().mockImplementation(
+          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
         );
 
-        const promise = useSpecStore.getState().executeSpecManagerGeneration(
+        useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'design',
           'test-feature',
@@ -114,16 +98,14 @@ describe('useSpecStore - spec-manager Extensions', () => {
 
         // Check state during execution
         expect(useSpecStore.getState().specManagerExecution.currentPhase).toBe('design');
-
-        await promise;
       });
 
       it('should set currentSpecId to the executing spec', async () => {
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
+        window.electronAPI.executePhase = vi.fn().mockImplementation(
+          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
         );
 
-        const promise = useSpecStore.getState().executeSpecManagerGeneration(
+        useSpecStore.getState().executeSpecManagerGeneration(
           'my-spec',
           'tasks',
           'my-feature',
@@ -132,14 +114,12 @@ describe('useSpecStore - spec-manager Extensions', () => {
         );
 
         expect(useSpecStore.getState().specManagerExecution.currentSpecId).toBe('my-spec');
-
-        await promise;
       });
 
       it('should set executionMode correctly', async () => {
-        window.electronAPI.executeSpecManagerPhase = vi.fn().mockResolvedValue({ ok: true });
+        window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
 
-        await useSpecStore.getState().executeSpecManagerGeneration(
+        useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'requirements',
           'test-feature',
@@ -154,7 +134,7 @@ describe('useSpecStore - spec-manager Extensions', () => {
       it('should handle impl phase with taskId', async () => {
         window.electronAPI.executeTaskImpl = vi.fn().mockResolvedValue(undefined);
 
-        await useSpecStore.getState().executeSpecManagerGeneration(
+        useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'impl',
           'test-feature',

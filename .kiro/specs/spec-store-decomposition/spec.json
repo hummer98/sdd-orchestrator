@@ -1,0 +1,60 @@
+{
+  "feature_name": "spec-store-decomposition",
+  "created_at": "2026-01-03T12:00:00Z",
+  "updated_at": "2026-01-03T11:02:00Z",
+  "language": "ja",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": false,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "validationOptions": {
+      "gap": false,
+      "design": false,
+      "impl": false
+    }
+  },
+  "documentReview": {
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      }
+    ],
+    "status": "approved"
+  },
+  "inspection": {
+    "status": "completed",
+    "rounds": 1,
+    "currentRound": null,
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "passed": true,
+        "completedAt": "2026-01-03T11:02:00Z"
+      }
+    ]
+  }
+}

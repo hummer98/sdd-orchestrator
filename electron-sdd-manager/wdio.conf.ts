@@ -17,8 +17,16 @@ if (!process.env.E2E_MOCK_CLAUDE_DELAY) {
   process.env.E2E_MOCK_CLAUDE_DELAY = '0.1';
 }
 
-// ビルド済みアプリのバイナリパス（macOS）
-// 注意: electron-builderでビルド後に使用可能
+// E2Eテスト用のアプリ起動方法を選択
+// - appEntryPoint: npm run build の成果物を使用（高速、開発時推奨）
+// - appBinaryPath: electron-builder のパッケージ済みアプリを使用（CI/リリース前検証用）
+// 環境変数 E2E_USE_PACKAGED_APP=true でパッケージ済みアプリを使用可能
+const usePackagedApp = process.env.E2E_USE_PACKAGED_APP === 'true';
+
+// npm run build の成果物（dist/main/index.js）
+const appEntryPoint = path.join(projectRoot, 'dist/main/index.js');
+
+// パッケージ済みアプリのバイナリパス（macOS）
 const appBinaryPath = path.join(
   projectRoot,
   'release/mac-arm64/SDD Orchestrator.app/Contents/MacOS/SDD Orchestrator'
@@ -44,7 +52,9 @@ export const config: Options.Testrunner = {
       browserName: 'electron',
       maxInstances: 1,
       'wdio:electronServiceOptions': {
-        appBinaryPath,
+        // デフォルトは npm run build の成果物を使用（高速）
+        // パッケージ済みアプリを使用する場合は E2E_USE_PACKAGED_APP=true を設定
+        ...(usePackagedApp ? { appBinaryPath } : { appEntryPoint }),
         // E2Eテストモードを示すカスタム引数のみ
         appArgs: ['--e2e-test'],
         // Pass mock Claude CLI environment variables to the Electron app

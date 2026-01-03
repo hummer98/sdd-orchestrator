@@ -264,6 +264,7 @@ export function WorkflowView() {
         notify.error('自動実行の停止に失敗しました。');
       }
     } else {
+      // Bug Fix: approvals を渡して既に完了しているフェーズをスキップ
       const result = await autoExecution.startAutoExecution(
         specDetail.metadata.path,
         specDetail.metadata.name,
@@ -271,6 +272,7 @@ export function WorkflowView() {
           permissions: workflowStore.autoExecutionPermissions,
           documentReviewFlag: workflowStore.documentReviewOptions.autoExecutionFlag,
           validationOptions: workflowStore.validationOptions,
+          approvals: specDetail.specJson.approvals,
         }
       );
       if (!result.ok) {

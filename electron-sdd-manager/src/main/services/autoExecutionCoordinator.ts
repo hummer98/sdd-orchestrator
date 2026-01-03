@@ -95,6 +95,25 @@ export interface ValidationOptions {
 export type DocumentReviewFlag = 'run' | 'pause' | 'skip';
 
 /**
+ * Approval状態
+ * Requirements: 7.1
+ */
+export interface ApprovalPhaseStatus {
+  readonly generated: boolean;
+  readonly approved: boolean;
+}
+
+/**
+ * Approvals状態（spec.jsonから取得）
+ * Requirements: 7.1
+ */
+export interface ApprovalsStatus {
+  readonly requirements: ApprovalPhaseStatus;
+  readonly design: ApprovalPhaseStatus;
+  readonly tasks: ApprovalPhaseStatus;
+}
+
+/**
  * 自動実行オプション
  * Requirements: 7.1
  */
@@ -109,6 +128,8 @@ export interface AutoExecutionOptions {
   readonly timeoutMs?: number;
   /** コマンドプレフィックス */
   readonly commandPrefix?: 'kiro' | 'spec-manager';
+  /** 現在のApproval状態（spec.jsonから取得、開始時のフェーズ判定に使用） */
+  readonly approvals?: ApprovalsStatus;
 }
 
 /**
@@ -369,13 +390,51 @@ export class AutoExecutionCoordinator extends EventEmitter {
     logger.info('[AutoExecutionCoordinator] Auto-execution started', { specPath, specId });
 
     // 初期フェーズを決定して実行イベントを発火
-    const firstPhase = this.getNextPermittedPhase(null, options.permissions);
+    // Bug Fix: approvals がある場合は既に完了しているフェーズをスキップ
+    // approvals が渡されない場合は Main Process で直接 spec.json を読み取る
+    let lastCompletedPhase: WorkflowPhase | null = null;
+    let approvals = options.approvals;
+
+    if (!approvals) {
+      // Main Process で spec.json を直接読み取り
+      try {
+        const specJsonPath = require('path').join(specPath, 'spec.json');
+        const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+        const specJson = JSON.parse(content);
+        approvals = specJson.approvals;
+        logger.info('[AutoExecutionCoordinator] Read approvals from spec.json', {
+          specPath,
+          approvals,
+        });
+      } catch (err) {
+        logger.warn('[AutoExecutionCoordinator] Failed to read spec.json for approvals', {
+          specPath,
+          error: err,
+        });
+      }
+    }
+
+    if (approvals) {
+      lastCompletedPhase = this.getLastCompletedPhase(approvals);
+      logger.info('[AutoExecutionCoordinator] Last completed phase from approvals', {
+        specPath,
+        lastCompletedPhase,
+        approvals,
+      });
+    }
+
+    // lastCompletedPhase の次から開始（既に完了しているフェーズはスキップ）
+    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions);
     if (firstPhase) {
       this.emit('execute-next-phase', specPath, firstPhase, {
         specId,
         featureName: specId,
       });
-      logger.info('[AutoExecutionCoordinator] Triggering initial phase', { specPath, firstPhase });
+      logger.info('[AutoExecutionCoordinator] Triggering initial phase', {
+        specPath,
+        firstPhase,
+        skippedFrom: lastCompletedPhase,
+      });
     } else {
       // 許可されたフェーズがない場合は即座に完了
       logger.info('[AutoExecutionCoordinator] No permitted phases, completing immediately', { specPath });
@@ -628,6 +687,21 @@ export class AutoExecutionCoordinator extends EventEmitter {
    */
   getOptions(specPath: string): AutoExecutionOptions | undefined {
     return this.executionOptions.get(specPath);
+  }
+
+  /**
+   * Approvals状態から最後に完了したフェーズを取得
+   * 既に approved または generated のフェーズは完了済みとみなす
+   * @param approvals spec.jsonのapprovals状態
+   * @returns 最後に完了したフェーズ or null（なし）
+   */
+  getLastCompletedPhase(approvals: ApprovalsStatus): WorkflowPhase | null {
+    // requirements, design, tasks の順でチェック（逆順）
+    // approved または generated のフェーズは完了とみなす
+    if (approvals.tasks.approved || approvals.tasks.generated) return 'tasks';
+    if (approvals.design.approved || approvals.design.generated) return 'design';
+    if (approvals.requirements.approved || approvals.requirements.generated) return 'requirements';
+    return null;
   }
 
   /**

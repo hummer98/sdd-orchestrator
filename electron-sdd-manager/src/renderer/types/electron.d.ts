@@ -619,6 +619,12 @@ export interface ElectronAPI {
         impl: boolean;
       };
       timeoutMs?: number;
+      /** Current approvals status from spec.json (used to skip completed phases) */
+      approvals?: {
+        requirements: { generated: boolean; approved: boolean };
+        design: { generated: boolean; approved: boolean };
+        tasks: { generated: boolean; approved: boolean };
+      };
     };
   }): Promise<{ ok: true; value: AutoExecutionState } | { ok: false; error: AutoExecutionError }>;
 

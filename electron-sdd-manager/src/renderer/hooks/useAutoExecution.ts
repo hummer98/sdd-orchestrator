@@ -32,6 +32,23 @@ export interface ValidationOptions {
 }
 
 /**
+ * Approval phase status
+ */
+export interface ApprovalPhaseStatus {
+  readonly generated: boolean;
+  readonly approved: boolean;
+}
+
+/**
+ * Approvals status from spec.json
+ */
+export interface ApprovalsStatus {
+  readonly requirements: ApprovalPhaseStatus;
+  readonly design: ApprovalPhaseStatus;
+  readonly tasks: ApprovalPhaseStatus;
+}
+
+/**
  * Auto execution options
  */
 export interface AutoExecutionOptions {
@@ -39,6 +56,8 @@ export interface AutoExecutionOptions {
   readonly documentReviewFlag: 'run' | 'pause' | 'skip';
   readonly validationOptions: ValidationOptions;
   readonly timeoutMs?: number;
+  /** Current approvals status from spec.json (used to skip completed phases) */
+  readonly approvals?: ApprovalsStatus;
 }
 
 /**

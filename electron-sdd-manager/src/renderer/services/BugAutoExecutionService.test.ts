@@ -477,4 +477,160 @@ describe('BugAutoExecutionService', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('Phase command execution', () => {
+    it('should pass bug name to /commit command in deploy phase', async () => {
+      // Setup: bugDetail with all artifacts complete (ready for deploy)
+      const completedBugDetail: BugDetail = {
+        metadata: mockBugMetadata,
+        artifacts: {
+          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+          fix: { exists: true, path: '/path/to/fix.md', updatedAt: '2024-01-01T00:00:00Z' },
+          verification: { exists: true, path: '/path/to/verification.md', updatedAt: '2024-01-01T00:00:00Z' },
+        },
+      };
+
+      useBugStore.setState({
+        selectedBug: mockBugMetadata,
+        bugDetail: completedBugDetail,
+      });
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: true,
+        },
+      });
+
+      // Start auto-execution (should start from deploy since all others are complete)
+      service.start();
+
+      // Wait for async startAgent call
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      });
+
+      // Verify startAgent was called with correct arguments including bug name
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',    // specName: bug:{name} format
+        'deploy',          // phase
+        'claude',          // command
+        ['/commit test-bug'], // args: command with bug name
+        undefined,
+        undefined
+      );
+    });
+
+    it('should pass bug name to analyze command', async () => {
+      useBugStore.setState({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+      });
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: false,
+        },
+      });
+
+      service.start();
+
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      });
+
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'analyze',
+        'claude',
+        ['/kiro:bug-analyze test-bug'],
+        undefined,
+        undefined
+      );
+    });
+
+    it('should pass bug name to fix command', async () => {
+      const analyzedBugDetail: BugDetail = {
+        metadata: mockBugMetadata,
+        artifacts: {
+          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+          fix: null,
+          verification: null,
+        },
+      };
+
+      useBugStore.setState({
+        selectedBug: mockBugMetadata,
+        bugDetail: analyzedBugDetail,
+      });
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: false,
+        },
+      });
+
+      service.start();
+
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      });
+
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'fix',
+        'claude',
+        ['/kiro:bug-fix test-bug'],
+        undefined,
+        undefined
+      );
+    });
+
+    it('should pass bug name to verify command', async () => {
+      const fixedBugDetail: BugDetail = {
+        metadata: mockBugMetadata,
+        artifacts: {
+          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+          fix: { exists: true, path: '/path/to/fix.md', updatedAt: '2024-01-01T00:00:00Z' },
+          verification: null,
+        },
+      };
+
+      useBugStore.setState({
+        selectedBug: mockBugMetadata,
+        bugDetail: fixedBugDetail,
+      });
+      useWorkflowStore.setState({
+        bugAutoExecutionPermissions: {
+          analyze: true,
+          fix: true,
+          verify: true,
+          deploy: false,
+        },
+      });
+
+      service.start();
+
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      });
+
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'verify',
+        'claude',
+        ['/kiro:bug-verify test-bug'],
+        undefined,
+        undefined
+      );
+    });
+  });
 });

@@ -81,4 +81,37 @@ export const config: Options.Testrunner = {
     ui: 'bdd',
     timeout: 300000, // 5 minutes for long-running workflow tests (multiple phases)
   },
+
+  /**
+   * テスト失敗・タイムアウト時のゾンビプロセス防止
+   * afterSession: 各ワーカーセッション終了時に確実にブラウザを終了
+   * onComplete: 全テスト完了後に残存するElectronプロセスをクリーンアップ
+   */
+  afterSession: async function () {
+    // セッション終了時にブラウザを確実に終了させる
+    try {
+      // @ts-expect-error browser is globally available in WDIO context
+      if (typeof browser !== 'undefined' && browser.deleteSession) {
+        // @ts-expect-error browser is globally available in WDIO context
+        await browser.deleteSession();
+      }
+    } catch {
+      // セッションが既に終了している場合は無視
+    }
+  },
+
+  onComplete: async function () {
+    // 全テスト完了後、残存するE2Eテスト用Electronプロセスをクリーンアップ
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    try {
+      // --e2e-test フラグ付きのElectronプロセスのみを終了
+      await execAsync("pkill -f '\\-\\-e2e-test' || true");
+      console.log('[wdio] E2E test Electron processes cleaned up');
+    } catch {
+      // プロセスが見つからない場合は無視
+    }
+  },
 };

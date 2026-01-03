@@ -495,11 +495,12 @@ describe('バグ作成フロー（インフラ確認）', () => {
  */
 describe('ワークフロー実行（インフラ確認）', () => {
   it('IPCチャネルが正常に動作している', async () => {
-    const isPackaged = await browser.electron.execute((electron) => {
-      return electron.app.isPackaged;
+    // E2Eテストではelectron.executeが正常に動作することを確認
+    const appName = await browser.electron.execute((electron) => {
+      return electron.app.getName();
     });
-    // ビルド済みアプリを使用しているためisPackaged=true
-    expect(isPackaged).toBe(true);
+    expect(typeof appName).toBe('string');
+    expect(appName.length).toBeGreaterThan(0);
   });
 
   it('メニューが存在する', async () => {

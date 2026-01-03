@@ -2,40 +2,22 @@
   "feature_name": "test-feature",
   "name": "test-feature",
   "description": "E2Eテスト用のテスト機能",
-  "phase": "tasks-generated",
+  "phase": "initialized",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": true,
-      "approved": true
+      "generated": false,
+      "approved": false
     },
     "design": {
-      "generated": true,
-      "approved": true
+      "generated": false,
+      "approved": false
     },
     "tasks": {
-      "generated": true,
-      "approved": true
+      "generated": false,
+      "approved": false
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z",
-  "autoExecution": {
-    "enabled": true,
-    "permissions": {
-      "requirements": true,
-      "design": true,
-      "tasks": true,
-      "impl": false,
-      "inspection": false,
-      "deploy": false
-    },
-    "documentReviewFlag": "pause",
-    "validationOptions": {
-      "gap": false,
-      "design": false,
-      "impl": false
-    }
-  },
-  "updated_at": "2025-12-27T11:19:55.678Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z"
 }

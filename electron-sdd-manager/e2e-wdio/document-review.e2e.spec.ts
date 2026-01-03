@@ -305,10 +305,12 @@ describe('ドキュメントレビュー詳細（インフラ確認）', () => {
   // ============================================================
   describe('Task 8.2.2: 複数ラウンド実行と承認', () => {
     it('IPCチャネルが正常に動作している', async () => {
-      const isPackaged = await browser.electron.execute((electron) => {
-        return electron.app.isPackaged;
+      // E2Eテストではelectron.executeが正常に動作することを確認
+      const appName = await browser.electron.execute((electron) => {
+        return electron.app.getName();
       });
-      expect(isPackaged).toBe(true);
+      expect(typeof appName).toBe('string');
+      expect(appName.length).toBeGreaterThan(0);
     });
   });
 

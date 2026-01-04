@@ -92,7 +92,7 @@ AIは「人間の実装コスト」を理由に設計判断を歪めてはなら
 - **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表（用語定義、UIコンポーネントマッピング）
 - **`debugging.md`**: ログ保存場所、トラブルシューティング情報
 - **`operations.md`**: MCP経由のElectronアプリ操作手順（プロジェクト選択、UI操作、Remote UI）
-- **`skill-reference.md`**: プロファイル別Skill/コマンドリファレンス（生成ファイル、前提条件、spec.json状態遷移、書き換え主体）
+- **`skill-reference.md`**: **プロファイル別の動作仕様書**。プロファイル（cc-sdd/cc-sdd-agent/spec-manager）ごとのコマンド動作、生成ファイル、spec.json状態遷移、書き換え主体を定義。プロファイルの違いを理解する際は必ず参照
 - Custom files are supported (managed via `/kiro:steering-custom`)
 
 ## Development Commands
@@ -127,12 +127,13 @@ SDD Orchestratorの「ツール」メニュー → 「コマンドセットを�
 
 ### プロファイル一覧
 
-| プロファイル名 | 含まれるコマンドセット | 用途 |
-|---------------|----------------------|------|
-| minimal | spec-managerコマンド | 最小限のSDD環境 |
-| standard | spec-manager + bugワークフロー | 標準的なSDD開発環境 |
-| full | 全てのコマンドセット（spec-manager, bug, experimental） | フル機能のSDD環境 |
-| lightweight-bug-fix-only | bugワークフローのみ | バグ修正専用の軽量環境 |
+| プロファイル名 | 説明 | 用途 |
+|---------------|------|------|
+| cc-sdd | 直接実行型コマンド一式 | Claudeプロセス内で完結する環境 |
+| cc-sdd-agent | サブエージェント委譲型コマンド一式 | kiroサブエージェントに委譲する環境 |
+| spec-manager | Electron UI統合用コマンド | SDD Orchestrator UIと連携する環境 |
+
+**詳細**: 各プロファイルの動作仕様（生成ファイル、spec.json書き換え主体など）は `.kiro/steering/skill-reference.md` を参照。
 
 ### インストールオプション
 

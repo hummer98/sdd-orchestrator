@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-01-04
+
+### Fixed
+- **自動実行フェーズ完了時の承認処理**: フェーズ完了時の自動承認と前フェーズ承認チェックを追加
+- **spec.json選択時の設定同期**: spec.json選択時にautoExecution設定をworkflowStoreに同期
+- **tasksフェーズ完了後のDocument Reviewワークフロー**: tasksフェーズ完了後のDocument Reviewワークフローを実装
+- **自動実行の途中再開**: 完了済みフェーズをスキップする機能を復元
+- **E2Eテストゾンビプロセス**: E2Eテスト終了時のゾンビプロセスクリーンアップを追加
+
+### Changed
+- **設計ドキュメント検証強化**: spec-designの設計ドキュメント内部一貫性検証を強化
+
+### Testing
+- **自動実行E2Eテスト**: 自動実行系のE2Eテストを拡充
+- **途中再開シナリオテスト**: 自動実行の途中再開シナリオのE2Eテストを追加
+- **resume-testフィクスチャ更新**: resume-testフィクスチャを自動実行テスト用に更新
+
 ## [0.16.0] - 2026-01-04
 
 ### Added

@@ -116,4 +116,63 @@ describe('BugsWatcherService', () => {
       );
     });
   });
+
+  // Bug fix: bugs-tab-list-not-updating
+  describe('path filtering', () => {
+    it('should filter out events for paths outside .kiro/bugs/', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Event outside bugs directory should be filtered
+      handleEvent('change', '/project/.kiro/specs/my-spec/spec.json');
+      handleEvent('add', '/project/.kiro/steering/product.md');
+
+      vi.advanceTimersByTime(350);
+
+      // No callbacks should be called for paths outside bugs/
+      expect(callback).toHaveBeenCalledTimes(0);
+    });
+
+    it('should process events within .kiro/bugs/', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Event inside bugs directory should be processed
+      handleEvent('add', '/project/.kiro/bugs/new-bug/report.md');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'add',
+          path: '/project/.kiro/bugs/new-bug/report.md',
+          bugName: 'new-bug',
+        })
+      );
+    });
+
+    it('should detect bugs directory creation via addDir event', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // bugs directory creation should trigger event
+      handleEvent('addDir', '/project/.kiro/bugs');
+      handleEvent('addDir', '/project/.kiro/bugs/new-bug');
+
+      vi.advanceTimersByTime(350);
+
+      // Both addDir events should be processed
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+  });
 });

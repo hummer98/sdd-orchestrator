@@ -2,6 +2,10 @@
  * BugsWatcherService
  * Watches .kiro/bugs directory for changes and notifies renderer
  * Requirements: 6.5
+ *
+ * Bug fix: bugs-tab-list-not-updating
+ * Changed to watch .kiro/ parent directory to detect bugs/ directory creation
+ * when it doesn't exist at watcher start time.
  */
 
 import * as chokidar from 'chokidar';
@@ -26,6 +30,18 @@ export class BugsWatcherService {
   }
 
   /**
+   * Check if a path is within the bugs directory
+   * e.g., /project/.kiro/bugs/my-bug/report.md -> true
+   * e.g., /project/.kiro/specs/my-spec/spec.json -> false
+   */
+  private isWithinBugsDir(filePath: string): boolean {
+    const bugsDir = path.join(this.projectPath, '.kiro', 'bugs');
+    const relativePath = path.relative(bugsDir, filePath);
+    // If the relative path starts with '..' it means filePath is outside bugsDir
+    return !relativePath.startsWith('..');
+  }
+
+  /**
    * Extract bug name from file path
    * e.g., /project/.kiro/bugs/my-bug/report.md -> my-bug
    */
@@ -43,6 +59,11 @@ export class BugsWatcherService {
 
   /**
    * Start watching the bugs directory
+   *
+   * Bug fix: bugs-tab-list-not-updating
+   * Watch .kiro/ parent directory instead of .kiro/bugs/ directly.
+   * This allows detecting bugs/ directory creation when it doesn't exist initially.
+   * Events are filtered to only process paths within .kiro/bugs/.
    */
   start(): void {
     if (this.watcher) {
@@ -50,16 +71,31 @@ export class BugsWatcherService {
       return;
     }
 
-    const bugsDir = path.join(this.projectPath, '.kiro', 'bugs');
-    logger.info('[BugsWatcherService] Starting watcher', { bugsDir });
+    // Watch .kiro/ directory to detect bugs/ creation even if it doesn't exist
+    const kiroDir = path.join(this.projectPath, '.kiro');
+    const bugsDir = path.join(kiroDir, 'bugs');
+    logger.info('[BugsWatcherService] Starting watcher', { kiroDir, bugsDir });
 
-    this.watcher = chokidar.watch(bugsDir, {
+    this.watcher = chokidar.watch(kiroDir, {
       ignoreInitial: true,
       persistent: true,
-      depth: 2, // Watch bug folders and their immediate contents
+      depth: 3, // .kiro/ -> bugs/ -> {bug-name}/ -> files (3 levels deep)
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,
+      },
+      // Only watch bugs directory and its contents
+      ignored: (filePath: string) => {
+        // Don't ignore .kiro directory itself
+        if (filePath === kiroDir) {
+          return false;
+        }
+        // Don't ignore bugs directory or anything under it
+        if (this.isWithinBugsDir(filePath)) {
+          return false;
+        }
+        // Ignore everything else under .kiro (specs, steering, settings, etc.)
+        return true;
       },
     });
 
@@ -80,8 +116,17 @@ export class BugsWatcherService {
 
   /**
    * Handle file system events with debouncing
+   *
+   * Bug fix: bugs-tab-list-not-updating
+   * Filter out events for paths outside .kiro/bugs/
    */
   private handleEvent(type: BugsChangeEvent['type'], filePath: string): void {
+    // Filter: only process events within .kiro/bugs/
+    if (!this.isWithinBugsDir(filePath)) {
+      logger.debug('[BugsWatcherService] Ignoring event outside bugs dir', { type, filePath });
+      return;
+    }
+
     const bugName = this.extractBugName(filePath);
 
     logger.debug('[BugsWatcherService] File event', { type, filePath, bugName });

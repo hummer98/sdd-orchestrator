@@ -43,6 +43,7 @@ allowed-tools: Bash(git *), Read, Glob
 - `.kiro/specs/{feature}/tasks.md` を読み込み
 - タスクに関連するファイルパターンを抽出
 - 関連する実装ファイル、テストファイル、ドキュメントを対象に含める
+- **Specドキュメント自体も含める**: `.kiro/specs/{feature}/` ディレクトリ内の全ファイル（requirements.md, design.md, tasks.md, planning.md 等）
 
 **Bug の場合**:
 - `.kiro/bugs/{bug-name}/` 内のファイル（report.md, analysis.md, fix.md, verification.md）
@@ -197,11 +198,19 @@ feat: 新サービスの実装とテスト追加
 
 1. .kiro/specs/my-new-feature/tasks.md を読み込み
 2. タスクに記載されたファイルパスを抽出
-3. git status と照合してコミット対象を決定
-4. コミットメッセージに feature 名を含める
+3. .kiro/specs/my-new-feature/ 内のドキュメントも対象に含める
+4. git status と照合してコミット対象を決定
+5. コミットメッセージに feature 名を含める
+
+変更内容:
+- .kiro/specs/my-new-feature/requirements.md
+- .kiro/specs/my-new-feature/design.md
+- .kiro/specs/my-new-feature/tasks.md
+- src/features/myNewFeature.ts
+- src/features/myNewFeature.test.ts
 
 コミット:
-feat(my-new-feature): タスク1.1〜1.3の実装完了
+feat(my-new-feature): 機能実装と仕様ドキュメント追加
 ```
 
 ### Example 5: Bug-based Commit

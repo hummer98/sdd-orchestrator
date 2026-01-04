@@ -151,6 +151,7 @@ describe('Preload API - Task 28.1: Agent管理API公開', () => {
       expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
         'ipc:resume-agent',
         'agent-123',
+        undefined,
         undefined
       );
       expect(result).toEqual(mockAgentInfo);

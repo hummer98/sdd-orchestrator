@@ -243,7 +243,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         get().appendLog(agentId, inputLogEntry);
       }
 
-      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt);
+      // Get skipPermissions from current state (same as startAgent)
+      const { skipPermissions } = get();
+      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt, skipPermissions);
 
       set((state) => {
         const newAgents = new Map(state.agents);

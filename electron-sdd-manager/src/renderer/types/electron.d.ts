@@ -391,7 +391,7 @@ export interface ElectronAPI {
     skipPermissions?: boolean
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
-  resumeAgent(agentId: string, prompt?: string): Promise<AgentInfo>;
+  resumeAgent(agentId: string, prompt?: string, skipPermissions?: boolean): Promise<AgentInfo>;
   deleteAgent(specId: string, agentId: string): Promise<void>;
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;

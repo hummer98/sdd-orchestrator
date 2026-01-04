@@ -847,7 +847,8 @@ export class SpecManagerService {
    */
   async resumeAgent(
     agentId: string,
-    prompt?: string
+    prompt?: string,
+    skipPermissions?: boolean
   ): Promise<Result<AgentInfo, AgentError>> {
     const agent = this.registry.get(agentId);
     if (!agent) {
@@ -879,6 +880,7 @@ export class SpecManagerService {
       resumeSessionId: agent.sessionId,
       resumePrompt,
       allowedTools,
+      skipPermissions,
     });
     const command = getClaudeCommand();
     const now = new Date().toISOString();
@@ -890,6 +892,7 @@ export class SpecManagerService {
         prompt: resumePrompt,
         phase: agent.phase,
         allowedTools,
+        skipPermissions,
       });
 
       // Create a new process but keep the same agentId

@@ -312,7 +312,7 @@ describe('useAgentStore', () => {
       it('should call API and update agent in state', async () => {
         const agents = new Map<string, AgentInfo[]>();
         agents.set('spec-1', [{ ...mockAgentInfo, status: 'interrupted' as AgentStatus }]);
-        useAgentStore.setState({ agents });
+        useAgentStore.setState({ agents, skipPermissions: false });
 
         const resumedAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -323,7 +323,8 @@ describe('useAgentStore', () => {
 
         await useAgentStore.getState().resumeAgent('agent-1');
 
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined);
+        // skipPermissions defaults to false in initial state
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined, false);
 
         const state = useAgentStore.getState();
         const agent = state.agents.get('spec-1')?.find((a) => a.agentId === 'agent-1');
@@ -346,7 +347,7 @@ describe('useAgentStore', () => {
         const agents = new Map<string, AgentInfo[]>([
           ['spec-1', [mockAgentInfo]],
         ]);
-        useAgentStore.setState({ agents, logs: new Map() });
+        useAgentStore.setState({ agents, logs: new Map(), skipPermissions: false });
 
         const resumedAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -364,8 +365,8 @@ describe('useAgentStore', () => {
         expect(logs?.[0].stream).toBe('stdin');
         expect(logs?.[0].data).toBe('カスタムプロンプト');
 
-        // Check that API was called with prompt
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');
+        // Check that API was called with prompt (skipPermissions defaults to false)
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト', false);
       });
     });
 

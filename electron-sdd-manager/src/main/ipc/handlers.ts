@@ -717,7 +717,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.RESUME_AGENT,
-    async (event, agentId: string, prompt?: string) => {
+    async (event, agentId: string, prompt?: string, skipPermissions?: boolean) => {
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -726,7 +726,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.resumeAgent(agentId, prompt);
+      const result = await service.resumeAgent(agentId, prompt, skipPermissions);
 
       if (!result.ok) {
         throw new Error(`Failed to resume agent: ${result.error.type}`);

@@ -256,7 +256,7 @@ export class SpecsWatcherService {
    * このメソッドは後方互換性のために残しているが、実質的には何もしない。
    * Requirements: 2.2, 5.2
    */
-  private async checkDeployCompletion(specJsonPath: string, specId: string): Promise<void> {
+  private async checkDeployCompletion(_specJsonPath: string, specId: string): Promise<void> {
     // deploy_completed フラグは廃止。phase は /commit コマンドで直接設定される。
     // このメソッドは後方互換性のために残すが、何もしない。
     logger.debug('[SpecsWatcherService] checkDeployCompletion called but no-op (deploy_completed flag deprecated)', { specId });

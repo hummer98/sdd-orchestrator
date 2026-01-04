@@ -65,6 +65,28 @@ When modifying existing systems:
 
 > Keep rationale concise here and, when more depth is required (trade-offs, benchmarks), add a short summary plus pointer to the Supporting References section and `research.md` for raw investigation notes.
 
+### Command Prompt Architecture (Claude Code features only)
+
+_Include this section when the feature involves `.claude/commands/` definitions. Omit for non-Claude Code projects._
+
+**Execution Model** (select ONE):
+- [ ] CLI invocation: External process with file-based data exchange
+- [ ] MCP tool direct call: Claude Code calls MCP tools via allowed-tools
+- [ ] Hybrid: (specify which operations use which model)
+
+**Rationale**: Why this execution model was chosen (e.g., context load, latency, reliability, token efficiency)
+
+**Data Flow**:
+```mermaid
+sequenceDiagram
+    participant CC as Claude Code
+    participant Tool as CLI/MCP Tool
+    participant Ext as External Service
+    Note over CC,Ext: Document actual data flow for this feature
+```
+
+> The selected execution model MUST be consistent across all sequence diagrams and component interfaces in this document. See `research.md` for alternative approaches considered.
+
 ## System Flows
 
 Provide only the diagrams needed to explain non-trivial flows. Use pure Mermaid syntax. Common patterns:

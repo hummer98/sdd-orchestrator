@@ -44,11 +44,39 @@ Record major decisions that influence `design.md`. Focus on choices with signifi
   1. Option A — short description
   2. Option B — short description
 - **Selected Approach**: What was chosen and how it works
-- **Rationale**: Why this approach fits the current project context
+- **Rationale (Why)**:
+  - Technical reasons (performance, maintainability, scalability, etc.)
+  - Context considerations (token efficiency, API limits, latency, etc.)
+  - Constraints that ruled out alternatives
 - **Trade-offs**: Benefits vs. compromises
 - **Follow-up**: Items to verify during implementation or testing
 
 _Repeat the subsection for each decision._
+
+## Execution Model Decision (Claude Code features only)
+
+_Document this section when the feature involves `.claude/commands/` or MCP tool integration. Omit for non-Claude Code projects._
+
+### Considered Approaches
+
+| Approach | Description | Pros | Cons |
+|----------|-------------|------|------|
+| CLI Invocation | External process, file-based exchange | Low context load, cacheable results | Process overhead, file I/O |
+| MCP Direct Call | Claude Code → MCP tools via allowed-tools | Simpler flow, no file management | High context load for large responses |
+| Hybrid | Mix based on operation characteristics | Optimized per use case | Complexity, potential for inconsistency |
+
+### Selected Approach
+
+**Choice**: [selected approach]
+
+**Rationale**:
+- Primary reason (e.g., "Context window efficiency: response data can be 100KB+, too large for MCP response")
+- Secondary considerations (e.g., "Enables offline caching for repeated queries")
+
+**Implications for design.md**:
+- All sequence diagrams MUST use this execution model consistently
+- Component interfaces MUST align with this data flow
+- allowed-tools in command prompts MUST match the selected approach
 
 ## Risks & Mitigations
 - Risk 1 — Proposed mitigation

@@ -107,6 +107,11 @@ Generate technical design document for feature based on approved requirements.
    - Set `approvals.requirements.approved: true`
    - Update `updated_at` timestamp
 
+4. **Internal Consistency Validation**:
+   - Verify all sections describe the same architecture model
+   - Check that sequence diagrams align with component interfaces
+   - If multiple execution approaches were considered, confirm ONE was selected and rationale documented in research.md
+
 ## Critical Constraints
  - **Type Safety**:
    - Enforce strong typing aligned with the project's technology stack.
@@ -119,6 +124,22 @@ Generate technical design document for feature based on approved requirements.
 - **Template Adherence**: Follow specs/design.md template structure and generation instructions strictly
 - **Design Focus**: Architecture and interfaces ONLY, no implementation code
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
+
+### Internal Consistency
+- Ensure all sections describe the same architecture model
+- Validate that sequence diagrams match component interface definitions
+- When multiple execution approaches exist (CLI, API, MCP tools), choose ONE and document why
+- Cross-check that data flows in diagrams align with component responsibilities
+
+### Design Intent Documentation
+- Document the "why" behind each architectural decision in research.md
+- Include performance/context/cost considerations that influenced the design
+- Make implicit assumptions explicit
+
+### Command Prompt Design (for Claude Code features)
+- If feature includes `.claude/commands/`, specify which tools are called and why
+- Clarify whether external tools (CLI) are invoked OR MCP tools are called directly
+- Document the expected data flow through the command execution
 
 ## Tool Guidance
 - **Read first**: Load all context before taking action (specs, steering, templates, rules)

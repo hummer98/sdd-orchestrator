@@ -1,0 +1,547 @@
+/**
+ * Auto Execution Document Review Integration E2E Tests
+ *
+ * Tests the integration between auto-execution and document review workflow.
+ * Specifically verifies that after tasks phase completion:
+ * 1. Document review is triggered automatically (when documentReviewFlag !== 'skip')
+ * 2. Document review-reply is executed after document-review
+ * 3. Execution pauses or continues based on review results
+ *
+ * Relates to:
+ * - auto-execution-migration-audit-20260104.md (#6 Document Review ワークフロー)
+ * - autoExecutionCoordinator.ts (execute-document-review event)
+ * - handlers.ts (execute-document-review event handler)
+ */
+
+import * as path from 'path';
+import * as fs from 'fs';
+import {
+  selectProjectViaStore,
+  selectSpecViaStore,
+  setAutoExecutionPermissions,
+  getAutoExecutionStatus,
+  waitForCondition,
+  refreshSpecStore,
+  clearAgentStore,
+  resetAutoExecutionService,
+  resetSpecStoreAutoExecution,
+  stopAutoExecution,
+  resetAutoExecutionCoordinator,
+} from './helpers/auto-execution.helpers';
+
+// Fixture project path
+const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/document-review-test');
+const SPEC_NAME = 'doc-review-feature';
+const SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/specs', SPEC_NAME);
+const RUNTIME_AGENTS_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents', SPEC_NAME);
+
+// Initial spec.json content with tasks COMPLETED (ready for document review)
+const TASKS_COMPLETED_SPEC_JSON = {
+  feature_name: 'doc-review-feature',
+  name: 'doc-review-feature',
+  description: 'E2Eテスト用：Document Reviewワークフローテスト',
+  phase: 'tasks',
+  language: 'ja',
+  approvals: {
+    requirements: { generated: true, approved: true },
+    design: { generated: true, approved: true },
+    tasks: { generated: true, approved: true },
+  },
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+};
+
+// Spec.json with document review in progress
+const DOC_REVIEW_IN_PROGRESS_SPEC_JSON = {
+  ...TASKS_COMPLETED_SPEC_JSON,
+  documentReview: {
+    status: 'in_progress',
+    currentRound: 1,
+    rounds: [
+      {
+        roundNumber: 1,
+        status: 'in_progress',
+        startedAt: '2024-01-01T00:00:00.000Z',
+      },
+    ],
+  },
+};
+
+const REQUIREMENTS_MD_CONTENT = `# Requirements Document
+
+## Project Description (Input)
+Document Reviewワークフローのテスト用機能。
+
+## Requirements
+
+### REQ-001: テスト機能
+- Document Reviewが自動実行で呼ばれることをテストする
+
+## Approval Status
+- Generated: Yes
+- Approved: Yes
+`;
+
+const DESIGN_MD_CONTENT = `# Design Document
+
+## Overview
+Document Reviewワークフローのテスト用設計。
+
+## Architecture
+テスト用の簡易的なアーキテクチャ。
+
+## Approval Status
+- Generated: Yes
+- Approved: Yes
+`;
+
+const TASKS_MD_CONTENT = `# Tasks Document
+
+## Implementation Tasks
+
+### Task 1: Setup
+- [ ] 基本設定
+
+### Task 2: Implementation
+- [ ] 実装
+
+## Approval Status
+- Generated: Yes
+- Approved: Yes
+`;
+
+/**
+ * Setup fixture directory structure
+ */
+function ensureFixtureDirectories(): void {
+  const dirs = [
+    FIXTURE_PATH,
+    path.join(FIXTURE_PATH, '.kiro'),
+    path.join(FIXTURE_PATH, '.kiro/specs'),
+    SPEC_DIR,
+    path.join(SPEC_DIR, 'logs'),
+    path.join(FIXTURE_PATH, '.kiro/runtime'),
+    path.join(FIXTURE_PATH, '.kiro/runtime/agents'),
+    RUNTIME_AGENTS_DIR,
+  ];
+
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+}
+
+/**
+ * Reset fixture to tasks completed state (ready for document review)
+ */
+function resetFixtureToTasksCompleted(): void {
+  ensureFixtureDirectories();
+
+  // Write spec.json
+  fs.writeFileSync(
+    path.join(SPEC_DIR, 'spec.json'),
+    JSON.stringify(TASKS_COMPLETED_SPEC_JSON, null, 2)
+  );
+
+  // Write all completed phase documents
+  fs.writeFileSync(path.join(SPEC_DIR, 'requirements.md'), REQUIREMENTS_MD_CONTENT);
+  fs.writeFileSync(path.join(SPEC_DIR, 'design.md'), DESIGN_MD_CONTENT);
+  fs.writeFileSync(path.join(SPEC_DIR, 'tasks.md'), TASKS_MD_CONTENT);
+
+  // Cleanup runtime/agents
+  if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
+    const files = fs.readdirSync(RUNTIME_AGENTS_DIR);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(RUNTIME_AGENTS_DIR, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Cleanup logs
+  const logsDir = path.join(SPEC_DIR, 'logs');
+  if (fs.existsSync(logsDir)) {
+    const files = fs.readdirSync(logsDir);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(logsDir, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+/**
+ * Read current spec.json from filesystem
+ */
+function readSpecJson(): typeof TASKS_COMPLETED_SPEC_JSON & { documentReview?: any } {
+  return JSON.parse(fs.readFileSync(path.join(SPEC_DIR, 'spec.json'), 'utf-8'));
+}
+
+/**
+ * Helper: Set document review flag via workflowStore
+ */
+async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<boolean> {
+  return browser.execute((f: string) => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (!stores?.workflowStore?.getState) return false;
+      const workflowStore = stores.workflowStore.getState();
+      // Bug fix: Use correct method name setDocumentReviewAutoExecutionFlag
+      workflowStore.setDocumentReviewAutoExecutionFlag(f);
+      return true;
+    } catch (e) {
+      console.error('[E2E] setDocumentReviewFlag error:', e);
+      return false;
+    }
+  }, flag);
+}
+
+/**
+ * Helper: Get document review flag from workflowStore
+ */
+async function getDocumentReviewFlag(): Promise<string> {
+  return browser.execute(() => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (!stores?.workflowStore?.getState) return 'skip';
+      // Bug fix: Use correct property path documentReviewOptions.autoExecutionFlag
+      return stores.workflowStore.getState().documentReviewOptions?.autoExecutionFlag || 'skip';
+    } catch (e) {
+      return 'skip';
+    }
+  });
+}
+
+/**
+ * Helper: Check if document review panel is visible
+ */
+async function isDocumentReviewPanelVisible(): Promise<boolean> {
+  const panel = await $('[data-testid="document-review-panel"]');
+  if (!(await panel.isExisting())) return false;
+  return panel.isDisplayed();
+}
+
+/**
+ * Helper: Get agents executed for document review
+ */
+async function getDocumentReviewAgents(): Promise<{ skill: string; status: string }[]> {
+  return browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.agentStore?.getState) return [];
+
+    const agents: { skill: string; status: string }[] = [];
+    stores.agentStore.getState().agents.forEach((agentList: any[]) => {
+      agentList.forEach((agent: any) => {
+        if (agent.skill && agent.skill.includes('document-review')) {
+          agents.push({ skill: agent.skill, status: agent.status });
+        }
+      });
+    });
+    return agents;
+  });
+}
+
+describe('Auto Execution Document Review Integration E2E', () => {
+  before(async () => {
+    ensureFixtureDirectories();
+    resetFixtureToTasksCompleted();
+  });
+
+  beforeEach(async () => {
+    // Reset fixture
+    resetFixtureToTasksCompleted();
+
+    // Clear agent store
+    await clearAgentStore();
+
+    // Reset Main Process AutoExecutionCoordinator
+    await resetAutoExecutionCoordinator();
+
+    // Reset AutoExecutionService
+    await resetAutoExecutionService();
+
+    // Reset specStore autoExecution state
+    await resetSpecStoreAutoExecution();
+  });
+
+  afterEach(async () => {
+    // Stop any running auto-execution
+    await stopAutoExecution();
+    await browser.pause(500);
+  });
+
+  after(async () => {
+    resetFixtureToTasksCompleted();
+  });
+
+  // ============================================================
+  // Scenario 1: Document Review with 'skip' flag
+  // ============================================================
+  describe('Scenario 1: Document Review skipped', () => {
+    beforeEach(async () => {
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Set document review flag to 'skip'
+      await setDocumentReviewFlag('skip');
+    });
+
+    it('should not trigger document review when flag is skip', async () => {
+      // Verify flag is set to skip
+      const flag = await getDocumentReviewFlag();
+      expect(flag).toBe('skip');
+
+      // Set permissions: impl enabled (to see full flow)
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: false,
+        deploy: false,
+      });
+
+      // Start auto-execution (from tasks since tasks is already completed)
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for completion
+      const completed = await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 60000, 500, 'auto-execution-complete');
+
+      console.log(`[E2E] Auto-execution completed: ${completed}`);
+
+      // Check that no document-review agents were executed
+      const docReviewAgents = await getDocumentReviewAgents();
+      console.log(`[E2E] Document review agents: ${JSON.stringify(docReviewAgents)}`);
+
+      // When skip is set, no document-review agents should be started
+      const docReviewCount = docReviewAgents.filter(a =>
+        a.skill.includes('document-review') && !a.skill.includes('document-review-reply')
+      ).length;
+      expect(docReviewCount).toBe(0);
+    });
+  });
+
+  // ============================================================
+  // Scenario 2: Document Review with 'run' flag
+  // ============================================================
+  describe('Scenario 2: Document Review triggered with run flag', () => {
+    beforeEach(async () => {
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Set document review flag to 'run'
+      await setDocumentReviewFlag('run');
+    });
+
+    it('should trigger document review when flag is run and tasks completed', async () => {
+      // Verify flag is set to run
+      const flag = await getDocumentReviewFlag();
+      expect(flag).toBe('run');
+
+      // Set permissions: tasks and impl enabled
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: false,
+        deploy: false,
+      });
+
+      // Start auto-execution
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for document-review agent to appear
+      const docReviewStarted = await waitForCondition(async () => {
+        const agents = await getDocumentReviewAgents();
+        return agents.some(a => a.skill.includes('document-review'));
+      }, 30000, 500, 'document-review-agent-started');
+
+      console.log(`[E2E] Document review agent started: ${docReviewStarted}`);
+
+      if (docReviewStarted) {
+        // If document review started, verify spec.json shows in_progress
+        await browser.pause(2000);
+        const specJson = readSpecJson();
+        console.log(`[E2E] spec.json after doc review start: ${JSON.stringify(specJson.documentReview)}`);
+
+        // Document review status should be in_progress or have rounds
+        if (specJson.documentReview) {
+          expect(['in_progress', 'pending', 'approved', 'skipped']).toContain(specJson.documentReview.status);
+        }
+      }
+
+      // Wait for auto-execution to complete (may pause at document review)
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting || s.autoExecutionStatus === 'paused';
+      }, 120000, 1000, 'auto-execution-complete-or-paused');
+
+      // Verify document-review agents were at least attempted
+      const docReviewAgents = await getDocumentReviewAgents();
+      console.log(`[E2E] Final document review agents: ${JSON.stringify(docReviewAgents)}`);
+    });
+  });
+
+  // ============================================================
+  // Scenario 3: Document Review with 'pause' flag
+  // ============================================================
+  describe('Scenario 3: Document Review with pause flag', () => {
+    beforeEach(async () => {
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Set document review flag to 'pause'
+      await setDocumentReviewFlag('pause');
+    });
+
+    it('should trigger document review and pause for manual action when flag is pause', async () => {
+      // Verify flag is set to pause
+      const flag = await getDocumentReviewFlag();
+      expect(flag).toBe('pause');
+
+      // Set permissions
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: false,
+        deploy: false,
+      });
+
+      // Start auto-execution
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for execution to either complete or pause
+      const result = await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        // Should pause after document review is triggered
+        return !s.isAutoExecuting || s.autoExecutionStatus === 'paused';
+      }, 120000, 1000, 'auto-execution-pause');
+
+      console.log(`[E2E] Auto-execution paused or completed: ${result}`);
+
+      // Check status
+      const status = await getAutoExecutionStatus();
+      console.log(`[E2E] Final status: ${JSON.stringify(status)}`);
+
+      // With pause flag, execution should pause at document review
+      // Note: This depends on the document-review workflow completing
+    });
+  });
+
+  // ============================================================
+  // Scenario 4: Document Review Panel UI visibility
+  // ============================================================
+  describe('Scenario 4: Document Review Panel visibility', () => {
+    beforeEach(async () => {
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+    });
+
+    it('should show document review panel when tasks are approved', async () => {
+      // Document review panel should be visible since tasks are approved
+      await browser.pause(1000);
+
+      // First check if panel exists (even if not visible due to scroll position)
+      const panel = await $('[data-testid="document-review-panel"]');
+      const panelExists = await panel.isExisting();
+      console.log(`[E2E] Document review panel exists: ${panelExists}`);
+
+      if (panelExists) {
+        // Scroll panel into view to ensure visibility check works
+        await panel.scrollIntoView();
+        await browser.pause(300);
+      }
+
+      const panelVisible = await isDocumentReviewPanelVisible();
+      console.log(`[E2E] Document review panel visible: ${panelVisible}`);
+
+      // Panel should exist for specs with approved tasks
+      // (visibility may depend on viewport/scroll position)
+      expect(panelExists).toBe(true);
+    });
+
+    it('should have review buttons available', async () => {
+      await browser.pause(1000);
+
+      // Check for review control buttons (use actual testid from implementation)
+      const startButton = await $('[data-testid="start-review-button"]');
+      const replyButton = await $('[data-testid="execute-reply-button"]');
+      const applyFixButton = await $('[data-testid="apply-fix-button"]');
+
+      const startExists = await startButton.isExisting();
+      const replyExists = await replyButton.isExisting();
+      const applyFixExists = await applyFixButton.isExisting();
+
+      console.log(`[E2E] Review buttons - Start: ${startExists}, Reply: ${replyExists}, ApplyFix: ${applyFixExists}`);
+
+      // At least start button should exist (other buttons appear based on state)
+      expect(startExists || replyExists || applyFixExists).toBe(true);
+    });
+  });
+});

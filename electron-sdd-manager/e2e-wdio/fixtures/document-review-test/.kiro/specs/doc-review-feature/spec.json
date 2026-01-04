@@ -1,0 +1,23 @@
+{
+  "feature_name": "doc-review-feature",
+  "name": "doc-review-feature",
+  "description": "E2Eテスト用：Document Reviewワークフローテスト",
+  "phase": "tasks",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

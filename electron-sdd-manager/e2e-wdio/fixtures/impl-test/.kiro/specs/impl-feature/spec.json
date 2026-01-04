@@ -1,0 +1,35 @@
+{
+  "feature_name": "impl-feature",
+  "name": "impl-feature",
+  "description": "E2Eテスト用：implフェーズテスト",
+  "phase": "tasks",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "currentRound": 1,
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "status": "approved",
+        "startedAt": "2024-01-01T00:00:00.000Z",
+        "completedAt": "2024-01-01T00:01:00.000Z"
+      }
+    ]
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

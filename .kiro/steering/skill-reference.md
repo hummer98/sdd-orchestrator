@@ -125,6 +125,25 @@ Electron UI統合用純粋生成コマンド。**spec.jsonの状態管理はElec
 
 ---
 
+## 共通コマンド: ask-*
+
+プロファイル非依存のAsk実行コマンド。ユーザーが任意のプロンプトでAgentを起動し、コンテキスト付きで質問・指示を実行。
+
+| コマンド | 用途 | 引数 | コンテキスト | ログ保存先 |
+|---------|------|------|------------|-----------|
+| project-ask | プロジェクト全体への質問・指示 | `<prompt>` | `.kiro/steering/*.md` | `.kiro/logs/` |
+| spec-ask | 特定Specへの質問・指示 | `<feature-name> <prompt>` | `.kiro/steering/*.md` + `.kiro/specs/{feature}/*.md` | `.kiro/specs/{feature}/logs/` |
+
+**前提条件**:
+- `project-ask`: プロジェクトが選択済み、プロンプトが空でない
+- `spec-ask`: Specが存在、プロンプトが空でない
+
+**Agent phase**: `ask`（Agent一覧で表示されるラベル）
+
+**書き換え主体**: なし（読み取り専用 + プロンプト実行）
+
+---
+
 ## 共通コマンド: bug-*
 
 プロファイル非依存の軽量バグ修正ワークフロー。**bug.jsonは存在しない**（ファイル存在ベースでステータス管理）。

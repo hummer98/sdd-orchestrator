@@ -150,6 +150,43 @@ const electronAPI = {
   executeBugCreate: (projectPath: string, description: string): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_BUG_CREATE, projectPath, description),
 
+  // ============================================================
+  // Ask Agent Execution (agent-ask-execution feature)
+  // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  // ============================================================
+
+  /**
+   * Execute Project Ask agent with custom prompt
+   * Loads steering files as context
+   * @param projectPath Project root path
+   * @param prompt User's custom prompt
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeAskProject: (
+    projectPath: string,
+    prompt: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_ASK_PROJECT, projectPath, prompt, commandPrefix),
+
+  /**
+   * Execute Spec Ask agent with custom prompt
+   * Loads steering files and spec files as context
+   * @param specId Spec directory name
+   * @param featureName Feature name
+   * @param prompt User's custom prompt
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo on success
+   */
+  executeAskSpec: (
+    specId: string,
+    featureName: string,
+    prompt: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_ASK_SPEC, specId, featureName, prompt, commandPrefix),
+
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10
   onAgentOutput: (

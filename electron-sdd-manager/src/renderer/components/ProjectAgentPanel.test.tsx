@@ -247,4 +247,41 @@ describe('ProjectAgentPanel', () => {
       expect(onCollapsedChange).toHaveBeenCalledWith(true);
     });
   });
+
+  // ============================================================
+  // Ask button functionality (agent-ask-execution)
+  // Requirements: 1.1, 1.3, 1.5
+  // ============================================================
+  describe('Ask button functionality', () => {
+    it('should display Ask button in header (Requirement 1.1)', () => {
+      render(<ProjectAgentPanel />);
+
+      const askButton = screen.getByTestId('project-ask-button');
+      expect(askButton).toBeInTheDocument();
+    });
+
+    it('should disable Ask button when no project is selected (Requirement 1.3)', () => {
+      // currentProject is undefined by default in mock
+      render(<ProjectAgentPanel />);
+
+      const askButton = screen.getByTestId('project-ask-button');
+      expect(askButton).toBeDisabled();
+    });
+
+    it('should open AskAgentDialog when Ask button is clicked (Requirement 1.5)', async () => {
+      // Mock currentProject to enable button
+      const { useProjectStore } = await import('../stores');
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      render(<ProjectAgentPanel />);
+
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      // Dialog should be visible
+      expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+      // Check dialog title contains "Project Agent - Ask"
+      expect(screen.getByText(/Project Agent - Ask/)).toBeInTheDocument();
+    });
+  });
 });

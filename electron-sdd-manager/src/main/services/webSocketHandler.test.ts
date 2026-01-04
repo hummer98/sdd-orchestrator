@@ -1956,3 +1956,119 @@ describe('WebSocketHandler - Phase Update Broadcasts (spec-phase-auto-update)', 
     });
   });
 });
+
+// ============================================================
+// agent-ask-execution Task 6: ASK_PROJECT/ASK_SPEC Message Handler Tests
+// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+// ============================================================
+
+describe('WebSocketHandler - ASK_PROJECT/ASK_SPEC Handlers (agent-ask-execution)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  // Helper function to create mock WebSocket
+  function createMockWebSocket(): WebSocket {
+    return {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+      close: vi.fn(),
+      on: vi.fn(),
+    } as unknown as WebSocket;
+  }
+
+  // Helper function to create mock request
+  function createMockRequest(ip: string): IncomingMessage {
+    return {
+      socket: { remoteAddress: ip },
+      headers: {},
+    } as unknown as IncomingMessage;
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+
+    vi.doMock('./accessTokenService', () => ({
+      accessTokenService: {
+        validateToken: vi.fn(() => true),
+      },
+    }));
+  });
+
+  describe('ASK_PROJECT message handling (Requirement 6.1, 6.3)', () => {
+    it('should send error when projectPath or prompt is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Send ASK_PROJECT without projectPath
+      const message = JSON.stringify({
+        type: 'ASK_PROJECT',
+        payload: { prompt: 'test' },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      // Wait for async handling
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Without workflowController, should send NO_CONTROLLER error
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+    });
+  });
+
+  describe('ASK_SPEC message handling (Requirement 6.2, 6.4)', () => {
+    it('should send error when specId or prompt is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Send ASK_SPEC without specId
+      const message = JSON.stringify({
+        type: 'ASK_SPEC',
+        payload: { prompt: 'test prompt' },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Without workflowController, should send NO_CONTROLLER error
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+    });
+  });
+});

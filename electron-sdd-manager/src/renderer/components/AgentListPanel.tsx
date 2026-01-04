@@ -7,9 +7,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { notify } from '../stores';
 import { clsx } from 'clsx';
+import { AskAgentDialog } from './AskAgentDialog';
 
 type AgentStatus = AgentInfo['status'];
 
@@ -69,13 +71,18 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode;
 interface AgentListPanelProps {
   /** specId for filtering agents (spec name or 'bug:{bugName}') */
   specId: string;
+  /** Spec/feature name for display and Spec Ask */
+  specName?: string;
   /** data-testid attribute */
   testId?: string;
+  /** Whether this is a bug panel (no Ask button for bugs) */
+  isBugPanel?: boolean;
 }
 
-export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentListPanelProps) {
-  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions } = useAgentStore();
+export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false }: AgentListPanelProps) {
+  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions, addAgent } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
+  const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 
   // Load agents when component mounts or when agents map is empty
   useEffect(() => {
@@ -150,6 +157,32 @@ export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentLis
     setConfirmDeleteAgent(null);
   };
 
+  // Spec Ask handlers
+  const handleAskClick = () => {
+    setIsAskDialogOpen(true);
+  };
+
+  const handleAskExecute = async (prompt: string) => {
+    const featureName = specName || specId;
+
+    try {
+      const agentInfo = await window.electronAPI.executeAskSpec(specId, featureName, prompt);
+      addAgent(specId, agentInfo);
+      selectAgent(agentInfo.agentId);
+      notify.success('Spec Askを開始しました');
+      setIsAskDialogOpen(false);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Spec Askの実行に失敗しました');
+    }
+  };
+
+  const handleAskCancel = () => {
+    setIsAskDialogOpen(false);
+  };
+
+  // Determine if Ask button should be shown (not for bugs)
+  const showAskButton = !isBugPanel && specId && !specId.startsWith('bug:');
+
   return (
     <div data-testid={testId} className="h-full flex flex-col p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -175,6 +208,21 @@ export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentLis
           />
           <span className="select-none">Skip Permissions</span>
         </label>
+        {/* Ask Button */}
+        {showAskButton && (
+          <button
+            onClick={handleAskClick}
+            className={clsx(
+              'p-1 rounded-md transition-colors',
+              'text-purple-600 hover:bg-purple-100 dark:text-purple-400 dark:hover:bg-purple-900/30'
+            )}
+            title="Spec Askを実行"
+            aria-label="Spec Askを実行"
+            data-testid="spec-ask-button"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {filteredAgents.length === 0 ? (
@@ -222,6 +270,17 @@ export function AgentListPanel({ specId, testId = 'agent-list-panel' }: AgentLis
             </div>
           </div>
         </div>
+      )}
+
+      {/* Ask Agent Dialog */}
+      {showAskButton && (
+        <AskAgentDialog
+          isOpen={isAskDialogOpen}
+          agentType="spec"
+          specName={specName || specId}
+          onExecute={handleAskExecute}
+          onCancel={handleAskCancel}
+        />
       )}
     </div>
   );

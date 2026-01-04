@@ -1,0 +1,174 @@
+# Response to Document Review #1
+
+**Feature**: agent-ask-execution
+**Review Date**: 2026-01-04
+**Reply Date**: 2026-01-04
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 0      | 0            | 0             | 0                |
+| Warning  | 4      | 1            | 3             | 0                |
+| Info     | 3      | 0            | 3             | 0                |
+
+---
+
+## Response to Warnings
+
+### W-001: 型定義タスクの欠如
+
+**Issue**: Design文書で定義されている型（`AskAgentDialogProps`, `AskProjectPayload`, `AskSpecPayload`, `AskStartedMessage`, `ExecuteAskAgentParams`）が、明示的なタスクとして分離されていない。
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+既存のSDD Orchestratorの実装パターンでは、型定義は常に実装タスク内で暗黙的に作成されます。例えば：
+
+- `electron-sdd-manager/src/main/services/agentRegistry.ts:9-19` で `AgentInfo` 型は実装ファイル内で定義
+- `electron-sdd-manager/src/main/services/specManagerService.ts:40-51` で `ClaudeArgsOptions` 型はサービス実装内で定義
+
+コンポーネントやサービスを実装する際に、必要な型をその実装ファイル内で定義するのがプロジェクトの慣習です。型定義を別タスクにすると：
+1. タスク依存関係が複雑化する
+2. 実装中に型が変わった際のタスク管理が煩雑になる
+
+Tasks文書の各タスクは「型を含む」ことが暗黙的に期待されており、これは既存プロジェクトパターンに準拠しています。
+
+---
+
+### W-002: プロンプト長制限未定義
+
+**Issue**: Requirements 2.1でテキストエリアを提供するとあるが、最大文字数制限の指定がない。
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+1. Claude Codeへの入力には実質的な上限がない（コンテキストウィンドウ制限はあるが、プロンプト入力に対する固定上限はない）
+2. 既存のダイアログ実装（例: CreateSpecDialog）でも文字数制限を設けていない
+3. ユーザーが長いプロンプトを入力した場合、Claude Code側でトークン制限に対応する
+
+文字数制限を設けることで、正当なユースケース（長い説明が必要なタスク）が阻害される可能性があります。UIレベルでの制限より、Claude Code側の自然な制限に委ねる設計が適切です。
+
+---
+
+### W-003: 同時実行制御未定義
+
+**Issue**: ユーザーが複数のAsk Agentを同時起動した場合の動作が未定義。
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+既存のAgentRegistryは同時実行を制限していません。`electron-sdd-manager/src/main/services/specManagerService.ts:435-455` の `getRunningGroup` メソッドは、同時実行グループを追跡するが、Ask Agent（phase: "ask"）は既存のグループ分類に含まれず、独立して動作します。
+
+```typescript
+// specManagerService.ts:443-452
+for (const agent of runningAgents) {
+  if (agent.phase.startsWith('validate-')) {
+    return 'validate';
+  }
+  if (agent.phase.startsWith('impl-') || agent.phase === 'impl') {
+    return 'impl';
+  }
+  if (['requirement', 'requirements', 'design', 'tasks'].includes(agent.phase)) {
+    return 'doc';
+  }
+}
+```
+
+phase: "ask" はどのグループにも属さないため、既存のグループ排他制御には影響しません。Ask Agentは他のAgent実行と並行して動作可能であり、これは意図した動作です。
+
+Design文書への追記は不要です。「既存のAgentRegistry管理に委ねる」ことで同時実行は自然に許可され、追加ロジックは不要です。
+
+---
+
+### W-004: Project Askのログ保存場所の曖昧さ
+
+**Issue**: Project Askのログ保存場所について、Requirements/Tasks/Designで記載箇所が分散している。Design文書に明確な分岐ロジックが記載されていない。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+- Requirements 5.6: "`.kiro/specs/{specId}/logs/` or `.kiro/logs/`" と両方を列挙
+- Tasks 4.3: "Project askの場合は`.kiro/logs/`に保存" と明確化
+- Design文書のagentProcess拡張セクション: 分岐条件の記載なし
+
+Tasks文書で既に明確化されているが、Design文書（アーキテクチャの真実の源）にも明記すべきです。
+
+**Action Items**:
+- Design文書の「agentProcess (Extension)」セクションの「Implementation Notes」に保存先分岐ロジックを追記
+
+---
+
+## Response to Info (Low Priority)
+
+| #     | Issue                    | Judgment      | Reason                                                                           |
+| ----- | ------------------------ | ------------- | -------------------------------------------------------------------------------- |
+| I-001 | 実行中キャンセル機能     | No Fix Needed | Non-Goalsに明記することは有益だが、設計に影響なし。実装時に追記可能             |
+| I-002 | ログローテーション       | No Fix Needed | 既存の10MB/日付単位ローテーション機構が適用される（`tech.md`に記載）            |
+| I-003 | allowed-toolsの範囲      | No Fix Needed | Skill定義ファイルで適宜調整可能。実装後に必要に応じて追加                        |
+
+---
+
+## Files to Modify
+
+| File       | Changes                                                                          |
+| ---------- | -------------------------------------------------------------------------------- |
+| design.md  | agentProcess拡張セクションにログ保存先分岐ロジックを追記（W-004対応）           |
+
+---
+
+## Conclusion
+
+4件のWarningのうち3件は既存のプロジェクトパターンや設計意図に照らして修正不要と判断しました。
+
+- **W-001（型定義タスク）**: 既存パターンで暗黙的に実装タスクに含まれる
+- **W-002（プロンプト長）**: Claude Code側の自然な制限に委ねる設計が適切
+- **W-003（同時実行）**: 既存AgentRegistry管理で自然に許可される
+
+**W-004（ログ保存先）** のみDesign文書への追記が必要です。
+
+**Next Steps**:
+- `--fix` オプションで修正を適用するか、手動でdesign.mdを編集
+
+---
+
+## Applied Fixes
+
+**Applied Date**: 2026-01-04
+**Applied By**: --fix
+
+### Summary
+
+| File | Changes Applied |
+| ---- | --------------- |
+| design.md | agentProcess拡張セクションにログ保存先分岐ロジックを追記 |
+
+### Details
+
+#### design.md
+
+**Issue(s) Addressed**: W-004
+
+**Changes**:
+- `agentProcess (Extension)` セクションの Implementation Notes にログ保存先の分岐条件を明記
+
+**Diff Summary**:
+```diff
+ **Implementation Notes**
+ - Integration: 既存の `executePhase` 関数のパターンを踏襲
+ - Validation: type/specId/promptの整合性チェック
++- Log Storage:
++  - Spec Ask (type: 'spec'): `.kiro/specs/{specId}/logs/` に保存
++  - Project Ask (type: 'project'): `.kiro/logs/` に保存
+ - Risks: なし
+```
+
+---
+
+_Fixes applied by document-review-reply command._
+
+---
+
+_This reply was generated by the document-review-reply command._

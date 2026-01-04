@@ -219,6 +219,11 @@ export const IPC_CHANNELS = {
   // Commandset Version Check (commandset-version-detection feature)
   // Requirements: 2.1
   CHECK_COMMANDSET_VERSIONS: 'ipc:check-commandset-versions',
+
+  // Ask Agent Execution (agent-ask-execution feature)
+  // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  EXECUTE_ASK_PROJECT: 'ipc:execute-ask-project',
+  EXECUTE_ASK_SPEC: 'ipc:execute-ask-spec',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

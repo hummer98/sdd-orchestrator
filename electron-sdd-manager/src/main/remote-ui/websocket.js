@@ -371,6 +371,36 @@ class WebSocketManager {
       payload: { specId },
     });
   }
+
+  // ============================================================
+  // Ask Agent Functions (agent-ask-execution feature)
+  // Requirements: 7.4 - WebSocket message sending
+  // ============================================================
+
+  /**
+   * Execute Project Ask with custom prompt
+   * @param {string} projectPath - Project path
+   * @param {string} prompt - User prompt
+   */
+  executeAskProject(projectPath, prompt) {
+    return this.send({
+      type: 'ASK_PROJECT',
+      payload: { projectPath, prompt },
+    });
+  }
+
+  /**
+   * Execute Spec Ask with custom prompt
+   * @param {string} specId - Spec ID
+   * @param {string} featureName - Feature name
+   * @param {string} prompt - User prompt
+   */
+  executeAskSpec(specId, featureName, prompt) {
+    return this.send({
+      type: 'ASK_SPEC',
+      payload: { specId, featureName, prompt },
+    });
+  }
 }
 
 // Export singleton instance

@@ -993,6 +993,83 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // ============================================================
+  // Ask Agent Execution (agent-ask-execution feature)
+  // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  // ============================================================
+
+  // Execute Project Ask: Launch project-ask agent with prompt
+  // Loads steering files as context
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_ASK_PROJECT,
+    async (event, projectPath: string, prompt: string, commandPrefix: CommandPrefix = 'kiro') => {
+      logger.info('[handlers] EXECUTE_ASK_PROJECT called', { projectPath, prompt: prompt.substring(0, 100), commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Start agent with specId='' (project agent)
+      // Uses /kiro:project-ask or equivalent command
+      const slashCommand = `/${commandPrefix}:project-ask`;
+      const result = await service.startAgent({
+        specId: '', // Empty specId for project agent
+        phase: 'ask',
+        command: 'claude',
+        args: [`${slashCommand} "${prompt.replace(/"/g, '\\"')}"`],
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeAskProject failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeAskProject succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  // Execute Spec Ask: Launch spec-ask agent with feature name and prompt
+  // Loads steering files and spec files as context
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_ASK_SPEC,
+    async (event, specId: string, featureName: string, prompt: string, commandPrefix: CommandPrefix = 'kiro') => {
+      logger.info('[handlers] EXECUTE_ASK_SPEC called', { specId, featureName, prompt: prompt.substring(0, 100), commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Start agent with specId (spec agent)
+      // Uses /kiro:spec-ask or equivalent command
+      const slashCommand = `/${commandPrefix}:spec-ask`;
+      const result = await service.startAgent({
+        specId,
+        phase: 'ask',
+        command: 'claude',
+        args: [`${slashCommand} "${featureName}" "${prompt.replace(/"/g, '\\"')}"`],
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeAskSpec failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeAskSpec succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
   // spec-manager Install Handlers (Requirements: 4.1-4.6)
   ipcMain.handle(
     IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES,

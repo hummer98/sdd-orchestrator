@@ -5,10 +5,12 @@
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
  */
 
-import { Bot, ChevronDown, ChevronRight, StopCircle, PlayCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Bot, ChevronDown, ChevronRight, StopCircle, PlayCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
 import { useState, useEffect } from 'react';
+import { AskAgentDialog } from './AskAgentDialog';
 
 /**
  * Format duration in milliseconds to "Xm Ys" or "Xs"
@@ -61,9 +63,11 @@ interface ProjectAgentPanelProps {
 }
 
 export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgentPanelProps) {
-  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getProjectAgents, removeAgent } = useAgentStore();
+  const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getProjectAgents, removeAgent, addAgent, selectForProjectAgents } = useAgentStore();
+  const { currentProject } = useProjectStore();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
+  const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 
   const projectAgents = getProjectAgents()
     // Sort: running first, then by startedAt descending (newest first)
@@ -114,6 +118,31 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
     setConfirmDeleteAgent(null);
   };
 
+  // Ask Agent execution handlers
+  const handleAskClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAskDialogOpen(true);
+  };
+
+  const handleAskExecute = async (prompt: string) => {
+    if (!currentProject) return;
+
+    try {
+      const agentInfo = await window.electronAPI.executeAskProject(currentProject, prompt);
+      addAgent('', agentInfo);
+      selectForProjectAgents();
+      selectAgent(agentInfo.agentId);
+      notify.success('Project Askを開始しました');
+      setIsAskDialogOpen(false);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Project Askの実行に失敗しました');
+    }
+  };
+
+  const handleAskCancel = () => {
+    setIsAskDialogOpen(false);
+  };
+
   return (
     <div
       data-testid="project-agent-panel"
@@ -140,6 +169,22 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
         <span className="text-xs text-gray-400">
           ({projectAgents.length})
         </span>
+        {/* Ask Button */}
+        <div className="flex-1" />
+        <button
+          onClick={handleAskClick}
+          disabled={!currentProject}
+          className={clsx(
+            'p-1 rounded-md transition-colors',
+            'text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/30',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          title="Askを実行"
+          aria-label="Project Askを実行"
+          data-testid="project-ask-button"
+        >
+          <MessageSquare className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Agent List or Empty State */}
@@ -195,6 +240,14 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
           </div>
         </div>
       )}
+
+      {/* Ask Agent Dialog */}
+      <AskAgentDialog
+        isOpen={isAskDialogOpen}
+        agentType="project"
+        onExecute={handleAskExecute}
+        onCancel={handleAskCancel}
+      />
     </div>
   );
 }

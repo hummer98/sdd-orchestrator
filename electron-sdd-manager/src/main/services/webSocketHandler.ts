@@ -195,6 +195,13 @@ export interface WorkflowController {
   executeInspection?(specId: string, featureName: string): Promise<WorkflowResult<AgentInfo>>;
   /** Execute inspection fix */
   executeInspectionFix?(specId: string, featureName: string, roundNumber: number): Promise<WorkflowResult<AgentInfo>>;
+
+  // Ask Agent methods (agent-ask-execution feature)
+  // Requirements: 5.1-5.6
+  /** Execute Project Ask with custom prompt */
+  executeAskProject?(projectPath: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Execute Spec Ask with custom prompt */
+  executeAskSpec?(specId: string, featureName: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -502,6 +509,13 @@ export class WebSocketHandler {
         break;
       case 'AUTO_EXECUTE_ALL_STATUS':
         await this.handleAutoExecuteAllStatus(client, message);
+        break;
+      // Ask Agent handlers (agent-ask-execution feature)
+      case 'ASK_PROJECT':
+        await this.handleAskProject(client, message);
+        break;
+      case 'ASK_SPEC':
+        await this.handleAskSpec(client, message);
         break;
       default:
         this.send(client.id, {
@@ -1681,5 +1695,140 @@ export class WebSocketHandler {
       payload: { specPath, error },
       timestamp: Date.now(),
     });
+  }
+
+  // ============================================================
+  // Ask Agent Handlers (agent-ask-execution feature)
+  // Requirements: 5.1-5.6
+  // ============================================================
+
+  /**
+   * Handle ASK_PROJECT message
+   * Requirements: 5.1-5.3 (agent-ask-execution)
+   */
+  private async handleAskProject(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeAskProject) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Project Ask execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const projectPath = payload.projectPath as string;
+    const prompt = payload.prompt as string;
+
+    if (!projectPath || !prompt) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing projectPath or prompt' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeAskProject(projectPath, prompt);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'ASK_PROJECT_STARTED',
+        payload: {
+          projectPath,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Project Ask execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle ASK_SPEC message
+   * Requirements: 5.4-5.6 (agent-ask-execution)
+   */
+  private async handleAskSpec(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeAskSpec) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Spec Ask execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const featureName = (payload.featureName as string) || specId;
+    const prompt = payload.prompt as string;
+
+    if (!specId || !prompt) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or prompt' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeAskSpec(specId, featureName, prompt);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'ASK_SPEC_STARTED',
+        payload: {
+          specId,
+          featureName,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Spec Ask execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
   }
 }

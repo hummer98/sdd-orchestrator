@@ -1985,6 +1985,164 @@ class ReconnectOverlay {
   }
 }
 
+/**
+ * Ask Agent Dialog Component
+ * Dialog for executing custom prompts with project/spec context
+ * Requirements: 7.1-7.5 (agent-ask-execution feature)
+ */
+class AskAgentDialog {
+  constructor() {
+    this.containerEl = document.getElementById('ask-agent-dialog');
+    this.backdropEl = document.getElementById('ask-agent-backdrop');
+    this.titleEl = document.getElementById('ask-agent-title');
+    this.subtitleEl = document.getElementById('ask-agent-subtitle');
+    this.promptInputEl = document.getElementById('ask-agent-prompt');
+    this.executeBtn = document.getElementById('btn-ask-execute');
+    this.cancelBtn = document.getElementById('btn-ask-cancel');
+    this.closeBtn = document.getElementById('btn-ask-close');
+
+    this.agentType = 'project'; // 'project' or 'spec'
+    this.specId = null;
+    this.featureName = null;
+    this.onExecute = null;
+
+    this.setupEventListeners();
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners() {
+    // Close handlers
+    if (this.cancelBtn) {
+      this.cancelBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.backdropEl) {
+      this.backdropEl.addEventListener('click', () => this.hide());
+    }
+
+    // Execute handler
+    if (this.executeBtn) {
+      this.executeBtn.addEventListener('click', () => this.execute());
+    }
+
+    // Input validation
+    if (this.promptInputEl) {
+      this.promptInputEl.addEventListener('input', () => this.validateInput());
+    }
+  }
+
+  /**
+   * Show dialog for project ask
+   */
+  showForProject() {
+    this.agentType = 'project';
+    this.specId = null;
+    this.featureName = null;
+
+    if (this.titleEl) {
+      this.titleEl.textContent = 'Project Agent - Ask';
+    }
+    if (this.subtitleEl) {
+      this.subtitleEl.textContent = 'Steering files をコンテキストとして使用します';
+    }
+
+    this.show();
+  }
+
+  /**
+   * Show dialog for spec ask
+   * @param {string} specId
+   * @param {string} featureName
+   */
+  showForSpec(specId, featureName) {
+    this.agentType = 'spec';
+    this.specId = specId;
+    this.featureName = featureName || specId;
+
+    if (this.titleEl) {
+      this.titleEl.textContent = 'Spec Agent - Ask';
+    }
+    if (this.subtitleEl) {
+      this.subtitleEl.textContent = `Steering + Spec files (${this.featureName}) をコンテキストとして使用します`;
+    }
+
+    this.show();
+  }
+
+  /**
+   * Show dialog
+   */
+  show() {
+    if (this.promptInputEl) {
+      this.promptInputEl.value = '';
+    }
+    this.validateInput();
+
+    if (this.containerEl) {
+      this.containerEl.classList.remove('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.remove('hidden');
+    }
+
+    // Focus prompt input
+    if (this.promptInputEl) {
+      this.promptInputEl.focus();
+    }
+  }
+
+  /**
+   * Hide dialog
+   */
+  hide() {
+    if (this.containerEl) {
+      this.containerEl.classList.add('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Validate input and update execute button state
+   */
+  validateInput() {
+    const prompt = (this.promptInputEl?.value || '').trim();
+    const isValid = prompt.length > 0;
+
+    if (this.executeBtn) {
+      this.executeBtn.disabled = !isValid;
+    }
+  }
+
+  /**
+   * Execute the prompt
+   */
+  execute() {
+    const prompt = (this.promptInputEl?.value || '').trim();
+    if (!prompt) return;
+
+    if (this.onExecute) {
+      if (this.agentType === 'project') {
+        this.onExecute({ type: 'project', prompt });
+      } else {
+        this.onExecute({
+          type: 'spec',
+          specId: this.specId,
+          featureName: this.featureName,
+          prompt,
+        });
+      }
+    }
+
+    this.hide();
+  }
+}
+
 // Export components
 window.DocsTabs = DocsTabs;
 window.ConnectionStatus = ConnectionStatus;
@@ -1995,3 +2153,4 @@ window.SpecDetail = SpecDetail;
 window.LogViewer = LogViewer;
 window.Toast = Toast;
 window.ReconnectOverlay = ReconnectOverlay;
+window.AskAgentDialog = AskAgentDialog;

@@ -541,4 +541,42 @@ describe('AgentListPanel - Task 30', () => {
       expect(mockSetSkipPermissions).toHaveBeenCalledWith(false);
     });
   });
+
+  // ============================================================
+  // Spec Ask button functionality (agent-ask-execution)
+  // Requirements: 1.2, 1.4, 1.5
+  // ============================================================
+  describe('Spec Ask button functionality', () => {
+    it('should display Ask button when specId is provided (Requirement 1.2)', () => {
+      render(<AgentListPanel specId="spec-1" />);
+
+      const askButton = screen.getByTestId('spec-ask-button');
+      expect(askButton).toBeInTheDocument();
+    });
+
+    it('should not display Ask button when specId is empty (Requirement 1.4)', () => {
+      const { container } = render(<AgentListPanel specId="" />);
+
+      // Component returns null when specId is empty
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('should not display Ask button for bug panels', () => {
+      render(<AgentListPanel specId="bug:my-bug" isBugPanel={true} />);
+
+      expect(screen.queryByTestId('spec-ask-button')).not.toBeInTheDocument();
+    });
+
+    it('should open AskAgentDialog when Ask button is clicked (Requirement 1.5)', () => {
+      render(<AgentListPanel specId="spec-1" specName="my-feature" />);
+
+      const askButton = screen.getByTestId('spec-ask-button');
+      fireEvent.click(askButton);
+
+      // Dialog should be visible
+      expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+      expect(screen.getByText(/Spec Agent/)).toBeInTheDocument();
+      expect(screen.getByText('(my-feature)')).toBeInTheDocument();
+    });
+  });
 });

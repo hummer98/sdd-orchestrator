@@ -128,6 +128,31 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         taskProgress,
       };
 
+      // Bug fix: spec-json-to-workflowstore-sync-missing
+      // Sync autoExecution settings from spec.json to workflowStore
+      // This ensures UI reflects the spec-scoped settings when switching specs
+      if (specJson.autoExecution) {
+        const { useWorkflowStore } = await import('../workflowStore');
+        const wf = useWorkflowStore.getState();
+        if (specJson.autoExecution.permissions) {
+          wf.setAutoExecutionPermissions(specJson.autoExecution.permissions);
+        }
+        if (specJson.autoExecution.documentReviewFlag) {
+          wf.setDocumentReviewOptions({
+            autoExecutionFlag: specJson.autoExecution.documentReviewFlag,
+          });
+        }
+        if (specJson.autoExecution.validationOptions) {
+          wf.setValidationOptions(specJson.autoExecution.validationOptions);
+        }
+        console.log('[specDetailStore] Synced autoExecution settings to workflowStore:', {
+          spec: spec.name,
+          permissions: specJson.autoExecution.permissions,
+          documentReviewFlag: specJson.autoExecution.documentReviewFlag,
+          validationOptions: specJson.autoExecution.validationOptions,
+        });
+      }
+
       if (silent) {
         set({ selectedSpec: spec, specDetail });
       } else {

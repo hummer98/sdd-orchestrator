@@ -425,7 +425,8 @@ export class AutoExecutionCoordinator extends EventEmitter {
     }
 
     // lastCompletedPhase の次から開始（既に完了しているフェーズはスキップ）
-    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions);
+    // 前フェーズが未承認の場合はそのフェーズをスキップする
+    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions, options.approvals);
     if (firstPhase) {
       this.emit('execute-next-phase', specPath, firstPhase, {
         specId,
@@ -638,7 +639,22 @@ export class AutoExecutionCoordinator extends EventEmitter {
             return; // Document Review完了後に次フェーズへ進む
           }
 
-          const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions);
+          // Read latest approvals from spec.json (may have been updated by auto-approve)
+          let latestApprovals = options.approvals;
+          try {
+            const specJsonPath = require('path').join(specPath, 'spec.json');
+            const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+            const specJson = JSON.parse(content);
+            latestApprovals = specJson.approvals;
+            logger.debug('[AutoExecutionCoordinator] Read latest approvals for next phase', {
+              specPath,
+              latestApprovals,
+            });
+          } catch (err) {
+            logger.warn('[AutoExecutionCoordinator] Failed to read latest approvals', { specPath, error: err });
+          }
+
+          const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions, latestApprovals);
           if (nextPhase) {
             // 次フェーズ実行イベントを発火
             this.emit('execute-next-phase', specPath, nextPhase, {
@@ -721,22 +737,53 @@ export class AutoExecutionCoordinator extends EventEmitter {
    * 次の許可されたフェーズを取得
    * @param currentPhase 現在のフェーズ（nullの場合は最初のフェーズ）
    * @param permissions 許可設定
+   * @param approvals 承認状態（オプション、指定時は前フェーズの承認チェックを行う）
    * @returns 次のフェーズ or null（なし）
    */
   getNextPermittedPhase(
     currentPhase: WorkflowPhase | null,
-    permissions: AutoExecutionPermissions
+    permissions: AutoExecutionPermissions,
+    approvals?: ApprovalsStatus
   ): WorkflowPhase | null {
     const startIndex = currentPhase === null ? 0 : PHASE_ORDER.indexOf(currentPhase) + 1;
 
     for (let i = startIndex; i < PHASE_ORDER.length; i++) {
       const phase = PHASE_ORDER[i];
       if (permissions[phase]) {
+        // Check if previous phase is approved (when approvals is provided)
+        if (approvals) {
+          const previousApproved = this.isPreviousPhaseApproved(phase, approvals);
+          if (!previousApproved) {
+            logger.info('[AutoExecutionCoordinator] Skipping phase - previous phase not approved', { phase });
+            continue; // Skip this phase, try next
+          }
+        }
         return phase;
       }
     }
 
     return null;
+  }
+
+  /**
+   * 前のフェーズが承認済みかをチェック
+   * @param phase チェックするフェーズ
+   * @param approvals 承認状態
+   * @returns 前フェーズが承認済み（または不要）ならtrue
+   */
+  private isPreviousPhaseApproved(phase: WorkflowPhase, approvals: ApprovalsStatus): boolean {
+    switch (phase) {
+      case 'requirements':
+        return true; // requirementsには前フェーズがない
+      case 'design':
+        return approvals.requirements.approved;
+      case 'tasks':
+        return approvals.design.approved;
+      case 'impl':
+        return approvals.tasks.approved;
+      default:
+        return true;
+    }
   }
 
   /**
@@ -769,8 +816,17 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     // 次の許可されたフェーズがあるか確認
     const options = this.executionOptions.get(specPath);
+    let latestApprovals = options?.approvals;
+    try {
+      const specJsonPath = require('path').join(specPath, 'spec.json');
+      const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+      latestApprovals = specJson.approvals;
+    } catch {
+      // ignore
+    }
     const nextPhase = options
-      ? this.getNextPermittedPhase(phase, options.permissions)
+      ? this.getNextPermittedPhase(phase, options.permissions, latestApprovals)
       : null;
 
     if (nextPhase === null) {
@@ -1110,7 +1166,16 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     if (approved) {
       // Document Review承認済み、次フェーズへ進む
-      const nextPhase = this.getNextPermittedPhase('tasks', options.permissions);
+      let latestApprovals = options.approvals;
+      try {
+        const specJsonPath = require('path').join(specPath, 'spec.json');
+        const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+        const specJson = JSON.parse(content);
+        latestApprovals = specJson.approvals;
+      } catch {
+        // ignore
+      }
+      const nextPhase = this.getNextPermittedPhase('tasks', options.permissions, latestApprovals);
       if (nextPhase) {
         logger.info('[AutoExecutionCoordinator] Document review approved, proceeding to next phase', {
           specPath,

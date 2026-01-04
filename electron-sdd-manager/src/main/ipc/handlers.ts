@@ -1735,10 +1735,25 @@ export function registerIpcHandlers(): void {
         coordinator.setCurrentPhase(specPath, phase, agentId);
 
         // Listen for this agent's completion
-        const handleStatusChange = (changedAgentId: string, status: string) => {
+        const handleStatusChange = async (changedAgentId: string, status: string) => {
           if (changedAgentId === agentId) {
             if (status === 'completed' || status === 'failed' || status === 'stopped') {
               logger.info('[handlers] execute-next-phase: agent completed', { agentId, status });
+
+              // Auto-approve phase on successful completion
+              if (status === 'completed' && (phase === 'requirements' || phase === 'design' || phase === 'tasks')) {
+                try {
+                  const approveResult = await fileService.updateApproval(specPath, phase, true);
+                  if (approveResult.ok) {
+                    logger.info('[handlers] execute-next-phase: auto-approved phase', { specPath, phase });
+                  } else {
+                    logger.error('[handlers] execute-next-phase: failed to auto-approve phase', { specPath, phase, error: approveResult.error });
+                  }
+                } catch (error) {
+                  logger.error('[handlers] execute-next-phase: error during auto-approve', { specPath, phase, error });
+                }
+              }
+
               const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
               coordinator.handleAgentCompleted(agentId, specPath, finalStatus as 'completed' | 'failed' | 'interrupted');
               service.offStatusChange(handleStatusChange);

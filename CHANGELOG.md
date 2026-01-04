@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.2] - 2026-01-04
+
+### Fixed
+- **resumeAgent skipPermissions対応**: resumeAgentにskipPermissionsパラメータを追加し、Agent再開時の権限確認をスキップ可能に
+
+### Changed
+- **deploy_completedフラグ廃止**: deploy_completedフラグを廃止し、phase: 'deploy-complete'に統一
+
+### Documentation
+- Specコミット時にドキュメントディレクトリも含める指示を追加
+- メモおよび今後の構想を追加
+
 ## [0.16.1] - 2026-01-04
 
 ### Fixed

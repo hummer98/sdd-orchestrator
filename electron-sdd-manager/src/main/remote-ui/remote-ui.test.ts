@@ -573,7 +573,6 @@ describe('Mobile UI Static Files', () => {
      */
     function getPhaseStatusFromSpec(spec: {
       inspection?: { passed?: boolean };
-      deploy_completed?: boolean;
       impl_completed?: boolean;
       approvals?: {
         requirements?: { generated?: boolean; approved?: boolean };
@@ -596,8 +595,8 @@ describe('Mobile UI Static Files', () => {
         result.inspection = 'approved';
       }
 
-      // Deploy phase: check deploy_completed
-      if (spec.deploy_completed) {
+      // Deploy phase: check phase === 'deploy-complete'
+      if (spec.phase === 'deploy-complete') {
         result.deploy = 'approved';
       }
 
@@ -735,18 +734,18 @@ describe('Mobile UI Static Files', () => {
     });
 
     describe('deploy phase', () => {
-      it('should return pending when deploy_completed is undefined', () => {
+      it('should return pending when phase is not deploy-complete', () => {
         const spec = {};
         expect(getPhaseStatusFromSpec(spec).deploy).toBe('pending');
       });
 
-      it('should return pending when deploy_completed is false', () => {
-        const spec = { deploy_completed: false };
+      it('should return pending when phase is other than deploy-complete', () => {
+        const spec = { phase: 'implementation-complete' };
         expect(getPhaseStatusFromSpec(spec).deploy).toBe('pending');
       });
 
-      it('should return approved when deploy_completed is true', () => {
-        const spec = { deploy_completed: true };
+      it('should return approved when phase is deploy-complete', () => {
+        const spec = { phase: 'deploy-complete' };
         expect(getPhaseStatusFromSpec(spec).deploy).toBe('approved');
       });
     });
@@ -814,7 +813,7 @@ describe('Mobile UI Static Files', () => {
           },
           impl_completed: true,
           inspection: { passed: true },
-          deploy_completed: true,
+          phase: 'deploy-complete',
         };
         const result = getPhaseStatusFromSpec(spec);
         expect(result.requirements).toBe('approved');

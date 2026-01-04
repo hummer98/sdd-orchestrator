@@ -1113,8 +1113,8 @@ class SpecDetail {
       result.inspection = 'approved';
     }
 
-    // Deploy phase: check deploy_completed
-    if (spec.deploy_completed) {
+    // Deploy phase: check phase === 'deploy-complete'
+    if (spec.phase === 'deploy-complete') {
       result.deploy = 'approved';
     }
 

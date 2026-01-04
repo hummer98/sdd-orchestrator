@@ -44,6 +44,7 @@ allowed-tools: Bash(git *), Read, Glob
 - タスクに関連するファイルパターンを抽出
 - 関連する実装ファイル、テストファイル、ドキュメントを対象に含める
 - **Specドキュメント自体も含める**: `.kiro/specs/{feature}/` ディレクトリ内の全ファイル（requirements.md, design.md, tasks.md, planning.md 等）
+- **コミット成功後、spec.jsonのphaseを更新**: `phase: 'deploy-complete'` に設定（デプロイ完了を記録）
 
 **Bug の場合**:
 - `.kiro/bugs/{bug-name}/` 内のファイル（report.md, analysis.md, fix.md, verification.md）
@@ -136,7 +137,24 @@ git commit -m "type: subject"
 - 他のセッションやバックグラウンドで変更されたファイルは含めない
 - ユーザーが現在のタスクで意図的に変更したファイルを優先する
 
-### 7. 結果の確認
+### 7. Spec の場合: phase を deploy-complete に更新
+
+**Spec 引数が指定されていた場合のみ**:
+
+コミット成功後、`.kiro/specs/{feature}/spec.json` の `phase` を `deploy-complete` に更新する。
+
+```bash
+# spec.json を読み込み、phase を更新
+# jq がある場合:
+jq '.phase = "deploy-complete" | .updated_at = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+  .kiro/specs/{feature}/spec.json > tmp.json && mv tmp.json .kiro/specs/{feature}/spec.json
+
+# jq がない場合は、sed または手動で更新
+```
+
+**注意**: この更新もコミットに含める（別コミットまたは amend）
+
+### 8. 結果の確認
 
 ```bash
 git log --oneline -n [コミット数]
@@ -201,11 +219,13 @@ feat: 新サービスの実装とテスト追加
 3. .kiro/specs/my-new-feature/ 内のドキュメントも対象に含める
 4. git status と照合してコミット対象を決定
 5. コミットメッセージに feature 名を含める
+6. コミット成功後、spec.json の phase を deploy-complete に更新
 
 変更内容:
 - .kiro/specs/my-new-feature/requirements.md
 - .kiro/specs/my-new-feature/design.md
 - .kiro/specs/my-new-feature/tasks.md
+- .kiro/specs/my-new-feature/spec.json (phase: deploy-complete)
 - src/features/myNewFeature.ts
 - src/features/myNewFeature.test.ts
 

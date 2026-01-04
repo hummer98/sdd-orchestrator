@@ -251,49 +251,15 @@ export class SpecsWatcherService {
   }
 
   /**
-   * spec-phase-auto-update Task 6: Check deploy completion and update phase
-   * Detects deploy_completed flag from spec.json and updates phase to deploy-complete
+   * spec-phase-auto-update Task 6: Check deploy completion
+   * Note: deploy_completed フラグは廃止。/commit コマンドが直接 phase: 'deploy-complete' を設定するため、
+   * このメソッドは後方互換性のために残しているが、実質的には何もしない。
    * Requirements: 2.2, 5.2
    */
   private async checkDeployCompletion(specJsonPath: string, specId: string): Promise<void> {
-    if (!this.fileService) {
-      logger.debug('[SpecsWatcherService] FileService not available, skipping deploy completion check');
-      return;
-    }
-
-    try {
-      const specJsonContent = await readFile(specJsonPath, 'utf-8');
-      const specJson = JSON.parse(specJsonContent);
-
-      // Skip if already at deploy-complete
-      if (specJson.phase === 'deploy-complete') {
-        logger.debug('[SpecsWatcherService] Phase already deploy-complete', { specId });
-        return;
-      }
-
-      // Check if phase is at inspection-complete (required to proceed)
-      if (specJson.phase !== 'inspection-complete') {
-        logger.debug('[SpecsWatcherService] Phase not at inspection-complete, skipping deploy check', { specId, phase: specJson.phase });
-        return;
-      }
-
-      // Check deploy_completed flag
-      if (!specJson.deploy_completed) {
-        logger.debug('[SpecsWatcherService] deploy_completed not set', { specId });
-        return;
-      }
-
-      // Update phase to deploy-complete
-      const specPath = path.dirname(specJsonPath);
-      logger.info('[SpecsWatcherService] Deploy completed, updating phase to deploy-complete', { specId, previousPhase: specJson.phase });
-      const result = await this.fileService.updateSpecJsonFromPhase(specPath, 'deploy-complete', { skipTimestamp: true });
-
-      if (!result.ok) {
-        logger.error('[SpecsWatcherService] Failed to update spec.json phase to deploy-complete', { specId, error: result.error });
-      }
-    } catch (error) {
-      logger.error('[SpecsWatcherService] Failed to check deploy completion', { specId, error });
-    }
+    // deploy_completed フラグは廃止。phase は /commit コマンドで直接設定される。
+    // このメソッドは後方互換性のために残すが、何もしない。
+    logger.debug('[SpecsWatcherService] checkDeployCompletion called but no-op (deploy_completed flag deprecated)', { specId });
   }
 
   /**

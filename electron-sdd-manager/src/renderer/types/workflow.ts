@@ -110,8 +110,7 @@ export const VALIDATION_LABELS: Record<ValidationType, string> = {
 export interface ExtendedSpecJson extends SpecJson {
   /** 実装完了フラグ（オプショナル、デフォルト: false） */
   impl_completed?: boolean;
-  /** デプロイ完了フラグ（オプショナル、デフォルト: false） */
-  deploy_completed?: boolean;
+  // Note: deploy_completed は廃止。phase: 'deploy-complete' で統一
 }
 
 // ============================================================
@@ -145,9 +144,9 @@ export function getPhaseStatus(
     return 'pending';
   }
 
-  // デプロイフェーズ
+  // デプロイフェーズ - phase: 'deploy-complete' で判定
   if (phase === 'deploy') {
-    return specJson.deploy_completed ? 'approved' : 'pending';
+    return specJson.phase === 'deploy-complete' ? 'approved' : 'pending';
   }
 
   // 実装フェーズ

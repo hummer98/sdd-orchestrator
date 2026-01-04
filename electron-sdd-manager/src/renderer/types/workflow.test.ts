@@ -237,14 +237,14 @@ describe('Workflow Types', () => {
     });
 
     describe('deploy phase', () => {
-      it('should return pending when deploy_completed is undefined', () => {
+      it('should return pending when phase is not deploy-complete', () => {
         const specJson = createMockSpecJson();
         expect(getPhaseStatus('deploy', specJson)).toBe('pending');
       });
 
-      it('should return approved when deploy_completed is true', () => {
+      it('should return approved when phase is deploy-complete', () => {
         const specJson = createMockSpecJson({
-          deploy_completed: true,
+          phase: 'deploy-complete',
         });
         expect(getPhaseStatus('deploy', specJson)).toBe('approved');
       });

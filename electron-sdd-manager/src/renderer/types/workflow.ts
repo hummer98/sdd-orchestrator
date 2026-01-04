@@ -50,7 +50,7 @@ export const PHASE_LABELS: Record<WorkflowPhase, string> = {
   tasks: 'タスク',
   impl: '実装',
   inspection: '検査',
-  deploy: 'デプロイ',
+  deploy: 'コミット',
 };
 
 // ============================================================
@@ -178,7 +178,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     tasks: '/kiro:spec-tasks',
     impl: '/kiro:spec-impl',
     inspection: '/kiro:spec-inspection',
-    deploy: '/kiro:deployment',
+    deploy: '/commit',
   },
   'spec-manager': {
     requirements: '/spec-manager:requirements',
@@ -186,7 +186,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     tasks: '/spec-manager:tasks',
     impl: '/spec-manager:impl',
     inspection: '/spec-manager:inspection',
-    deploy: '/spec-manager:deployment',
+    deploy: '/commit',
   },
 };
 

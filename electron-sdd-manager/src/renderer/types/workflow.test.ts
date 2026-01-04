@@ -65,7 +65,7 @@ describe('Workflow Types', () => {
         expect(PHASE_LABELS.tasks).toBe('タスク');
         expect(PHASE_LABELS.impl).toBe('実装');
         expect(PHASE_LABELS.inspection).toBe('検査');
-        expect(PHASE_LABELS.deploy).toBe('デプロイ');
+        expect(PHASE_LABELS.deploy).toBe('コミット');
       });
 
       it('should have labels for all phases', () => {

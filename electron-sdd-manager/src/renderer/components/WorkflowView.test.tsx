@@ -205,7 +205,7 @@ describe('WorkflowView', () => {
       expect(screen.getByText('タスク')).toBeInTheDocument();
       expect(screen.getByText('実装')).toBeInTheDocument();
       // 検査フェーズはInspectionPanelで表示されるため、PhaseItemには含まれない
-      expect(screen.getByText('デプロイ')).toBeInTheDocument();
+      expect(screen.getByText('コミット')).toBeInTheDocument();
     });
 
     it('should display phase connectors (arrows)', () => {

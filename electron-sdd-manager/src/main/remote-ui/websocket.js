@@ -401,6 +401,22 @@ class WebSocketManager {
       payload: { specId, featureName, prompt },
     });
   }
+
+  // ============================================================
+  // Agent Logs Functions (Bug fix: remote-ui-agent-log-display)
+  // ============================================================
+
+  /**
+   * Select an agent and request its logs
+   * @param {string} specId - Spec ID
+   * @param {string} agentId - Agent ID
+   */
+  selectAgent(specId, agentId) {
+    return this.send({
+      type: 'SELECT_AGENT',
+      payload: { specId, agentId },
+    });
+  }
 }
 
 // Export singleton instance

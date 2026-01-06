@@ -406,6 +406,12 @@ class App {
       this.handleSpecUpdated(payload);
     });
 
+    // Bug fix: remote-ui-agent-log-display
+    // Handle AGENT_LOGS message - load logs into LogViewer when agent is selected
+    wsManager.on('AGENT_LOGS', (payload) => {
+      this.handleAgentLogs(payload);
+    });
+
     // Task 5.2: Auto-execution event handlers
     // Requirements: 6.4, 6.5, 6.6
     wsManager.on('AUTO_EXECUTION_STATUS', (payload) => {
@@ -514,6 +520,35 @@ class App {
     if (payload) {
       this.logViewer.add(payload);
     }
+  }
+
+  /**
+   * Handle AGENT_LOGS message
+   * Bug fix: remote-ui-agent-log-display
+   * Loads agent logs into LogViewer when agent is selected
+   * @param {Object} payload - { specId, agentId, logs }
+   */
+  handleAgentLogs(payload) {
+    const { specId, agentId, logs } = payload || {};
+
+    if (!logs || !Array.isArray(logs)) {
+      return;
+    }
+
+    // Convert log file entries to LogViewer format
+    // LogFileEntry has: timestamp, stream, data
+    // LogViewer expects: timestamp (number), stream, data, type
+    const logEntries = logs.map(log => ({
+      timestamp: new Date(log.timestamp).getTime(),
+      stream: log.stream,
+      data: log.data,
+      type: log.stream === 'stderr' ? 'error' : 'agent',
+    }));
+
+    // Set logs in LogViewer (replaces existing logs)
+    this.logViewer.setLogs(logEntries);
+
+    console.log(`[App] Loaded ${logEntries.length} logs for agent ${agentId} (spec: ${specId})`);
   }
 
   /**

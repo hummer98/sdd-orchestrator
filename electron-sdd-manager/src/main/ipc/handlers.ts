@@ -32,7 +32,7 @@ import {
   UnifiedInstallResult,
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
-import { setupStateProvider, setupWorkflowController, getRemoteAccessServer } from './remoteAccessHandlers';
+import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { AutoExecutionCoordinator } from '../services/autoExecutionCoordinator';
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
@@ -447,7 +447,8 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote, getAgentsForRemote);
   setupWorkflowController(specManagerService);
-  logger.info('[handlers] Remote Access StateProvider and WorkflowController set up');
+  setupAgentLogsProvider();
+  logger.info('[handlers] Remote Access StateProvider, WorkflowController, and AgentLogsProvider set up');
 }
 
 /**

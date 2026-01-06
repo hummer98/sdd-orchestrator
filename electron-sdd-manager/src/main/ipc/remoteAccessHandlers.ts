@@ -10,7 +10,8 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, ValidationType } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, ValidationType, AgentLogsProvider } from '../services/webSocketHandler';
+import { getDefaultLogFileService } from '../services/logFileService';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
 import { buildClaudeArgs } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
@@ -279,6 +280,36 @@ export function setupWorkflowController(specManagerService: SpecManagerService):
     const workflowController = createWorkflowController(specManagerService);
     wsHandler.setWorkflowController(workflowController);
     logger.info('[remoteAccessHandlers] WorkflowController set up successfully');
+  }
+}
+
+/**
+ * Create an AgentLogsProvider for WebSocketHandler
+ * Requirements: Bug fix - remote-ui-agent-log-display
+ */
+export function createAgentLogsProvider(): AgentLogsProvider {
+  return {
+    readLog: async (specId: string, agentId: string) => {
+      const logFileService = getDefaultLogFileService();
+      return logFileService.readLog(specId, agentId);
+    },
+  };
+}
+
+/**
+ * Set up AgentLogsProvider on the WebSocketHandler
+ * Requirements: Bug fix - remote-ui-agent-log-display
+ *
+ * Enables Remote UI to fetch agent log files when selecting an agent.
+ */
+export function setupAgentLogsProvider(): void {
+  const server = getRemoteAccessServer();
+  const wsHandler = server.getWebSocketHandler();
+
+  if (wsHandler) {
+    const agentLogsProvider = createAgentLogsProvider();
+    wsHandler.setAgentLogsProvider(agentLogsProvider);
+    logger.info('[remoteAccessHandlers] AgentLogsProvider set up successfully');
   }
 }
 

@@ -1049,6 +1049,7 @@ class SpecDetail {
 
   /**
    * Select an agent
+   * Bug fix: remote-ui-agent-log-display - Now loads agent logs when selected
    * @param {string} agentId
    */
   selectAgent(agentId) {
@@ -1068,6 +1069,13 @@ class SpecDetail {
         el.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
       }
     });
+
+    // Bug fix: Load agent logs from server
+    // Match Electron version behavior: load logs on agent selection
+    if (agent && this.currentSpec) {
+      const specId = agent.specId || this.currentSpec.feature_name;
+      wsManager.selectAgent(specId, agentId);
+    }
   }
 
   /**

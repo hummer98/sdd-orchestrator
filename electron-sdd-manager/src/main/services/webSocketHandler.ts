@@ -67,6 +67,24 @@ export interface BugInfo {
 }
 
 /**
+ * Log entry from log file (matching LogFileService format)
+ */
+export interface LogFileEntry {
+  readonly timestamp: string;
+  readonly stream: 'stdout' | 'stderr';
+  readonly data: string;
+}
+
+/**
+ * Agent logs provider interface for reading agent log files
+ * Requirements: Bug fix - remote-ui-agent-log-display
+ */
+export interface AgentLogsProvider {
+  /** Read agent logs from log file */
+  readLog(specId: string, agentId: string): Promise<LogFileEntry[]>;
+}
+
+/**
  * State provider interface for retrieving project/spec/bug information
  * Requirements: 1.1, 5.5 (Task 1.1 - StateProvider.getBugs())
  */
@@ -260,6 +278,7 @@ export class WebSocketHandler {
   private clientIdCounter = 0;
   private stateProvider: StateProvider | null = null;
   private workflowController: WorkflowController | null = null;
+  private agentLogsProvider: AgentLogsProvider | null = null;
 
   constructor(config: WebSocketHandlerConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -281,6 +300,16 @@ export class WebSocketHandler {
    */
   setWorkflowController(controller: WorkflowController): void {
     this.workflowController = controller;
+  }
+
+  /**
+   * Set the agent logs provider for reading agent log files
+   * Requirements: Bug fix - remote-ui-agent-log-display
+   *
+   * @param provider Agent logs provider implementation
+   */
+  setAgentLogsProvider(provider: AgentLogsProvider): void {
+    this.agentLogsProvider = provider;
   }
 
   /**
@@ -465,6 +494,9 @@ export class WebSocketHandler {
         break;
       case 'SELECT_SPEC':
         await this.handleSelectSpec(client, message);
+        break;
+      case 'SELECT_AGENT':
+        await this.handleSelectAgent(client, message);
         break;
       case 'EXECUTE_PHASE':
         await this.handleExecutePhase(client, message);
@@ -794,6 +826,62 @@ export class WebSocketHandler {
    */
   private async handleSelectSpec(_client: ClientInfo, _message: WebSocketMessage): Promise<void> {
     // TODO: Implement in task 3.3
+  }
+
+  /**
+   * Handle SELECT_AGENT message
+   * Requirements: Bug fix - remote-ui-agent-log-display
+   * Reads agent log file and returns logs to the client
+   */
+  private async handleSelectAgent(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const agentId = payload.agentId as string;
+
+    if (!specId || !agentId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or agentId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.agentLogsProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Agent logs provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const logs = await this.agentLogsProvider.readLog(specId, agentId);
+
+      this.send(client.id, {
+        type: 'AGENT_LOGS',
+        payload: {
+          specId,
+          agentId,
+          logs,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: 'LOG_READ_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to read agent logs',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
   }
 
   /**

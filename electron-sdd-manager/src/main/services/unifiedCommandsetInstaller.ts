@@ -4,6 +4,8 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 12.1, 12.2, 12.3
  */
 
+import { mkdir } from 'fs/promises';
+import path from 'path';
 import { CcSddWorkflowInstaller, InstallOptions, InstallResult, InstallError, Result } from './ccSddWorkflowInstaller';
 import { BugWorkflowInstaller } from './bugWorkflowInstaller';
 import { addPermissionsToProject } from './permissionsService';
@@ -388,6 +390,9 @@ export class UnifiedCommandsetInstaller {
       await this.recordCommandsetVersions(projectPath, successfullyInstalled);
     }
 
+    // Ensure required project directories exist (.kiro/steering, .kiro/specs)
+    await this.ensureProjectDirectories(projectPath);
+
     return {
       ok: true,
       value: {
@@ -430,6 +435,27 @@ export class UnifiedCommandsetInstaller {
     } catch (error) {
       // Log but don't fail installation if version recording fails
       console.warn('[UnifiedCommandsetInstaller] Failed to record commandset versions:', error);
+    }
+  }
+
+  /**
+   * Ensure required project directories exist
+   * Creates .kiro/steering and .kiro/specs directories if they don't exist
+   * @param projectPath - Project root path
+   */
+  private async ensureProjectDirectories(projectPath: string): Promise<void> {
+    const requiredDirs = [
+      path.join(projectPath, '.kiro', 'steering'),
+      path.join(projectPath, '.kiro', 'specs'),
+    ];
+
+    for (const dir of requiredDirs) {
+      try {
+        await mkdir(dir, { recursive: true });
+      } catch (error) {
+        // Log but don't fail installation if directory creation fails
+        console.warn(`[UnifiedCommandsetInstaller] Failed to create directory: ${dir}`, error);
+      }
     }
   }
 

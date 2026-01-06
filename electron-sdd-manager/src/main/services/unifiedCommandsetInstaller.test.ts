@@ -494,4 +494,73 @@ describe('UnifiedCommandsetInstaller', () => {
       expect(config.commandsets).toBeDefined();
     });
   });
+
+  // ============================================================
+  // Bug fix: commandset-install-missing-dirs
+  // Ensure required project directories are created after installation
+  // ============================================================
+
+  describe('project directories creation', () => {
+    it('should create .kiro/steering directory after profile installation', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+
+      const steeringDir = path.join(tempDir, '.kiro', 'steering');
+      const dirExists = await fs.access(steeringDir).then(() => true).catch(() => false);
+      expect(dirExists).toBe(true);
+    });
+
+    it('should create .kiro/specs directory after profile installation', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+
+      const specsDir = path.join(tempDir, '.kiro', 'specs');
+      const dirExists = await fs.access(specsDir).then(() => true).catch(() => false);
+      expect(dirExists).toBe(true);
+    });
+
+    it('should create both steering and specs directories for all profiles', async () => {
+      const profiles: ProfileName[] = ['cc-sdd', 'cc-sdd-agent', 'spec-manager'];
+
+      for (const profile of profiles) {
+        // Create fresh temp directory for each profile
+        const profileTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'profile-test-'));
+
+        try {
+          const result = await installer.installByProfile(profileTempDir, profile);
+          expect(result.ok).toBe(true);
+
+          const steeringDir = path.join(profileTempDir, '.kiro', 'steering');
+          const specsDir = path.join(profileTempDir, '.kiro', 'specs');
+
+          const steeringExists = await fs.access(steeringDir).then(() => true).catch(() => false);
+          const specsExists = await fs.access(specsDir).then(() => true).catch(() => false);
+
+          expect(steeringExists).toBe(true);
+          expect(specsExists).toBe(true);
+        } finally {
+          await fs.rm(profileTempDir, { recursive: true, force: true });
+        }
+      }
+    });
+
+    it('should not fail if directories already exist', async () => {
+      // Pre-create directories
+      await fs.mkdir(path.join(tempDir, '.kiro', 'steering'), { recursive: true });
+      await fs.mkdir(path.join(tempDir, '.kiro', 'specs'), { recursive: true });
+
+      // Add a test file to steering
+      await fs.writeFile(path.join(tempDir, '.kiro', 'steering', 'test.md'), '# Test');
+
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+
+      // Verify existing file is preserved
+      const testFileExists = await fs.access(path.join(tempDir, '.kiro', 'steering', 'test.md')).then(() => true).catch(() => false);
+      expect(testFileExists).toBe(true);
+    });
+  });
 });

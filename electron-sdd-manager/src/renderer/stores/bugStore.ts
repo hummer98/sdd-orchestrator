@@ -2,6 +2,11 @@
  * Bug Store
  * Manages bug list and detail state
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+ *
+ * Bug fix: spec-agent-list-not-updating-on-auto-execution
+ * - Removed module-scope currentProjectPath variable (SSOT violation)
+ * - refreshBugs() now gets project path from projectStore.currentProject (SSOT)
+ * - Aligned with specStore design pattern
  */
 
 import { create } from 'zustand';
@@ -44,9 +49,6 @@ interface BugActions {
 
 type BugStore = BugState & BugActions;
 
-// Store the current project path for refresh
-let currentProjectPath: string | null = null;
-
 // Cleanup function for bugs watcher
 let watcherCleanup: (() => void) | null = null;
 
@@ -61,7 +63,6 @@ export const useBugStore = create<BugStore>((set, get) => ({
 
   // Actions
   loadBugs: async (projectPath: string) => {
-    currentProjectPath = projectPath;
     set({ isLoading: true, error: null });
 
     try {
@@ -123,9 +124,14 @@ export const useBugStore = create<BugStore>((set, get) => ({
   },
 
   refreshBugs: async () => {
-    if (currentProjectPath) {
+    // SSOT: Get project path from projectStore (aligned with specStore pattern)
+    // Bug fix: spec-agent-list-not-updating-on-auto-execution
+    const { useProjectStore } = await import('./projectStore');
+    const currentProject = useProjectStore.getState().currentProject;
+
+    if (currentProject) {
       try {
-        const bugs = await window.electronAPI.readBugs(currentProjectPath);
+        const bugs = await window.electronAPI.readBugs(currentProject);
         set({ bugs });
 
         // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック

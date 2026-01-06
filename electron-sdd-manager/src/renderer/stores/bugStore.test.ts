@@ -1,6 +1,9 @@
 /**
  * Bug Store Tests
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+ *
+ * Bug fix: spec-agent-list-not-updating-on-auto-execution
+ * - Added projectStore mock for refreshBugs tests (SSOT pattern)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -23,6 +26,16 @@ vi.stubGlobal('window', {
     onBugsChanged: mockOnBugsChanged,
   },
 });
+
+// Mock projectStore for refreshBugs (SSOT pattern)
+const mockCurrentProject = '/project';
+vi.mock('./projectStore', () => ({
+  useProjectStore: {
+    getState: () => ({
+      currentProject: mockCurrentProject,
+    }),
+  },
+}));
 
 const mockBugs: BugMetadata[] = [
   {
@@ -151,12 +164,26 @@ describe('bugStore', () => {
   });
 
   describe('refreshBugs', () => {
-    it('should refresh bugs list', async () => {
-      mockReadBugs.mockResolvedValue(mockBugs);
-      mockStartBugsWatcher.mockResolvedValue(undefined);
+    it('should refresh bugs list using projectStore.currentProject (SSOT)', async () => {
+      // Bug fix: spec-agent-list-not-updating-on-auto-execution
+      // refreshBugs now gets project path from projectStore.currentProject (SSOT)
+      // No need to call loadBugs first
 
-      // First load
-      await useBugStore.getState().loadBugs('/project');
+      mockReadBugs.mockResolvedValue(mockBugs);
+
+      // Directly call refreshBugs (should use projectStore.currentProject)
+      await useBugStore.getState().refreshBugs();
+
+      // Should call readBugs with projectStore.currentProject
+      expect(mockReadBugs).toHaveBeenCalledWith(mockCurrentProject);
+      expect(useBugStore.getState().bugs).toEqual(mockBugs);
+    });
+
+    it('should refresh bugs list with updated data', async () => {
+      mockReadBugs.mockResolvedValue(mockBugs);
+
+      // First refresh
+      await useBugStore.getState().refreshBugs();
 
       // Update mock to return updated data
       const updatedBugs = [...mockBugs, {

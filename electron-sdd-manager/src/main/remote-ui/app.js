@@ -463,9 +463,12 @@ class App {
     }
 
     // Update agents
+    // Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
+    // Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
     if (agents) {
       this.agents = agents;
-      this.specDetail.updateAgentList(this.agents);
+      this.specDetail.updateAgentList(this.getFilteredAgents());
+      this.specList.updateAgents(agents);
     }
 
     // Load initial logs
@@ -577,7 +580,8 @@ class App {
         lastActivityAt: lastActivityAt || new Date().toISOString(),
       });
     }
-    this.specDetail.updateAgentList(this.agents);
+    // Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
+    this.specDetail.updateAgentList(this.getFilteredAgents());
 
     // Update running state
     switch (status) {
@@ -596,12 +600,15 @@ class App {
 
   /**
    * Handle AGENT_LIST message
+   * Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
+   * Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
    * @param {Object} payload
    */
   handleAgentList(payload) {
     const { agents } = payload || {};
     this.agents = agents || [];
-    this.specDetail.updateAgentList(this.agents);
+    this.specDetail.updateAgentList(this.getFilteredAgents());
+    this.specList.updateAgents(this.agents);
   }
 
   /**
@@ -850,6 +857,34 @@ class App {
       return '.../' + parts.slice(-2).join('/');
     }
     return path;
+  }
+
+  /**
+   * Get the current spec ID based on selected spec or bug
+   * Bug fix: remote-ui-agent-list-unfiltered
+   * @returns {string|null} The current spec ID or null if none selected
+   */
+  getCurrentSpecId() {
+    if (this.selectedSpec) {
+      return this.selectedSpec.feature_name;
+    }
+    if (this.selectedBug) {
+      return `bug:${this.selectedBug.name}`;
+    }
+    return null;
+  }
+
+  /**
+   * Filter agents by the current spec/bug selection
+   * Bug fix: remote-ui-agent-list-unfiltered
+   * @returns {Array} Filtered agents for the current spec/bug
+   */
+  getFilteredAgents() {
+    const currentSpecId = this.getCurrentSpecId();
+    if (!currentSpecId) {
+      return [];
+    }
+    return this.agents.filter(agent => agent.specId === currentSpecId);
   }
 
   // ============================================================

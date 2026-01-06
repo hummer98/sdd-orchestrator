@@ -138,8 +138,19 @@ class SpecList {
   constructor() {
     this.containerEl = document.getElementById('spec-list');
     this.specs = [];
+    this.agents = [];
     this.selectedSpecId = null;
     this.onSelect = null;
+  }
+
+  /**
+   * Update agents list for running agent count display
+   * Bug fix: remote-ui-agent-list-feature-parity
+   * @param {Array} agents
+   */
+  updateAgents(agents) {
+    this.agents = agents || [];
+    this.render();
   }
 
   /**
@@ -218,16 +229,54 @@ class SpecList {
     const phase = spec.phase || 'initialized';
     const formattedDate = this.formatUpdatedDate(spec.updated_at || spec.updatedAt);
 
+    // Bug fix: remote-ui-agent-list-feature-parity
+    // Count running agents for this spec (matches Electron version SpecList.tsx:217-225)
+    const runningAgentCount = this.getRunningAgentCount(spec.feature_name);
+
     return `
       <div class="spec-card ${selectedClass}" data-spec-id="${spec.feature_name}" data-testid="remote-spec-item-${spec.feature_name}">
         <div class="flex flex-col gap-1">
-          <h3 class="font-medium truncate text-gray-800 dark:text-gray-200">${spec.feature_name}</h3>
+          <div class="flex items-center gap-2">
+            <h3 class="font-medium truncate text-gray-800 dark:text-gray-200 flex-1">${spec.feature_name}</h3>
+            ${runningAgentCount > 0 ? this.renderRunningAgentBadge(runningAgentCount) : ''}
+          </div>
           <div class="flex items-center gap-2">
             ${this.renderPhaseBadge(phase)}
             <span class="text-xs text-gray-400">${formattedDate}</span>
           </div>
         </div>
       </div>
+    `;
+  }
+
+  /**
+   * Get count of running agents for a spec
+   * Bug fix: remote-ui-agent-list-feature-parity
+   * @param {string} specId
+   * @returns {number}
+   */
+  getRunningAgentCount(specId) {
+    if (!this.agents || this.agents.length === 0) return 0;
+    return this.agents.filter(agent =>
+      agent.specId === specId && agent.status === 'running'
+    ).length;
+  }
+
+  /**
+   * Render running agent count badge
+   * Bug fix: remote-ui-agent-list-feature-parity
+   * Matches Electron version's Bot icon + count badge (SpecList.tsx:217-225)
+   * @param {number} count
+   * @returns {string}
+   */
+  renderRunningAgentBadge(count) {
+    return `
+      <span class="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded" title="${count} running agent${count !== 1 ? 's' : ''}">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+        </svg>
+        ${count}
+      </span>
     `;
   }
 
@@ -263,6 +312,8 @@ class SpecList {
       'design-generated': { label: '設計済', colorClass: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
       'tasks-generated': { label: 'タスク済', colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
       'implementation-complete': { label: '実装完了', colorClass: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
+      'inspection-complete': { label: '検査完了', colorClass: 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' },
+      'deploy-complete': { label: 'デプロイ完了', colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
     };
 
     const config = phaseConfig[phase];

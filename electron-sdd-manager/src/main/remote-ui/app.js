@@ -581,7 +581,9 @@ class App {
       });
     }
     // Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
+    // Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
     this.specDetail.updateAgentList(this.getFilteredAgents());
+    this.specList.updateAgents(this.agents);
 
     // Update running state
     switch (status) {

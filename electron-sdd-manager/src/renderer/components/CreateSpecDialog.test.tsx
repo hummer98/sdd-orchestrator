@@ -44,6 +44,7 @@ describe('CreateSpecDialog', () => {
     window.electronAPI = {
       ...window.electronAPI,
       executeSpecInit: vi.fn().mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'spec-init', status: 'running' }),
+      executeSpecPlan: vi.fn().mockResolvedValue({ agentId: 'agent-456', specId: '', phase: 'spec-plan', status: 'running' }),
       createSpec: vi.fn(),
     };
   });
@@ -338,6 +339,156 @@ describe('CreateSpecDialog', () => {
       const textareaAfterReopen = screen.getByLabelText('説明');
       fireEvent.change(textareaAfterReopen, { target: { value: 'テスト' } });
       expect(createButtonAfterReopen).not.toBeDisabled();
+    });
+  });
+
+  // ============================================================
+  // spec-plan-ui-integration feature: executeSpecPlan tests
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 6.1, 6.2
+  // ============================================================
+  describe('spec-plan-ui-integration: Plan Start button', () => {
+    it('should render "プランニングで開始" button', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      expect(screen.getByRole('button', { name: /プランニングで開始/i })).toBeInTheDocument();
+    });
+
+    it('should disable "プランニングで開始" button when description is empty', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      expect(planButton).toBeDisabled();
+    });
+
+    it('should enable "プランニングで開始" button when description is not empty', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'abc' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      expect(planButton).not.toBeDisabled();
+    });
+
+    it('should call executeSpecPlan when "プランニングで開始" button is clicked', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          'プランニングしたい機能の説明',
+          'kiro'
+        );
+      });
+    });
+
+    it('should use commandPrefix from workflow store when calling executeSpecPlan', async () => {
+      useWorkflowStore.setState({
+        commandPrefix: 'spec-manager',
+      });
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          'プランニングしたい機能の説明',
+          'spec-manager'
+        );
+      });
+    });
+
+    it('should navigate to project agents panel after starting spec-plan', async () => {
+      const selectForProjectAgents = vi.fn();
+      useAgentStore.setState({ selectForProjectAgents });
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(selectForProjectAgents).toHaveBeenCalled();
+      });
+    });
+
+    it('should close dialog after starting spec-plan', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      });
+    });
+
+    it('should show error message when spec-plan fails', async () => {
+      window.electronAPI.executeSpecPlan = vi.fn().mockRejectedValue(new Error('spec-plan failed'));
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/spec-plan failed/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show loading state when spec-plan is in progress', async () => {
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-456' }), 100))
+      );
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      // Should show loading state
+      await waitFor(() => {
+        expect(screen.getByText(/開始中/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should NOT call executeSpecInit when "プランニングで開始" button is clicked', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalled();
+      });
+
+      // Should NOT call executeSpecInit
+      expect(window.electronAPI.executeSpecInit).not.toHaveBeenCalled();
     });
   });
 });

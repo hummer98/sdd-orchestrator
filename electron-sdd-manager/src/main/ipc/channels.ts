@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   EXECUTE_SPEC_STATUS: 'ipc:execute-spec-status',
   EXECUTE_TASK_IMPL: 'ipc:execute-task-impl',
   EXECUTE_SPEC_INIT: 'ipc:execute-spec-init',
+  EXECUTE_SPEC_PLAN: 'ipc:execute-spec-plan', // spec-plan-ui-integration feature
   EXECUTE_BUG_CREATE: 'ipc:execute-bug-create',
 
   // Agent Events (Task 27.2)

@@ -152,6 +152,12 @@ export const SPEC_INIT_COMMANDS: Record<CommandPrefix, string> = {
   'spec-manager': '/spec-manager:init',
 };
 
+/** spec-plan コマンドマッピング (spec-plan-ui-integration feature) */
+export const SPEC_PLAN_COMMANDS: Record<CommandPrefix, string | undefined> = {
+  kiro: '/kiro:spec-plan',
+  'spec-manager': undefined, // 将来的に追加予定 (DD-002)
+};
+
 /**
  * フェーズ別allowed-toolsマッピング
  * スラッシュコマンドのフロントマターで定義されているallowed-toolsと一致させる
@@ -182,6 +188,8 @@ const PHASE_ALLOWED_TOOLS: Record<string, string[]> = {
   'bug-fix': ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'],
   'bug-verify': ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'],
   'bug-status': ['Read', 'Glob'],
+  // spec-plan系 (spec-plan-ui-integration feature)
+  'spec-plan': ['Read', 'Write', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Task'],
 };
 
 /**

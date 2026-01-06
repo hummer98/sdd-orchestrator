@@ -28,6 +28,7 @@
 | コマンド | ファイル作成 | ファイル編集 | 前提条件 | OK時のspec.json | NG時のspec.json | 書き換え主体 |
 |---------|-------------|-------------|---------|-----------------|-----------------|-------------|
 | spec-init | `spec.json`, `requirements.md` | - | テンプレート存在 | phase: `initialized` | 変更なし | Claude |
+| spec-plan | `spec.json`, `requirements.md` | - | 説明文提供 | phase: `requirements-generated`, approvals.requirements.generated: true, approved: false | 変更なし | Claude |
 | spec-status | - | - | spec.json存在 | - | - | - (読取専用) |
 | validate-gap | `gap-analysis.md` | - | requirements.md存在 | 変更なし | 変更なし | - |
 | validate-design | `design-review-report.md` | - | design.md存在 | 変更なし | 変更なし | - |
@@ -63,6 +64,7 @@ Slash Command経由でkiroサブエージェントに委譲。Task ツールで�
 | コマンド | ファイル作成 | ファイル編集 | 前提条件 | OK時のspec.json | NG時のspec.json | 書き換え主体 |
 |---------|-------------|-------------|---------|-----------------|-----------------|-------------|
 | spec-init | `spec.json`, `requirements.md` | - | テンプレート存在 | phase: `initialized` | 変更なし | Claude |
+| spec-plan | `spec.json`, `requirements.md` | - | 説明文提供 | phase: `requirements-generated`, approvals.requirements.generated: true, approved: false | 変更なし | Claude |
 | spec-quick | `spec.json`, `requirements.md`, `design.md`, `tasks.md` | - | 説明文提供 | phase: `tasks-generated` | 中断時点のphase | Claude (各フェーズ経由) |
 | spec-status | - | - | spec.json存在 | - | - | - (読取専用) |
 | validate-gap | `gap-analysis.md` | - | requirements.md存在 | 変更なし | 変更なし | - |

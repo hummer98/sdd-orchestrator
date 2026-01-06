@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { X, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { X, Plus, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
 import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../stores';
 import { clsx } from 'clsx';
 
@@ -56,6 +56,43 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
       handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : '仕様の作成に失敗しました');
+      setIsCreating(false);
+    }
+  };
+
+  /**
+   * Handle "Plan Start" button click
+   * Launches spec-plan agent for interactive requirements generation
+   * spec-plan-ui-integration feature (Task 4)
+   */
+  const handlePlanStart = async () => {
+    if (!currentProject) return;
+
+    // Validate description: just check if not empty
+    const trimmed = description.trim();
+    if (!trimmed) {
+      setError('説明を入力してください');
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      // Call spec-plan via IPC (uses /kiro:spec-plan based on commandPrefix)
+      // Don't wait for completion - just start the agent and close dialog
+      const agentInfo = await window.electronAPI.executeSpecPlan(currentProject, trimmed, commandPrefix);
+
+      // Add agent to store and navigate to project agents panel
+      addAgent('', agentInfo);
+      selectForProjectAgents();
+      selectAgent(agentInfo.agentId);
+
+      notify.success('プランニングを開始しました（プロジェクトAgentパネルで対話を続けてください）');
+      handleClose();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'プランニングの開始に失敗しました';
+      setError(errorMessage);
       setIsCreating(false);
     }
   };
@@ -156,6 +193,29 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
             )}
           >
             キャンセル
+          </button>
+          {/* Plan Start button - spec-plan-ui-integration feature (Task 4) */}
+          <button
+            onClick={handlePlanStart}
+            disabled={isCreating || !isValid}
+            className={clsx(
+              'flex items-center gap-2 px-4 py-2 rounded-md',
+              'bg-purple-500 hover:bg-purple-600 text-white',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+            title="対話形式でプランニングを開始（Decision Log付き）"
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                開始中...
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-4 h-4" />
+                プランニングで開始
+              </>
+            )}
           </button>
           <button
             onClick={handleCreate}

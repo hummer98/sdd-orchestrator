@@ -9,7 +9,7 @@ import { FileService } from '../services/fileService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase, SelectProjectResult, SelectProjectError } from '../../renderer/types';
-import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError, SPEC_INIT_COMMANDS, CommandPrefix } from '../services/specManagerService';
+import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
@@ -952,6 +952,50 @@ export function registerIpcHandlers(): void {
       }
 
       logger.info('[handlers] executeSpecInit succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  // ============================================================
+  // Spec Plan - Launch spec-plan agent for interactive requirements generation
+  // spec-plan-ui-integration feature
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_SPEC_PLAN,
+    async (event, projectPath: string, description: string, commandPrefix: CommandPrefix = 'kiro') => {
+      logger.info('[handlers] EXECUTE_SPEC_PLAN called', { projectPath, description, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Get the appropriate slash command based on commandPrefix
+      // DD-002: spec-manager:plan is not yet implemented
+      const slashCommand = SPEC_PLAN_COMMANDS[commandPrefix];
+      if (!slashCommand) {
+        throw new Error('spec-manager:plan is not yet implemented. Use kiro prefix.');
+      }
+
+      // Start agent with specId='' (global agent)
+      // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
+      const result = await service.startAgent({
+        specId: '', // Empty specId for global agent
+        phase: 'spec-plan',
+        command: 'claude',
+        args: [`${slashCommand} "${description}"`], // Base flags added by service
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeSpecPlan failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeSpecPlan succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );

@@ -629,8 +629,11 @@ describe('useAgentStore', () => {
     // Bug fix: agent-selection-scope-mismatch
     // Agent追加時の自動選択スコープ制御テスト
     // ============================================================
+    // Bug fix: spec-agent-list-not-updating-on-auto-execution
+    // Updated tests for new architecture where onAgentRecordChanged receives only event info
+    // and loadAgents() is called to fetch full data
     describe('onAgentRecordChanged auto-selection scope (agent-selection-scope-mismatch)', () => {
-      let recordChangedCallback: ((type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void) | null = null;
+      let recordChangedCallback: ((type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => void) | null = null;
 
       beforeEach(() => {
         // Setup mock event listeners
@@ -650,18 +653,23 @@ describe('useAgentStore', () => {
           },
         }));
 
-        useAgentStore.getState().setupEventListeners();
-
         const projectAgent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'project-agent-1',
           specId: '', // Project Agent
         };
 
-        // Trigger add event
-        recordChangedCallback?.('add', projectAgent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          '': [projectAgent],
+        });
 
-        // Wait for async operations
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'project-agent-1', specId: '' });
+
+        // Wait for async operations (loadAgents + selectAgent)
         await vi.waitFor(() => {
           const state = useAgentStore.getState();
           expect(state.selectedAgentId).toBe('project-agent-1');
@@ -679,15 +687,21 @@ describe('useAgentStore', () => {
         // Clear dynamic import cache
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const matchingAgent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'matching-agent',
           specId: 'spec-1', // Matches selected spec
         };
 
-        recordChangedCallback?.('add', matchingAgent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'spec-1': [matchingAgent],
+        });
+
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'matching-agent', specId: 'spec-1' });
 
         // Wait for async dynamic import
         await vi.waitFor(() => {
@@ -706,22 +720,30 @@ describe('useAgentStore', () => {
 
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const nonMatchingAgent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'non-matching-agent',
           specId: 'spec-B', // Does NOT match selected spec
         };
 
-        recordChangedCallback?.('add', nonMatchingAgent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'spec-B': [nonMatchingAgent],
+        });
 
-        // Wait a bit for any async operations
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'non-matching-agent', specId: 'spec-B' });
+
+        // Wait for loadAgents to complete
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          // Agent should be added to Map but NOT selected
+          expect(state.agents.get('spec-B')).toBeDefined();
+        });
 
         const state = useAgentStore.getState();
-        // Agent should be added to Map but NOT selected
-        expect(state.agents.get('spec-B')).toBeDefined();
         expect(state.selectedAgentId).toBeNull();
       });
 
@@ -735,21 +757,30 @@ describe('useAgentStore', () => {
 
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const agent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'orphan-agent',
           specId: 'spec-1',
         };
 
-        recordChangedCallback?.('add', agent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'spec-1': [agent],
+        });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'orphan-agent', specId: 'spec-1' });
+
+        // Wait for loadAgents to complete
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          // Agent should be added but NOT selected
+          expect(state.agents.get('spec-1')).toBeDefined();
+        });
 
         const state = useAgentStore.getState();
-        // Agent should be added but NOT selected
-        expect(state.agents.get('spec-1')).toBeDefined();
         expect(state.selectedAgentId).toBeNull();
       });
 
@@ -770,15 +801,21 @@ describe('useAgentStore', () => {
 
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const bugAgent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'bug-agent-1',
           specId: 'bug:my-bug', // Bug Agent format
         };
 
-        recordChangedCallback?.('add', bugAgent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'bug:my-bug': [bugAgent],
+        });
+
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'bug-agent-1', specId: 'bug:my-bug' });
 
         await vi.waitFor(() => {
           const state = useAgentStore.getState();
@@ -803,20 +840,29 @@ describe('useAgentStore', () => {
 
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const bugAgent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'bug-agent-mismatch',
           specId: 'bug:my-bug', // Does NOT match selected bug
         };
 
-        recordChangedCallback?.('add', bugAgent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'bug:my-bug': [bugAgent],
+        });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'bug-agent-mismatch', specId: 'bug:my-bug' });
+
+        // Wait for loadAgents to complete
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          expect(state.agents.get('bug:my-bug')).toBeDefined();
+        });
 
         const state = useAgentStore.getState();
-        expect(state.agents.get('bug:my-bug')).toBeDefined();
         expect(state.selectedAgentId).toBeNull();
       });
 
@@ -830,17 +876,27 @@ describe('useAgentStore', () => {
 
         vi.resetModules();
 
-        useAgentStore.getState().setupEventListeners();
-
         const agent: AgentInfo = {
           ...mockAgentInfo,
           agentId: 'added-not-selected',
           specId: 'spec-xyz',
         };
 
-        recordChangedCallback?.('add', agent);
+        // Mock getAllAgents to return the agent after loadAgents() is called
+        window.electronAPI.getAllAgents = vi.fn().mockResolvedValue({
+          'spec-xyz': [agent],
+        });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        useAgentStore.getState().setupEventListeners();
+
+        // Trigger add event with only event info (new architecture)
+        recordChangedCallback?.('add', { agentId: 'added-not-selected', specId: 'spec-xyz' });
+
+        // Wait for loadAgents to complete
+        await vi.waitFor(() => {
+          const state = useAgentStore.getState();
+          expect(state.agents.get('spec-xyz')).toBeDefined();
+        });
 
         const state = useAgentStore.getState();
         // Agent MUST be in the Map

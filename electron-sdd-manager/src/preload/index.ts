@@ -268,15 +268,17 @@ const electronAPI = {
   },
 
   // Agent Record Watcher
+  // Bug fix: spec-agent-list-not-updating-on-auto-execution
+  // Simplified to only receive event info (specId, agentId) - renderer fetches full data via loadAgents()
   onAgentRecordChanged: (
-    callback: (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void
+    callback: (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => void
   ): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       type: 'add' | 'change' | 'unlink',
-      agent: AgentInfo | { agentId?: string; specId?: string }
+      eventInfo: { agentId?: string; specId?: string }
     ) => {
-      callback(type, agent);
+      callback(type, eventInfo);
     };
     ipcRenderer.on(IPC_CHANNELS.AGENT_RECORD_CHANGED, handler);
 

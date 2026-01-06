@@ -394,61 +394,66 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     );
 
     // Agent Record変更イベントリスナー（ファイル監視）
+    // Bug fix: spec-agent-list-not-updating-on-auto-execution
+    // Simplified to match specsWatcherService/bugsWatcherService pattern:
+    // Receive only event info (type, specId, agentId), then fetch full data via loadAgents()
+    // This avoids file read timing issues in the main process
     const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
-      (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => {
-        console.log('[agentStore] Agent record changed', { type, agent });
+      (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => {
+        console.log('[agentStore] Agent record changed', { type, eventInfo });
+
+        const { agentId, specId } = eventInfo;
+        // specId can be empty string for global agents, so check for undefined
+        if (!agentId || specId === undefined) {
+          console.warn('[agentStore] Invalid event info, missing agentId or specId');
+          return;
+        }
 
         if (type === 'unlink') {
           // ファイル削除時はAgentをストアから削除
-          const { agentId, specId } = agent as { agentId?: string; specId?: string };
-          // specId can be empty string for global agents, so check for undefined
-          if (agentId && specId !== undefined) {
-            const state = get();
-            const agents = state.agents.get(specId);
-            if (agents) {
-              const filtered = agents.filter((a) => a.agentId !== agentId);
-              const newAgents = new Map(state.agents);
-              if (filtered.length > 0) {
-                newAgents.set(specId, filtered);
-              } else {
-                newAgents.delete(specId);
-              }
-              set({ agents: newAgents });
+          const state = get();
+          const agents = state.agents.get(specId);
+          if (agents) {
+            const filtered = agents.filter((a) => a.agentId !== agentId);
+            const newAgents = new Map(state.agents);
+            if (filtered.length > 0) {
+              newAgents.set(specId, filtered);
+            } else {
+              newAgents.delete(specId);
             }
+            set({ agents: newAgents });
           }
         } else {
-          // add/change時はAgentを追加/更新
-          const agentInfo = agent as AgentInfo;
-          // specId can be empty string for global agents, so check for undefined
-          if (agentInfo.agentId && agentInfo.specId !== undefined) {
-            get().addAgent(agentInfo.specId, agentInfo);
+          // add/change時はloadAgents()で全データを再取得
+          // これにより、ファイル書き込みタイミングの問題を回避
+          get().loadAgents().then(() => {
             // 新規追加時のみ自動選択（File as SSOT: WorkflowViewからの直接呼び出しを廃止）
             // Bug fix: agent-selection-scope-mismatch - 選択中のspec/bugと一致する場合のみ自動選択
             if (type === 'add') {
               // Project Agent（specId=''）は常に自動選択
-              if (agentInfo.specId === '') {
-                get().selectAgent(agentInfo.agentId);
+              if (specId === '') {
+                get().selectAgent(agentId);
               } else {
                 // Spec/Bug Agentは選択中のspec/bugと一致する場合のみ自動選択
                 // Dynamic import to avoid circular dependency
                 import('./specStore').then(({ useSpecStore }) => {
                   const { selectedSpec } = useSpecStore.getState();
                   // Bug agents use 'bug:{bugName}' format
-                  if (agentInfo.specId.startsWith('bug:')) {
+                  if (specId.startsWith('bug:')) {
                     import('./bugStore').then(({ useBugStore }) => {
                       const { selectedBug } = useBugStore.getState();
                       const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
-                      if (agentInfo.specId === expectedSpecId) {
-                        get().selectAgent(agentInfo.agentId);
+                      if (specId === expectedSpecId) {
+                        get().selectAgent(agentId);
                       }
                     });
-                  } else if (selectedSpec && agentInfo.specId === selectedSpec.name) {
-                    get().selectAgent(agentInfo.agentId);
+                  } else if (selectedSpec && specId === selectedSpec.name) {
+                    get().selectAgent(agentId);
                   }
                 });
               }
             }
-          }
+          });
         }
       }
     );

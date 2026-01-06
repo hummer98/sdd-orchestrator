@@ -482,8 +482,10 @@ export interface ElectronAPI {
   onSpecsChanged(callback: (event: SpecsChangeEvent) => void): () => void;
 
   // Agent Record Watcher
+  // Bug fix: spec-agent-list-not-updating-on-auto-execution
+  // Simplified to only receive event info (specId, agentId) - renderer fetches full data via loadAgents()
   onAgentRecordChanged(
-    callback: (type: 'add' | 'change' | 'unlink', agent: AgentInfo | { agentId?: string; specId?: string }) => void
+    callback: (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => void
   ): () => void;
 
   // spec-manager Install (Requirements: 4.1-4.6)

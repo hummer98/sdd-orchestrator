@@ -21,6 +21,16 @@ vi.mock('../stores/notificationStore', () => ({
   })),
 }));
 
+// Mock projectStore for refreshBugs (SSOT pattern)
+// Bug fix: spec-agent-list-not-updating-on-auto-execution
+vi.mock('../stores/projectStore', () => ({
+  useProjectStore: {
+    getState: () => ({
+      currentProject: '/Users/test/project',
+    }),
+  },
+}));
+
 // Mock electronAPI
 const mockReadBugs = vi.fn();
 const mockReadBugDetail = vi.fn();

@@ -5,16 +5,18 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import * as fs from 'fs/promises';
 import { logger } from './logger';
-import type { AgentRecord } from './agentRecordService';
+// Bug fix: spec-agent-list-not-updating-on-auto-execution
+// Removed fs and AgentRecord imports - no longer reading files in this service
 
+// Bug fix: spec-agent-list-not-updating-on-auto-execution
+// Simplified event type - no longer includes record data
+// Renderer will fetch full data via loadAgents() to avoid file read timing issues
 export type AgentRecordChangeEvent = {
   type: 'add' | 'change' | 'unlink';
   path: string;
   specId?: string;
   agentId?: string;
-  record?: AgentRecord;
 };
 
 export type AgentRecordChangeCallback = (event: AgentRecordChangeEvent) => void;
@@ -59,18 +61,9 @@ export class AgentRecordWatcherService {
     return {};
   }
 
-  /**
-   * Read and parse agent record from file
-   */
-  private async readRecord(filePath: string): Promise<AgentRecord | undefined> {
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      return JSON.parse(content) as AgentRecord;
-    } catch (error) {
-      logger.warn('[AgentRecordWatcherService] Failed to read record', { filePath, error });
-      return undefined;
-    }
-  }
+  // Bug fix: spec-agent-list-not-updating-on-auto-execution
+  // Removed readRecord() method - file reading is now done by renderer via loadAgents()
+  // This simplifies the watcher to only notify about file events, matching specsWatcherService pattern
 
   /**
    * Start watching the agents directory
@@ -89,7 +82,7 @@ export class AgentRecordWatcherService {
       persistent: true,
       depth: 2, // Watch spec folders and their agent JSON files
       awaitWriteFinish: {
-        stabilityThreshold: 100,
+        stabilityThreshold: 200, // Increased from 100ms to allow file writes to complete
         pollInterval: 50,
       },
     });
@@ -109,8 +102,10 @@ export class AgentRecordWatcherService {
 
   /**
    * Handle file system events with debouncing
+   * Bug fix: spec-agent-list-not-updating-on-auto-execution
+   * Simplified to only notify about events - no file reading here
    */
-  private async handleEvent(type: AgentRecordChangeEvent['type'], filePath: string): Promise<void> {
+  private handleEvent(type: AgentRecordChangeEvent['type'], filePath: string): void {
     // Only process .json files
     if (!filePath.endsWith('.json')) {
       return;
@@ -131,20 +126,15 @@ export class AgentRecordWatcherService {
     }
 
     // Debounce to avoid multiple rapid events
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       this.debounceTimers.delete(filePath);
 
-      let record: AgentRecord | undefined;
-      if (type !== 'unlink') {
-        record = await this.readRecord(filePath);
-      }
-
+      // Simplified: only send event info, no file reading
       const event: AgentRecordChangeEvent = {
         type,
         path: filePath,
         specId,
         agentId,
-        record,
       };
 
       this.callbacks.forEach((cb) => cb(event));

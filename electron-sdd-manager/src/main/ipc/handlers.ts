@@ -2078,24 +2078,14 @@ export function startAgentRecordWatcher(window: BrowserWindow): void {
 
   agentRecordWatcherService = new AgentRecordWatcherService(currentProjectPath);
 
+  // Bug fix: spec-agent-list-not-updating-on-auto-execution
+  // Simplified to match specsWatcherService/bugsWatcherService pattern:
+  // Only send event info (type, specId, agentId), let renderer fetch full data via loadAgents()
+  // This avoids file read timing issues that caused silent failures when record was undefined
   agentRecordWatcherService.onChange((event) => {
     logger.debug('[handlers] Agent record changed', { type: event.type, specId: event.specId, agentId: event.agentId });
-    if (!window.isDestroyed() && event.record) {
-      // Send the full AgentInfo to renderer
-      const agentInfo: AgentInfo = {
-        agentId: event.record.agentId,
-        specId: event.record.specId,
-        phase: event.record.phase,
-        pid: event.record.pid,
-        sessionId: event.record.sessionId,
-        status: event.record.status,
-        startedAt: event.record.startedAt,
-        lastActivityAt: event.record.lastActivityAt,
-        command: event.record.command,
-      };
-      window.webContents.send(IPC_CHANNELS.AGENT_RECORD_CHANGED, event.type, agentInfo);
-    } else if (!window.isDestroyed() && event.type === 'unlink') {
-      // For unlink events, send just the IDs
+    if (!window.isDestroyed()) {
+      // Always send event info - renderer will fetch full data if needed
       window.webContents.send(IPC_CHANNELS.AGENT_RECORD_CHANGED, event.type, {
         agentId: event.agentId,
         specId: event.specId,

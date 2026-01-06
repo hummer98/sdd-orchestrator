@@ -99,7 +99,7 @@ When dialogue converges:
   "created_at": "{ISO-8601-timestamp}",
   "updated_at": "{ISO-8601-timestamp}",
   "language": "ja",
-  "phase": "requirements",
+  "phase": "requirements-generated",
   "approvals": {
     "requirements": {
       "generated": true,

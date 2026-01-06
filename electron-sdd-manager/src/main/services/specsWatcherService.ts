@@ -9,6 +9,7 @@ import * as path from 'path';
 import { readFile } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
+import { normalizeInspectionState, hasPassed } from '../../renderer/types/inspection';
 
 export type SpecsChangeEvent = {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
@@ -215,24 +216,15 @@ export class SpecsWatcherService {
         return;
       }
 
-      // Check inspection state for GO judgment (passed: true in latest round)
-      const inspection = specJson.inspection;
-      if (!inspection) {
-        logger.debug('[SpecsWatcherService] No inspection data found', { specId });
+      // Check inspection state for GO judgment using normalized inspection state
+      // Supports all formats: new (rounds/result), legacy (roundDetails/passed), very old (status/report)
+      const normalizedState = normalizeInspectionState(specJson.inspection);
+      if (!normalizedState) {
+        logger.debug('[SpecsWatcherService] No inspection data found or invalid format', { specId });
         return;
       }
 
-      // Handle both new format (roundDetails) and legacy format
-      let hasPassed = false;
-      if (inspection.roundDetails && Array.isArray(inspection.roundDetails) && inspection.roundDetails.length > 0) {
-        const latestRound = inspection.roundDetails[inspection.roundDetails.length - 1];
-        hasPassed = latestRound.passed === true;
-      } else if (inspection.result === 'GO') {
-        // Legacy format
-        hasPassed = true;
-      }
-
-      if (!hasPassed) {
+      if (!hasPassed(normalizedState)) {
         logger.debug('[SpecsWatcherService] Inspection not passed (no GO judgment)', { specId });
         return;
       }

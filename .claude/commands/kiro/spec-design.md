@@ -42,6 +42,8 @@ File patterns to read:
 Discovery: auto-detect based on requirements
 Mode: {generate or merge based on design.md existence}
 Language: respect spec.json language for design.md/research.md outputs
+
+CRITICAL: Generate "Design Decisions" section documenting WHY each major architectural choice was made, including alternatives considered and trade-offs.
 """
 )
 ```

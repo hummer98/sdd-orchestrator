@@ -98,6 +98,12 @@ Generate technical design document for feature **$1** based on approved requirem
 - Set `approvals.requirements.approved: true`
 - Update `updated_at` timestamp
 
+4. **Generate Design Decisions Section**:
+- Document all significant architectural decisions using DD-NNN format
+- For each decision: Context, Decision, Rationale, Alternatives Considered, Consequences
+- Cover: architecture pattern, technology choices, data model decisions, interface design, trade-offs
+- Reference requirement IDs where applicable
+
 ## Critical Constraints
  - **Type Safety**:
    - Enforce strong typing aligned with the project's technology stack.

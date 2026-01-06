@@ -107,10 +107,16 @@ Generate technical design document for feature based on approved requirements.
    - Set `approvals.requirements.approved: true`
    - Update `updated_at` timestamp
 
-4. **Internal Consistency Validation**:
+4. **Generate Design Decisions Section**:
+   - Document all significant architectural decisions using DD-NNN format
+   - For each decision: Context, Decision, Rationale, Alternatives Considered, Consequences
+   - Cover: architecture pattern, technology choices, data model decisions, interface design, trade-offs
+   - Reference requirement IDs where applicable
+
+5. **Internal Consistency Validation**:
    - Verify all sections describe the same architecture model
    - Check that sequence diagrams align with component interfaces
-   - If multiple execution approaches were considered, confirm ONE was selected and rationale documented in research.md
+   - If multiple execution approaches were considered, confirm ONE was selected and rationale documented in Design Decisions section
 
 ## Critical Constraints
  - **Type Safety**:
@@ -132,9 +138,12 @@ Generate technical design document for feature based on approved requirements.
 - Cross-check that data flows in diagrams align with component responsibilities
 
 ### Design Intent Documentation
-- Document the "why" behind each architectural decision in research.md
+- Document the "why" behind each architectural decision in the **Design Decisions** section of design.md
+- Use the DD-NNN format (e.g., DD-001, DD-002) for each decision
+- Include: Context, Decision, Rationale, Alternatives Considered, Consequences
 - Include performance/context/cost considerations that influenced the design
 - Make implicit assumptions explicit
+- Reference requirement IDs where applicable
 
 ### Command Prompt Design (for Claude Code features)
 - If feature includes `.claude/commands/`, specify which tools are called and why

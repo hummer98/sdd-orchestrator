@@ -32,62 +32,50 @@
 ## Task 2: Main側IPCエンドポイント追加
 
 - [ ] 2.1 IPCチャンネル定義の追加
-  - PARSE_TASKS_FOR_PARALLELチャンネルを定義する
-  - EXECUTE_IMPL_TASKチャンネルを定義する
-  - CANCEL_PARALLEL_IMPLチャンネルを定義する
-  - ON_PARALLEL_IMPL_PROGRESSイベントチャンネルを定義する
-  - _Requirements: 4.1_
+  - PARSE_TASKS_FOR_PARALLELチャンネルを定義する（`ipc:parse-tasks-for-parallel`）
+  - 既存のEXECUTE_TASK_IMPL、STOP_AGENT、AGENT_STATUS_CHANGEを活用
+  - _Requirements: 2.1_
 
 - [ ] 2.2 tasks.md解析IPCハンドラ実装
   - SpecManagerServiceにparseTasksForParallelメソッドを追加する
   - PARSE_TASKS_FOR_PARALLELハンドラを実装する
-  - specPathからtasks.mdを読み込みパーサーを呼び出す
+  - specId, featureNameからtasks.mdを読み込みパーサーを呼び出す
   - ParseResult型でグループ化されたタスク情報を返却する
   - _Requirements: 2.1, 2.4_
 
-- [ ] 2.3 タスク別実装起動IPCハンドラ実装
-  - SpecManagerServiceにexecuteImplTaskメソッドを追加する
-  - EXECUTE_IMPL_TASKハンドラを実装する
-  - 指定されたtaskIdに対してAgent起動処理を実行する
-  - workflowStore.commandPrefixを使用して/kiro:spec-implと/spec-manager:implを切り替える
-  - AgentRegistryへの登録とagentIdの返却を行う
-  - _Requirements: 4.1, 4.4_
-
-- [ ] 2.4 キャンセルIPCハンドラ実装
-  - SpecManagerServiceにcancelParallelImplメソッドを追加する
-  - CANCEL_PARALLEL_IMPLハンドラを実装する
-  - 指定specPathの並列実装をキャンセルするフラグを設定する
-  - 実行中タスクの終了処理はParallelImplServiceで管理する
-  - _Requirements: 9.1, 9.2, 9.3_
-
-- [ ] 2.5 IPCハンドラの単体テスト作成
-  - 各IPCハンドラのモックテスト
+- [ ] 2.3 IPCハンドラの単体テスト作成
+  - PARSE_TASKS_FOR_PARALLELハンドラのモックテスト
   - エラーケース（ファイル不在、パースエラー）のテスト
-  - _Requirements: 2.1, 4.1, 9.1_
+  - _Requirements: 2.1_
+
+**設計変更による削除タスク**:
+- ~~タスク別実装起動IPCハンドラ実装~~: 既存の`EXECUTE_TASK_IMPL`を活用
+- ~~キャンセルIPCハンドラ実装~~: 既存の`STOP_AGENT`を活用
 
 ## Task 3: ParallelImplService実装
 
 - [ ] 3.1 ParallelImplServiceのコア状態管理実装
   - ParallelImplState型の状態を管理するZustand storeを作成する
-  - status、currentGroupIndex、activeTaskIds、completedTasks、failedTasksを管理する
+  - status、specId、featureName、currentGroupIndex、activeAgentIds、completedTasks、failedTasksを管理する
   - 状態遷移（idle→parsing→running→completed/error/cancelled）を実装する
   - _Requirements: 4.1, 5.1_
 
 - [ ] 3.2 グループ内タスク並列起動ロジック実装
-  - グループ内のタスクを並列でIPC経由でAgent起動する
+  - グループ内のタスクを並列で既存`executeTaskImpl` IPC経由でAgent起動する
   - MAX_CONCURRENT_SPECS=5の上限を適用する
   - 上限超過時のキューイング処理を実装する
   - taskIdとagentIdのマッピングを管理する
-  - _Requirements: 4.1, 4.2, 4.3_
+  - workflowStore.commandPrefixを使用してコマンドセットを選択する
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
 - [ ] 3.3 Agent完了検知とグループ進行制御の実装
-  - agentStore経由でAgent完了を検知する
+  - 既存`onAgentStatusChange`イベント経由でAgent完了を検知する
   - グループ内全タスク完了時に次グループへ自動進行する
   - 1回のボタン押下で全グループ完了まで継続する
   - _Requirements: 5.1, 5.2, 5.3_
 
 - [ ] 3.4 エラーハンドリングの実装
-  - タスク失敗時に失敗タスクIDを記録する
+  - Agent失敗ステータス検知時に失敗タスクIDを記録する
   - 失敗検知時に次グループへの進行を停止する
   - 実行中の他タスクは完了まで継続させる
   - ユーザーへエラー情報を通知する
@@ -96,7 +84,7 @@
 - [ ] 3.5 キャンセル処理の実装
   - cancelParallelImpl()メソッドを実装する
   - 新規タスク起動を停止する
-  - 実行中Claudeセッションの終了処理を行う
+  - 既存`stopAgent` IPC経由で実行中Claudeセッションを終了する
   - 状態をcancelledに更新する
   - _Requirements: 9.1, 9.2, 9.3_
 
@@ -110,12 +98,10 @@
 ## Task 4: preload API追加
 
 - [ ] 4. preloadスクリプトにRenderer API追加
-  - parseTasksForParallel APIを追加する
-  - executeImplTask APIを追加する
-  - cancelParallelImpl APIを追加する
-  - onParallelImplProgressイベントリスナーを追加する
+  - parseTasksForParallel APIを追加する（新規）
   - ElectronAPI型定義を更新する
-  - _Requirements: 4.1_
+  - 既存のexecuteTaskImpl、stopAgent、onAgentStatusChangeを活用（変更なし）
+  - _Requirements: 2.1_
 
 ## Task 5: UIコンポーネント実装
 

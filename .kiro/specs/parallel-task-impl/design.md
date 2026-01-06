@@ -21,6 +21,7 @@
 - tasks.mdの(P)マーク生成ロジック（既存のtasks-parallel-analysis.mdで対応済み）
 - 並列ビルド・テスト実行（impl内部の処理）
 - リモートプロジェクトでの並列実装（将来拡張）
+- Remote UI（VS Code Web Extension等）対応: 複数Claudeセッションの同時起動はDesktop専用機能として設計。Remote UI環境での並列実行は複雑性が高いため、将来拡張として別Specで検討する
 
 ## Architecture
 
@@ -138,14 +139,14 @@ sequenceDiagram
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
 | 1.1-1.4 | 並列実装ボタン配置 | PhaseExecutionPanel, ParallelImplButton | なし | UI表示フロー |
-| 2.1-2.5 | tasks.mdパーサー | taskParallelParser | parseTasksForParallel | パース処理 |
+| 2.1-2.5 | tasks.mdパーサー | taskParallelParser | parseTasksForParallel（新規IPC） | パース処理 |
 | 3.1-3.3 | タスクグループ化 | taskParallelParser | TaskGroup型 | グループ化ロジック |
-| 4.1-4.4 | 並列Claudeセッション起動 | ParallelImplService, SpecManagerService | executeParallelImpl | 並列起動フロー |
-| 5.1-5.3 | グループ間自動進行 | ParallelImplService | onGroupComplete | 自動進行フロー |
-| 6.1-6.4 | エラーハンドリング | ParallelImplService | onTaskFailed | エラー処理フロー |
-| 7.1-7.4 | 進捗表示 | AgentListPanel, ParallelImplButton | agentStore | UI更新フロー |
+| 4.1-4.4 | 並列Claudeセッション起動 | ParallelImplService | executeTaskImpl（既存IPC）| 並列起動フロー |
+| 5.1-5.3 | グループ間自動進行 | ParallelImplService | onAgentStatusChange（既存） | 自動進行フロー |
+| 6.1-6.4 | エラーハンドリング | ParallelImplService | onAgentStatusChange（既存） | エラー処理フロー |
+| 7.1-7.4 | 進捗表示 | AgentListPanel, ParallelImplButton | agentStore（既存） | UI更新フロー |
 | 8.1-8.3 | 既存機能互換性 | PhaseExecutionPanel | 既存インターフェース維持 | なし |
-| 9.1-9.3 | キャンセル機能 | ParallelImplService | cancelParallelImpl | キャンセルフロー |
+| 9.1-9.3 | キャンセル機能 | ParallelImplService | stopAgent（既存IPC） | キャンセルフロー |
 
 ## Components and Interfaces
 
@@ -245,13 +246,16 @@ interface TaskParallelParser {
 
 | Method | Channel | Request | Response | Errors |
 |--------|---------|---------|----------|--------|
-| invoke | PARSE_TASKS_FOR_PARALLEL | { specPath: string } | ParseResult | PARSE_ERROR |
-| invoke | EXECUTE_IMPL_TASK | { specPath: string, taskId: string } | { agentId: string } | SPAWN_ERROR, GROUP_CONFLICT |
-| invoke | CANCEL_PARALLEL_IMPL | { specPath: string } | { cancelled: boolean } | NOT_FOUND |
+| invoke | PARSE_TASKS_FOR_PARALLEL | { specId: string, featureName: string } | ParseResult | PARSE_ERROR, FILE_NOT_FOUND |
+
+**既存APIの活用**:
+- `EXECUTE_TASK_IMPL`: 既存チャンネルで個別タスク実装起動（`specId`, `featureName`, `taskId`, `commandPrefix`）
+- `STOP_AGENT`: 既存チャンネルでAgentキャンセル（`agentId`）
+- `AGENT_STATUS_CHANGE`: 既存イベントでAgent完了検知
 
 **Implementation Notes**
-- Integration: 既存のexecuteImpl()を拡張し、taskId指定を可能にする
-- Validation: MAX_CONCURRENT_SPECS超過時はエラー返却
+- Integration: 新規IPCは `PARSE_TASKS_FOR_PARALLEL` のみ。タスク実行は既存の `executeTaskImpl` を活用
+- Validation: MAX_CONCURRENT_SPECS超過チェックはRenderer側ParallelImplServiceで実施
 
 ---
 
@@ -294,19 +298,23 @@ type ParallelImplStatus =
 
 interface ParallelImplState {
   readonly status: ParallelImplStatus;
+  readonly specId: string | null;        // 実行中のSpecID
+  readonly featureName: string | null;   // 実行中のFeature名
   readonly currentGroupIndex: number;
   readonly totalGroups: number;
-  readonly activeTaskIds: string[];   // 実行中タスクID
-  readonly completedTasks: string[];  // 完了済みタスクID
-  readonly failedTasks: string[];     // 失敗タスクID
+  readonly activeAgentIds: string[];     // 実行中AgentID（既存agentStore連携用）
+  readonly completedTasks: string[];     // 完了済みタスクID
+  readonly failedTasks: string[];        // 失敗タスクID
   readonly errors: string[];
 }
 
 interface ParallelImplServiceInterface {
   /**
    * 並列実装を開始
+   * @param specId - Specディレクトリ名（既存APIに合わせた命名）
+   * @param featureName - Feature名
    */
-  start(specPath: string): Promise<boolean>;
+  start(specId: string, featureName: string): Promise<boolean>;
 
   /**
    * 並列実装をキャンセル
@@ -325,9 +333,14 @@ interface ParallelImplServiceInterface {
 }
 ```
 
-- Preconditions: specPathが有効、tasksフェーズ承認済み
+- Preconditions: specId/featureNameが有効、tasksフェーズ承認済み
 - Postconditions: 全グループ完了または明示的停止
 - Invariants: MAX_CONCURRENT_SPECS=5を超えない
+
+**既存API連携**:
+- タスク実装起動: `window.electronAPI.executeTaskImpl(specId, featureName, taskId, commandPrefix)`
+- Agent状態監視: `window.electronAPI.onAgentStatusChange(callback)`
+- Agentキャンセル: `window.electronAPI.stopAgent(agentId)`
 
 ##### State Management
 
@@ -335,19 +348,20 @@ interface ParallelImplServiceInterface {
 interface ParallelImplStore {
   // State
   readonly specId: string | null;
+  readonly featureName: string | null;
   readonly state: ParallelImplState;
   readonly taskGroups: TaskGroup[];
 
-  // Agent tracking
+  // Agent tracking (既存agentStoreと連携)
   readonly taskToAgentMap: Map<string, string>;  // taskId -> agentId
 
   // Actions
-  startParallelImpl: (specPath: string) => Promise<boolean>;
+  startParallelImpl: (specId: string, featureName: string) => Promise<boolean>;
   cancelParallelImpl: () => Promise<void>;
 
   // Internal actions
   setTaskGroups: (groups: TaskGroup[]) => void;
-  updateTaskStatus: (taskId: string, status: 'running' | 'completed' | 'failed') => void;
+  updateTaskStatus: (taskId: string, agentId: string, status: 'running' | 'completed' | 'failed') => void;
   advanceToNextGroup: () => void;
   setError: (error: string) => void;
 }
@@ -458,24 +472,34 @@ erDiagram
 // channels.ts に追加
 export const IPC_CHANNELS = {
   // ... 既存チャンネル
-  PARSE_TASKS_FOR_PARALLEL: 'parse-tasks-for-parallel',
-  EXECUTE_IMPL_TASK: 'execute-impl-task',
-  CANCEL_PARALLEL_IMPL: 'cancel-parallel-impl',
-  ON_PARALLEL_IMPL_PROGRESS: 'on-parallel-impl-progress',
+  PARSE_TASKS_FOR_PARALLEL: 'ipc:parse-tasks-for-parallel',
 } as const;
 ```
+
+**既存IPCの活用**:
+- `EXECUTE_TASK_IMPL`: 既存の `ipc:execute-task-impl` を使用（個別タスク実装起動）
+- Agent状態監視: 既存の `AGENT_STATUS_CHANGE` イベントを活用
 
 **Renderer API追加** (preload/index.ts):
 
 ```typescript
 interface ElectronAPI {
   // ... 既存API
-  parseTasksForParallel: (specPath: string) => Promise<ParseResult>;
-  executeImplTask: (specPath: string, taskId: string) => Promise<{ agentId: string }>;
-  cancelParallelImpl: (specPath: string) => Promise<{ cancelled: boolean }>;
-  onParallelImplProgress: (callback: (event: ParallelImplProgressEvent) => void) => () => void;
+
+  // 新規追加（タスク解析のみ）
+  parseTasksForParallel: (specId: string, featureName: string) => Promise<ParseResult>;
+
+  // 既存APIを活用（変更なし）
+  // executeTaskImpl: (specId, featureName, taskId, commandPrefix?) => Promise<AgentInfo>
+  // onAgentStatusChange: (callback) => () => void
 }
 ```
+
+**設計方針変更**:
+- 既存の `executeTaskImpl` APIを並列実装にも活用（DRY原則）
+- 並列実行制御はRenderer側 `ParallelImplService` で管理
+- キャンセル処理は既存の `stopAgent` APIを使用
+- 新規IPCは `PARSE_TASKS_FOR_PARALLEL` のみ追加
 
 ## Error Handling
 

@@ -1,7 +1,7 @@
 {
   "feature_name": "parallel-task-impl",
   "created_at": "2025-12-27T12:30:00+09:00",
-  "updated_at": "2025-12-27T09:06:58.135Z",
+  "updated_at": "2026-01-04T22:39:33.173Z",
   "language": "ja",
   "phase": "tasks-generated",
   "approvals": {
@@ -36,11 +36,16 @@
     }
   },
   "documentReview": {
-    "rounds": 1,
+    "rounds": 2,
     "status": "pending",
     "roundDetails": [
       {
         "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
         "status": "reply_complete",
         "fixApplied": true
       }

@@ -100,46 +100,55 @@ describe('LogEntry and formatMessage', () => {
     });
 
     it('should include projectId in log format', () => {
-      const result = formatMessage('INFO', '/path/to/project', 'Test message');
+      const result = formatMessage('INFO', '/path/to/project', 'main', 'Test message');
       expect(result).toContain('[/path/to/project]');
       expect(result).toContain('[INFO]');
+      expect(result).toContain('[main]');
       expect(result).toContain('Test message');
     });
 
     it('should use global as projectId when not in project context', () => {
-      const result = formatMessage('INFO', 'global', 'Test message');
+      const result = formatMessage('INFO', 'global', 'main', 'Test message');
       expect(result).toContain('[global]');
     });
 
     it('should include data as JSON when provided', () => {
       const data = { key: 'value', count: 42 };
-      const result = formatMessage('INFO', 'global', 'Test message', data);
+      const result = formatMessage('INFO', 'global', 'main', 'Test message', data);
       expect(result).toContain('{"key":"value","count":42}');
     });
 
     it('should handle undefined data', () => {
-      const result = formatMessage('INFO', 'global', 'Test message', undefined);
+      const result = formatMessage('INFO', 'global', 'main', 'Test message', undefined);
       expect(result).not.toContain('undefined');
       expect(result).toContain('Test message');
     });
 
     it('should include ISO timestamp', () => {
-      const result = formatMessage('INFO', 'global', 'Test');
+      const result = formatMessage('INFO', 'global', 'main', 'Test');
       // ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ
       const isoPattern = /\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\]/;
       expect(result).toMatch(isoPattern);
     });
 
     it('should end with newline', () => {
-      const result = formatMessage('INFO', 'global', 'Test');
+      const result = formatMessage('INFO', 'global', 'main', 'Test');
       expect(result.endsWith('\n')).toBe(true);
     });
 
-    it('should format as [timestamp] [level] [projectId] message data', () => {
-      const result = formatMessage('WARN', '/my/project', 'Warning message', { error: 'test' });
-      // Expected format: [2024-01-01T00:00:00.000Z] [WARN] [/my/project] Warning message {"error":"test"}
-      const pattern = /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[WARN\] \[\/my\/project\] Warning message \{"error":"test"\}\n$/;
+    it('should format as [timestamp] [level] [projectId] [source] message data', () => {
+      const result = formatMessage('WARN', '/my/project', 'main', 'Warning message', { error: 'test' });
+      // Expected format: [2024-01-01T00:00:00.000Z] [WARN] [/my/project] [main] Warning message {"error":"test"}
+      const pattern = /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[WARN\] \[\/my\/project\] \[main\] Warning message \{"error":"test"\}\n$/;
       expect(result).toMatch(pattern);
+    });
+
+    // renderer-error-logging feature: Test source parameter
+    it('should include renderer source in log format', () => {
+      const result = formatMessage('ERROR', '/path/to/project', 'renderer', 'Error from UI');
+      expect(result).toContain('[renderer]');
+      expect(result).toContain('[ERROR]');
+      expect(result).toContain('Error from UI');
     });
   });
 });

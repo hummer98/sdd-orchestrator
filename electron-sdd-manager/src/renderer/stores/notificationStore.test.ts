@@ -2,11 +2,22 @@
  * Notification Store Tests
  * TDD: Testing notification state management
  * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
+ * renderer-error-logging feature: Added tests for auto-context logging
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useNotificationStore, notify } from './notificationStore';
 import type { ExecutionSummary } from './workflowStore';
+import { useSpecDetailStore } from './spec/specDetailStore';
+import { useBugStore } from './bugStore';
+
+// Mock the electronAPI
+const mockLogRenderer = vi.fn();
+(global as unknown as { window: { electronAPI?: { logRenderer: typeof mockLogRenderer } } }).window = {
+  electronAPI: {
+    logRenderer: mockLogRenderer,
+  },
+};
 
 describe('useNotificationStore', () => {
   beforeEach(() => {
@@ -15,6 +26,8 @@ describe('useNotificationStore', () => {
     useNotificationStore.setState({
       notifications: [],
     });
+    // Reset mocks
+    mockLogRenderer.mockClear();
   });
 
   afterEach(() => {
@@ -290,6 +303,146 @@ describe('useNotificationStore', () => {
       const state = useNotificationStore.getState();
       // Completion summary should stay visible longer (10 seconds)
       expect(state.notifications[0].duration).toBeGreaterThanOrEqual(10000);
+    });
+  });
+
+  // ============================================================
+  // renderer-error-logging feature: Auto-context logging tests
+  // ============================================================
+  describe('renderer-error-logging: logToMain', () => {
+    beforeEach(() => {
+      // Reset stores
+      useSpecDetailStore.setState({ specDetail: null });
+      useBugStore.setState({ selectedBug: null });
+    });
+
+    it('should call logRenderer with error level for notify.error', () => {
+      notify.error('Test error message');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('error', 'Test error message', expect.any(Object));
+    });
+
+    it('should call logRenderer with warn level for notify.warning', () => {
+      notify.warning('Test warning message');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('warn', 'Test warning message', expect.any(Object));
+    });
+
+    it('should call logRenderer with info level for notify.info', () => {
+      notify.info('Test info message');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Test info message', expect.any(Object));
+    });
+
+    it('should call logRenderer with info level for notify.success', () => {
+      notify.success('Test success message');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Test success message', expect.any(Object));
+    });
+
+    it('should include specId in context when spec is selected', () => {
+      // Set up spec detail
+      useSpecDetailStore.setState({
+        specDetail: {
+          metadata: { name: 'test-feature' },
+          status: {
+            requirements: 'completed',
+            design: 'pending',
+            tasks: 'pending',
+            implementation: 'pending',
+          },
+        },
+      });
+
+      notify.error('Error with spec context');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith(
+        'error',
+        'Error with spec context',
+        expect.objectContaining({ specId: 'test-feature' })
+      );
+    });
+
+    it('should include bugName in context when bug is selected', () => {
+      // Set up selected bug
+      useBugStore.setState({
+        selectedBug: {
+          name: 'test-bug-123',
+          status: 'analyzing',
+        },
+      });
+
+      notify.error('Error with bug context');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith(
+        'error',
+        'Error with bug context',
+        expect.objectContaining({ bugName: 'test-bug-123' })
+      );
+    });
+
+    it('should include both specId and bugName when both are selected', () => {
+      // Set up both stores
+      useSpecDetailStore.setState({
+        specDetail: {
+          metadata: { name: 'feature-auth' },
+          status: {
+            requirements: 'completed',
+            design: 'completed',
+            tasks: 'pending',
+            implementation: 'pending',
+          },
+        },
+      });
+      useBugStore.setState({
+        selectedBug: {
+          name: 'auth-bug-456',
+          status: 'fixing',
+        },
+      });
+
+      notify.warning('Warning with both contexts');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith(
+        'warn',
+        'Warning with both contexts',
+        expect.objectContaining({
+          specId: 'feature-auth',
+          bugName: 'auth-bug-456',
+        })
+      );
+    });
+
+    it('should send empty context when no spec or bug is selected', () => {
+      notify.info('Message without context');
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Message without context', {});
+    });
+
+    it('should log completion summary to main process', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements', 'design'],
+        executedValidations: ['gap'],
+        totalDuration: 5000,
+        errors: [],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('info', expect.stringContaining('自動実行完了'), expect.any(Object));
+    });
+
+    it('should log completion summary with warning level when errors exist', () => {
+      const summary: ExecutionSummary = {
+        executedPhases: ['requirements'],
+        executedValidations: [],
+        totalDuration: 2000,
+        errors: ['Design failed'],
+      };
+
+      notify.showCompletionSummary(summary);
+
+      expect(mockLogRenderer).toHaveBeenCalledWith('warn', expect.stringContaining('エラー'), expect.any(Object));
     });
   });
 });

@@ -9,8 +9,8 @@
 
 | ログ種別 | 開発環境 | 本番環境 (macOS) |
 |----------|----------|------------------|
-| グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/SDD Orchestrator/main.log` |
-| **E2Eテストログ** | `electron-sdd-manager/logs/main-e2e.log` | `~/Library/Logs/SDD Orchestrator/main-e2e.log` |
+| グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/sdd-orchestrator/main.log` |
+| **E2Eテストログ** | `electron-sdd-manager/logs/main-e2e.log` | `~/Library/Logs/sdd-orchestrator/main-e2e.log` |
 | **プロジェクトログ** | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
 | アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
 | エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左（プロジェクト内） |
@@ -39,25 +39,73 @@ await window.electronAPI.openLogInBrowser();
 
 ### ログフォーマット
 
-- **形式**: `[ISO8601タイムスタンプ] [LEVEL] [projectId] message data`
+- **形式**: `[ISO8601タイムスタンプ] [LEVEL] [projectId] [source] message data`
 - **projectId**: プロジェクト選択時はプロジェクトパス、未選択時は `global`
+- **source**: `main`（メインプロセス）または `renderer`（レンダラープロセス）
 - **ログレベル**: DEBUG, INFO, WARN, ERROR
 - **エージェントログ**: JSONL形式（JSON Lines）
+
+#### ログ出力例
+
+```
+[2026-01-07T10:15:32.456Z] [ERROR] [/Users/yamamoto/git/myproject] [renderer] フェーズの実行に失敗しました {"specId":"feature-auth"}
+[2026-01-07T10:15:32.512Z] [ERROR] [/Users/yamamoto/git/myproject] [main] executePhase failed {"error":{"type":"SPAWN_ERROR"}}
+[2026-01-07T10:15:35.100Z] [INFO] [/Users/yamamoto/git/myproject] [renderer] 自動実行完了: 3フェーズ (45秒) {"specId":"feature-auth"}
+```
+
+### Rendererログ（renderer-error-logging機能）
+
+Rendererプロセス（UIフロントエンド）のログはIPCを経由してmainプロセスに送信され、プロジェクトログファイルに記録される。
+
+- **自動コンテキスト**: notify.*()呼び出し時に、現在選択中のspecId/bugNameを自動的に付与
+- **ファイル出力**: `{projectPath}/.kiro/logs/main.log`（グローバルログにも二重出力）
+- **ソース識別**: `[renderer]`タグで区別可能
+
+#### 何がログされるか
+
+| notify関数 | ログレベル | 用途 |
+|-----------|-----------|------|
+| `notify.error()` | ERROR | エラートースト（8秒表示） |
+| `notify.warning()` | WARN | 警告トースト |
+| `notify.info()` | INFO | 情報トースト |
+| `notify.success()` | INFO | 成功トースト |
+| `notify.showCompletionSummary()` | INFO/WARN | 自動実行完了サマリー |
+
+#### トラブルシューティング：rendererエラーの調査
+
+ユーザーから「エラートーストが出た」との報告があった場合：
+
+```bash
+# rendererからのエラーを抽出
+grep "\[renderer\]" /path/to/project/.kiro/logs/main.log | grep "\[ERROR\]"
+
+# 特定specのログを抽出
+grep "specId.*feature-name" /path/to/project/.kiro/logs/main.log
+
+# 特定bugのログを抽出
+grep "bugName.*bug-name" /path/to/project/.kiro/logs/main.log
+
+# main/renderer両方のエラーを時系列で確認
+grep "\[ERROR\]" /path/to/project/.kiro/logs/main.log | tail -50
+```
 
 ### 本番環境でのログ確認
 
 ```bash
 # グローバルログファイルを確認
-cat ~/Library/Logs/SDD\ Orchestrator/main.log
+cat ~/Library/Logs/sdd-orchestrator/main.log
 
 # リアルタイムで監視
-tail -f ~/Library/Logs/SDD\ Orchestrator/main.log
+tail -f ~/Library/Logs/sdd-orchestrator/main.log
 
 # エラーのみ抽出
-grep "\[ERROR\]" ~/Library/Logs/SDD\ Orchestrator/main.log
+grep "\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main.log
 
 # 最新100行を確認
-tail -100 ~/Library/Logs/SDD\ Orchestrator/main.log
+tail -100 ~/Library/Logs/sdd-orchestrator/main.log
+
+# rendererエラーのみ抽出
+grep "\[renderer\].*\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main.log
 
 # プロジェクトログを確認（プロジェクトパスを指定）
 cat /path/to/project/.kiro/logs/main.log
@@ -72,19 +120,19 @@ E2Eテストは `--e2e-test` フラグ付きでパッケージ済みアプリを
 
 ```bash
 # E2Eテストログをリアルタイム監視（テスト実行中に別ターミナルで）
-tail -f ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+tail -f ~/Library/Logs/sdd-orchestrator/main-e2e.log
 
 # 最新200行を確認
-tail -200 ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+tail -200 ~/Library/Logs/sdd-orchestrator/main-e2e.log
 
 # エラーのみ抽出
-grep "\[ERROR\]" ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+grep "\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main-e2e.log
 
 # AutoExecution関連のログを確認
-grep -E "(AutoExecution|ALREADY_EXECUTING)" ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+grep -E "(AutoExecution|ALREADY_EXECUTING)" ~/Library/Logs/sdd-orchestrator/main-e2e.log
 
 # テスト実行前にログをクリア（任意）
-: > ~/Library/Logs/SDD\ Orchestrator/main-e2e.log
+: > ~/Library/Logs/sdd-orchestrator/main-e2e.log
 ```
 
 ### ログ実装詳細

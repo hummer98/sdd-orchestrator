@@ -1768,6 +1768,17 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // Renderer Logging (renderer-error-logging feature)
+  // Fire-and-forget logging from renderer to main process
+  // ============================================================
+  ipcMain.on(
+    IPC_CHANNELS.LOG_RENDERER,
+    (_event, level: 'error' | 'warn' | 'info' | 'debug', message: string, context?: unknown) => {
+      projectLogger.logFromRenderer(level, message, context);
+    }
+  );
+
+  // ============================================================
   // Auto Execution Handlers (Inspection Fix Task 11.1)
   // Fixes: Critical Issue #1 (registerAutoExecutionHandlersの未呼び出し)
   // Fixes: Critical Issue #3 (Renderer -> IPC -> Main通信の未接続)

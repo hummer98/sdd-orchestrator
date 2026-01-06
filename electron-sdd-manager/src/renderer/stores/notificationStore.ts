@@ -2,15 +2,50 @@
  * Notification Store
  * Manages toast notifications
  * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
+ * renderer-error-logging feature: Added auto-context logging to main process
  */
 
 import { create } from 'zustand';
 import type { Notification } from '../types';
 import type { ExecutionSummary } from './workflowStore';
+import { useSpecDetailStore } from './spec/specDetailStore';
+import { useBugStore } from './bugStore';
 
 const DEFAULT_DURATION = 5000;
 const MAX_NOTIFICATIONS = 5;
 const COMPLETION_SUMMARY_DURATION = 10000;
+
+/**
+ * Get auto-context from stores for logging
+ * renderer-error-logging feature
+ */
+function getAutoContext(): Record<string, unknown> {
+  const specDetail = useSpecDetailStore.getState().specDetail;
+  const selectedBug = useBugStore.getState().selectedBug;
+
+  const context: Record<string, unknown> = {};
+
+  if (specDetail?.metadata?.name) {
+    context.specId = specDetail.metadata.name;
+  }
+  if (selectedBug?.name) {
+    context.bugName = selectedBug.name;
+  }
+
+  return context;
+}
+
+/**
+ * Send log to main process via IPC
+ * renderer-error-logging feature
+ */
+function logToMain(level: 'error' | 'warn' | 'info' | 'debug', message: string): void {
+  // Guard for test environment where electronAPI may not exist
+  if (typeof window !== 'undefined' && window.electronAPI?.logRenderer) {
+    const context = getAutoContext();
+    window.electronAPI.logRenderer(level, message, context);
+  }
+}
 
 interface NotificationState {
   notifications: Notification[];
@@ -68,6 +103,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 }));
 
 // Helper functions for common notifications
+// renderer-error-logging feature: Each function logs to main process
 export const notify = {
   success: (message: string, action?: Notification['action']) => {
     useNotificationStore.getState().addNotification({
@@ -75,6 +111,8 @@ export const notify = {
       message,
       action,
     });
+    // Log to main process
+    logToMain('info', message);
   },
 
   error: (message: string, action?: Notification['action']) => {
@@ -84,6 +122,8 @@ export const notify = {
       action,
       duration: 8000, // Errors stay longer
     });
+    // Log to main process
+    logToMain('error', message);
   },
 
   warning: (message: string, action?: Notification['action']) => {
@@ -92,6 +132,8 @@ export const notify = {
       message,
       action,
     });
+    // Log to main process
+    logToMain('warn', message);
   },
 
   info: (message: string, action?: Notification['action']) => {
@@ -100,6 +142,8 @@ export const notify = {
       message,
       action,
     });
+    // Log to main process
+    logToMain('info', message);
   },
 
   // Task 2.2: Completion summary notification
@@ -124,5 +168,7 @@ export const notify = {
       message,
       duration: COMPLETION_SUMMARY_DURATION,
     });
+    // Log to main process
+    logToMain(hasErrors ? 'warn' : 'info', message);
   },
 };

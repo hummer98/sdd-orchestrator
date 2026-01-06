@@ -224,6 +224,10 @@ export const IPC_CHANNELS = {
   // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
   EXECUTE_ASK_PROJECT: 'ipc:execute-ask-project',
   EXECUTE_ASK_SPEC: 'ipc:execute-ask-spec',
+
+  // Renderer Logging (renderer-error-logging feature)
+  // Fire-and-forget logging from renderer to main process
+  LOG_RENDERER: 'ipc:log-renderer',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

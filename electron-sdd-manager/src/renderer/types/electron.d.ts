@@ -740,6 +740,24 @@ export interface ElectronAPI {
    * Returns version status including update requirements
    */
   checkCommandsetVersions(projectPath: string): Promise<VersionCheckResult>;
+
+  // ============================================================
+  // Renderer Logging (renderer-error-logging feature)
+  // Fire-and-forget logging from renderer to main process
+  // ============================================================
+
+  /**
+   * Log from renderer process (fire-and-forget)
+   * Sends log to main process for writing to project/global log files
+   * @param level Log level
+   * @param message Log message
+   * @param context Additional context (specId, bugName, etc.)
+   */
+  logRenderer(
+    level: 'error' | 'warn' | 'info' | 'debug',
+    message: string,
+    context?: Record<string, unknown>
+  ): void;
 }
 
 declare global {

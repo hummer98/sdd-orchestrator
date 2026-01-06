@@ -32,12 +32,17 @@ export interface LogEntry {
   data?: unknown;
 }
 
+/** Log source identifier */
+export type LogSource = 'main' | 'renderer';
+
 /**
- * Format a log message with project context
+ * Format a log message with project context and source
  * Requirements: 4.1, 4.2, 4.3
+ * renderer-error-logging feature: Added source parameter
  *
  * @param level - Log level
  * @param projectId - Project path or 'global'
+ * @param source - Log source ('main' or 'renderer')
  * @param message - Log message
  * @param data - Additional data
  * @returns Formatted log string
@@ -45,17 +50,19 @@ export interface LogEntry {
 export function formatMessage(
   level: string,
   projectId: string,
+  source: LogSource,
   message: string,
   data?: unknown
 ): string {
   const timestamp = new Date().toISOString();
   const dataStr = data !== undefined ? ` ${JSON.stringify(data)}` : '';
-  return `[${timestamp}] [${level}] [${projectId}] ${message}${dataStr}\n`;
+  return `[${timestamp}] [${level}] [${projectId}] [${source}] ${message}${dataStr}\n`;
 }
 
 /**
  * ProjectLogger Service Interface
  * Requirements: 1.1-1.4, 3.1-3.4, 4.1-4.3
+ * renderer-error-logging feature: Added logFromRenderer method
  */
 export interface ProjectLoggerService {
   /**
@@ -80,24 +87,33 @@ export interface ProjectLoggerService {
   getGlobalLogPath(): string;
 
   /**
-   * INFO level log
+   * INFO level log (from main process)
    */
   info(message: string, data?: unknown): void;
 
   /**
-   * DEBUG level log
+   * DEBUG level log (from main process)
    */
   debug(message: string, data?: unknown): void;
 
   /**
-   * WARN level log
+   * WARN level log (from main process)
    */
   warn(message: string, data?: unknown): void;
 
   /**
-   * ERROR level log
+   * ERROR level log (from main process)
    */
   error(message: string, data?: unknown): void;
+
+  /**
+   * Log from renderer process
+   * renderer-error-logging feature
+   * @param level - Log level
+   * @param message - Log message
+   * @param data - Additional context data (specId, bugName, etc.)
+   */
+  logFromRenderer(level: 'error' | 'warn' | 'info' | 'debug', message: string, data?: unknown): void;
 }
 
 /**
@@ -211,10 +227,11 @@ export class ProjectLogger implements ProjectLoggerService {
   /**
    * Write log entry to appropriate streams
    * Requirements: 1.4, 3.1, 3.2, 5.4, 7.2, 7.3
+   * renderer-error-logging feature: Added source parameter
    */
-  private write(level: string, message: string, data?: unknown): void {
+  private write(level: string, message: string, data?: unknown, source: LogSource = 'main'): void {
     const projectId = this.currentProjectPath || 'global';
-    const formatted = formatMessage(level, projectId, message, data);
+    const formatted = formatMessage(level, projectId, source, message, data);
 
     // Always write to global stream
     if (this.globalStream) {
@@ -359,6 +376,23 @@ export class ProjectLogger implements ProjectLoggerService {
    */
   error(message: string, data?: unknown): void {
     this.write('ERROR', message, data);
+  }
+
+  /**
+   * Log from renderer process
+   * renderer-error-logging feature
+   * @param level - Log level
+   * @param message - Log message
+   * @param data - Additional context data (specId, bugName, etc.)
+   */
+  logFromRenderer(level: 'error' | 'warn' | 'info' | 'debug', message: string, data?: unknown): void {
+    const levelMap: Record<string, string> = {
+      error: 'ERROR',
+      warn: 'WARN',
+      info: 'INFO',
+      debug: 'DEBUG',
+    };
+    this.write(levelMap[level] || 'INFO', message, data, 'renderer');
   }
 }
 

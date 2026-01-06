@@ -14,6 +14,7 @@ class DocsTabs {
     this.containerEl = document.getElementById('docs-tabs');
     this.activeTab = 'specs';
     this.onTabChange = null;
+    this.onCreateClick = null; // Bug fix: remote-ui-missing-create-buttons
   }
 
   /**
@@ -46,7 +47,7 @@ class DocsTabs {
     const bugsActive = this.activeTab === 'bugs';
 
     this.containerEl.innerHTML = `
-      <div class="flex border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center border-b border-gray-200 dark:border-gray-700">
         <button
           class="docs-tab ${specsActive ? 'docs-tab-active' : ''}"
           data-tab="specs"
@@ -71,6 +72,19 @@ class DocsTabs {
           </svg>
           Bugs
         </button>
+        <!-- Plus button - Bug fix: remote-ui-missing-create-buttons -->
+        <div class="ml-auto pr-2">
+          <button
+            id="btn-create-item"
+            data-testid="remote-create-btn"
+            class="p-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white transition-colors"
+            title="${specsActive ? 'Create new spec' : 'Create new bug'}"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     `;
 
@@ -83,6 +97,14 @@ class DocsTabs {
         }
       });
     });
+
+    // Add create button handler - Bug fix: remote-ui-missing-create-buttons
+    const createBtn = this.containerEl.querySelector('#btn-create-item');
+    if (createBtn && this.onCreateClick) {
+      createBtn.addEventListener('click', () => {
+        this.onCreateClick(this.activeTab);
+      });
+    }
   }
 }
 
@@ -461,12 +483,19 @@ class BugDetail {
     this.actionBtn = document.getElementById('btn-bug-action');
     this.backButton = document.getElementById('bug-back-button');
     this.loadingEl = document.getElementById('bug-loading-indicator');
+    // Bug fix: remote-ui-bug-agent-list-missing - Agent list elements
+    this.agentListEl = document.getElementById('bug-agent-list');
+    this.agentCountEl = document.getElementById('bug-agent-count');
 
     this.currentBug = null;
     this.isRunning = false;
+    // Bug fix: remote-ui-bug-agent-list-missing - Agent list state
+    this.agents = [];
 
     this.onExecutePhase = null;
     this.onBack = null;
+    // Bug fix: remote-ui-bug-agent-list-missing - Agent stop callback
+    this.onStop = null;
 
     this.setupEventListeners();
   }
@@ -618,6 +647,189 @@ class BugDetail {
       this.updatePhaseTag(bug.phase);
       this.updateActionButton(bug.phase);
     }
+  }
+
+  // ============================================================
+  // Bug fix: remote-ui-bug-agent-list-missing
+  // Agent list management (matching SpecDetail implementation)
+  // ============================================================
+
+  /**
+   * Update agent list
+   * @param {Array} agents - Agents filtered for this bug
+   */
+  updateAgentList(agents) {
+    this.agents = agents || [];
+
+    if (this.agentCountEl) {
+      this.agentCountEl.textContent = `${this.agents.length} agent${this.agents.length !== 1 ? 's' : ''}`;
+    }
+
+    if (!this.agentListEl) return;
+
+    if (this.agents.length === 0) {
+      this.agentListEl.innerHTML = '<div class="p-4 text-center text-sm text-gray-400">No agents</div>';
+      return;
+    }
+
+    // Sort agents: running first, then by startedAt descending (matching Electron version)
+    const sortedAgents = [...this.agents].sort((a, b) => {
+      if (a.status === 'running' && b.status !== 'running') return -1;
+      if (a.status !== 'running' && b.status === 'running') return 1;
+      const dateA = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+      const dateB = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    this.agentListEl.innerHTML = sortedAgents.map(agent => {
+      const statusConfig = this.getStatusConfig(agent.status);
+      const displayPhase = agent.phase || this.extractPhaseFromId(agent.id) || 'Agent';
+      const formattedDate = agent.startedAt ? this.formatDateTime(agent.startedAt) : '';
+      const duration = this.calculateDuration(agent);
+      const isRunning = agent.status === 'running';
+
+      return `
+        <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700" data-agent-id="${agent.id}">
+          <span class="${statusConfig.iconClassName}" title="${statusConfig.label}">${statusConfig.icon}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium truncate">${displayPhase}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                ${formattedDate}${duration ? ` (${duration}${isRunning ? '...' : ''})` : ''}
+              </span>
+            </div>
+          </div>
+          ${this.renderAgentActions(agent)}
+        </div>
+      `;
+    }).join('');
+
+    // Add stop button handlers
+    this.agentListEl.querySelectorAll('.agent-stop-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const agentId = btn.dataset.agentId;
+        if (this.onStop) {
+          this.onStop(agentId);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get status configuration for display (matching SpecDetail)
+   * @param {string} status
+   * @returns {{ label: string, icon: string, iconClassName: string }}
+   */
+  getStatusConfig(status) {
+    const configs = {
+      running: {
+        label: '実行中',
+        icon: '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>',
+        iconClassName: 'text-blue-500',
+      },
+      completed: {
+        label: '完了',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        iconClassName: 'text-green-500',
+      },
+      interrupted: {
+        label: '中断',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
+        iconClassName: 'text-yellow-500',
+      },
+      hang: {
+        label: '応答なし',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
+        iconClassName: 'text-red-500',
+      },
+      failed: {
+        label: '失敗',
+        icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        iconClassName: 'text-red-500',
+      },
+    };
+    return configs[status] || { label: status, icon: '<span class="w-2 h-2 rounded-full bg-gray-400"></span>', iconClassName: 'text-gray-400' };
+  }
+
+  /**
+   * Format ISO date string to "MM/DD HH:mm"
+   * @param {string} isoString
+   * @returns {string}
+   */
+  formatDateTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${month}/${day} ${hours}:${minutes}`;
+  }
+
+  /**
+   * Calculate duration string
+   * @param {Object} agent
+   * @returns {string}
+   */
+  calculateDuration(agent) {
+    if (!agent.startedAt) return '';
+    const startTime = new Date(agent.startedAt).getTime();
+    const endTime = agent.status === 'running'
+      ? Date.now()
+      : (agent.lastActivityAt ? new Date(agent.lastActivityAt).getTime() : Date.now());
+    const ms = endTime - startTime;
+    return this.formatDuration(ms);
+  }
+
+  /**
+   * Format duration in milliseconds to "Xm Ys" or "Xs"
+   * @param {number} ms
+   * @returns {string}
+   */
+  formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) {
+      return `${minutes}分${seconds}秒`;
+    }
+    return `${seconds}秒`;
+  }
+
+  /**
+   * Render agent action buttons (stop for running agents)
+   * @param {Object} agent
+   * @returns {string}
+   */
+  renderAgentActions(agent) {
+    if (agent.status === 'running' || agent.status === 'hang') {
+      return `
+        <button class="agent-action-btn agent-stop-btn p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400" data-agent-id="${agent.id}" title="停止">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+          </svg>
+        </button>
+      `;
+    }
+    return '';
+  }
+
+  /**
+   * Extract phase name from agentId
+   * @param {string} agentId
+   * @returns {string|null}
+   */
+  extractPhaseFromId(agentId) {
+    if (!agentId) return null;
+    const phases = ['analyze', 'fix', 'verify', 'requirements', 'design', 'tasks', 'implementation'];
+    for (const phase of phases) {
+      if (agentId.toLowerCase().includes(phase)) {
+        return phase.charAt(0).toUpperCase() + phase.slice(1);
+      }
+    }
+    return null;
   }
 }
 
@@ -2202,6 +2414,219 @@ class AskAgentDialog {
   }
 }
 
+/**
+ * Create Spec Dialog Component
+ * Dialog for creating a new spec via spec-init
+ * Bug fix: remote-ui-missing-create-buttons
+ */
+class CreateSpecDialog {
+  constructor() {
+    this.containerEl = document.getElementById('create-spec-dialog');
+    this.backdropEl = document.getElementById('create-spec-backdrop');
+    this.descriptionInputEl = document.getElementById('create-spec-description');
+    this.submitBtn = document.getElementById('btn-create-spec-submit');
+    this.cancelBtn = document.getElementById('btn-create-spec-cancel');
+    this.closeBtn = document.getElementById('btn-create-spec-close');
+    this.errorEl = document.getElementById('create-spec-error');
+
+    this.onSubmit = null;
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    if (this.cancelBtn) {
+      this.cancelBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.backdropEl) {
+      this.backdropEl.addEventListener('click', () => this.hide());
+    }
+
+    if (this.submitBtn) {
+      this.submitBtn.addEventListener('click', () => this.submit());
+    }
+
+    if (this.descriptionInputEl) {
+      this.descriptionInputEl.addEventListener('input', () => this.validateInput());
+    }
+  }
+
+  show() {
+    if (this.descriptionInputEl) {
+      this.descriptionInputEl.value = '';
+    }
+    this.hideError();
+    this.validateInput();
+
+    if (this.containerEl) {
+      this.containerEl.classList.remove('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.remove('hidden');
+    }
+
+    if (this.descriptionInputEl) {
+      this.descriptionInputEl.focus();
+    }
+  }
+
+  hide() {
+    if (this.containerEl) {
+      this.containerEl.classList.add('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.add('hidden');
+    }
+  }
+
+  validateInput() {
+    const description = (this.descriptionInputEl?.value || '').trim();
+    const isValid = description.length > 0;
+
+    if (this.submitBtn) {
+      this.submitBtn.disabled = !isValid;
+    }
+  }
+
+  showError(message) {
+    if (this.errorEl) {
+      this.errorEl.textContent = message;
+      this.errorEl.classList.remove('hidden');
+    }
+  }
+
+  hideError() {
+    if (this.errorEl) {
+      this.errorEl.classList.add('hidden');
+    }
+  }
+
+  submit() {
+    const description = (this.descriptionInputEl?.value || '').trim();
+    if (!description) return;
+
+    if (this.onSubmit) {
+      this.onSubmit({ description });
+    }
+
+    this.hide();
+  }
+}
+
+/**
+ * Create Bug Dialog Component
+ * Dialog for creating a new bug via bug-create
+ * Bug fix: remote-ui-missing-create-buttons
+ */
+class CreateBugDialog {
+  constructor() {
+    this.containerEl = document.getElementById('create-bug-dialog');
+    this.backdropEl = document.getElementById('create-bug-backdrop');
+    this.nameInputEl = document.getElementById('create-bug-name');
+    this.descriptionInputEl = document.getElementById('create-bug-description');
+    this.submitBtn = document.getElementById('btn-create-bug-submit');
+    this.cancelBtn = document.getElementById('btn-create-bug-cancel');
+    this.closeBtn = document.getElementById('btn-create-bug-close');
+    this.errorEl = document.getElementById('create-bug-error');
+
+    this.onSubmit = null;
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    if (this.cancelBtn) {
+      this.cancelBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.backdropEl) {
+      this.backdropEl.addEventListener('click', () => this.hide());
+    }
+
+    if (this.submitBtn) {
+      this.submitBtn.addEventListener('click', () => this.submit());
+    }
+
+    if (this.nameInputEl) {
+      this.nameInputEl.addEventListener('input', () => this.validateInput());
+    }
+    if (this.descriptionInputEl) {
+      this.descriptionInputEl.addEventListener('input', () => this.validateInput());
+    }
+  }
+
+  show() {
+    if (this.nameInputEl) {
+      this.nameInputEl.value = '';
+    }
+    if (this.descriptionInputEl) {
+      this.descriptionInputEl.value = '';
+    }
+    this.hideError();
+    this.validateInput();
+
+    if (this.containerEl) {
+      this.containerEl.classList.remove('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.remove('hidden');
+    }
+
+    if (this.nameInputEl) {
+      this.nameInputEl.focus();
+    }
+  }
+
+  hide() {
+    if (this.containerEl) {
+      this.containerEl.classList.add('hidden');
+    }
+    if (this.backdropEl) {
+      this.backdropEl.classList.add('hidden');
+    }
+  }
+
+  validateInput() {
+    const name = (this.nameInputEl?.value || '').trim();
+    const description = (this.descriptionInputEl?.value || '').trim();
+    const isValid = name.length > 0 && description.length > 0;
+
+    if (this.submitBtn) {
+      this.submitBtn.disabled = !isValid;
+    }
+  }
+
+  showError(message) {
+    if (this.errorEl) {
+      this.errorEl.textContent = message;
+      this.errorEl.classList.remove('hidden');
+    }
+  }
+
+  hideError() {
+    if (this.errorEl) {
+      this.errorEl.classList.add('hidden');
+    }
+  }
+
+  submit() {
+    const name = (this.nameInputEl?.value || '').trim();
+    const description = (this.descriptionInputEl?.value || '').trim();
+    if (!name || !description) return;
+
+    if (this.onSubmit) {
+      this.onSubmit({ name, description });
+    }
+
+    this.hide();
+  }
+}
+
 // Export components
 window.DocsTabs = DocsTabs;
 window.ConnectionStatus = ConnectionStatus;
@@ -2213,3 +2638,5 @@ window.LogViewer = LogViewer;
 window.Toast = Toast;
 window.ReconnectOverlay = ReconnectOverlay;
 window.AskAgentDialog = AskAgentDialog;
+window.CreateSpecDialog = CreateSpecDialog;
+window.CreateBugDialog = CreateBugDialog;

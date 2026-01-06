@@ -220,6 +220,12 @@ export interface WorkflowController {
   executeAskProject?(projectPath: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
   /** Execute Spec Ask with custom prompt */
   executeAskSpec?(specId: string, featureName: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
+
+  // Create methods (remote-ui-missing-create-buttons bug fix)
+  /** Create a new spec with spec-init */
+  createSpec?(description: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Create a new bug with bug-create */
+  createBug?(name: string, description: string): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -548,6 +554,13 @@ export class WebSocketHandler {
         break;
       case 'ASK_SPEC':
         await this.handleAskSpec(client, message);
+        break;
+      // Create handlers (remote-ui-missing-create-buttons bug fix)
+      case 'CREATE_SPEC':
+        await this.handleCreateSpec(client, message);
+        break;
+      case 'CREATE_BUG':
+        await this.handleCreateBug(client, message);
         break;
       default:
         this.send(client.id, {
@@ -1913,6 +1926,138 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Spec Ask execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Create Handlers (remote-ui-missing-create-buttons bug fix)
+  // ============================================================
+
+  /**
+   * Handle CREATE_SPEC message
+   * Bug fix: remote-ui-missing-create-buttons
+   * Creates a new spec using spec-init command
+   */
+  private async handleCreateSpec(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.createSpec) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Spec creation not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const description = payload.description as string;
+
+    if (!description) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing description' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.createSpec(description);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'SPEC_CREATED',
+        payload: {
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Spec creation failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle CREATE_BUG message
+   * Bug fix: remote-ui-missing-create-buttons
+   * Creates a new bug using bug-create command
+   */
+  private async handleCreateBug(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.createBug) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Bug creation not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const name = payload.name as string;
+    const description = payload.description as string;
+
+    if (!name || !description) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing name or description' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.createBug(name, description);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'BUG_CREATED',
+        payload: {
+          name,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Bug creation failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

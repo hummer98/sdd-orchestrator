@@ -119,6 +119,9 @@ class App {
     this.logViewer = new LogViewer();
     this.toast = new Toast();
     this.reconnectOverlay = new ReconnectOverlay();
+    // Bug fix: remote-ui-missing-create-buttons
+    this.createSpecDialog = new CreateSpecDialog();
+    this.createBugDialog = new CreateBugDialog();
 
     // DOM references for views
     this.viewList = document.getElementById('view-list');
@@ -172,6 +175,9 @@ class App {
         this.selectedBug = bug;
         this.bugList.setSelected(bug.name);
         this.bugDetail.show(bug);
+        // Bug fix: remote-ui-bug-agent-list-missing
+        // Update agent list for the selected bug (filter by bug:name)
+        this.bugDetail.updateAgentList(this.getFilteredAgentsForBug(bug.name));
         this.showView('bug-detail');
       } else {
         // Bug not found, go back to list
@@ -274,6 +280,11 @@ class App {
       this.router.back();
     };
 
+    // Bug fix: remote-ui-bug-agent-list-missing - Stop agent from bug detail
+    this.bugDetail.onStop = (agentId) => {
+      this.stopWorkflow(agentId);
+    };
+
     // Spec list selection handler - now uses router
     this.specList.onSelect = (spec) => {
       this.router.navigate(`/spec/${encodeURIComponent(spec.feature_name)}`);
@@ -309,6 +320,53 @@ class App {
     this.reconnectOverlay.onManualReconnect = () => {
       wsManager.manualReconnect();
     };
+
+    // Bug fix: remote-ui-missing-create-buttons
+    // DocsTabs create button handler
+    this.docsTabs.onCreateClick = (activeTab) => {
+      if (activeTab === 'specs') {
+        this.createSpecDialog.show();
+      } else if (activeTab === 'bugs') {
+        this.createBugDialog.show();
+      }
+    };
+
+    // Create Spec Dialog submit handler
+    this.createSpecDialog.onSubmit = ({ description }) => {
+      this.createSpec(description);
+    };
+
+    // Create Bug Dialog submit handler
+    this.createBugDialog.onSubmit = ({ name, description }) => {
+      this.createBug(name, description);
+    };
+  }
+
+  /**
+   * Create a new spec via CREATE_SPEC WebSocket message
+   * Bug fix: remote-ui-missing-create-buttons
+   * @param {string} description - Spec description
+   */
+  createSpec(description) {
+    wsManager.send({
+      type: 'CREATE_SPEC',
+      payload: { description },
+    });
+    this.toast.info('Creating spec...');
+  }
+
+  /**
+   * Create a new bug via CREATE_BUG WebSocket message
+   * Bug fix: remote-ui-missing-create-buttons
+   * @param {string} name - Bug name
+   * @param {string} description - Bug description
+   */
+  createBug(name, description) {
+    wsManager.send({
+      type: 'CREATE_BUG',
+      payload: { name, description },
+    });
+    this.toast.info('Creating bug report...');
   }
 
   /**
@@ -426,9 +484,42 @@ class App {
       this.handleAutoExecutionError(payload);
     });
 
+    // Bug fix: remote-ui-missing-create-buttons
+    // Handle SPEC_CREATED message
+    wsManager.on('SPEC_CREATED', (payload) => {
+      this.handleSpecCreated(payload);
+    });
+
+    // Handle BUG_CREATED message
+    wsManager.on('BUG_CREATED', (payload) => {
+      this.handleBugCreated(payload);
+    });
+
     // Connect
     this.connectionStatus.update('connecting');
     wsManager.connect();
+  }
+
+  /**
+   * Handle SPEC_CREATED message
+   * Bug fix: remote-ui-missing-create-buttons
+   * @param {Object} payload
+   */
+  handleSpecCreated(payload) {
+    const { agentId } = payload;
+    this.toast.success('Spec creation started');
+    console.log('[App] Spec creation started with agent:', agentId);
+  }
+
+  /**
+   * Handle BUG_CREATED message
+   * Bug fix: remote-ui-missing-create-buttons
+   * @param {Object} payload
+   */
+  handleBugCreated(payload) {
+    const { name, agentId } = payload;
+    this.toast.success(`Bug report "${name}" creation started`);
+    console.log('[App] Bug creation started:', name, 'agent:', agentId);
   }
 
   /**
@@ -465,10 +556,14 @@ class App {
     // Update agents
     // Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
     // Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
+    // Bug fix: remote-ui-bug-agent-list-missing - also update BugDetail agent list
     if (agents) {
       this.agents = agents;
       this.specDetail.updateAgentList(this.getFilteredAgents());
       this.specList.updateAgents(agents);
+      if (this.selectedBug) {
+        this.bugDetail.updateAgentList(this.getFilteredAgentsForBug(this.selectedBug.name));
+      }
     }
 
     // Load initial logs
@@ -582,8 +677,12 @@ class App {
     }
     // Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
     // Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
+    // Bug fix: remote-ui-bug-agent-list-missing - also update BugDetail agent list
     this.specDetail.updateAgentList(this.getFilteredAgents());
     this.specList.updateAgents(this.agents);
+    if (this.selectedBug) {
+      this.bugDetail.updateAgentList(this.getFilteredAgentsForBug(this.selectedBug.name));
+    }
 
     // Update running state
     switch (status) {
@@ -604,6 +703,7 @@ class App {
    * Handle AGENT_LIST message
    * Bug fix: remote-ui-agent-list-unfiltered - filter by current spec/bug
    * Bug fix: remote-ui-agent-list-feature-parity - also update SpecList for running count
+   * Bug fix: remote-ui-bug-agent-list-missing - also update BugDetail agent list
    * @param {Object} payload
    */
   handleAgentList(payload) {
@@ -611,6 +711,10 @@ class App {
     this.agents = agents || [];
     this.specDetail.updateAgentList(this.getFilteredAgents());
     this.specList.updateAgents(this.agents);
+    // Bug fix: remote-ui-bug-agent-list-missing - update BugDetail if showing a bug
+    if (this.selectedBug) {
+      this.bugDetail.updateAgentList(this.getFilteredAgentsForBug(this.selectedBug.name));
+    }
   }
 
   /**
@@ -887,6 +991,18 @@ class App {
       return [];
     }
     return this.agents.filter(agent => agent.specId === currentSpecId);
+  }
+
+  /**
+   * Filter agents for a specific bug
+   * Bug fix: remote-ui-bug-agent-list-missing
+   * @param {string} bugName - The bug name
+   * @returns {Array} Filtered agents for the bug
+   */
+  getFilteredAgentsForBug(bugName) {
+    if (!bugName) return [];
+    const bugSpecId = `bug:${bugName}`;
+    return this.agents.filter(agent => agent.specId === bugSpecId);
   }
 
   // ============================================================

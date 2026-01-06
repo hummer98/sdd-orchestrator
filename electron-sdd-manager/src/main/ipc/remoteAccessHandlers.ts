@@ -263,6 +263,71 @@ export function createWorkflowController(
         },
       };
     },
+
+    /**
+     * Create a new spec using spec-init
+     * Bug fix: remote-ui-missing-create-buttons
+     *
+     * @param description - Spec description
+     */
+    createSpec: async (description: string): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.startAgent({
+        specId: '',
+        phase: 'spec-init',
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command: `/kiro:spec-init "${description}"` }),
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    /**
+     * Create a new bug using bug-create
+     * Bug fix: remote-ui-missing-create-buttons
+     *
+     * @param name - Bug name
+     * @param description - Bug description
+     */
+    createBug: async (name: string, description: string): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.startAgent({
+        specId: '',
+        phase: 'bug-create',
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command: `/kiro:bug-create ${name} "${description}"` }),
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
   };
 }
 

@@ -188,7 +188,7 @@ describe('BugWorkflowView', () => {
       );
     });
 
-    it('should call startAgent with /commit for deploy phase', () => {
+    it('should call startAgent with /commit {bugName} for deploy phase', () => {
       // Set up a bug that has completed all phases except deploy
       const completedBugDetail: BugDetail = {
         ...mockBugDetail,
@@ -218,12 +218,12 @@ describe('BugWorkflowView', () => {
       const button = screen.getByTestId('bug-phase-execute-button-deploy');
       fireEvent.click(button);
 
-      // Base flags are added by specManagerService, so args only contain the command
+      // /commit accepts bug name to collect related files from .kiro/bugs/{bug-name}/
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
         'bug:test-bug', // bug:{name} format for AgentListPanel filtering
         'deploy',
         'claude',
-        ['/commit'], // Base flags added by service
+        ['/commit test-bug'], // Bug name passed to /commit for file collection
         undefined,
         undefined
       );

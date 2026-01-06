@@ -143,15 +143,9 @@ export function BugWorkflowView() {
     if (!commandTemplate) return; // Report phase has no command
 
     try {
-      // Build the command based on phase
-      let fullCommand: string;
-      if (phase === 'deploy') {
-        // Deploy uses /commit without bug name
-        fullCommand = commandTemplate;
-      } else {
-        // Other phases append bug name
-        fullCommand = `${commandTemplate} ${selectedBug.name}`;
-      }
+      // Build the command: all phases (including deploy) append bug name
+      // /commit accepts bug name to collect related files from .kiro/bugs/{bug-name}/
+      const fullCommand = `${commandTemplate} ${selectedBug.name}`;
 
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       await window.electronAPI.startAgent(

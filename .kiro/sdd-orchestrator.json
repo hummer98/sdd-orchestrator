@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "profile": {
     "name": "cc-sdd-agent",
     "installedAt": "2025-12-27T00:00:00.000Z"
@@ -7,7 +7,7 @@
   "layout": {
     "leftPaneWidth": 288,
     "rightPaneWidth": 500,
-    "bottomPaneHeight": 407,
+    "bottomPaneHeight": 264,
     "agentListHeight": 261,
     "projectAgentPanelHeight": 120
   }

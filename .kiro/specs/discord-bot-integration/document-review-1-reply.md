@@ -1,0 +1,159 @@
+# Response to Document Review #1
+
+**Feature**: discord-bot-integration
+**Review Date**: 2026-01-01
+**Reply Date**: 2026-01-01
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 0      | 0            | 0             | 0                |
+| Warning  | 5      | 3            | 1             | 1                |
+| Info     | 3      | 0            | 3             | 0                |
+
+---
+
+## Response to Warnings
+
+### W1 (CD-2): BotTokenInput UIコンポーネント未定義
+
+**Issue**: Design.mdのTraceability（1.5-1.6）に`BotTokenInput`の記載があるが、Renderer Componentsセクションに詳細定義がない
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+- design.mdのRequirements Traceabilityで`BotTokenInput`を参照しているが、Renderer Componentsセクションには`BotControlPanel`、`BotStatusIndicator`、`DiscordChannelSettings`の3つしか定義がない
+- tasks.mdのタスク9.4で「BotTokenInput設定UIの実装」として言及されており、実装予定はある
+- 既存の`CloudflareSettingsPanel`（electron-sdd-manager/src/renderer/components/CloudflareSettingsPanel.tsx:1-215）が同様のToken入力UIパターンを実装しており、参考にできる
+
+**Action Items**:
+- design.mdのRenderer Componentsセクションに`BotTokenInput`コンポーネントの詳細定義を追加する
+- 既存の`CloudflareSettingsPanel`パターンに準拠した設計とする
+
+---
+
+### W2 (TG-1): Slash Command登録方式未定義
+
+**Issue**: research.mdでGuild-specific vs Global登録に言及あるが、どちらを使うか明記なし
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+- research.mdで「Guild-specific登録（開発用）とGlobal登録（本番用）の2種類」と言及があるが、本実装でどちらを使用するかの判断が記載されていない
+- design.mdの「Slash Command Registration」セクションでもコマンド定義のみで登録方式の選択について言及がない
+- SDD Orchestratorはデスクトップアプリであり、ユーザーが複数サーバーで使用する可能性が高いため、方式の明確化が必要
+
+**Action Items**:
+- design.mdに「Guild-specific登録をデフォルトとし、ユーザーがサーバーを選択して登録する方式」を追記する
+- 理由: Global登録は反映に最大1時間かかるため、開発・テスト時の利便性が低い
+- 将来的にGlobal登録オプションを追加する可能性についてもノートとして記載
+
+---
+
+### W3 (TG-2): ボタンID衝突回避策未定義
+
+**Issue**: AskQuestionで複数セッション同時実行時のボタンカスタムID管理が未定義
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+- design.mdのDiscordInteractionHandlerセクションでボタン生成について言及があるが、カスタムIDの生成方式が定義されていない
+- 複数プロジェクトが同時にAskQuestionを発行した場合、ボタンIDが衝突する可能性がある
+- Discord.jsではカスタムIDは100文字以内で一意である必要がある
+
+**Action Items**:
+- design.mdのDiscordInteractionHandler Service Interfaceに、以下のカスタムID生成方式を追記:
+  ```
+  カスタムID形式: `ask_{sessionId}_{optionIndex}`
+  例: `ask_abc123_0`, `ask_abc123_1`
+  ```
+- sessionIdはClaudeCodeBridgeで管理されるセッション識別子を使用
+
+---
+
+### W4 (OG-2): Slash Command登録/更新手順未定義
+
+**Issue**: 本番環境でのコマンド登録方法（自動 or 手動）が未定義
+
+**Judgment**: **Needs Discussion** ⚠️
+
+**Evidence**:
+- design.mdにはSlash Commandの定義は記載されているが、登録タイミング（Bot起動時に自動登録 vs 手動登録）が明記されていない
+- 自動登録の場合: シンプルだが、コマンド更新時に再起動が必要
+- 手動登録の場合: UIまたはCLIでの登録操作が必要
+
+**Discussion Points**:
+1. Bot起動時に自動的にGuild-specificコマンドを登録する方式（推奨）
+2. 別途「コマンド登録」ボタンをUIに追加する方式
+3. 初回起動時のみ自動登録し、以降は変更があった場合のみ登録する方式
+
+**Recommendation**: 方式1（Bot起動時に自動登録）を推奨。Discord.jsの`putGuild Commands`は冪等性があり、変更がなければ実質的に影響なし。
+
+---
+
+### W5 (AM-2, AM-3): UI配置場所のあいまいさ
+
+**Issue**: 「既存のプロジェクト設定パネル内に配置」「アプリ全体設定画面に配置」とあるが、これらが存在するか不明
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+- 既存コードベースを確認した結果:
+  - `CloudflareSettingsPanel`（electron-sdd-manager/src/renderer/components/CloudflareSettingsPanel.tsx）が既存の設定パネルパターンとして存在
+  - このパネルは独立したコンポーネントとして実装され、必要な場所に配置可能
+- design.mdの記述は「既存のパターンに従って配置する」という意図であり、具体的な配置場所は実装時に既存UIレイアウトに合わせて決定すればよい
+- tasks.mdの9.3「DiscordChannelSettingsの実装」で「プロジェクト設定画面内にチャンネルID入力フィールドを配置する」と具体的なタスクが定義されている
+
+**Reasoning**: 既存の`CloudflareSettingsPanel`パターンに従えば実装可能であり、配置場所は実装フェーズで適切に決定できる。仕様上の問題ではない。
+
+---
+
+## Response to Info (Low Priority)
+
+| #    | Issue     | Judgment      | Reason         |
+| ---- | --------- | ------------- | -------------- |
+| I1 (CD-1) | ストリーミング更新間隔の不一致（要件6.2: 1秒以上、Design: 1.5秒、research: 1秒間隔） | No Fix Needed | Design.mdで1.5秒を選択した理由がresearch.mdに明記されている（安全マージン確保）。要件は「1秒以上」であり、1.5秒はこれを満たす。矛盾ではなく設計判断。 |
+| I2 (DT-1) | タスク番号の重複表記 | No Fix Needed | tasks.mdを確認した結果、タスク番号は一意で重複はない。1.1, 1.2と2.1, 2.2は別グループであり、構造的に正しい。 |
+| I3 (TG-3) | Linuxセキュリティ警告UI未定義 | No Fix Needed | tasks.md 1.1で「safeStorage利用不可時のフォールバック処理を実装する」と明記。UIでの警告表示はNice to Haveであり、ログ記録で運用可能。将来タスクとして検討可。 |
+
+---
+
+## Files to Modify
+
+| File   | Changes   |
+| ------ | --------- |
+| design.md | BotTokenInputコンポーネント詳細定義を追加 |
+| design.md | Slash Command登録方式（Guild-specific）を明記 |
+| design.md | DiscordInteractionHandlerにボタンカスタムID生成方式を追記 |
+
+---
+
+## Conclusion
+
+5件のWarningのうち3件について修正が必要と判断しました：
+1. **BotTokenInput未定義** - Renderer Componentsセクションに詳細を追加
+2. **Slash Command登録方式** - Guild-specific登録をデフォルトとして明記
+3. **ボタンID衝突回避** - セッション識別子を含むカスタムID生成方式を定義
+
+1件（OG-2: Slash Command登録手順）については、実装アプローチの選択が必要なため「Needs Discussion」としました。推奨は「Bot起動時に自動登録」です。
+
+1件（AM-2, AM-3: UI配置場所）は既存パターン（CloudflareSettingsPanel）に従えば問題なく実装可能であり、修正不要と判断しました。
+
+### Next Steps
+
+修正を適用するには以下のコマンドを実行してください：
+```
+/kiro:document-review-reply discord-bot-integration 1 --fix
+```
+
+すべての問題が解決した後、実装を開始できます：
+```
+/kiro:spec-impl discord-bot-integration
+```
+
+---
+
+_This reply was generated by the document-review-reply command._

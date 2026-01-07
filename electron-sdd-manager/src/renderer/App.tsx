@@ -328,41 +328,7 @@ export function App() {
     });
 
     // Experimental Tools Install menu event listeners (experimental-tools-installer feature)
-    const cleanupExpPlan = window.electronAPI.onMenuInstallExperimentalPlan(async () => {
-      if (!currentProject) {
-        addNotification({
-          type: 'warning',
-          message: 'ツールをインストールするにはプロジェクトを選択してください',
-        });
-        return;
-      }
-
-      // Check if file exists
-      const checkResult = await window.electronAPI.checkExperimentalToolExists(currentProject, 'plan');
-      let shouldInstall = true;
-
-      if (checkResult.exists) {
-        shouldInstall = window.confirm('plan.mdは既に存在します。上書きしますか？');
-        if (!shouldInstall) {
-          addNotification({ type: 'info', message: 'Planコマンドのインストールをキャンセルしました' });
-          return;
-        }
-      }
-
-      const result = await window.electronAPI.installExperimentalPlan(currentProject, { force: shouldInstall && checkResult.exists });
-
-      if (result.ok) {
-        if (result.value.installedFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Planコマンドをインストールしました' });
-        } else if (result.value.overwrittenFiles.length > 0) {
-          addNotification({ type: 'success', message: 'Planコマンドを上書きしました' });
-        } else if (result.value.skippedFiles.length > 0) {
-          addNotification({ type: 'info', message: 'Planコマンドは既にインストール済みです' });
-        }
-      } else {
-        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
-      }
-    });
+    // Note: Plan command is not yet implemented in the backend
 
     const cleanupExpDebug = window.electronAPI.onMenuInstallExperimentalDebug(async () => {
       if (!currentProject) {
@@ -444,7 +410,6 @@ export function App() {
       cleanupToggleRemoteServer();
       cleanupCommandsetInstall();
       cleanupResetLayout();
-      cleanupExpPlan();
       cleanupExpDebug();
       cleanupExpCommit();
     };

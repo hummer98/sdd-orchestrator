@@ -34,6 +34,7 @@ import {
 } from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
+import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { AutoExecutionCoordinator } from '../services/autoExecutionCoordinator';
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
 import * as path from 'path';
@@ -1810,6 +1811,12 @@ export function registerIpcHandlers(): void {
       projectLogger.logFromRenderer(level, message, context);
     }
   );
+
+  // ============================================================
+  // Cloudflare Tunnel Handlers (cloudflare-tunnel-integration feature)
+  // ============================================================
+  registerCloudflareHandlers();
+  logger.info('[handlers] Cloudflare handlers registered');
 
   // ============================================================
   // Auto Execution Handlers (Inspection Fix Task 11.1)

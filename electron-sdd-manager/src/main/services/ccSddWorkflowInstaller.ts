@@ -11,12 +11,13 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（20種類）
+ * cc-sdd コマンド一覧（21種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
-  // Spec Workflow (7)
+  // Spec Workflow (8)
   'spec-init',
+  'spec-plan',
   'spec-requirements',
   'spec-design',
   'spec-tasks',

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-01-07
+
+### Added
+- **spec-planコマンド追加**: spec-managerプロファイルに対話型要件生成コマンド（spec-plan）を追加
+- **CC_SDD_COMMANDS拡張**: cc-sddプロファイルにspec-planコマンドを追加
+
+### Changed
+- **実験的/planコマンド削除**: 実験的ツールから/planコマンドを削除（spec-planに統合）
+
 ## [0.18.0] - 2026-01-07
 
 ### Added

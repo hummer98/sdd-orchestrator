@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-01-07
+
+### Added
+- **対話型要件生成コマンド**: spec-planによる対話的な要件生成ワークフローを追加
+- **CreateSpecDialogプランニングボタン**: Spec作成ダイアログに「プランニングで開始」ボタンを追加
+- **rendererログ出力**: rendererプロセスのログをmainプロセス経由でファイル出力するよう改善
+
+### Fixed
+- **Remote UI Spec一覧改善**: 実行中Agent件数バッジとPhaseバッジを追加
+- **Remote UI Agent一覧フィルタリング**: 選択中のSpec/Bugでエージェント一覧をフィルタリング
+- **Remote UI Spec/Bug作成ボタン**: (+)ボタンとダイアログを追加
+- **Remote UI エージェントログ表示**: Remote UIでエージェントログを表示できるよう修正
+- **specsWatcher inspection判定**: GO判定を新フォーマットに対応
+- **コマンドセットインストーラー**: インストール後に必須ディレクトリを自動作成
+
+### Documentation
+- バグレポート追加（commandset-install-missing-dirs, remote-ui-spec-list-display-gaps）
+- discord-bot-integration Spec追加（設計フェーズ完了）
+
 ## [0.17.2] - 2026-01-06
 
 ### Added

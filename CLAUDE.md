@@ -2,10 +2,6 @@
 
 Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life Cycle)
 
-## Language
-
-必ず日本語で応答してください
-
 ## Project Context
 
 ### Paths
@@ -34,15 +30,11 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 
 - Phase 0 (optional): `/kiro:steering`, `/kiro:steering-custom`
 - Phase 1 (Specification):
-  - `/kiro:spec-init "description"`
+  - `/kiro:spec-plan "description"`
   - `/kiro:spec-requirements {feature}`
-  - `/kiro:validate-gap {feature}` (optional: for existing codebase)
   - `/kiro:spec-design {feature} [-y]`
-  - `/kiro:validate-design {feature}` (optional: design review)
   - `/kiro:spec-tasks {feature} [-y]`
 - Phase 2 (Implementation): `/kiro:spec-impl {feature} [tasks]`
-  - `/kiro:validate-impl {feature}` (optional: after implementation)
-- Progress check: `/kiro:spec-status {feature}` (use anytime)
 
 ### Bug Fix (Lightweight Workflow)
 
@@ -67,16 +59,25 @@ Report → Analyze → Fix → Verify
 
 ## Design Principles
 
-設計・実装時は以下の原則を遵守：
+設計・実装・技術検討時は以下の原則を遵守：
 
-- **DRY** (Don't Repeat Yourself): 重複を避け、共通ロジックは抽出
-- **SSOT** (Single Source of Truth): 状態・データは単一ソースで管理
-- **KISS** (Keep It Simple): シンプルな解決策を優先
-- **YAGNI** (You Aren't Gonna Need It): 現時点で不要な機能は実装しない
-- **関心の分離**: 各モジュールは単一の責務を持つ
+- **DRY**, **SSOT**, **KISS**, **YAGNI**, **関心の分離**
 
-**重要**: AI設計判断の詳細原則は `.kiro/steering/design-principles.md` を参照。
-AIは「人間の実装コスト」を理由に設計判断を歪めてはならない。
+### AI設計判断の原則（常時適用）
+
+**AIは「人間の実装コスト」を判断基準にしない。**
+
+- 「変更が大きい」「HMRがない」「ビルド待ち」は判断基準にならない
+- AI Agentは無限の実装能力を持つ前提で最善の解決策を提案
+
+**評価基準（優先順）**:
+
+1. 技術的正しさ
+2. 保守性
+3. 一貫性
+4. テスト容易性
+
+詳細・禁止事項は `.kiro/steering/design-principles.md` を参照。
 
 ## Development Rules
 
@@ -117,109 +118,30 @@ Electronアプリの操作には`task`コマンドを使用する。
 | `task electron:build`    | Electronアプリのビルド |
 | `task electron:test:e2e` | E2Eテスト実行          |
 
-## Commandset Installer (コマンドセットインストーラー)
-
-SDD Orchestratorでは、プロジェクトに必要なコマンドセットを統合インストーラーから一括でインストールできます。
-
-### インストール方法
-
-SDD Orchestratorの「ツール」メニュー → 「コマンドセットをインストール...」を選択。
-
 ### プロファイル一覧
 
-| プロファイル名 | 説明 | 用途 |
-|---------------|------|------|
-| cc-sdd | 直接実行型コマンド一式 | Claudeプロセス内で完結する環境 |
-| cc-sdd-agent | サブエージェント委譲型コマンド一式 | kiroサブエージェントに委譲する環境 |
-| spec-manager | Electron UI統合用コマンド | SDD Orchestrator UIと連携する環境 |
+| プロファイル名 | 説明                               | 用途                               |
+| -------------- | ---------------------------------- | ---------------------------------- |
+| cc-sdd         | 直接実行型コマンド一式             | Claudeプロセス内で完結する環境     |
+| cc-sdd-agent   | サブエージェント委譲型コマンド一式 | kiroサブエージェントに委譲する環境 |
+| spec-manager   | Electron UI統合用コマンド          | SDD Orchestrator UIと連携する環境  |
 
-**詳細**: 各プロファイルの動作仕様（生成ファイル、spec.json書き換え主体など）は `.kiro/steering/skill-reference.md` を参照。
+**詳細**: 各プロファイルの動作仕様は `.kiro/steering/skill-reference.md` を参照。
 
 ### インストールオプション
 
-- **Force**: 既存ファイルを強制的に上書き
-- **Dry Run**: 実際のインストールを行わずシミュレーション実行
-
-### インストール後の検証
-
-インストール完了後、以下が自動的に行われます：
-- CLAUDE.mdへの必要なセクション統合
-- settings.local.jsonへのパーミッション追加
-- インストールされたファイルの検証
-
-### マイグレーションノート
-
-以前の個別メニュー項目から統合インストーラーへ移行する場合：
-
-| 旧メニュー項目 | 新しい操作方法 |
-|---------------|---------------|
-| 「spec-managerコマンドを再インストール...」 | 「コマンドセットをインストール...」→ minimalプロファイル |
-| 「CLAUDE.mdをインストール...」 | 「コマンドセットをインストール...」→ 任意のプロファイル（CLAUDE.md統合は自動実行） |
-| 「シェルコマンドの実行許可を追加...」 | 「コマンドセットをインストール...」→ 任意のプロファイル（パーミッション追加は自動実行） |
-| 「cc-sdd Workflowをインストール...」 | 「コマンドセットをインストール...」→ standardまたはfullプロファイル |
-
-**注意**: 上記の旧メニュー項目は削除されました。すべての機能は統合インストーラーに統合されています。
+- **Force**: 既存ファイルを強制上書き
+- **Dry Run**: シミュレーション実行
 
 ## Experimental Tools (実験的ツール)
 
-SDD Orchestratorでは、実験的なslash commands/agentsをメニューからプロジェクトにインストールできます。
+「ツール」メニュー → 「実験的ツール」からインストール。
 
-### インストール方法
-
-SDD Orchestratorの「ツール」メニュー → 「実験的ツール」から選択。
-
-| メニュー項目 | インストール先 | 用途 |
-|-------------|--------------|------|
-| Planコマンドをインストール (実験的) | `.claude/commands/plan.md` | 実装前のプランニング・設計 |
-| Debugエージェントをインストール (実験的) | `.claude/agents/debug.md` | デバッグ・トラブルシューティング |
-| Commitコマンドをインストール (実験的) | `.claude/commands/commit.md` | 構造化されたコミットメッセージ生成 |
-
-### 各ツールの概要
-
-#### Planコマンド (`/plan`)
-
-実装前に機能の計画・設計を行うためのコマンド。以下を含む構造化された計画を生成：
-- 要件の明確化
-- 技術的アプローチ
-- 実装タスクの分解
-- リスクと対策
-- 成功基準
-
-**使い方**: `/plan [機能の説明]`
-
-#### Debugエージェント
-
-問題の診断と解決に特化したサブエージェント。体系的なトラブルシューティングを実行：
-- ログ分析
-- コード追跡
-- 環境診断
-- テストデバッグ
-
-**起動方法**: `@debug` または Claude Code のAgent選択メニューから
-
-#### Commitコマンド (`/commit`)
-
-Conventional Commits形式に従った構造化されたコミットメッセージを生成：
-- 変更内容の分析
-- type/scopeの提案
-- メッセージの自動生成
-
-**使い方**: `/commit`
-
-### steering-debugコマンド
-
-`/kiro:steering-debug` はプロジェクト情報を収集し、Debugエージェントに必要な `.kiro/steering/debugging.md` を自動生成するコマンド。
-
-**収集する情報**:
-- 起動方法（package.json scripts, Taskfile.yml等）
-- MCP設定
-- E2Eコマンドラインツール
-- ログ参照方法
-- トラブルシューティングノウハウ
-
-**使い方**: `/kiro:steering-debug`
-
-不明点がある場合はユーザーに質問し、情報を補完します。
+| メニュー項目      | インストール先               | 用途                   |
+| ----------------- | ---------------------------- | ---------------------- |
+| Planコマンド      | `.claude/commands/plan.md`   | 実装前プランニング     |
+| Debugエージェント | `.claude/agents/debug.md`    | トラブルシューティング |
+| Commitコマンド    | `.claude/commands/commit.md` | コミットメッセージ生成 |
 
 ## Debugging
 
@@ -229,26 +151,15 @@ Conventional Commits形式に従った構造化されたコミットメッセー
 
 以下の状況では `debug` agent の使用を検討：
 
-| トリガー | 用途 |
-|----------|------|
-| `task electron:*` 実行後にエラー発生 | 環境問題の診断 |
-| MCP electronツール使用時 | UI操作手順は `operations.md`、エラー時は `debugging.md` |
-| E2Eテスト失敗時 | テスト失敗の原因調査 |
-| 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業 |
-| Electronアプリが期待通り動作しない | 動作確認・トラブルシューティング |
-
-### MCP Electron操作の制限事項
-
-- **メニュー操作不可**: MCP electronツールではネイティブメニュー（ファイル、編集、表示等）を操作できない
-- **代替手段**: メニュー経由の機能テストにはIPCを直接呼び出す
-  ```javascript
-  // 例: レイアウトリセット
-  window.electronAPI.resetLayoutConfig()
-  // 例: レイアウト読み込み
-  window.electronAPI.loadLayoutConfig()
-  ```
+| トリガー                                   | 用途                                                    |
+| ------------------------------------------ | ------------------------------------------------------- |
+| `task electron:*` 実行後にエラー発生       | 環境問題の診断                                          |
+| MCP electronツール使用時                   | UI操作手順は `operations.md`、エラー時は `debugging.md` |
+| E2Eテスト失敗時                            | テスト失敗の原因調査                                    |
+| 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業                                        |
+| Electronアプリが期待通り動作しない         | 動作確認・トラブルシューティング                        |
 
 ### 詳細情報
 
-デバッグの詳細手順は `.kiro/steering/debugging.md` を参照。
-Agent定義は `.claude/agents/debug.md` にある。
+- 操作手順: `.kiro/steering/operations.md`
+- トラブルシューティング: `.kiro/steering/debugging.md`

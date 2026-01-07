@@ -925,18 +925,6 @@ const electronAPI = {
   // ============================================================
 
   /**
-   * Install Plan command (experimental)
-   * @param projectPath Project root path
-   * @param options Install options (force: boolean)
-   * @returns Installation result
-   */
-  installExperimentalPlan: (
-    projectPath: string,
-    options?: ExperimentalInstallOptions
-  ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_EXPERIMENTAL_PLAN, projectPath, options),
-
-  /**
    * Install Debug agent (experimental)
    * Includes semantic merge to CLAUDE.md
    * @param projectPath Project root path
@@ -972,23 +960,6 @@ const electronAPI = {
     toolType: ToolType
   ): Promise<ExperimentalCheckResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_EXPERIMENTAL_TOOL_EXISTS, projectPath, toolType),
-
-  /**
-   * Subscribe to menu install experimental Plan command event
-   * @param callback Function called when menu item is clicked
-   * @returns Cleanup function to unsubscribe
-   */
-  onMenuInstallExperimentalPlan: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN, handler);
-    };
-  },
 
   /**
    * Subscribe to menu install experimental Debug agent event

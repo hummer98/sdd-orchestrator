@@ -295,16 +295,6 @@ export function createMenu(): void {
           label: '実験的ツール',
           submenu: [
             {
-              label: 'Planコマンドをインストール (実験的)',
-              enabled: currentProjectPathForMenu !== null,
-              click: () => {
-                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-                if (window) {
-                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN);
-                }
-              },
-            },
-            {
               label: 'Debugエージェントをインストール (実験的)',
               enabled: currentProjectPathForMenu !== null,
               click: () => {

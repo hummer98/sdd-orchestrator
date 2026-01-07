@@ -150,13 +150,11 @@ export const IPC_CHANNELS = {
   MENU_RESET_LAYOUT: 'menu:reset-layout',
 
   // Experimental Tools Install (experimental-tools-installer feature)
-  INSTALL_EXPERIMENTAL_PLAN: 'ipc:install-experimental-plan',
   INSTALL_EXPERIMENTAL_DEBUG: 'ipc:install-experimental-debug',
   INSTALL_EXPERIMENTAL_COMMIT: 'ipc:install-experimental-commit',
   CHECK_EXPERIMENTAL_TOOL_EXISTS: 'ipc:check-experimental-tool-exists',
 
   // Menu Events - Experimental Tools
-  MENU_INSTALL_EXPERIMENTAL_PLAN: 'menu:install-experimental-plan',
   MENU_INSTALL_EXPERIMENTAL_DEBUG: 'menu:install-experimental-debug',
   MENU_INSTALL_EXPERIMENTAL_COMMIT: 'menu:install-experimental-commit',
 

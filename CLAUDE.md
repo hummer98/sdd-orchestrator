@@ -139,7 +139,6 @@ Electronアプリの操作には`task`コマンドを使用する。
 
 | メニュー項目      | インストール先               | 用途                   |
 | ----------------- | ---------------------------- | ---------------------- |
-| Planコマンド      | `.claude/commands/plan.md`   | 実装前プランニング     |
 | Debugエージェント | `.claude/agents/debug.md`    | トラブルシューティング |
 | Commitコマンド    | `.claude/commands/commit.md` | コミットメッセージ生成 |
 

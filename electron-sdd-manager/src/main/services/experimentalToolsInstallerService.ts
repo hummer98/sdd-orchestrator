@@ -12,7 +12,7 @@ import { getExperimentalTemplatesPath } from '../utils/resourcePaths';
 /**
  * Tool types that can be installed
  */
-export type ToolType = 'plan' | 'debug' | 'commit';
+export type ToolType = 'debug' | 'commit';
 
 /**
  * Install options
@@ -97,8 +97,6 @@ async function fileExists(filePath: string): Promise<boolean> {
  */
 function getTargetPath(projectPath: string, toolType: ToolType): string {
   switch (toolType) {
-    case 'plan':
-      return join(projectPath, '.claude', 'commands', 'plan.md');
     case 'debug':
       return join(projectPath, '.claude', 'agents', 'debug.md');
     case 'commit':
@@ -111,8 +109,6 @@ function getTargetPath(projectPath: string, toolType: ToolType): string {
  */
 function getRelativePath(toolType: ToolType): string {
   switch (toolType) {
-    case 'plan':
-      return '.claude/commands/plan.md';
     case 'debug':
       return '.claude/agents/debug.md';
     case 'commit':
@@ -144,19 +140,6 @@ export class ExperimentalToolsInstallerService {
     const targetPath = getTargetPath(projectPath, toolType);
     const exists = await fileExists(targetPath);
     return { exists, path: targetPath };
-  }
-
-  /**
-   * Install Plan command
-   * @param projectPath - Project root path
-   * @param options - Install options
-   * @returns Install result or error
-   */
-  async installPlanCommand(
-    projectPath: string,
-    options: InstallOptions = {}
-  ): Promise<Result<InstallResult, InstallError>> {
-    return this.installTool(projectPath, 'plan', options);
   }
 
   /**
@@ -256,11 +239,11 @@ export class ExperimentalToolsInstallerService {
   }
 
   /**
-   * Install a tool (Plan or Commit)
+   * Install a tool (Commit)
    */
   private async installTool(
     projectPath: string,
-    toolType: 'plan' | 'commit',
+    toolType: 'commit',
     options: InstallOptions = {}
   ): Promise<Result<InstallResult, InstallError>> {
     const { force = false } = options;

@@ -33,10 +33,6 @@ describe('ExperimentalToolsInstallerService', () => {
 
     // Create template files
     await writeFile(
-      join(testTemplateDir, 'commands', 'plan.md'),
-      '# Plan Command Template\nTest content for plan command'
-    );
-    await writeFile(
       join(testTemplateDir, 'commands', 'commit.md'),
       '# Commit Command Template\nTest content for commit command'
     );
@@ -64,23 +60,6 @@ describe('ExperimentalToolsInstallerService', () => {
   });
 
   describe('checkTargetExists', () => {
-    it('should return exists: false when plan.md does not exist', async () => {
-      const result = await service.checkTargetExists(testProjectPath, 'plan');
-
-      expect(result.exists).toBe(false);
-      expect(result.path).toBe(join(testProjectPath, '.claude', 'commands', 'plan.md'));
-    });
-
-    it('should return exists: true when plan.md exists', async () => {
-      const targetDir = join(testProjectPath, '.claude', 'commands');
-      await mkdir(targetDir, { recursive: true });
-      await writeFile(join(targetDir, 'plan.md'), 'existing content');
-
-      const result = await service.checkTargetExists(testProjectPath, 'plan');
-
-      expect(result.exists).toBe(true);
-    });
-
     it('should return exists: false when debug.md does not exist', async () => {
       const result = await service.checkTargetExists(testProjectPath, 'debug');
 
@@ -94,87 +73,15 @@ describe('ExperimentalToolsInstallerService', () => {
       expect(result.exists).toBe(false);
       expect(result.path).toBe(join(testProjectPath, '.claude', 'commands', 'commit.md'));
     });
-  });
 
-  describe('installPlanCommand', () => {
-    it('should install plan.md when target does not exist', async () => {
-      const result = await service.installPlanCommand(testProjectPath);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.success).toBe(true);
-        expect(result.value.installedFiles).toContain('.claude/commands/plan.md');
-        expect(result.value.skippedFiles).toHaveLength(0);
-        expect(result.value.overwrittenFiles).toHaveLength(0);
-      }
-
-      // Verify file was created
-      const content = await readFile(
-        join(testProjectPath, '.claude', 'commands', 'plan.md'),
-        'utf-8'
-      );
-      expect(content).toContain('Plan Command Template');
-    });
-
-    it('should skip when file exists and force is false', async () => {
+    it('should return exists: true when commit.md exists', async () => {
       const targetDir = join(testProjectPath, '.claude', 'commands');
       await mkdir(targetDir, { recursive: true });
-      await writeFile(join(targetDir, 'plan.md'), 'existing content');
+      await writeFile(join(targetDir, 'commit.md'), 'existing content');
 
-      const result = await service.installPlanCommand(testProjectPath);
+      const result = await service.checkTargetExists(testProjectPath, 'commit');
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.success).toBe(true);
-        expect(result.value.installedFiles).toHaveLength(0);
-        expect(result.value.skippedFiles).toContain('.claude/commands/plan.md');
-      }
-
-      // Verify original content preserved
-      const content = await readFile(join(targetDir, 'plan.md'), 'utf-8');
-      expect(content).toBe('existing content');
-    });
-
-    it('should overwrite when file exists and force is true', async () => {
-      const targetDir = join(testProjectPath, '.claude', 'commands');
-      await mkdir(targetDir, { recursive: true });
-      await writeFile(join(targetDir, 'plan.md'), 'existing content');
-
-      const result = await service.installPlanCommand(testProjectPath, { force: true });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.success).toBe(true);
-        expect(result.value.overwrittenFiles).toContain('.claude/commands/plan.md');
-      }
-
-      // Verify new content
-      const content = await readFile(join(targetDir, 'plan.md'), 'utf-8');
-      expect(content).toContain('Plan Command Template');
-    });
-
-    it('should create .claude/commands directory if it does not exist', async () => {
-      const result = await service.installPlanCommand(testProjectPath);
-
-      expect(result.ok).toBe(true);
-
-      // Verify directory was created
-      const content = await readFile(
-        join(testProjectPath, '.claude', 'commands', 'plan.md'),
-        'utf-8'
-      );
-      expect(content).toBeDefined();
-    });
-
-    it('should return TEMPLATE_NOT_FOUND error when template is missing', async () => {
-      // Create service with invalid template dir
-      const badService = new ExperimentalToolsInstallerService('/nonexistent');
-      const result = await badService.installPlanCommand(testProjectPath);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('TEMPLATE_NOT_FOUND');
-      }
+      expect(result.exists).toBe(true);
     });
   });
 
@@ -280,17 +187,6 @@ describe('ExperimentalToolsInstallerService', () => {
   });
 
   describe('error handling', () => {
-    it('should return TEMPLATE_NOT_FOUND for invalid template directory', async () => {
-      // Create service with invalid template dir
-      const badService = new ExperimentalToolsInstallerService('/nonexistent/path');
-      const result = await badService.installPlanCommand(testProjectPath);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('TEMPLATE_NOT_FOUND');
-      }
-    });
-
     it('should return TEMPLATE_NOT_FOUND for missing commit template', async () => {
       // Create service with invalid template dir
       const badService = new ExperimentalToolsInstallerService('/nonexistent/path');

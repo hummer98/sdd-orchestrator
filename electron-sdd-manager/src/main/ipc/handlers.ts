@@ -1604,18 +1604,6 @@ export function registerIpcHandlers(): void {
   // ============================================================
 
   ipcMain.handle(
-    IPC_CHANNELS.INSTALL_EXPERIMENTAL_PLAN,
-    async (
-      _event,
-      projectPath: string,
-      options?: ExperimentalInstallOptions
-    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
-      logger.info('[handlers] INSTALL_EXPERIMENTAL_PLAN called', { projectPath, options });
-      return experimentalToolsInstaller.installPlanCommand(projectPath, options);
-    }
-  );
-
-  ipcMain.handle(
     IPC_CHANNELS.INSTALL_EXPERIMENTAL_DEBUG,
     async (
       _event,

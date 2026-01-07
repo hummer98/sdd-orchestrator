@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-01-07
+
+### Fixed
+- **起動時の白画面問題を修正**: IPCハンドラー未登録（cloudflare:get-settings）と未実装コード参照（installExperimentalPlan）の問題を修正
+- **Inspectionタブ表示修正**: 最新のInspectionタブのみ表示される問題を修正し、全ラウンドのタブを表示するよう改善
+
+### Documentation
+- AI設計原則の他プロジェクト適用ガイドを追加
+
 ## [0.19.0] - 2026-01-07
 
 ### Added

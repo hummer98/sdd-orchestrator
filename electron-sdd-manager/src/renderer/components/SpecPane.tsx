@@ -15,7 +15,7 @@ import {
 } from './index';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
-import { getLatestInspectionReportFile, normalizeInspectionState } from '../types/inspection';
+import { normalizeInspectionState } from '../types/inspection';
 
 /** Spec artifact tabs */
 const SPEC_TABS: TabInfo[] = [
@@ -83,23 +83,19 @@ export function SpecPane({
 
   // Build inspection tabs from spec.json inspection field (InspectionState)
   // Bug fix: inspection-state-data-model - normalize inspection state before use
+  // Bug fix: inspection-files-display-issue - show all inspection rounds (not just latest)
   const inspectionTabs = useMemo((): TabInfo[] => {
     const inspection = normalizeInspectionState(specDetail?.specJson?.inspection);
-    const reportFile = getLatestInspectionReportFile(inspection);
-    if (!reportFile) {
+    if (!inspection?.rounds || inspection.rounds.length === 0) {
       return [];
     }
 
-    const match = reportFile.match(/inspection-(\d+)\.md/);
-    if (!match) {
-      return [];
-    }
-
-    const n = parseInt(match[1], 10);
-    return [{
-      key: `inspection-${n}` as ArtifactType,
-      label: `Inspection-${n}`,
-    }];
+    // Sort by round number and create tabs for all rounds
+    const sortedRounds = [...inspection.rounds].sort((a, b) => a.number - b.number);
+    return sortedRounds.map(round => ({
+      key: `inspection-${round.number}` as ArtifactType,
+      label: `Inspection-${round.number}`,
+    }));
   }, [specDetail?.specJson?.inspection]);
 
   // Combine dynamic tabs

@@ -117,11 +117,12 @@ Electron UI統合用純粋生成コマンド。**spec.jsonの状態管理はElec
 | コマンド | ファイル作成 | ファイル編集 | 前提条件 | OK時のspec.json | NG時のspec.json | 書き換え主体 |
 |---------|-------------|-------------|---------|-----------------|-----------------|-------------|
 | init | `spec.json`, `requirements.md` | - | テンプレート存在 | phase: `initialized` | 変更なし | Claude |
+| spec-plan | `spec.json`, `requirements.md` | - | 説明文提供 | phase: `requirements-generated`, approvals.requirements.generated: true, approved: false | 変更なし | **Claude (例外)** |
 
-**ツール**: Read, Write, Glob (Bash は impl のみ)
+**ツール**: Read, Write, Glob (Bash は impl のみ、spec-plan は WebSearch/WebFetch/Task も使用)
 
 **重要な制約**:
-- `DO NOT read or update spec.json` (language設定の参照のみ許可)
+- `DO NOT read or update spec.json` (language設定の参照のみ許可) - **例外: spec-planはspec.jsonを作成・更新可**
 - research.md は生成しない（純粋生成のみ）
 - 次ステップガイダンス、承認ワークフローメッセージは出力しない
 

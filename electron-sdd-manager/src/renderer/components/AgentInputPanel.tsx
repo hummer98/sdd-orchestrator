@@ -14,12 +14,21 @@ import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
 
 export function AgentInputPanel() {
-  const { selectedAgentId, resumeAgent, getAgentById } = useAgentStore();
+  const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
+  const resumeAgent = useAgentStore((state) => state.resumeAgent);
+  // Bug fix: agent-log-textfield-inactive
+  // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
+  const agent = useAgentStore((state) => {
+    if (!state.selectedAgentId) return undefined;
+    for (const agentList of state.agents.values()) {
+      const found = agentList.find((a) => a.agentId === state.selectedAgentId);
+      if (found) return found;
+    }
+    return undefined;
+  });
 
   const [inputValue, setInputValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const agent = selectedAgentId ? getAgentById(selectedAgentId) : undefined;
 
   // Can resume if: agent exists, has sessionId, and is not running
   const isRunning = agent?.status === 'running' || agent?.status === 'hang';

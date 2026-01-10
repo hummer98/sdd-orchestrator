@@ -66,6 +66,7 @@ interface AgentActions {
 
   // Helper methods
   getAgentById: (agentId: string) => AgentInfo | undefined;
+  getSelectedAgent: () => AgentInfo | undefined;
   getAgentsForSpec: (specId: string) => AgentInfo[];
   getProjectAgents: () => AgentInfo[];
   clearError: () => void;
@@ -475,6 +476,19 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       if (agent) {
         return agent;
       }
+    }
+    return undefined;
+  },
+
+  // Bug fix: agent-log-textfield-inactive
+  // selectedAgentIdに対応するAgentInfoを返す
+  // セレクタとして使用することで、agents Map変更時に正しく再レンダリングされる
+  getSelectedAgent: () => {
+    const { selectedAgentId, agents } = get();
+    if (!selectedAgentId) return undefined;
+    for (const agentList of agents.values()) {
+      const found = agentList.find((a) => a.agentId === selectedAgentId);
+      if (found) return found;
     }
     return undefined;
   },

@@ -20,11 +20,22 @@ interface DisplayLine {
 }
 
 export function AgentLogPanel() {
-  const { selectedAgentId, clearLogs, getLogsForAgent, getAgentById } = useAgentStore();
+  const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
+  const clearLogs = useAgentStore((state) => state.clearLogs);
+  const getLogsForAgent = useAgentStore((state) => state.getLogsForAgent);
+  // Bug fix: agent-log-textfield-inactive
+  // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
+  const agent = useAgentStore((state) => {
+    if (!state.selectedAgentId) return undefined;
+    for (const agentList of state.agents.values()) {
+      const found = agentList.find((a) => a.agentId === state.selectedAgentId);
+      if (found) return found;
+    }
+    return undefined;
+  });
   const [isFormatted, setIsFormatted] = useState(true);
 
   const logs = selectedAgentId ? getLogsForAgent(selectedAgentId) : [];
-  const agent = selectedAgentId ? getAgentById(selectedAgentId) : undefined;
   const isRunning = agent?.status === 'running';
 
   // Aggregate tokens from logs

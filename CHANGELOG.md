@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-01-10
+
+### Added
+- **Remote UIのReact移行と共有アーキテクチャ実装**: Remote UIをReactに移行し、Electron版と共有アーキテクチャを実現
+
+### Fixed
+- **Zustandセレクタパターンの修正**: agent-log-textfield-inactiveバグを修正（AgentLogPanelのTextField非活性問題）
+- **auto-execution E2Eテストの修正**: E2Eテストの安定性を改善
+
 ## [0.19.1] - 2026-01-07
 
 ### Fixed

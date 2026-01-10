@@ -4,10 +4,12 @@
  */
 
 import * as chokidar from 'chokidar';
+import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logger';
 // Bug fix: spec-agent-list-not-updating-on-auto-execution
-// Removed fs and AgentRecord imports - no longer reading files in this service
+// Removed AgentRecord imports - no longer reading files in this service
+// Bug fix: agent-watcher-missing-dir - fs import restored for directory creation
 
 // Bug fix: spec-agent-list-not-updating-on-auto-execution
 // Simplified event type - no longer includes record data
@@ -67,6 +69,7 @@ export class AgentRecordWatcherService {
 
   /**
    * Start watching the agents directory
+   * Bug fix: agent-watcher-missing-dir - Ensure directory exists before watching
    */
   start(): void {
     if (this.watcher) {
@@ -75,6 +78,15 @@ export class AgentRecordWatcherService {
     }
 
     const agentsDir = path.join(this.projectPath, '.kiro', 'runtime', 'agents');
+
+    // Bug fix: agent-watcher-missing-dir
+    // Ensure directory exists before starting watcher
+    // Without this, chokidar may fail to detect files created after directory creation
+    if (!fs.existsSync(agentsDir)) {
+      fs.mkdirSync(agentsDir, { recursive: true });
+      logger.info('[AgentRecordWatcherService] Created agents directory', { agentsDir });
+    }
+
     logger.info('[AgentRecordWatcherService] Starting watcher', { agentsDir });
 
     this.watcher = chokidar.watch(agentsDir, {

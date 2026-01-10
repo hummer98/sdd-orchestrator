@@ -120,6 +120,18 @@ export class AccessTokenService {
     }
     return this.generateToken();
   }
+
+  /**
+   * Set a fixed access token
+   * Task 10.2: Support for CLI --remote-token option
+   *
+   * Used for E2E testing to set a known token value.
+   *
+   * @param token The fixed token to use
+   */
+  setFixedToken(token: string): void {
+    this.configStore.setAccessToken(token);
+  }
 }
 
 // Singleton instance

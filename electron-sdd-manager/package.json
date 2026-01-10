@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "dev:electron": "electron .",
+    "dev:remote": "vite --config vite.config.remote.ts",
     "build": "tsc && vite build",
     "build:electron": "npm run build && electron-builder",
+    "build:remote": "vite build --config vite.config.remote.ts",
     "preview": "vite preview",
+    "preview:remote": "vite preview --config vite.config.remote.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

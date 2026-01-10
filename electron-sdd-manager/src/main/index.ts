@@ -1,17 +1,20 @@
 /**
  * Electron Main Process Entry Point
  * Requirements: 11.1, 11.6, 11.7, 13.1, 13.2
+ * Task 10.2: CLI起動オプション統合
  */
 
 import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
-import { registerRemoteAccessHandlers, setupStatusNotifications } from './ipc/remoteAccessHandlers';
+import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
+import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser';
+import { getAccessTokenService } from './services/accessTokenService';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -62,20 +65,35 @@ process.on('uncaughtException', (error: Error) => {
 
 let mainWindow: BrowserWindow | null = null;
 
-// E2E test mode detection via command line argument
-const isE2ETest = process.argv.includes('--e2e-test');
+// Task 10.2: Parse CLI arguments using cliArgsParser
+// In packaged apps, argv structure may differ (no 'electron' as first arg)
+const cliArgs = app.isPackaged ? process.argv.slice(1) : process.argv.slice(2);
+const cliOptions: CLIOptions = parseCLIArgs(cliArgs);
+
+// Handle --help option early (before app.whenReady)
+if (cliOptions.help) {
+  console.log(printHelp());
+  app.exit(0);
+}
+
+// E2E test mode detection via CLI options
+const isE2ETest = cliOptions.e2eTest;
 
 /**
- * Parse command line arguments to get initial project path
- * Supports: --project=<path> or --project <path>
- * Also checks SDD_PROJECT_PATH environment variable
+ * Get initial project path from CLI options or environment
+ * Priority: 1. CLI --project, 2. SDD_PROJECT_PATH env
  *
  * Note: For packaged Electron apps on macOS, process.argv structure differs
  * from development mode. We use multiple methods to ensure compatibility.
  * See: https://github.com/electron/electron/issues/4690
  */
-function parseProjectPathArg(): string | null {
-  // First check environment variable (works better with vite dev server)
+function getInitialProjectPathFromConfig(): string | null {
+  // First check CLI option
+  if (cliOptions.projectPath) {
+    return cliOptions.projectPath;
+  }
+
+  // Then check environment variable (works better with vite dev server)
   const envPath = process.env.SDD_PROJECT_PATH;
   if (envPath) {
     return envPath;
@@ -88,30 +106,11 @@ function parseProjectPathArg(): string | null {
     return switchValue;
   }
 
-  // Fallback: parse process.argv manually
-  // In packaged apps, argv structure may differ (no 'electron' as first arg)
-  const args = app.isPackaged ? process.argv.slice(1) : process.argv.slice(2);
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-
-    // --project=<path> format
-    if (arg.startsWith('--project=')) {
-      const path = arg.substring('--project='.length);
-      return path || null;
-    }
-
-    // --project <path> format
-    if (arg === '--project' && i + 1 < args.length) {
-      return args[i + 1];
-    }
-  }
-
   return null;
 }
 
-// Initial project path from command line or environment variable
-const initialProjectPath = parseProjectPathArg();
+// Initial project path from CLI or environment variable
+const initialProjectPath = getInitialProjectPathFromConfig();
 
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
@@ -123,6 +122,9 @@ function createWindow(): void {
   const isDev = !app.isPackaged && !isE2ETest;
   const configStore = getConfigStore();
   const savedBounds = configStore.getWindowBounds();
+
+  // Task 10.2: Headless mode - create window but don't show it
+  const isHeadless = cliOptions.headless;
 
   mainWindow = new BrowserWindow({
     width: savedBounds?.width ?? 1200,
@@ -142,9 +144,11 @@ function createWindow(): void {
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
   });
 
-  // Show window when ready
+  // Show window when ready (unless headless mode)
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+    if (!isHeadless) {
+      mainWindow?.show();
+    }
   });
 
   // Save window bounds on close
@@ -216,7 +220,66 @@ app.whenReady().then(async () => {
 
   // Create main window
   createWindow();
+
+  // Task 10.2: Remote UI auto-start with CLI options
+  if (cliOptions.remoteUIAuto) {
+    await startRemoteUIWithCLIOptions();
+  }
 });
+
+/**
+ * Task 10.2: Start Remote UI server with CLI options
+ *
+ * Handles:
+ * - --remote-ui=auto: Auto-start Remote UI server
+ * - --remote-port=<port>: Use specified port
+ * - --remote-token=<token>: Use fixed access token
+ * - --no-auth: Disable authentication
+ *
+ * Outputs REMOTE_UI_URL=... to stdout for E2E test consumption
+ */
+async function startRemoteUIWithCLIOptions(): Promise<void> {
+  try {
+    const server = getRemoteAccessServer();
+    if (!server) {
+      logger.error('[main] Remote Access Server not initialized');
+      return;
+    }
+
+    // Set fixed token if specified
+    if (cliOptions.remoteToken) {
+      const accessTokenService = getAccessTokenService();
+      accessTokenService.setFixedToken(cliOptions.remoteToken);
+      logger.info('[main] Using fixed access token from CLI');
+    }
+
+    // Start server with specified port
+    const result = await server.start(cliOptions.remotePort, {
+      publishToCloudflare: false, // E2E tests use local connection
+    });
+
+    if (result.ok) {
+      const { url, accessToken } = result.value;
+      const accessUrl = `${url}?token=${accessToken}`;
+
+      // Output URL in format that E2E tests can parse
+      // Use process.stdout.write to avoid newline issues
+      console.log(`REMOTE_UI_URL=${accessUrl}`);
+      console.log(`REMOTE_UI_PORT=${result.value.port}`);
+
+      logger.info('[main] Remote UI server auto-started', {
+        port: result.value.port,
+        url: accessUrl,
+      });
+    } else {
+      logger.error('[main] Failed to start Remote UI server', { error: result.error });
+      console.error(`REMOTE_UI_ERROR=${result.error.type}`);
+    }
+  } catch (error) {
+    logger.error('[main] Exception starting Remote UI server', { error });
+    console.error(`REMOTE_UI_ERROR=${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
 // macOS: Re-create window when dock icon is clicked
 app.on('activate', () => {

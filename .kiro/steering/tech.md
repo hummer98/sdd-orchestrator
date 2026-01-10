@@ -100,23 +100,47 @@ task electron:stop   # 停止
 
 Electronアプリはブラウザからアクセス可能なRemote UIを提供する。
 
+**アーキテクチャ概要**:
+- **API抽象化層**: `ApiClient`インタフェースで通信方式を透過化
+  - `IpcApiClient`: Electron IPC経由（preload + contextBridge）
+  - `WebSocketApiClient`: WebSocket経由（Remote UI）
+- **共有コンポーネント**: `src/shared/`でElectron版とRemote UI版で85%以上のコード共有
+- **PlatformProvider**: プラットフォーム固有機能の有無を条件分岐
+
 **構成**:
 - `remoteAccessServer.ts`: Express静的サーバー + WebSocketサーバー
 - `webSocketHandler.ts`: WebSocket経由のIPC-like通信
-- `remote-ui/`: 独立したReactアプリ（Vite別ビルド）
+- `remote-ui/`: React SPA（Vite別ビルド、`vite.config.remote.ts`）
+- `shared/`: Electron版/Remote UI版共有コード
+
+**ビルドスクリプト**:
+- `npm run dev:remote`: Remote UI開発サーバー
+- `npm run build:remote`: Remote UI本番ビルド
 
 **Remote UIで利用可能な機能**:
 - ワークフロー表示・操作
-- Agent実行状態の監視
-- 一部のIPC操作（WebSocket経由）
+- Spec/Bug一覧と詳細表示
+- Agent実行状態の監視・制御
+- ログのリアルタイム表示
+- Auto Execution開始・停止
 
 **Desktop UI vs Remote UI**:
 | 観点 | Desktop UI | Remote UI |
 |------|------------|-----------|
 | アクセス | Electronウィンドウ | ブラウザ（localhost / Cloudflare Tunnel） |
-| IPC | preload + contextBridge | WebSocket経由 |
-| 機能範囲 | フル機能 | サブセット（制限あり） |
-| 状態管理 | Zustand stores | 独自stores（WebSocket同期） |
+| 通信 | IpcApiClient | WebSocketApiClient |
+| Provider | ApiClientProvider + PlatformProvider | 同左 |
+| レスポンシブ | - | MobileLayout / DesktopLayout |
+| 機能範囲 | フル機能 | 閲覧・実行（設定変更は制限あり） |
+| 状態管理 | shared/stores | shared/stores（ApiClient経由で同期） |
+
+**CLI起動オプション（E2Eテスト用）**:
+```bash
+sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-test
+```
+- `--remote-ui=auto`: Remote UIサーバーを自動起動
+- `--headless`: ウィンドウを表示しない
+- `--remote-token=<token>`: 固定アクセストークン指定
 
 ## 新規Spec作成時の確認事項
 

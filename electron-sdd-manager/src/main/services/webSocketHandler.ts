@@ -237,6 +237,42 @@ export interface AccessTokenServiceInterface {
 }
 
 /**
+ * File service interface for file operations
+ * Requirements: remote-ui-react-migration Task 6.2
+ */
+export interface FileServiceInterface {
+  /** Write file content to disk */
+  writeFile(
+    filePath: string,
+    content: string
+  ): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; path: string; message?: string } }>;
+}
+
+/**
+ * Spec detail result type
+ * Requirements: remote-ui-react-migration Task 6.3
+ */
+export interface SpecDetailResult {
+  readonly name: string;
+  readonly path: string;
+  readonly phase: string;
+  readonly specJson: Record<string, unknown>;
+  readonly artifacts: Record<string, { exists: boolean; updatedAt?: string }>;
+  readonly [key: string]: unknown;
+}
+
+/**
+ * Spec detail provider interface for retrieving spec details
+ * Requirements: remote-ui-react-migration Task 6.3
+ */
+export interface SpecDetailProvider {
+  /** Get detailed information for a spec */
+  getSpecDetail(
+    specId: string
+  ): Promise<{ ok: true; value: SpecDetailResult } | { ok: false; error: { type: string; message?: string } }>;
+}
+
+/**
  * Configuration options for WebSocketHandler
  */
 export interface WebSocketHandlerConfig {
@@ -285,6 +321,8 @@ export class WebSocketHandler {
   private stateProvider: StateProvider | null = null;
   private workflowController: WorkflowController | null = null;
   private agentLogsProvider: AgentLogsProvider | null = null;
+  private fileService: FileServiceInterface | null = null;
+  private specDetailProvider: SpecDetailProvider | null = null;
 
   constructor(config: WebSocketHandlerConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -316,6 +354,26 @@ export class WebSocketHandler {
    */
   setAgentLogsProvider(provider: AgentLogsProvider): void {
     this.agentLogsProvider = provider;
+  }
+
+  /**
+   * Set the file service for file operations
+   * Requirements: remote-ui-react-migration Task 6.2
+   *
+   * @param service File service implementation
+   */
+  setFileService(service: FileServiceInterface): void {
+    this.fileService = service;
+  }
+
+  /**
+   * Set the spec detail provider for retrieving spec details
+   * Requirements: remote-ui-react-migration Task 6.3
+   *
+   * @param provider Spec detail provider implementation
+   */
+  setSpecDetailProvider(provider: SpecDetailProvider): void {
+    this.specDetailProvider = provider;
   }
 
   /**
@@ -561,6 +619,14 @@ export class WebSocketHandler {
         break;
       case 'CREATE_BUG':
         await this.handleCreateBug(client, message);
+        break;
+      // File operations handlers (remote-ui-react-migration Task 6.2)
+      case 'SAVE_FILE':
+        await this.handleSaveFile(client, message);
+        break;
+      // Spec detail handlers (remote-ui-react-migration Task 6.3)
+      case 'GET_SPEC_DETAIL':
+        await this.handleGetSpecDetail(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2058,6 +2124,122 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Bug creation failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // File Operations Handlers (remote-ui-react-migration Task 6.2)
+  // Requirements: 2.5, 7.4, 10.2
+  // ============================================================
+
+  /**
+   * Handle SAVE_FILE message
+   * Requirements: remote-ui-react-migration Task 6.2
+   * Saves file content via fileService
+   */
+  private async handleSaveFile(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.fileService) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'File service not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const filePath = payload.filePath as string;
+    const content = payload.content as string;
+
+    if (!filePath || content === undefined || content === null) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing filePath or content' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.fileService.writeFile(filePath, content);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'FILE_SAVED',
+        payload: { filePath, success: true },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'File save failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Spec Detail Handlers (remote-ui-react-migration Task 6.3)
+  // Requirements: 10.2
+  // ============================================================
+
+  /**
+   * Handle GET_SPEC_DETAIL message
+   * Requirements: remote-ui-react-migration Task 6.3
+   * Retrieves detailed spec information
+   */
+  private async handleGetSpecDetail(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.specDetailProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Spec detail provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.specDetailProvider.getSpecDetail(specId);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'SPEC_DETAIL',
+        payload: {
+          specId,
+          detail: result.value,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Failed to get spec detail',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* Japanese-compatible monospace font for log display */
+/* 全角:半角 = 2:1 の比率を保つ日本語対応等幅フォント */
+.font-mono-jp {
+  font-family:
+    "Noto Sans Mono CJK JP",    /* Google Noto (Linux) */
+    "Noto Sans Mono",            /* Google Noto (generic) */
+    "Source Han Code JP",        /* Adobe Source Han */
+    "BIZ UDGothic",              /* Windows 10+ */
+    "Osaka-Mono",                /* macOS classic */
+    "MS Gothic",                 /* Windows fallback */
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+}
+
+/* Custom animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.slide-in-from-right {
+  animation-name: slide-in-from-right;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Touch-optimized button minimum size for mobile */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}

@@ -22,7 +22,9 @@
       "@/*": ["src/*"],
       "@main/*": ["src/main/*"],
       "@preload/*": ["src/preload/*"],
-      "@renderer/*": ["src/renderer/*"]
+      "@renderer/*": ["src/renderer/*"],
+      "@shared/*": ["src/shared/*"],
+      "@remote-ui/*": ["src/remote-ui/*"]
     },
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },

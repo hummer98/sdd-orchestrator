@@ -1958,6 +1958,365 @@ describe('WebSocketHandler - Phase Update Broadcasts (spec-phase-auto-update)', 
 });
 
 // ============================================================
+// remote-ui-react-migration Task 6: SAVE_FILE/GET_SPEC_DETAIL Handler Tests
+// Requirements: 10.2, 2.5, 7.4
+// ============================================================
+
+describe('WebSocketHandler - SAVE_FILE Handler (remote-ui-react-migration Task 6.1-6.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('SAVE_FILE message handling', () => {
+    it('should save file and send FILE_SAVED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockFileService = {
+        writeFile: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+      };
+      handler.setFileService(mockFileService as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'SAVE_FILE',
+        payload: { filePath: '/test/project/file.md', content: 'test content' },
+        requestId: 'req-save-1',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockFileService.writeFile).toHaveBeenCalledWith('/test/project/file.md', 'test content');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"FILE_SAVED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"requestId":"req-save-1"')
+      );
+    });
+
+    it('should send ERROR on file save failure', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockFileService = {
+        writeFile: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'WRITE_ERROR', path: '/test/file.md', message: 'Permission denied' },
+        }),
+      };
+      handler.setFileService(mockFileService as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'SAVE_FILE',
+        payload: { filePath: '/test/file.md', content: 'content' },
+        requestId: 'req-save-2',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"WRITE_ERROR"')
+      );
+    });
+
+    it('should send ERROR when fileService is not configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      // No fileService set
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'SAVE_FILE',
+        payload: { filePath: '/test/file.md', content: 'content' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_CONFIGURED"')
+      );
+    });
+
+    it('should send ERROR when filePath or content is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockFileService = {
+        writeFile: vi.fn(),
+      };
+      handler.setFileService(mockFileService as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      // Missing content
+      await messageHandler!(JSON.stringify({
+        type: 'SAVE_FILE',
+        payload: { filePath: '/test/file.md' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+  });
+});
+
+describe('WebSocketHandler - GET_SPEC_DETAIL Handler (remote-ui-react-migration Task 6.1, 6.3)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('GET_SPEC_DETAIL message handling', () => {
+    it('should return spec detail when specDetailProvider is configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockSpecDetail = {
+        name: 'test-feature',
+        path: '/project/.kiro/specs/test-feature',
+        phase: 'design-generated',
+        specJson: { feature_name: 'test-feature', phase: 'design-generated' },
+        artifacts: { requirements: { exists: true }, design: { exists: true } },
+      };
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetail }),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'test-feature' },
+        requestId: 'req-detail-1',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockSpecDetailProvider.getSpecDetail).toHaveBeenCalledWith('test-feature');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"SPEC_DETAIL"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"specId":"test-feature"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"requestId":"req-detail-1"')
+      );
+    });
+
+    it('should send ERROR when spec is not found', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'NOT_FOUND', message: 'Spec not found' },
+        }),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'non-existent' },
+        requestId: 'req-detail-2',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_FOUND"')
+      );
+    });
+
+    it('should send ERROR when specDetailProvider is not configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      // No specDetailProvider set
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: { specId: 'test-feature' },
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_CONFIGURED"')
+      );
+    });
+
+    it('should send ERROR when specId is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockSpecDetailProvider = {
+        getSpecDetail: vi.fn(),
+      };
+      handler.setSpecDetailProvider(mockSpecDetailProvider as any);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_SPEC_DETAIL',
+        payload: {},
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+  });
+});
+
+// ============================================================
 // agent-ask-execution Task 6: ASK_PROJECT/ASK_SPEC Message Handler Tests
 // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
 // ============================================================

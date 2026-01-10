@@ -18,16 +18,28 @@ electron-sdd-manager/src/
 │   ├── services/   # バックエンドサービス
 │   │   └── ssh/    # SSH関連サービス
 │   ├── ipc/        # IPCハンドラ
-│   ├── remote-ui/  # リモートアクセス用静的UI
 │   └── utils/      # メインプロセス用ユーティリティ
 ├── preload/        # preloadスクリプト
-├── renderer/       # レンダラープロセス（React）
-│   ├── components/ # UIコンポーネント
+├── renderer/       # レンダラープロセス（Electron React）
+│   ├── components/ # Electron専用UIコンポーネント
+│   ├── electron-specific/ # Electron専用コンポーネント（SSH, CLI等）
 │   ├── stores/     # Zustand状態管理
 │   ├── hooks/      # カスタムフック
 │   ├── types/      # TypeScript型定義
 │   ├── services/   # レンダラー側サービス
 │   └── utils/      # ユーティリティ関数
+├── shared/         # Electron版/Remote UI版共有コード
+│   ├── api/        # ApiClient抽象化層 (IpcApiClient, WebSocketApiClient)
+│   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, etc.)
+│   ├── hooks/      # 共有フック (useDeviceType等)
+│   ├── providers/  # React Context Provider (PlatformProvider等)
+│   ├── stores/     # 共有Zustand stores
+│   └── types/      # 共有型定義
+├── remote-ui/      # Remote UIアプリケーション（Web版React）
+│   ├── layouts/    # MobileLayout, DesktopLayout
+│   ├── web-specific/ # Web専用コンポーネント (AuthPage, ReconnectOverlay)
+│   ├── main.tsx    # エントリーポイント
+│   └── App.tsx     # ルートコンポーネント
 ├── e2e/            # E2Eテスト
 └── test/           # テストセットアップ
 ```

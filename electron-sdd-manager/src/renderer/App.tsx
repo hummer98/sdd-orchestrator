@@ -1,6 +1,7 @@
 /**
  * Main Application Component
  * Requirements: 1.1, 2.1, 3.1, 11.1
+ * Task 8.2: ApiClientProvider, PlatformProvider integration
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -37,6 +38,8 @@ import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
 import type { CommandPrefix } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
+// Task 8.2: Shared providers for API abstraction and platform capabilities
+import { ApiClientProvider, PlatformProvider } from '../shared';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -458,11 +461,15 @@ export function App() {
     }
   };
 
+  // Task 8.2: Wrap with ApiClientProvider and PlatformProvider
+  // These providers enable shared components to use abstract API and platform capabilities
   return (
-    <NotificationProvider>
-      <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
-        {/* Header - draggable for window movement on macOS */}
-        <header className="titlebar-drag h-12 flex items-center justify-between pl-20 pr-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+    <ApiClientProvider>
+      <PlatformProvider>
+        <NotificationProvider>
+          <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
+            {/* Header - draggable for window movement on macOS */}
+            <header className="titlebar-drag h-12 flex items-center justify-between pl-20 pr-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center">
             <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
               SDD Orchestrator{import.meta.env.DEV && ' (dev)'}
@@ -695,7 +702,9 @@ export function App() {
             onCancel={cancelProjectSwitch}
           />
         )}
-      </div>
-    </NotificationProvider>
+          </div>
+        </NotificationProvider>
+      </PlatformProvider>
+    </ApiClientProvider>
   );
 }

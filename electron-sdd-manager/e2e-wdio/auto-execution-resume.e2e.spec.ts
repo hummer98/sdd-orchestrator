@@ -24,6 +24,7 @@ import {
   resetSpecStoreAutoExecution,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
+  setDocumentReviewFlag,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -300,6 +301,9 @@ describe('Auto Execution Resume E2E Tests', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
+
+      // Skip document review to avoid paused state after tasks completion
+      await setDocumentReviewFlag('skip');
     });
 
     it('should verify initial state shows requirements as approved', async () => {
@@ -347,6 +351,8 @@ describe('Auto Execution Resume E2E Tests', () => {
       await browser.pause(500);
 
       // Check which phase is being executed first
+      // Note: In mock environment, phases complete very quickly (< 500ms each)
+      // So we may detect 'design' or 'tasks' depending on timing
       let firstPhase: string | null = null;
       const phaseDetected = await waitForCondition(async () => {
         const phase = await getCurrentExecutingPhase();
@@ -384,13 +390,15 @@ describe('Auto Execution Resume E2E Tests', () => {
         console.error('[E2E] BUG DETECTED: requirements.md was modified even though it was already approved!');
       }
 
-      // EXPECTED: First phase should be 'design', not 'requirements'
-      expect(firstPhase).toBe('design');
+      // EXPECTED: First detected phase should NOT be 'requirements'
+      // In mock environment, 'design' may complete so fast that we detect 'tasks' instead
+      // The key assertion is that requirements is skipped
+      expect(firstPhase).not.toBe('requirements');
 
       // EXPECTED: requirements.md should NOT be modified
       expect(reqWasModified).toBe(false);
 
-      // design.md should be created
+      // design.md should be created (verifies design phase was executed)
       expect(fs.existsSync(path.join(SPEC_DIR, 'design.md'))).toBe(true);
     });
 
@@ -466,6 +474,9 @@ describe('Auto Execution Resume E2E Tests', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
+
+      // Skip document review to avoid paused state after tasks completion
+      await setDocumentReviewFlag('skip');
     });
 
     it('should verify initial state shows requirements and design as approved', async () => {

@@ -469,3 +469,29 @@ export async function fullAutoExecutionCleanup(): Promise<void> {
   // 3. Reset AutoExecutionService
   await resetAutoExecutionService();
 }
+
+/**
+ * Helper: Set document review flag via workflowStore
+ *
+ * Controls the document review behavior after tasks phase completion:
+ * - 'skip': Skip document review entirely
+ * - 'run': Run document review automatically and continue
+ * - 'pause': Run document review and pause for manual action
+ *
+ * @param flag The document review flag to set
+ */
+export async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<boolean> {
+  return browser.execute((f: string) => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (!stores?.workflowStore?.getState) return false;
+
+      const workflowStore = stores.workflowStore.getState();
+      workflowStore.setDocumentReviewAutoExecutionFlag(f);
+      return true;
+    } catch (e) {
+      console.error('[E2E] setDocumentReviewFlag error:', e);
+      return false;
+    }
+  }, flag);
+}

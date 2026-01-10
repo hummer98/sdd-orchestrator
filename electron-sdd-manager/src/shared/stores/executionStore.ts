@@ -10,7 +10,6 @@
 import { create } from 'zustand';
 import type {
   ApiClient,
-  AutoExecutionState,
   AutoExecutionOptions,
   AutoExecutionStatusEvent,
 } from '../api/types';

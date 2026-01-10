@@ -521,7 +521,18 @@ describe('UnifiedCommandsetInstaller', () => {
       expect(dirExists).toBe(true);
     });
 
-    it('should create both steering and specs directories for all profiles', async () => {
+    // Bug fix: bugs-folder-creation - ensure .kiro/bugs directory is created
+    it('should create .kiro/bugs directory after profile installation', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+
+      const bugsDir = path.join(tempDir, '.kiro', 'bugs');
+      const dirExists = await fs.access(bugsDir).then(() => true).catch(() => false);
+      expect(dirExists).toBe(true);
+    });
+
+    it('should create steering, specs, and bugs directories for all profiles', async () => {
       const profiles: ProfileName[] = ['cc-sdd', 'cc-sdd-agent', 'spec-manager'];
 
       for (const profile of profiles) {
@@ -534,12 +545,15 @@ describe('UnifiedCommandsetInstaller', () => {
 
           const steeringDir = path.join(profileTempDir, '.kiro', 'steering');
           const specsDir = path.join(profileTempDir, '.kiro', 'specs');
+          const bugsDir = path.join(profileTempDir, '.kiro', 'bugs');
 
           const steeringExists = await fs.access(steeringDir).then(() => true).catch(() => false);
           const specsExists = await fs.access(specsDir).then(() => true).catch(() => false);
+          const bugsExists = await fs.access(bugsDir).then(() => true).catch(() => false);
 
           expect(steeringExists).toBe(true);
           expect(specsExists).toBe(true);
+          expect(bugsExists).toBe(true);
         } finally {
           await fs.rm(profileTempDir, { recursive: true, force: true });
         }

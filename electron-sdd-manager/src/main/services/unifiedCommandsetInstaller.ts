@@ -440,13 +440,15 @@ export class UnifiedCommandsetInstaller {
 
   /**
    * Ensure required project directories exist
-   * Creates .kiro/steering and .kiro/specs directories if they don't exist
+   * Creates .kiro/steering, .kiro/specs, and .kiro/bugs directories if they don't exist
+   * Bug fix: bugs-folder-creation - Added .kiro/bugs to ensure directory exists for file watching
    * @param projectPath - Project root path
    */
   private async ensureProjectDirectories(projectPath: string): Promise<void> {
     const requiredDirs = [
       path.join(projectPath, '.kiro', 'steering'),
       path.join(projectPath, '.kiro', 'specs'),
+      path.join(projectPath, '.kiro', 'bugs'),
     ];
 
     for (const dir of requiredDirs) {

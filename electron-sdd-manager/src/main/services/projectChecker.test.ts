@@ -314,4 +314,9 @@ describe('Constants', () => {
     expect(REQUIRED_SETTINGS).toContain('templates/specs/design.md');
     expect(REQUIRED_SETTINGS).toContain('templates/specs/tasks.md');
   });
+
+  it('should have steering templates for logging and debugging', () => {
+    expect(REQUIRED_SETTINGS).toContain('templates/steering/logging.md');
+    expect(REQUIRED_SETTINGS).toContain('templates/steering/debugging.md');
+  });
 });

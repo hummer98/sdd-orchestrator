@@ -54,6 +54,7 @@ Inspection scope:
 - Design Principles adherence
 - Dead code detection
 - Integration verification
+- Logging compliance (see steering/logging.md)
 """
 )
 ```

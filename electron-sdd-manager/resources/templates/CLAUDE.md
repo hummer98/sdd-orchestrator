@@ -75,4 +75,6 @@ Follow these principles during design and implementation:
 ## Steering Configuration
 - Load entire `{{KIRO_DIR}}/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
+- **`logging.md`**: ロギング設計/実装の観点・ガイドライン
+- **`debugging.md`**: デバッグ手順、ログ保存場所、トラブルシューティング情報
 - Custom files are supported (managed via `/kiro:steering-custom`)

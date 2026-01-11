@@ -105,6 +105,18 @@ Verify all components work together:
 - Run integration tests if available
 - Flag integration gaps as Critical
 
+#### 2.8 Logging Compliance (LoggingChecker)
+Check adherence to steering/logging.md guidelines:
+- **Required (Critical/Major violations)**:
+  - Log level support (debug/info/warning/error)
+  - Log format (timestamp, level, content)
+  - Log location mention in steering/debugging.md or CLAUDE.md
+  - Excessive log avoidance (no verbose logging in loops)
+- **Recommended (Minor/Info violations)**:
+  - Dev/prod log separation
+  - Log level specification method (CLI/env/config)
+  - Investigation variables in error logs
+
 ### 3. Render GO/NOGO Judgment
 
 **Severity Levels**:
@@ -152,6 +164,9 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 ...
 
 ### Integration Verification
+...
+
+### Logging Compliance
 ...
 
 ## Statistics

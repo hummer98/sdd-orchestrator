@@ -134,6 +134,8 @@ export const REQUIRED_SETTINGS = [
   'templates/steering/product.md',
   'templates/steering/structure.md',
   'templates/steering/tech.md',
+  'templates/steering/logging.md',
+  'templates/steering/debugging.md',
   // Steering-custom templates
   'templates/steering-custom/api-standards.md',
   'templates/steering-custom/authentication.md',

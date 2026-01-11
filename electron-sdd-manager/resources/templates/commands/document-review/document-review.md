@@ -90,6 +90,7 @@ Conduct review from the following perspectives:
 - Performance requirements
 - Scalability
 - Testing strategy
+- Logging (see steering/logging.md)
 
 **Operational Considerations**:
 

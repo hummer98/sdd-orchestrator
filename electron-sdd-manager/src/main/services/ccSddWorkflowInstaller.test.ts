@@ -12,6 +12,7 @@ import {
   CcSddWorkflowInstaller,
   CC_SDD_COMMANDS,
   CC_SDD_AGENTS,
+  CC_SDD_SETTINGS,
   CC_SDD_WORKFLOW_CLAUDE_MD_SECTION,
 } from './ccSddWorkflowInstaller';
 
@@ -100,6 +101,8 @@ describe('CcSddWorkflowInstaller', () => {
       'templates/steering/product.md',
       'templates/steering/structure.md',
       'templates/steering/tech.md',
+      'templates/steering/logging.md',
+      'templates/steering/debugging.md',
       // Steering-custom templates
       'templates/steering-custom/api-standards.md',
       'templates/steering-custom/authentication.md',
@@ -192,6 +195,11 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:validate-impl');
       expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-create');
       expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-analyze');
+    });
+
+    it('should include steering templates for logging and debugging in CC_SDD_SETTINGS', () => {
+      expect(CC_SDD_SETTINGS).toContain('templates/steering/logging.md');
+      expect(CC_SDD_SETTINGS).toContain('templates/steering/debugging.md');
     });
   });
 
@@ -603,6 +611,8 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
       'templates/steering/product.md',
       'templates/steering/structure.md',
       'templates/steering/tech.md',
+      'templates/steering/logging.md',
+      'templates/steering/debugging.md',
       // Steering-custom templates
       'templates/steering-custom/api-standards.md',
       'templates/steering-custom/authentication.md',

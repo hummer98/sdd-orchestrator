@@ -626,4 +626,128 @@ describe('Auto Execution Document Review Integration E2E', () => {
       expect(startExists || replyExists || applyFixExists).toBe(true);
     });
   });
+
+  // ============================================================
+  // Scenario 5: impl NOGO + document-review completion → UI reset
+  // ============================================================
+  describe('Scenario 5: impl NOGO with document-review-reply completion', () => {
+    beforeEach(async () => {
+      // Use design completed state (tasks will be executed)
+      resetFixtureToDesignCompleted();
+
+      // Clear agent store
+      await clearAgentStore();
+
+      // Reset Main Process AutoExecutionCoordinator
+      await resetAutoExecutionCoordinator();
+
+      // Reset AutoExecutionService
+      await resetAutoExecutionService();
+
+      // Reset specStore autoExecution state
+      await resetSpecStoreAutoExecution();
+
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Set document review flag to 'run'
+      await setDocumentReviewFlag('run');
+    });
+
+    it('should complete auto-execution and reset UI when impl is NOGO after document-review-reply', async () => {
+      // Verify flag is set to run
+      const flag = await getDocumentReviewFlag();
+      expect(flag).toBe('run');
+
+      // Set permissions: tasks GO, impl NOGO (the key condition)
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: false, // NOGO - this is the key condition
+        inspection: false,
+        deploy: false,
+      });
+
+      // Get auto-execute button
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+
+      // Verify button shows "自動実行" before starting
+      const initialText = await autoButton.getText();
+      console.log(`[E2E] Initial button text: ${initialText}`);
+      expect(initialText).toContain('自動実行');
+
+      // Click to start auto-execution
+      await autoButton.click();
+
+      // Wait for auto-execution to start
+      const started = await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return s.isAutoExecuting || s.autoExecutionStatus === 'running';
+      }, 10000, 500, 'auto-execution-started');
+
+      console.log(`[E2E] Auto-execution started: ${started}`);
+
+      // Wait for document-review to be triggered (after tasks completion)
+      const docReviewStarted = await waitForCondition(async () => {
+        const agents = await getDocumentReviewAgents();
+        return agents.some(a => a.skill.includes('document-review'));
+      }, 60000, 1000, 'document-review-triggered');
+
+      console.log(`[E2E] Document review triggered: ${docReviewStarted}`);
+
+      // Wait for auto-execution to complete
+      // Since impl is NOGO, after document-review-reply, execution should complete
+      const completed = await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        console.log(`[E2E] Checking completion: status=${s.autoExecutionStatus}, isAutoExecuting=${s.isAutoExecuting}`);
+        return s.autoExecutionStatus === 'completed' || (!s.isAutoExecuting && s.autoExecutionStatus !== 'running' && s.autoExecutionStatus !== 'paused');
+      }, 180000, 2000, 'auto-execution-completed');
+
+      console.log(`[E2E] Auto-execution completed: ${completed}`);
+
+      // Check final status
+      const finalStatus = await getAutoExecutionStatus();
+      console.log(`[E2E] Final status: ${JSON.stringify(finalStatus)}`);
+
+      // Verify auto-execution is not running
+      expect(finalStatus.isAutoExecuting).toBe(false);
+
+      // Verify status is completed (not running, not paused)
+      expect(['completed', 'idle']).toContain(finalStatus.autoExecutionStatus);
+
+      // Wait for UI to update
+      await browser.pause(2000);
+      await refreshSpecStore();
+      await browser.pause(1000);
+
+      // Verify button is enabled and shows "自動実行" (not "停止")
+      const isEnabled = await autoButton.isEnabled();
+      console.log(`[E2E] Button enabled after completion: ${isEnabled}`);
+      expect(isEnabled).toBe(true);
+
+      // Verify button text is back to "自動実行"
+      const buttonRestored = await waitForCondition(async () => {
+        const text = await autoButton.getText();
+        console.log(`[E2E] Button text after completion: ${text}`);
+        return text.includes('自動実行') && !text.includes('停止');
+      }, 10000, 500, 'button-text-restored');
+
+      console.log(`[E2E] Button text restored: ${buttonRestored}`);
+      expect(buttonRestored).toBe(true);
+    });
+  });
 });

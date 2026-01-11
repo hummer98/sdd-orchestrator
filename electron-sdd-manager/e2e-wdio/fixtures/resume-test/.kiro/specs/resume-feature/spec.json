@@ -1,8 +1,8 @@
 {
   "feature_name": "resume-feature",
   "name": "resume-feature",
-  "description": "E2E\u30c6\u30b9\u30c8\u7528\uff1a\u9014\u4e2d\u304b\u3089\u518d\u958b\u3059\u308b\u30c6\u30b9\u30c8\u6a5f\u80fd",
-  "phase": "tasks-generated",
+  "description": "E2Eテスト用：途中から再開するテスト機能",
+  "phase": "requirements",
   "language": "ja",
   "approvals": {
     "requirements": {
@@ -10,32 +10,14 @@
       "approved": true
     },
     "design": {
-      "generated": true,
+      "generated": false,
       "approved": false
     },
     "tasks": {
-      "generated": true,
+      "generated": false,
       "approved": false
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z",
-  "autoExecution": {
-    "enabled": true,
-    "permissions": {
-      "requirements": true,
-      "design": true,
-      "tasks": true,
-      "impl": false,
-      "inspection": false,
-      "deploy": false
-    },
-    "documentReviewFlag": "pause",
-    "validationOptions": {
-      "gap": false,
-      "design": false,
-      "impl": false
-    }
-  },
-  "updated_at": "2026-01-04T00:47:03.064174Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z"
 }

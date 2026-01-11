@@ -68,10 +68,21 @@ export const CommandsetVersionRecordSchema = z.object({
 export type CommandsetVersionRecord = z.infer<typeof CommandsetVersionRecordSchema>;
 
 /**
+ * プロジェクト設定のスキーマ
+ * Bug fix: persist-skip-permission-per-project
+ */
+export const ProjectSettingsSchema = z.object({
+  skipPermissions: z.boolean().optional(),
+});
+
+export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
+
+/**
  * 統合設定ファイルのスキーマ（version 3）
  * profile: コマンドセットのインストール状態
  * layout: UIレイアウト設定
  * commandsets: コマンドセットバージョン情報
+ * settings: プロジェクト設定（skipPermissions等）
  * Requirements (commandset-version-detection): 6.1, 6.2, 6.4
  */
 export const ProjectConfigSchemaV3 = z.object({
@@ -82,6 +93,7 @@ export const ProjectConfigSchemaV3 = z.object({
     z.enum(['cc-sdd', 'cc-sdd-agent', 'bug', 'document-review', 'spec-manager']),
     CommandsetVersionRecordSchema
   ).optional(),
+  settings: ProjectSettingsSchema.optional(),
 });
 
 export type ProjectConfigV3 = z.infer<typeof ProjectConfigSchemaV3>;
@@ -362,6 +374,39 @@ export const projectConfigService = {
       profile: existing?.profile,
       layout: existing?.layout,
       commandsets: mergedCommandsets as Record<CommandsetName, CommandsetVersionRecord>,
+      settings: existing?.settings,
+    };
+    await saveProjectConfigV3(projectPath, config);
+  },
+
+  /**
+   * skipPermissions設定を読み込む
+   * Bug fix: persist-skip-permission-per-project
+   * @param projectPath プロジェクトルートパス
+   * @returns skipPermissions設定（存在しない場合はfalse）
+   */
+  async loadSkipPermissions(projectPath: string): Promise<boolean> {
+    const config = await loadProjectConfigV3(projectPath);
+    return config?.settings?.skipPermissions ?? false;
+  },
+
+  /**
+   * skipPermissions設定を保存
+   * Bug fix: persist-skip-permission-per-project
+   * @param projectPath プロジェクトルートパス
+   * @param skipPermissions 設定値
+   */
+  async saveSkipPermissions(projectPath: string, skipPermissions: boolean): Promise<void> {
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
+      profile: existing?.profile,
+      layout: existing?.layout,
+      commandsets: existing?.commandsets,
+      settings: {
+        ...(existing?.settings ?? {}),
+        skipPermissions,
+      },
     };
     await saveProjectConfigV3(projectPath, config);
   },

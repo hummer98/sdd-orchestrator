@@ -35,7 +35,7 @@ import {
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
-import { AutoExecutionCoordinator } from '../services/autoExecutionCoordinator';
+import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../services/autoExecutionCoordinator';
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
 import * as path from 'path';
 import { spawn } from 'child_process';
@@ -1584,6 +1584,26 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_SKIP_PERMISSIONS,
+    async (_event, projectPath: string): Promise<boolean> => {
+      logger.debug('[handlers] LOAD_SKIP_PERMISSIONS called', { projectPath });
+      return layoutConfigService.loadSkipPermissions(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_SKIP_PERMISSIONS,
+    async (_event, projectPath: string, skipPermissions: boolean): Promise<void> => {
+      logger.debug('[handlers] SAVE_SKIP_PERMISSIONS called', { projectPath, skipPermissions });
+      return layoutConfigService.saveSkipPermissions(projectPath, skipPermissions);
+    }
+  );
+
+  // ============================================================
   // Experimental Tools Install (experimental-tools-installer feature)
   // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
   // ============================================================
@@ -1944,6 +1964,12 @@ export function registerIpcHandlers(): void {
 
 /**
  * Execute document-review-reply and handle the result
+ * Implements automatic document-review loop (up to MAX_DOCUMENT_REVIEW_ROUNDS rounds)
+ *
+ * Loop logic:
+ * - If Fix Required > 0 AND rounds < MAX_DOCUMENT_REVIEW_ROUNDS: continue loop (run document-review again)
+ * - If Fix Required = 0 AND Needs Discussion = 0: approved, proceed to next phase
+ * - If Needs Discussion > 0 OR rounds >= MAX_DOCUMENT_REVIEW_ROUNDS: pause for human review
  */
 async function executeDocumentReviewReply(
   service: SpecManagerService,
@@ -1958,7 +1984,7 @@ async function executeDocumentReviewReply(
     const roundNumber = await docReviewService.getNextRoundNumber(specPath);
     const currentRound = Math.max(1, roundNumber - 1); // getNextRoundNumber returns next round, we want current
 
-    logger.info('[handlers] executeDocumentReviewReply: starting', { specPath, currentRound });
+    logger.info('[handlers] executeDocumentReviewReply: starting', { specPath, currentRound, maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS });
 
     const replyResult = await service.executeDocumentReviewReply({
       specId,
@@ -1984,18 +2010,57 @@ async function executeDocumentReviewReply(
           logger.info('[handlers] executeDocumentReviewReply: completed', { replyAgentId });
           service.offStatusChange(handleReplyStatusChange);
 
-          // Check spec.json documentReview.status (updated by document-review-reply prompt)
-          // SSOT: The prompt sets documentReview.status = 'approved' when fixRequiredCount === 0
+          // Check spec.json documentReview status and roundDetails
+          // SSOT: The prompt sets documentReview.status = 'approved' when fixRequired = 0 AND needsDiscussion = 0
           const specJsonResult = await docReviewService.readSpecJson(specPath);
-          const isApproved = specJsonResult.ok && specJsonResult.value.documentReview?.status === 'approved';
+
+          if (!specJsonResult.ok) {
+            logger.error('[handlers] executeDocumentReviewReply: failed to read spec.json', { error: specJsonResult.error });
+            coordinator.handleDocumentReviewCompleted(specPath, false);
+            return;
+          }
+
+          const specJson = specJsonResult.value;
+          const documentReview = specJson.documentReview;
+          const isApproved = documentReview?.status === 'approved';
+
+          // Get fixRequired and needsDiscussion from the latest roundDetails
+          const roundDetails = documentReview?.roundDetails || [];
+          const latestRound = roundDetails[roundDetails.length - 1];
+          const fixRequired = latestRound?.fixRequired ?? 0;
+          const needsDiscussion = latestRound?.needsDiscussion ?? 0;
+          const currentRoundNumber = roundDetails.length;
+
+          logger.info('[handlers] executeDocumentReviewReply: analyzing result', {
+            isApproved,
+            fixRequired,
+            needsDiscussion,
+            currentRoundNumber,
+            maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
+          });
 
           if (isApproved) {
-            // Document review approved (no fixes required)
+            // Document review approved (fixRequired = 0 AND needsDiscussion = 0)
             logger.info('[handlers] executeDocumentReviewReply: documentReview.status is approved');
             coordinator.handleDocumentReviewCompleted(specPath, true);
+          } else if (needsDiscussion > 0) {
+            // Needs Discussion > 0: pause for human review
+            logger.info('[handlers] executeDocumentReviewReply: needs discussion, pausing for human review', { needsDiscussion });
+            coordinator.handleDocumentReviewCompleted(specPath, false);
+          } else if (fixRequired > 0 && currentRoundNumber < MAX_DOCUMENT_REVIEW_ROUNDS) {
+            // Fix Required > 0 AND under max rounds: continue the loop
+            const nextRound = currentRoundNumber + 1;
+            logger.info('[handlers] executeDocumentReviewReply: fix required, continuing loop', { fixRequired, nextRound });
+
+            // Continue the document review loop
+            coordinator.continueDocumentReviewLoop(specPath, nextRound);
           } else {
-            // Fixes required or status not set, pause for user confirmation
-            logger.info('[handlers] executeDocumentReviewReply: fixes required, pausing');
+            // Max rounds reached with fixes still required: pause for human review
+            logger.info('[handlers] executeDocumentReviewReply: max rounds reached or no fixes needed, pausing', {
+              fixRequired,
+              currentRoundNumber,
+              maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
+            });
             coordinator.handleDocumentReviewCompleted(specPath, false);
           }
         } else if (status === 'failed' || status === 'stopped') {

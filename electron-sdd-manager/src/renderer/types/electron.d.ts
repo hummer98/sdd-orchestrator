@@ -616,6 +616,10 @@ export interface ElectronAPI {
   saveLayoutConfig(projectPath: string, layout: LayoutValues): Promise<void>;
   resetLayoutConfig(projectPath: string): Promise<void>;
 
+  // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
+  loadSkipPermissions(projectPath: string): Promise<boolean>;
+  saveSkipPermissions(projectPath: string, skipPermissions: boolean): Promise<void>;
+
   // Menu Events - Layout Reset
   onMenuResetLayout(callback: () => void): () => void;
 

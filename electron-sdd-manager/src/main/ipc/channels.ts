@@ -143,6 +143,10 @@ export const IPC_CHANNELS = {
   SAVE_LAYOUT_CONFIG: 'ipc:save-layout-config',
   RESET_LAYOUT_CONFIG: 'ipc:reset-layout-config',
 
+  // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
+  LOAD_SKIP_PERMISSIONS: 'ipc:load-skip-permissions',
+  SAVE_SKIP_PERMISSIONS: 'ipc:save-skip-permissions',
+
   // Menu Events - Layout Reset
   MENU_RESET_LAYOUT: 'menu:reset-layout',
 

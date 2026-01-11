@@ -76,6 +76,8 @@ interface AgentActions {
 
   // Skip permissions control
   setSkipPermissions: (enabled: boolean) => void;
+  // Bug fix: persist-skip-permission-per-project
+  loadSkipPermissions: (projectPath: string) => Promise<void>;
 }
 
 type AgentStore = AgentState & AgentActions;
@@ -517,7 +519,34 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   // Skip permissions control
   // Sets the --dangerously-skip-permissions flag for claude CLI
-  setSkipPermissions: (enabled: boolean) => {
+  // Bug fix: persist-skip-permission-per-project - Persist to sdd-orchestrator.json
+  setSkipPermissions: async (enabled: boolean) => {
     set({ skipPermissions: enabled });
+
+    // Persist to project config file
+    // Dynamic import to avoid circular dependency
+    const { useProjectStore } = await import('./projectStore');
+    const currentProject = useProjectStore.getState().currentProject;
+    if (currentProject) {
+      try {
+        await window.electronAPI.saveSkipPermissions(currentProject, enabled);
+      } catch (error) {
+        console.error('[agentStore] Failed to save skipPermissions:', error);
+      }
+    }
+  },
+
+  // Load skipPermissions from project config file
+  // Bug fix: persist-skip-permission-per-project
+  loadSkipPermissions: async (projectPath: string) => {
+    try {
+      const skipPermissions = await window.electronAPI.loadSkipPermissions(projectPath);
+      set({ skipPermissions });
+      console.log('[agentStore] Loaded skipPermissions:', skipPermissions);
+    } catch (error) {
+      console.error('[agentStore] Failed to load skipPermissions:', error);
+      // Default to false on error
+      set({ skipPermissions: false });
+    }
   },
 }));

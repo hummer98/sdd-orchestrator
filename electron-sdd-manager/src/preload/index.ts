@@ -892,6 +892,26 @@ const electronAPI = {
   resetLayoutConfig: (projectPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.RESET_LAYOUT_CONFIG, projectPath),
 
+  // ============================================================
+  // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
+  // ============================================================
+
+  /**
+   * Load skipPermissions setting from project config
+   * @param projectPath Project root path
+   * @returns skipPermissions value (defaults to false if not set)
+   */
+  loadSkipPermissions: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_SKIP_PERMISSIONS, projectPath),
+
+  /**
+   * Save skipPermissions setting to project config
+   * @param projectPath Project root path
+   * @param skipPermissions Setting value
+   */
+  saveSkipPermissions: (projectPath: string, skipPermissions: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_SKIP_PERMISSIONS, projectPath, skipPermissions),
+
   /**
    * Subscribe to menu reset layout event
    * @param callback Function called when reset layout menu item is clicked

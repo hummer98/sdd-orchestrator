@@ -1164,18 +1164,22 @@ export class AutoExecutionCoordinator extends EventEmitter {
       return;
     }
 
+    // Read latest approvals from spec.json
+    let latestApprovals = options.approvals;
+    try {
+      const specJsonPath = require('path').join(specPath, 'spec.json');
+      const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+      latestApprovals = specJson.approvals;
+    } catch {
+      // ignore
+    }
+
+    // Check if next phase (impl) is permitted
+    const nextPhase = this.getNextPermittedPhase('tasks', options.permissions, latestApprovals);
+
     if (approved) {
       // Document Review承認済み、次フェーズへ進む
-      let latestApprovals = options.approvals;
-      try {
-        const specJsonPath = require('path').join(specPath, 'spec.json');
-        const content = require('fs').readFileSync(specJsonPath, 'utf-8');
-        const specJson = JSON.parse(content);
-        latestApprovals = specJson.approvals;
-      } catch {
-        // ignore
-      }
-      const nextPhase = this.getNextPermittedPhase('tasks', options.permissions, latestApprovals);
       if (nextPhase) {
         logger.info('[AutoExecutionCoordinator] Document review approved, proceeding to next phase', {
           specPath,
@@ -1187,14 +1191,26 @@ export class AutoExecutionCoordinator extends EventEmitter {
         });
       } else {
         // implフェーズが許可されていない場合は完了
+        logger.info('[AutoExecutionCoordinator] Document review approved, but no next phase permitted, completing', {
+          specPath,
+        });
         this.completeExecution(specPath);
       }
     } else {
-      // Document Reviewが承認待ち、paused状態で待機
-      logger.info('[AutoExecutionCoordinator] Document review pending approval, pausing execution', { specPath });
-      this.updateState(specPath, {
-        status: 'paused',
-      });
+      // Document Reviewが承認待ちだが、次フェーズが許可されていない場合は完了とする
+      // (impl NOGOの場合、document-review後に進むフェーズがないので完了)
+      if (!nextPhase) {
+        logger.info('[AutoExecutionCoordinator] Document review not approved, but no next phase permitted, completing', {
+          specPath,
+        });
+        this.completeExecution(specPath);
+      } else {
+        // 次フェーズが許可されているが、document-reviewが未承認なのでpaused状態で待機
+        logger.info('[AutoExecutionCoordinator] Document review pending approval, pausing execution', { specPath });
+        this.updateState(specPath, {
+          status: 'paused',
+        });
+      }
     }
   }
 

@@ -22,7 +22,12 @@ interface DisplayLine {
 export function AgentLogPanel() {
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
   const clearLogs = useAgentStore((state) => state.clearLogs);
-  const getLogsForAgent = useAgentStore((state) => state.getLogsForAgent);
+  // Bug fix: logs Mapの変更を購読することで、リアルタイムログ更新を実現
+  // getLogsForAgent関数呼び出しでは購読されないため、セレクタで直接logsを参照
+  const logs = useAgentStore((state) => {
+    if (!state.selectedAgentId) return [];
+    return state.logs.get(state.selectedAgentId) || [];
+  });
   // Bug fix: agent-log-textfield-inactive
   // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
   const agent = useAgentStore((state) => {
@@ -34,8 +39,6 @@ export function AgentLogPanel() {
     return undefined;
   });
   const [isFormatted, setIsFormatted] = useState(true);
-
-  const logs = selectedAgentId ? getLogsForAgent(selectedAgentId) : [];
   const isRunning = agent?.status === 'running';
 
   // Aggregate tokens from logs

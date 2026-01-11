@@ -25,8 +25,6 @@ const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('AgentLogPanel - Task 31', () => {
   const mockClearLogs = vi.fn();
-  const mockGetLogsForAgent = vi.fn();
-  const mockGetAgentById = vi.fn();
 
   const baseLogs: LogEntry[] = [
     { id: 'log-1', stream: 'stdout', data: 'Starting process...', timestamp: Date.now() - 2000 },
@@ -46,15 +44,45 @@ describe('AgentLogPanel - Task 31', () => {
     command: 'claude -p "/kiro:spec-requirements"',
   };
 
+  // Helper to create mock store state for selector-based access
+  const createMockState = (overrides: {
+    selectedAgentId?: string | null;
+    logs?: LogEntry[];
+    agent?: AgentInfo | null;
+  } = {}) => {
+    const selectedAgentId = 'selectedAgentId' in overrides ? overrides.selectedAgentId : 'agent-1';
+    const logs = overrides.logs ?? baseLogs;
+    // Use null to explicitly indicate no agent, undefined means use default
+    const agent = 'agent' in overrides ? overrides.agent : baseAgentInfo;
+
+    const logsMap = new Map<string, LogEntry[]>();
+    if (selectedAgentId && logs.length > 0) {
+      logsMap.set(selectedAgentId, logs);
+    }
+
+    const agentsMap = new Map<string, AgentInfo[]>();
+    if (agent) {
+      agentsMap.set(agent.specId, [agent]);
+    }
+
+    return {
+      selectedAgentId,
+      clearLogs: mockClearLogs,
+      logs: logsMap,
+      agents: agentsMap,
+    };
+  };
+
+  // Mock implementation that calls selector with state
+  const setupMock = (state: ReturnType<typeof createMockState>) => {
+    mockUseAgentStore.mockImplementation((selector: (state: ReturnType<typeof createMockState>) => unknown) => {
+      return selector(state);
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockUseAgentStore.mockReturnValue({
-      selectedAgentId: 'agent-1',
-      clearLogs: mockClearLogs,
-      getLogsForAgent: mockGetLogsForAgent.mockReturnValue(baseLogs),
-      getAgentById: mockGetAgentById.mockReturnValue(baseAgentInfo),
-    });
+    setupMock(createMockState());
   });
 
   afterEach(() => {
@@ -84,13 +112,9 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should not display running indicator when agent is completed', () => {
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, status: 'completed' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        agent: { ...baseAgentInfo, status: 'completed' },
+      }));
 
       render(<AgentLogPanel />);
 
@@ -106,12 +130,11 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should show empty message when no agent is selected', () => {
-      mockUseAgentStore.mockReturnValue({
+      setupMock(createMockState({
         selectedAgentId: null,
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent.mockReturnValue([]),
-        getAgentById: mockGetAgentById.mockReturnValue(undefined),
-      });
+        logs: [],
+        agent: null,
+      }));
 
       render(<AgentLogPanel />);
 
@@ -119,15 +142,11 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should show empty log message when logs are empty and no command', () => {
-      mockGetLogsForAgent.mockReturnValue([]);
       // Agent without command field (e.g., old agent record)
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, command: '' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: [],
+        agent: { ...baseAgentInfo, command: '' },
+      }));
 
       render(<AgentLogPanel />);
 
@@ -135,13 +154,9 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should show command line when logs are empty but command exists', () => {
-      mockGetLogsForAgent.mockReturnValue([]);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById.mockReturnValue(baseAgentInfo),
-      });
+      setupMock(createMockState({
+        logs: [],
+      }));
 
       render(<AgentLogPanel />);
 
@@ -158,12 +173,11 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should not display agentId-sessionId when no agent is selected', () => {
-      mockUseAgentStore.mockReturnValue({
+      setupMock(createMockState({
         selectedAgentId: null,
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent.mockReturnValue([]),
-        getAgentById: mockGetAgentById.mockReturnValue(undefined),
-      });
+        logs: [],
+        agent: null,
+      }));
 
       render(<AgentLogPanel />);
 
@@ -203,13 +217,9 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should disable copy button when no logs', () => {
-      mockGetLogsForAgent.mockReturnValue([]);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: [],
+      }));
 
       render(<AgentLogPanel />);
 
@@ -218,13 +228,9 @@ describe('AgentLogPanel - Task 31', () => {
     });
 
     it('should disable clear button when no logs', () => {
-      mockGetLogsForAgent.mockReturnValue([]);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: [],
+      }));
 
       render(<AgentLogPanel />);
 
@@ -250,13 +256,9 @@ describe('AgentLogPanel - Task 31', () => {
         },
       ];
 
-      mockGetLogsForAgent.mockReturnValue(logsWithTokens);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: logsWithTokens,
+      }));
 
       render(<AgentLogPanel />);
 
@@ -275,13 +277,9 @@ describe('AgentLogPanel - Task 31', () => {
         },
       ];
 
-      mockGetLogsForAgent.mockReturnValue(logsWithoutTokens);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: logsWithoutTokens,
+      }));
 
       render(<AgentLogPanel />);
 
@@ -299,13 +297,9 @@ describe('AgentLogPanel - Task 31', () => {
         },
       ];
 
-      mockGetLogsForAgent.mockReturnValue(logsWithTokens);
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        clearLogs: mockClearLogs,
-        getLogsForAgent: mockGetLogsForAgent,
-        getAgentById: mockGetAgentById,
-      });
+      setupMock(createMockState({
+        logs: logsWithTokens,
+      }));
 
       render(<AgentLogPanel />);
 

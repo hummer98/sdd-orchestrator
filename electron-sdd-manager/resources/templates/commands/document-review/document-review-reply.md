@@ -187,11 +187,26 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 ### After Reply Generation
 
+#### Update spec.json based on Fix Required count:
+
+**IMPORTANT**: After generating the reply, you MUST update spec.json:
+
+1. Count total "Fix Required" items from the Response Summary table
+2. Update spec.json `documentReview.roundDetails[n-1]`:
+   ```json
+   {
+     "roundNumber": n,
+     "status": "reply_complete"
+   }
+   ```
+3. **If Fix Required total is 0** (all issues resolved):
+   - Set `documentReview.status = "approved"` in spec.json
+   - This signals the document review phase is complete
+
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. Update spec.json to mark this round's fix as applied:
-   - Set `roundDetails[n-1].fixApplied = true`
+2. Update spec.json `documentReview.roundDetails[n-1].fixApplied = true`
 3. **Append "Applied Fixes" section** to the reply document (see format below)
 
 #### If no flag is present (default):

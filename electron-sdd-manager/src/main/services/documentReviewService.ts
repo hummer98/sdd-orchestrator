@@ -37,11 +37,6 @@ export interface UpdateReviewStateOptions {
   roundDetail?: Partial<RoundDetail>;
 }
 
-/** Result of parsing a reply file (Task 2.1: auto-execution-document-review-autofix) */
-export interface ParseReplyResult {
-  fixRequiredCount: number;
-}
-
 /**
  * Service for managing document review workflow
  */
@@ -63,7 +58,7 @@ export class DocumentReviewService {
    */
   async canStartReview(specPath: string): Promise<boolean> {
     try {
-      const specJson = await this.readSpecJson(specPath);
+      const specJson = await this.readSpecJsonInternal(specPath);
 
       // Check if tasks phase is approved
       if (!specJson.approvals.tasks.approved) {
@@ -127,7 +122,7 @@ export class DocumentReviewService {
    */
   async initializeReviewState(specPath: string): Promise<Result<void, ReviewError>> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
 
       // Don't reinitialize if already exists
       if (specJson.documentReview) {
@@ -161,7 +156,7 @@ export class DocumentReviewService {
     options: UpdateReviewStateOptions
   ): Promise<Result<void, ReviewError>> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
 
       // Ensure documentReview exists
       if (!specJson.documentReview) {
@@ -265,7 +260,7 @@ export class DocumentReviewService {
    */
   async approveReview(specPath: string): Promise<Result<void, ReviewError>> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
 
       // Check if already approved
       if (specJson.documentReview?.status === 'approved') {
@@ -298,7 +293,7 @@ export class DocumentReviewService {
    */
   async skipReview(specPath: string): Promise<Result<void, ReviewError>> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
 
       // Check if already approved
       if (specJson.documentReview?.status === 'approved') {
@@ -339,7 +334,7 @@ export class DocumentReviewService {
    */
   async canRetryRound(specPath: string, roundNumber: number): Promise<boolean> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
       const reviewState = specJson.documentReview;
 
       // Cannot retry if already approved
@@ -379,7 +374,7 @@ export class DocumentReviewService {
    */
   async getReviewState(specPath: string): Promise<DocumentReviewState | null> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
       const reviewState = specJson.documentReview;
 
       if (reviewState && isDocumentReviewState(reviewState)) {
@@ -524,7 +519,7 @@ export class DocumentReviewService {
    */
   async syncReviewState(specPath: string): Promise<boolean> {
     try {
-      const specJson = await this.readSpecJson(specPath) as SpecJsonWithReview;
+      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
       const currentRoundFromFiles = await this.getCurrentRoundNumber(specPath);
 
       // If no review files exist and no documentReview field, nothing to sync
@@ -685,12 +680,32 @@ export class DocumentReviewService {
   // ============================================================
 
   /**
-   * Read spec.json from spec directory
+   * Read spec.json from spec directory (internal use)
    */
-  private async readSpecJson(specPath: string): Promise<SpecJsonWithReview> {
+  private async readSpecJsonInternal(specPath: string): Promise<SpecJsonWithReview> {
     const specJsonPath = join(specPath, 'spec.json');
     const content = await readFile(specJsonPath, 'utf-8');
     return JSON.parse(content);
+  }
+
+  /**
+   * Read spec.json from spec directory (public, returns Result type)
+   * Used by handlers.ts to check documentReview.status after document-review-reply completion
+   */
+  async readSpecJson(specPath: string): Promise<Result<SpecJsonWithReview, ReviewError>> {
+    try {
+      const specJson = await this.readSpecJsonInternal(specPath);
+      return { ok: true, value: specJson };
+    } catch (error) {
+      logger.error('[DocumentReviewService] Error reading spec.json', { error, specPath });
+      return {
+        ok: false,
+        error: {
+          type: 'FILE_NOT_FOUND',
+          path: join(specPath, 'spec.json'),
+        },
+      };
+    }
   }
 
   /**
@@ -701,88 +716,4 @@ export class DocumentReviewService {
     await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
   }
 
-  // ============================================================
-  // Task 2.1: parseReplyFile - Reply.md解析機能
-  // Requirements: auto-execution-document-review-autofix 2.2
-  // ============================================================
-
-  /**
-   * Parse a document-review-{roundNumber}-reply.md file and extract Fix Required count
-   * @param specPath - Path to the spec directory
-   * @param roundNumber - Round number of the reply file
-   * @returns Result with fixRequiredCount or error
-   */
-  async parseReplyFile(specPath: string, roundNumber: number): Promise<Result<ParseReplyResult, ReviewError>> {
-    const replyFileName = `document-review-${roundNumber}-reply.md`;
-    const replyFilePath = join(specPath, replyFileName);
-
-    try {
-      const content = await readFile(replyFilePath, 'utf-8');
-
-      // Extract Fix Required count from Response Summary table
-      // Table format:
-      // | Severity | Total Items | Fix Required |
-      // |----------|-------------|--------------|
-      // | Critical | 2 | 1 |
-      // | High | 5 | 3 |
-      // ...
-
-      // Find the Response Summary section
-      const summaryMatch = content.match(/##\s*Response Summary[\s\S]*?\|[^|]+\|[^|]+\|\s*Fix Required\s*\|/i);
-      if (!summaryMatch) {
-        logger.warn('[DocumentReviewService] Response Summary table not found', { replyFilePath });
-        return {
-          ok: false,
-          error: {
-            type: 'PARSE_ERROR',
-            message: 'Response Summary table not found in reply file',
-          },
-        };
-      }
-
-      // Extract table rows after the header (skip header and separator rows)
-      // Pattern: | Severity | Number | Number | (each row)
-      const tableRowPattern = /\|\s*(?:Critical|High|Medium|Low|Info)\s*\|\s*\d+\s*\|\s*(\d+)\s*\|/gi;
-      let totalFixRequired = 0;
-      let match;
-
-      while ((match = tableRowPattern.exec(content)) !== null) {
-        const fixRequired = parseInt(match[1], 10);
-        if (!isNaN(fixRequired)) {
-          totalFixRequired += fixRequired;
-        }
-      }
-
-      logger.info('[DocumentReviewService] Parsed reply file', {
-        replyFilePath,
-        fixRequiredCount: totalFixRequired
-      });
-
-      return {
-        ok: true,
-        value: {
-          fixRequiredCount: totalFixRequired,
-        },
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('ENOENT')) {
-        return {
-          ok: false,
-          error: {
-            type: 'FILE_NOT_FOUND',
-            path: replyFilePath,
-          },
-        };
-      }
-
-      logger.error('[DocumentReviewService] Error parsing reply file', { error, replyFilePath });
-      return {
-        ok: false,
-        error: {
-          type: 'FILE_NOT_FOUND',
-          path: replyFilePath,
-        },
-      };
-    }
-  }
 }

@@ -1412,22 +1412,6 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  // Task 2.2: parseReplyFile IPC handler (auto-execution-document-review-autofix)
-  ipcMain.handle(
-    IPC_CHANNELS.PARSE_REPLY_FILE,
-    async (_event, specPath: string, roundNumber: number) => {
-      logger.info('[handlers] PARSE_REPLY_FILE called', { specPath, roundNumber });
-      const { DocumentReviewService } = await import('../services/documentReviewService');
-      const service = new DocumentReviewService(currentProjectPath || '');
-      const result = await service.parseReplyFile(specPath, roundNumber);
-      if (!result.ok) {
-        logger.error('[handlers] parseReplyFile failed', { error: result.error });
-        throw new Error(`Failed to parse reply file: ${result.error.type}`);
-      }
-      return result.value;
-    }
-  );
-
   // ============================================================
   // cc-sdd Workflow Install Handlers (cc-sdd-command-installer feature)
   // ============================================================
@@ -2000,18 +1984,18 @@ async function executeDocumentReviewReply(
           logger.info('[handlers] executeDocumentReviewReply: completed', { replyAgentId });
           service.offStatusChange(handleReplyStatusChange);
 
-          // Parse reply file to check if fixes are required
-          const parseResult = await docReviewService.parseReplyFile(specPath, currentRound);
+          // Check spec.json documentReview.status (updated by document-review-reply prompt)
+          // SSOT: The prompt sets documentReview.status = 'approved' when fixRequiredCount === 0
+          const specJsonResult = await docReviewService.readSpecJson(specPath);
+          const isApproved = specJsonResult.ok && specJsonResult.value.documentReview?.status === 'approved';
 
-          if (parseResult.ok && parseResult.value.fixRequiredCount === 0) {
-            // No fixes required, auto-approve and continue to impl
-            logger.info('[handlers] executeDocumentReviewReply: no fixes required, auto-approving');
-            await docReviewService.approveReview(specPath);
+          if (isApproved) {
+            // Document review approved (no fixes required)
+            logger.info('[handlers] executeDocumentReviewReply: documentReview.status is approved');
             coordinator.handleDocumentReviewCompleted(specPath, true);
           } else {
-            // Fixes required, pause for user confirmation
-            const fixCount = parseResult.ok ? parseResult.value.fixRequiredCount : 'unknown';
-            logger.info('[handlers] executeDocumentReviewReply: fixes required, pausing', { fixCount });
+            // Fixes required or status not set, pause for user confirmation
+            logger.info('[handlers] executeDocumentReviewReply: fixes required, pausing');
             coordinator.handleDocumentReviewCompleted(specPath, false);
           }
         } else if (status === 'failed' || status === 'stopped') {

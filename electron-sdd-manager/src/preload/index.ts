@@ -786,16 +786,6 @@ const electronAPI = {
   skipDocumentReview: (specPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW, specPath),
 
-  /**
-   * Parse a document-review-reply.md file to extract Fix Required count
-   * Task 2.2: parseReplyFile IPC (auto-execution-document-review-autofix)
-   * @param specPath Full path to spec directory
-   * @param roundNumber Round number of the reply file
-   * @returns ParseReplyResult with fixRequiredCount
-   */
-  parseReplyFile: (specPath: string, roundNumber: number): Promise<{ fixRequiredCount: number }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PARSE_REPLY_FILE, specPath, roundNumber),
-
   // ============================================================
   // SSH Remote Project (Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2, 8.5)
   // ============================================================

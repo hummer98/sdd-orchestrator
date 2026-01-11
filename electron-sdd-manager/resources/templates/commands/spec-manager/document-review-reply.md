@@ -43,14 +43,21 @@ When `--fix` flag is present:
 1. Read existing `document-review-{n}-reply.md`
 2. Parse the "Files to Modify" section and "Action Items" from each issue
 3. Apply ONLY the items marked as "Fix Required" ✅
-4. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
-5. Report changes made
+4. Update spec.json `documentReview.roundDetails[n-1]`:
+   ```json
+   {
+     "roundNumber": n,
+     "status": "reply_complete",
+     "fixApplied": true
+   }
+   ```
+5. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
+6. Report changes made
 
 **Do NOT**:
 - Re-evaluate issues
 - Generate new reply content
 - Modify items marked as "No Fix Needed" or "Needs Discussion"
-- Update spec.json (handled by Electron)
 
 Skip to **Output Summary** section after applying fixes.
 
@@ -188,10 +195,27 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 ### After Reply Generation
 
+#### Update spec.json based on Fix Required count:
+
+**IMPORTANT**: After generating the reply, you MUST update spec.json:
+
+1. Count total "Fix Required" items from the Response Summary table
+2. Update spec.json `documentReview.roundDetails[n-1]`:
+   ```json
+   {
+     "roundNumber": n,
+     "status": "reply_complete"
+   }
+   ```
+3. **If Fix Required total is 0** (all issues resolved):
+   - Set `documentReview.status = "approved"` in spec.json
+   - This signals the document review phase is complete
+
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. **Append "Applied Fixes" section** to the reply document (see format below)
+2. Update spec.json `documentReview.roundDetails[n-1].fixApplied = true`
+3. **Append "Applied Fixes" section** to the reply document (see format below)
 
 #### If no flag is present (default):
 
@@ -214,7 +238,6 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 ## Important Constraints
 
-- DO NOT update spec.json (Electron handles this)
 - DO NOT include next step guidance in spec documents
 - Focus purely on generating reply and optionally applying fixes
 - Keep reply document self-contained

@@ -71,26 +71,6 @@ describe('Experimental Tools Installer E2E', () => {
       expect(hasExperimentalMenu).toBe(true);
     });
 
-    it('Planコマンドインストールメニュー項目が存在する', async () => {
-      const hasPlanMenuItem = await browser.electron.execute((electron) => {
-        const menu = electron.Menu.getApplicationMenu();
-        if (!menu) return false;
-        const toolsMenu = menu.items.find(
-          (item) => item.label === 'ツール'
-        );
-        if (!toolsMenu || !toolsMenu.submenu) return false;
-        const experimentalMenu = toolsMenu.submenu.items.find(
-          (item) => item.label === '実験的ツール'
-        );
-        if (!experimentalMenu || !experimentalMenu.submenu) return false;
-        const planItem = experimentalMenu.submenu.items.find(
-          (item) => item.label === 'Planコマンドをインストール (実験的)'
-        );
-        return planItem !== undefined;
-      });
-      expect(hasPlanMenuItem).toBe(true);
-    });
-
     it('Debugエージェントインストールメニュー項目が存在する', async () => {
       const hasDebugMenuItem = await browser.electron.execute((electron) => {
         const menu = electron.Menu.getApplicationMenu();
@@ -137,26 +117,6 @@ describe('Experimental Tools Installer E2E', () => {
   // Requirements: 1.3
   // ============================================================
   describe('プロジェクト未選択時のメニュー状態', () => {
-    it('プロジェクト未選択時、Planコマンドメニューが無効化されている', async () => {
-      const isDisabled = await browser.electron.execute((electron) => {
-        const menu = electron.Menu.getApplicationMenu();
-        if (!menu) return true;
-        const toolsMenu = menu.items.find(
-          (item) => item.label === 'ツール'
-        );
-        if (!toolsMenu || !toolsMenu.submenu) return true;
-        const experimentalMenu = toolsMenu.submenu.items.find(
-          (item) => item.label === '実験的ツール'
-        );
-        if (!experimentalMenu || !experimentalMenu.submenu) return true;
-        const planItem = experimentalMenu.submenu.items.find(
-          (item) => item.label === 'Planコマンドをインストール (実験的)'
-        );
-        return planItem ? !planItem.enabled : true;
-      });
-      expect(isDisabled).toBe(true);
-    });
-
     it('プロジェクト未選択時、Debugエージェントメニューが無効化されている', async () => {
       const isDisabled = await browser.electron.execute((electron) => {
         const menu = electron.Menu.getApplicationMenu();
@@ -314,14 +274,6 @@ describe('Renderer IPC通信確認', () => {
     expect(hasElectronAPI).toBe(true);
   });
 
-  it('installExperimentalPlan APIが存在する', async () => {
-    const hasAPI = await browser.execute(() => {
-      const api = (window as { electronAPI?: { installExperimentalPlan?: unknown } }).electronAPI;
-      return typeof api?.installExperimentalPlan === 'function';
-    });
-    expect(hasAPI).toBe(true);
-  });
-
   it('installExperimentalDebug APIが存在する', async () => {
     const hasAPI = await browser.execute(() => {
       const api = (window as { electronAPI?: { installExperimentalDebug?: unknown } }).electronAPI;
@@ -342,14 +294,6 @@ describe('Renderer IPC通信確認', () => {
     const hasAPI = await browser.execute(() => {
       const api = (window as { electronAPI?: { checkExperimentalToolExists?: unknown } }).electronAPI;
       return typeof api?.checkExperimentalToolExists === 'function';
-    });
-    expect(hasAPI).toBe(true);
-  });
-
-  it('onMenuInstallExperimentalPlan APIが存在する', async () => {
-    const hasAPI = await browser.execute(() => {
-      const api = (window as { electronAPI?: { onMenuInstallExperimentalPlan?: unknown } }).electronAPI;
-      return typeof api?.onMenuInstallExperimentalPlan === 'function';
     });
     expect(hasAPI).toBe(true);
   });

@@ -261,14 +261,14 @@ describe('Workflow Types', () => {
         expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.enabled).toBe(false);
       });
 
-      it('should have all permissions set to false by default', () => {
+      it('should have all permissions set to true by default', () => {
         const { permissions } = DEFAULT_SPEC_AUTO_EXECUTION_STATE;
-        expect(permissions.requirements).toBe(false);
-        expect(permissions.design).toBe(false);
-        expect(permissions.tasks).toBe(false);
-        expect(permissions.impl).toBe(false);
-        expect(permissions.inspection).toBe(false);
-        expect(permissions.deploy).toBe(false);
+        expect(permissions.requirements).toBe(true);
+        expect(permissions.design).toBe(true);
+        expect(permissions.tasks).toBe(true);
+        expect(permissions.impl).toBe(true);
+        expect(permissions.inspection).toBe(true);
+        expect(permissions.deploy).toBe(true);
       });
 
       it('should have documentReviewFlag set to pause by default', () => {
@@ -300,8 +300,8 @@ describe('Workflow Types', () => {
         expect(state.enabled).toBe(true);
         expect(state.permissions.requirements).toBe(true);
         expect(state.permissions.design).toBe(true);
-        expect(state.permissions.tasks).toBe(false);
-        expect(state.permissions.impl).toBe(false);
+        expect(state.permissions.tasks).toBe(true);
+        expect(state.permissions.impl).toBe(true);
       });
 
       it('should allow setting documentReviewFlag to run', () => {

@@ -241,12 +241,12 @@ export interface SpecAutoExecutionState {
 export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
   enabled: false,
   permissions: {
-    requirements: false,
-    design: false,
-    tasks: false,
-    impl: false,
-    inspection: false,
-    deploy: false,
+    requirements: true,
+    design: true,
+    tasks: true,
+    impl: true,
+    inspection: true,
+    deploy: true,
   },
   documentReviewFlag: 'pause',
   validationOptions: {

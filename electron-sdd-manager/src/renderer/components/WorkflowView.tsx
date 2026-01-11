@@ -170,8 +170,8 @@ export function WorkflowView() {
       if (match) {
         const isCompleted = match[1].toLowerCase() === 'x';
         const title = match[2].trim();
-        // Extract task ID if present (e.g., "1.1 Task name" or "(P) Task name")
-        const idMatch = title.match(/^(\d+\.?\d*|\(P\))\s+(.+)$/);
+        // Extract task ID if present (e.g., "1.1 Task name", "(P) Task name", or "FIX-1 Task name")
+        const idMatch = title.match(/^(\d+\.?\d*|\(P\)|[A-Z]+-\d+)\s+(.+)$/);
         const id = idMatch ? idMatch[1] : `task-${tasks.length + 1}`;
         const taskTitle = idMatch ? idMatch[2] : title;
 

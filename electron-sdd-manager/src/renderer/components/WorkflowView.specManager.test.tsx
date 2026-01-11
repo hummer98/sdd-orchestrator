@@ -363,4 +363,182 @@ describe('WorkflowView - spec-manager Extensions', () => {
       });
     });
   });
+
+  // ============================================================
+  // Task Parsing: FIX-N format support
+  // ============================================================
+  describe('Task Parsing - FIX-N format support', () => {
+    it('should parse standard numeric task IDs (1.1 format)', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: '- [x] 1.1 First task\n- [ ] 1.2 Second task',
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      expect(screen.getByText('First task')).toBeInTheDocument();
+      expect(screen.getByText('Second task')).toBeInTheDocument();
+    });
+
+    it('should parse FIX-N format task IDs from inspection fixes', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: '- [ ] FIX-1 エラーハンドリングの追加\n- [ ] FIX-2 バリデーション修正',
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      expect(screen.getByText('エラーハンドリングの追加')).toBeInTheDocument();
+      expect(screen.getByText('バリデーション修正')).toBeInTheDocument();
+    });
+
+    it('should parse BUG-N format task IDs', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: '- [x] BUG-123 Fix null pointer exception',
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      expect(screen.getByText('Fix null pointer exception')).toBeInTheDocument();
+    });
+
+    it('should parse (P) parallel task markers', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: '- [ ] (P) Parallel task one\n- [ ] (P) Parallel task two',
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      expect(screen.getByText('Parallel task one')).toBeInTheDocument();
+      expect(screen.getByText('Parallel task two')).toBeInTheDocument();
+    });
+
+    it('should handle mixed task ID formats', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: [
+                  '- [x] 1.1 Standard task',
+                  '- [ ] FIX-1 Inspection fix task',
+                  '- [ ] (P) Parallel task',
+                  '- [ ] Task without ID',
+                ].join('\n'),
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      expect(screen.getByText('Standard task')).toBeInTheDocument();
+      expect(screen.getByText('Inspection fix task')).toBeInTheDocument();
+      expect(screen.getByText('Parallel task')).toBeInTheDocument();
+      expect(screen.getByText('Task without ID')).toBeInTheDocument();
+    });
+
+    it('should correctly identify completed vs pending tasks', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: '- [x] FIX-1 Completed fix\n- [ ] FIX-2 Pending fix',
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      // Both tasks should be rendered
+      expect(screen.getByText('Completed fix')).toBeInTheDocument();
+      expect(screen.getByText('Pending fix')).toBeInTheDocument();
+    });
+
+    it('should ignore nested sub-items (indented lines)', () => {
+      createMockStores({
+        specStore: {
+          specDetail: {
+            ...mockSpecDetail,
+            artifacts: {
+              ...mockSpecDetail.artifacts,
+              tasks: {
+                exists: true,
+                updatedAt: null,
+                content: [
+                  '- [ ] FIX-1 Main task',
+                  '  - 出典: inspection-1.md',
+                  '  - 具体的な修正内容',
+                ].join('\n'),
+              },
+            },
+          },
+        },
+      });
+
+      render(<WorkflowView />);
+
+      // Only the main task should be parsed, not the nested items
+      expect(screen.getByText('Main task')).toBeInTheDocument();
+      expect(screen.queryByText('出典: inspection-1.md')).not.toBeInTheDocument();
+    });
+  });
 });

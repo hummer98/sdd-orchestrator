@@ -26,6 +26,12 @@ Before executing inspection, verify that all required spec files exist:
 - Suggest: "Complete previous phases: `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`"
 - Stop execution
 
+## Branch by Option
+
+**If `--fix` option is specified**: Jump to [--fix Mode](#--fix-mode) section directly (skip inspection execution)
+
+**Otherwise**: Continue with Load Context and execute inspection
+
 ## Load Context
 
 **Read all necessary context**:
@@ -171,10 +177,22 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 ## Handle Options
 
 ### --fix Mode
-If NOGO judgment AND --fix option:
-1. Generate fix tasks for each Critical/Major issue
-2. Append to tasks.md with new task numbers
-3. Report: "Fix tasks added to tasks.md. Run `/kiro:spec-impl {feature}` to apply fixes."
+
+**Purpose**: Generate fix tasks based on an **existing** inspection report (does NOT run inspection)
+
+**Execution**:
+1. Find the latest inspection report: `.kiro/specs/{feature}/inspection-{n}.md` (highest n)
+2. If no inspection report exists:
+   - Display error: "No inspection report found. Run `/kiro:spec-inspection {feature}` first."
+   - Stop execution
+3. Read the inspection report and extract Critical/Major issues
+4. If the report shows GO judgment:
+   - Display: "Latest inspection passed (GO). No fixes needed."
+   - Stop execution
+5. Generate fix tasks for each Critical/Major issue
+6. Append to tasks.md with new task numbers (use format `FIX-{n}`)
+7. Update spec.json: add `fixedAt` timestamp to the latest round
+8. Report: "Fix tasks added to tasks.md. Run `/kiro:spec-impl {feature}` to apply fixes."
 
 ### --autofix Mode
 If NOGO judgment AND --autofix option:

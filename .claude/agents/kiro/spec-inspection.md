@@ -173,10 +173,23 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 ### 5. Handle Options
 
 #### --fix Mode
-If NOGO judgment AND --fix option:
-1. Generate fix tasks for each Critical/Major issue
-2. Append to tasks.md with new task numbers (use format `FIX-{n}` for fix task IDs)
-3. Invoke spec-tdd-impl-agent to execute the fix tasks:
+
+**Purpose**: Generate fix tasks based on an **existing** inspection report and execute them (does NOT run inspection)
+
+**Note**: When `--fix` option is specified, skip steps 1-4 (inspection execution) and start here directly.
+
+**Execution**:
+1. Find the latest inspection report: `.kiro/specs/{feature}/inspection-{n}.md` (highest n)
+2. If no inspection report exists:
+   - Display error: "No inspection report found. Run `/kiro:spec-inspection {feature}` first."
+   - Stop execution
+3. Read the inspection report and extract Critical/Major issues
+4. If the report shows GO judgment:
+   - Display: "Latest inspection passed (GO). No fixes needed."
+   - Stop execution
+5. Generate fix tasks for each Critical/Major issue
+6. Append to tasks.md with new task numbers (use format `FIX-{n}` for fix task IDs)
+7. Invoke spec-tdd-impl-agent to execute the fix tasks:
    ```
    Task(
      subagent_type="spec-tdd-impl-agent",
@@ -196,12 +209,12 @@ If NOGO judgment AND --fix option:
    """
    )
    ```
-4. After impl completes, update spec.json to add `fixedAt` timestamp to the current round:
+8. After impl completes, update spec.json to add `fixedAt` timestamp to the latest round:
    - Read spec.json
    - Find the latest round in `inspection.rounds`
    - Add `fixedAt: "{current ISO 8601 timestamp}"` to that round
    - Write spec.json
-5. Report: "Fix tasks executed. Ready for re-inspection."
+9. Report: "Fix tasks executed. Ready for re-inspection."
 
 #### --autofix Mode
 If NOGO judgment AND --autofix option:

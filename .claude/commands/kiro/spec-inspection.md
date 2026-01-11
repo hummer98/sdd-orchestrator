@@ -28,7 +28,7 @@ Before invoking Subagent, verify that all required spec files exist:
 
 ## Invoke Subagent
 
-Delegate inspection to spec-inspection-agent:
+Delegate to spec-inspection-agent:
 
 Use the Task tool to invoke the Subagent with file path patterns:
 
@@ -46,7 +46,12 @@ File patterns to read:
 - .kiro/steering/*.md
 - CLAUDE.md
 
-Inspection scope:
+Mode:
+- If Options is "--fix": Skip inspection, read existing inspection-{n}.md and generate fix tasks only
+- If Options is "--autofix": Run inspection, then auto-fix if NOGO (max 3 cycles)
+- Otherwise: Run full inspection and generate report
+
+Inspection scope (when running inspection):
 - Requirements compliance
 - Design alignment
 - Task completion

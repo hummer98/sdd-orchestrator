@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-01-11
+
+### Fixed
+- **コマンドセットインストール時の.kiro/bugsディレクトリ作成**: コマンドセットインストール時に.kiro/bugsディレクトリが存在しない場合自動作成するよう修正
+- **Watcherの存在しないディレクトリ監視問題**: Watcherが存在しないディレクトリを監視できない問題を修正
+
 ## [0.20.0] - 2026-01-10
 
 ### Added

@@ -53,43 +53,8 @@ Execute implementation tasks for feature using Test-Driven Development.
 ### Step 2: Select Tasks
 
 **Determine which tasks to execute**:
-- If `--inspection-fix {roundNumber}` provided: Execute inspection fix mode (see Step 2.1)
 - If task numbers provided: Execute specified task numbers (e.g., "1.1" or "1,2,3")
 - Otherwise: Execute all pending tasks (unchecked `- [ ]` in tasks.md)
-
-### Step 2.1: Inspection Fix Mode (--inspection-fix)
-
-When `--inspection-fix {roundNumber}` is provided:
-
-1. **Read inspection report**: Load `.kiro/specs/{feature}/inspection-{roundNumber}.md`
-2. **Identify fix tasks**: Extract Critical and Major issues from the report
-3. **Execute fixes**: For each issue:
-   - Implement the fix following TDD cycle
-   - Run tests to verify the fix
-4. **Update spec.json**: After all fixes are applied, update the inspection state:
-
-```json
-{
-  "inspection": {
-    "rounds": [
-      {
-        "number": 1,
-        "result": "nogo",
-        "inspectedAt": "2025-12-25T12:00:00Z",
-        "fixedAt": "2025-12-25T13:00:00Z"  // ← Add this timestamp
-      }
-    ]
-  }
-}
-```
-
-**Update Logic**:
-1. Read existing `inspection.rounds` from spec.json
-2. Find the round with matching `number` (roundNumber)
-3. Add `fixedAt` field with current ISO 8601 timestamp
-4. Write updated spec.json
-
-**Important**: The `fixedAt` field signals to the UI that the fix is complete and the next inspection round can begin.
 
 ### Step 3: Execute with TDD
 

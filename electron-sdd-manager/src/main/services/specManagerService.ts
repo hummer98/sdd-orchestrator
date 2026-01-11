@@ -1251,22 +1251,25 @@ export class SpecManagerService {
   }
 
   /**
-   * Execute inspection fix agent (impl with inspection task)
+   * Execute inspection fix agent (spec-inspection with --fix option)
    * Requirements: 4.3 (inspection-workflow-ui)
+   *
+   * This calls spec-inspection --fix which:
+   * 1. Generates fix tasks from inspection findings
+   * 2. Invokes spec-impl subagent to execute fixes
+   * 3. Updates spec.json with fixedAt timestamp
    */
   async executeInspectionFix(options: ExecuteInspectionFixOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, roundNumber, commandPrefix = 'kiro' } = options;
-    const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-impl' : '/spec-manager:impl';
+    const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
 
-    // Fix: Run impl with inspection findings as context
-    // The inspection fix uses spec-impl with a special task identifier indicating fix from inspection
     logger.info('[SpecManagerService] executeInspectionFix called', { specId, featureName, roundNumber, slashCommand, commandPrefix });
 
     return this.startAgent({
       specId,
       phase: 'inspection-fix',
       command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --inspection-fix ${roundNumber}` }),
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
       group: 'impl',
     });
   }

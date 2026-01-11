@@ -1,7 +1,7 @@
 ---
 name: spec-inspection-agent
 description: Comprehensive inspection of implementation against specifications
-tools: Read, Bash, Grep, Glob, Write
+tools: Read, Bash, Grep, Glob, Write, Task
 model: inherit
 color: cyan
 ---
@@ -175,8 +175,33 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 #### --fix Mode
 If NOGO judgment AND --fix option:
 1. Generate fix tasks for each Critical/Major issue
-2. Append to tasks.md with new task numbers
-3. Report: "Fix tasks added to tasks.md. Run `/kiro:spec-impl {feature}` to apply fixes."
+2. Append to tasks.md with new task numbers (use format `FIX-{n}` for fix task IDs)
+3. Invoke spec-tdd-impl-agent to execute the fix tasks:
+   ```
+   Task(
+     subagent_type="spec-tdd-impl-agent",
+     description="Execute inspection fix tasks",
+     prompt="""
+   Feature: {feature}
+   Spec directory: .kiro/specs/{feature}/
+   Target tasks: FIX-1, FIX-2, ... (the fix tasks just added)
+
+   File patterns to read:
+   - .kiro/specs/{feature}/*.{json,md}
+   - .kiro/steering/*.md
+
+   TDD Mode: strict (test-first)
+
+   Context: These are fix tasks from inspection round {n}. Execute them to resolve Critical/Major issues.
+   """
+   )
+   ```
+4. After impl completes, update spec.json to add `fixedAt` timestamp to the current round:
+   - Read spec.json
+   - Find the latest round in `inspection.rounds`
+   - Add `fixedAt: "{current ISO 8601 timestamp}"` to that round
+   - Write spec.json
+5. Report: "Fix tasks executed. Ready for re-inspection."
 
 #### --autofix Mode
 If NOGO judgment AND --autofix option:
@@ -241,7 +266,7 @@ If NOGO judgment AND --autofix option:
 ```
 
 **Important**:
-- The `fixedAt` field is set by spec-impl agent (not this agent) when `--inspection-fix` is executed
+- The `fixedAt` field is set by this agent in `--fix` mode after impl completes
 - The UI enables the Deploy phase button when the latest round has `result: "go"`
 - The UI shows Fix button when the latest round has `result: "nogo"` and no `fixedAt`
 

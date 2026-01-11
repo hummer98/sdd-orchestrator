@@ -4,7 +4,7 @@
 
 **Purpose**: tasks.mdの(P)マークを活用し、並列実行可能なタスクを複数のClaudeセッションで同時に実装する機能を提供する。
 
-**Users**: 開発者がPhaseExecutionPanelから「並列実装」ボタンを使用し、タスクの並列実行により実装時間を短縮する。
+**Users**: 開発者がWorkflowView内の「並列実装」ボタンを使用し、タスクの並列実行により実装時間を短縮する。
 
 **Impact**: 既存の「実装」ボタンと並行して動作し、既存ワークフローを維持しながら並列実行オプションを追加する。
 
@@ -30,7 +30,8 @@
 ```mermaid
 graph TB
     subgraph Renderer
-        PhasePanel[PhaseExecutionPanel]
+        WorkflowView[WorkflowView]
+        TaskProgressView[TaskProgressView]
         ParallelBtn[ParallelImplButton]
         ParallelSvc[ParallelImplService]
         AgentStore[agentStore]
@@ -50,7 +51,8 @@ graph TB
         ClaudeN[Claude Session N]
     end
 
-    PhasePanel --> ParallelBtn
+    WorkflowView --> TaskProgressView
+    WorkflowView --> ParallelBtn
     ParallelBtn --> ParallelSvc
     ParallelSvc --> AgentStore
     ParallelSvc -->|IPC| TaskParser
@@ -87,7 +89,7 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant PhasePanel as PhaseExecutionPanel
+    participant WorkflowView as WorkflowView
     participant ParallelSvc as ParallelImplService
     participant IPC as Electron IPC
     participant Parser as taskParallelParser
@@ -95,8 +97,8 @@ sequenceDiagram
     participant Registry as AgentRegistry
     participant Claude as Claude Sessions
 
-    User->>PhasePanel: 並列実装ボタンクリック
-    PhasePanel->>ParallelSvc: startParallelImpl(specPath)
+    User->>WorkflowView: 並列実装ボタンクリック
+    WorkflowView->>ParallelSvc: startParallelImpl(specPath)
     ParallelSvc->>IPC: parseTasksForParallel(specPath)
     IPC->>Parser: parse tasks.md
     Parser-->>IPC: TaskGroup[]
@@ -138,14 +140,14 @@ sequenceDiagram
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.4 | 並列実装ボタン配置 | PhaseExecutionPanel, ParallelImplButton | なし | UI表示フロー |
+| 1.1-1.4 | 並列実装ボタン配置 | WorkflowView, ParallelImplButton | なし | UI表示フロー |
 | 2.1-2.5 | tasks.mdパーサー | taskParallelParser | parseTasksForParallel（新規IPC） | パース処理 |
 | 3.1-3.3 | タスクグループ化 | taskParallelParser | TaskGroup型 | グループ化ロジック |
 | 4.1-4.4 | 並列Claudeセッション起動 | ParallelImplService | executeTaskImpl（既存IPC）| 並列起動フロー |
 | 5.1-5.3 | グループ間自動進行 | ParallelImplService | onAgentStatusChange（既存） | 自動進行フロー |
 | 6.1-6.4 | エラーハンドリング | ParallelImplService | onAgentStatusChange（既存） | エラー処理フロー |
 | 7.1-7.4 | 進捗表示 | AgentListPanel, ParallelImplButton | agentStore（既存） | UI更新フロー |
-| 8.1-8.3 | 既存機能互換性 | PhaseExecutionPanel | 既存インターフェース維持 | なし |
+| 8.1-8.3 | 既存機能互換性 | WorkflowView, TaskProgressView | 既存インターフェース維持 | なし |
 | 9.1-9.3 | キャンセル機能 | ParallelImplService | stopAgent（既存IPC） | キャンセルフロー |
 
 ## Components and Interfaces
@@ -155,7 +157,7 @@ sequenceDiagram
 | taskParallelParser | Main/Service | tasks.mdを解析して(P)マーク付きタスクをグループ化 | 2.1-2.5, 3.1-3.3 | FileService (P0) | Service |
 | ParallelImplService | Renderer/Service | 並列実装のオーケストレーション | 4.1-4.4, 5.1-5.3, 6.1-6.4, 9.1-9.3 | agentStore (P0), electronAPI (P0) | Service, State |
 | ParallelImplButton | Renderer/UI | 並列実装ボタンUI | 1.1-1.4, 7.3 | ParallelImplService (P0) | なし |
-| PhaseExecutionPanel拡張 | Renderer/UI | 並列実装ボタン配置 | 1.1-1.4 | ParallelImplButton (P1) | なし |
+| WorkflowView拡張 | Renderer/UI | 並列実装ボタン配置（TaskProgressViewの上部に配置） | 1.1-1.4 | ParallelImplButton (P1) | なし |
 
 ### Main/Service
 
@@ -389,28 +391,29 @@ interface ParallelImplStore {
 - 既存「実装」ボタンと一貫したデザイン
 
 **Dependencies**
-- Inbound: PhaseExecutionPanel - 配置 (P1)
+- Inbound: WorkflowView - 配置 (P1)
 - Outbound: ParallelImplService - 実行制御 (P0)
 - Outbound: specStore - 承認状態参照 (P1)
 
 **Contracts**: なし（UIコンポーネント）
 
 **Implementation Notes**
-- Integration: PhaseExecutionPanelのgridレイアウト内に配置
+- Integration: WorkflowView内のimplフェーズセクション、TaskProgressViewの上部に配置
 - Validation: specDetail.specJson.approvals.tasks.approvedで有効化判定
 
 ---
 
-#### PhaseExecutionPanel拡張
+#### WorkflowView拡張
 
 | Field | Detail |
 |-------|--------|
-| Intent | 既存パネルにParallelImplButtonを追加 |
+| Intent | 既存のWorkflowViewにParallelImplButtonを追加 |
 | Requirements | 1.1 |
 
 **Implementation Notes**
-- 既存の「実装」ボタンの隣（同じgrid行）にParallelImplButtonを配置
-- 既存のボタンレイアウト（grid-cols-2）を維持
+- implフェーズ表示領域（TaskProgressViewの上部）にParallelImplButtonを配置
+- 既存のPhaseItemレイアウトとの整合性を維持
+- 配置場所: `{phase === 'impl' && specDetail.taskProgress && ...}` ブロック内の先頭
 
 ---
 

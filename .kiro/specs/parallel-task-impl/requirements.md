@@ -8,13 +8,13 @@
 
 ### Requirement 1: 並列実装ボタンの配置
 
-**Objective:** As a 開発者, I want 既存の「実装」ボタンの隣に「並列実装」ボタンを配置したい, so that 通常の逐次実装と並列実装を選択できる
+**Objective:** As a 開発者, I want implフェーズに「並列実装」ボタンを配置したい, so that 通常の逐次実装と並列実装を選択できる
 
 #### Acceptance Criteria
-1. When ユーザーがSpecを選択する, the PhaseExecutionPanel shall 「実装」ボタンの隣に「並列実装」ボタンを表示する
+1. When ユーザーがSpecを選択する, the WorkflowView shall implフェーズセクション（TaskProgressViewの上部）に「並列実装」ボタンを表示する
 2. While tasksフェーズが承認済みである, the 並列実装ボタン shall 有効な状態で表示される
 3. If tasksフェーズが未承認である, then the 並列実装ボタン shall 無効化された状態で表示される
-4. The 並列実装ボタン shall 既存の「実装」ボタンと一貫したデザインで表示される
+4. The 並列実装ボタン shall 既存のUIデザインと一貫したスタイルで表示される
 
 ### Requirement 2: tasks.mdパーサー（taskParallelParser）
 

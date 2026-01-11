@@ -113,9 +113,9 @@
   - 既存「実装」ボタンと一貫したデザインを適用する
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 7.3_
 
-- [ ] 5.2 PhaseExecutionPanelへの並列実装ボタン配置
-  - 既存「実装」ボタンの隣にParallelImplButtonを配置する
-  - gridレイアウト内での配置を調整する
+- [ ] 5.2 WorkflowViewへの並列実装ボタン配置
+  - WorkflowView内のimplフェーズセクション（TaskProgressViewの上部）にParallelImplButtonを配置する
+  - 既存のPhaseItemレイアウトとの整合性を維持する
   - _Requirements: 1.1_
 
 - [ ] 5.3 UIコンポーネントの単体テスト作成

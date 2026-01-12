@@ -1,0 +1,299 @@
+/**
+ * AgentView Component
+ *
+ * Task 13.4: Agent制御・ログ表示UIを実装する
+ *
+ * Agent一覧表示、制御、ログ表示機能を提供。
+ * AgentListItemを使用した一覧表示とログパネル。
+ *
+ * Requirements: 7.1
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Bot, Terminal } from 'lucide-react';
+import { clsx } from 'clsx';
+import { AgentListItem, type AgentItemInfo, type AgentItemStatus } from '@shared/components/agent/AgentListItem';
+import { Spinner } from '@shared/components/ui/Spinner';
+import type { ApiClient, AgentInfo, AgentStatus, LogEntry } from '@shared/api/types';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface AgentViewProps {
+  /** Spec ID to filter agents (optional, shows all if not provided) */
+  specId?: string;
+  /** API client instance */
+  apiClient: ApiClient;
+  /** Called when an agent is selected */
+  onAgentSelected?: (agent: AgentInfo) => void;
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+function mapAgentStatus(status: AgentStatus): AgentItemStatus {
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'stopped':
+      return 'interrupted';
+    case 'paused':
+      return 'interrupted';
+    case 'error':
+      return 'failed';
+    default:
+      return 'completed';
+  }
+}
+
+function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
+  const startedAt = typeof agent.startedAt === 'number'
+    ? new Date(agent.startedAt).toISOString()
+    : agent.startedAt;
+  const endedAt = agent.endedAt
+    ? (typeof agent.endedAt === 'number' ? new Date(agent.endedAt).toISOString() : agent.endedAt)
+    : startedAt;
+
+  return {
+    agentId: agent.id,
+    sessionId: agent.specId,
+    phase: agent.phase,
+    status: mapAgentStatus(agent.status),
+    startedAt,
+    lastActivityAt: endedAt,
+  };
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
+export function AgentView({
+  specId,
+  apiClient,
+  onAgentSelected,
+}: AgentViewProps): React.ReactElement {
+  // State
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [logs, setLogs] = useState<Map<string, LogEntry[]>>(new Map());
+
+  // Load agents on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAgents() {
+      setIsLoading(true);
+      const result = await apiClient.getAgents();
+
+      if (!isMounted) return;
+
+      if (result.ok) {
+        const filteredAgents = specId
+          ? result.value.filter((a) => a.specId === specId)
+          : result.value;
+        setAgents(filteredAgents);
+      }
+
+      setIsLoading(false);
+    }
+
+    loadAgents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [apiClient, specId]);
+
+  // Subscribe to agent output
+  useEffect(() => {
+    const unsubscribe = apiClient.onAgentOutput((agentId, stream, data) => {
+      setLogs((prev) => {
+        const newLogs = new Map(prev);
+        const agentLogs = newLogs.get(agentId) || [];
+        newLogs.set(agentId, [
+          ...agentLogs,
+          {
+            timestamp: new Date().toISOString(),
+            level: stream === 'stderr' ? 'error' : 'info',
+            message: data,
+          },
+        ]);
+        return newLogs;
+      });
+    });
+
+    return unsubscribe;
+  }, [apiClient]);
+
+  // Subscribe to agent status changes
+  useEffect(() => {
+    const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
+      setAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === agentId ? { ...agent, status } : agent
+        )
+      );
+    });
+
+    return unsubscribe;
+  }, [apiClient]);
+
+  // Load logs when agent is selected
+  useEffect(() => {
+    if (!selectedAgentId) return;
+
+    let isMounted = true;
+
+    async function loadLogs() {
+      const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+      if (!selectedAgent) return;
+
+      const result = await apiClient.getAgentLogs(selectedAgent.specId, selectedAgentId);
+
+      if (!isMounted) return;
+
+      if (result.ok) {
+        setLogs((prev) => {
+          const newLogs = new Map(prev);
+          newLogs.set(selectedAgentId, result.value);
+          return newLogs;
+        });
+      }
+    }
+
+    loadLogs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [apiClient, selectedAgentId, agents]);
+
+  // Handle agent selection
+  const handleSelectAgent = useCallback(
+    (agent: AgentInfo) => {
+      setSelectedAgentId(agent.id);
+      onAgentSelected?.(agent);
+    },
+    [onAgentSelected]
+  );
+
+  // Handle agent stop
+  const handleStopAgent = useCallback(
+    async (e: React.MouseEvent, agentId: string) => {
+      e.stopPropagation();
+      await apiClient.stopAgent(agentId);
+    },
+    [apiClient]
+  );
+
+  // Handle agent remove (from UI only)
+  const handleRemoveAgent = useCallback(
+    (e: React.MouseEvent, agentId: string) => {
+      e.stopPropagation();
+      setAgents((prev) => prev.filter((a) => a.id !== agentId));
+      if (selectedAgentId === agentId) {
+        setSelectedAgentId(null);
+      }
+    },
+    [selectedAgentId]
+  );
+
+  // Get logs for selected agent
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  const selectedLogs = selectedAgentId ? logs.get(selectedAgentId) || [] : [];
+
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div
+        data-testid="agent-view-loading"
+        className="flex items-center justify-center h-full p-8"
+      >
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // Render empty state
+  if (agents.length === 0) {
+    return (
+      <div
+        data-testid="agent-empty-state"
+        className="flex flex-col items-center justify-center h-full p-8 text-center"
+      >
+        <Bot className="w-12 h-12 text-gray-400 mb-4" />
+        <p className="text-gray-600 dark:text-gray-400">実行中のAgentはありません</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full" data-testid="agent-view">
+      {/* Agent List */}
+      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-3">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            Agent ({agents.length})
+          </h3>
+          <ul data-testid="agent-list" className="space-y-2">
+            {agents.map((agent) => (
+              <AgentListItem
+                key={agent.id}
+                agent={mapAgentInfoToItemInfo(agent)}
+                isSelected={selectedAgentId === agent.id}
+                onSelect={() => handleSelectAgent(agent)}
+                onStop={(e) => handleStopAgent(e, agent.id)}
+                onRemove={(e) => handleRemoveAgent(e, agent.id)}
+              />
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Log Panel */}
+      {selectedAgent && (
+        <div data-testid="agent-log-panel" className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
+            <Terminal className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {selectedAgent.phase} - ログ
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 bg-gray-900 font-mono text-sm">
+            {selectedLogs.length === 0 ? (
+              <p className="text-gray-500">ログはまだありません</p>
+            ) : (
+              selectedLogs.map((log, index) => (
+                <div
+                  key={index}
+                  className={clsx(
+                    'py-0.5',
+                    log.level === 'error'
+                      ? 'text-red-400'
+                      : log.level === 'warning'
+                        ? 'text-yellow-400'
+                        : 'text-green-400'
+                  )}
+                >
+                  <span className="text-gray-500">
+                    [{new Date(log.timestamp).toLocaleTimeString()}]
+                  </span>{' '}
+                  {log.message}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default AgentView;

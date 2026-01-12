@@ -17,12 +17,40 @@ import '@testing-library/jest-dom';
 // Mock the shared providers and hooks
 vi.mock('../shared', async () => {
   const React = await import('react');
+  // Create a mock ApiClient
+  const mockApiClient = {
+    getSpecs: () => Promise.resolve({ ok: true, value: [] }),
+    getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
+    executePhase: () => Promise.resolve({ ok: true, value: {} }),
+    updateApproval: () => Promise.resolve({ ok: true, value: undefined }),
+    getBugs: () => Promise.resolve({ ok: true, value: [] }),
+    getBugDetail: () => Promise.resolve({ ok: true, value: {} }),
+    executeBugPhase: () => Promise.resolve({ ok: true, value: {} }),
+    getAgents: () => Promise.resolve({ ok: true, value: [] }),
+    stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
+    resumeAgent: () => Promise.resolve({ ok: true, value: {} }),
+    sendAgentInput: () => Promise.resolve({ ok: true, value: undefined }),
+    getAgentLogs: () => Promise.resolve({ ok: true, value: [] }),
+    executeValidation: () => Promise.resolve({ ok: true, value: {} }),
+    executeDocumentReview: () => Promise.resolve({ ok: true, value: {} }),
+    executeInspection: () => Promise.resolve({ ok: true, value: {} }),
+    startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
+    stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
+    getAutoExecutionStatus: () => Promise.resolve({ ok: true, value: null }),
+    saveFile: () => Promise.resolve({ ok: true, value: undefined }),
+    onSpecsUpdated: () => () => {},
+    onBugsUpdated: () => () => {},
+    onAgentOutput: () => () => {},
+    onAgentStatusChange: () => () => {},
+    onAutoExecutionStatusChanged: () => () => {},
+  };
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
     PlatformProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement('div', { 'data-testid': 'platform-provider' }, children),
     useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
+    useApi: () => mockApiClient,
   };
 });
 
@@ -87,12 +115,39 @@ describe('Task 9: Remote UI App Integration', () => {
       // Override the mock for this test
       vi.doMock('../shared', async () => {
         const React = await import('react');
+        const mockApiClient = {
+          getSpecs: () => Promise.resolve({ ok: true, value: [] }),
+          getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
+          executePhase: () => Promise.resolve({ ok: true, value: {} }),
+          updateApproval: () => Promise.resolve({ ok: true, value: undefined }),
+          getBugs: () => Promise.resolve({ ok: true, value: [] }),
+          getBugDetail: () => Promise.resolve({ ok: true, value: {} }),
+          executeBugPhase: () => Promise.resolve({ ok: true, value: {} }),
+          getAgents: () => Promise.resolve({ ok: true, value: [] }),
+          stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
+          resumeAgent: () => Promise.resolve({ ok: true, value: {} }),
+          sendAgentInput: () => Promise.resolve({ ok: true, value: undefined }),
+          getAgentLogs: () => Promise.resolve({ ok: true, value: [] }),
+          executeValidation: () => Promise.resolve({ ok: true, value: {} }),
+          executeDocumentReview: () => Promise.resolve({ ok: true, value: {} }),
+          executeInspection: () => Promise.resolve({ ok: true, value: {} }),
+          startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
+          stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
+          getAutoExecutionStatus: () => Promise.resolve({ ok: true, value: null }),
+          saveFile: () => Promise.resolve({ ok: true, value: undefined }),
+          onSpecsUpdated: () => () => {},
+          onBugsUpdated: () => () => {},
+          onAgentOutput: () => () => {},
+          onAgentStatusChange: () => () => {},
+          onAutoExecutionStatusChanged: () => () => {},
+        };
         return {
           ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
             React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
           PlatformProvider: ({ children }: { children: React.ReactNode }) =>
             React.createElement('div', { 'data-testid': 'platform-provider' }, children),
           useDeviceType: () => ({ isMobile: true, isTablet: false, isDesktop: false }),
+          useApi: () => mockApiClient,
         };
       });
 
@@ -154,6 +209,57 @@ describe('Task 9: Remote UI App Integration', () => {
         value: originalLocation,
         writable: true,
       });
+    });
+  });
+
+  describe('Task 13.8: View Integration', () => {
+    it('should render main application content with tabs', async () => {
+      vi.resetModules();
+
+      // Re-establish the desktop mock
+      vi.doMock('../shared', async () => {
+        const React = await import('react');
+        const mockApiClient = {
+          getSpecs: () => Promise.resolve({ ok: true, value: [] }),
+          getSpecDetail: () => Promise.resolve({ ok: true, value: {} }),
+          executePhase: () => Promise.resolve({ ok: true, value: {} }),
+          updateApproval: () => Promise.resolve({ ok: true, value: undefined }),
+          getBugs: () => Promise.resolve({ ok: true, value: [] }),
+          getBugDetail: () => Promise.resolve({ ok: true, value: {} }),
+          executeBugPhase: () => Promise.resolve({ ok: true, value: {} }),
+          getAgents: () => Promise.resolve({ ok: true, value: [] }),
+          stopAgent: () => Promise.resolve({ ok: true, value: undefined }),
+          resumeAgent: () => Promise.resolve({ ok: true, value: {} }),
+          sendAgentInput: () => Promise.resolve({ ok: true, value: undefined }),
+          getAgentLogs: () => Promise.resolve({ ok: true, value: [] }),
+          executeValidation: () => Promise.resolve({ ok: true, value: {} }),
+          executeDocumentReview: () => Promise.resolve({ ok: true, value: {} }),
+          executeInspection: () => Promise.resolve({ ok: true, value: {} }),
+          startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
+          stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
+          getAutoExecutionStatus: () => Promise.resolve({ ok: true, value: null }),
+          saveFile: () => Promise.resolve({ ok: true, value: undefined }),
+          onSpecsUpdated: () => () => {},
+          onBugsUpdated: () => () => {},
+          onAgentOutput: () => () => {},
+          onAgentStatusChange: () => () => {},
+          onAutoExecutionStatusChanged: () => () => {},
+        };
+        return {
+          ApiClientProvider: ({ children }: { children: React.ReactNode }) =>
+            React.createElement('div', { 'data-testid': 'api-client-provider' }, children),
+          PlatformProvider: ({ children }: { children: React.ReactNode }) =>
+            React.createElement('div', { 'data-testid': 'platform-provider' }, children),
+          useDeviceType: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
+          useApi: () => mockApiClient,
+        };
+      });
+
+      const { default: App } = await import('./App');
+      render(<App />);
+
+      // App should render with provider wrapper
+      expect(screen.getByTestId('api-client-provider')).toBeInTheDocument();
     });
   });
 });

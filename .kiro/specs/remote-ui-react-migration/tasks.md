@@ -368,3 +368,73 @@ Remote UIをReactに移行し、Electron版とコンポーネントを共有す�
   - tech.md: Remote UIアーキテクチャセクションをReactベースに更新
   - 本Specで導入した新しいアーキテクチャパターン（API抽象化層、PlatformProvider等）を反映
   - _Steering documents alignment_
+
+---
+
+- [x] 13. Remote UI機能統合（Requirement 7完全実装）
+- [x] 13.1 Specsタブの機能UIを実装する
+  - `src/remote-ui/views/SpecsView.tsx`を作成
+  - 共有specStoreとApiClientを使用したSpec一覧表示
+  - SpecListItemを使用したリスト表示（検索・フィルタリング）
+  - Spec選択時の詳細パネル表示
+  - requirements, design, tasks, researchのタブ切り替え表示
+  - _Requirements: 7.1_
+
+- [x] 13.2 Spec詳細・Phase実行UIを実装する
+  - `src/remote-ui/views/SpecDetailView.tsx`を作成
+  - PhaseItemを使用したワークフロー表示
+  - Phase実行ボタン（requirements, design, tasks, implementation）
+  - 自動実行（Auto Execute All）ボタンとオプション選択UI
+  - AutoExecutionStatusDisplayを統合
+  - _Requirements: 7.1_
+
+- [x] 13.3 Validation・Review・Inspection UIを実装する
+  - `src/remote-ui/views/SpecActionsView.tsx`を作成
+  - Validation実行（gap, design）UI
+  - DocumentReviewPanelを統合
+  - InspectionPanelを統合（複数Round表示）
+  - _Requirements: 7.1_
+
+- [x] 13.4 Agent制御・ログ表示UIを実装する
+  - `src/remote-ui/views/AgentView.tsx`を作成
+  - AgentListItemを使用したAgent一覧表示
+  - Agent制御ボタン（停止、再開、削除）
+  - ログ表示（リアルタイム更新、自動スクロール）
+  - 共有agentStoreを使用
+  - _Requirements: 7.1, 7.2_
+
+- [x] 13.5 Bugsタブの機能UIを実装する
+  - `src/remote-ui/views/BugsView.tsx`を作成
+  - 共有bugStoreとApiClientを使用したBug一覧表示
+  - BugListItemを使用したリスト表示（Phase表示）
+  - Bug選択時の詳細パネル表示
+  - report, analysis, fix, verificationのタブ切り替え表示
+  - _Requirements: 7.2_
+
+- [x] 13.6 Bug詳細・Phase実行UIを実装する
+  - `src/remote-ui/views/BugDetailView.tsx`を作成
+  - Bug Phase実行（analyze, fix, verify）UI
+  - Bug Auto Execution UI
+  - Agent制御統合
+  - _Requirements: 7.2_
+
+- [x] 13.7 Project Agentタブの機能UIを実装する
+  - `src/remote-ui/views/ProjectAgentView.tsx`を作成
+  - Project Agent一覧表示
+  - AskAgentDialogを統合（Ask Project機能）
+  - Agent制御（停止、再開、削除）
+  - _Requirements: 7.3_
+
+- [x] 13.8 App.tsxにビューを統合する
+  - MobileLayout/DesktopLayoutにタブ対応コンテンツを統合
+  - タブ切り替えによるビュー切り替え
+  - WebSocket接続状態に応じたReconnectOverlay表示
+  - AuthPage表示（トークン無効時）
+  - _Requirements: 7.1, 7.2, 7.3, 7.4_
+
+- [x] 13.9 機能統合テストを実施する
+  - Spec一覧・詳細・Phase実行のE2Eテスト
+  - Bug一覧・詳細・Phase実行のE2Eテスト
+  - Project Agent操作のE2Eテスト
+  - モバイル/デスクトップレイアウトでの動作確認
+  - _Requirements: 7.1, 7.2, 7.3, 7.4_

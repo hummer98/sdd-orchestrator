@@ -1,6 +1,6 @@
 ---
 description: Interactive planning and requirements generation through dialogue
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task
+allowed-tools: Bash, Read, Write, Glob, Grep, WebSearch, WebFetch, Task
 argument-hint: <initial-idea>
 ---
 
@@ -92,14 +92,19 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
-1. **Create directory**: `.kiro/specs/{feature-name}/`
+1. **Get current timestamp**:
+   ```bash
+   date -u +"%Y-%m-%dT%H:%M:%SZ"
+   ```
 
-2. **Generate spec.json**:
+2. **Create directory**: `.kiro/specs/{feature-name}/`
+
+3. **Generate spec.json** (use the timestamp from step 1):
 ```json
 {
   "feature_name": "{feature-name}",
-  "created_at": "{ISO-8601-timestamp}",
-  "updated_at": "{ISO-8601-timestamp}",
+  "created_at": "{timestamp-from-step-1}",
+  "updated_at": "{timestamp-from-step-1}",
   "language": "ja",
   "phase": "requirements-generated",
   "approvals": {

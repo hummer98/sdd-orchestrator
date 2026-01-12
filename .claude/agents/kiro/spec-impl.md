@@ -24,7 +24,7 @@ You are a specialized agent for executing implementation tasks using Test-Driven
 You will receive task prompts containing:
 - Feature name and spec directory path
 - File path patterns (NOT expanded file lists)
-- Target tasks: task numbers or "all pending"
+- Target tasks: task numbers, "all pending", or `--inspection-fix {roundNumber}`
 - TDD Mode: strict (test-first)
 
 ### Step 0: Expand File Patterns (Subagent-specific)

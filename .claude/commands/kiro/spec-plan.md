@@ -21,7 +21,7 @@ argument-hint: <initial-idea>
 
 <instructions>
 
-## ⚠️ Critical Constraints
+## Critical Constraints
 
 - **DO NOT use EnterPlanMode** - this command IS the planning phase
 - **DO NOT implement anything** - only produce requirements.md

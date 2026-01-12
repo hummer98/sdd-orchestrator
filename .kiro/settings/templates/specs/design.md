@@ -292,32 +292,6 @@ _Use this section when performance targets, high load, or scaling concerns exist
 Include a Mermaid flowchart showing migration phases when schema/data movement is required.
 - Phase breakdown, rollback triggers, validation checkpoints
 
-## Design Decisions
-
-**Purpose**: Record significant architectural decisions with their context and rationale. This section serves as an Architecture Decision Record (ADR) for the feature, ensuring future maintainers understand *why* specific choices were made.
-
-**When to include**: Always include for features with non-trivial design choices. Skip only for simple CRUD or boilerplate changes.
-
-### DD-001: [Decision Title]
-
-| Field | Detail |
-|-------|--------|
-| Status | Proposed / Accepted / Deprecated / Superseded |
-| Context | What problem or situation prompted this decision? |
-| Decision | What was decided? |
-| Rationale | Why was this option chosen over alternatives? |
-| Alternatives Considered | What other options were evaluated? |
-| Consequences | What are the trade-offs, risks, or follow-up actions? |
-
-> Add more DD-NNN blocks as needed. Keep each decision focused on a single choice. Reference requirement IDs where applicable.
-
-**Example decisions to document**:
-- Architecture pattern selection (e.g., "Why event-driven over request-response?")
-- Technology/library choices (e.g., "Why Zustand over Redux?")
-- Data model decisions (e.g., "Why denormalize user preferences?")
-- Interface design choices (e.g., "Why REST over GraphQL?")
-- Trade-off resolutions (e.g., "Why prioritize latency over consistency?")
-
 ## Supporting References (Optional)
 - Create this section only when keeping the information in the main body would hurt readability (e.g., very long TypeScript definitions, vendor option matrices, exhaustive schema tables). Keep decision-making context in the main sections so the design stays self-contained.
 - Link to the supporting references from the main text instead of inlining large snippets.

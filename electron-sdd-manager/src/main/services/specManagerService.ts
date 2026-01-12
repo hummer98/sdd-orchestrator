@@ -376,6 +376,9 @@ export class SpecManagerService {
   // Track agents forced killed after success result
   private forcedKillSuccess: Set<string> = new Set();
 
+  // Buffer for sessionId parsing across chunked stdout data
+  private sessionIdParseBuffers: Map<string, string> = new Map();
+
   constructor(projectPath: string) {
     this.projectPath = projectPath;
     // Determine provider type from project path
@@ -673,11 +676,13 @@ export class SpecManagerService {
         if (currentAgent?.status === 'interrupted') {
           this.processes.delete(agentId);
           this.forcedKillSuccess.delete(agentId);
+          this.sessionIdParseBuffers.delete(agentId);
           return;
         }
 
         const isForcedSuccess = this.forcedKillSuccess.has(agentId);
         this.forcedKillSuccess.delete(agentId);
+        this.sessionIdParseBuffers.delete(agentId);
 
         const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
         this.registry.updateStatus(agentId, newStatus);
@@ -697,6 +702,7 @@ export class SpecManagerService {
         this.registry.updateStatus(agentId, 'failed');
         this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
         this.processes.delete(agentId);
+        this.sessionIdParseBuffers.delete(agentId);
 
         // Update agent record on error
         this.recordService.updateRecord(specId, agentId, {
@@ -966,11 +972,13 @@ export class SpecManagerService {
         if (currentAgent?.status === 'interrupted') {
           this.processes.delete(agentId);
           this.forcedKillSuccess.delete(agentId);
+          this.sessionIdParseBuffers.delete(agentId);
           return;
         }
 
         const isForcedSuccess = this.forcedKillSuccess.has(agentId);
         this.forcedKillSuccess.delete(agentId);
+        this.sessionIdParseBuffers.delete(agentId);
 
         const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
         this.registry.updateStatus(agentId, newStatus);
@@ -987,6 +995,7 @@ export class SpecManagerService {
         this.registry.updateStatus(agentId, 'failed');
         this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
         this.processes.delete(agentId);
+        this.sessionIdParseBuffers.delete(agentId);
 
         this.recordService.updateRecord(agent.specId, agentId, {
           status: 'failed',
@@ -1311,49 +1320,65 @@ export class SpecManagerService {
   /**
    * Parse sessionId from Claude Code stream-json output
    * Claude Code outputs session_id in the first "system/init" message
+   *
+   * Uses buffering to handle chunked stdout data where JSON lines may be split
+   * across multiple data events (Node.js child process stdout does not guarantee
+   * line-aligned chunks).
    */
   private parseAndUpdateSessionId(agentId: string, specId: string, data: string): void {
-    // Already have sessionId for this agent
+    // Already have sessionId for this agent - cleanup buffer and return
     const agent = this.registry.get(agentId);
     if (agent?.sessionId) {
+      this.sessionIdParseBuffers.delete(agentId);
       return;
     }
 
-    try {
-      // Claude Code outputs JSON lines, try to parse each line
-      const lines = data.split('\n').filter((line) => line.trim());
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line);
-          // Check for system/init message with session_id
-          if (parsed.type === 'system' && parsed.subtype === 'init' && parsed.session_id) {
-            logger.info('[SpecManagerService] Extracted sessionId from Claude Code output', {
+    // Combine with previous incomplete data from buffer
+    const buffer = (this.sessionIdParseBuffers.get(agentId) || '') + data;
+    const lines = buffer.split('\n');
+
+    // Last element after split: empty string if buffer ended with \n, otherwise incomplete line
+    const lastLine = lines.pop() || '';
+    if (lastLine) {
+      // Incomplete line - save for next chunk
+      this.sessionIdParseBuffers.set(agentId, lastLine);
+    } else {
+      // Buffer ended with \n - no incomplete data
+      this.sessionIdParseBuffers.delete(agentId);
+    }
+
+    // Process complete lines only
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = JSON.parse(line);
+        // Check for system/init message with session_id
+        if (parsed.type === 'system' && parsed.subtype === 'init' && parsed.session_id) {
+          logger.info('[SpecManagerService] Extracted sessionId from Claude Code output', {
+            agentId,
+            sessionId: parsed.session_id,
+          });
+
+          // Update registry
+          this.registry.updateSessionId(agentId, parsed.session_id);
+
+          // Update agent record
+          this.recordService.updateRecord(specId, agentId, {
+            sessionId: parsed.session_id,
+          }).catch((err) => {
+            logger.warn('[SpecManagerService] Failed to update agent record with sessionId', {
               agentId,
-              sessionId: parsed.session_id,
+              error: err.message,
             });
+          });
 
-            // Update registry
-            this.registry.updateSessionId(agentId, parsed.session_id);
-
-            // Update agent record
-            this.recordService.updateRecord(specId, agentId, {
-              sessionId: parsed.session_id,
-            }).catch((err) => {
-              logger.warn('[SpecManagerService] Failed to update agent record with sessionId', {
-                agentId,
-                error: err.message,
-              });
-            });
-
-            return;
-          }
-        } catch {
-          // Not valid JSON, skip this line
+          // Cleanup buffer and return
+          this.sessionIdParseBuffers.delete(agentId);
+          return;
         }
+      } catch {
+        // Not valid JSON, skip this line
       }
-    } catch (err) {
-      // Parsing error, ignore
-      logger.debug('[SpecManagerService] Failed to parse output for sessionId', { agentId });
     }
   }
 

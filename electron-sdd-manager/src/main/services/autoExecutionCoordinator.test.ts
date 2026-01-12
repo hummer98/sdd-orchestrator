@@ -1398,4 +1398,243 @@ describe('AutoExecutionCoordinator', () => {
       });
     });
   });
+
+  // ============================================================
+  // Document Review Auto Loop Feature Tests
+  // Requirements: 1.1-1.3, 2.1-2.2, 3.1-3.4, 4.1-4.3
+  // ============================================================
+
+  describe('Document Review Auto Loop', () => {
+    // ============================================================
+    // Task 1.1: AutoExecutionState field additions
+    // ============================================================
+
+    describe('Task 1.1: AutoExecutionState field additions', () => {
+      it('should have MAX_DOCUMENT_REVIEW_ROUNDS constant set to 7', async () => {
+        // Import the constant
+        const { MAX_DOCUMENT_REVIEW_ROUNDS } = await import('./autoExecutionCoordinator');
+        expect(MAX_DOCUMENT_REVIEW_ROUNDS).toBe(7);
+      });
+
+      it('should support currentDocumentReviewRound field in state', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        // Initially undefined
+        const initialState = coordinator.getStatus(specPath);
+        expect(initialState).not.toBeNull();
+        expect(initialState?.currentDocumentReviewRound).toBeUndefined();
+
+        // After setting, it should have a value
+        coordinator.continueDocumentReviewLoop(specPath, 1);
+        const updatedState = coordinator.getStatus(specPath);
+        expect(updatedState?.currentDocumentReviewRound).toBe(1);
+      });
+    });
+
+    // ============================================================
+    // Task 1.2: continueDocumentReviewLoop method
+    // ============================================================
+
+    describe('Task 1.2: continueDocumentReviewLoop method', () => {
+      it('should update currentDocumentReviewRound on continue', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.continueDocumentReviewLoop(specPath, 2);
+
+        const state = coordinator.getStatus(specPath);
+        expect(state?.currentDocumentReviewRound).toBe(2);
+      });
+
+      it('should emit execute-document-review event on continue', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+        const eventHandler = vi.fn();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.on('execute-document-review', eventHandler);
+        coordinator.continueDocumentReviewLoop(specPath, 2);
+
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          expect.objectContaining({ specId: 'test-feature' })
+        );
+      });
+
+      it('should call handleDocumentReviewCompleted when max rounds exceeded', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // Spy on handleDocumentReviewCompleted
+        const spy = vi.spyOn(coordinator, 'handleDocumentReviewCompleted');
+        coordinator.continueDocumentReviewLoop(specPath, 8); // exceeds MAX_DOCUMENT_REVIEW_ROUNDS
+
+        expect(spy).toHaveBeenCalledWith(specPath, false);
+      });
+
+      it('should log round start', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        // No assertion needed - just verify no errors occur
+        expect(() => coordinator.continueDocumentReviewLoop(specPath, 3)).not.toThrow();
+      });
+    });
+
+    // ============================================================
+    // Task 1.3: handleDocumentReviewCompleted with loop logic
+    // ============================================================
+
+    describe('Task 1.3: handleDocumentReviewCompleted with loop logic', () => {
+      it('should proceed to next phase when approved (fixRequired=0, needsDiscussion=0)', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.on('execute-next-phase', eventHandler);
+
+        // Simulate tasks phase completed
+        coordinator.setCurrentPhase(specPath, 'tasks');
+        await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
+
+        // Now handle document review completed with approved=true
+        coordinator.handleDocumentReviewCompleted(specPath, true);
+
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'impl',
+          expect.objectContaining({ specId: 'test-feature' })
+        );
+      });
+
+      it('should pause when Needs Discussion > 0', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // Handle document review not approved (needs discussion)
+        coordinator.handleDocumentReviewCompleted(specPath, false);
+
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('paused');
+      });
+
+      it('should pause when max rounds reached with impl permitted', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true, // impl must be permitted for pause behavior
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // Set round to max
+        coordinator.continueDocumentReviewLoop(specPath, 7);
+        // Then try to continue beyond max
+        coordinator.continueDocumentReviewLoop(specPath, 8);
+
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('paused');
+      });
+
+      it('should complete when max rounds reached but no next phase permitted', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(), // impl: false
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+
+        // Try to continue beyond max
+        coordinator.continueDocumentReviewLoop(specPath, 8);
+
+        const state = coordinator.getStatus(specPath);
+        // When impl is not permitted, completing document review leads to completion
+        expect(state?.status).toBe('completed');
+      });
+    });
+
+    // ============================================================
+    // Task 1.4: getCurrentDocumentReviewRound method
+    // ============================================================
+
+    describe('Task 1.4: getCurrentDocumentReviewRound method', () => {
+      it('should return undefined when no round started', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options = createDefaultOptions();
+
+        await coordinator.start(specPath, 'test-feature', options);
+        const round = coordinator.getCurrentDocumentReviewRound(specPath);
+
+        expect(round).toBeUndefined();
+      });
+
+      it('should return current round number when in loop', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          ...createDefaultOptions(),
+          documentReviewFlag: 'run',
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.continueDocumentReviewLoop(specPath, 3);
+
+        const round = coordinator.getCurrentDocumentReviewRound(specPath);
+        expect(round).toBe(3);
+      });
+
+      it('should return undefined for non-existent spec', () => {
+        const round = coordinator.getCurrentDocumentReviewRound('/non/existent');
+        expect(round).toBeUndefined();
+      });
+    });
+  });
 });

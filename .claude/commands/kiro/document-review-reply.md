@@ -46,7 +46,9 @@ When `--fix` flag is present:
    {
      "roundNumber": n,           // Required: round number (1-indexed)
      "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
-     "fixApplied": true          // Set to true when fixes are applied
+     "fixApplied": true,         // Set to true when fixes are applied
+     "fixRequired": <number>,    // Fix Required count (preserve from reply generation)
+     "needsDiscussion": <number> // Needs Discussion count (preserve from reply generation)
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
@@ -198,18 +200,23 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 **IMPORTANT**: After generating the reply, you MUST update spec.json:
 
-1. Count total "Fix Required" items from the Response Summary table
+1. Count total "Fix Required" and "Needs Discussion" items from the Response Summary table
 2. Update spec.json `documentReview.roundDetails[n-1]`:
    ```json
    {
      "roundNumber": n,           // Required: round number (1-indexed)
-     "status": "reply_complete"  // Required: "incomplete" | "review_complete" | "reply_complete"
+     "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
+     "fixRequired": <number>,    // Fix Required count from Response Summary
+     "needsDiscussion": <number> // Needs Discussion count from Response Summary
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
-3. **If Fix Required total is 0** (all issues resolved):
+3. **If Fix Required total is 0 AND Needs Discussion total is 0** (all issues resolved):
    - Set `documentReview.status = "approved"` in spec.json
    - This signals the document review phase is complete
+4. **If Fix Required total is 0 AND Needs Discussion total > 0**:
+   - Do NOT set `documentReview.status = "approved"`
+   - This indicates human intervention is required for discussion items
 
 #### If `--autofix` flag is present AND modifications are needed:
 

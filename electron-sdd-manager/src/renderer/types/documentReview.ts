@@ -52,6 +52,10 @@ export interface RoundDetail {
   status: RoundStatus;
   /** Whether fixes from this round's reply have been applied */
   fixApplied?: boolean;
+  /** Number of "Fix Required" items in this round's reply */
+  fixRequired?: number;
+  /** Number of "Needs Discussion" items in this round's reply */
+  needsDiscussion?: number;
 }
 
 // ============================================================

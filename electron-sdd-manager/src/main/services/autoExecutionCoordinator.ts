@@ -23,6 +23,9 @@ export const DEFAULT_AUTO_EXECUTION_TIMEOUT = 1_800_000;
 /** 最大並行実行数 */
 export const MAX_CONCURRENT_EXECUTIONS = 5;
 
+/** 最大Document Reviewループ回数 */
+export const MAX_DOCUMENT_REVIEW_ROUNDS = 7;
+
 /** フェーズ順序（requirements -> design -> tasks -> impl） */
 export const PHASE_ORDER: readonly WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
 
@@ -62,6 +65,8 @@ export interface AutoExecutionState {
   currentAgentId?: string;
   /** タイムアウトタイマーID */
   timeoutId?: ReturnType<typeof setTimeout>;
+  /** 現在のDocument Reviewループ回数 */
+  currentDocumentReviewRound?: number;
 }
 
 /**
@@ -1140,6 +1145,60 @@ export class AutoExecutionCoordinator extends EventEmitter {
     }
 
     return false;
+  }
+
+  // ============================================================
+  // Document Review Auto Loop
+  // ============================================================
+
+  /**
+   * Document Reviewループを継続
+   * @param specPath specのパス
+   * @param roundNumber 現在のラウンド番号
+   */
+  continueDocumentReviewLoop(specPath: string, roundNumber: number): void {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] continueDocumentReviewLoop: state not found', { specPath });
+      return;
+    }
+
+    logger.info('[AutoExecutionCoordinator] Document review loop round starting', {
+      specPath,
+      roundNumber,
+      maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
+    });
+
+    // 最大ラウンド数を超えた場合は一時停止
+    if (roundNumber > MAX_DOCUMENT_REVIEW_ROUNDS) {
+      logger.warn('[AutoExecutionCoordinator] Max document review rounds exceeded', {
+        specPath,
+        roundNumber,
+        maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
+      });
+      this.handleDocumentReviewCompleted(specPath, false);
+      return;
+    }
+
+    // ラウンド番号を更新
+    this.updateState(specPath, {
+      currentDocumentReviewRound: roundNumber,
+    });
+
+    // Document Reviewを実行するイベントを発火
+    this.emit('execute-document-review', specPath, {
+      specId: state.specId,
+    });
+  }
+
+  /**
+   * 現在のDocument Reviewラウンド番号を取得
+   * @param specPath specのパス
+   * @returns ラウンド番号 or undefined
+   */
+  getCurrentDocumentReviewRound(specPath: string): number | undefined {
+    const state = this.executionStates.get(specPath);
+    return state?.currentDocumentReviewRound;
   }
 
   // ============================================================

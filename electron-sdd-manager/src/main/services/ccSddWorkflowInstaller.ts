@@ -11,7 +11,7 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（21種類）
+ * cc-sdd コマンド一覧（24種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
@@ -24,6 +24,11 @@ export const CC_SDD_COMMANDS = [
   'spec-impl',
   'spec-status',
   'spec-quick',
+  // Ask Commands (2)
+  'project-ask',
+  'spec-ask',
+  // Merge Command (1)
+  'spec-merge',
   // Validation (3)
   'validate-gap',
   'validate-design',

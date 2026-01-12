@@ -45,6 +45,22 @@ interface BugActions {
    * Used by projectStore.selectProject to update bugs without re-fetching
    */
   setBugs: (bugs: BugMetadata[]) => void;
+  // Bug fix: bugstore-refresh-to-filewatch
+  // Event-based differential update methods
+  /**
+   * Update metadata for a specific bug by name
+   * Fetches updated metadata from main process
+   */
+  updateBugByName: (bugName: string) => Promise<void>;
+  /**
+   * Refresh only the selected bug's detail without full list refresh
+   */
+  refreshSelectedBugDetail: () => Promise<void>;
+  /**
+   * Handle bugs change event with differential update
+   * Routes to appropriate handler based on event type
+   */
+  handleBugsChanged: (event: BugsChangeEvent) => void;
 }
 
 type BugStore = BugState & BugActions;
@@ -168,10 +184,11 @@ export const useBugStore = create<BugStore>((set, get) => ({
       // Here we only register the event listener
 
       // Subscribe to change events
+      // Bug fix: bugstore-refresh-to-filewatch
+      // Use event-based differential update instead of full refresh
       watcherCleanup = window.electronAPI.onBugsChanged((event: BugsChangeEvent) => {
         console.log('[bugStore] Bugs changed:', event);
-        // Refresh bugs list on any change
-        get().refreshBugs();
+        get().handleBugsChanged(event);
       });
 
       set({ isWatching: true });
@@ -210,5 +227,126 @@ export const useBugStore = create<BugStore>((set, get) => ({
       return bugs;
     }
     return bugs.filter((bug) => bug.phase === phase);
+  },
+
+  // ============================================================
+  // Bug fix: bugstore-refresh-to-filewatch
+  // Event-based differential update methods
+  // ============================================================
+
+  updateBugByName: async (bugName: string) => {
+    // SSOT: Get project path from projectStore
+    const { useProjectStore } = await import('./projectStore');
+    const currentProject = useProjectStore.getState().currentProject;
+
+    if (!currentProject) {
+      console.warn('[bugStore] No current project, skipping updateBugByName');
+      return;
+    }
+
+    try {
+      // Fetch all bugs and find the updated one
+      const allBugs = await window.electronAPI.readBugs(currentProject);
+      const updatedBug = allBugs.find((b) => b.name === bugName);
+
+      if (updatedBug) {
+        // Update the bug in the list (or add if new)
+        const { bugs } = get();
+        const existingIndex = bugs.findIndex((b) => b.name === bugName);
+
+        if (existingIndex >= 0) {
+          // Update existing bug
+          const newBugs = [...bugs];
+          newBugs[existingIndex] = updatedBug;
+          set({ bugs: newBugs });
+          console.log('[bugStore] Updated bug metadata:', bugName);
+        } else {
+          // Add new bug
+          set({ bugs: [...bugs, updatedBug] });
+          console.log('[bugStore] Added new bug:', bugName);
+        }
+      }
+    } catch (error) {
+      console.error('[bugStore] Failed to update bug by name:', bugName, error);
+    }
+  },
+
+  refreshSelectedBugDetail: async () => {
+    const { selectedBug } = get();
+
+    if (!selectedBug) {
+      return;
+    }
+
+    try {
+      const bugDetail = await window.electronAPI.readBugDetail(selectedBug.path);
+      set({ bugDetail });
+      console.log('[bugStore] Refreshed selected bug detail:', selectedBug.name);
+    } catch (error) {
+      console.error('[bugStore] Failed to refresh selected bug detail:', error);
+    }
+  },
+
+  handleBugsChanged: (event: BugsChangeEvent) => {
+    const { type, bugName } = event;
+    const { selectedBug } = get();
+
+    console.log('[bugStore] Handling bugs change event:', { type, bugName, selectedBugName: selectedBug?.name });
+
+    switch (type) {
+      case 'add':
+      case 'addDir':
+        // New bug added - update the bug in list
+        if (bugName) {
+          get().updateBugByName(bugName);
+        }
+        break;
+
+      case 'change':
+        // Bug file changed - update metadata and possibly detail
+        if (bugName) {
+          get().updateBugByName(bugName);
+          // If the changed bug is currently selected, refresh its detail
+          if (selectedBug?.name === bugName) {
+            get().refreshSelectedBugDetail();
+          }
+        }
+        break;
+
+      case 'unlink':
+        // File deleted - might be a file within bug folder, update metadata
+        if (bugName) {
+          const { bugs } = get();
+          const bugExists = bugs.some((b) => b.name === bugName);
+          if (bugExists) {
+            // Bug folder still exists, just update metadata
+            get().updateBugByName(bugName);
+            // If selected bug was affected, refresh detail
+            if (selectedBug?.name === bugName) {
+              get().refreshSelectedBugDetail();
+            }
+          }
+        }
+        break;
+
+      case 'unlinkDir':
+        // Directory deleted - remove bug from list if it's the bug folder itself
+        if (bugName) {
+          const { bugs } = get();
+          const updatedBugs = bugs.filter((b) => b.name !== bugName);
+
+          if (updatedBugs.length !== bugs.length) {
+            set({ bugs: updatedBugs });
+            console.log('[bugStore] Removed bug from list:', bugName);
+
+            // Clear selection if the deleted bug was selected
+            if (selectedBug?.name === bugName) {
+              get().clearSelectedBug();
+              console.log('[bugStore] Cleared selected bug (deleted):', bugName);
+            }
+          }
+        }
+        break;
+    }
   },
 }));

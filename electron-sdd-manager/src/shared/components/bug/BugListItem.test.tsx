@@ -100,4 +100,32 @@ describe('BugListItem', () => {
       expect(listItem).toHaveAttribute('tabIndex', '0');
     });
   });
+
+  describe('Running agent count', () => {
+    it('should display running agent count when provided and > 0', () => {
+      const bug = createMockBug();
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} runningAgentCount={2} />);
+      expect(screen.getByTestId('running-agent-count')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    it('should not display running agent count when 0', () => {
+      const bug = createMockBug();
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} runningAgentCount={0} />);
+      expect(screen.queryByTestId('running-agent-count')).not.toBeInTheDocument();
+    });
+
+    it('should not display running agent count when undefined', () => {
+      const bug = createMockBug();
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      expect(screen.queryByTestId('running-agent-count')).not.toBeInTheDocument();
+    });
+
+    it('should display Bot icon with running agent count', () => {
+      const bug = createMockBug();
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} runningAgentCount={1} />);
+      const agentBadge = screen.getByTestId('running-agent-count');
+      expect(agentBadge.querySelector('svg')).toBeInTheDocument();
+    });
+  });
 });

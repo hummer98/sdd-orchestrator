@@ -186,6 +186,37 @@ describe('BugListItem', () => {
   });
 
   // ============================================================
+  // Running agent count
+  // ============================================================
+  describe('running agent count', () => {
+    it('should display running agent count when runningAgentCount > 0', () => {
+      render(<BugListItem {...defaultProps} runningAgentCount={2} />);
+
+      expect(screen.getByTestId('running-agent-count')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+
+    it('should not display running agent count when runningAgentCount is 0', () => {
+      render(<BugListItem {...defaultProps} runningAgentCount={0} />);
+
+      expect(screen.queryByTestId('running-agent-count')).not.toBeInTheDocument();
+    });
+
+    it('should not display running agent count when runningAgentCount is undefined', () => {
+      render(<BugListItem {...defaultProps} />);
+
+      expect(screen.queryByTestId('running-agent-count')).not.toBeInTheDocument();
+    });
+
+    it('should display Bot icon with running agent count', () => {
+      render(<BugListItem {...defaultProps} runningAgentCount={1} />);
+
+      const agentBadge = screen.getByTestId('running-agent-count');
+      expect(agentBadge.querySelector('svg')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
   // Accessibility
   // ============================================================
   describe('accessibility', () => {

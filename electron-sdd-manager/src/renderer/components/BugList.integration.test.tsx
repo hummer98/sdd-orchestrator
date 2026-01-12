@@ -12,6 +12,7 @@ import type { BugMetadata, BugsChangeEvent } from '../types';
 vi.mock('../stores/agentStore', () => ({
   useAgentStore: vi.fn(() => ({
     startAgent: vi.fn().mockResolvedValue('agent-123'),
+    getAgentsForSpec: vi.fn().mockReturnValue([]),
   })),
 }));
 

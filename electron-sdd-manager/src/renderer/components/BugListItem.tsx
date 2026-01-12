@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Bot } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { BugMetadata, BugPhase } from '../types';
 
@@ -27,6 +27,8 @@ interface BugListItemProps {
   bug: BugMetadata;
   isSelected: boolean;
   onSelect: () => void;
+  /** Number of running agents for this bug (optional) */
+  runningAgentCount?: number;
 }
 
 /**
@@ -36,7 +38,7 @@ interface BugListItemProps {
  * - Update time
  * - Selection highlight
  */
-export function BugListItem({ bug, isSelected, onSelect }: BugListItemProps): React.ReactElement {
+export function BugListItem({ bug, isSelected, onSelect, runningAgentCount }: BugListItemProps): React.ReactElement {
   const [copied, setCopied] = useState(false);
   const updatedDate = new Date(bug.updatedAt);
   const now = new Date();
@@ -115,7 +117,7 @@ export function BugListItem({ bug, isSelected, onSelect }: BugListItemProps): Re
           </button>
         </div>
 
-        {/* Row 2: Phase badge and update time */}
+        {/* Row 2: Phase badge, running agent count, and update time */}
         <div className="flex items-center gap-2">
           <span
             className={clsx(
@@ -125,6 +127,15 @@ export function BugListItem({ bug, isSelected, onSelect }: BugListItemProps): Re
           >
             {PHASE_LABELS[bug.phase]}
           </span>
+          {runningAgentCount !== undefined && runningAgentCount > 0 && (
+            <span
+              data-testid="running-agent-count"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
+            >
+              <Bot className="w-3 h-3" />
+              {runningAgentCount}
+            </span>
+          )}
           <span
             className="text-xs text-gray-400"
             title={tooltipDate}

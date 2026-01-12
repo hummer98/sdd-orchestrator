@@ -8,6 +8,7 @@ import { Filter, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useBugStore } from '../stores/bugStore';
+import { useAgentStore } from '../stores/agentStore';
 import { BugListItem } from './BugListItem';
 import type { BugPhase } from '../types';
 
@@ -35,6 +36,9 @@ export function BugList(): React.ReactElement {
     getSortedBugs,
     getBugsByPhase,
   } = useBugStore();
+
+  // Get agent store for running agent counts
+  const { getAgentsForSpec } = useAgentStore();
 
   const [phaseFilter, setPhaseFilter] = useState<BugPhase | 'all'>('all');
 
@@ -92,14 +96,23 @@ export function BugList(): React.ReactElement {
           </div>
         ) : (
           <ul data-testid="bug-list-items">
-            {sortedBugs.map((bug) => (
-              <BugListItem
-                key={bug.name}
-                bug={bug}
-                isSelected={selectedBug?.name === bug.name}
-                onSelect={() => selectBug(bug)}
-              />
-            ))}
+            {sortedBugs.map((bug) => {
+              // Count running agents for this bug
+              const agents = getAgentsForSpec(`bug:${bug.name}`);
+              const runningAgentCount = agents.filter(
+                (a) => a.status === 'running'
+              ).length;
+
+              return (
+                <BugListItem
+                  key={bug.name}
+                  bug={bug}
+                  isSelected={selectedBug?.name === bug.name}
+                  onSelect={() => selectBug(bug)}
+                  runningAgentCount={runningAgentCount}
+                />
+              );
+            })}
           </ul>
         )}
       </div>

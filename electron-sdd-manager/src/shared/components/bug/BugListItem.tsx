@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Bot } from 'lucide-react';
 import type { BugMetadata } from '@shared/api/types';
 
 // =============================================================================
@@ -22,6 +22,8 @@ export interface BugListItemProps {
   isSelected: boolean;
   /** Called when the item is selected */
   onSelect: () => void;
+  /** Number of running agents for this bug (optional) */
+  runningAgentCount?: number;
   /** Additional CSS classes */
   className?: string;
 }
@@ -70,6 +72,7 @@ export function BugListItem({
   bug,
   isSelected,
   onSelect,
+  runningAgentCount,
   className,
 }: BugListItemProps): React.ReactElement {
   const [copied, setCopied] = useState(false);
@@ -158,7 +161,7 @@ export function BugListItem({
           </button>
         </div>
 
-        {/* Row 2: Phase badge and update time */}
+        {/* Row 2: Phase badge, running agent count, and update time */}
         <div className="flex items-center gap-2">
           <span
             data-testid="phase-badge"
@@ -169,6 +172,17 @@ export function BugListItem({
           >
             {PHASE_LABELS[phase] ?? phase}
           </span>
+
+          {runningAgentCount !== undefined && runningAgentCount > 0 && (
+            <span
+              data-testid="running-agent-count"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded"
+            >
+              <Bot className="w-3 h-3" />
+              {runningAgentCount}
+            </span>
+          )}
+
           <span
             data-testid="updated-date"
             className="text-xs text-gray-400"

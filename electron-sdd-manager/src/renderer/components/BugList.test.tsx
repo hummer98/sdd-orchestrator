@@ -14,10 +14,17 @@ vi.mock('../stores/bugStore', () => ({
   useBugStore: vi.fn(),
 }));
 
+// Mock the agentStore
+vi.mock('../stores/agentStore', () => ({
+  useAgentStore: vi.fn(),
+}));
+
+import { useAgentStore } from '../stores/agentStore';
+
 // Mock the child components to isolate testing
 vi.mock('./BugListItem', () => ({
-  BugListItem: ({ bug, isSelected, onSelect }: { bug: BugMetadata; isSelected: boolean; onSelect: () => void }) => (
-    <li data-testid={`bug-item-${bug.name}`} data-selected={isSelected} onClick={onSelect}>
+  BugListItem: ({ bug, isSelected, onSelect, runningAgentCount }: { bug: BugMetadata; isSelected: boolean; onSelect: () => void; runningAgentCount?: number }) => (
+    <li data-testid={`bug-item-${bug.name}`} data-selected={isSelected} data-running-count={runningAgentCount ?? 0} onClick={onSelect}>
       {bug.name}
     </li>
   ),
@@ -68,9 +75,14 @@ describe('BugList', () => {
     getBugsByPhase: (phase: string) => mockBugs.filter((b) => b.phase === phase),
   };
 
+  const defaultAgentMockState = {
+    getAgentsForSpec: vi.fn().mockReturnValue([]),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultMockState);
+    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultAgentMockState);
   });
 
   // ============================================================
@@ -231,6 +243,59 @@ describe('BugList', () => {
       // Check that select has text-gray-700 class for proper visibility
       expect(filterSelect.className).toContain('text-gray-700');
       expect(filterSelect.className).toContain('dark:text-gray-300');
+    });
+  });
+
+  // ============================================================
+  // Running agent count
+  // ============================================================
+  describe('running agent count', () => {
+    it('should pass runningAgentCount to BugListItem', () => {
+      const mockGetAgentsForSpec = vi.fn().mockImplementation((specId: string) => {
+        if (specId === 'bug:bug-1') {
+          return [
+            { agentId: 'agent-1', status: 'running' },
+            { agentId: 'agent-2', status: 'running' },
+          ];
+        }
+        if (specId === 'bug:bug-2') {
+          return [{ agentId: 'agent-3', status: 'completed' }];
+        }
+        return [];
+      });
+
+      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        getAgentsForSpec: mockGetAgentsForSpec,
+      });
+
+      render(<BugList />);
+
+      // bug-1 should have 2 running agents
+      const bug1Item = screen.getByTestId('bug-item-bug-1');
+      expect(bug1Item).toHaveAttribute('data-running-count', '2');
+
+      // bug-2 has 1 agent but it's completed, so 0 running
+      const bug2Item = screen.getByTestId('bug-item-bug-2');
+      expect(bug2Item).toHaveAttribute('data-running-count', '0');
+
+      // bug-3 has no agents
+      const bug3Item = screen.getByTestId('bug-item-bug-3');
+      expect(bug3Item).toHaveAttribute('data-running-count', '0');
+    });
+
+    it('should call getAgentsForSpec with correct bug specId format', () => {
+      const mockGetAgentsForSpec = vi.fn().mockReturnValue([]);
+
+      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        getAgentsForSpec: mockGetAgentsForSpec,
+      });
+
+      render(<BugList />);
+
+      // Should be called with bug:{bugName} format
+      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-1');
+      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-2');
+      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-3');
     });
   });
 });

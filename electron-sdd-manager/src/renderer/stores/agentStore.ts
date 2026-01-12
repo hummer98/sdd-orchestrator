@@ -69,6 +69,8 @@ interface AgentActions {
   getSelectedAgent: () => AgentInfo | undefined;
   getAgentsForSpec: (specId: string) => AgentInfo[];
   getProjectAgents: () => AgentInfo[];
+  // Bug fix: Zustand無限ループ回避のため、セレクタ内で使用可能な純粋関数を追加
+  findAgentById: (agentId: string | null) => AgentInfo | undefined;
   clearError: () => void;
 
   // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
@@ -497,6 +499,18 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   getAgentsForSpec: (specId: string) => {
     return get().agents.get(specId) || [];
+  },
+
+  // Bug fix: Zustand無限ループ回避のため、セレクタ内で使用可能な純粋関数
+  // getAgentByIdとは異なり、stateを引数として受け取ることでセレクタ内で安全に使用可能
+  findAgentById: (agentId: string | null) => {
+    if (!agentId) return undefined;
+    const state = get();
+    for (const agentList of state.agents.values()) {
+      const found = agentList.find((a) => a.agentId === agentId);
+      if (found) return found;
+    }
+    return undefined;
   },
 
   // Task 4.1 (sidebar-refactor): プロジェクトエージェント取得

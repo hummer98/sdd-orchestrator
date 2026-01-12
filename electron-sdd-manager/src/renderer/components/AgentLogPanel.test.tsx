@@ -70,6 +70,15 @@ describe('AgentLogPanel - Task 31', () => {
       clearLogs: mockClearLogs,
       logs: logsMap,
       agents: agentsMap,
+      // Bug fix: findAgentById関数をモックに追加
+      findAgentById: (agentId: string | null) => {
+        if (!agentId) return undefined;
+        for (const agentList of agentsMap.values()) {
+          const found = agentList.find((a) => a.agentId === agentId);
+          if (found) return found;
+        }
+        return undefined;
+      },
     };
   };
 

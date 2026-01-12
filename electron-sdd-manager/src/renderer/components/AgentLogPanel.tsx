@@ -7,7 +7,7 @@
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Terminal, Copy, Trash2, Loader2, Code, FileText, BarChart3 } from 'lucide-react';
-import { useAgentStore } from '../stores/agentStore';
+import { useAgentStore, type LogEntry } from '../stores/agentStore';
 import { clsx } from 'clsx';
 import { formatLogData, getColorClass, getBgClass, type FormattedLogLine } from '../utils/logFormatter';
 import { aggregateTokens } from '../utils/tokenAggregator';
@@ -19,25 +19,23 @@ interface DisplayLine {
   formatted?: FormattedLogLine;
 }
 
+// Bug fix: Zustand無限ループ回避のため、空配列を定数化して参照安定性を確保
+const EMPTY_LOGS: LogEntry[] = [];
+
 export function AgentLogPanel() {
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
   const clearLogs = useAgentStore((state) => state.clearLogs);
   // Bug fix: logs Mapの変更を購読することで、リアルタイムログ更新を実現
   // getLogsForAgent関数呼び出しでは購読されないため、セレクタで直接logsを参照
+  // Bug fix: 空配列を定数化することで、|| []による毎回の新規配列生成を防ぐ
   const logs = useAgentStore((state) => {
-    if (!state.selectedAgentId) return [];
-    return state.logs.get(state.selectedAgentId) || [];
+    if (!state.selectedAgentId) return EMPTY_LOGS;
+    return state.logs.get(state.selectedAgentId) ?? EMPTY_LOGS;
   });
   // Bug fix: agent-log-textfield-inactive
   // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
-  const agent = useAgentStore((state) => {
-    if (!state.selectedAgentId) return undefined;
-    for (const agentList of state.agents.values()) {
-      const found = agentList.find((a) => a.agentId === state.selectedAgentId);
-      if (found) return found;
-    }
-    return undefined;
-  });
+  // Bug fix: findAgentById関数を使用して参照安定性を確保
+  const agent = useAgentStore((state) => state.findAgentById(state.selectedAgentId));
   const [isFormatted, setIsFormatted] = useState(true);
   const isRunning = agent?.status === 'running';
 

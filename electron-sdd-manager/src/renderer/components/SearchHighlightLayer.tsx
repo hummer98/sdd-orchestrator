@@ -2,9 +2,10 @@
  * SearchHighlightLayer Component
  * Edit mode highlight overlay for search matches
  * Requirements: artifact-editor-search 4.1, 4.2, 4.4
+ * Bug fix: search-scroll-to-match
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import type { SearchMatch } from '../stores/editorStore';
 
 export interface SearchHighlightLayerProps {
@@ -99,6 +100,21 @@ export function SearchHighlightLayer({
     () => segmentContent(content, matches, activeIndex),
     [content, matches, activeIndex]
   );
+
+  // Track the previous activeIndex to detect navigation
+  const prevActiveIndexRef = useRef(activeIndex);
+
+  // Scroll to active match when activeMatchIndex changes
+  useEffect(() => {
+    // Only scroll when activeIndex actually changes (navigation)
+    if (activeIndex >= 0 && matches.length > 0 && prevActiveIndexRef.current !== activeIndex) {
+      const activeElement = document.querySelector('[data-testid="highlight-active"]');
+      if (activeElement && typeof activeElement.scrollIntoView === 'function') {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    prevActiveIndexRef.current = activeIndex;
+  }, [activeIndex, matches.length]);
 
   return (
     <div

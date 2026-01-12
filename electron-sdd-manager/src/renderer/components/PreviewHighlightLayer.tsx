@@ -2,9 +2,10 @@
  * PreviewHighlightLayer Component
  * Preview mode highlight using CSS Custom Highlight API
  * Requirements: artifact-editor-search 4.1, 4.2, 4.3
+ * Bug fix: search-scroll-to-match
  */
 
-import { useEffect, useMemo, RefObject } from 'react';
+import { useEffect, useMemo, useRef, RefObject } from 'react';
 
 export interface PreviewHighlightLayerProps {
   /** Ref to the container element to search within */
@@ -45,6 +46,9 @@ export function usePreviewHighlight({
   activeIndex,
 }: PreviewHighlightLayerProps): UsePreviewHighlightResult {
   const isSupported = useMemo(() => isHighlightApiSupported(), []);
+
+  // Track the previous activeIndex to detect navigation
+  const prevActiveIndexRef = useRef(activeIndex);
 
   useEffect(() => {
     if (!isSupported || !containerRef.current || !query) {
@@ -108,6 +112,32 @@ export function usePreviewHighlight({
       if (activeRange) {
         const activeHighlight = new Highlight(activeRange);
         CSS.highlights.set('active-match', activeHighlight);
+
+        // Scroll to active match when activeIndex changes (navigation)
+        if (prevActiveIndexRef.current !== activeIndex) {
+          // Create a temporary element to get the position and scroll
+          const rangeRect = activeRange.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+
+          // Calculate if the match is outside the visible area
+          const isAbove = rangeRect.top < containerRect.top;
+          const isBelow = rangeRect.bottom > containerRect.bottom;
+
+          if (isAbove || isBelow) {
+            // Scroll the range into view
+            const selection = window.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+              selection.addRange(activeRange.cloneRange());
+              const anchorNode = selection.anchorNode;
+              if (anchorNode?.parentElement) {
+                anchorNode.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              selection.removeAllRanges();
+            }
+          }
+        }
+        prevActiveIndexRef.current = activeIndex;
       } else {
         CSS.highlights.delete('active-match');
       }

@@ -2,6 +2,7 @@
  * Editor Store
  * Manages editor state including dirty tracking and search functionality
  * Requirements: 7.1-7.7, 9.1-9.4, artifact-editor-search 2.1-2.5, 3.1-3.5, 5.1-5.3
+ * Bug fix: search-scroll-to-match
  */
 
 import { create } from 'zustand';
@@ -132,11 +133,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     // Handle both base artifacts and dynamic document review files
     const artifactPath = `${specPath}/${artifact}.md`;
 
-    set({
-      activeTab: artifact,
-      currentPath: artifactPath,
-      error: null,
-    });
+    // Check if switching to a different file (not initial load or same file)
+    const { currentPath } = get();
+    const isNewFile = currentPath !== null && currentPath !== artifactPath;
+
+    // Clear search state when switching to a different file
+    if (isNewFile) {
+      set({
+        activeTab: artifact,
+        currentPath: artifactPath,
+        error: null,
+        // Clear search state
+        searchVisible: false,
+        searchQuery: '',
+        caseSensitive: false,
+        matches: [],
+        activeMatchIndex: -1,
+      });
+    } else {
+      set({
+        activeTab: artifact,
+        currentPath: artifactPath,
+        error: null,
+      });
+    }
 
     try {
       const content = await window.electronAPI.readArtifact(artifactPath);

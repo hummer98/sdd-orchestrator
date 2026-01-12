@@ -582,8 +582,7 @@ describe('WorkflowView', () => {
       expect(deployButton).toBeInTheDocument();
     });
 
-    // TODO: Re-enable when executeSpecMerge is added to ElectronAPI (git-worktree-support)
-    it.skip('should call executeSpecMerge when deploy button clicked in worktree mode', async () => {
+    it('should call executeSpecMerge when deploy button clicked in worktree mode', async () => {
       // Setup mock for executeSpecMerge
       const mockExecuteSpecMerge = vi.fn().mockResolvedValue({});
       (window as { electronAPI?: { executeSpecMerge?: typeof mockExecuteSpecMerge } }).electronAPI = {

@@ -753,6 +753,25 @@ export interface ElectronAPI {
   setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void>;
 
   // ============================================================
+  // Git Worktree Support (git-worktree-support feature)
+  // Requirements: 6.1
+  // ============================================================
+
+  /**
+   * Execute spec-merge command for worktree mode
+   * Merges the worktree branch back to main and cleans up the worktree
+   * @param specId Spec ID
+   * @param featureName Feature name
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo for the spawned agent
+   */
+  executeSpecMerge(
+    specId: string,
+    featureName: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo>;
+
+  // ============================================================
   // Commandset Version Check (commandset-version-detection feature)
   // Requirements: 2.1
   // ============================================================

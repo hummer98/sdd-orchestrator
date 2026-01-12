@@ -697,6 +697,73 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
         expect(result.error.type).toBe('SPAWN_ERROR');
       }
     });
+
+    it('should pass allowedTools for bug-analyze phase', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-123' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      await controller.executeBugPhase!('my-bug', 'analyze');
+
+      // args should contain --allowedTools with the tools for bug-analyze phase
+      const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
+      expect(callArgs.args).toContain('--allowedTools');
+      // bug-analyze should have: Bash, Read, Write, Edit, Glob, Grep
+      expect(callArgs.args).toContain('Bash');
+      expect(callArgs.args).toContain('Read');
+      expect(callArgs.args).toContain('Write');
+      expect(callArgs.args).toContain('Edit');
+      expect(callArgs.args).toContain('Glob');
+      expect(callArgs.args).toContain('Grep');
+      // AskUserQuestion should NOT be included
+      expect(callArgs.args).not.toContain('AskUserQuestion');
+    });
+
+    it('should pass allowedTools for bug-fix phase', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-456' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      await controller.executeBugPhase!('my-bug', 'fix');
+
+      const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
+      expect(callArgs.args).toContain('--allowedTools');
+      expect(callArgs.args).not.toContain('AskUserQuestion');
+    });
+
+    it('should pass allowedTools for bug-verify phase', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-789' } }),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      await controller.executeBugPhase!('my-bug', 'verify');
+
+      const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
+      expect(callArgs.args).toContain('--allowedTools');
+      // bug-verify should have: Bash, Read, Write, Edit, Glob, Grep (no AskUserQuestion)
+      expect(callArgs.args).not.toContain('AskUserQuestion');
+    });
   });
 });
 

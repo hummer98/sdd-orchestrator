@@ -13,7 +13,7 @@ import { setMenuRemoteServerStatus } from '../menu';
 import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, ValidationType, AgentLogsProvider } from '../services/webSocketHandler';
 import { getDefaultLogFileService } from '../services/logFileService';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
-import { buildClaudeArgs } from '../services/specManagerService';
+import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
 
 // Singleton instance of RemoteAccessServer
@@ -177,11 +177,13 @@ export function createWorkflowController(
       };
 
       const slashCommand = bugCommandMap[phase];
+      const bugPhase = `bug-${phase}`;
+      const allowedTools = getAllowedToolsForPhase(bugPhase);
       const result = await specManagerService.startAgent({
         specId: '',
-        phase: `bug-${phase}`,
+        phase: bugPhase,
         command: getClaudeCommand(),
-        args: buildClaudeArgs({ command: `${slashCommand} ${bugName}` }),
+        args: buildClaudeArgs({ command: `${slashCommand} ${bugName}`, allowedTools }),
       });
 
       if (result.ok) {

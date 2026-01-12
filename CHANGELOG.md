@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-01-12
+
+### Added
+- **Document Review自動ループ機能**: Document Reviewの自動ループ実行機能を追加し、レビュー→修正→再レビューのサイクルを自動化
+- **Logging Compliance検査**: document-reviewにLogging Compliance検査機能を追加
+- **ステアリングテンプレート追加**: logging.md/debugging.mdステアリングテンプレートを追加
+
+### Fixed
+- **検索マッチ自動スクロール**: 検索マッチ位置への自動スクロールとタブ切替時のクリア処理を追加
+- **Design Decisionsセクション復元**: design-templateのDesign Decisionsセクションを復元
+- **requirements-template復元**: Decision Log/Out of Scope/Open Questionsセクションを復元
+- **skipPermissions永続化**: skipPermissions設定のプロジェクト毎永続化を修正
+- **自動実行デフォルト値**: 自動実行許可設定のデフォルト値をGOに変更
+- **AgentLogPanelリアルタイム表示**: 新規Agent追加時のリアルタイムログ表示を修正
+- **AutoExecutionCoordinator**: impl NOGO時のdocument-review完了後の状態を修正
+- **WorkflowView FIX-Nパース**: spec-inspection --fix で追加されるFIX-N形式のタスクIDをパース対応
+- **spec-inspection --fix修正**: --fixオプションで既存レポートを参照するよう修正
+
+### Testing
+- 削除されたPlanコマンド関連のE2Eテストを削除
+
 ## [0.21.0] - 2026-01-11
 
 ### Added

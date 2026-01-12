@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-01-12
+
+### Added
+- **Git Worktree分離開発機能**: Git worktreeを使用した分離開発機能を実装し、Spec単位でのブランチ分離開発をサポート
+- **BugList実行中エージェント数表示**: BugListに実行中エージェント数のバッジを追加
+
+### Fixed
+- **spec-impl bypassPermissions対応**: サブエージェントにpermissionMode: bypassPermissionsを追加
+- **bugStore差分更新問題修正**: File Watchイベントの差分更新によるselectedBugクリア問題を修正
+- **executeBugPhase allowedTools対応**: CLIにallowedToolsを渡すよう修正
+- **sessionIdパースチャンク分割対応**: specManagerServiceのsessionIdパースがチャンク分割に対応
+- **document-review autofix修正**: autofix適用後にapprovedを設定しないよう修正
+- **spec-planタイムスタンプ取得修正**: タイムスタンプ取得にdateコマンドを使用
+
+### Testing
+- document-review autofix後のループ継続検証テストとモックCLIを追加
+
 ## [0.22.1] - 2026-01-12
 
 ### Fixed

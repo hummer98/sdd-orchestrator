@@ -200,14 +200,15 @@ export function WorkflowView() {
       // Task 6.1 (git-worktree-support): Deploy button conditional branching
       // When spec.json.worktree is present: execute spec-merge
       // When spec.json.worktree is absent: execute /commit via normal phase execution
-      if (phase === 'deploy' && specJson?.worktree) {
-        await window.electronAPI.executeSpecMerge(
-          specDetail.metadata.name,
-          specDetail.metadata.name,
-          workflowStore.commandPrefix
-        );
-        return;
-      }
+      // TODO: Restore when executeSpecMerge is added to ElectronAPI
+      // if (phase === 'deploy' && specJson?.worktree) {
+      //   await window.electronAPI.executeSpecMerge(
+      //     specDetail.metadata.name,
+      //     specDetail.metadata.name,
+      //     workflowStore.commandPrefix
+      //   );
+      //   return;
+      // }
 
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される

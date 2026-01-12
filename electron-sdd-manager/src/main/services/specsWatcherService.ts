@@ -365,26 +365,27 @@ export class SpecsWatcherService {
       });
   }
 
-  /**
-   * git-worktree-support Task 7.1: Check for worktree field changes in spec.json
-   * Called when spec.json changes to detect worktree field additions/removals
-   * Requirements: 8.1, 8.2
-   *
-   * @param specJsonPath - Path to spec.json
-   * @param specId - Spec ID
-   */
-  private async checkWorktreeChange(specJsonPath: string, specId: string): Promise<void> {
-    try {
-      const specJsonContent = await readFile(specJsonPath, 'utf-8');
-      const specJson = JSON.parse(specJsonContent);
-
-      // Get the watch path based on worktree config
-      const newWatchPath = this.getWatchPath(specId, specJson.worktree);
-
-      // Compare with current watch path - this could be enhanced to track per-spec paths
-      logger.debug('[SpecsWatcherService] Worktree change check', { specId, hasWorktree: !!specJson.worktree, newWatchPath });
-    } catch (error) {
-      logger.error('[SpecsWatcherService] Failed to check worktree change', { specId, error });
-    }
-  }
+  // TODO: Uncomment when git-worktree-support feature is complete
+  // /**
+  //  * git-worktree-support Task 7.1: Check for worktree field changes in spec.json
+  //  * Called when spec.json changes to detect worktree field additions/removals
+  //  * Requirements: 8.1, 8.2
+  //  *
+  //  * @param specJsonPath - Path to spec.json
+  //  * @param specId - Spec ID
+  //  */
+  // private async checkWorktreeChange(specJsonPath: string, specId: string): Promise<void> {
+  //   try {
+  //     const specJsonContent = await readFile(specJsonPath, 'utf-8');
+  //     const specJson = JSON.parse(specJsonContent);
+  //
+  //     // Get the watch path based on worktree config
+  //     const newWatchPath = this.getWatchPath(specId, specJson.worktree);
+  //
+  //     // Compare with current watch path - this could be enhanced to track per-spec paths
+  //     logger.debug('[SpecsWatcherService] Worktree change check', { specId, hasWorktree: !!specJson.worktree, newWatchPath });
+  //   } catch (error) {
+  //     logger.error('[SpecsWatcherService] Failed to check worktree change', { specId, error });
+  //   }
+  // }
 }

@@ -199,15 +199,18 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
      "status": "reply_complete"
    }
    ```
-3. **If Fix Required total is 0** (all issues resolved):
-   - Set `documentReview.status = "approved"` in spec.json
-   - This signals the document review phase is complete
+3. **CRITICAL: Setting `documentReview.status = "approved"`**
+   - Set `approved` **ONLY IF ALL** of the following conditions are met:
+     - Fix Required total is 0 (no fixes needed)
+     - No modifications were applied in this round (no `--autofix` or `--fix` was used)
+   - **DO NOT set `approved` if fixes were applied** - the documents need to be re-reviewed in the next round to verify the fixes are correct
 
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
 2. Update spec.json `documentReview.roundDetails[n-1].fixApplied = true`
 3. **Append "Applied Fixes" section** to the reply document (see format below)
+4. **DO NOT set `documentReview.status = "approved"`** - a new review round is needed to verify the fixes
 
 #### If no flag is present (default):
 
@@ -216,10 +219,17 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 3. List all recommended changes in the "Files to Modify" section
 4. Inform user they can run with `--fix` to apply changes
 
-#### If all issues resolved (no "Fix Required" items):
+#### If all issues resolved (no "Fix Required" items) AND no fixes applied:
 
+- Set `documentReview.status = "approved"` in spec.json
 - Indicate spec is ready for implementation
 - Suggest running `/kiro:spec-impl $1`
+
+#### If fixes were applied (`--autofix` or `--fix`):
+
+- **DO NOT set `documentReview.status = "approved"`**
+- Inform user that a new document-review round will be executed to verify the fixes
+- The auto-execution loop will automatically trigger the next round
 
 #### If issues require discussion:
 
@@ -286,9 +296,10 @@ Display to user:
 2. Summary counts (Fix Required / No Fix Needed / Needs Discussion)
 3. Mode status:
    - Default: "Reply generated (fixes not applied)"
-   - `--autofix`: "Reply generated and fixes applied"
-   - `--fix`: "Fixes applied from existing reply"
+   - `--autofix`: "Reply generated and fixes applied - awaiting re-review"
+   - `--fix`: "Fixes applied from existing reply - awaiting re-review"
 4. Files modified (if `--autofix` or `--fix` was used) or files that would be modified (if default mode)
 5. Next step recommendation:
    - If default mode and modifications are needed: suggest running with `--fix`
-   - If all done: suggest `/kiro:spec-impl $1`
+   - If `--autofix` or `--fix` was used: inform that **a new document-review round will verify the changes** (auto-execution will handle this automatically)
+   - If Fix Required = 0 AND no fixes applied in this round: suggest `/kiro:spec-impl $1`

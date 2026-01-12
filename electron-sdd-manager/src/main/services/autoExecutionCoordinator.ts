@@ -26,8 +26,9 @@ export const MAX_CONCURRENT_EXECUTIONS = 5;
 /** 最大Document Reviewループ回数 */
 export const MAX_DOCUMENT_REVIEW_ROUNDS = 7;
 
-/** フェーズ順序（requirements -> design -> tasks -> impl） */
-export const PHASE_ORDER: readonly WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+/** フェーズ順序（requirements -> design -> tasks -> impl -> inspection） */
+// git-worktree-support Task 9.1: inspection を自動実行フローに追加
+export const PHASE_ORDER: readonly WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection'];
 
 // ============================================================
 // Types
@@ -170,6 +171,10 @@ export interface AutoExecutionEvents {
   'execution-completed': (specPath: string, summary: ExecutionSummary) => void;
   'execution-error': (specPath: string, error: AutoExecutionError) => void;
   'execute-document-review': (specPath: string, context: { specId: string }) => void;
+  /** git-worktree-support Task 9.1: impl完了後にinspection自動実行 */
+  'execute-inspection': (specPath: string, context: { specId: string }) => void;
+  /** git-worktree-support Task 9.2: inspection成功後にspec-merge自動実行 */
+  'execute-spec-merge': (specPath: string, context: { specId: string }) => void;
 }
 
 /**
@@ -661,12 +666,22 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
           const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions, latestApprovals);
           if (nextPhase) {
-            // 次フェーズ実行イベントを発火
-            this.emit('execute-next-phase', specPath, nextPhase, {
-              specId: state.specId,
-              featureName: state.specId,
-            });
-            logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
+            // git-worktree-support Task 9.1: inspectionフェーズは専用イベントで実行
+            if (nextPhase === 'inspection') {
+              logger.info('[AutoExecutionCoordinator] Impl completed, triggering inspection', {
+                specPath,
+              });
+              this.emit('execute-inspection', specPath, {
+                specId: state.specId,
+              });
+            } else {
+              // 次フェーズ実行イベントを発火
+              this.emit('execute-next-phase', specPath, nextPhase, {
+                specId: state.specId,
+                featureName: state.specId,
+              });
+              logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
+            }
           } else {
             // 全フェーズ完了
             this.completeExecution(specPath);
@@ -917,6 +932,64 @@ export class AutoExecutionCoordinator extends EventEmitter {
       phase: currentPhase,
     };
     this.emit('execution-error', specPath, error);
+  }
+
+  // ============================================================
+  // Task 9.2: Inspection Completion Handling (git-worktree-support)
+  // Requirements: 6.5
+  // ============================================================
+
+  /**
+   * Inspection完了を処理
+   * @param specPath specのパス
+   * @param status 終了ステータス（'passed' = GO, 'failed' = NOGO）
+   */
+  async handleInspectionCompleted(
+    specPath: string,
+    status: 'passed' | 'failed'
+  ): Promise<void> {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] handleInspectionCompleted: state not found', { specPath });
+      return;
+    }
+
+    logger.info('[AutoExecutionCoordinator] Inspection completed', {
+      specPath,
+      status,
+    });
+
+    // Update state
+    const newExecutedPhases = [...state.executedPhases];
+    if (!newExecutedPhases.includes('inspection')) {
+      newExecutedPhases.push('inspection');
+    }
+
+    this.updateState(specPath, {
+      executedPhases: newExecutedPhases,
+      currentAgentId: undefined,
+      currentPhase: null,
+    });
+
+    this.emit('phase-completed', specPath, 'inspection');
+
+    if (status === 'passed') {
+      // git-worktree-support Task 9.2: Inspection成功後、spec-mergeを自動実行
+      logger.info('[AutoExecutionCoordinator] Inspection passed (GO), triggering spec-merge', {
+        specPath,
+      });
+      this.emit('execute-spec-merge', specPath, {
+        specId: state.specId,
+      });
+    } else {
+      // Inspection失敗: エラー状態に遷移（またはリトライ待ち）
+      logger.info('[AutoExecutionCoordinator] Inspection failed (NOGO), pausing for retry', {
+        specPath,
+      });
+      this.updateState(specPath, {
+        status: 'paused',
+      });
+    }
   }
 
   // ============================================================

@@ -10,6 +10,7 @@ import { existsSync } from 'fs';
 import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
 import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
+import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
@@ -190,6 +191,9 @@ app.whenReady().then(async () => {
   // Register SSH handlers
   registerSSHHandlers();
   setupSSHStatusNotifications();
+
+  // Register Worktree handlers (git-worktree-support feature)
+  registerWorktreeHandlers();
 
   // Create application menu
   createMenu();

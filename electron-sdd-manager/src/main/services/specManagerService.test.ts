@@ -1038,3 +1038,105 @@ describe('spec-scoped-auto-execution-state: spec.json autoExecution Integration'
     });
   });
 });
+
+// ============================================================
+// Task 6.1: executeSpecMerge Tests (git-worktree-support)
+// Requirements: 5.1, 5.2
+// ============================================================
+describe('executeSpecMerge', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    // Create temporary directories for testing
+    testDir = path.join(os.tmpdir(), `spec-merge-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    // Stop all agents
+    await service.stopAllAgents();
+
+    // Clean up test directory
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should build command with /kiro:spec-merge and feature name (kiro prefix)', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeSpecMerge({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      commandPrefix: 'kiro',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: 'spec-merge',
+        args: expect.arrayContaining(['/kiro:spec-merge my-feature']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should default to kiro prefix and use /kiro:spec-merge', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeSpecMerge({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      // No commandPrefix specified - should default to 'kiro'
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.arrayContaining(['/kiro:spec-merge my-feature']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should use /spec-manager:spec-merge for spec-manager prefix', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeSpecMerge({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      commandPrefix: 'spec-manager',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.arrayContaining(['/spec-manager:spec-merge my-feature']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should set group to doc', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeSpecMerge({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        group: 'doc',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+});

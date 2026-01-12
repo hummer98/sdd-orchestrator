@@ -25,6 +25,8 @@ export interface ApprovalStatus {
 // Note: LegacyInspectionState is supported for backward compatibility with existing spec.json files.
 // Bug fix: inspection-panel-display
 import type { MultiRoundInspectionState, LegacyInspectionState } from './inspection';
+// git-worktree-support: WorktreeConfig for worktree mode
+import type { WorktreeConfig } from './worktree';
 
 export interface SpecJson {
   feature_name: string;
@@ -49,6 +51,13 @@ export interface SpecJson {
   autoExecution?: SpecAutoExecutionState;
   /** Inspection state - supports both MultiRoundInspectionState and LegacyInspectionState for backward compatibility */
   inspection?: MultiRoundInspectionState | LegacyInspectionState;
+  /**
+   * Worktree configuration (optional for backward compatibility)
+   * git-worktree-support: Requirements 2.1, 2.2, 2.3
+   * - Field presence indicates worktree mode is active
+   * - Field absence indicates normal mode
+   */
+  worktree?: WorktreeConfig;
 }
 
 export interface SpecMetadata {
@@ -322,3 +331,9 @@ export interface VersionCheckResult {
   readonly hasCommandsets: boolean;
   readonly legacyProject: boolean;
 }
+
+// ============================================================
+// Git Worktree Support Types (git-worktree-support feature)
+// Requirements: 2.1, 2.2, 2.3
+// ============================================================
+export * from './worktree';

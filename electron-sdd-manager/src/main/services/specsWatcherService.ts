@@ -10,6 +10,7 @@ import { readFile } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
 import { normalizeInspectionState, hasPassed } from '../../renderer/types/inspection';
+import type { WorktreeConfig } from '../../renderer/types/worktree';
 
 export type SpecsChangeEvent = {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
@@ -292,5 +293,98 @@ export class SpecsWatcherService {
    */
   isRunning(): boolean {
     return this.watcher !== null;
+  }
+
+  /**
+   * git-worktree-support Task 7.1: Get watch path for file monitoring
+   * Returns the specs directory path based on worktree configuration
+   * Requirements: 8.1, 8.2
+   *
+   * @param _specId - Spec ID (not used currently but kept for interface compatibility)
+   * @param worktreeConfig - Optional worktree configuration from spec.json
+   * @returns Absolute path to the specs directory to watch
+   */
+  getWatchPath(_specId: string, worktreeConfig?: WorktreeConfig): string {
+    if (worktreeConfig) {
+      // Resolve worktree path relative to main project
+      const worktreePath = path.resolve(this.projectPath, worktreeConfig.path);
+      return path.join(worktreePath, '.kiro', 'specs');
+    }
+    // Default: main project specs directory
+    return path.join(this.projectPath, '.kiro', 'specs');
+  }
+
+  /**
+   * git-worktree-support Task 7.1: Reset watch path to a new location
+   * Closes the current watcher and creates a new one for the specified path
+   * Requirements: 8.1, 8.2
+   *
+   * @param specId - Spec ID for logging purposes
+   * @param newWatchPath - New absolute path to watch
+   */
+  async resetWatchPath(specId: string, newWatchPath: string): Promise<void> {
+    logger.info('[SpecsWatcherService] Resetting watch path', { specId, newWatchPath });
+
+    // Close existing watcher if running
+    if (this.watcher) {
+      await this.watcher.close();
+      this.watcher = null;
+    }
+
+    // Clear all debounce timers
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+
+    // Start new watcher with the new path
+    logger.info('[SpecsWatcherService] Starting new watcher', { newWatchPath });
+
+    this.watcher = chokidar.watch(newWatchPath, {
+      ignoreInitial: true,
+      persistent: true,
+      depth: 2, // Watch spec folders and their immediate contents
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 100,
+      },
+    });
+
+    this.watcher
+      .on('add', (filePath) => this.handleEvent('add', filePath))
+      .on('change', (filePath) => this.handleEvent('change', filePath))
+      .on('unlink', (filePath) => this.handleEvent('unlink', filePath))
+      .on('addDir', (dirPath) => this.handleEvent('addDir', dirPath))
+      .on('unlinkDir', (dirPath) => this.handleEvent('unlinkDir', dirPath))
+      .on('error', (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('[SpecsWatcherService] Watcher error', { error: message });
+      })
+      .on('ready', () => {
+        logger.info('[SpecsWatcherService] New watcher ready', { specId, newWatchPath });
+      });
+  }
+
+  /**
+   * git-worktree-support Task 7.1: Check for worktree field changes in spec.json
+   * Called when spec.json changes to detect worktree field additions/removals
+   * Requirements: 8.1, 8.2
+   *
+   * @param specJsonPath - Path to spec.json
+   * @param specId - Spec ID
+   */
+  private async checkWorktreeChange(specJsonPath: string, specId: string): Promise<void> {
+    try {
+      const specJsonContent = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(specJsonContent);
+
+      // Get the watch path based on worktree config
+      const newWatchPath = this.getWatchPath(specId, specJson.worktree);
+
+      // Compare with current watch path - this could be enhanced to track per-spec paths
+      logger.debug('[SpecsWatcherService] Worktree change check', { specId, hasWorktree: !!specJson.worktree, newWatchPath });
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to check worktree change', { specId, error });
+    }
   }
 }

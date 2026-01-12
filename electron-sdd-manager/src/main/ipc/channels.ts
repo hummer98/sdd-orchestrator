@@ -230,6 +230,19 @@ export const IPC_CHANNELS = {
   // Renderer Logging (renderer-error-logging feature)
   // Fire-and-forget logging from renderer to main process
   LOG_RENDERER: 'ipc:log-renderer',
+
+  // Git Worktree Support (git-worktree-support feature)
+  // Requirements: 1.1, 1.3, 1.6 (design.md)
+  WORKTREE_CHECK_MAIN: 'worktree:check-main',
+  WORKTREE_CREATE: 'worktree:create',
+  WORKTREE_REMOVE: 'worktree:remove',
+  WORKTREE_RESOLVE_PATH: 'worktree:resolve-path',
+  // Worktree impl start (git-worktree-support Task 4.1)
+  // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
+  WORKTREE_IMPL_START: 'worktree:impl-start',
+  // Spec merge execution (git-worktree-support Task 6.1)
+  // Requirements: 5.1, 5.2
+  EXECUTE_SPEC_MERGE: 'ipc:execute-spec-merge',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

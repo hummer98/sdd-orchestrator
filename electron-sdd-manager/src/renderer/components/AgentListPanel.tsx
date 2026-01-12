@@ -4,10 +4,11 @@
  * Task 30.1-30.3: Agent list UI, continue button, stop button
  * Requirements: 5.1, 5.2, 5.7, 5.8
  * Bug fix: agent-list-panel-dry-violation - Props化による統合
+ * git-worktree-support Task 5.1: Worktree indicator display (Requirements: 4.1, 4.2)
  */
 
 import { useState, useEffect } from 'react';
-import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
+import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare, GitBranch } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
@@ -77,9 +78,14 @@ interface AgentListPanelProps {
   testId?: string;
   /** Whether this is a bug panel (no Ask button for bugs) */
   isBugPanel?: boolean;
+  /**
+   * Worktree path if spec is in worktree mode
+   * Requirements: 4.1, 4.2 (git-worktree-support)
+   */
+  worktreePath?: string | null;
 }
 
-export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false }: AgentListPanelProps) {
+export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false, worktreePath }: AgentListPanelProps) {
   const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions, addAgent } = useAgentStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
@@ -193,6 +199,17 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
         {filteredAgents.length > 0 && (
           <span className="text-xs text-gray-400">
             ({filteredAgents.length})
+          </span>
+        )}
+        {/* Worktree indicator (git-worktree-support Task 5.1) */}
+        {worktreePath && (
+          <span
+            className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400"
+            title={`Worktree: ${worktreePath}`}
+            data-testid="worktree-indicator"
+          >
+            <GitBranch className="w-3 h-3" />
+            <span className="hidden sm:inline">worktree</span>
           </span>
         )}
         <label

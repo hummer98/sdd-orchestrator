@@ -2,6 +2,7 @@
  * AgentListPanel Component Tests
  * Task 30.1-30.3: Agent list UI, continue button, stop button
  * Requirements: 5.1, 5.2, 5.7, 5.8
+ * git-worktree-support Task 5.1: Worktree indicator display (Requirements: 4.1, 4.2)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -577,6 +578,45 @@ describe('AgentListPanel - Task 30', () => {
       expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
       expect(screen.getByText(/Spec Agent/)).toBeInTheDocument();
       expect(screen.getByText('(my-feature)')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // Worktree indicator (git-worktree-support Task 5.1)
+  // Requirements: 4.1, 4.2
+  // ============================================================
+  describe('Worktree indicator (git-worktree-support Task 5.1)', () => {
+    it('should display worktree indicator when worktreePath is provided (Requirement 4.1)', () => {
+      render(<AgentListPanel specId="spec-1" worktreePath="/Users/test/worktree-feature" />);
+
+      const indicator = screen.getByTestId('worktree-indicator');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator).toHaveAttribute('title', 'Worktree: /Users/test/worktree-feature');
+    });
+
+    it('should display "worktree" text in the indicator (Requirement 4.2)', () => {
+      render(<AgentListPanel specId="spec-1" worktreePath="/Users/test/worktree-feature" />);
+
+      const indicator = screen.getByTestId('worktree-indicator');
+      expect(indicator.textContent).toContain('worktree');
+    });
+
+    it('should NOT display worktree indicator when worktreePath is null', () => {
+      render(<AgentListPanel specId="spec-1" worktreePath={null} />);
+
+      expect(screen.queryByTestId('worktree-indicator')).not.toBeInTheDocument();
+    });
+
+    it('should NOT display worktree indicator when worktreePath is undefined', () => {
+      render(<AgentListPanel specId="spec-1" />);
+
+      expect(screen.queryByTestId('worktree-indicator')).not.toBeInTheDocument();
+    });
+
+    it('should NOT display worktree indicator when worktreePath is empty string', () => {
+      render(<AgentListPanel specId="spec-1" worktreePath="" />);
+
+      expect(screen.queryByTestId('worktree-indicator')).not.toBeInTheDocument();
     });
   });
 });

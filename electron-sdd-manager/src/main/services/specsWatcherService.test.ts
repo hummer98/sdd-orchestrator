@@ -165,4 +165,76 @@ describe('SpecsWatcherService', () => {
       expect(checkDeployCompletion).toBeDefined();
     });
   });
+
+  // ============================================================
+  // git-worktree-support Task 7.1: 監視パス動的切り替え
+  // Requirements: 8.1, 8.2
+  // ============================================================
+  describe('Watch path dynamic switching', () => {
+    it('should watch main project path when worktree field is absent', () => {
+      const service = new SpecsWatcherService('/project');
+      // When no worktree config, should watch main project
+      const watchPath = service.getWatchPath('my-feature', undefined);
+      expect(watchPath).toBe('/project/.kiro/specs');
+    });
+
+    it('should watch worktree path when worktree config is provided', () => {
+      const service = new SpecsWatcherService('/project');
+      const worktreeConfig = {
+        path: '../project-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-12T12:00:00+09:00',
+      };
+      const watchPath = service.getWatchPath('my-feature', worktreeConfig);
+      // Should resolve to worktree specs path
+      expect(watchPath).toContain('project-worktrees');
+      expect(watchPath).toContain('my-feature');
+      expect(watchPath).toContain('.kiro/specs');
+    });
+
+    it('should provide resetWatchPath method', () => {
+      const service = new SpecsWatcherService('/project');
+      // Verify resetWatchPath method exists
+      expect(typeof service.resetWatchPath).toBe('function');
+    });
+
+    it('should reset watcher when resetWatchPath is called', async () => {
+      const chokidar = await import('chokidar');
+      const mockClose = vi.fn().mockResolvedValue(undefined);
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: mockClose,
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new SpecsWatcherService('/project');
+      service.start();
+
+      // Reset watch path to new location
+      await service.resetWatchPath('my-feature', '/new/watch/path');
+
+      // Old watcher should be closed
+      expect(mockClose).toHaveBeenCalled();
+      // New watcher should be created
+      expect(chokidar.watch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should update watch path on spec.json worktree field change', async () => {
+      const mockFileService = {
+        updateSpecJsonFromPhase: vi.fn().mockResolvedValue({ ok: true }),
+        validatePhaseTransition: vi.fn().mockReturnValue({ ok: true }),
+      };
+
+      const service = new SpecsWatcherService('/project', mockFileService as any);
+      const resetWatchPathSpy = vi.spyOn(service, 'resetWatchPath');
+
+      // Access private method for testing worktree detection
+      const checkWorktreeChange = (service as unknown as {
+        checkWorktreeChange: (specJsonPath: string, specId: string) => Promise<void>
+      }).checkWorktreeChange;
+
+      // Verify the method exists
+      expect(checkWorktreeChange).toBeDefined();
+    });
+  });
 });

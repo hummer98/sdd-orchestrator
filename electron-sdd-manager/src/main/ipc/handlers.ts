@@ -1789,6 +1789,36 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // Spec Merge Execution (git-worktree-support feature)
+  // Requirements: 5.1, 5.2
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_SPEC_MERGE,
+    async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
+      logger.info('[handlers] EXECUTE_SPEC_MERGE called', { specId, featureName, commandPrefix });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      const result = await service.executeSpecMerge({ specId, featureName, commandPrefix });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeSpecMerge failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] executeSpecMerge succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+
+  // ============================================================
   // Commandset Version Check (commandset-version-detection feature)
   // Requirements: 2.1
   // ============================================================

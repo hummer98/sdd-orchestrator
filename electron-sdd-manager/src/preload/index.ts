@@ -1317,6 +1317,25 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG, specPath, flag),
 
   // ============================================================
+  // Spec Merge Execution (git-worktree-support feature)
+  // Requirements: 5.1, 5.2
+  // ============================================================
+
+  /**
+   * Execute spec-merge command for worktree mode
+   * @param specId Spec ID
+   * @param featureName Feature name
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns AgentInfo for the spawned agent
+   */
+  executeSpecMerge: (
+    specId: string,
+    featureName: string,
+    commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_MERGE, specId, featureName, commandPrefix),
+
+  // ============================================================
   // Commandset Version Check (commandset-version-detection feature)
   // Requirements: 2.1
   // ============================================================
@@ -1360,6 +1379,75 @@ const electronAPI = {
   ): void => {
     ipcRenderer.send(IPC_CHANNELS.LOG_RENDERER, level, message, context);
   },
+
+  // ============================================================
+  // Git Worktree Support (git-worktree-support feature)
+  // Requirements: 1.1, 1.3, 1.6
+  // ============================================================
+
+  /**
+   * Check if currently on main/master branch
+   * @param projectPath Project root path
+   * @returns Result with isMain flag and current branch name
+   */
+  worktreeCheckMain: (projectPath: string): Promise<{
+    ok: true;
+    value: { isMain: boolean; currentBranch: string };
+  } | {
+    ok: false;
+    error: { type: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_CHECK_MAIN, projectPath),
+
+  /**
+   * Create a worktree for a feature
+   * @param projectPath Project root path
+   * @param featureName Feature name (will create branch feature/{featureName})
+   * @returns Result with WorktreeInfo on success
+   */
+  worktreeCreate: (projectPath: string, featureName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error: { type: string; currentBranch?: string; path?: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_CREATE, projectPath, featureName),
+
+  /**
+   * Remove a worktree and its associated branch
+   * @param projectPath Project root path
+   * @param featureName Feature name of the worktree to remove
+   * @returns Result with void on success
+   */
+  worktreeRemove: (projectPath: string, featureName: string): Promise<{
+    ok: true;
+    value: void;
+  } | {
+    ok: false;
+    error: { type: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_REMOVE, projectPath, featureName),
+
+  /**
+   * Resolve a relative worktree path to absolute path
+   * @param projectPath Project root path
+   * @param relativePath Relative path from spec.json
+   * @returns Result with absolutePath on success
+   */
+  worktreeResolvePath: (projectPath: string, relativePath: string): Promise<{
+    ok: true;
+    value: { absolutePath: string };
+  } | {
+    ok: false;
+    error: { type: string; path?: string; reason?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_RESOLVE_PATH, projectPath, relativePath),
 };
 
 // Expose API to renderer

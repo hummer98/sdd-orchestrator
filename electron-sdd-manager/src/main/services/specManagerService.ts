@@ -152,6 +152,12 @@ export const SPEC_INIT_COMMANDS: Record<CommandPrefix, string> = {
   'spec-manager': '/spec-manager:init',
 };
 
+/** spec-merge コマンドマッピング (git-worktree-support feature) */
+export const SPEC_MERGE_COMMANDS: Record<CommandPrefix, string> = {
+  kiro: '/kiro:spec-merge',
+  'spec-manager': '/spec-manager:spec-merge',
+};
+
 /** spec-plan コマンドマッピング (spec-plan-ui-integration feature) */
 export const SPEC_PLAN_COMMANDS: Record<CommandPrefix, string | undefined> = {
   kiro: '/kiro:spec-plan',
@@ -293,6 +299,13 @@ export interface ExecuteInspectionFixOptions {
   specId: string;
   featureName: string;
   roundNumber: number;
+  commandPrefix?: CommandPrefix;
+}
+
+/** Spec Merge execution options (git-worktree-support feature) */
+export interface ExecuteSpecMergeOptions {
+  specId: string;
+  featureName: string;
   commandPrefix?: CommandPrefix;
 }
 
@@ -1280,6 +1293,36 @@ export class SpecManagerService {
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
       group: 'impl',
+    });
+  }
+
+  // ============================================================
+  // Spec Merge Workflow (git-worktree-support feature)
+  // Requirements: 5.1, 5.2
+  // ============================================================
+
+  /**
+   * Execute spec-merge agent
+   * Requirements: 5.1, 5.2 (git-worktree-support)
+   *
+   * This executes /kiro:spec-merge (or /spec-manager:spec-merge) which:
+   * 1. Checks out the main branch
+   * 2. Merges the feature branch from worktree
+   * 3. Deletes the worktree
+   * 4. Updates spec.json to remove worktree field
+   */
+  async executeSpecMerge(options: ExecuteSpecMergeOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, commandPrefix = 'kiro' } = options;
+    const slashCommand = SPEC_MERGE_COMMANDS[commandPrefix];
+
+    logger.info('[SpecManagerService] executeSpecMerge called', { specId, featureName, slashCommand, commandPrefix });
+
+    return this.startAgent({
+      specId,
+      phase: 'spec-merge',
+      command: getClaudeCommand(),
+      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+      group: 'doc',
     });
   }
 

@@ -643,7 +643,8 @@ describe('AutoExecutionCoordinator', () => {
 
     describe('PHASE_ORDER constant', () => {
       it('should have correct phase order', () => {
-        const expectedOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+        // git-worktree-support Task 9.1: inspection を自動実行フローに追加
+        const expectedOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection'];
         expect(coordinator.getPhaseOrder()).toEqual(expectedOrder);
       });
     });
@@ -1634,6 +1635,178 @@ describe('AutoExecutionCoordinator', () => {
       it('should return undefined for non-existent spec', () => {
         const round = coordinator.getCurrentDocumentReviewRound('/non/existent');
         expect(round).toBeUndefined();
+      });
+    });
+  });
+
+  // ============================================================
+  // Task 9.1 & 9.2: Inspection Auto-Execution (git-worktree-support)
+  // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+  // ============================================================
+
+  describe('Task 9.1-9.2: Inspection and Spec-Merge Auto-Execution', () => {
+    describe('Task 9.1: Auto-execute inspection after impl completion', () => {
+      it('should include inspection in extended phase order', () => {
+        const coordinator = new AutoExecutionCoordinator();
+        const phaseOrder = coordinator.getPhaseOrder();
+
+        // Extended phase order should include inspection
+        expect(phaseOrder).toContain('inspection');
+        coordinator.dispose();
+      });
+
+      it('should support inspection permission in options', () => {
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true,
+            inspection: true,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        expect(options.permissions.inspection).toBe(true);
+      });
+
+      it('should emit execute-inspection event after impl completes when inspection enabled', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const inspectionHandler = vi.fn();
+
+        coordinator.on('execute-inspection', inspectionHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: true,
+            inspection: true,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
+        await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
+
+        // After impl completion, should trigger inspection
+        expect(inspectionHandler).toHaveBeenCalledWith(specPath, expect.objectContaining({
+          specId: 'test-feature',
+        }));
+      });
+
+      it('should not execute inspection when permission disabled', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const inspectionHandler = vi.fn();
+        const completedHandler = vi.fn();
+
+        coordinator.on('execute-inspection', inspectionHandler);
+        coordinator.on('execution-completed', completedHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: true,
+            inspection: false, // Disabled
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
+        await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
+
+        // Should not trigger inspection
+        expect(inspectionHandler).not.toHaveBeenCalled();
+        // Should complete execution
+        expect(completedHandler).toHaveBeenCalled();
+      });
+    });
+
+    describe('Task 9.2: Auto-execute spec-merge after inspection success', () => {
+      it('should emit execute-spec-merge event after inspection succeeds in worktree mode', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const specMergeHandler = vi.fn();
+
+        coordinator.on('execute-spec-merge', specMergeHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: true,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
+
+        // Simulate inspection completion with GO status
+        // This should trigger spec-merge if in worktree mode
+        await coordinator.handleInspectionCompleted(specPath, 'passed');
+
+        expect(specMergeHandler).toHaveBeenCalledWith(specPath, expect.objectContaining({
+          specId: 'test-feature',
+        }));
+      });
+
+      it('should not execute spec-merge when inspection fails', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const specMergeHandler = vi.fn();
+
+        coordinator.on('execute-spec-merge', specMergeHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: true,
+          },
+          documentReviewFlag: 'skip',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
+
+        // Simulate inspection completion with NOGO status
+        await coordinator.handleInspectionCompleted(specPath, 'failed');
+
+        // Should not trigger spec-merge on inspection failure
+        expect(specMergeHandler).not.toHaveBeenCalled();
       });
     });
   });

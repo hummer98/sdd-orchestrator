@@ -43,7 +43,33 @@ Keep EARS trigger keywords and fixed phrases in English (`When`, `If`, `While`, 
 - **Process/Workflow**: Use responsible team/role (e.g., "Support Team", "Review Process")
 - **Non-Software**: Use appropriate subject (e.g., "Marketing Campaign", "Documentation")
 
+## Criterion ID Format
+
+Every acceptance criterion MUST have a unique identifier for traceability:
+
+- **Format**: `{RequirementNumber}.{CriterionNumber}`
+- **Examples**: `1.1`, `1.2`, `2.1`, `7.3`
+- IDs must be sequential within each requirement
+- IDs are referenced in:
+  - `design.md` (Requirements Traceability table)
+  - `tasks.md` (Requirements mapping and Coverage Matrix)
+
+**Correct Format**:
+```markdown
+#### Acceptance Criteria
+- **1.1** When user clicks login, the Auth Service shall validate credentials
+- **1.2** If credentials are invalid, the Auth Service shall display error message
+```
+
+**Incorrect Format** (missing IDs):
+```markdown
+#### Acceptance Criteria
+1. When user clicks login, the Auth Service shall validate credentials
+2. If credentials are invalid, the Auth Service shall display error message
+```
+
 ## Quality Criteria
 - Requirements must be testable, verifiable, and describe a single behavior.
 - Use objective language: "shall" for mandatory behavior, "should" for recommendations; avoid ambiguous terms.
 - Follow EARS syntax: [condition], the [system] shall [response/action].
+- Every acceptance criterion must have a unique ID in `{Req#}.{Criterion#}` format.

@@ -99,14 +99,27 @@ Skip this section entirely for simple CRUD changes.
 
 ## Requirements Traceability
 
-Use this section for complex or compliance-sensitive features where requirements span multiple domains. Straightforward 1:1 mappings can rely on the Components summary table.
+Map **each acceptance criterion** (not just requirement) to design elements. This ensures no criterion is lost during design-to-implementation transition.
 
-Map each requirement ID (e.g., `2.1`) to the design elements that realize it.
+**CRITICAL RULES**:
+- Map by **criterion ID** (e.g., `7.1`, `7.2`), not requirement number alone
+- Generic references like "全SharedComponents" or "all flows" are **NOT acceptable**
+- Each criterion must have **specific component names** listed
+- Distinguish between "reuse existing" vs "new implementation" in approach
 
-| Requirement | Summary | Components | Interfaces | Flows |
-|-------------|---------|------------|------------|-------|
-| 1.1 | | | | |
-| 1.2 | | | | |
+| Criterion ID | Summary | Components | Implementation Approach |
+|--------------|---------|------------|------------------------|
+| 1.1 | | | |
+| 1.2 | | | |
+| 2.1 | | | |
+
+### Coverage Validation Checklist
+
+**MANDATORY before completing design.md**:
+- [ ] Every criterion ID from requirements.md appears in the table above
+- [ ] Each criterion has specific component names (not generic references)
+- [ ] Implementation approach distinguishes "reuse existing" vs "new implementation"
+- [ ] User-facing criteria specify concrete UI components (not just "shared components")
 
 > Omit this section only when a single component satisfies a single requirement without cross-cutting concerns.
 

@@ -118,14 +118,93 @@ Focus on capabilities and outcomes, not code structure.
 - [ ] 2.1 Sub-task...
 ```
 
+## Task Type Classification
+
+Every task must be classified as one of:
+
+### Infrastructure/Preparation Tasks
+Setting up foundations that don't directly deliver user-facing functionality:
+- "Create shared directory structure"
+- "Extract component to shared/"
+- "Define interface types"
+- "Set up build configuration"
+
+### Feature Implementation Tasks
+Delivering user-facing functionality:
+- "Implement SpecsView displaying spec list with search and filter"
+- "Add Bug detail panel with phase execution buttons"
+- "Create Agent control UI with stop/resume/delete actions"
+
+### Validation Rule
+
+**CRITICAL**: A requirement with user-facing acceptance criteria MUST have at least one Feature Implementation Task, not just Infrastructure Tasks.
+
+**Anti-pattern to detect and reject**:
+```
+Requirement 7: "全機能実装（Electron版と同等）"
+  ↓
+Task 4.2: "Spec関連コンポーネントを共有化する"  ← Infrastructure only!
+  ↓
+MISSING: "SpecsViewを実装しRemote UIにSpec一覧を表示する"  ← Feature task required!
+```
+
+When this pattern is detected:
+1. STOP task generation
+2. Add missing Feature Implementation Tasks
+3. Resume generation
+
+---
+
 ## Requirements Coverage
 
 **Mandatory Check**:
-- ALL requirements from requirements.md MUST be covered
-- Cross-reference every requirement ID with task mappings
+- ALL acceptance criteria from requirements.md MUST be covered
+- Cross-reference every criterion ID (e.g., 7.1, 7.2) with task mappings
 - If gaps found: Return to requirements or design phase
-- No requirement should be left without corresponding tasks
+- No criterion should be left without corresponding tasks
+- User-facing criteria MUST have Feature Implementation tasks (not just Infrastructure)
 
-Use `N.M`-style numeric requirement IDs where `N` is the top-level requirement number from requirements.md (for example, Requirement 1 → 1.1, 1.2; Requirement 2 → 2.1, 2.2), and `M` is a local index within that requirement group.
+Use `N.M`-style numeric criterion IDs where `N` is the top-level requirement number from requirements.md (for example, Requirement 1 → 1.1, 1.2; Requirement 2 → 2.1, 2.2), and `M` is a local index within that requirement group.
 
 Document any intentionally deferred requirements with rationale.
+
+---
+
+## Requirements Coverage Matrix (MANDATORY)
+
+At the **END** of tasks.md, generate a coverage matrix to ensure no criterion is missed:
+
+```markdown
+---
+
+## Appendix: Requirements Coverage Matrix
+
+| Criterion ID | Summary | Task(s) | Task Type |
+|--------------|---------|---------|-----------|
+| 1.1 | Viteビルド設定 | 1.1 | Infrastructure |
+| 1.2 | shared/構造作成 | 1.2 | Infrastructure |
+| 7.1 | Specsタブ機能 | 13.1, 13.2 | Feature |
+| 7.2 | Bugsタブ機能 | 13.5, 13.6 | Feature |
+| 7.3 | Project Agentタブ | 13.7 | Feature |
+
+### Coverage Validation Checklist
+- [ ] Every criterion ID from requirements.md appears above
+- [ ] Tasks are leaf tasks (e.g., 13.1), not container tasks (e.g., 13)
+- [ ] User-facing criteria have at least one Feature task
+- [ ] No criterion is covered only by Infrastructure tasks
+```
+
+### Validation Rules for Coverage Matrix
+
+1. **Completeness**: Every criterion ID from requirements.md MUST appear
+2. **Specificity**: Tasks must be leaf tasks (e.g., `13.1`), not container tasks (e.g., `13`)
+3. **Feature Coverage**: Criteria describing user-facing functionality MUST have Feature Implementation Tasks
+4. **No False Coverage**: Infrastructure tasks alone do NOT satisfy user-facing criteria
+
+### Failure Handling
+
+If any validation rule fails:
+1. DO NOT mark tasks.md as complete
+2. Add missing Feature Implementation tasks
+3. Regenerate Coverage Matrix
+4. Re-run validation

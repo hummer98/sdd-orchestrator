@@ -75,6 +75,30 @@ Conduct review from the following perspectives:
 - All service interfaces in Design have implementation tasks
 - All data types/models in Design have definition tasks
 
+**Acceptance Criteria → Tasks Coverage (CRITICAL CHECK)**:
+
+This check ensures every acceptance criterion has concrete implementation tasks, not just preparation tasks.
+
+1. Extract all criterion IDs from requirements.md (format: X.Y, e.g., 7.1, 7.2)
+2. For each criterion:
+   - Find corresponding task(s) in tasks.md
+   - Classify each task as **Infrastructure** (preparation) or **Feature** (implementation)
+   - Verify user-facing criteria have Feature tasks
+
+**Red Flags to Report as CRITICAL**:
+
+| Pattern | Problem | Example |
+|---------|---------|---------|
+| Criterion → Infrastructure only | Preparation ≠ Implementation | 7.1 → "extract to shared" only |
+| Criterion → Container task | No concrete work defined | 7.1 → "4." without subtasks |
+| Criterion → Generic reference | Unverifiable coverage | 7.1 → "all SharedComponents" |
+| Multiple criteria → Same task | Likely incomplete | 7.1, 7.2, 7.3 → all "Task 4" |
+| Criterion → No task | Complete omission | 7.4 → (not found) |
+
+**Task Type Definitions**:
+- **Infrastructure**: "Create structure", "Extract to shared/", "Define types", "Set up config"
+- **Feature**: "Implement view displaying...", "Add panel with...", "Create UI with..."
+
 **Cross-Document Contradiction Detection**:
 
 - Terminology inconsistencies
@@ -169,7 +193,22 @@ Report file: `spec-manager/specs/$1/document-review-{n}.md`
 | Services | ... | ... | pass/fail |
 | Types/Models | ... | ... | pass/fail |
 
-### 1.4 Cross-Document Contradictions
+### 1.4 Acceptance Criteria → Tasks Coverage
+
+{CRITICAL CHECK: Ensure every criterion has Feature Implementation tasks}
+
+| Criterion | Summary | Mapped Task(s) | Task Type | Status |
+|-----------|---------|----------------|-----------|--------|
+| 1.1 | ... | 1.1 | Infrastructure | pass |
+| 7.1 | ... | 4.2 | Infrastructure | CRITICAL: Feature task missing |
+| 7.2 | ... | 4.3 | Infrastructure | CRITICAL: Feature task missing |
+
+**Validation Results**:
+- [ ] All criterion IDs from requirements.md are mapped
+- [ ] User-facing criteria have Feature Implementation tasks
+- [ ] No criterion relies solely on Infrastructure tasks
+
+### 1.5 Cross-Document Contradictions
 
 {List of contradictions between documents}
 

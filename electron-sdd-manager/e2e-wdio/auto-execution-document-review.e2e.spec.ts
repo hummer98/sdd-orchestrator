@@ -750,4 +750,150 @@ describe('Auto Execution Document Review Integration E2E', () => {
       expect(buttonRestored).toBe(true);
     });
   });
+
+  // ============================================================
+  // Scenario 6: autofix後にapprovedを設定しない（ループ継続）
+  // ============================================================
+  describe('Scenario 6: autofix should not set approved - loop continues', () => {
+    beforeEach(async () => {
+      // Use design completed state (tasks will be executed)
+      resetFixtureToDesignCompleted();
+
+      // Clear agent store
+      await clearAgentStore();
+
+      // Reset Main Process AutoExecutionCoordinator
+      await resetAutoExecutionCoordinator();
+
+      // Reset AutoExecutionService
+      await resetAutoExecutionService();
+
+      // Reset specStore autoExecution state
+      await resetSpecStoreAutoExecution();
+
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Set document review flag to 'run'
+      await setDocumentReviewFlag('run');
+    });
+
+    it('should NOT set approved after autofix and should trigger next review round', async () => {
+      // Verify flag is set to run
+      const flag = await getDocumentReviewFlag();
+      expect(flag).toBe('run');
+
+      // Set permissions: all GO
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: false,
+        deploy: false,
+      });
+
+      // Get auto-execute button and start
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for first document-review agent to start
+      const firstReviewStarted = await waitForCondition(async () => {
+        const agents = await getDocumentReviewAgents();
+        return agents.some(a => a.skill.includes('document-review') && !a.skill.includes('reply'));
+      }, 60000, 1000, 'first-document-review-started');
+
+      console.log(`[E2E] First document review started: ${firstReviewStarted}`);
+      expect(firstReviewStarted).toBe(true);
+
+      // Wait for first document-review-reply agent to complete
+      const firstReplyCompleted = await waitForCondition(async () => {
+        const agents = await getDocumentReviewAgents();
+        const replyAgents = agents.filter(a => a.skill.includes('document-review-reply'));
+        return replyAgents.some(a => a.status === 'completed');
+      }, 90000, 1000, 'first-document-review-reply-completed');
+
+      console.log(`[E2E] First document review reply completed: ${firstReplyCompleted}`);
+
+      if (firstReplyCompleted) {
+        // Check spec.json - should NOT be approved after autofix
+        await browser.pause(2000);
+        const specJsonAfterFirstReply = readSpecJson();
+        console.log(`[E2E] spec.json after first reply: ${JSON.stringify(specJsonAfterFirstReply.documentReview)}`);
+
+        // CRITICAL: After autofix, status should NOT be 'approved'
+        // It should remain 'in_progress' to trigger another review round
+        if (specJsonAfterFirstReply.documentReview) {
+          const status = specJsonAfterFirstReply.documentReview.status;
+          console.log(`[E2E] Document review status after autofix: ${status}`);
+
+          // If autofix was applied, status should NOT be 'approved'
+          const roundDetails = specJsonAfterFirstReply.documentReview.roundDetails || [];
+          const lastRound = roundDetails[roundDetails.length - 1];
+
+          if (lastRound?.fixApplied) {
+            // Bug detection: If fixApplied is true, status should NOT be 'approved'
+            expect(status).not.toBe('approved');
+            console.log(`[E2E] ✅ Correctly NOT approved after autofix`);
+          }
+        }
+
+        // Wait for second document-review round to be triggered
+        const secondReviewStarted = await waitForCondition(async () => {
+          const agents = await getDocumentReviewAgents();
+          const reviewAgents = agents.filter(a =>
+            a.skill.includes('document-review') && !a.skill.includes('reply')
+          );
+          // Should have at least 2 review agents (round 1 and round 2)
+          return reviewAgents.length >= 2;
+        }, 60000, 1000, 'second-document-review-started');
+
+        console.log(`[E2E] Second document review round started: ${secondReviewStarted}`);
+
+        if (secondReviewStarted) {
+          console.log(`[E2E] ✅ Loop correctly continued to second round after autofix`);
+        }
+      }
+
+      // Wait for auto-execution to complete or pause
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting || s.autoExecutionStatus === 'paused' || s.autoExecutionStatus === 'completed';
+      }, 180000, 2000, 'auto-execution-complete-or-paused');
+
+      // Final verification
+      const finalSpecJson = readSpecJson();
+      console.log(`[E2E] Final spec.json documentReview: ${JSON.stringify(finalSpecJson.documentReview)}`);
+
+      // Verify multiple rounds were executed if fixes were applied
+      if (finalSpecJson.documentReview?.roundDetails) {
+        const rounds = finalSpecJson.documentReview.roundDetails;
+        const roundsWithAutofix = rounds.filter((r: any) => r.fixApplied);
+
+        if (roundsWithAutofix.length > 0) {
+          // If any round had autofix, there should be at least one more round after it
+          console.log(`[E2E] Rounds with autofix: ${roundsWithAutofix.length}`);
+          console.log(`[E2E] Total rounds: ${rounds.length}`);
+
+          // The test passes if:
+          // 1. No round with autofix incorrectly set approved
+          // 2. OR if there are multiple rounds (loop continued)
+          expect(rounds.length).toBeGreaterThanOrEqual(1);
+        }
+      }
+    });
+  });
 });

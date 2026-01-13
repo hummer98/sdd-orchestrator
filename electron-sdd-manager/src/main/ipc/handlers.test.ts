@@ -298,6 +298,18 @@ describe('Project Initialization (Task 1.3)', () => {
     expect(result.error).toBeDefined();
     expect(result.error?.type).toBe('PATH_NOT_EXISTS');
   });
+
+  // spec-metadata-ssot-refactor: selectProject should return specJsonMap for phase display
+  it('should include specJsonMap field in SelectProjectResult type', async () => {
+    const { selectProject } = await import('./handlers');
+    // Use /tmp which exists but has no specs - still should have specJsonMap field
+    const result = await selectProject('/tmp');
+
+    // Even for empty project, specJsonMap should be present
+    expect(result).toHaveProperty('specJsonMap');
+    // specJsonMap should be an object (empty or with data)
+    expect(typeof result.specJsonMap).toBe('object');
+  });
 });
 
 describe('Exclusive Control (Task 1.5)', () => {

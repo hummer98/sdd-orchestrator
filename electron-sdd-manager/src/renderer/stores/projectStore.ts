@@ -174,9 +174,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // This ensures specStore and bugStore are updated for components that use them
       if (result.specs) {
         useSpecStore.getState().setSpecs(result.specs);
-        // spec-metadata-ssot-refactor: Load specJsons for phase/updatedAt display
-        // setSpecs only sets specs array, specJsonMap needs to be loaded separately
-        await useSpecStore.getState().loadSpecJsons(path);
+        // spec-metadata-ssot-refactor: Set specJsonMap from selectProject result
+        // Main process already read all specJsons, no need for separate IPC calls
+        useSpecStore.getState().setSpecJsonMap(result.specJsonMap);
       }
       if (result.bugs) {
         useBugStore.getState().setBugs(result.bugs);

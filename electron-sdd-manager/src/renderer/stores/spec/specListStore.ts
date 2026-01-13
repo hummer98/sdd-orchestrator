@@ -80,6 +80,18 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
   },
 
   /**
+   * Set specJsonMap directly from selectProject result
+   * spec-metadata-ssot-refactor: Replaces async loadSpecJsons for initial load
+   * This allows setting specJsonMap synchronously from IPC result
+   */
+  setSpecJsonMap: (specJsonMap: Record<string, SpecJson>) => {
+    // Convert Record to Map
+    const newMap = new Map<string, SpecJson>(Object.entries(specJsonMap));
+    set({ specJsonMap: newMap });
+    console.log(`[specListStore] Set specJsonMap with ${newMap.size} entries`);
+  },
+
+  /**
    * Set sort field
    * Requirement 1.5: Manage sort state (sortBy)
    */

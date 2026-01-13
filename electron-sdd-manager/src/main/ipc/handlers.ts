@@ -259,6 +259,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
       kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
       specs: [],
       bugs: [],
+      specJsonMap: {},
       error: { type: 'SELECTION_IN_PROGRESS' },
     };
   }
@@ -278,6 +279,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
         kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
         specs: [],
         bugs: [],
+        specJsonMap: {},
         error: validationResult.error,
       };
     }
@@ -292,6 +294,21 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
     const specsResult = await fileService.readSpecs(projectPath);
     const specs = specsResult.ok ? specsResult.value : [];
 
+    // spec-metadata-ssot-refactor: Read specJsons for all specs to get phase/updatedAt
+    // This avoids Renderer needing to make separate IPC calls for each spec
+    const specJsonMap: Record<string, import('../../renderer/types').SpecJson> = {};
+    for (const spec of specs) {
+      try {
+        const specJsonResult = await fileService.readSpecJson(spec.path);
+        if (specJsonResult.ok) {
+          specJsonMap[spec.name] = specJsonResult.value;
+        }
+      } catch (error) {
+        // Skip specs with invalid spec.json - they'll use default 'initialized' phase
+        logger.warn('[handlers] Failed to read specJson', { specName: spec.name, error });
+      }
+    }
+
     // Read bugs
     const bugsResult = await bugService.readBugs(projectPath);
     const bugs = bugsResult.ok ? bugsResult.value : [];
@@ -303,6 +320,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
     logger.info('[handlers] selectProject completed successfully', {
       projectPath,
       specsCount: specs.length,
+      specJsonMapCount: Object.keys(specJsonMap).length,
       bugsCount: bugs.length,
       kiroExists: kiroValidation.exists,
     });
@@ -313,6 +331,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
       kiroValidation,
       specs,
       bugs,
+      specJsonMap,
     };
   } catch (error) {
     logger.error('[handlers] selectProject failed', { projectPath, error });
@@ -322,6 +341,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
       kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
       specs: [],
       bugs: [],
+      specJsonMap: {},
       error: {
         type: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'Unknown error',

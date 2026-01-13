@@ -57,6 +57,8 @@ export interface SpecListActions {
   /** spec-metadata-ssot-refactor: Load specJsons for all specs */
   loadSpecJsons(projectPath: string): Promise<void>;
   setSpecs(specs: SpecMetadata[]): void;
+  /** spec-metadata-ssot-refactor: Set specJsonMap directly from selectProject result */
+  setSpecJsonMap(specJsonMap: Record<string, SpecJson>): void;
   setSortBy(sortBy: SpecListState['sortBy']): void;
   setSortOrder(order: SpecListState['sortOrder']): void;
   setStatusFilter(filter: SpecListState['statusFilter']): void;

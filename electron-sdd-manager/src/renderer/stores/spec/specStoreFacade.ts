@@ -8,7 +8,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { SpecMetadata, AutoExecutionStatus } from '../../types';
+import type { SpecMetadata, SpecJson, AutoExecutionStatus } from '../../types';
 import type { WorkflowPhase } from '../../types/workflow';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
@@ -146,6 +146,12 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
 
     setSpecs: (specs: SpecMetadata[]) => {
       useSpecListStore.getState().setSpecs(specs);
+      set(getAggregatedState());
+    },
+
+    /** spec-metadata-ssot-refactor: Set specJsonMap directly from selectProject result */
+    setSpecJsonMap: (specJsonMap: Record<string, SpecJson>) => {
+      useSpecListStore.getState().setSpecJsonMap(specJsonMap);
       set(getAggregatedState());
     },
 

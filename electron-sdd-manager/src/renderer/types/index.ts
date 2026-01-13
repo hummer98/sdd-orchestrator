@@ -193,6 +193,11 @@ export interface SelectProjectResult {
   readonly specs: SpecMetadata[];
   readonly bugs: BugMetadata[];
   readonly error?: SelectProjectError;
+  /**
+   * spec-metadata-ssot-refactor: Map of spec name to SpecJson for phase/updatedAt display
+   * Main process reads all specJsons during selectProject to avoid multiple IPC calls
+   */
+  readonly specJsonMap: Record<string, SpecJson>;
 }
 
 // ============================================================

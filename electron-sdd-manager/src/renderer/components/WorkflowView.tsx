@@ -43,7 +43,8 @@ const MAX_CONTINUE_RETRIES = 2;
 // ============================================================
 
 export function WorkflowView() {
-  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError, refreshSpecs } = useSpecStore();
+  // Bug fix: inspection-auto-execution-toggle - removed refreshSpecs (no longer needed)
+  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
   const workflowStore = useWorkflowStore();
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
@@ -430,21 +431,10 @@ export function WorkflowView() {
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
-  // Handler for changing inspection auto execution flag
-  const handleInspectionAutoExecutionFlagChange = useCallback(async (flag: 'run' | 'pause' | 'skip') => {
-    if (!specDetail) return;
-
-    try {
-      await window.electronAPI.setInspectionAutoExecutionFlag(
-        specDetail.metadata.path,
-        flag
-      );
-      // Refresh specs to update the UI
-      refreshSpecs();
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : '自動実行フラグの変更に失敗しました');
-    }
-  }, [specDetail, refreshSpecs]);
+  // Bug fix: inspection-auto-execution-toggle
+  // Removed handleInspectionAutoExecutionFlagChange
+  // Now using workflowStore.setInspectionAutoExecutionFlag directly
+  // This follows the same pattern as DocumentReviewPanel
 
   // Bug fix: Removed Agent completion detection useEffect
   // File watcher now handles granular UI updates via specStore.onSpecsChanged
@@ -585,18 +575,18 @@ export function WorkflowView() {
 
             {/* Task 4: InspectionPanel (after impl, before deploy) */}
             {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
-            {/* Bug fix: Always show panel, control button enabled state via canExecuteInspection prop */}
+            {/* Bug fix: inspection-auto-execution-toggle - Use workflowStore.setInspectionAutoExecutionFlag */}
             {phase === 'impl' && (
               <div className="my-3">
                 <InspectionPanel
                   inspectionState={inspectionState}
                   isExecuting={isInspectionExecuting}
                   isAutoExecuting={isAutoExecuting}
-                  autoExecutionFlag={workflowStore.autoExecutionPermissions.inspection ? 'run' : 'pause'}
+                  autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
                   canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
                   onStartInspection={handleStartInspection}
                   onExecuteFix={handleExecuteInspectionFix}
-                  onAutoExecutionFlagChange={handleInspectionAutoExecutionFlagChange}
+                  onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
                 />
               </div>
             )}

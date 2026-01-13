@@ -60,12 +60,14 @@ export interface SpecJson {
   worktree?: WorktreeConfig;
 }
 
+/**
+ * SpecMetadata - Spec identification information only (lightweight)
+ * spec-metadata-ssot-refactor: Removed phase, updatedAt, approvals fields
+ * These fields should be obtained from SpecJson (SSOT principle)
+ */
 export interface SpecMetadata {
   readonly name: string;
   readonly path: string;
-  readonly phase: SpecPhase;
-  readonly updatedAt: string;
-  readonly approvals: ApprovalStatus;
 }
 
 export interface SpecDetail {
@@ -231,6 +233,9 @@ export interface ValidationOptions {
 /** ドキュメントレビューフラグ */
 export type DocumentReviewFlag = 'skip' | 'run' | 'pause';
 
+/** Inspection自動実行フラグ */
+export type InspectionAutoExecutionFlag = 'run' | 'pause' | 'skip';
+
 /**
  * Spec単位の自動実行状態
  * spec.jsonのautoExecutionフィールドに永続化される
@@ -244,6 +249,8 @@ export interface SpecAutoExecutionState {
   documentReviewFlag: DocumentReviewFlag;
   /** バリデーションオプション */
   validationOptions: ValidationOptions;
+  /** Inspection自動実行フラグ (Bug fix: inspection-auto-execution-toggle) */
+  inspectionFlag?: InspectionAutoExecutionFlag;
 }
 
 /** デフォルトの自動実行状態 */
@@ -263,6 +270,8 @@ export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
     design: false,
     impl: false,
   },
+  // Bug fix: inspection-auto-execution-toggle - default to 'pause'
+  inspectionFlag: 'pause',
 };
 
 /** Partial型の自動実行状態からフル状態を生成するファクトリー関数 */
@@ -272,6 +281,7 @@ export function createSpecAutoExecutionState(
     permissions: Partial<AutoExecutionPermissions>;
     documentReviewFlag: DocumentReviewFlag;
     validationOptions: Partial<ValidationOptions>;
+    inspectionFlag: InspectionAutoExecutionFlag;
   }>
 ): SpecAutoExecutionState {
   if (!partial) {
@@ -290,6 +300,9 @@ export function createSpecAutoExecutionState(
       ...DEFAULT_SPEC_AUTO_EXECUTION_STATE.validationOptions,
       ...(partial.validationOptions ?? {}),
     },
+    // Bug fix: inspection-auto-execution-toggle
+    inspectionFlag:
+      partial.inspectionFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.inspectionFlag,
   };
 }
 

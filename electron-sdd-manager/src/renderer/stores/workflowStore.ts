@@ -17,6 +17,7 @@ import type { SpecAutoExecutionState } from '../types';
 import type { BugWorkflowPhase } from '../types/bug';
 import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
 import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
+import type { InspectionAutoExecutionFlag } from '../types/inspection';
 
 // ============================================================
 // Bug Fix: auto-execution-settings-not-persisted
@@ -42,11 +43,13 @@ async function persistSettingsToSpec(): Promise<void> {
   const workflowState = useWorkflowStore.getState();
 
   // Build the autoExecution state object
+  // Bug fix: inspection-auto-execution-toggle - include inspectionFlag
   const autoExecutionState: SpecAutoExecutionState = {
     enabled: true, // Enable when user explicitly changes settings
     permissions: { ...workflowState.autoExecutionPermissions },
     documentReviewFlag: workflowState.documentReviewOptions.autoExecutionFlag,
     validationOptions: { ...workflowState.validationOptions },
+    inspectionFlag: workflowState.inspectionAutoExecutionFlag,
   };
 
   try {
@@ -198,6 +201,13 @@ interface WorkflowState {
   // ============================================================
   /** Bug自動実行許可設定（フェーズごと） */
   bugAutoExecutionPermissions: BugAutoExecutionPermissions;
+
+  // ============================================================
+  // Bug fix: inspection-auto-execution-toggle
+  // Inspection auto execution flag (run/pause/skip)
+  // ============================================================
+  /** Inspection自動実行フラグ */
+  inspectionAutoExecutionFlag: InspectionAutoExecutionFlag;
 }
 
 interface WorkflowActions {
@@ -258,6 +268,12 @@ interface WorkflowActions {
   setBugAutoExecutionPermissions: (permissions: BugAutoExecutionPermissions) => void;
   /** Bug自動実行許可設定を取得 */
   getBugAutoExecutionPermissions: () => BugAutoExecutionPermissions;
+
+  // ============================================================
+  // Bug fix: inspection-auto-execution-toggle
+  // ============================================================
+  /** Inspection自動実行フラグを設定 */
+  setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => void;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -292,6 +308,10 @@ export const useWorkflowStore = create<WorkflowStore>()(
 
       // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings - initial state
       bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
+
+      // Bug fix: inspection-auto-execution-toggle - initial state
+      // Default to 'pause' - consistent with documentReviewOptions.autoExecutionFlag
+      inspectionAutoExecutionFlag: 'pause' as InspectionAutoExecutionFlag,
 
       // Task 2.1: Auto Execution Permissions
       // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
@@ -445,6 +465,16 @@ export const useWorkflowStore = create<WorkflowStore>()(
       getBugAutoExecutionPermissions: () => {
         return get().bugAutoExecutionPermissions;
       },
+
+      // ============================================================
+      // Bug fix: inspection-auto-execution-toggle
+      // Set inspection auto execution flag and persist to spec.json
+      // ============================================================
+      setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => {
+        set({ inspectionAutoExecutionFlag: flag });
+        // Persist to spec.json after state update
+        persistSettingsToSpec();
+      },
     }),
     {
       name: 'sdd-manager-workflow-settings',
@@ -455,6 +485,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
         commandPrefix: state.commandPrefix,
         documentReviewOptions: state.documentReviewOptions,
         bugAutoExecutionPermissions: state.bugAutoExecutionPermissions,
+        // Bug fix: inspection-auto-execution-toggle - persist inspectionAutoExecutionFlag
+        inspectionAutoExecutionFlag: state.inspectionAutoExecutionFlag,
       }),
     }
   )

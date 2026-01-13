@@ -2,6 +2,7 @@
  * SpecDetail Component
  * Displays specification details and metadata
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+ * git-worktree-support: Task 12.1, 12.2 - worktree information display (Requirements: 4.1, 4.2)
  */
 
 import { useState } from 'react';
@@ -15,11 +16,14 @@ import {
   ListTodo,
   ChevronDown,
   ChevronRight,
+  GitBranch,
+  FolderGit2,
 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { useSpecStore } from '../stores';
 import { clsx } from 'clsx';
 import type { Phase, ArtifactInfo } from '../types';
+import type { WorktreeConfig } from '../types/worktree';
 
 const PHASE_LABELS = {
   requirements: '要件定義',
@@ -46,7 +50,8 @@ export function SpecDetail() {
     );
   }
 
-  const { metadata, specJson, artifacts, taskProgress } = specDetail;
+  // spec-metadata-ssot-refactor: metadata no longer has phase, use specJson.phase instead
+  const { specJson, artifacts, taskProgress } = specDetail;
 
   // Validate specJson structure to prevent crashes
   if (!specJson || !specJson.feature_name) {
@@ -84,11 +89,12 @@ export function SpecDetail() {
       )}
 
       {/* Metadata */}
+      {/* spec-metadata-ssot-refactor: phase moved from metadata to specJson (SSOT) */}
       <div className="grid grid-cols-2 gap-4">
         <MetadataItem
           icon={<FileText className="w-4 h-4" />}
           label="フェーズ"
-          value={metadata.phase}
+          value={specJson.phase}
         />
         <MetadataItem
           icon={<Globe className="w-4 h-4" />}
@@ -106,6 +112,11 @@ export function SpecDetail() {
           value={formatDate(specJson.updated_at)}
         />
       </div>
+
+      {/* git-worktree-support: Task 12.1, 12.2 - Worktree Information Section */}
+      {specJson.worktree && (
+        <WorktreeSection worktree={specJson.worktree} />
+      )}
 
       {/* Approval Status */}
       <div>
@@ -352,4 +363,64 @@ function formatDate(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/**
+ * WorktreeSection Component
+ * Displays worktree information when spec is in worktree mode
+ * git-worktree-support: Task 12.1, 12.2
+ * Requirements: 4.1, 4.2
+ */
+interface WorktreeSectionProps {
+  worktree: WorktreeConfig;
+}
+
+function WorktreeSection({ worktree }: WorktreeSectionProps) {
+  return (
+    <div
+      data-testid="worktree-section"
+      className={clsx(
+        'p-4 rounded-lg',
+        'bg-violet-50 dark:bg-violet-900/20',
+        'border border-violet-200 dark:border-violet-800'
+      )}
+    >
+      <h3 className="text-lg font-semibold text-violet-700 dark:text-violet-300 mb-3 flex items-center gap-2">
+        <GitBranch className="w-5 h-5" />
+        Worktree モード
+      </h3>
+      <div className="space-y-2">
+        {/* Path */}
+        <div className="flex items-start gap-2 text-sm">
+          <FolderGit2 className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">パス:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono break-all">
+              {worktree.path}
+            </span>
+          </div>
+        </div>
+        {/* Branch */}
+        <div className="flex items-start gap-2 text-sm">
+          <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
+              {worktree.branch}
+            </span>
+          </div>
+        </div>
+        {/* Created At */}
+        <div className="flex items-start gap-2 text-sm">
+          <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300">
+              {formatDate(worktree.created_at)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

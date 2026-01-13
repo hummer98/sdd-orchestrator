@@ -2,6 +2,7 @@
  * SpecDetailView Component
  *
  * Task 13.2: Spec詳細・Phase実行UIを実装する
+ * git-worktree-support: Task 13.2 - worktree information display (Requirements: 4.1, 4.2)
  *
  * Spec詳細表示とPhase実行UI。PhaseItemを使用したワークフロー表示。
  * Phase実行ボタン、自動実行ボタンを提供。
@@ -10,7 +11,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, FileText, AlertCircle } from 'lucide-react';
+import { Play, FileText, AlertCircle, GitBranch, FolderGit2, Calendar } from 'lucide-react';
 import { clsx } from 'clsx';
 import { PhaseItem } from '@shared/components/workflow/PhaseItem';
 import { AutoExecutionStatusDisplay } from '@shared/components/execution/AutoExecutionStatusDisplay';
@@ -353,6 +354,13 @@ export function SpecDetailView({
         </div>
       )}
 
+      {/* git-worktree-support: Task 13.2 - Worktree Information Section */}
+      {specDetail.specJson?.worktree && (
+        <div className="flex-shrink-0 px-4">
+          <WorktreeSection worktree={specDetail.specJson.worktree} />
+        </div>
+      )}
+
       {/* Workflow Phases */}
       <div className="flex-1 p-4 space-y-3">
         {phases.map((phase) => {
@@ -387,3 +395,77 @@ export function SpecDetailView({
 }
 
 export default SpecDetailView;
+
+// =============================================================================
+// WorktreeSection Component
+// git-worktree-support: Task 13.2
+// Requirements: 4.1, 4.2
+// =============================================================================
+
+interface WorktreeSectionProps {
+  worktree: {
+    path: string;
+    branch: string;
+    created_at: string;
+  };
+}
+
+function WorktreeSection({ worktree }: WorktreeSectionProps) {
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div
+      data-testid="worktree-section"
+      className={clsx(
+        'p-4 rounded-lg mb-4',
+        'bg-violet-50 dark:bg-violet-900/20',
+        'border border-violet-200 dark:border-violet-800'
+      )}
+    >
+      <h3 className="text-base font-semibold text-violet-700 dark:text-violet-300 mb-3 flex items-center gap-2">
+        <GitBranch className="w-5 h-5" />
+        Worktree モード
+      </h3>
+      <div className="space-y-2">
+        {/* Path */}
+        <div className="flex items-start gap-2 text-sm">
+          <FolderGit2 className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">パス:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono break-all">
+              {worktree.path}
+            </span>
+          </div>
+        </div>
+        {/* Branch */}
+        <div className="flex items-start gap-2 text-sm">
+          <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
+              {worktree.branch}
+            </span>
+          </div>
+        </div>
+        {/* Created At */}
+        <div className="flex items-start gap-2 text-sm">
+          <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
+            <span className="ml-2 text-gray-700 dark:text-gray-300">
+              {formatDate(worktree.created_at)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

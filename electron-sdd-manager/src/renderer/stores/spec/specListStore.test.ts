@@ -2,53 +2,92 @@
  * SpecListStore Tests
  * TDD: Testing Spec list state management
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8
+ * spec-metadata-ssot-refactor: Updated for SSOT principle - phase/updatedAt from specJsonMap
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSpecListStore } from './specListStore';
-import type { SpecMetadata } from '../../types';
+import type { SpecMetadata, SpecJson } from '../../types';
 
+/**
+ * spec-metadata-ssot-refactor: SpecMetadata now only contains name and path
+ */
 const mockSpecs: SpecMetadata[] = [
   {
     name: 'feature-a',
     path: '/project/.kiro/specs/feature-a',
+  },
+  {
+    name: 'feature-b',
+    path: '/project/.kiro/specs/feature-b',
+  },
+  {
+    name: 'feature-c',
+    path: '/project/.kiro/specs/feature-c',
+  },
+];
+
+/**
+ * spec-metadata-ssot-refactor: SpecJson contains the actual phase/updatedAt data
+ */
+const mockSpecJsons: Record<string, SpecJson> = {
+  'feature-a': {
+    feature_name: 'feature-a',
+    created_at: '2024-01-10T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
+    language: 'ja',
     phase: 'design-generated',
-    updatedAt: '2024-01-15T10:00:00Z',
     approvals: {
       requirements: { generated: true, approved: true },
       design: { generated: true, approved: false },
       tasks: { generated: false, approved: false },
     },
   },
-  {
-    name: 'feature-b',
-    path: '/project/.kiro/specs/feature-b',
+  'feature-b': {
+    feature_name: 'feature-b',
+    created_at: '2024-01-10T10:00:00Z',
+    updated_at: '2024-01-16T10:00:00Z',
+    language: 'ja',
     phase: 'tasks-generated',
-    updatedAt: '2024-01-16T10:00:00Z',
     approvals: {
       requirements: { generated: true, approved: true },
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
   },
-  {
-    name: 'feature-c',
-    path: '/project/.kiro/specs/feature-c',
+  'feature-c': {
+    feature_name: 'feature-c',
+    created_at: '2024-01-10T10:00:00Z',
+    updated_at: '2024-01-14T10:00:00Z',
+    language: 'ja',
     phase: 'initialized',
-    updatedAt: '2024-01-14T10:00:00Z',
     approvals: {
       requirements: { generated: false, approved: false },
       design: { generated: false, approved: false },
       tasks: { generated: false, approved: false },
     },
   },
-];
+};
+
+/**
+ * Build specJsonMap from mockSpecJsons
+ * spec-metadata-ssot-refactor: Helper for tests
+ */
+function buildSpecJsonMap(): Map<string, SpecJson> {
+  const map = new Map<string, SpecJson>();
+  for (const [name, specJson] of Object.entries(mockSpecJsons)) {
+    map.set(name, specJson);
+  }
+  return map;
+}
 
 describe('useSpecListStore', () => {
   beforeEach(() => {
     // Reset store state
+    // spec-metadata-ssot-refactor: Include specJsonMap in initial state
     useSpecListStore.setState({
       specs: [],
+      specJsonMap: new Map(),
       sortBy: 'updatedAt',
       sortOrder: 'desc',
       statusFilter: 'all',
@@ -119,7 +158,8 @@ describe('useSpecListStore', () => {
 
   describe('sorting (Req 1.5)', () => {
     beforeEach(() => {
-      useSpecListStore.setState({ specs: mockSpecs });
+      // spec-metadata-ssot-refactor: Must set both specs and specJsonMap for sorting/filtering
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildSpecJsonMap() });
     });
 
     it('should sort by name ascending', () => {
@@ -145,8 +185,8 @@ describe('useSpecListStore', () => {
       useSpecListStore.getState().setSortOrder('desc');
 
       const sorted = useSpecListStore.getState().getSortedFilteredSpecs();
-      expect(sorted[0].name).toBe('feature-b'); // Most recent
-      expect(sorted[2].name).toBe('feature-c'); // Oldest
+      expect(sorted[0].name).toBe('feature-b'); // Most recent (2024-01-16)
+      expect(sorted[2].name).toBe('feature-c'); // Oldest (2024-01-14)
     });
 
     it('should sort by phase', () => {
@@ -162,7 +202,8 @@ describe('useSpecListStore', () => {
 
   describe('filtering (Req 1.5)', () => {
     beforeEach(() => {
-      useSpecListStore.setState({ specs: mockSpecs });
+      // spec-metadata-ssot-refactor: Must set both specs and specJsonMap for filtering
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildSpecJsonMap() });
     });
 
     it('should filter by phase', () => {
@@ -190,7 +231,8 @@ describe('useSpecListStore', () => {
 
   describe('getSortedFilteredSpecs (Req 1.4)', () => {
     beforeEach(() => {
-      useSpecListStore.setState({ specs: mockSpecs });
+      // spec-metadata-ssot-refactor: Must set both specs and specJsonMap
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildSpecJsonMap() });
     });
 
     it('should apply both sorting and filtering', () => {
@@ -219,18 +261,23 @@ describe('useSpecListStore', () => {
 
   describe('updateSpecMetadata (Req 1.6)', () => {
     it('should refresh single spec metadata in list', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue([
-        { ...mockSpecs[0], phase: 'tasks-generated' },
-        ...mockSpecs.slice(1),
-      ]);
+      // spec-metadata-ssot-refactor: SpecMetadata no longer has phase, mock just returns name/path
+      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
+        ...mockSpecJsons['feature-a'],
+        phase: 'tasks-generated',
+      });
 
-      useSpecListStore.setState({ specs: mockSpecs });
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildSpecJsonMap() });
 
       await useSpecListStore.getState().updateSpecMetadata('feature-a', '/project');
 
       expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
+      expect(window.electronAPI.readSpecJson).toHaveBeenCalled();
       const state = useSpecListStore.getState();
-      expect(state.specs[0].phase).toBe('tasks-generated');
+      // spec-metadata-ssot-refactor: phase is now in specJsonMap, not in specs
+      const specJson = state.specJsonMap.get('feature-a');
+      expect(specJson?.phase).toBe('tasks-generated');
     });
   });
 

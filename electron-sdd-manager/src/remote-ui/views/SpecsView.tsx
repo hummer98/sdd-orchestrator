@@ -2,11 +2,13 @@
  * SpecsView Component
  *
  * Task 13.1: Specsタブの機能UIを実装する
+ * git-worktree-support: Task 13.1 - worktree badge display (Requirements: 4.1)
  *
  * Spec一覧表示コンポーネント。共有specStoreとApiClientを使用。
  * SpecListItemを使用したリスト表示（検索・フィルタリング）。
  *
  * Requirements: 7.1
+ * spec-metadata-ssot-refactor: Build SpecMetadataWithPhase from specJson
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -14,7 +16,8 @@ import { Search, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecListItem } from '@shared/components/spec/SpecListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, SpecMetadata } from '@shared/api/types';
+import type { ApiClient, SpecMetadata, SpecJson, SpecPhase } from '@shared/api/types';
+import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
 
 // =============================================================================
 // Types
@@ -29,6 +32,13 @@ export interface SpecsViewProps {
   onSelectSpec?: (spec: SpecMetadata) => void;
 }
 
+/**
+ * Unknown phase placeholder for specs without valid specJson
+ * spec-metadata-ssot-refactor
+ */
+const UNKNOWN_PHASE: SpecPhase = 'initialized';
+const UNKNOWN_DATE = '1970-01-01T00:00:00.000Z';
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -40,6 +50,8 @@ export function SpecsView({
 }: SpecsViewProps): React.ReactElement {
   // State
   const [specs, setSpecs] = useState<SpecMetadata[]>([]);
+  /** spec-metadata-ssot-refactor: Map from spec name to SpecJson for phase/updatedAt */
+  const [specJsonMap, setSpecJsonMap] = useState<Map<string, SpecJson>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,11 +70,36 @@ export function SpecsView({
 
       if (result.ok) {
         setSpecs(result.value);
+        // spec-metadata-ssot-refactor: Load specJsons for all specs
+        await loadSpecJsons(result.value);
       } else {
         setError(result.error.message);
       }
 
       setIsLoading(false);
+    }
+
+    /**
+     * Load specJsons for all specs
+     * spec-metadata-ssot-refactor: Task 8.1 - Build specJsonMap in Remote UI
+     */
+    async function loadSpecJsons(specList: SpecMetadata[]) {
+      const newMap = new Map<string, SpecJson>();
+
+      for (const spec of specList) {
+        try {
+          const result = await apiClient.getSpecDetail(spec.name);
+          if (result.ok && result.value.specJson) {
+            newMap.set(spec.name, result.value.specJson as SpecJson);
+          }
+        } catch (e) {
+          console.warn(`[SpecsView] Failed to load specJson for ${spec.name}:`, e);
+        }
+      }
+
+      if (isMounted) {
+        setSpecJsonMap(newMap);
+      }
     }
 
     loadSpecs();
@@ -74,8 +111,21 @@ export function SpecsView({
 
   // Subscribe to spec updates
   useEffect(() => {
-    const unsubscribe = apiClient.onSpecsUpdated((updatedSpecs) => {
+    const unsubscribe = apiClient.onSpecsUpdated(async (updatedSpecs) => {
       setSpecs(updatedSpecs);
+      // spec-metadata-ssot-refactor: Also reload specJsons on update
+      const newMap = new Map<string, SpecJson>();
+      for (const spec of updatedSpecs) {
+        try {
+          const result = await apiClient.getSpecDetail(spec.name);
+          if (result.ok && result.value.specJson) {
+            newMap.set(spec.name, result.value.specJson as SpecJson);
+          }
+        } catch (e) {
+          console.warn(`[SpecsView] Failed to load specJson for ${spec.name}:`, e);
+        }
+      }
+      setSpecJsonMap(newMap);
     });
 
     return unsubscribe;
@@ -89,15 +139,31 @@ export function SpecsView({
     [onSelectSpec]
   );
 
-  // Filter specs by search query
+  /**
+   * Convert specs to SpecMetadataWithPhase using specJsonMap
+   * spec-metadata-ssot-refactor: Task 8.2 - Build SpecMetadataWithPhase for display
+   */
+  const specsWithPhase = useMemo((): SpecMetadataWithPhase[] => {
+    return specs.map((spec) => {
+      const specJson = specJsonMap.get(spec.name);
+      return {
+        name: spec.name,
+        path: spec.path,
+        phase: specJson?.phase ?? UNKNOWN_PHASE,
+        updatedAt: specJson?.updated_at ?? UNKNOWN_DATE,
+      };
+    });
+  }, [specs, specJsonMap]);
+
+  // Filter specs by search query (spec-metadata-ssot-refactor: use specsWithPhase)
   const filteredSpecs = useMemo(() => {
     if (!searchQuery.trim()) {
-      return specs;
+      return specsWithPhase;
     }
 
     const query = searchQuery.toLowerCase();
-    return specs.filter((spec) => spec.name.toLowerCase().includes(query));
-  }, [specs, searchQuery]);
+    return specsWithPhase.filter((spec) => spec.name.toLowerCase().includes(query));
+  }, [specsWithPhase, searchQuery]);
 
   // Render loading state
   if (isLoading) {
@@ -180,14 +246,21 @@ export function SpecsView({
           </div>
         ) : (
           <ul data-testid="specs-list" className="divide-y-0">
-            {filteredSpecs.map((spec) => (
-              <SpecListItem
-                key={spec.name}
-                spec={spec}
-                isSelected={selectedSpecId === spec.name}
-                onSelect={() => handleSelectSpec(spec)}
-              />
-            ))}
+            {filteredSpecs.map((spec) => {
+              // git-worktree-support: Task 13.1 - Get worktree info from specJsonMap
+              const specJson = specJsonMap.get(spec.name);
+              const worktree = specJson?.worktree;
+
+              return (
+                <SpecListItem
+                  key={spec.name}
+                  spec={spec}
+                  isSelected={selectedSpecId === spec.name}
+                  onSelect={() => handleSelectSpec(spec)}
+                  worktree={worktree}
+                />
+              );
+            })}
           </ul>
         )}
       </div>

@@ -2,26 +2,36 @@
  * SpecListItem Component
  * Shared spec list item component used by both Electron and Remote UI
  * Requirements: 3.1, 7.1
+ * spec-metadata-ssot-refactor: Updated to use SpecMetadataWithPhase
+ * git-worktree-support: Task 11.1, 11.2 - worktree badge display (Requirements: 4.1, 4.2)
  */
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { Bot, Copy, Check } from 'lucide-react';
-import type { SpecMetadata, SpecPhase } from '@shared/api/types';
+import { Bot, Copy, Check, GitBranch } from 'lucide-react';
+import type { SpecPhase } from '@shared/api/types';
+import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
+import type { WorktreeConfig } from '@renderer/types/worktree';
 
 // =============================================================================
 // Types
 // =============================================================================
 
 export interface SpecListItemProps {
-  /** Spec metadata */
-  spec: SpecMetadata;
+  /** Spec metadata with phase info (spec-metadata-ssot-refactor) */
+  spec: SpecMetadataWithPhase;
   /** Whether this item is selected */
   isSelected: boolean;
   /** Called when the item is selected */
   onSelect: () => void;
   /** Number of running agents for this spec (optional) */
   runningAgentCount?: number;
+  /**
+   * Worktree configuration (optional)
+   * git-worktree-support: Task 11.2 - worktree props
+   * Requirements: 4.1
+   */
+  worktree?: WorktreeConfig;
   /** Additional CSS classes */
   className?: string;
 }
@@ -78,6 +88,7 @@ export function SpecListItem({
   isSelected,
   onSelect,
   runningAgentCount,
+  worktree,
   className,
 }: SpecListItemProps): React.ReactElement {
   const [copied, setCopied] = useState(false);
@@ -161,7 +172,7 @@ export function SpecListItem({
           </button>
         </div>
 
-        {/* Row 2: Phase, agent count, updated date */}
+        {/* Row 2: Phase, worktree badge, agent count, updated date */}
         <div className="flex items-center gap-2">
           <span
             data-testid="phase-badge"
@@ -172,6 +183,18 @@ export function SpecListItem({
           >
             {PHASE_LABELS[spec.phase] ?? spec.phase}
           </span>
+
+          {/* git-worktree-support: Task 11.1 - worktree badge */}
+          {worktree && (
+            <span
+              data-testid="worktree-badge"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+              title={`Path: ${worktree.path}\nBranch: ${worktree.branch}`}
+            >
+              <GitBranch className="w-3 h-3" />
+              worktree
+            </span>
+          )}
 
           {runningAgentCount !== undefined && runningAgentCount > 0 && (
             <span

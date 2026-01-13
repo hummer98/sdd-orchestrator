@@ -3,6 +3,7 @@
  * Facade that combines all decomposed spec stores and services
  * Maintains backward compatibility with existing useSpecStore interface
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
+ * spec-metadata-ssot-refactor: Updated to expose specJsonMap
  */
 
 import { create } from 'zustand';
@@ -32,6 +33,7 @@ let isInitialized = false;
 
 /**
  * Get aggregated state from all child stores
+ * spec-metadata-ssot-refactor: Added specJsonMap to aggregated state
  */
 function getAggregatedState(): SpecStoreState {
   const listState = useSpecListStore.getState();
@@ -42,6 +44,7 @@ function getAggregatedState(): SpecStoreState {
   return {
     // SpecListStore state
     specs: listState.specs,
+    specJsonMap: listState.specJsonMap,  // spec-metadata-ssot-refactor
     sortBy: listState.sortBy,
     sortOrder: listState.sortOrder,
     statusFilter: listState.statusFilter,
@@ -143,6 +146,12 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
 
     setSpecs: (specs: SpecMetadata[]) => {
       useSpecListStore.getState().setSpecs(specs);
+      set(getAggregatedState());
+    },
+
+    /** spec-metadata-ssot-refactor: Load specJsons for all specs */
+    loadSpecJsons: async (projectPath: string) => {
+      await useSpecListStore.getState().loadSpecJsons(projectPath);
       set(getAggregatedState());
     },
 

@@ -32,6 +32,9 @@ describe('Spec Store Types', () => {
   describe('SpecListState', () => {
     it('should have default state with correct initial values', () => {
       expect(DEFAULT_SPEC_LIST_STATE.specs).toEqual([]);
+      // spec-metadata-ssot-refactor: specJsonMap should be an empty Map
+      expect(DEFAULT_SPEC_LIST_STATE.specJsonMap).toBeInstanceOf(Map);
+      expect(DEFAULT_SPEC_LIST_STATE.specJsonMap.size).toBe(0);
       expect(DEFAULT_SPEC_LIST_STATE.sortBy).toBe('updatedAt');
       expect(DEFAULT_SPEC_LIST_STATE.sortOrder).toBe('desc');
       expect(DEFAULT_SPEC_LIST_STATE.statusFilter).toBe('all');

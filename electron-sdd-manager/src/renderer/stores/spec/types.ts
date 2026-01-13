@@ -8,11 +8,25 @@ import type {
   SpecMetadata,
   SpecDetail,
   SpecPhase,
+  SpecJson,
   ArtifactInfo,
   TaskProgress,
   AutoExecutionStatus,
 } from '../../types';
 import type { WorkflowPhase } from '../../types/workflow';
+
+// ============================================================
+// spec-metadata-ssot-refactor: Extended type for display with phase info
+// ============================================================
+
+/**
+ * Extended SpecMetadata with phase info for display
+ * spec-metadata-ssot-refactor: SpecListItem needs phase/updatedAt for display
+ */
+export interface SpecMetadataWithPhase extends SpecMetadata {
+  readonly phase: SpecPhase;
+  readonly updatedAt: string;
+}
 
 // ============================================================
 // Artifact Type
@@ -28,6 +42,8 @@ export type ArtifactType = 'requirements' | 'design' | 'tasks' | 'research';
 /** SpecListStore state interface */
 export interface SpecListState {
   readonly specs: readonly SpecMetadata[];
+  /** spec-metadata-ssot-refactor: Map from spec name to SpecJson for phase/updatedAt access */
+  readonly specJsonMap: ReadonlyMap<string, SpecJson>;
   readonly sortBy: 'name' | 'updatedAt' | 'phase';
   readonly sortOrder: 'asc' | 'desc';
   readonly statusFilter: SpecPhase | 'all';
@@ -38,17 +54,21 @@ export interface SpecListState {
 /** SpecListStore actions interface */
 export interface SpecListActions {
   loadSpecs(projectPath: string): Promise<void>;
+  /** spec-metadata-ssot-refactor: Load specJsons for all specs */
+  loadSpecJsons(projectPath: string): Promise<void>;
   setSpecs(specs: SpecMetadata[]): void;
   setSortBy(sortBy: SpecListState['sortBy']): void;
   setSortOrder(order: SpecListState['sortOrder']): void;
   setStatusFilter(filter: SpecListState['statusFilter']): void;
-  getSortedFilteredSpecs(): SpecMetadata[];
+  /** spec-metadata-ssot-refactor: Returns SpecMetadataWithPhase for display */
+  getSortedFilteredSpecs(): SpecMetadataWithPhase[];
   updateSpecMetadata(specId: string, projectPath: string): Promise<void>;
 }
 
 /** Default SpecListState values */
 export const DEFAULT_SPEC_LIST_STATE: SpecListState = {
   specs: [],
+  specJsonMap: new Map(),
   sortBy: 'updatedAt',
   sortOrder: 'desc',
   statusFilter: 'all',

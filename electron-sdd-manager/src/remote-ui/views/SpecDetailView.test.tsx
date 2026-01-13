@@ -25,11 +25,10 @@ const mockSpec: SpecMetadata = {
 };
 
 const mockSpecDetail: SpecDetail = {
-  name: 'user-authentication',
-  path: '/project/.kiro/specs/user-authentication',
-  phase: 'tasks-generated',
-  updatedAt: '2026-01-10T10:00:00Z',
-  createdAt: '2026-01-09T08:00:00Z',
+  metadata: {
+    name: 'user-authentication',
+    path: '/project/.kiro/specs/user-authentication',
+  },
   specJson: {
     feature_name: 'user-authentication',
     created_at: '2026-01-09T08:00:00Z',
@@ -48,7 +47,7 @@ const mockSpecDetail: SpecDetail = {
         design: true,
         tasks: true,
         impl: false,
-        inspection: 'skip',
+        inspection: false,
         deploy: false,
       },
       documentReviewFlag: 'run',
@@ -60,10 +59,28 @@ const mockSpecDetail: SpecDetail = {
     },
   },
   artifacts: {
-    requirements: 'Requirements content...',
-    design: 'Design content...',
-    tasks: 'Tasks content...',
+    requirements: { exists: true, updatedAt: '2026-01-09T08:00:00Z', content: 'Requirements content...' },
+    design: { exists: true, updatedAt: '2026-01-09T10:00:00Z', content: 'Design content...' },
+    tasks: { exists: true, updatedAt: '2026-01-10T08:00:00Z', content: 'Tasks content...' },
     research: null,
+    inspection: null,
+  },
+  taskProgress: { total: 10, completed: 5, percentage: 50 },
+};
+
+/**
+ * Mock spec detail with worktree config
+ * git-worktree-support: Task 13.2
+ */
+const mockSpecDetailWithWorktree: SpecDetail = {
+  ...mockSpecDetail,
+  specJson: {
+    ...mockSpecDetail.specJson,
+    worktree: {
+      path: '../my-project-worktrees/user-authentication',
+      branch: 'feature/user-authentication',
+      created_at: '2026-01-10T09:00:00Z',
+    },
   },
 };
 
@@ -276,6 +293,80 @@ describe('SpecDetailView', () => {
           expect(onApprovalUpdated).toHaveBeenCalledWith('tasks', true);
         });
       }
+    });
+  });
+
+  /**
+   * git-worktree-support: Task 13.2
+   * Worktree information section tests in Remote UI
+   * Requirements: 4.1, 4.2
+   */
+  describe('Worktree Information', () => {
+    it('shows worktree section when spec has worktree config', async () => {
+      const apiClientWithWorktree = createMockApiClient({
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetailWithWorktree }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithWorktree} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('worktree-section')).toBeInTheDocument();
+    });
+
+    it('does not show worktree section when spec has no worktree config', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('worktree-section')).not.toBeInTheDocument();
+    });
+
+    it('displays worktree path in worktree section', async () => {
+      const apiClientWithWorktree = createMockApiClient({
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetailWithWorktree }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithWorktree} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('worktree-section')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('../my-project-worktrees/user-authentication')).toBeInTheDocument();
+    });
+
+    it('displays branch name in worktree section', async () => {
+      const apiClientWithWorktree = createMockApiClient({
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetailWithWorktree }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithWorktree} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('worktree-section')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('feature/user-authentication')).toBeInTheDocument();
+    });
+
+    it('shows GitBranch icon in worktree section', async () => {
+      const apiClientWithWorktree = createMockApiClient({
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetailWithWorktree }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithWorktree} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('worktree-section')).toBeInTheDocument();
+      });
+
+      const worktreeSection = screen.getByTestId('worktree-section');
+      expect(worktreeSection.querySelector('svg')).toBeInTheDocument();
     });
   });
 });

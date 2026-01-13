@@ -65,6 +65,8 @@ describe('SpecList - Task 33.1', () => {
       setSortOrder: mockSetSortOrder,
       setStatusFilter: mockSetStatusFilter,
       getSortedFilteredSpecs: mockGetSortedFilteredSpecs.mockReturnValue([baseSpec]),
+      // git-worktree-support: Task 11.2 - Add specJsonMap to mock
+      specJsonMap: new Map(),
     });
 
     mockUseAgentStore.mockReturnValue({
@@ -160,6 +162,8 @@ describe('SpecList - Task 33.1', () => {
         setSortOrder: mockSetSortOrder,
         setStatusFilter: mockSetStatusFilter,
         getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+        // git-worktree-support: Task 11.2 - Add specJsonMap to mock
+        specJsonMap: new Map(),
       });
 
       render(<SpecList />);
@@ -192,6 +196,8 @@ describe('SpecList - Task 33.1', () => {
         setSortOrder: mockSetSortOrder,
         setStatusFilter: mockSetStatusFilter,
         getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+        // git-worktree-support: Task 11.2 - Add specJsonMap to mock
+        specJsonMap: new Map(),
       });
 
       render(<SpecList />);

@@ -3,14 +3,18 @@
  * Displays list of specifications with sorting and filtering
  * Task 33.1: Added running agent count display
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+ * spec-metadata-ssot-refactor: Updated to use SpecMetadataWithPhase
+ * git-worktree-support: Task 11.2 - Pass worktree info from specJsonMap (Requirements: 4.1)
  */
 
-import { Filter, Loader2, Bot, Copy, Check } from 'lucide-react';
+import { Filter, Loader2, Bot, Copy, Check, GitBranch } from 'lucide-react';
 import { useState } from 'react';
 import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
-import type { SpecMetadata, SpecPhase } from '../types';
+import type { SpecPhase } from '../types';
+import type { WorktreeConfig } from '../types/worktree';
+import type { SpecMetadataWithPhase } from '../stores/spec/types';
 
 /**
  * Phase labels for SpecList display
@@ -49,6 +53,7 @@ export function SpecList() {
     selectSpec,
     setStatusFilter,
     getSortedFilteredSpecs,
+    specJsonMap,
   } = useSpecStore();
 
   // Task 33.1: Get agent store for running agent counts
@@ -107,6 +112,10 @@ export function SpecList() {
                 (a) => a.status === 'running'
               ).length;
 
+              // git-worktree-support: Task 11.2 - Get worktree info from specJsonMap
+              const specJson = specJsonMap.get(spec.name);
+              const worktree = specJson?.worktree;
+
               return (
                 <SpecListItem
                   key={spec.name}
@@ -114,6 +123,7 @@ export function SpecList() {
                   isSelected={selectedSpec?.name === spec.name}
                   onSelect={() => selectSpec(spec)}
                   runningAgentCount={runningAgentCount}
+                  worktree={worktree}
                 />
               );
             })}
@@ -125,13 +135,16 @@ export function SpecList() {
 }
 
 interface SpecListItemProps {
-  spec: SpecMetadata;
+  /** spec-metadata-ssot-refactor: Updated to use SpecMetadataWithPhase */
+  spec: SpecMetadataWithPhase;
   isSelected: boolean;
   onSelect: () => void;
   runningAgentCount: number;
+  /** git-worktree-support: Task 11.2 - worktree config (Requirements: 4.1) */
+  worktree?: WorktreeConfig;
 }
 
-function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecListItemProps) {
+function SpecListItem({ spec, isSelected, onSelect, runningAgentCount, worktree }: SpecListItemProps) {
   const [copied, setCopied] = useState(false);
   const updatedDate = new Date(spec.updatedAt);
   const now = new Date();
@@ -204,7 +217,7 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           </button>
         </div>
 
-        {/* 2行目: フェーズ、エージェント数、更新日時 */}
+        {/* 2行目: フェーズ、worktreeバッジ、エージェント数、更新日時 */}
         <div className="flex items-center gap-2">
           <span
             className={clsx(
@@ -214,6 +227,17 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount }: SpecLis
           >
             {PHASE_LABELS[spec.phase] ?? spec.phase}
           </span>
+          {/* git-worktree-support: Task 11.1 - worktree badge */}
+          {worktree && (
+            <span
+              data-testid={`worktree-badge-${spec.name}`}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+              title={`Path: ${worktree.path}\nBranch: ${worktree.branch}`}
+            >
+              <GitBranch className="w-3 h-3" />
+              worktree
+            </span>
+          )}
           {runningAgentCount > 0 && (
             <span
               data-testid={`agent-count-${spec.name}`}

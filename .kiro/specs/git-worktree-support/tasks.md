@@ -122,3 +122,34 @@
   - spec-merge実行からworktree削除までのフロー
   - Agent一覧でのworktree識別表示
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 7.1, 7.2, 7.3, 7.6, 7.7, 7.8_
+
+## Task 11. Spec一覧でのworktree状態表示
+- [x] 11.1 (P) SpecListItemにworktreeバッジを追加
+  - spec.jsonのworktreeフィールド有無を判定
+  - worktreeモード時にGitBranchアイコン+「worktree」バッジを表示
+  - ホバー時にworktreeパスとブランチ名をツールチップ表示
+  - _Requirements: 4.1, 4.2_
+- [x] 11.2 SpecListItemコンポーネントにworktree propsを追加
+  - SpecListItemPropsにworktree?: WorktreeConfigを追加
+  - 親コンポーネント（SpecList）からworktree情報を受け渡し
+  - _Requirements: 4.1_
+
+## Task 12. Spec詳細画面でのworktree情報表示
+- [x] 12.1 (P) SpecDetailにworktree情報セクションを追加
+  - worktreeフィールド存在時のみ表示
+  - 表示項目: パス、ブランチ名、作成日時
+  - GitBranchアイコンを使用した視覚的な識別
+  - _Requirements: 4.1, 4.2_
+- [x] 12.2 worktree情報のフォーマット処理
+  - 相対パスと絶対パスの両方を表示
+  - 作成日時を人間が読みやすい形式に変換
+  - _Requirements: 4.2_
+
+## Task 13. Remote UIでのworktree表示
+- [x] 13.1 (P) SpecsView（Remote UI）にworktreeバッジを追加
+  - specJsonMapからworktree情報を取得
+  - Spec一覧にworktreeモードバッジを表示
+  - _Requirements: 4.1_
+- [x] 13.2 SpecDetailView（Remote UI）にworktree情報を追加
+  - Electronレンダラー版と同等のworktree情報セクション
+  - _Requirements: 4.1, 4.2_

@@ -111,6 +111,8 @@ Electronアプリの操作には`task`コマンドを使用する。
 | `task electron:status`  | 状態確認                                   |
 | `task electron:logs`    | ログ表示（tail -f）                        |
 
+**プロジェクト選択済みで起動**: `task electron:start PROJECT=/path/to/project`
+
 ### その他
 
 | コマンド                 | 説明                   |

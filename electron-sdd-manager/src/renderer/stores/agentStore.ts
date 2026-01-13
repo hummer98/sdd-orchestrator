@@ -47,7 +47,7 @@ interface AgentActions {
     phase: string,
     command: string,
     args: string[],
-    group?: 'doc' | 'validate' | 'impl',
+    group?: 'doc' | 'impl',
     sessionId?: string
   ) => Promise<string | null>;
   stopAgent: (agentId: string) => Promise<void>;
@@ -190,7 +190,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     phase: string,
     command: string,
     args: string[],
-    group?: 'doc' | 'validate' | 'impl',
+    group?: 'doc' | 'impl',
     sessionId?: string
   ): Promise<string | null> => {
     try {

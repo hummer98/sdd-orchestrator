@@ -371,60 +371,6 @@ describe('SpecManagerService', () => {
 
   // Task 24.6: 実行グループ排他制御
   describe('execution group exclusion', () => {
-    it('should block impl when validate is running', async () => {
-      // Start a validate agent
-      const validateResult = await service.startAgent({
-        specId: 'spec-a',
-        phase: 'validate-gap',
-        command: 'sleep',
-        args: ['10'],
-        group: 'validate',
-      });
-
-      expect(validateResult.ok).toBe(true);
-
-      // Try to start an impl agent
-      const implResult = await service.startAgent({
-        specId: 'spec-a',
-        phase: 'impl-task-1',
-        command: 'echo',
-        args: ['test'],
-        group: 'impl',
-      });
-
-      expect(implResult.ok).toBe(false);
-      if (!implResult.ok) {
-        expect(implResult.error.type).toBe('GROUP_CONFLICT');
-      }
-    });
-
-    it('should block validate when impl is running', async () => {
-      // Start an impl agent
-      const implResult = await service.startAgent({
-        specId: 'spec-a',
-        phase: 'impl-task-1',
-        command: 'sleep',
-        args: ['10'],
-        group: 'impl',
-      });
-
-      expect(implResult.ok).toBe(true);
-
-      // Try to start a validate agent
-      const validateResult = await service.startAgent({
-        specId: 'spec-a',
-        phase: 'validate-gap',
-        command: 'echo',
-        args: ['test'],
-        group: 'validate',
-      });
-
-      expect(validateResult.ok).toBe(false);
-      if (!validateResult.ok) {
-        expect(validateResult.error.type).toBe('GROUP_CONFLICT');
-      }
-    });
-
     it('should allow parallel agents within same group', async () => {
       // Start first impl agent
       const impl1Result = await service.startAgent({
@@ -547,45 +493,6 @@ describe('SpecManagerService', () => {
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           args: expect.arrayContaining(['/kiro:spec-inspection my-feature']),
-        })
-      );
-
-      startAgentSpy.mockRestore();
-    });
-  });
-
-  describe('executeValidation', () => {
-    it('should build command with --output-format stream-json', async () => {
-      const startAgentSpy = vi.spyOn(service, 'startAgent');
-
-      await service.executeValidation({
-        specId: 'test-spec',
-        type: 'impl',
-        featureName: 'my-feature',
-      });
-
-      expect(startAgentSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          command: 'claude',
-          args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
-        })
-      );
-
-      startAgentSpy.mockRestore();
-    });
-
-    it('should include correct slash command in args', async () => {
-      const startAgentSpy = vi.spyOn(service, 'startAgent');
-
-      await service.executeValidation({
-        specId: 'test-spec',
-        type: 'gap',
-        featureName: 'my-feature',
-      });
-
-      expect(startAgentSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          args: expect.arrayContaining(['--verbose', '/kiro:validate-gap my-feature']),
         })
       );
 

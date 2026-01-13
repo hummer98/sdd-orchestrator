@@ -21,7 +21,6 @@ export { AgentInputPanel } from './AgentInputPanel';
 // SDD Hybrid Workflow Components
 export { WorkflowView } from './WorkflowView';
 export { PhaseItem } from './PhaseItem';
-export { ValidateOption } from './ValidateOption';
 export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
 // CLI Install

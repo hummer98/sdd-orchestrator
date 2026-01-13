@@ -7,7 +7,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, SelectProjectResult } from '../renderer/types';
-import type { ExecutionGroup, WorkflowPhase, ValidationType } from '../main/services/specManagerService';
+import type { ExecutionGroup, WorkflowPhase } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
@@ -127,9 +127,6 @@ const electronAPI = {
   // These delegate command building to the service layer
   executePhase: (specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName, commandPrefix),
-
-  executeValidation: (specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_VALIDATION, specId, type, featureName, commandPrefix),
 
   executeSpecStatus: (specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName, commandPrefix),

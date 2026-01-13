@@ -135,12 +135,6 @@ export type WorkflowResult<T> =
 export type BugAction = 'analyze' | 'fix' | 'verify';
 
 /**
- * Validation type for validation workflow
- * Requirements: 6.3 (internal-webserver-sync Task 2.2)
- */
-export type ValidationType = 'gap' | 'design';
-
-/**
  * Auto Execution Options for Remote UI
  * Requirements: 5.1, 5.2, 5.3 (auto-execution-main-process)
  */
@@ -152,11 +146,6 @@ export interface AutoExecutionOptionsWS {
     readonly impl: boolean;
   };
   readonly documentReviewFlag: 'run' | 'pause' | 'skip';
-  readonly validationOptions: {
-    readonly gap: boolean;
-    readonly design: boolean;
-    readonly impl: boolean;
-  };
 }
 
 /**
@@ -191,8 +180,6 @@ export interface WorkflowController {
   // New methods for internal-webserver-sync feature
   /** Execute a bug workflow phase (analyze/fix/verify) */
   executeBugPhase?(bugName: string, phase: BugAction): Promise<WorkflowResult<AgentInfo>>;
-  /** Execute validation (gap/design) */
-  executeValidation?(specId: string, type: ValidationType): Promise<WorkflowResult<AgentInfo>>;
   /** Execute document review */
   executeDocumentReview?(specId: string): Promise<WorkflowResult<AgentInfo>>;
 
@@ -579,9 +566,6 @@ export class WebSocketHandler {
         break;
       case 'EXECUTE_BUG_PHASE':
         await this.handleExecuteBugPhase(client, message);
-        break;
-      case 'EXECUTE_VALIDATION':
-        await this.handleExecuteValidation(client, message);
         break;
       case 'EXECUTE_DOCUMENT_REVIEW':
         await this.handleExecuteDocumentReview(client, message);
@@ -1299,71 +1283,6 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Bug phase execution failed',
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    }
-  }
-
-  /**
-   * Handle EXECUTE_VALIDATION message
-   * Requirements: 6.3 (internal-webserver-sync Task 3.2)
-   */
-  private async handleExecuteValidation(client: ClientInfo, message: WebSocketMessage): Promise<void> {
-    if (!this.workflowController) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    if (!this.workflowController.executeValidation) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Validation execution not supported' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const payload = message.payload || {};
-    const specId = payload.specId as string;
-    const type = payload.type as ValidationType;
-
-    if (!specId || !type) {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or type' },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const result = await this.workflowController.executeValidation(specId, type);
-
-    if (result.ok) {
-      this.send(client.id, {
-        type: 'VALIDATION_STARTED',
-        payload: {
-          specId,
-          type,
-          agentId: result.value.agentId,
-        },
-        requestId: message.requestId,
-        timestamp: Date.now(),
-      });
-    } else {
-      this.send(client.id, {
-        type: 'ERROR',
-        payload: {
-          code: result.error.type,
-          message: result.error.message || 'Validation execution failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

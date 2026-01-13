@@ -17,11 +17,6 @@ describe('useWorkflowStore', () => {
     // as part of spec-scoped-auto-execution-state Task 5.1 migration
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
-      validationOptions: {
-        gap: false,
-        design: false,
-        impl: false,
-      },
       lastFailedPhase: null,
       failedRetryCount: 0,
       executionSummary: null,
@@ -128,44 +123,6 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // Task 2.2: Validation Options
-  // Requirements: 4.1, 4.2, 4.3
-  // ============================================================
-  describe('Task 2.2: Validation options', () => {
-    describe('initial state', () => {
-      it('should have all validation options disabled by default', () => {
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.gap).toBe(false);
-        expect(state.validationOptions.design).toBe(false);
-      });
-    });
-
-    describe('toggleValidationOption', () => {
-      it('should toggle gap validation option', () => {
-        useWorkflowStore.getState().toggleValidationOption('gap');
-
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.gap).toBe(true);
-      });
-
-      it('should toggle design validation option', () => {
-        useWorkflowStore.getState().toggleValidationOption('design');
-
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.design).toBe(true);
-      });
-
-      it('should toggle option back to false', () => {
-        useWorkflowStore.getState().toggleValidationOption('gap');
-        useWorkflowStore.getState().toggleValidationOption('gap');
-
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.gap).toBe(false);
-      });
-    });
-  });
-
-  // ============================================================
   // Task 2.3: Auto Execution State (DEPRECATED)
   // Note: isAutoExecuting, currentAutoPhase, autoExecutionStatus have been
   // migrated to spec.json as part of spec-scoped-auto-execution-state feature.
@@ -195,23 +152,6 @@ describe('useWorkflowStore', () => {
 
         const state = useWorkflowStore.getState();
         expect(state.autoExecutionPermissions).toEqual(DEFAULT_AUTO_EXECUTION_PERMISSIONS);
-      });
-
-      it('should reset validation options to disabled', () => {
-        useWorkflowStore.setState({
-          validationOptions: {
-            gap: true,
-            design: true,
-            impl: true,
-          },
-        });
-
-        useWorkflowStore.getState().resetSettings();
-
-        const state = useWorkflowStore.getState();
-        expect(state.validationOptions.gap).toBe(false);
-        expect(state.validationOptions.design).toBe(false);
-        expect(state.validationOptions.impl).toBe(false);
       });
 
       it('should reset failed state', () => {
@@ -378,7 +318,6 @@ describe('useWorkflowStore', () => {
 
       const partialState = {
         autoExecutionPermissions: useWorkflowStore.getState().autoExecutionPermissions,
-        validationOptions: useWorkflowStore.getState().validationOptions,
       };
 
       expect(partialState).not.toHaveProperty('lastFailedPhase');
@@ -389,7 +328,6 @@ describe('useWorkflowStore', () => {
 
       const partialState = {
         autoExecutionPermissions: useWorkflowStore.getState().autoExecutionPermissions,
-        validationOptions: useWorkflowStore.getState().validationOptions,
       };
 
       expect(partialState).not.toHaveProperty('failedRetryCount');
@@ -399,12 +337,6 @@ describe('useWorkflowStore', () => {
       const permissions = useWorkflowStore.getState().autoExecutionPermissions;
       expect(permissions).toBeDefined();
       expect(permissions.requirements).toBe(true);
-    });
-
-    it('should persist validationOptions', () => {
-      const options = useWorkflowStore.getState().validationOptions;
-      expect(options).toBeDefined();
-      expect(options.gap).toBe(false);
     });
   });
 

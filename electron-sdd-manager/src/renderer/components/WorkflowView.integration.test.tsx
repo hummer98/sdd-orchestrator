@@ -132,42 +132,6 @@ describe('WorkflowView Integration', () => {
       });
     });
 
-    it('should call executeValidation for validation commands', async () => {
-      const mockAgent = {
-        agentId: 'agent-1',
-        specId: 'test-feature',
-        phase: 'validate-gap',
-        pid: 12345,
-        sessionId: 'session-1',
-        status: 'running' as const,
-        startedAt: new Date().toISOString(),
-        lastActivityAt: new Date().toISOString(),
-        command: 'claude',
-      };
-      const mockExecuteValidation = vi.fn().mockResolvedValue(mockAgent);
-      window.electronAPI.executeValidation = mockExecuteValidation;
-
-      render(<WorkflowView />);
-
-      // Find validate-gap section and its execute button
-      // ValidateOption renders a button with "実行" text inside the option div
-      const validateOptions = screen.getAllByTestId('validate-option');
-      // The first validate option is validate-gap
-      const gapOption = validateOptions[0];
-      // Get all buttons within this option and find the one that's not the info button
-      const allButtonsInOption = gapOption.querySelectorAll('button');
-      const executeButton = Array.from(allButtonsInOption).find(
-        (btn) => btn.textContent?.includes('実行') && !btn.hasAttribute('disabled')
-      );
-      if (executeButton) {
-        fireEvent.click(executeButton);
-      }
-
-      await waitFor(() => {
-        expect(mockExecuteValidation).toHaveBeenCalled();
-      });
-    });
-
     it('should call executeSpecStatus for spec-status command', async () => {
       const mockAgent = {
         agentId: 'agent-1',

@@ -9,7 +9,6 @@ import {
   WORKFLOW_PHASES,
   ALL_WORKFLOW_PHASES,
   PHASE_LABELS,
-  VALIDATION_COMMANDS,
   getPhaseStatus,
 } from './workflow';
 import type { ExtendedSpecJson } from './workflow';
@@ -75,12 +74,6 @@ describe('Workflow Types', () => {
       });
     });
 
-    describe('ValidationType', () => {
-      it('should have validation commands for gap and design', () => {
-        expect(VALIDATION_COMMANDS.gap).toBe('/kiro:validate-gap');
-        expect(VALIDATION_COMMANDS.design).toBe('/kiro:validate-design');
-      });
-    });
   });
 
   // ============================================================
@@ -274,13 +267,6 @@ describe('Workflow Types', () => {
       it('should have documentReviewFlag set to pause by default', () => {
         expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag).toBe('pause');
       });
-
-      it('should have all validation options set to false by default', () => {
-        const { validationOptions } = DEFAULT_SPEC_AUTO_EXECUTION_STATE;
-        expect(validationOptions.gap).toBe(false);
-        expect(validationOptions.design).toBe(false);
-        expect(validationOptions.impl).toBe(false);
-      });
     });
 
     describe('createSpecAutoExecutionState', () => {
@@ -317,17 +303,6 @@ describe('Workflow Types', () => {
         });
         expect(state.documentReviewFlag).toBe('pause');
       });
-
-      it('should allow partial override of validationOptions', () => {
-        const state = createSpecAutoExecutionState({
-          validationOptions: {
-            gap: true,
-          },
-        });
-        expect(state.validationOptions.gap).toBe(true);
-        expect(state.validationOptions.design).toBe(false);
-        expect(state.validationOptions.impl).toBe(false);
-      });
     });
 
     describe('SpecAutoExecutionState type structure', () => {
@@ -343,11 +318,6 @@ describe('Workflow Types', () => {
             deploy: false,
           },
           documentReviewFlag: 'run',
-          validationOptions: {
-            gap: true,
-            design: false,
-            impl: false,
-          },
         };
 
         // Type checking - if this compiles, the types are correct
@@ -388,11 +358,6 @@ describe('Workflow Types', () => {
             deploy: false,
           },
           documentReviewFlag: 'run' as const,
-          validationOptions: {
-            gap: false,
-            design: false,
-            impl: false,
-          },
         },
       };
 

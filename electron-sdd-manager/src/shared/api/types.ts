@@ -20,7 +20,6 @@ import type {
   LogEntry,
   AutoExecutionPermissions,
   DocumentReviewFlag,
-  ValidationOptions,
   AutoExecutionStatus,
   SpecAutoExecutionState,
 } from '@renderer/types';
@@ -75,10 +74,6 @@ export type WorkflowPhase =
   | 'inspection'
   | 'deploy';
 
-/**
- * Validation types for validate-* commands
- */
-export type ValidationType = 'gap' | 'design' | 'impl';
 
 // =============================================================================
 // Agent Types
@@ -125,7 +120,6 @@ export interface AgentInfo {
 export interface AutoExecutionOptions {
   permissions: AutoExecutionPermissions;
   documentReviewFlag: DocumentReviewFlag;
-  validationOptions: ValidationOptions;
 }
 
 /**
@@ -255,15 +249,8 @@ export interface ApiClient {
   getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>>;
 
   // ===========================================================================
-  // Validation & Review Operations
+  // Review Operations
   // ===========================================================================
-
-  /**
-   * Execute a validation command
-   * @param specId - Spec identifier
-   * @param type - Validation type (gap, design, impl)
-   */
-  executeValidation(specId: string, type: ValidationType): Promise<Result<AgentInfo, ApiError>>;
 
   /**
    * Execute document review for a spec
@@ -397,7 +384,6 @@ export type {
   LogEntry,
   AutoExecutionPermissions,
   DocumentReviewFlag,
-  ValidationOptions,
   SpecAutoExecutionState,
   BugMetadata,
   BugDetail,

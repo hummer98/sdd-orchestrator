@@ -13,7 +13,6 @@ import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
 import { PhaseItem } from './PhaseItem';
-import { ValidateOption } from './ValidateOption';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
@@ -26,11 +25,9 @@ import {
   WORKFLOW_PHASES,
   ALL_WORKFLOW_PHASES,
   PHASE_LABELS,
-  VALIDATION_LABELS,
   getPhaseStatus,
   type WorkflowPhase,
   type PhaseStatus,
-  type ValidationType,
   type ExtendedSpecJson,
 } from '../types/workflow';
 
@@ -110,42 +107,11 @@ export function WorkflowView() {
     return new Set(running);
   }, [agents, specDetail, getAgentsForSpec]);
 
-  // 現在のspec内で実行中のグループを取得（validate/implのコンフリクト判定用）
-  type ExecutionGroup = 'doc' | 'validate' | 'impl';
-  const runningGroupInSpec = useMemo((): ExecutionGroup | null => {
-    if (!specDetail) return null;
-    const specAgents = getAgentsForSpec(specDetail.metadata.name);
-    const runningAgents = specAgents.filter((a) => a.status === 'running');
-
-    // フェーズからグループを判定
-    for (const agent of runningAgents) {
-      if (agent.phase.startsWith('validate-')) return 'validate';
-      if (agent.phase.startsWith('impl') || agent.phase === 'impl') return 'impl';
-      if (['requirements', 'design', 'tasks', 'status'].includes(agent.phase)) return 'doc';
-    }
-    return null;
-  }, [agents, specDetail, getAgentsForSpec]);
-
-  // バリデーションが実行可能かどうかを判定
-  const canExecuteValidation = useCallback(
-    (_type: ValidationType): boolean => {
-      // 同じspec内で既にAgentが実行中なら不可
-      if (runningPhases.size > 0) return false;
-      // 同じspec内でimplグループが実行中なら不可（グループコンフリクト）
-      if (runningGroupInSpec === 'impl') return false;
-      return true;
-    },
-    [runningPhases, runningGroupInSpec]
-  );
-
   // フェーズが実行可能かどうかを判定
   const canExecutePhase = useCallback(
     (phase: WorkflowPhase): boolean => {
       // 同じspec内で既にAgentが実行中なら不可
       if (runningPhases.size > 0) return false;
-
-      // implフェーズの場合、同じspec内でvalidateグループが実行中なら不可
-      if (phase === 'impl' && runningGroupInSpec === 'validate') return false;
 
       const index = ALL_WORKFLOW_PHASES.indexOf(phase);
       if (index === 0) return true; // requirements は常に実行可能
@@ -154,7 +120,7 @@ export function WorkflowView() {
       const prevPhase = ALL_WORKFLOW_PHASES[index - 1];
       return phaseStatuses[prevPhase] === 'approved';
     },
-    [runningPhases, runningGroupInSpec, phaseStatuses]
+    [runningPhases, phaseStatuses]
   );
 
   // Parse tasks from tasks.md
@@ -247,23 +213,6 @@ export function WorkflowView() {
     await handleExecutePhase(phase);
   }, [handleApprovePhase, handleExecutePhase]);
 
-  const handleExecuteValidation = useCallback(async (type: ValidationType) => {
-    if (!specDetail) return;
-
-    try {
-      // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeValidation(
-        specDetail.metadata.name,
-        type,
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'バリデーションの実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
-
   // Task 10.1: Auto execution button handler
   // Requirements: 1.1, 1.2
   // Task 5.1: Use isAutoExecuting from specStore
@@ -284,7 +233,6 @@ export function WorkflowView() {
         {
           permissions: workflowStore.autoExecutionPermissions,
           documentReviewFlag: workflowStore.documentReviewOptions.autoExecutionFlag,
-          validationOptions: workflowStore.validationOptions,
           approvals: specDetail.specJson.approvals,
         }
       );
@@ -292,7 +240,7 @@ export function WorkflowView() {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [isAutoExecuting, specDetail, autoExecution, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag, workflowStore.validationOptions]);
+  }, [isAutoExecuting, specDetail, autoExecution, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag]);
 
   // Task 10.4: Retry handler
   // Requirements: 8.2, 8.3
@@ -459,13 +407,6 @@ export function WorkflowView() {
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
-  // Validation options positions
-  // Note: validate-impl is executed as inspection phase, not as validation option
-  const validationPositions: Record<ValidationType, { after: WorkflowPhase }> = {
-    gap: { after: 'requirements' },
-    design: { after: 'design' },
-  };
-
   // Handle empty and loading states (after all hooks)
   if (!selectedSpec) {
     return (
@@ -507,26 +448,6 @@ export function WorkflowView() {
               onShowAgentLog={() => handleShowAgentLog(phase)}
             />
 
-            {/* Validation Option (between phases) */}
-            {Object.entries(validationPositions).map(([type, pos]) => {
-              if (pos.after === phase) {
-                return (
-                  <div key={type} className="my-2">
-                    <ValidateOption
-                      type={type as ValidationType}
-                      label={VALIDATION_LABELS[type as ValidationType]}
-                      enabled={workflowStore.validationOptions[type as ValidationType]}
-                      isExecuting={runningPhases.has(`validate-${type}`)}
-                      canExecute={canExecuteValidation(type as ValidationType)}
-                      onToggle={() => workflowStore.toggleValidationOption(type as ValidationType)}
-                      onExecute={() => handleExecuteValidation(type as ValidationType)}
-                    />
-                  </div>
-                );
-              }
-              return null;
-            })}
-
             {/* Arrow to DocumentReviewPanel */}
             {phase === 'tasks' && (
               <div className="flex justify-center py-1">
@@ -561,7 +482,7 @@ export function WorkflowView() {
                   tasks={parsedTasks}
                   progress={specDetail.taskProgress}
                   onExecuteTask={handleExecuteTask}
-                  canExecute={runningPhases.size === 0 && runningGroupInSpec !== 'validate'}
+                  canExecute={runningPhases.size === 0}
                 />
               </div>
             )}

@@ -147,14 +147,10 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
             autoExecutionFlag: specJson.autoExecution.documentReviewFlag,
           });
         }
-        if (specJson.autoExecution.validationOptions) {
-          wf.setValidationOptions(specJson.autoExecution.validationOptions);
-        }
         console.log('[specDetailStore] Synced autoExecution settings to workflowStore:', {
           spec: spec.name,
           permissions: specJson.autoExecution.permissions,
           documentReviewFlag: specJson.autoExecution.documentReviewFlag,
-          validationOptions: specJson.autoExecution.validationOptions,
         });
       }
 

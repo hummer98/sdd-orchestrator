@@ -226,25 +226,6 @@ describe('WorkflowView', () => {
   });
 
   // ============================================================
-  // Task 7.2: Validation options placement
-  // Requirements: 4.1, 4.2
-  // Note: validate-impl is executed as inspection phase, not as validation option
-  // ============================================================
-  describe('Task 7.2: Validation options placement', () => {
-    it('should display validate-gap option between requirements and design', () => {
-      render(<WorkflowView />);
-
-      expect(screen.getByText('validate-gap')).toBeInTheDocument();
-    });
-
-    it('should display validate-design option between design and tasks', () => {
-      render(<WorkflowView />);
-
-      expect(screen.getByText('validate-design')).toBeInTheDocument();
-    });
-  });
-
-  // ============================================================
   // Task 7.6: Footer buttons
   // Requirements: 1.4, 9.1, 9.2, 9.3
   // ============================================================

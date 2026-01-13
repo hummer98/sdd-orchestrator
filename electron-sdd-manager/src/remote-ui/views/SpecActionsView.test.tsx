@@ -43,11 +43,6 @@ const mockSpecDetail: SpecDetail = {
         deploy: false,
       },
       documentReviewFlag: 'run',
-      validationOptions: {
-        gap: false,
-        design: false,
-        impl: false,
-      },
     },
     documentReview: {
       status: 'pending',
@@ -85,7 +80,6 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     resumeAgent: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     sendAgentInput: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getAgentLogs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
-    executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-1', specId: 'user-authentication', phase: 'validation', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
     executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-2', specId: 'user-authentication', phase: 'document-review', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
     executeInspection: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-3', specId: 'user-authentication', phase: 'inspection', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
     startAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: {} }),
@@ -125,11 +119,6 @@ describe('SpecActionsView', () => {
       expect(screen.getByTestId('inspection-panel')).toBeInTheDocument();
     });
 
-    it('renders validation section', async () => {
-      render(<SpecActionsView specDetail={mockSpecDetail} apiClient={mockApiClient} />);
-
-      expect(screen.getByTestId('validation-section')).toBeInTheDocument();
-    });
   });
 
   describe('Document Review', () => {
@@ -154,41 +143,6 @@ describe('SpecActionsView', () => {
 
       await waitFor(() => {
         expect(mockApiClient.executeInspection).toHaveBeenCalledWith('user-authentication');
-      });
-    });
-  });
-
-  describe('Validation', () => {
-    it('calls executeValidation with gap type when gap validation button is clicked', async () => {
-      render(<SpecActionsView specDetail={mockSpecDetail} apiClient={mockApiClient} />);
-
-      const gapValidationButton = screen.getByTestId('validation-gap-button');
-      fireEvent.click(gapValidationButton);
-
-      await waitFor(() => {
-        expect(mockApiClient.executeValidation).toHaveBeenCalledWith('user-authentication', 'gap');
-      });
-    });
-
-    it('calls executeValidation with design type when design validation button is clicked', async () => {
-      render(<SpecActionsView specDetail={mockSpecDetail} apiClient={mockApiClient} />);
-
-      const designValidationButton = screen.getByTestId('validation-design-button');
-      fireEvent.click(designValidationButton);
-
-      await waitFor(() => {
-        expect(mockApiClient.executeValidation).toHaveBeenCalledWith('user-authentication', 'design');
-      });
-    });
-
-    it('calls executeValidation with impl type when impl validation button is clicked', async () => {
-      render(<SpecActionsView specDetail={mockSpecDetail} apiClient={mockApiClient} />);
-
-      const implValidationButton = screen.getByTestId('validation-impl-button');
-      fireEvent.click(implValidationButton);
-
-      await waitFor(() => {
-        expect(mockApiClient.executeValidation).toHaveBeenCalledWith('user-authentication', 'impl');
       });
     });
   });

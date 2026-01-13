@@ -4,17 +4,15 @@
  * Task 13.3: Validation・Review・Inspection UIを実装する
  *
  * Spec詳細ビューのアクションセクション。
- * DocumentReviewPanel, InspectionPanel, Validationボタンを統合。
+ * DocumentReviewPanel, InspectionPanelを統合。
  *
  * Requirements: 7.1
  */
 
 import React, { useState, useCallback } from 'react';
-import { CheckSquare, Play } from 'lucide-react';
-import { clsx } from 'clsx';
 import { DocumentReviewPanel } from '@shared/components/review/DocumentReviewPanel';
 import { InspectionPanel } from '@shared/components/review/InspectionPanel';
-import type { ApiClient, SpecDetail, AgentInfo, ValidationType } from '@shared/api/types';
+import type { ApiClient, SpecDetail, AgentInfo } from '@shared/api/types';
 import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
@@ -156,22 +154,6 @@ export function SpecActionsView({
     []
   );
 
-  // Handle validation execution
-  const handleValidation = useCallback(
-    async (type: ValidationType) => {
-      setExecutingAction(`validation-${type}`);
-      const result = await apiClient.executeValidation(specDetail.metadata.name, type);
-      setExecutingAction(null);
-
-      if (result.ok) {
-        onActionExecuted?.(`validation-${type}`, result.value);
-      }
-    },
-    [apiClient, specDetail.metadata.name, onActionExecuted]
-  );
-
-  const isAnyExecuting = isExecuting || executingAction !== null;
-
   return (
     <div className="space-y-4 p-4" data-testid="spec-actions-view">
       {/* Document Review Panel */}
@@ -199,64 +181,6 @@ export function SpecActionsView({
           onExecuteFix={handleExecuteFix}
           onAutoExecutionFlagChange={handleInspectionFlagChange}
         />
-      </div>
-
-      {/* Validation Section */}
-      <div
-        data-testid="validation-section"
-        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className="w-5 h-5 text-orange-500" />
-          <h3 className="font-medium text-gray-800 dark:text-gray-200">Validation</h3>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            data-testid="validation-gap-button"
-            onClick={() => handleValidation('gap')}
-            disabled={isAnyExecuting}
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 text-sm rounded transition-colors',
-              isAnyExecuting
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                : 'bg-orange-500 text-white hover:bg-orange-600'
-            )}
-          >
-            <Play className="w-4 h-4" />
-            Gap検証
-          </button>
-
-          <button
-            data-testid="validation-design-button"
-            onClick={() => handleValidation('design')}
-            disabled={isAnyExecuting}
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 text-sm rounded transition-colors',
-              isAnyExecuting
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                : 'bg-orange-500 text-white hover:bg-orange-600'
-            )}
-          >
-            <Play className="w-4 h-4" />
-            設計検証
-          </button>
-
-          <button
-            data-testid="validation-impl-button"
-            onClick={() => handleValidation('impl')}
-            disabled={isAnyExecuting}
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 text-sm rounded transition-colors',
-              isAnyExecuting
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                : 'bg-orange-500 text-white hover:bg-orange-600'
-            )}
-          >
-            <Play className="w-4 h-4" />
-            実装検証
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -244,11 +244,6 @@ export function SpecDetailView({
         deploy: false,
       },
       documentReviewFlag: specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
-      validationOptions: specDetail.specJson?.autoExecution?.validationOptions ?? {
-        gap: false,
-        design: false,
-        impl: false,
-      },
     };
 
     const result = await apiClient.startAutoExecution(spec.path, spec.name, options);

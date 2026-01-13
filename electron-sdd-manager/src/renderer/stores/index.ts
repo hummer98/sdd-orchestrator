@@ -23,7 +23,7 @@ export type { AgentInfo, AgentStatus, LogEntry } from './agentStore';
 // Task 2: Workflow Store (simplified in Task 5.1)
 // NOTE: AutoExecutionStatus moved to types/index.ts as part of spec-scoped-auto-execution-state Task 5.1
 export { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS, DEFAULT_COMMAND_PREFIX, COMMAND_PREFIXES } from './workflowStore';
-export type { AutoExecutionPermissions, ValidationOptions, ExecutionSummary, CommandPrefix } from './workflowStore';
+export type { AutoExecutionPermissions, ExecutionSummary, CommandPrefix } from './workflowStore';
 // Task 4.2: Remote Access Store (mobile-remote-access)
 export { useRemoteAccessStore, STORAGE_KEY as REMOTE_ACCESS_STORAGE_KEY } from './remoteAccessStore';
 // Bug Workflow Store

@@ -12,7 +12,6 @@ import type {
   ApiError,
   Result,
   WorkflowPhase,
-  ValidationType,
   AgentInfo,
   AgentStatus,
   AutoExecutionOptions,
@@ -262,25 +261,8 @@ export class IpcApiClient implements ApiClient {
   }
 
   // ===========================================================================
-  // Validation & Review Operations
+  // Review Operations
   // ===========================================================================
-
-  async executeValidation(
-    specId: string,
-    type: ValidationType
-  ): Promise<Result<AgentInfo, ApiError>> {
-    checkElectronAPI();
-    return wrapResult(async () => {
-      const result = await window.electronAPI.executeValidation(specId, type, specId);
-      return {
-        id: result.agentId,
-        specId: result.specId,
-        phase: `validate-${type}`,
-        status: result.status as AgentStatus,
-        startedAt: result.startedAt,
-      } as AgentInfo;
-    });
-  }
 
   async executeDocumentReview(specId: string): Promise<Result<AgentInfo, ApiError>> {
     checkElectronAPI();
@@ -327,7 +309,6 @@ export class IpcApiClient implements ApiClient {
         options: {
           permissions: options.permissions,
           documentReviewFlag: options.documentReviewFlag,
-          validationOptions: options.validationOptions,
         },
       });
 

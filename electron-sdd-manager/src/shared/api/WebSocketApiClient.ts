@@ -12,7 +12,6 @@ import type {
   ApiError,
   Result,
   WorkflowPhase,
-  ValidationType,
   AgentInfo,
   AgentStatus,
   AutoExecutionOptions,
@@ -368,15 +367,8 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   // ===========================================================================
-  // Validation & Review Operations
+  // Review Operations
   // ===========================================================================
-
-  async executeValidation(
-    specId: string,
-    type: ValidationType
-  ): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('EXECUTE_VALIDATION', { specId, type });
-  }
 
   async executeDocumentReview(specId: string): Promise<Result<AgentInfo, ApiError>> {
     return this.wrapRequest<AgentInfo>('EXECUTE_DOCUMENT_REVIEW', { specId });

@@ -9,7 +9,7 @@ import { FileService } from '../services/fileService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase, SelectProjectResult, SelectProjectError } from '../../renderer/types';
-import { SpecManagerService, ExecutionGroup, WorkflowPhase, ValidationType, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
+import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import type { AgentInfo } from '../services/agentRegistry';
@@ -95,7 +95,6 @@ let currentProjectPath: string | null = null;
 function getErrorMessage(error: AgentError): string {
   const groupLabels: Record<ExecutionGroup, string> = {
     doc: 'ドキュメント生成',
-    validate: 'バリデーション',
     impl: '実装',
   };
 
@@ -907,31 +906,6 @@ export function registerIpcHandlers(): void {
       }
 
       logger.info('[handlers] executePhase succeeded', { agentId: result.value.agentId });
-      return result.value;
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_VALIDATION,
-    async (event, specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_VALIDATION called', { specId, type, featureName, commandPrefix });
-      const service = getSpecManagerService();
-      const window = BrowserWindow.fromWebContents(event.sender);
-
-      // Ensure event callbacks are registered
-      if (window && !eventCallbacksRegistered) {
-        registerEventCallbacks(service, window);
-      }
-
-      const result = await service.executeValidation({ specId, type, featureName, commandPrefix });
-
-      if (!result.ok) {
-        logger.error('[handlers] executeValidation failed', { error: result.error });
-        const errorMessage = getErrorMessage(result.error);
-        throw new Error(errorMessage);
-      }
-
-      logger.info('[handlers] executeValidation succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );

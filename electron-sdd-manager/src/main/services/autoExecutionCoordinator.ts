@@ -85,16 +85,6 @@ export interface AutoExecutionPermissions {
 }
 
 /**
- * バリデーションオプション
- * Requirements: 7.1
- */
-export interface ValidationOptions {
-  readonly gap: boolean;
-  readonly design: boolean;
-  readonly impl: boolean;
-}
-
-/**
  * ドキュメントレビューフラグ
  * Requirements: 7.1
  */
@@ -128,8 +118,6 @@ export interface AutoExecutionOptions {
   readonly permissions: AutoExecutionPermissions;
   /** ドキュメントレビューフラグ */
   readonly documentReviewFlag: DocumentReviewFlag;
-  /** バリデーションオプション */
-  readonly validationOptions: ValidationOptions;
   /** タイムアウト（ms） */
   readonly timeoutMs?: number;
   /** コマンドプレフィックス */

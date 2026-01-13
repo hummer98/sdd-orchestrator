@@ -62,44 +62,10 @@ export const PHASE_LABELS: Record<WorkflowPhase, string> = {
 export type PhaseStatus = 'pending' | 'generated' | 'approved';
 
 // ============================================================
-// Task 1.1: ValidationType
-// Requirements: 4.1, 4.2, 4.3
-// ============================================================
-
-/** バリデーション種別 */
-export type ValidationType = 'gap' | 'design';
-
-// ============================================================
 // Command Prefix Support
 // ============================================================
 
 export type CommandPrefix = 'kiro' | 'spec-manager';
-
-/** プレフィックス別バリデーションコマンドマッピング */
-const VALIDATION_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<ValidationType, string>> = {
-  kiro: {
-    gap: '/kiro:validate-gap',
-    design: '/kiro:validate-design',
-  },
-  'spec-manager': {
-    gap: '/spec-manager:validate-gap',
-    design: '/spec-manager:validate-design',
-  },
-};
-
-/** バリデーションコマンドマッピング（デフォルト: kiro） */
-export const VALIDATION_COMMANDS: Record<ValidationType, string> = VALIDATION_COMMANDS_BY_PREFIX.kiro;
-
-/** プレフィックスに応じたバリデーションコマンドを取得 */
-export function getValidationCommand(type: ValidationType, prefix: CommandPrefix = 'kiro'): string {
-  return VALIDATION_COMMANDS_BY_PREFIX[prefix][type];
-}
-
-/** バリデーション表示名 */
-export const VALIDATION_LABELS: Record<ValidationType, string> = {
-  gap: 'validate-gap',
-  design: 'validate-design',
-};
 
 // ============================================================
 // Task 1.2: Extended SpecJson

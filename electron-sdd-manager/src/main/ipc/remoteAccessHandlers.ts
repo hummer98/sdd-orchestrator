@@ -10,7 +10,7 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, ValidationType, AgentLogsProvider } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider } from '../services/webSocketHandler';
 import { getDefaultLogFileService } from '../services/logFileService';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
@@ -184,38 +184,6 @@ export function createWorkflowController(
         phase: bugPhase,
         command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `${slashCommand} ${bugName}`, allowedTools }),
-      });
-
-      if (result.ok) {
-        return {
-          ok: true,
-          value: {
-            agentId: result.value.agentId,
-          },
-        };
-      }
-
-      return {
-        ok: false,
-        error: {
-          type: result.error.type,
-          message: 'message' in result.error ? result.error.message : undefined,
-        },
-      };
-    },
-
-    /**
-     * Execute validation
-     * Requirements: 6.3, 6.7 (internal-webserver-sync Task 2.2)
-     *
-     * @param specId - Specification identifier
-     * @param type - Validation type (gap/design)
-     */
-    executeValidation: async (specId: string, type: ValidationType): Promise<WorkflowResult<AgentInfo>> => {
-      const result = await specManagerService.executeValidation({
-        specId,
-        type,
-        featureName: specId,
       });
 
       if (result.ok) {

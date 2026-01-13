@@ -228,13 +228,6 @@ export interface AutoExecutionPermissions {
   deploy: boolean;
 }
 
-/** バリデーションオプション */
-export interface ValidationOptions {
-  gap: boolean;
-  design: boolean;
-  impl: boolean;
-}
-
 /** ドキュメントレビューフラグ */
 export type DocumentReviewFlag = 'skip' | 'run' | 'pause';
 
@@ -252,8 +245,6 @@ export interface SpecAutoExecutionState {
   permissions: AutoExecutionPermissions;
   /** ドキュメントレビューフラグ */
   documentReviewFlag: DocumentReviewFlag;
-  /** バリデーションオプション */
-  validationOptions: ValidationOptions;
   /** Inspection自動実行フラグ (Bug fix: inspection-auto-execution-toggle) */
   inspectionFlag?: InspectionAutoExecutionFlag;
 }
@@ -270,11 +261,6 @@ export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
     deploy: true,
   },
   documentReviewFlag: 'pause',
-  validationOptions: {
-    gap: false,
-    design: false,
-    impl: false,
-  },
   // Bug fix: inspection-auto-execution-toggle - default to 'pause'
   inspectionFlag: 'pause',
 };
@@ -285,7 +271,6 @@ export function createSpecAutoExecutionState(
     enabled: boolean;
     permissions: Partial<AutoExecutionPermissions>;
     documentReviewFlag: DocumentReviewFlag;
-    validationOptions: Partial<ValidationOptions>;
     inspectionFlag: InspectionAutoExecutionFlag;
   }>
 ): SpecAutoExecutionState {
@@ -301,10 +286,6 @@ export function createSpecAutoExecutionState(
     },
     documentReviewFlag:
       partial.documentReviewFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag,
-    validationOptions: {
-      ...DEFAULT_SPEC_AUTO_EXECUTION_STATE.validationOptions,
-      ...(partial.validationOptions ?? {}),
-    },
     // Bug fix: inspection-auto-execution-toggle
     inspectionFlag:
       partial.inspectionFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.inspectionFlag,

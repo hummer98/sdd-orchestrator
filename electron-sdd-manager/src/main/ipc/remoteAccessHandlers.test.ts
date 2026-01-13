@@ -768,94 +768,6 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 });
 
 // ============================================================
-// Task 2.2: WorkflowController.executeValidation() Tests
-// Requirements: 6.3, 6.7 (internal-webserver-sync)
-// ============================================================
-
-describe('WorkflowController.executeValidation() (Task 2.2)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('executeValidation', () => {
-    it('should execute gap validation successfully', async () => {
-      const { createWorkflowController } = await import('./remoteAccessHandlers');
-
-      const mockSpecManagerService = {
-        executePhase: vi.fn(),
-        stopAgent: vi.fn(),
-        resumeAgent: vi.fn(),
-        startAgent: vi.fn(),
-        executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-validate-123' } }),
-      };
-
-      const controller = createWorkflowController(mockSpecManagerService as any);
-
-      expect(controller.executeValidation).toBeDefined();
-
-      const result = await controller.executeValidation!('my-spec', 'gap');
-
-      expect(mockSpecManagerService.executeValidation).toHaveBeenCalledWith({
-        specId: 'my-spec',
-        type: 'gap',
-        featureName: 'my-spec',
-      });
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.agentId).toBe('agent-validate-123');
-      }
-    });
-
-    it('should execute design validation successfully', async () => {
-      const { createWorkflowController } = await import('./remoteAccessHandlers');
-
-      const mockSpecManagerService = {
-        executePhase: vi.fn(),
-        stopAgent: vi.fn(),
-        resumeAgent: vi.fn(),
-        startAgent: vi.fn(),
-        executeValidation: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-validate-456' } }),
-      };
-
-      const controller = createWorkflowController(mockSpecManagerService as any);
-
-      const result = await controller.executeValidation!('my-spec', 'design');
-
-      expect(mockSpecManagerService.executeValidation).toHaveBeenCalledWith({
-        specId: 'my-spec',
-        type: 'design',
-        featureName: 'my-spec',
-      });
-      expect(result.ok).toBe(true);
-    });
-
-    it('should handle executeValidation errors', async () => {
-      const { createWorkflowController } = await import('./remoteAccessHandlers');
-
-      const mockSpecManagerService = {
-        executePhase: vi.fn(),
-        stopAgent: vi.fn(),
-        resumeAgent: vi.fn(),
-        startAgent: vi.fn(),
-        executeValidation: vi.fn().mockResolvedValue({
-          ok: false,
-          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn validation agent' },
-        }),
-      };
-
-      const controller = createWorkflowController(mockSpecManagerService as any);
-
-      const result = await controller.executeValidation!('my-spec', 'gap');
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('SPAWN_ERROR');
-      }
-    });
-  });
-});
-
-// ============================================================
 // Task 2.3: WorkflowController.executeDocumentReview() Tests
 // Requirements: 6.4, 6.7 (internal-webserver-sync)
 // ============================================================
@@ -874,8 +786,7 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn(),
-        executeValidation: vi.fn(),
-        executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
+                executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -902,8 +813,7 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn(),
-        executeValidation: vi.fn(),
-        executeDocumentReview: vi.fn().mockResolvedValue({
+                executeDocumentReview: vi.fn().mockResolvedValue({
           ok: false,
           error: { type: 'SPAWN_ERROR', message: 'Failed to spawn review agent' },
         }),

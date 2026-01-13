@@ -66,17 +66,12 @@ export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'fa
  * Execution group type
  * Requirements: 6.1-6.5
  */
-export type ExecutionGroup = 'doc' | 'validate' | 'impl';
+export type ExecutionGroup = 'doc' | 'impl';
 
 /**
  * Workflow phase type
  */
 export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
-
-/**
- * Validation type
- */
-export type ValidationType = 'gap' | 'design' | 'impl';
 
 /**
  * Specs change event type
@@ -403,7 +398,6 @@ export interface ElectronAPI {
 
   // Phase Execution (high-level commands)
   executePhase(specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
-  executeValidation(specId: string, type: ValidationType, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   executeSpecStatus(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   executeTaskImpl(specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
 
@@ -672,11 +666,6 @@ export interface ElectronAPI {
         impl: boolean;
       };
       documentReviewFlag: 'run' | 'pause' | 'skip';
-      validationOptions: {
-        gap: boolean;
-        design: boolean;
-        impl: boolean;
-      };
       timeoutMs?: number;
       /** Current approvals status from spec.json (used to skip completed phases) */
       approvals?: {

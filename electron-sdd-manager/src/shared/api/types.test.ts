@@ -101,12 +101,7 @@ describe('API types', () => {
       expect(content).toContain('sendAgentInput(');
     });
 
-    // Validation/Review operations
-    it('should have executeValidation method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('executeValidation(');
-    });
-
+    // Review operations
     it('should have executeDocumentReview method', () => {
       const content = readFileSync(typesPath, 'utf-8');
       expect(content).toContain('executeDocumentReview(');
@@ -160,13 +155,6 @@ describe('API types', () => {
     it('should define WorkflowPhase type', () => {
       const content = readFileSync(typesPath, 'utf-8');
       expect(content).toContain('export type WorkflowPhase');
-    });
-  });
-
-  describe('ValidationType type', () => {
-    it('should define ValidationType type', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('export type ValidationType');
     });
   });
 });

@@ -149,15 +149,10 @@ export const notify = {
   // Task 2.2: Completion summary notification
   showCompletionSummary: (summary: ExecutionSummary) => {
     const phaseCount = summary.executedPhases.length;
-    const validationCount = summary.executedValidations.length;
     const durationSeconds = Math.round(summary.totalDuration / 1000);
     const hasErrors = summary.errors.length > 0;
 
-    let message = `自動実行完了: ${phaseCount}フェーズ`;
-    if (validationCount > 0) {
-      message += `, ${validationCount}バリデーション`;
-    }
-    message += ` (${durationSeconds}秒)`;
+    let message = `自動実行完了: ${phaseCount}フェーズ (${durationSeconds}秒)`;
 
     if (hasErrors) {
       message += ` - ${summary.errors.length}件のエラー`;

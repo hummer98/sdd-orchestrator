@@ -95,13 +95,10 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   return args;
 }
 
-export type ExecutionGroup = 'doc' | 'validate' | 'impl';
+export type ExecutionGroup = 'doc' | 'impl';
 
 /** ワークフローフェーズ */
 export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
-
-/** バリデーションタイプ */
-export type ValidationType = 'gap' | 'design' | 'impl';
 
 /** コマンドプレフィックス */
 export type CommandPrefix = 'kiro' | 'spec-manager';
@@ -123,20 +120,6 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     impl: '/spec-manager:impl',
     inspection: '/spec-manager:inspection',  // Requirements: 13.3 - spec-manager inspection command
     deploy: '/commit',  // Changed from /spec-manager:deployment to /commit
-  },
-};
-
-/** プレフィックス別バリデーションコマンドマッピング */
-const VALIDATION_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<ValidationType, string>> = {
-  kiro: {
-    gap: '/kiro:validate-gap',
-    design: '/kiro:validate-design',
-    impl: '/kiro:validate-impl',
-  },
-  'spec-manager': {
-    gap: '/spec-manager:validate-gap',
-    design: '/spec-manager:validate-design',
-    impl: '/spec-manager:validate-impl',
   },
 };
 
@@ -224,7 +207,7 @@ const PHASE_GROUPS: Record<WorkflowPhase, ExecutionGroup> = {
   design: 'doc',
   tasks: 'doc',
   impl: 'impl',
-  inspection: 'validate',
+  inspection: 'impl',
   deploy: 'doc',
 };
 
@@ -244,13 +227,6 @@ export interface StartAgentOptions {
 export interface ExecutePhaseOptions {
   specId: string;
   phase: WorkflowPhase;
-  featureName: string;
-  commandPrefix?: CommandPrefix;
-}
-
-export interface ExecuteValidationOptions {
-  specId: string;
-  type: ValidationType;
   featureName: string;
   commandPrefix?: CommandPrefix;
 }
@@ -464,10 +440,7 @@ export class SpecManagerService {
 
     for (const agent of runningAgents) {
       // Check agent's phase to determine group
-      if (agent.phase.startsWith('validate-')) {
-        return 'validate';
-      }
-      if (agent.phase.startsWith('impl-') || agent.phase === 'impl') {
+      if (agent.phase.startsWith('impl-') || agent.phase === 'impl' || agent.phase === 'inspection') {
         return 'impl';
       }
       if (['requirement', 'requirements', 'design', 'tasks'].includes(agent.phase)) {
@@ -554,17 +527,14 @@ export class SpecManagerService {
       };
     }
 
-    // Check for group conflicts (validate vs impl) within the same spec
-    if (group === 'validate' || group === 'impl') {
+    // Check for group conflicts (doc vs impl) within the same spec
+    if (group === 'impl') {
       const runningGroup = this.getRunningGroup(specId);
       if (runningGroup && runningGroup !== group) {
-        if ((runningGroup === 'validate' && group === 'impl') ||
-            (runningGroup === 'impl' && group === 'validate')) {
-          return {
-            ok: false,
-            error: { type: 'GROUP_CONFLICT', runningGroup, requestedGroup: group },
-          };
-        }
+        return {
+          ok: false,
+          error: { type: 'GROUP_CONFLICT', runningGroup, requestedGroup: group },
+        };
       }
     }
 
@@ -1125,26 +1095,6 @@ export class SpecManagerService {
   }
 
   /**
-   * Execute a validation
-   * Builds the claude command internally
-   */
-  async executeValidation(options: ExecuteValidationOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, type, featureName, commandPrefix = 'kiro' } = options;
-    const slashCommand = VALIDATION_COMMANDS_BY_PREFIX[commandPrefix][type];
-    const phase = `validate-${type}`;
-
-    logger.info('[SpecManagerService] executeValidation called', { specId, type, featureName, slashCommand, commandPrefix });
-
-    return this.startAgent({
-      specId,
-      phase,
-      command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
-      group: 'validate',
-    });
-  }
-
-  /**
    * Execute spec-status command
    */
   async executeSpecStatus(specId: string, featureName: string, commandPrefix: CommandPrefix = 'kiro'): Promise<Result<AgentInfo, AgentError>> {
@@ -1268,7 +1218,7 @@ export class SpecManagerService {
       phase: 'inspection',
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
-      group: 'validate',
+      group: 'impl',
     });
   }
 

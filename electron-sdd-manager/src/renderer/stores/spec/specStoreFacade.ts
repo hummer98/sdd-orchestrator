@@ -49,10 +49,14 @@ function getAggregatedState(): SpecStoreState {
     sortOrder: listState.sortOrder,
     statusFilter: listState.statusFilter,
 
-    // SpecDetailStore state (merged isLoading/error from list store)
+    // SpecDetailStore state
+    // Bug fix: spec-list-loading-on-item-click
+    // Separated isLoading (list) from isDetailLoading (detail panel)
+    // to prevent SpecList from showing spinner when selecting a spec
     selectedSpec: detailState.selectedSpec,
     specDetail: detailState.specDetail,
-    isLoading: listState.isLoading || detailState.isLoading,
+    isLoading: listState.isLoading,
+    isDetailLoading: detailState.isLoading,
     error: listState.error || detailState.error,
 
     // AutoExecutionStore state

@@ -232,6 +232,12 @@ export interface SpecStoreState
   readonly isWatching: boolean;
   /** spec-manager execution state */
   readonly specManagerExecution: SpecManagerExecutionState;
+  /**
+   * Bug fix: spec-list-loading-on-item-click
+   * Separate loading state for detail panel to prevent list from showing spinner
+   * when selecting a spec item
+   */
+  readonly isDetailLoading: boolean;
 }
 
 /** Combined SpecStore actions (for Facade compatibility) */

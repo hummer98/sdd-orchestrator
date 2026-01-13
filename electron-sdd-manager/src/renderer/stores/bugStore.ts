@@ -7,6 +7,11 @@
  * - Removed module-scope currentProjectPath variable (SSOT violation)
  * - refreshBugs() now gets project path from projectStore.currentProject (SSOT)
  * - Aligned with specStore design pattern
+ *
+ * Bug fix: bugs-workflow-progress-not-updating
+ * - handleBugsChanged() is now async and awaits updateBugByName/refreshSelectedBugDetail
+ * - Ensures sequential execution: metadata update completes before detail refresh
+ * - Prevents race conditions when bug-fix agent creates/updates files
  */
 
 import { create } from 'zustand';
@@ -59,8 +64,9 @@ interface BugActions {
   /**
    * Handle bugs change event with differential update
    * Routes to appropriate handler based on event type
+   * Returns Promise to ensure async operations complete before caller proceeds
    */
-  handleBugsChanged: (event: BugsChangeEvent) => void;
+  handleBugsChanged: (event: BugsChangeEvent) => Promise<void>;
 }
 
 type BugStore = BugState & BugActions;
@@ -287,7 +293,7 @@ export const useBugStore = create<BugStore>((set, get) => ({
     }
   },
 
-  handleBugsChanged: (event: BugsChangeEvent) => {
+  handleBugsChanged: async (event: BugsChangeEvent) => {
     const { type, bugName } = event;
     const { selectedBug } = get();
 
@@ -298,17 +304,17 @@ export const useBugStore = create<BugStore>((set, get) => ({
       case 'addDir':
         // New bug added - update the bug in list
         if (bugName) {
-          get().updateBugByName(bugName);
+          await get().updateBugByName(bugName);
         }
         break;
 
       case 'change':
         // Bug file changed - update metadata and possibly detail
         if (bugName) {
-          get().updateBugByName(bugName);
+          await get().updateBugByName(bugName);
           // If the changed bug is currently selected, refresh its detail
           if (selectedBug?.name === bugName) {
-            get().refreshSelectedBugDetail();
+            await get().refreshSelectedBugDetail();
           }
         }
         break;
@@ -320,10 +326,10 @@ export const useBugStore = create<BugStore>((set, get) => ({
           const bugExists = bugs.some((b) => b.name === bugName);
           if (bugExists) {
             // Bug folder still exists, just update metadata
-            get().updateBugByName(bugName);
+            await get().updateBugByName(bugName);
             // If selected bug was affected, refresh detail
             if (selectedBug?.name === bugName) {
-              get().refreshSelectedBugDetail();
+              await get().refreshSelectedBugDetail();
             }
           }
         }

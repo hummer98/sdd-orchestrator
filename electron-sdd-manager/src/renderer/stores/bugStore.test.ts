@@ -261,6 +261,146 @@ describe('bugStore', () => {
     });
   });
 
+  describe('handleBugsChanged', () => {
+    it('should await updateBugByName before refreshSelectedBugDetail on change event', async () => {
+      // Setup: select a bug first
+      useBugStore.setState({
+        bugs: mockBugs,
+        selectedBug: mockBugs[0],
+        bugDetail: mockBugDetail,
+      });
+
+      // Track call order
+      const callOrder: string[] = [];
+
+      // Mock updateBugByName to track when it's called and completed
+      const originalUpdateBugByName = useBugStore.getState().updateBugByName;
+      const mockUpdateBugByName = vi.fn().mockImplementation(async (bugName: string) => {
+        callOrder.push('updateBugByName:start');
+        await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate async work
+        await originalUpdateBugByName(bugName);
+        callOrder.push('updateBugByName:end');
+      });
+
+      // Mock refreshSelectedBugDetail to track when it's called
+      const originalRefreshSelectedBugDetail = useBugStore.getState().refreshSelectedBugDetail;
+      const mockRefreshSelectedBugDetail = vi.fn().mockImplementation(async () => {
+        callOrder.push('refreshSelectedBugDetail:start');
+        await originalRefreshSelectedBugDetail();
+        callOrder.push('refreshSelectedBugDetail:end');
+      });
+
+      // Replace methods with mocks
+      useBugStore.setState({
+        updateBugByName: mockUpdateBugByName,
+        refreshSelectedBugDetail: mockRefreshSelectedBugDetail,
+      } as Partial<typeof useBugStore extends { getState: () => infer T } ? T : never>);
+
+      // Setup API mocks
+      mockReadBugs.mockResolvedValue(mockBugs);
+      mockReadBugDetail.mockResolvedValue(mockBugDetail);
+
+      // Trigger change event for selected bug
+      const event: BugsChangeEvent = {
+        type: 'change',
+        path: '/project/.kiro/bugs/bug-1/fix.md',
+        bugName: 'bug-1',
+      };
+
+      // handleBugsChanged should be awaitable
+      await useBugStore.getState().handleBugsChanged(event);
+
+      // Verify updateBugByName was called
+      expect(mockUpdateBugByName).toHaveBeenCalledWith('bug-1');
+
+      // Verify refreshSelectedBugDetail was called (since selected bug matches)
+      expect(mockRefreshSelectedBugDetail).toHaveBeenCalled();
+
+      // CRITICAL: Verify updateBugByName completed BEFORE refreshSelectedBugDetail started
+      const updateEndIndex = callOrder.indexOf('updateBugByName:end');
+      const refreshStartIndex = callOrder.indexOf('refreshSelectedBugDetail:start');
+      expect(updateEndIndex).toBeLessThan(refreshStartIndex);
+    });
+
+    it('should await updateBugByName on add event', async () => {
+      useBugStore.setState({ bugs: [] });
+
+      const callOrder: string[] = [];
+      mockReadBugs.mockResolvedValue(mockBugs);
+
+      const originalUpdateBugByName = useBugStore.getState().updateBugByName;
+      const mockUpdateBugByName = vi.fn().mockImplementation(async (bugName: string) => {
+        callOrder.push('updateBugByName:start');
+        await originalUpdateBugByName(bugName);
+        callOrder.push('updateBugByName:end');
+      });
+
+      useBugStore.setState({
+        updateBugByName: mockUpdateBugByName,
+      } as Partial<typeof useBugStore extends { getState: () => infer T } ? T : never>);
+
+      const event: BugsChangeEvent = {
+        type: 'add',
+        path: '/project/.kiro/bugs/bug-1/report.md',
+        bugName: 'bug-1',
+      };
+
+      // Should be awaitable
+      await useBugStore.getState().handleBugsChanged(event);
+
+      expect(mockUpdateBugByName).toHaveBeenCalledWith('bug-1');
+      expect(callOrder).toContain('updateBugByName:end');
+    });
+
+    it('should await updateBugByName and refreshSelectedBugDetail on unlink event for selected bug', async () => {
+      useBugStore.setState({
+        bugs: mockBugs,
+        selectedBug: mockBugs[0],
+        bugDetail: mockBugDetail,
+      });
+
+      const callOrder: string[] = [];
+      mockReadBugs.mockResolvedValue(mockBugs);
+      mockReadBugDetail.mockResolvedValue(mockBugDetail);
+
+      const originalUpdateBugByName = useBugStore.getState().updateBugByName;
+      const mockUpdateBugByName = vi.fn().mockImplementation(async (bugName: string) => {
+        callOrder.push('updateBugByName:start');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await originalUpdateBugByName(bugName);
+        callOrder.push('updateBugByName:end');
+      });
+
+      const originalRefreshSelectedBugDetail = useBugStore.getState().refreshSelectedBugDetail;
+      const mockRefreshSelectedBugDetail = vi.fn().mockImplementation(async () => {
+        callOrder.push('refreshSelectedBugDetail:start');
+        await originalRefreshSelectedBugDetail();
+        callOrder.push('refreshSelectedBugDetail:end');
+      });
+
+      useBugStore.setState({
+        updateBugByName: mockUpdateBugByName,
+        refreshSelectedBugDetail: mockRefreshSelectedBugDetail,
+      } as Partial<typeof useBugStore extends { getState: () => infer T } ? T : never>);
+
+      const event: BugsChangeEvent = {
+        type: 'unlink',
+        path: '/project/.kiro/bugs/bug-1/fix.md',
+        bugName: 'bug-1',
+      };
+
+      await useBugStore.getState().handleBugsChanged(event);
+
+      expect(mockUpdateBugByName).toHaveBeenCalledWith('bug-1');
+      expect(mockRefreshSelectedBugDetail).toHaveBeenCalled();
+
+      // Verify order: updateBugByName must complete before refreshSelectedBugDetail starts
+      const updateEndIndex = callOrder.indexOf('updateBugByName:end');
+      const refreshStartIndex = callOrder.indexOf('refreshSelectedBugDetail:start');
+      expect(updateEndIndex).toBeLessThan(refreshStartIndex);
+    });
+  });
+
   // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
   // Requirements: 5.4
   describe('refreshBugs - selection consistency', () => {

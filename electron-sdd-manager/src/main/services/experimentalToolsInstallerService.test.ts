@@ -1,5 +1,5 @@
 /**
- * ExperimentalToolsInstallerService Tests
+ * ExperimentalToolsInstallerService and CommonCommandsInstallerService Tests
  * Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 5.1-5.3, 7.1-7.4
  */
 
@@ -9,6 +9,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import {
   ExperimentalToolsInstallerService,
+  CommonCommandsInstallerService,
   ToolType,
   InstallResult,
   InstallError,
@@ -202,6 +203,115 @@ describe('ExperimentalToolsInstallerService', () => {
       // Create service with invalid template dir
       const badService = new ExperimentalToolsInstallerService('/nonexistent/path');
       const result = await badService.installDebugAgent(testProjectPath);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('TEMPLATE_NOT_FOUND');
+      }
+    });
+  });
+});
+
+describe('CommonCommandsInstallerService', () => {
+  let service: CommonCommandsInstallerService;
+  let testProjectPath: string;
+  let testTemplateDir: string;
+
+  beforeEach(async () => {
+    // Create temp directories
+    const baseDir = join(tmpdir(), `common-cmd-test-${Date.now()}`);
+    testProjectPath = join(baseDir, 'project');
+    testTemplateDir = join(baseDir, 'templates');
+
+    await mkdir(testProjectPath, { recursive: true });
+    await mkdir(testTemplateDir, { recursive: true });
+
+    // Create commit.md template (directly in template dir for CommonCommandsInstallerService)
+    await writeFile(
+      join(testTemplateDir, 'commit.md'),
+      '# Commit Command\nAuto-installed commit command for deploy phase'
+    );
+
+    service = new CommonCommandsInstallerService(testTemplateDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await rm(testProjectPath, { recursive: true, force: true });
+      await rm(testTemplateDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('installCommitCommand', () => {
+    it('should install commit.md when target does not exist', async () => {
+      const result = await service.installCommitCommand(testProjectPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.success).toBe(true);
+        expect(result.value.installedFiles).toContain('.claude/commands/commit.md');
+      }
+
+      // Verify file was created
+      const content = await readFile(
+        join(testProjectPath, '.claude', 'commands', 'commit.md'),
+        'utf-8'
+      );
+      expect(content).toContain('Commit Command');
+    });
+
+    it('should skip when file exists and force is false', async () => {
+      const targetDir = join(testProjectPath, '.claude', 'commands');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'commit.md'), 'existing content');
+
+      const result = await service.installCommitCommand(testProjectPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.skippedFiles).toContain('.claude/commands/commit.md');
+      }
+    });
+
+    it('should overwrite when file exists and force is true', async () => {
+      const targetDir = join(testProjectPath, '.claude', 'commands');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'commit.md'), 'existing content');
+
+      const result = await service.installCommitCommand(testProjectPath, { force: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.overwrittenFiles).toContain('.claude/commands/commit.md');
+      }
+    });
+  });
+
+  describe('checkCommitCommandExists', () => {
+    it('should return exists: false when commit.md does not exist', async () => {
+      const result = await service.checkCommitCommandExists(testProjectPath);
+
+      expect(result.exists).toBe(false);
+      expect(result.path).toBe(join(testProjectPath, '.claude', 'commands', 'commit.md'));
+    });
+
+    it('should return exists: true when commit.md exists', async () => {
+      const targetDir = join(testProjectPath, '.claude', 'commands');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'commit.md'), 'existing content');
+
+      const result = await service.checkCommitCommandExists(testProjectPath);
+
+      expect(result.exists).toBe(true);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should return TEMPLATE_NOT_FOUND for missing commit template', async () => {
+      const badService = new CommonCommandsInstallerService('/nonexistent/path');
+      const result = await badService.installCommitCommand(testProjectPath);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {

@@ -78,3 +78,11 @@ export function getScriptsPath(): string {
 export function getExperimentalTemplatesPath(): string {
   return getResourcePath('resources', 'templates', 'experimental');
 }
+
+/**
+ * Get the common commands templates directory path
+ * @returns Absolute path to common commands templates directory
+ */
+export function getCommonCommandsTemplatesPath(): string {
+  return getResourcePath('resources', 'templates', 'commands', 'common');
+}

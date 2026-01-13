@@ -45,6 +45,8 @@ import { layoutConfigService, type LayoutValues } from '../services/layoutConfig
 import {
   ExperimentalToolsInstallerService,
   getExperimentalTemplateDir,
+  getCommonCommandsTemplateDir,
+  CommonCommandsInstallerService,
   type ToolType,
   type InstallOptions as ExperimentalInstallOptions,
   type InstallResult as ExperimentalInstallResult,
@@ -57,6 +59,7 @@ import { CommandsetVersionService } from '../services/commandsetVersionService';
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
 const experimentalToolsInstaller = new ExperimentalToolsInstallerService(getExperimentalTemplateDir());
+const commonCommandsInstaller = new CommonCommandsInstallerService(getCommonCommandsTemplateDir());
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
@@ -380,6 +383,23 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
   initDefaultLogFileService(path.join(projectPath, '.kiro', 'specs'));
   logger.info('[handlers] LogFileService initialized');
+
+  // Auto-install /commit command (required for deploy phase)
+  // commit.md is installed automatically since it's a core command for the workflow
+  try {
+    const commitResult = await commonCommandsInstaller.installCommitCommand(projectPath);
+    if (commitResult.ok) {
+      if (commitResult.value.installedFiles.length > 0) {
+        logger.info('[handlers] Commit command auto-installed', { files: commitResult.value.installedFiles });
+      } else if (commitResult.value.skippedFiles.length > 0) {
+        logger.debug('[handlers] Commit command already exists, skipped');
+      }
+    } else {
+      logger.warn('[handlers] Failed to auto-install commit command', { error: commitResult.error });
+    }
+  } catch (error) {
+    logger.warn('[handlers] Error during commit command auto-install', { error });
+  }
 
   // Restore agents from PID files and cleanup stale ones
   try {
@@ -1676,8 +1696,10 @@ export function registerIpcHandlers(): void {
       projectPath: string,
       options?: ExperimentalInstallOptions
     ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
-      logger.info('[handlers] INSTALL_EXPERIMENTAL_COMMIT called', { projectPath, options });
-      return experimentalToolsInstaller.installCommitCommand(projectPath, options);
+      // Note: Commit command is now auto-installed on project selection.
+      // This handler is kept for backward compatibility but uses CommonCommandsInstallerService.
+      logger.info('[handlers] INSTALL_EXPERIMENTAL_COMMIT called (deprecated, use auto-install)', { projectPath, options });
+      return commonCommandsInstaller.installCommitCommand(projectPath, options);
     }
   );
 
@@ -1689,6 +1711,10 @@ export function registerIpcHandlers(): void {
       toolType: ToolType
     ): Promise<ExperimentalCheckResult> => {
       logger.info('[handlers] CHECK_EXPERIMENTAL_TOOL_EXISTS called', { projectPath, toolType });
+      // Note: commit is now a common command (auto-installed), but check is still valid
+      if (toolType === 'commit') {
+        return commonCommandsInstaller.checkCommitCommandExists(projectPath);
+      }
       return experimentalToolsInstaller.checkTargetExists(projectPath, toolType);
     }
   );

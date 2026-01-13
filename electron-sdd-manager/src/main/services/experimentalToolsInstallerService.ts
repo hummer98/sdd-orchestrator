@@ -1,16 +1,23 @@
 /**
  * ExperimentalToolsInstallerService
- * Installs experimental tools (Plan, Debug, Commit) to projects
+ * Installs experimental tools (Debug) to projects
+ * Note: Commit command has been moved to CommonCommandsInstallerService
  * Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
  */
 
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
-import { getExperimentalTemplatesPath } from '../utils/resourcePaths';
+import { getExperimentalTemplatesPath, getCommonCommandsTemplatesPath } from '../utils/resourcePaths';
 
 /**
- * Tool types that can be installed
+ * Experimental tool types (debug only, commit moved to common commands)
+ */
+export type ExperimentalToolType = 'debug';
+
+/**
+ * Tool types that can be installed (kept for backward compatibility)
+ * @deprecated Use ExperimentalToolType for experimental tools
  */
 export type ToolType = 'debug' | 'commit';
 
@@ -433,4 +440,103 @@ ${templateContent}
  */
 export function getExperimentalTemplateDir(): string {
   return getExperimentalTemplatesPath();
+}
+
+/**
+ * Get common commands template directory
+ */
+export function getCommonCommandsTemplateDir(): string {
+  return getCommonCommandsTemplatesPath();
+}
+
+/**
+ * Common command types
+ */
+export type CommonCommandType = 'commit';
+
+/**
+ * Service for installing common commands (auto-installed on project selection)
+ */
+export class CommonCommandsInstallerService {
+  private templateDir: string;
+
+  constructor(templateDir: string) {
+    this.templateDir = templateDir;
+  }
+
+  /**
+   * Install commit command to project
+   * @param projectPath - Project root path
+   * @param options - Install options
+   * @returns Install result or error
+   */
+  async installCommitCommand(
+    projectPath: string,
+    options: InstallOptions = {}
+  ): Promise<Result<InstallResult, InstallError>> {
+    const { force = false } = options;
+    const relativePath = '.claude/commands/commit.md';
+    const targetPath = join(projectPath, relativePath);
+    const templatePath = join(this.templateDir, 'commit.md');
+
+    // Check if template exists
+    if (!(await fileExists(templatePath))) {
+      return {
+        ok: false,
+        error: { type: 'TEMPLATE_NOT_FOUND', path: templatePath },
+      };
+    }
+
+    // Check if target exists
+    const exists = await fileExists(targetPath);
+    if (exists && !force) {
+      return {
+        ok: true,
+        value: {
+          success: true,
+          installedFiles: [],
+          skippedFiles: [relativePath],
+          overwrittenFiles: [],
+        },
+      };
+    }
+
+    // Install the file
+    try {
+      const content = await readFile(templatePath, 'utf-8');
+      await mkdir(dirname(targetPath), { recursive: true });
+      await writeFile(targetPath, content, 'utf-8');
+
+      return {
+        ok: true,
+        value: {
+          success: true,
+          installedFiles: exists ? [] : [relativePath],
+          skippedFiles: [],
+          overwrittenFiles: exists ? [relativePath] : [],
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('EACCES') || message.includes('EPERM')) {
+        return {
+          ok: false,
+          error: { type: 'PERMISSION_DENIED', path: targetPath },
+        };
+      }
+      return {
+        ok: false,
+        error: { type: 'WRITE_ERROR', path: targetPath, message },
+      };
+    }
+  }
+
+  /**
+   * Check if commit command exists in project
+   */
+  async checkCommitCommandExists(projectPath: string): Promise<CheckResult> {
+    const targetPath = join(projectPath, '.claude', 'commands', 'commit.md');
+    const exists = await fileExists(targetPath);
+    return { exists, path: targetPath };
+  }
 }

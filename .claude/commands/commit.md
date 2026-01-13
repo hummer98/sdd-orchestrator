@@ -20,11 +20,18 @@ allowed-tools: Bash(git *), Read, Glob
   - **Bug 名**: `.kiro/bugs/{bug-name}/` 内のファイルを対象に含める
   - **省略時**: 現在のセッションで変更したファイルのみを対象
 
+### Options
+
+- `--check-branch`: ブランチチェックを有効化
+  - feature名とブランチ名の不一致時にユーザーに選択を促す
+  - **省略時（デフォルト）**: ブランチチェックをスキップし、カレントブランチに直接コミット
+
 ### Examples
 
 ```
-/commit                           # 現在のセッションの変更をコミット
-/commit my-feature                # my-feature spec の変更をコミット
+/commit                           # カレントブランチに変更をコミット（質問なし）
+/commit my-feature                # カレントブランチにmy-feature specの変更をコミット
+/commit my-feature --check-branch # ブランチチェック付きでコミット
 /commit fix-login-bug             # fix-login-bug のバグ修正をコミット
 ```
 
@@ -33,6 +40,10 @@ allowed-tools: Bash(git *), Read, Glob
 以下の手順で実行してください:
 
 ### 0. 引数の解析とコミット対象の特定
+
+**オプションの解析**:
+- `--check-branch` が指定されている場合: ブランチチェックを有効化（ステップ2, 3を実行）
+- `--check-branch` が指定されていない場合: ブランチチェックをスキップ（ステップ2, 3を省略し、カレントブランチに直接コミット）
 
 **引数がある場合**:
 1. Spec として存在するか確認: `.kiro/specs/$1/tasks.md`
@@ -70,13 +81,17 @@ git diff
 - 他のセッションやバックグラウンドで変更されたファイルは除外する
 - ユーザーが現在のタスクで意図的に変更したファイルを優先する
 
-### 2. 進行中のSpecとブランチの確認
+### 2. 進行中のSpecとブランチの確認（--check-branch 指定時のみ）
+
+> **注意**: `--check-branch` オプションが指定されていない場合、このステップはスキップされます。
 
 - `@CLAUDE.md` の "Active Specifications" から進行中の spec を特定
 - 現在のブランチ名を確認: `git branch --show-current`
 - 進行中の spec の feature名とブランチ名を比較
 
-### 3. ブランチ判定
+### 3. ブランチ判定（--check-branch 指定時のみ）
+
+> **注意**: `--check-branch` オプションが指定されていない場合、このステップはスキップされ、カレントブランチに直接コミットします。
 
 **feature名とブランチ名が一致する場合**: そのままコミット処理へ
 

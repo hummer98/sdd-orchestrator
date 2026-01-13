@@ -87,11 +87,13 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         console.log('[specDetailStore] Task progress calculated:', { spec: spec.name, taskProgress });
 
         // Auto-fix spec.json phase if task completion doesn't match phase
+        // Bug fix: spec-phase-downgrade-on-select - don't downgrade advanced phases
         if (total > 0) {
           const currentPhase = specJson.phase;
           const isAllComplete = completed === total;
+          const advancedPhases = ['implementation-complete', 'inspection-complete', 'deploy-complete'];
 
-          if (isAllComplete && currentPhase !== 'implementation-complete') {
+          if (isAllComplete && !advancedPhases.includes(currentPhase)) {
             console.log('[specDetailStore] Auto-fixing phase to implementation-complete', { spec: spec.name, currentPhase });
             try {
               await window.electronAPI.syncSpecPhase(spec.path, 'impl-complete', { skipTimestamp: true });

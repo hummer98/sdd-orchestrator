@@ -48,8 +48,20 @@ describe('useProjectStore', () => {
   describe('selectProject', () => {
     it('should set currentProject when valid path selected', async () => {
       const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
-      const mockSpecs = [{ name: 'test-spec', path: '/test/spec', phase: 'initialized', updatedAt: '2024-01-01', approvals: { requirements: { generated: false, approved: false }, design: { generated: false, approved: false }, tasks: { generated: false, approved: false } } }];
+      // spec-metadata-ssot-refactor: SpecMetadata only has name and path
+      const mockSpecs = [{ name: 'test-spec', path: '/test/spec' }];
       const mockBugs = [{ name: 'test-bug', path: '/test/bug', phase: 'reported', updatedAt: '2024-01-01' }];
+      // spec-metadata-ssot-refactor: specJson contains phase/updatedAt
+      const mockSpecJson = {
+        feature_name: 'test-spec',
+        phase: 'design-generated',
+        updated_at: '2024-01-01T00:00:00Z',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
 
       window.electronAPI.selectProject = vi.fn().mockResolvedValue({
         success: true,
@@ -69,6 +81,8 @@ describe('useProjectStore', () => {
         missing: [],
         present: [],
       });
+      // spec-metadata-ssot-refactor: Mock readSpecJson for loadSpecJsons
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -78,6 +92,10 @@ describe('useProjectStore', () => {
       // specs/bugs are delegated to specStore/bugStore (SSOT)
       expect(useSpecStore.getState().specs).toEqual(mockSpecs);
       expect(useBugStore.getState().bugs).toEqual(mockBugs);
+      // spec-metadata-ssot-refactor: Verify specJsonMap is loaded for phase display
+      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith('/test/spec');
+      const specJsonMap = useSpecStore.getState().specJsonMap;
+      expect(specJsonMap.get('test-spec')).toEqual(mockSpecJson);
     });
 
     it('should set isLoading during selection', async () => {

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-01-13
+
+### Added
+- **Web E2Eテスト基盤**: Playwrightを使用したWeb E2Eテスト基盤を実装
+- **Worktree UI表示機能**: Git worktree情報をSpec詳細画面に表示（Task 11-13）
+
+### Changed
+- **SpecMetadata SSOTリファクタリング**: SpecMetadata SSOT原則に基づくリファクタリングを実施
+
+### Fixed
+- **Bugsワークフロー進捗更新**: 競合状態によるBugsワークフロー進捗更新問題を修正
+- **Inspection自動実行フラグ**: Inspection自動実行フラグの変更が正しく反映されるよう修正
+- **自動実行NOGOフェーズ**: 自動実行でNOGOフェーズをスキップせず停止するよう修正
+
+### Testing
+- **SpecDetailコンポーネントテスト**: Worktree情報表示のユニットテストを追加
+
 ## [0.24.0] - 2026-01-13
 
 ### Added

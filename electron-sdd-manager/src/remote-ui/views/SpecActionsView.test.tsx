@@ -17,11 +17,10 @@ import type { SpecDetail, ApiClient } from '@shared/api/types';
 // =============================================================================
 
 const mockSpecDetail: SpecDetail = {
-  name: 'user-authentication',
-  path: '/project/.kiro/specs/user-authentication',
-  phase: 'implementation-complete',
-  updatedAt: '2026-01-10T10:00:00Z',
-  createdAt: '2026-01-09T08:00:00Z',
+  metadata: {
+    name: 'user-authentication',
+    path: '/project/.kiro/specs/user-authentication',
+  },
   specJson: {
     feature_name: 'user-authentication',
     created_at: '2026-01-09T08:00:00Z',
@@ -59,11 +58,13 @@ const mockSpecDetail: SpecDetail = {
     },
   },
   artifacts: {
-    requirements: 'Requirements content...',
-    design: 'Design content...',
-    tasks: 'Tasks content...',
+    requirements: { exists: true, updatedAt: '2026-01-10T10:00:00Z', content: 'Requirements content...' },
+    design: { exists: true, updatedAt: '2026-01-10T10:00:00Z', content: 'Design content...' },
+    tasks: { exists: true, updatedAt: '2026-01-10T10:00:00Z', content: 'Tasks content...' },
     research: null,
+    inspection: null,
   },
+  taskProgress: null,
 };
 
 // =============================================================================

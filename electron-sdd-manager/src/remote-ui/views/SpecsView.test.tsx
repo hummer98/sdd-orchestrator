@@ -184,7 +184,14 @@ describe('SpecsView', () => {
 
       fireEvent.click(screen.getByText('user-authentication'));
 
-      expect(onSelectSpec).toHaveBeenCalledWith(mockSpecs[0]);
+      // spec-metadata-ssot-refactor: onSelectSpec receives SpecMetadataWithPhase
+      // built from specJsonMap (phase/updatedAt from specJson, fallback to defaults)
+      expect(onSelectSpec).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'user-authentication',
+          path: '/project/.kiro/specs/user-authentication',
+        })
+      );
     });
 
     it('highlights selected spec', async () => {

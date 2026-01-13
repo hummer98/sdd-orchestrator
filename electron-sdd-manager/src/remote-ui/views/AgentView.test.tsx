@@ -36,14 +36,16 @@ const mockAgents: AgentInfo[] = [
 
 const mockLogs: LogEntry[] = [
   {
-    timestamp: '2026-01-10T10:00:00Z',
-    level: 'info',
-    message: 'Starting requirements generation...',
+    id: 'log-1',
+    timestamp: new Date('2026-01-10T10:00:00Z').getTime(),
+    stream: 'stdout',
+    data: 'Starting requirements generation...',
   },
   {
-    timestamp: '2026-01-10T10:01:00Z',
-    level: 'info',
-    message: 'Processing requirements...',
+    id: 'log-2',
+    timestamp: new Date('2026-01-10T10:01:00Z').getTime(),
+    stream: 'stdout',
+    data: 'Processing requirements...',
   },
 ];
 

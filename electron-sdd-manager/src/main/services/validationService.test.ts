@@ -145,6 +145,7 @@ Protocol description.
         'templates/specs/design.md', 'templates/specs/tasks.md', 'templates/specs/research.md',
         // Steering templates
         'templates/steering/product.md', 'templates/steering/structure.md', 'templates/steering/tech.md',
+        'templates/steering/logging.md', 'templates/steering/debugging.md',
         // Steering-custom templates
         'templates/steering-custom/api-standards.md', 'templates/steering-custom/authentication.md',
         'templates/steering-custom/database.md', 'templates/steering-custom/deployment.md',

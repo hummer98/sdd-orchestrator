@@ -20,9 +20,7 @@ vi.mock('../stores/agentStore');
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('AgentInputPanel', () => {
-  const mockSendInput = vi.fn();
   const mockResumeAgent = vi.fn();
-  const mockGetAgentById = vi.fn();
 
   const baseAgentInfo: AgentInfo = {
     agentId: 'agent-1',
@@ -36,15 +34,33 @@ describe('AgentInputPanel', () => {
     command: 'claude -p "/kiro:spec-requirements"',
   };
 
+  // Helper to create mock store that supports Zustand selector pattern
+  const createMockStore = (agent: AgentInfo | undefined, selectedAgentId: string | null) => {
+    // Build agents Map from single agent (if provided)
+    const agentsMap = new Map<string, AgentInfo[]>();
+    if (agent) {
+      agentsMap.set(agent.specId, [agent]);
+    }
+
+    const mockState = {
+      selectedAgentId,
+      agents: agentsMap,
+      resumeAgent: mockResumeAgent,
+    };
+
+    // Return a function that can handle selector pattern
+    return (selector: (state: typeof mockState) => unknown) => {
+      if (typeof selector === 'function') {
+        return selector(mockState);
+      }
+      return mockState;
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockUseAgentStore.mockReturnValue({
-      selectedAgentId: 'agent-1',
-      sendInput: mockSendInput,
-      resumeAgent: mockResumeAgent,
-      getAgentById: mockGetAgentById.mockReturnValue(baseAgentInfo),
-    });
+    // Default mock: completed agent with sessionId
+    mockUseAgentStore.mockImplementation(createMockStore(baseAgentInfo, 'agent-1'));
   });
 
   afterEach(() => {
@@ -129,12 +145,7 @@ describe('AgentInputPanel', () => {
     });
 
     it('should disable input when no agent is selected', () => {
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: null,
-        sendInput: mockSendInput,
-        resumeAgent: mockResumeAgent,
-        getAgentById: mockGetAgentById.mockReturnValue(undefined),
-      });
+      mockUseAgentStore.mockImplementation(createMockStore(undefined, null));
 
       render(<AgentInputPanel />);
 
@@ -143,13 +154,8 @@ describe('AgentInputPanel', () => {
     });
 
     it('should disable input when agent is running', () => {
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, status: 'running' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        sendInput: mockSendInput,
-        resumeAgent: mockResumeAgent,
-        getAgentById: mockGetAgentById,
-      });
+      const runningAgent = { ...baseAgentInfo, status: 'running' as const };
+      mockUseAgentStore.mockImplementation(createMockStore(runningAgent, 'agent-1'));
 
       render(<AgentInputPanel />);
 
@@ -158,13 +164,8 @@ describe('AgentInputPanel', () => {
     });
 
     it('should enable input when agent is completed', () => {
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, status: 'completed' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        sendInput: mockSendInput,
-        resumeAgent: mockResumeAgent,
-        getAgentById: mockGetAgentById,
-      });
+      const completedAgent = { ...baseAgentInfo, status: 'completed' as const };
+      mockUseAgentStore.mockImplementation(createMockStore(completedAgent, 'agent-1'));
 
       render(<AgentInputPanel />);
 
@@ -173,13 +174,8 @@ describe('AgentInputPanel', () => {
     });
 
     it('should enable input when agent has error', () => {
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, status: 'error' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        sendInput: mockSendInput,
-        resumeAgent: mockResumeAgent,
-        getAgentById: mockGetAgentById,
-      });
+      const errorAgent = { ...baseAgentInfo, status: 'error' as const };
+      mockUseAgentStore.mockImplementation(createMockStore(errorAgent, 'agent-1'));
 
       render(<AgentInputPanel />);
 
@@ -188,13 +184,8 @@ describe('AgentInputPanel', () => {
     });
 
     it('should disable input when agent has no sessionId', () => {
-      mockGetAgentById.mockReturnValue({ ...baseAgentInfo, status: 'completed', sessionId: '' });
-      mockUseAgentStore.mockReturnValue({
-        selectedAgentId: 'agent-1',
-        sendInput: mockSendInput,
-        resumeAgent: mockResumeAgent,
-        getAgentById: mockGetAgentById,
-      });
+      const noSessionAgent = { ...baseAgentInfo, status: 'completed' as const, sessionId: '' };
+      mockUseAgentStore.mockImplementation(createMockStore(noSessionAgent, 'agent-1'));
 
       render(<AgentInputPanel />);
 
@@ -204,23 +195,21 @@ describe('AgentInputPanel', () => {
   });
 
   describe('複数行入力', () => {
-    it('should insert newline with Alt+Enter', async () => {
+    it('should not send on Alt+Enter (allows newline insertion)', async () => {
       render(<AgentInputPanel />);
 
       const textarea = screen.getByPlaceholderText(/追加の指示を入力/);
 
-      // Type first line
+      // Type some content
       await userEvent.type(textarea, 'line 1');
 
-      // Simulate Alt+Enter for newline
+      // Alt+Enter should NOT trigger send (default behavior should be preserved for newline)
       fireEvent.keyDown(textarea, { key: 'Enter', altKey: true });
 
-      // Type second line
-      await userEvent.type(textarea, 'line 2');
-
-      // Alt+Enter should allow the default behavior (newline insertion)
-      // The value should contain both lines
-      expect(textarea).toHaveValue('line 1line 2');
+      // resumeAgent should NOT be called - Alt+Enter is for inserting newlines
+      expect(mockResumeAgent).not.toHaveBeenCalled();
+      // Input should still contain the text (not cleared)
+      expect(textarea).toHaveValue('line 1');
     });
 
     it('should not send on Enter when Alt is pressed', async () => {

@@ -63,6 +63,20 @@ vi.mock('./layouts', async () => {
   };
 });
 
+// Mock views to prevent async operations during tests
+vi.mock('./views', async () => {
+  const React = await import('react');
+  return {
+    SpecsView: () => React.createElement('div', { 'data-testid': 'specs-view' }, 'SpecsView'),
+    SpecDetailView: () => React.createElement('div', { 'data-testid': 'spec-detail-view' }, 'SpecDetailView'),
+    SpecActionsView: () => React.createElement('div', { 'data-testid': 'spec-actions-view' }, 'SpecActionsView'),
+    BugsView: () => React.createElement('div', { 'data-testid': 'bugs-view' }, 'BugsView'),
+    BugDetailView: () => React.createElement('div', { 'data-testid': 'bug-detail-view' }, 'BugDetailView'),
+    AgentView: () => React.createElement('div', { 'data-testid': 'agent-view' }, 'AgentView'),
+    ProjectAgentView: () => React.createElement('div', { 'data-testid': 'project-agent-view' }, 'ProjectAgentView'),
+  };
+});
+
 describe('Task 11: Remote UI Integration Tests', () => {
   beforeEach(() => {
     vi.resetModules();

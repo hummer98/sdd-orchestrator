@@ -18,7 +18,8 @@ const PHASE_LABELS: Record<Phase, string> = {
 };
 
 export function ApprovalPanel() {
-  const { selectedSpec, specDetail, refreshSpecs } = useSpecStore();
+  const { selectedSpec, specDetail } = useSpecStore();
+  // Note: refreshSpecs is no longer needed - File Watcher auto-updates spec state
   const [isLoading, setIsLoading] = useState<Phase | null>(null);
   const [rejectDialogPhase, setRejectDialogPhase] = useState<Phase | null>(null);
 
@@ -34,7 +35,7 @@ export function ApprovalPanel() {
     setIsLoading(phase);
     try {
       await window.electronAPI.updateApproval(selectedSpec.path, phase, true);
-      await refreshSpecs();
+      // File Watcher will auto-update spec state
       notify.success(`${PHASE_LABELS[phase]}を承認しました`);
     } catch (error) {
       notify.error(
@@ -57,7 +58,7 @@ export function ApprovalPanel() {
       // In a real implementation, you might want to log the rejection reason
       console.log(`Rejected ${rejectDialogPhase}: ${reason}`);
       await window.electronAPI.updateApproval(selectedSpec.path, rejectDialogPhase, false);
-      await refreshSpecs();
+      // File Watcher will auto-update spec state
       notify.warning(`${PHASE_LABELS[rejectDialogPhase]}を却下しました`);
     } catch (error) {
       notify.error(

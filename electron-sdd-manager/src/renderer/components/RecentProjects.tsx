@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { Clock, Folder, AlertTriangle, Info } from 'lucide-react';
-import { useProjectStore, useSpecStore } from '../stores';
+import { useProjectStore } from '../stores';
 import { useVersionStatusStore } from '../stores/versionStatusStore';
 import { clsx } from 'clsx';
 import { CommandsetInstallDialog, type ProfileName, type ProgressCallback } from './CommandsetInstallDialog';
@@ -94,7 +94,7 @@ export function RecentProjects() {
     loadRecentProjects,
     selectProject,
   } = useProjectStore();
-  const { loadSpecs } = useSpecStore();
+  // Note: loadSpecs is no longer needed - selectProject now handles specs loading
   const {
     checkProjectVersions,
     getVersionStatus,
@@ -128,8 +128,8 @@ export function RecentProjects() {
   }, [recentProjects, checkProjectVersions, getVersionStatus]);
 
   const handleSelectProject = async (path: string) => {
+    // selectProject handles everything: specs loading, specJsonMap, file watchers
     await selectProject(path);
-    await loadSpecs(path);
   };
 
   // Handler for update button click

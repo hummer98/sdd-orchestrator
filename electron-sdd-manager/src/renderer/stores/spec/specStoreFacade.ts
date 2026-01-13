@@ -139,11 +139,6 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
     // SpecListStore Actions (Req 7.3)
     // ============================================================
 
-    loadSpecs: async (projectPath: string) => {
-      await useSpecListStore.getState().loadSpecs(projectPath);
-      set(getAggregatedState());
-    },
-
     setSpecs: (specs: SpecMetadata[]) => {
       useSpecListStore.getState().setSpecs(specs);
       set(getAggregatedState());
@@ -152,12 +147,6 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
     /** spec-metadata-ssot-refactor: Set specJsonMap directly from selectProject result */
     setSpecJsonMap: (specJsonMap: Record<string, SpecJson>) => {
       useSpecListStore.getState().setSpecJsonMap(specJsonMap);
-      set(getAggregatedState());
-    },
-
-    /** spec-metadata-ssot-refactor: Load specJsons for all specs */
-    loadSpecJsons: async (projectPath: string) => {
-      await useSpecListStore.getState().loadSpecJsons(projectPath);
       set(getAggregatedState());
     },
 
@@ -209,27 +198,7 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
       set(getAggregatedState());
     },
 
-    refreshSpecs: async () => {
-      // SSOT: Get project path from projectStore
-      const { useProjectStore } = await import('../projectStore');
-      const currentProject = useProjectStore.getState().currentProject;
-
-      if (currentProject) {
-        await useSpecListStore.getState().loadSpecs(currentProject);
-
-        // Also refresh selected spec detail if one is selected
-        const { selectedSpec } = useSpecDetailStore.getState();
-        if (selectedSpec) {
-          const specs = useSpecListStore.getState().specs;
-          const updatedSpec = specs.find((s) => s.path === selectedSpec.path);
-          if (updatedSpec) {
-            await useSpecDetailStore.getState().selectSpec(updatedSpec, { silent: true });
-          }
-        }
-
-        set(getAggregatedState());
-      }
-    },
+    // Note: refreshSpecs removed - File Watcher handles spec updates automatically
 
     // ============================================================
     // AutoExecutionStore Actions (Req 7.4)

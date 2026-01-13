@@ -53,9 +53,6 @@ export interface SpecListState {
 
 /** SpecListStore actions interface */
 export interface SpecListActions {
-  loadSpecs(projectPath: string): Promise<void>;
-  /** spec-metadata-ssot-refactor: Load specJsons for all specs */
-  loadSpecJsons(projectPath: string): Promise<void>;
   setSpecs(specs: SpecMetadata[]): void;
   /** spec-metadata-ssot-refactor: Set specJsonMap directly from selectProject result */
   setSpecJsonMap(specJsonMap: Record<string, SpecJson>): void;
@@ -243,8 +240,7 @@ export interface SpecStoreActions
     Omit<SpecDetailActions, 'setSpecDetail' | 'setSpecJson' | 'setArtifact' | 'setTaskProgress'>,
     AutoExecutionActions,
     SpecManagerExecutionActions {
-  /** Refresh specs from file system */
-  refreshSpecs(): Promise<void>;
+  // Note: refreshSpecs removed - File Watcher handles updates automatically
   /** Start file watching */
   startWatching(): Promise<void>;
   /** Stop file watching */

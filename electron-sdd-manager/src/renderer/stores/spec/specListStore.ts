@@ -26,52 +26,6 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
   // Actions
 
   /**
-   * Load specs from project path
-   * Requirement 1.2: loadSpecs action to fetch specs from project path
-   * Requirement 1.7: Set isLoading to true during fetch
-   * Requirement 1.8: Set error state on failure
-   * spec-metadata-ssot-refactor: Also loads specJsons for phase/updatedAt
-   */
-  loadSpecs: async (projectPath: string) => {
-    set({ isLoading: true, error: null });
-
-    try {
-      const specs = await window.electronAPI.readSpecs(projectPath);
-      set({ specs, isLoading: false });
-
-      // spec-metadata-ssot-refactor: Load specJsons after loading specs
-      await get().loadSpecJsons(projectPath);
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to load specs',
-        isLoading: false,
-      });
-    }
-  },
-
-  /**
-   * Load specJsons for all specs
-   * spec-metadata-ssot-refactor: Task 3.1 - Build specJsonMap
-   */
-  loadSpecJsons: async (_projectPath: string) => {
-    const { specs } = get();
-    const newSpecJsonMap = new Map<string, SpecJson>();
-
-    for (const spec of specs) {
-      try {
-        const specJson = await window.electronAPI.readSpecJson(spec.path);
-        newSpecJsonMap.set(spec.name, specJson);
-      } catch (error) {
-        // Skip specs with invalid spec.json
-        console.warn(`[specListStore] Failed to load specJson for ${spec.name}:`, error);
-      }
-    }
-
-    set({ specJsonMap: newSpecJsonMap });
-    console.log(`[specListStore] Loaded ${newSpecJsonMap.size} specJsons`);
-  },
-
-  /**
    * Set specs directly
    * Requirement 1.3: setSpecs action for unified project selection integration
    */

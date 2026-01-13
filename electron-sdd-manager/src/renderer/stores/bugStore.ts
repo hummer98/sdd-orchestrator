@@ -122,6 +122,10 @@ export const useBugStore = create<BugStore>((set, get) => ({
     }
 
     try {
+      // Bug fix: bugs-agent-list-not-updating
+      // Switch agent watcher scope to this bug's directory for real-time updates
+      await window.electronAPI.switchAgentWatchScope(bug.path);
+
       const bugDetail = await window.electronAPI.readBugDetail(bug.path);
 
       if (silent) {

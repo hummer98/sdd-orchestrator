@@ -300,6 +300,17 @@ const electronAPI = {
     };
   },
 
+  // agent-watcher-optimization Task 4.2: Switch watch scope for specific spec/bug
+  // Bug fix: bugs-agent-list-not-updating
+  // Called when spec/bug is selected to focus file watcher on that directory
+  switchAgentWatchScope: (scopeId: string | null): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SWITCH_AGENT_WATCH_SCOPE, scopeId),
+
+  // agent-watcher-optimization Task 2.2: Get running agent counts per spec
+  // Requirements: 2.1 - Get running agent counts efficiently for SpecList badges
+  getRunningAgentCounts: (): Promise<Record<string, number>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_RUNNING_AGENT_COUNTS),
+
   // spec-manager Install (Requirements: 4.1-4.6)
   checkSpecManagerFiles: (projectPath: string): Promise<FullCheckResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES, projectPath),

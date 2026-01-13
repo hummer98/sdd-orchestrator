@@ -28,6 +28,8 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
    */
   selectSpec: async (spec: SpecMetadata, options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
+    const timings: Record<string, number> = {};
+    const startTotal = performance.now();
 
     if (!silent) {
       // Bug fix: spec-item-flash-wrong-content - clear specDetail immediately
@@ -36,7 +38,22 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
     }
 
     try {
+      // Bug fix: bugs-agent-list-not-updating (also applies to specs)
+      // Switch agent watcher scope to this spec's directory for real-time updates
+      // agent-watcher-optimization Task 4.2
+      const t0 = performance.now();
+      await window.electronAPI.switchAgentWatchScope(spec.name);
+      timings['switchAgentWatchScope'] = performance.now() - t0;
+
+      // agent-watcher-optimization Task 4.2: Auto-select agent for this spec
+      // Import and call autoSelectAgentForSpec from shared agentStore
+      const { useSharedAgentStore } = await import('../../../shared/stores/agentStore');
+      useSharedAgentStore.getState().autoSelectAgentForSpec(spec.name);
+      console.log('[specDetailStore] Auto-selected agent for spec:', spec.name);
+
+      const t1 = performance.now();
       const specJson = await window.electronAPI.readSpecJson(spec.path);
+      timings['readSpecJson'] = performance.now() - t1;
 
       // Get artifact info with content for tasks
       const getArtifactInfo = async (name: string): Promise<ArtifactInfo | null> => {
@@ -67,6 +84,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         }
       };
 
+      const t2 = performance.now();
       const [requirements, design, tasks, research, inspection] = await Promise.all([
         getArtifactInfo('requirements'),
         getArtifactInfo('design'),
@@ -74,6 +92,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         getArtifactInfo('research'),
         getInspectionArtifact(),
       ]);
+      timings['readArtifacts'] = performance.now() - t2;
 
       // Calculate task progress from tasks.md content
       let taskProgress: TaskProgress | null = null;
@@ -109,14 +128,17 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       }
 
       // Auto-sync documentReview field with file system state
+      const t3 = performance.now();
       try {
         const wasModified = await window.electronAPI.syncDocumentReview(spec.path);
+        timings['syncDocumentReview'] = performance.now() - t3;
         if (wasModified) {
           console.log('[specDetailStore] Auto-synced documentReview state', { spec: spec.name });
           const updatedSpecJson = await window.electronAPI.readSpecJson(spec.path);
           Object.assign(specJson, updatedSpecJson);
         }
       } catch (error) {
+        timings['syncDocumentReview'] = performance.now() - t3;
         console.error('[specDetailStore] Failed to sync documentReview:', error);
       }
 
@@ -137,7 +159,9 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       // Sync autoExecution settings from spec.json to workflowStore
       // This ensures UI reflects the spec-scoped settings when switching specs
       if (specJson.autoExecution) {
+        const t4 = performance.now();
         const { useWorkflowStore } = await import('../workflowStore');
+        timings['importWorkflowStore'] = performance.now() - t4;
         const wf = useWorkflowStore.getState();
         if (specJson.autoExecution.permissions) {
           wf.setAutoExecutionPermissions(specJson.autoExecution.permissions);
@@ -153,6 +177,12 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
           documentReviewFlag: specJson.autoExecution.documentReviewFlag,
         });
       }
+
+      timings['total'] = performance.now() - startTotal;
+      console.log('[specDetailStore] selectSpec timings:', { spec: spec.name, timings });
+      // Debug: save to global for inspection
+      (window as unknown as { __selectSpecTimings: unknown[] }).__selectSpecTimings = (window as unknown as { __selectSpecTimings: unknown[] }).__selectSpecTimings || [];
+      (window as unknown as { __selectSpecTimings: unknown[] }).__selectSpecTimings.push({ spec: spec.name, timings, timestamp: Date.now() });
 
       if (silent) {
         set({ selectedSpec: spec, specDetail });
@@ -175,11 +205,17 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
    * Clear selected spec
    * Requirement 2.4: clearSelectedSpec action to reset selection
    * Bug fix: spec-item-flash-wrong-content - also clear editor content
+   * agent-watcher-optimization Task 4.3: Clear watch scope on deselection
    */
   clearSelectedSpec: () => {
     set({ selectedSpec: null, specDetail: null });
     // Clear editor content to prevent showing old spec's content when switching projects
     useEditorStore.getState().clearEditor();
+    // agent-watcher-optimization Task 4.3: Clear spec watch scope
+    // Only ProjectAgent monitoring will continue
+    window.electronAPI.switchAgentWatchScope(null).catch((error) => {
+      console.error('[specDetailStore] Failed to clear agent watch scope:', error);
+    });
   },
 
   /**

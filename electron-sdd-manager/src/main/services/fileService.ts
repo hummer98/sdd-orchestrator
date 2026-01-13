@@ -104,6 +104,8 @@ export class FileService {
 
   /**
    * Read all specs from a project
+   * spec-metadata-ssot-refactor: Returns only name and path (SSOT principle)
+   * phase, updatedAt, approvals should be obtained from specJson
    */
   async readSpecs(projectPath: string): Promise<Result<SpecMetadata[], FileError>> {
     try {
@@ -126,16 +128,13 @@ export class FileService {
         const specJsonPath = join(specPath, 'spec.json');
 
         try {
-          const content = await readFile(specJsonPath, 'utf-8');
-          const specJson: SpecJson = JSON.parse(content);
-          const stats = await stat(specJsonPath);
+          // Only check if spec.json exists (no need to read content for metadata)
+          await access(specJsonPath);
 
+          // spec-metadata-ssot-refactor: Return only name and path
           specs.push({
             name: entry.name,
             path: specPath,
-            phase: specJson.phase,
-            updatedAt: specJson.updated_at || stats.mtime.toISOString(),
-            approvals: specJson.approvals,
           });
         } catch {
           // Skip specs without valid spec.json

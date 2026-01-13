@@ -385,6 +385,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Set up StateProvider and WorkflowController for Remote Access Server
   // This enables mobile remote access to see specs and control workflows
+  // spec-metadata-ssot-refactor: Read specJson for phase/updatedAt since SpecMetadata no longer has them
   const getSpecsForRemote = async (): Promise<SpecInfo[] | null> => {
     const result = await fileService.readSpecs(projectPath);
     if (!result.ok) {
@@ -395,15 +396,43 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     // SpecInfo requires: id, name, phase (and allows additional properties)
     // Note: Mobile UI expects feature_name for display and selection
     // Include approvals for accurate phase status display
-    return result.value.map(spec => ({
-      id: spec.name, // Use name as id (spec directory name)
-      name: spec.name,
-      feature_name: spec.name, // Required by mobile UI components
-      phase: spec.phase,
-      path: spec.path,
-      updatedAt: spec.updatedAt,
-      approvals: spec.approvals, // Include approvals for Remote UI
-    }));
+    // spec-metadata-ssot-refactor: Read specJson for each spec to get phase/updatedAt
+    const specInfos: SpecInfo[] = [];
+    for (const spec of result.value) {
+      try {
+        const specJsonResult = await fileService.readSpecJson(spec.path);
+        if (specJsonResult.ok) {
+          specInfos.push({
+            id: spec.name,
+            name: spec.name,
+            feature_name: spec.name,
+            phase: specJsonResult.value.phase,
+            path: spec.path,
+            updatedAt: specJsonResult.value.updated_at || '',
+            approvals: specJsonResult.value.approvals,
+          });
+        } else {
+          // Use default values if specJson cannot be read
+          specInfos.push({
+            id: spec.name,
+            name: spec.name,
+            feature_name: spec.name,
+            phase: 'initialized',
+            path: spec.path,
+          });
+        }
+      } catch (error) {
+        // Use default values on error
+        specInfos.push({
+          id: spec.name,
+          name: spec.name,
+          feature_name: spec.name,
+          phase: 'initialized',
+          path: spec.path,
+        });
+      }
+    }
+    return specInfos;
   };
 
   // Get bugs for remote access

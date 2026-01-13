@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSpecDetailStore } from './specDetailStore';
+import { useEditorStore } from '../editorStore';
 import type { SpecMetadata, SpecDetail, ArtifactInfo } from '../../types';
 
 const mockSpec: SpecMetadata = {
@@ -180,6 +181,31 @@ describe('useSpecDetailStore', () => {
       const state = useSpecDetailStore.getState();
       expect(state.selectedSpec).toBeNull();
       expect(state.specDetail).toBeNull();
+    });
+
+    it('should also clear editor content (Bug fix: spec-item-flash-wrong-content)', async () => {
+      // Setup: select a spec and set editor content
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      // Simulate editor having content
+      useEditorStore.setState({
+        content: '# Old content',
+        originalContent: '# Old content',
+        currentPath: '/project/.kiro/specs/feature-a/requirements.md',
+      });
+
+      // Clear selected spec
+      useSpecDetailStore.getState().clearSelectedSpec();
+
+      // Editor content should be cleared
+      const editorState = useEditorStore.getState();
+      expect(editorState.content).toBe('');
+      expect(editorState.originalContent).toBe('');
+      expect(editorState.currentPath).toBeNull();
     });
   });
 

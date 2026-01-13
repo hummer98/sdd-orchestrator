@@ -98,6 +98,36 @@ describe('useEditorStore', () => {
       const state = useEditorStore.getState();
       expect(state.content).toBe('');
     });
+
+    it('should clear content immediately when switching to a different file (Bug fix: spec-item-flash-wrong-content)', async () => {
+      // Setup: load initial artifact
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Initial Content');
+      await useEditorStore.getState().loadArtifact('/spec/path-a', 'requirements');
+
+      expect(useEditorStore.getState().content).toBe('# Initial Content');
+      expect(useEditorStore.getState().currentPath).toBe('/spec/path-a/requirements.md');
+
+      // Simulate slow loading for new file
+      let resolveNewContent: (value: string) => void;
+      const newContentPromise = new Promise<string>((resolve) => {
+        resolveNewContent = resolve;
+      });
+      window.electronAPI.readArtifact = vi.fn().mockReturnValue(newContentPromise);
+
+      // Start loading new artifact (don't await yet)
+      const loadPromise = useEditorStore.getState().loadArtifact('/spec/path-b', 'design');
+
+      // Content should be cleared immediately before the new content loads
+      expect(useEditorStore.getState().content).toBe('');
+      expect(useEditorStore.getState().originalContent).toBe('');
+      expect(useEditorStore.getState().currentPath).toBe('/spec/path-b/design.md');
+
+      // Complete the loading
+      resolveNewContent!('# New Content');
+      await loadPromise;
+
+      expect(useEditorStore.getState().content).toBe('# New Content');
+    });
   });
 
   describe('save', () => {

@@ -9,6 +9,7 @@ import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress } from '../..
 import { getLatestInspectionReportFile, normalizeInspectionState } from '../../types/inspection';
 import type { SpecDetailState, SpecDetailActions, ArtifactType } from './types';
 import { DEFAULT_SPEC_DETAIL_STATE } from './types';
+import { useEditorStore } from '../editorStore';
 
 type SpecDetailStore = SpecDetailState & SpecDetailActions;
 
@@ -175,9 +176,12 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
   /**
    * Clear selected spec
    * Requirement 2.4: clearSelectedSpec action to reset selection
+   * Bug fix: spec-item-flash-wrong-content - also clear editor content
    */
   clearSelectedSpec: () => {
     set({ selectedSpec: null, specDetail: null });
+    // Clear editor content to prevent showing old spec's content when switching projects
+    useEditorStore.getState().clearEditor();
   },
 
   /**

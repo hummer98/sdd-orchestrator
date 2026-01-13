@@ -149,6 +149,43 @@ describe('useProjectStore', () => {
       expect(state.error).toBeTruthy();
       expect(state.error).toContain('パスが存在しません');
     });
+
+    it('should clear selected spec before switching projects (Bug fix: spec-item-flash-wrong-content)', async () => {
+      // Setup: Set a selected spec from previous project
+      useSpecStore.setState({
+        selectedSpec: { name: 'old-spec', path: '/old-project/.kiro/specs/old-spec' },
+        specDetail: { metadata: { name: 'old-spec', path: '/old-project/.kiro/specs/old-spec' } } as never,
+      });
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/new-project',
+        kiroValidation: mockValidation,
+        specs: [{ name: 'new-spec', path: '/new-project/.kiro/specs/new-spec' }],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+
+      // Switch to new project
+      await useProjectStore.getState().selectProject('/new-project');
+
+      // Selected spec should be cleared (not pointing to old project's spec)
+      const specState = useSpecStore.getState();
+      expect(specState.selectedSpec).toBeNull();
+      expect(specState.specDetail).toBeNull();
+    });
   });
 
   describe('loadRecentProjects', () => {

@@ -137,11 +137,15 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { currentPath } = get();
     const isNewFile = currentPath !== null && currentPath !== artifactPath;
 
-    // Clear search state when switching to a different file
+    // Clear content and search state when switching to a different file
+    // Bug fix: spec-item-flash-wrong-content - clear content immediately to prevent showing old data
     if (isNewFile) {
       set({
         activeTab: artifact,
         currentPath: artifactPath,
+        content: '',
+        originalContent: '',
+        isDirty: false,
         error: null,
         // Clear search state
         searchVisible: false,

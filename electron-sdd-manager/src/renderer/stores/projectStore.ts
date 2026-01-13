@@ -116,6 +116,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // Requirements: 2.1-2.3
   // ============================================================
   selectProject: async (path: string) => {
+    // Bug fix: spec-item-flash-wrong-content - clear selected spec before switching projects
+    // to prevent showing old project's spec data momentarily
+    useSpecStore.getState().clearSelectedSpec();
+
     set({
       isLoading: true,
       error: null,

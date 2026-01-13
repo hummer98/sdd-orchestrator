@@ -21,6 +21,7 @@ import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
 import { useAutoExecution } from '../hooks/useAutoExecution';
+import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import {
   WORKFLOW_PHASES,
   ALL_WORKFLOW_PHASES,
@@ -224,6 +225,11 @@ export function WorkflowView() {
       const result = await autoExecution.stopAutoExecution(specDetail.metadata.path);
       if (!result.ok) {
         notify.error('自動実行の停止に失敗しました。');
+        // Bug Fix: NOT_EXECUTING エラーの場合、Main Processに状態がないので
+        // Renderer側の状態もリセットする
+        if (result.error.type === 'NOT_EXECUTING') {
+          useAutoExecutionStore.getState().stopAutoExecution(specDetail.metadata.name);
+        }
       }
     } else {
       // Bug Fix: approvals を渡して既に完了しているフェーズをスキップ

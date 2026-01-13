@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-01-13
+
+### Added
+- **Remote UIビュー統合とタブ切り替え**: Task 13でRemote UIのビュー統合とタブ切り替え機能を実装
+- **cc-sddカスタムプロンプトコマンド**: project-ask, spec-ask, spec-mergeコマンドを追加
+- **要件追跡性とカバレッジ検証**: spec-traceability機能で要件追跡性とカバレッジ検証を強化
+
+### Fixed
+- **executeSpecMerge API追加**: git-worktree-supportのexecuteSpecMergeをElectronAPIに追加
+
 ## [0.23.0] - 2026-01-12
 
 ### Added

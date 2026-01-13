@@ -169,57 +169,46 @@ export function BugDetailView({
     );
   }
 
-  const currentPhase = bugDetail.phase as BugPhase;
+  const currentPhase = bugDetail.metadata.phase as BugPhase;
   const actions: BugAction[] = ['analyze', 'fix', 'verify'];
 
   return (
     <div data-testid="bug-detail-view" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <Bug className="w-6 h-6 text-red-500" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {bugDetail.name}
+            {bugDetail.metadata.name}
           </h2>
         </div>
       </div>
 
       {/* Bug Report */}
-      {bugDetail.report && (
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+      {bugDetail.artifacts.report?.exists && (
+        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-5 h-5 text-gray-500" />
             <h3 className="font-medium text-gray-800 dark:text-gray-200">レポート</h3>
           </div>
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <p>{bugDetail.report.description}</p>
-            {bugDetail.report.steps && (
-              <div>
-                <span className="font-medium">再現手順: </span>
-                {bugDetail.report.steps.join(' -> ')}
-              </div>
+            {bugDetail.artifacts.report.content && (
+              <p>{bugDetail.artifacts.report.content.slice(0, 200)}...</p>
             )}
           </div>
         </div>
       )}
 
       {/* Analysis Result */}
-      {bugDetail.analysis && (
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+      {bugDetail.artifacts.analysis?.exists && (
+        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="w-5 h-5 text-yellow-500" />
             <h3 className="font-medium text-gray-800 dark:text-gray-200">分析結果</h3>
           </div>
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <p>
-              <span className="font-medium">根本原因: </span>
-              {bugDetail.analysis.rootCause}
-            </p>
-            {bugDetail.analysis.proposedFix && (
-              <p>
-                <span className="font-medium">提案: </span>
-                {bugDetail.analysis.proposedFix}
-              </p>
+            {bugDetail.artifacts.analysis.content && (
+              <p>{bugDetail.artifacts.analysis.content.slice(0, 200)}...</p>
             )}
           </div>
         </div>

@@ -16,7 +16,7 @@ import React, { ReactNode, useState } from 'react';
 // Types
 // =============================================================================
 
-export type MobileTab = 'specs' | 'bugs' | 'agents' | 'settings';
+export type MobileTab = 'specs' | 'bugs' | 'agents' | 'settings' | 'agent' | 'project';
 
 interface MobileLayoutProps {
   /**

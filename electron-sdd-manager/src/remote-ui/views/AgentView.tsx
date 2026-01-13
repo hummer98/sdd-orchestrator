@@ -119,9 +119,10 @@ export function AgentView({
         newLogs.set(agentId, [
           ...agentLogs,
           {
-            timestamp: new Date().toISOString(),
-            level: stream === 'stderr' ? 'error' : 'info',
-            message: data,
+            id: `${agentId}-${Date.now()}-${agentLogs.length}`,
+            timestamp: Date.now(),
+            stream,
+            data,
           },
         ]);
         return newLogs;
@@ -147,21 +148,23 @@ export function AgentView({
   // Load logs when agent is selected
   useEffect(() => {
     if (!selectedAgentId) return;
+    // Capture in const with explicit type after null check
+    const agentId: string = selectedAgentId;
 
     let isMounted = true;
 
     async function loadLogs() {
-      const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+      const selectedAgent = agents.find((a) => a.id === agentId);
       if (!selectedAgent) return;
 
-      const result = await apiClient.getAgentLogs(selectedAgent.specId, selectedAgentId);
+      const result = await apiClient.getAgentLogs(selectedAgent.specId ?? '', agentId);
 
       if (!isMounted) return;
 
       if (result.ok) {
         setLogs((prev) => {
           const newLogs = new Map(prev);
-          newLogs.set(selectedAgentId, result.value);
+          newLogs.set(agentId, result.value);
           return newLogs;
         });
       }
@@ -275,9 +278,9 @@ export function AgentView({
                   key={index}
                   className={clsx(
                     'py-0.5',
-                    log.level === 'error'
+                    log.stream === 'stderr'
                       ? 'text-red-400'
-                      : log.level === 'warning'
+                      : log.stream === 'stdin'
                         ? 'text-yellow-400'
                         : 'text-green-400'
                   )}
@@ -285,7 +288,7 @@ export function AgentView({
                   <span className="text-gray-500">
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>{' '}
-                  {log.message}
+                  {log.data}
                 </div>
               ))
             )}

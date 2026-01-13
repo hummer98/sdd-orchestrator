@@ -120,7 +120,7 @@ function MainContent() {
         return (
           <BugsView
             apiClient={apiClient}
-            selectedBugId={selectedBug?.name}
+            selectedBugId={undefined}
             onSelectBug={handleSelectBug}
           />
         );

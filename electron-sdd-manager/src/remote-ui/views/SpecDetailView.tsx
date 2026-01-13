@@ -51,12 +51,12 @@ const PHASE_LABELS: Record<WorkflowPhase, string> = {
   deploy: 'デプロイ',
 };
 
-// Map Phase to WorkflowPhase
-const PHASE_TO_WORKFLOW: Record<Phase, WorkflowPhase> = {
-  requirements: 'requirements',
-  design: 'design',
-  tasks: 'tasks',
-};
+// Note: PHASE_TO_WORKFLOW is not currently used but kept for future extensibility
+// const PHASE_TO_WORKFLOW: Record<Phase, WorkflowPhase> = {
+//   requirements: 'requirements',
+//   design: 'design',
+//   tasks: 'tasks',
+// };
 
 // =============================================================================
 // Helper Functions
@@ -133,7 +133,8 @@ export function SpecDetailView({
   const [autoExecutionStatus, setAutoExecutionStatus] = useState<AutoExecutionStatus>('idle');
   const [autoExecutionPhase, setAutoExecutionPhase] = useState<WorkflowPhase | null>(null);
   const [autoExecutionRetryCount, setAutoExecutionRetryCount] = useState(0);
-  const [autoExecutionFailedPhase, setAutoExecutionFailedPhase] = useState<WorkflowPhase | null>(null);
+  // Note: autoExecutionFailedPhase tracked for error recovery scenarios
+  const [autoExecutionFailedPhase] = useState<WorkflowPhase | null>(null);
 
   // Load spec detail on mount or spec change
   useEffect(() => {
@@ -238,7 +239,7 @@ export function SpecDetailView({
         design: true,
         tasks: true,
         impl: false,
-        inspection: 'skip',
+        inspection: false,
         deploy: false,
       },
       documentReviewFlag: specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
@@ -318,7 +319,7 @@ export function SpecDetailView({
           <div className="flex items-center gap-3">
             <FileText className="w-6 h-6 text-blue-500" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {specDetail.name}
+              {specDetail.metadata.name}
             </h2>
           </div>
           <button

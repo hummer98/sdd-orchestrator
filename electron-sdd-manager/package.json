@@ -16,6 +16,9 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run build && wdio run wdio.conf.ts",
+    "test:web-e2e": "npx playwright test",
+    "test:web-e2e:headed": "npx playwright test --headed",
+    "test:web-e2e:ui": "npx playwright test --ui",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },
@@ -59,7 +62,7 @@
     "electron": "35.5.1",
     "electron-builder": "^24.13.3",
     "jsdom": "^27.2.0",
-    "playwright": "^1.57.0",
+    "@playwright/test": "^1.57.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "tree-kill": "^1.2.2",

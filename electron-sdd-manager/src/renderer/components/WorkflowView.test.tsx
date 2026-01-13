@@ -174,7 +174,7 @@ const mockSpecStoreState = {
   // spec-scoped-auto-execution-state Task 5.1: Auto execution runtime state (as Map)
   autoExecutionRuntimeMap: createAutoExecutionRuntimeMap(),
   clearSpecManagerError: vi.fn(),
-  refreshSpecs: vi.fn(),
+  // Note: refreshSpecs removed - File Watcher handles spec updates automatically
 };
 
 describe('WorkflowView', () => {

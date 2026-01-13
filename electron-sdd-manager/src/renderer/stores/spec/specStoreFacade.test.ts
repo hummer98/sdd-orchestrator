@@ -117,13 +117,7 @@ describe('useSpecStoreFacade', () => {
 
   describe('action delegation (Req 7.3, 7.4)', () => {
     describe('SpecListStore actions', () => {
-      it('should delegate loadSpecs to SpecListStore', async () => {
-        window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
-
-        await useSpecStoreFacade.getState().loadSpecs('/project');
-
-        expect(useSpecListStore.getState().specs).toHaveLength(2);
-      });
+      // Note: loadSpecs test removed - loadSpecs was replaced by selectProject IPC
 
       it('should delegate setSpecs to SpecListStore', () => {
         useSpecStoreFacade.getState().setSpecs(mockSpecs);
@@ -302,7 +296,7 @@ describe('useSpecStoreFacade', () => {
       const actions = useSpecStoreFacade.getState();
 
       // SpecListStore actions
-      expect(typeof actions.loadSpecs).toBe('function');
+      // Note: loadSpecs removed - replaced by selectProject IPC
       expect(typeof actions.setSpecs).toBe('function');
       expect(typeof actions.setSortBy).toBe('function');
       expect(typeof actions.setSortOrder).toBe('function');

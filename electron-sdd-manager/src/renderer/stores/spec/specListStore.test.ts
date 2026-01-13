@@ -109,41 +109,7 @@ describe('useSpecListStore', () => {
     });
   });
 
-  describe('loadSpecs', () => {
-    it('should load specs from project path (Req 1.2)', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
-
-      await useSpecListStore.getState().loadSpecs('/project');
-
-      const state = useSpecListStore.getState();
-      expect(state.specs).toHaveLength(3);
-      expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
-    });
-
-    it('should set isLoading to true during fetch (Req 1.7)', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(mockSpecs), 100))
-      );
-
-      const loadPromise = useSpecListStore.getState().loadSpecs('/project');
-
-      expect(useSpecListStore.getState().isLoading).toBe(true);
-
-      await loadPromise;
-
-      expect(useSpecListStore.getState().isLoading).toBe(false);
-    });
-
-    it('should set error state if loadSpecs fails (Req 1.8)', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockRejectedValue(new Error('Network error'));
-
-      await useSpecListStore.getState().loadSpecs('/project');
-
-      const state = useSpecListStore.getState();
-      expect(state.error).toBe('Network error');
-      expect(state.isLoading).toBe(false);
-    });
-  });
+  // Note: loadSpecs tests removed - loadSpecs was replaced by selectProject IPC
 
   describe('setSpecs', () => {
     it('should set specs directly for unified project selection (Req 1.3)', () => {

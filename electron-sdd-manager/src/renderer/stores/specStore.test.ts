@@ -6,91 +6,97 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSpecStore } from './specStore';
+import { useSpecListStore } from './spec/specListStore';
+import { useSpecDetailStore } from './spec/specDetailStore';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from './workflowStore';
 // Note: AutoExecutionService import was removed as part of deprecated-auto-execution-service-cleanup.
 // Main Process AutoExecutionCoordinator now handles auto-execution via IPC.
-import type { SpecMetadata } from '../types';
+import type { SpecMetadata, SpecJson } from '../types';
 
 const mockSpecs: SpecMetadata[] = [
   {
     name: 'feature-a',
     path: '/project/.kiro/specs/feature-a',
-    phase: 'design-generated',
-    updatedAt: '2024-01-15T10:00:00Z',
+  },
+  {
+    name: 'feature-b',
+    path: '/project/.kiro/specs/feature-b',
+  },
+  {
+    name: 'feature-c',
+    path: '/project/.kiro/specs/feature-c',
+  },
+];
+
+// spec-metadata-ssot-refactor: specJsonMap provides phase/updatedAt
+const mockSpecJsons = {
+  'feature-a': {
+    feature_name: 'feature-a',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
+    language: 'ja',
+    phase: 'design-generated' as const,
     approvals: {
       requirements: { generated: true, approved: true },
       design: { generated: true, approved: false },
       tasks: { generated: false, approved: false },
     },
   },
-  {
-    name: 'feature-b',
-    path: '/project/.kiro/specs/feature-b',
-    phase: 'tasks-generated',
-    updatedAt: '2024-01-16T10:00:00Z',
+  'feature-b': {
+    feature_name: 'feature-b',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-16T10:00:00Z',
+    language: 'ja',
+    phase: 'tasks-generated' as const,
     approvals: {
       requirements: { generated: true, approved: true },
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
   },
-  {
-    name: 'feature-c',
-    path: '/project/.kiro/specs/feature-c',
-    phase: 'initialized',
-    updatedAt: '2024-01-14T10:00:00Z',
+  'feature-c': {
+    feature_name: 'feature-c',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-14T10:00:00Z',
+    language: 'ja',
+    phase: 'initialized' as const,
     approvals: {
       requirements: { generated: false, approved: false },
       design: { generated: false, approved: false },
       tasks: { generated: false, approved: false },
     },
   },
-];
+};
+
+const buildMockSpecJsonMap = () => new Map(Object.entries(mockSpecJsons));
 
 describe('useSpecStore', () => {
   beforeEach(() => {
-    // Reset store state
-    useSpecStore.setState({
+    // Reset child stores directly (facade aggregates state from child stores)
+    useSpecListStore.setState({
       specs: [],
-      selectedSpec: null,
-      specDetail: null,
+      specJsonMap: new Map(),
       sortBy: 'name',
       sortOrder: 'asc',
       statusFilter: 'all',
       isLoading: false,
       error: null,
     });
+    useSpecDetailStore.setState({
+      selectedSpec: null,
+      specDetail: null,
+      isLoading: false,
+      error: null,
+    });
     vi.clearAllMocks();
   });
 
-  describe('loadSpecs', () => {
-    it('should load specs from project', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
-
-      await useSpecStore.getState().loadSpecs('/project');
-
-      const state = useSpecStore.getState();
-      expect(state.specs).toHaveLength(3);
-    });
-
-    it('should set isLoading during load', async () => {
-      window.electronAPI.readSpecs = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(mockSpecs), 100))
-      );
-
-      const loadPromise = useSpecStore.getState().loadSpecs('/project');
-
-      expect(useSpecStore.getState().isLoading).toBe(true);
-
-      await loadPromise;
-
-      expect(useSpecStore.getState().isLoading).toBe(false);
-    });
-  });
+  // Note: loadSpecs tests removed - loadSpecs was replaced by selectProject IPC
 
   describe('sorting', () => {
     beforeEach(() => {
-      useSpecStore.setState({ specs: mockSpecs });
+      // spec-metadata-ssot-refactor: Must set child store state directly
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildMockSpecJsonMap() });
     });
 
     it('should sort by name ascending', () => {
@@ -123,7 +129,8 @@ describe('useSpecStore', () => {
 
   describe('filtering', () => {
     beforeEach(() => {
-      useSpecStore.setState({ specs: mockSpecs });
+      // spec-metadata-ssot-refactor: Must set child store state directly
+      useSpecListStore.setState({ specs: mockSpecs, specJsonMap: buildMockSpecJsonMap() });
     });
 
     it('should filter by phase', () => {
@@ -150,7 +157,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
@@ -183,7 +190,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
@@ -249,7 +256,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
@@ -275,46 +282,7 @@ describe('useSpecStore', () => {
   // Requirements: 6.1, 6.2, 6.3
   // ============================================================
   describe('FileWatcher Integration', () => {
-    it('should refresh specs on file change event (via refreshSpecs)', async () => {
-      // Mock readSpecs for initial load
-      window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);
-
-      // Set up initial state
-      useSpecStore.setState({ specs: mockSpecs, selectedSpec: mockSpecs[0] });
-
-      // Mock readSpecJson for the refresh
-      const updatedSpecJson = {
-        feature_name: 'feature-a',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-16T10:00:00Z',
-        language: 'ja',
-        phase: 'tasks-generated',
-        approvals: mockSpecs[0].approvals,
-        autoExecution: {
-          enabled: true,
-          permissions: { requirements: true, design: true, tasks: false, impl: false, inspection: false, deploy: false },
-          documentReviewFlag: 'run',
-          validationOptions: { gap: false, design: false, impl: false },
-        },
-      };
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
-
-      // Need to mock projectStore for refreshSpecs
-      vi.doMock('./projectStore', async () => {
-        return {
-          useProjectStore: {
-            getState: () => ({ currentProject: '/project' }),
-          },
-        };
-      });
-
-      // refreshSpecs is called when FileWatcher detects changes
-      // This simulates what happens when onSpecsChanged callback is invoked
-      await useSpecStore.getState().refreshSpecs();
-
-      // readSpecs should have been called to refresh the list
-      expect(window.electronAPI.readSpecs).toHaveBeenCalledWith('/project');
-    });
+    // Note: refreshSpecs test removed - refreshSpecs was replaced by File Watcher auto-updates
 
     it('should update specDetail when selected spec changes externally', async () => {
       // Initial setup
@@ -324,7 +292,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
@@ -370,7 +338,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'implementation-complete',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
         inspection: {
           status: 'completed',
           rounds: 1,
@@ -407,7 +375,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'tasks-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
         // No inspection field
       };
 
@@ -428,7 +396,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'implementation-complete',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
         inspection: {
           status: 'completed',
           rounds: 1,
@@ -457,7 +425,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'implementation-complete',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
         inspection: {
           status: 'completed',
           rounds: 1,
@@ -487,7 +455,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'implementation-complete',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
         inspection: {
           status: 'completed',
           rounds: 1,
@@ -674,7 +642,7 @@ describe('useSpecStore', () => {
       updated_at: '2024-01-15T10:00:00Z',
       language: 'ja',
       phase: 'design-generated',
-      approvals: mockSpecs[0].approvals,
+      approvals: mockSpecJsons['feature-a'].approvals,
     };
 
     beforeEach(async () => {
@@ -719,12 +687,18 @@ describe('useSpecStore', () => {
         expect(window.electronAPI.readSpecJson).not.toHaveBeenCalled();
       });
 
-      it('should also update spec metadata in the list', async () => {
+      it('should also update spec metadata in the list when project is set', async () => {
+        // Setup projectStore with current project
+        const { useProjectStore } = await import('./projectStore');
+        useProjectStore.setState({ currentProject: '/project' });
+
         const updatedSpecJson = {
           ...mockSpecJson,
           phase: 'tasks-generated',
         };
         window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(updatedSpecJson);
+        // Reset readSpecs mock to track new calls
+        (window.electronAPI.readSpecs as ReturnType<typeof vi.fn>).mockClear();
 
         await useSpecStore.getState().updateSpecJson();
 
@@ -922,7 +896,7 @@ describe('useSpecStore', () => {
         updated_at: '2024-01-15T10:00:00Z',
         language: 'ja',
         phase: 'design-generated',
-        approvals: mockSpecs[0].approvals,
+        approvals: mockSpecJsons['feature-a'].approvals,
       });
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Content');
       window.electronAPI.readSpecs = vi.fn().mockResolvedValue(mockSpecs);

@@ -21,25 +21,32 @@ const mockBug: BugMetadata = {
   path: '/project/.kiro/bugs/login-timeout-bug',
   phase: 'analyzed',
   updatedAt: '2026-01-10T10:00:00Z',
-  createdAt: '2026-01-09T08:00:00Z',
+  reportedAt: '2026-01-09T08:00:00Z',
 };
 
 const mockBugDetail: BugDetail = {
-  name: 'login-timeout-bug',
-  path: '/project/.kiro/bugs/login-timeout-bug',
-  phase: 'analyzed',
-  updatedAt: '2026-01-10T10:00:00Z',
-  createdAt: '2026-01-09T08:00:00Z',
-  report: {
-    description: 'Login times out after 5 seconds',
-    steps: ['Open login page', 'Enter credentials', 'Click login'],
-    expectedBehavior: 'Should login within 2 seconds',
-    actualBehavior: 'Times out after 5 seconds',
+  metadata: {
+    name: 'login-timeout-bug',
+    path: '/project/.kiro/bugs/login-timeout-bug',
+    phase: 'analyzed',
+    updatedAt: '2026-01-10T10:00:00Z',
+    reportedAt: '2026-01-09T08:00:00Z',
   },
-  analysis: {
-    rootCause: 'Slow database query',
-    affectedFiles: ['src/auth/login.ts'],
-    proposedFix: 'Add database index',
+  artifacts: {
+    report: {
+      exists: true,
+      path: '/project/.kiro/bugs/login-timeout-bug/report.md',
+      updatedAt: '2026-01-09T08:00:00Z',
+      content: 'Login times out after 5 seconds',
+    },
+    analysis: {
+      exists: true,
+      path: '/project/.kiro/bugs/login-timeout-bug/analysis.md',
+      updatedAt: '2026-01-10T10:00:00Z',
+      content: 'Root cause: Slow database query',
+    },
+    fix: null,
+    verification: null,
   },
 };
 

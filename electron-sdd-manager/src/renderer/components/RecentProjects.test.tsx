@@ -12,7 +12,7 @@ import type { VersionCheckResult } from '../types';
 // Mock stores
 const mockLoadRecentProjects = vi.fn();
 const mockSelectProject = vi.fn();
-const mockLoadSpecs = vi.fn();
+// Note: mockLoadSpecs removed - loadSpecs is no longer used
 const mockCheckProjectVersions = vi.fn();
 const mockGetVersionStatus = vi.fn();
 const mockHasAnyUpdateRequired = vi.fn();
@@ -24,9 +24,7 @@ vi.mock('../stores', () => ({
     loadRecentProjects: mockLoadRecentProjects,
     selectProject: mockSelectProject,
   })),
-  useSpecStore: vi.fn(() => ({
-    loadSpecs: mockLoadSpecs,
-  })),
+  // Note: useSpecStore mock removed - loadSpecs is no longer used
 }));
 
 vi.mock('../stores/versionStatusStore', () => ({

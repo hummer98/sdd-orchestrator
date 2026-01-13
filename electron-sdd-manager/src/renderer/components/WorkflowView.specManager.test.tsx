@@ -101,7 +101,7 @@ const createMockStores = (overrides: any = {}) => {
       }],
     ]),
     clearSpecManagerError: vi.fn(),
-    refreshSpecs: vi.fn(),
+    // Note: refreshSpecs removed - File Watcher handles spec updates automatically
     ...overrides.specStore,
   };
 

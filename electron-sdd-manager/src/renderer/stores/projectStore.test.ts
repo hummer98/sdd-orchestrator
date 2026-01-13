@@ -63,12 +63,16 @@ describe('useProjectStore', () => {
         },
       };
 
+      // spec-metadata-ssot-refactor: specJsonMap is returned from Main process
+      const mockSpecJsonMap = { 'test-spec': mockSpecJson };
+
       window.electronAPI.selectProject = vi.fn().mockResolvedValue({
         success: true,
         projectPath: '/test/project',
         kiroValidation: mockValidation,
         specs: mockSpecs,
         bugs: mockBugs,
+        specJsonMap: mockSpecJsonMap,  // spec-metadata-ssot-refactor
       });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
@@ -81,8 +85,6 @@ describe('useProjectStore', () => {
         missing: [],
         present: [],
       });
-      // spec-metadata-ssot-refactor: Mock readSpecJson for loadSpecJsons
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
 
       await useProjectStore.getState().selectProject('/test/project');
 
@@ -92,8 +94,7 @@ describe('useProjectStore', () => {
       // specs/bugs are delegated to specStore/bugStore (SSOT)
       expect(useSpecStore.getState().specs).toEqual(mockSpecs);
       expect(useBugStore.getState().bugs).toEqual(mockBugs);
-      // spec-metadata-ssot-refactor: Verify specJsonMap is loaded for phase display
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith('/test/spec');
+      // spec-metadata-ssot-refactor: Verify specJsonMap is set from IPC result
       const specJsonMap = useSpecStore.getState().specJsonMap;
       expect(specJsonMap.get('test-spec')).toEqual(mockSpecJson);
     });
@@ -106,6 +107,7 @@ describe('useProjectStore', () => {
           kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
           specs: [],
           bugs: [],
+          specJsonMap: {},  // spec-metadata-ssot-refactor
         }), 100))
       );
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
@@ -192,6 +194,7 @@ describe('useProjectStore', () => {
         kiroValidation: mockValidation,
         specs: [],
         bugs: [],
+        specJsonMap: {},  // spec-metadata-ssot-refactor
       });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
@@ -222,6 +225,7 @@ describe('useProjectStore', () => {
         kiroValidation: mockValidation,
         specs: [],
         bugs: [],
+        specJsonMap: {},  // spec-metadata-ssot-refactor
       });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
@@ -247,6 +251,7 @@ describe('useProjectStore', () => {
         kiroValidation: mockValidation,
         specs: [],
         bugs: [],
+        specJsonMap: {},  // spec-metadata-ssot-refactor
       });
       window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
       window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({

@@ -664,7 +664,8 @@ export class AutoExecutionCoordinator extends EventEmitter {
             logger.warn('[AutoExecutionCoordinator] Failed to read latest approvals', { specPath, error: err });
           }
 
-          const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions, latestApprovals);
+          // NOGOフェーズでは停止する（スキップしない）
+          const nextPhase = this.getImmediateNextPhase(currentPhase, options.permissions, latestApprovals);
           if (nextPhase) {
             // git-worktree-support Task 9.1: inspectionフェーズは専用イベントで実行
             if (nextPhase === 'inspection') {
@@ -683,7 +684,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
               logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
             }
           } else {
-            // 全フェーズ完了
+            // 次フェーズがNOGOまたは全フェーズ完了
             this.completeExecution(specPath);
           }
         }
@@ -807,6 +808,60 @@ export class AutoExecutionCoordinator extends EventEmitter {
   }
 
   /**
+   * 直接次のフェーズを取得する（NOGOフェーズをスキップしない）
+   *
+   * getNextPermittedPhaseとの違い:
+   * - getNextPermittedPhase: NOGOフェーズをスキップして次のGOフェーズを返す
+   * - getImmediateNextPhase: 直接次のフェーズのみをチェックし、NOGOなら停止（nullを返す）
+   *
+   * 使い分け:
+   * - ユーザーが「次のフェーズがNOGOなら停止したい」場合はこちらを使用
+   *
+   * @param currentPhase 現在のフェーズ
+   * @param permissions 許可設定
+   * @param approvals 承認状態（オプション）
+   * @returns 次のフェーズ or null（次のフェーズがNOGOまたは存在しない場合）
+   */
+  getImmediateNextPhase(
+    currentPhase: WorkflowPhase | null,
+    permissions: AutoExecutionPermissions,
+    approvals?: ApprovalsStatus
+  ): WorkflowPhase | null {
+    const startIndex = currentPhase === null ? 0 : PHASE_ORDER.indexOf(currentPhase) + 1;
+
+    // 直接次のフェーズがない場合
+    if (startIndex >= PHASE_ORDER.length) {
+      return null;
+    }
+
+    const nextPhase = PHASE_ORDER[startIndex];
+
+    // 直接次のフェーズが許可されていない場合は停止（スキップしない）
+    if (!permissions[nextPhase]) {
+      logger.info('[AutoExecutionCoordinator] Stopping at NOGO phase', {
+        currentPhase,
+        nextPhase,
+        reason: 'next phase is not permitted (NOGO)',
+      });
+      return null;
+    }
+
+    // 承認チェック（必要な場合）
+    if (approvals) {
+      const previousApproved = this.isPreviousPhaseApproved(nextPhase, approvals);
+      if (!previousApproved) {
+        logger.info('[AutoExecutionCoordinator] Stopping - previous phase not approved', {
+          currentPhase,
+          nextPhase,
+        });
+        return null;
+      }
+    }
+
+    return nextPhase;
+  }
+
+  /**
    * フェーズが完了しているかを確認
    * @param specPath specのパス
    * @param phase 確認するフェーズ
@@ -845,12 +900,13 @@ export class AutoExecutionCoordinator extends EventEmitter {
     } catch {
       // ignore
     }
+    // NOGOフェーズでは停止する（スキップしない）
     const nextPhase = options
-      ? this.getNextPermittedPhase(phase, options.permissions, latestApprovals)
+      ? this.getImmediateNextPhase(phase, options.permissions, latestApprovals)
       : null;
 
     if (nextPhase === null) {
-      // 全ての許可されたフェーズが完了
+      // 次フェーズがNOGOまたは全フェーズ完了
       if (state.timeoutId) {
         clearTimeout(state.timeoutId);
       }
@@ -1307,8 +1363,8 @@ export class AutoExecutionCoordinator extends EventEmitter {
       // ignore
     }
 
-    // Check if next phase (impl) is permitted
-    const nextPhase = this.getNextPermittedPhase('tasks', options.permissions, latestApprovals);
+    // Check if next phase (impl) is permitted - NOGOフェーズでは停止する（スキップしない）
+    const nextPhase = this.getImmediateNextPhase('tasks', options.permissions, latestApprovals);
 
     if (approved) {
       // Document Review承認済み、次フェーズへ進む
@@ -1322,17 +1378,17 @@ export class AutoExecutionCoordinator extends EventEmitter {
           featureName: state.specId,
         });
       } else {
-        // implフェーズが許可されていない場合は完了
-        logger.info('[AutoExecutionCoordinator] Document review approved, but no next phase permitted, completing', {
+        // implフェーズがNOGO（許可されていない）の場合は完了
+        logger.info('[AutoExecutionCoordinator] Document review approved, but next phase is NOGO, completing', {
           specPath,
         });
         this.completeExecution(specPath);
       }
     } else {
-      // Document Reviewが承認待ちだが、次フェーズが許可されていない場合は完了とする
+      // Document Reviewが承認待ちだが、次フェーズがNOGOの場合は完了とする
       // (impl NOGOの場合、document-review後に進むフェーズがないので完了)
       if (!nextPhase) {
-        logger.info('[AutoExecutionCoordinator] Document review not approved, but no next phase permitted, completing', {
+        logger.info('[AutoExecutionCoordinator] Document review not approved, but next phase is NOGO, completing', {
           specPath,
         });
         this.completeExecution(specPath);

@@ -12,6 +12,7 @@
 import { EventEmitter } from 'events';
 import { logger } from './logger';
 import type { WorkflowPhase } from './specManagerService';
+import { FileService } from './fileService';
 
 // ============================================================
 // Constants
@@ -414,6 +415,36 @@ export class AutoExecutionCoordinator extends EventEmitter {
     }
 
     if (approvals) {
+      // Bug Fix: 未承認だが生成済みのフェーズを自動承認
+      // 自動実行ボタンを押す = 現状の成果物を暗黙的に承認する意図と解釈
+      const unapprovedPhases = this.getUnapprovedGeneratedPhases(approvals);
+      if (unapprovedPhases.length > 0) {
+        const fileService = new FileService();
+        // ミュータブルなコピーを作成
+        const mutableApprovals = {
+          requirements: { ...approvals.requirements },
+          design: { ...approvals.design },
+          tasks: { ...approvals.tasks },
+        };
+        for (const phase of unapprovedPhases) {
+          logger.info('[AutoExecutionCoordinator] Auto-approving unapproved generated phase', {
+            specPath,
+            phase,
+          });
+          const result = await fileService.updateApproval(specPath, phase, true);
+          if (result.ok) {
+            mutableApprovals[phase].approved = true;
+          } else {
+            logger.warn('[AutoExecutionCoordinator] Failed to auto-approve phase', {
+              specPath,
+              phase,
+              error: result.error,
+            });
+          }
+        }
+        approvals = mutableApprovals;
+      }
+
       lastCompletedPhase = this.getLastCompletedPhase(approvals);
       logger.info('[AutoExecutionCoordinator] Last completed phase from approvals', {
         specPath,
@@ -424,7 +455,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     // lastCompletedPhase の次から開始（既に完了しているフェーズはスキップ）
     // 前フェーズが未承認の場合はそのフェーズをスキップする
-    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions, options.approvals);
+    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions, approvals);
     if (firstPhase) {
       this.emit('execute-next-phase', specPath, firstPhase, {
         specId,
@@ -793,6 +824,23 @@ export class AutoExecutionCoordinator extends EventEmitter {
       default:
         return true;
     }
+  }
+
+  /**
+   * 未承認だが生成済みのフェーズを取得（順序通り）
+   * @param approvals 承認状態
+   * @returns 未承認かつ生成済みのフェーズのリスト
+   */
+  getUnapprovedGeneratedPhases(approvals: ApprovalsStatus): Array<'requirements' | 'design' | 'tasks'> {
+    const phases = ['requirements', 'design', 'tasks'] as const;
+    const result: Array<'requirements' | 'design' | 'tasks'> = [];
+    for (const phase of phases) {
+      const approval = approvals[phase];
+      if (approval.generated && !approval.approved) {
+        result.push(phase);
+      }
+    }
+    return result;
   }
 
   /**

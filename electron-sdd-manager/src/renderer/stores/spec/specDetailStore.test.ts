@@ -162,6 +162,69 @@ describe('useSpecDetailStore', () => {
       expect(state.error).toBe('Read error');
       expect(state.isLoading).toBe(false);
     });
+
+    it('should clear specDetail immediately when switching specs (Bug fix: spec-item-flash-wrong-content)', async () => {
+      // Setup: First select spec-a and complete loading
+      const specA: SpecMetadata = {
+        name: 'spec-a',
+        path: '/project/.kiro/specs/spec-a',
+        phase: 'requirements-generated',
+        updatedAt: '2024-01-15T10:00:00Z',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        },
+      };
+
+      const specB: SpecMetadata = {
+        name: 'spec-b',
+        path: '/project/.kiro/specs/spec-b',
+        phase: 'design-generated',
+        updatedAt: '2024-01-16T10:00:00Z',
+        approvals: {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: false, approved: false },
+        },
+      };
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
+        ...mockSpecJson,
+        feature_name: 'spec-a',
+      });
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Spec A Content');
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+
+      await useSpecDetailStore.getState().selectSpec(specA);
+
+      // Verify spec-a is loaded
+      expect(useSpecDetailStore.getState().specDetail?.metadata.name).toBe('spec-a');
+      expect(useSpecDetailStore.getState().specDetail?.artifacts.requirements).toBeTruthy();
+
+      // Now simulate slow loading for spec-b
+      let resolveSpecJson: (value: unknown) => void;
+      const specJsonPromise = new Promise((resolve) => {
+        resolveSpecJson = resolve;
+      });
+      window.electronAPI.readSpecJson = vi.fn().mockReturnValue(specJsonPromise);
+
+      // Start loading spec-b (don't await yet)
+      const selectPromise = useSpecDetailStore.getState().selectSpec(specB);
+
+      // specDetail should be cleared immediately to prevent showing spec-a's artifacts
+      expect(useSpecDetailStore.getState().selectedSpec?.name).toBe('spec-b');
+      expect(useSpecDetailStore.getState().specDetail).toBeNull();
+      expect(useSpecDetailStore.getState().isLoading).toBe(true);
+
+      // Complete loading
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Spec B Content');
+      resolveSpecJson!({ ...mockSpecJson, feature_name: 'spec-b' });
+      await selectPromise;
+
+      // Now spec-b should be fully loaded
+      expect(useSpecDetailStore.getState().specDetail?.metadata.name).toBe('spec-b');
+    });
   });
 
   describe('clearSelectedSpec (Req 2.4)', () => {

@@ -30,7 +30,9 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
     const silent = options?.silent ?? false;
 
     if (!silent) {
-      set({ selectedSpec: spec, isLoading: true, error: null });
+      // Bug fix: spec-item-flash-wrong-content - clear specDetail immediately
+      // to prevent showing old spec's artifacts while loading new spec
+      set({ selectedSpec: spec, specDetail: null, isLoading: true, error: null });
     }
 
     try {

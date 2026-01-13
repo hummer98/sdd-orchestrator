@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useSpecStore } from '../stores';
 import {
   ArtifactEditor,
@@ -50,7 +51,7 @@ export function SpecPane({
   onAgentListResize,
   onResizeEnd,
 }: SpecPaneProps): React.ReactElement {
-  const { selectedSpec, specDetail } = useSpecStore();
+  const { selectedSpec, specDetail, isDetailLoading } = useSpecStore();
 
   // Build document review tabs from roundDetails
   const documentReviewTabs = useMemo((): TabInfo[] => {
@@ -114,6 +115,18 @@ export function SpecPane({
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
         仕様を選択するか、新規作成してください
+      </div>
+    );
+  }
+
+  // Bug fix: spec-item-flash-wrong-content
+  // Show loading state while specDetail is being loaded
+  // This prevents showing old spec's artifacts during the transition
+  if (isDetailLoading || !specDetail) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-400">
+        <Loader2 className="w-6 h-6 animate-spin mr-2" />
+        仕様を読み込み中...
       </div>
     );
   }

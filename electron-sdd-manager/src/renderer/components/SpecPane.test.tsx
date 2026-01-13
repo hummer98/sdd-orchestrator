@@ -78,11 +78,38 @@ describe('SpecPane', () => {
     });
   });
 
-  describe('When a spec is selected', () => {
+  describe('When a spec is selected but detail is loading', () => {
     beforeEach(() => {
       mockUseSpecStore.mockReturnValue({
         selectedSpec: { name: 'test-spec', path: '/path/to/spec', phase: 'requirements' },
         specDetail: null,
+        isDetailLoading: true,
+      });
+    });
+
+    it('should show loading message (Bug fix: spec-item-flash-wrong-content)', () => {
+      render(<SpecPane {...defaultProps} />);
+
+      expect(screen.getByText('仕様を読み込み中...')).toBeInTheDocument();
+    });
+
+    it('should NOT render ArtifactEditor while loading', () => {
+      render(<SpecPane {...defaultProps} />);
+
+      expect(screen.queryByTestId('artifact-editor')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('When a spec is selected and detail is loaded', () => {
+    beforeEach(() => {
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: { name: 'test-spec', path: '/path/to/spec', phase: 'requirements' },
+        specDetail: {
+          metadata: { name: 'test-spec', path: '/path/to/spec', phase: 'requirements' },
+          specJson: { feature_name: 'test-spec', phase: 'requirements' },
+          artifacts: {},
+        },
+        isDetailLoading: false,
       });
     });
 

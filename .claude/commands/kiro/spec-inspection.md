@@ -26,6 +26,10 @@ Before invoking Subagent, verify that all required spec files exist:
 - Suggest: "Complete previous phases: `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`"
 - Stop execution
 
+## Read spec.json for Language Setting
+
+Before invoking Subagent, read `.kiro/specs/$1/spec.json` and extract the `language` field value.
+
 ## Invoke Subagent
 
 Delegate inspection to spec-inspection-agent:
@@ -40,6 +44,9 @@ Task(
 Feature: {$1}
 Spec directory: .kiro/specs/{$1}/
 Options: {$2 or none}
+Language: {spec.json.language or "en"}
+
+**IMPORTANT**: Generate ALL output (including inspection-{n}.md report) in the specified language.
 
 File patterns to read:
 - .kiro/specs/{$1}/*.{json,md}

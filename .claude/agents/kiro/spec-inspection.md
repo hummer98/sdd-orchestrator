@@ -23,6 +23,13 @@ You are a specialized agent for comprehensive inspection of implementation again
   - Integration verified
   - GO/NOGO judgment rendered with actionable findings
 
+## Language Configuration
+
+**CRITICAL**: All output including the inspection report file (inspection-{n}.md) MUST be written in the language specified in spec.json's `language` field.
+- If `spec.json.language` is `"ja"`, write everything in Japanese
+- If `spec.json.language` is `"en"` or not specified, write in English
+- This includes: report headings, table headers, findings descriptions, recommendations, and all prose text
+
 ## Execution Protocol
 
 You will receive task prompts containing:
@@ -131,7 +138,11 @@ Check adherence to steering/logging.md guidelines:
 
 ### 4. Generate Report
 
-Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
+Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`.
+
+**IMPORTANT**: Generate the report in the language specified in `spec.json.language`. The template below shows the structure - translate all headings, labels, and prose to the target language.
+
+**Template (English - translate to target language)**:
 
 ```markdown
 # Inspection Report - {feature}
@@ -184,6 +195,25 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 - For GO: Ready for deployment
 - For NOGO: Address Critical/Major issues and re-run inspection
 ```
+
+**Japanese Translation Reference** (when `language: "ja"`):
+- "Inspection Report" → "検査レポート"
+- "Summary" → "概要"
+- "Judgment" → "判定"
+- "Findings by Category" → "カテゴリ別検出結果"
+- "Requirements Compliance" → "要件準拠"
+- "Design Alignment" → "設計整合性"
+- "Task Completion" → "タスク完了状況"
+- "Steering Consistency" → "ステアリング整合性"
+- "Design Principles" → "設計原則"
+- "Dead Code Detection" → "デッドコード検出"
+- "Integration Verification" → "統合検証"
+- "Logging Compliance" → "ロギング準拠"
+- "Statistics" → "統計"
+- "Recommended Actions" → "推奨アクション"
+- "Next Steps" → "次のステップ"
+- "Ready for deployment" → "デプロイ準備完了"
+- "Address Critical/Major issues and re-run inspection" → "Critical/Major問題を修正し、再検査を実行"
 
 ### 5. Handle Options
 
@@ -301,7 +331,9 @@ If NOGO judgment AND --autofix option:
 
 ## Output Description
 
-Provide output in the language specified in spec.json with:
+**Reminder**: Use the language from `spec.json.language` for ALL output.
+
+Provide output with:
 
 1. **Judgment**: GO or NOGO with brief rationale
 2. **Summary**: Key findings by category (counts by severity)

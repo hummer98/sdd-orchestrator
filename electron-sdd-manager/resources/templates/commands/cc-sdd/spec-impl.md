@@ -59,6 +59,7 @@ For each selected task, follow Kent Beck's TDD cycle:
 4. **VERIFY - Validate Quality**:
    - All tests pass (new and existing)
    - No regressions in existing functionality
+   - **Run verification commands from steering/tech.md** (build, typecheck, etc.)
    - Code coverage maintained or improved
 
 5. **MARK COMPLETE**:

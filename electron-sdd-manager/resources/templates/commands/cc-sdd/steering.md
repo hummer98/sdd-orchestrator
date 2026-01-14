@@ -38,7 +38,7 @@ Check `.kiro/steering/` status:
    - `grep` for patterns
 3. Extract patterns (not lists):
    - Product: Purpose, value, core capabilities
-   - Tech: Frameworks, decisions, conventions
+   - Tech: Frameworks, decisions, conventions, **verification commands (required)**
    - Structure: Organization, naming, imports
 4. Generate steering files (follow templates)
 5. Load principles from `.kiro/settings/rules/steering-principles.md`

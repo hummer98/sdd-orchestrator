@@ -75,6 +75,14 @@ task electron:start  # バックグラウンド起動
 task electron:stop   # 停止
 ```
 
+## Verification Commands
+
+spec-impl 完了時に実行する検証コマンド:
+
+```bash
+cd electron-sdd-manager && npm run build && npm run typecheck
+```
+
 ## Key Technical Decisions
 
 ### Electron選択の理由

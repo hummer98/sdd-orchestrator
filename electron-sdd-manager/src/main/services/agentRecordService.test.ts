@@ -290,4 +290,299 @@ describe('AgentRecordService', () => {
       ).resolves.not.toThrow();
     });
   });
+
+  // =============================================================================
+  // agent-state-file-ssot: Task 1.1 - readRecordsForSpec
+  // Requirements: 1.1 - Read agent records for a specific spec
+  // =============================================================================
+  describe('readRecordsForSpec (Task 1.1)', () => {
+    it('should return only records for the specified specId', async () => {
+      // Create records for different specs
+      const recordSpecA1: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      const recordSpecA2: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-a',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'completed',
+        startedAt: '2025-11-26T10:01:00Z',
+        lastActivityAt: '2025-11-26T10:05:00Z',
+        command: 'claude',
+      };
+
+      const recordSpecB: AgentRecord = {
+        agentId: 'agent-003',
+        specId: 'spec-b',
+        phase: 'requirements',
+        pid: 12347,
+        sessionId: 'session-3',
+        status: 'running',
+        startedAt: '2025-11-26T10:02:00Z',
+        lastActivityAt: '2025-11-26T10:02:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(recordSpecA1);
+      await service.writeRecord(recordSpecA2);
+      await service.writeRecord(recordSpecB);
+
+      const specARecords = await service.readRecordsForSpec('spec-a');
+
+      expect(specARecords).toHaveLength(2);
+      expect(specARecords.map((r) => r.agentId)).toContain('agent-001');
+      expect(specARecords.map((r) => r.agentId)).toContain('agent-002');
+      expect(specARecords.map((r) => r.agentId)).not.toContain('agent-003');
+    });
+
+    it('should return empty array when spec directory does not exist', async () => {
+      const records = await service.readRecordsForSpec('non-existent-spec');
+      expect(records).toHaveLength(0);
+    });
+
+    it('should return empty array when spec directory is empty', async () => {
+      // Create empty directory
+      await fs.mkdir(path.join(testDir, 'empty-spec'), { recursive: true });
+      const records = await service.readRecordsForSpec('empty-spec');
+      expect(records).toHaveLength(0);
+    });
+
+    it('should skip corrupted JSON files', async () => {
+      const validRecord: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(validRecord);
+
+      // Write corrupted JSON file
+      const corruptedPath = path.join(testDir, 'spec-a', 'agent-corrupted.json');
+      await fs.writeFile(corruptedPath, 'not valid json {{{', 'utf-8');
+
+      const records = await service.readRecordsForSpec('spec-a');
+
+      expect(records).toHaveLength(1);
+      expect(records[0].agentId).toBe('agent-001');
+    });
+  });
+
+  // =============================================================================
+  // agent-state-file-ssot: Task 1.2 - readProjectAgents
+  // Requirements: 1.2 - Read project-level agent records (specId = "")
+  // =============================================================================
+  describe('readProjectAgents (Task 1.2)', () => {
+    it('should return records with empty specId (ProjectAgent)', async () => {
+      // Create project-level agent (empty specId)
+      const projectAgent: AgentRecord = {
+        agentId: 'agent-project-001',
+        specId: '',
+        phase: 'steering',
+        pid: 12345,
+        sessionId: 'session-project',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      // Create spec-level agent
+      const specAgent: AgentRecord = {
+        agentId: 'agent-spec-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12346,
+        sessionId: 'session-spec',
+        status: 'running',
+        startedAt: '2025-11-26T10:01:00Z',
+        lastActivityAt: '2025-11-26T10:01:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(projectAgent);
+      await service.writeRecord(specAgent);
+
+      const projectAgents = await service.readProjectAgents();
+
+      expect(projectAgents).toHaveLength(1);
+      expect(projectAgents[0].agentId).toBe('agent-project-001');
+      expect(projectAgents[0].specId).toBe('');
+    });
+
+    it('should return empty array when no project agents exist', async () => {
+      // Create only spec-level agents
+      const specAgent: AgentRecord = {
+        agentId: 'agent-spec-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(specAgent);
+
+      const projectAgents = await service.readProjectAgents();
+      expect(projectAgents).toHaveLength(0);
+    });
+  });
+
+  // =============================================================================
+  // agent-state-file-ssot: Task 1.3 - getRunningAgentCounts
+  // Requirements: 1.3 - Get running agent counts per spec
+  // =============================================================================
+  describe('getRunningAgentCounts (Task 1.3)', () => {
+    it('should return Map<specId, runningCount>', async () => {
+      // Create agents with different statuses
+      const runningAgent1: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      const runningAgent2: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-a',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'running',
+        startedAt: '2025-11-26T10:01:00Z',
+        lastActivityAt: '2025-11-26T10:01:00Z',
+        command: 'claude',
+      };
+
+      const completedAgent: AgentRecord = {
+        agentId: 'agent-003',
+        specId: 'spec-a',
+        phase: 'tasks',
+        pid: 12347,
+        sessionId: 'session-3',
+        status: 'completed',
+        startedAt: '2025-11-26T10:02:00Z',
+        lastActivityAt: '2025-11-26T10:05:00Z',
+        command: 'claude',
+      };
+
+      const runningAgentSpecB: AgentRecord = {
+        agentId: 'agent-004',
+        specId: 'spec-b',
+        phase: 'requirements',
+        pid: 12348,
+        sessionId: 'session-4',
+        status: 'running',
+        startedAt: '2025-11-26T10:03:00Z',
+        lastActivityAt: '2025-11-26T10:03:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(runningAgent1);
+      await service.writeRecord(runningAgent2);
+      await service.writeRecord(completedAgent);
+      await service.writeRecord(runningAgentSpecB);
+
+      const counts = await service.getRunningAgentCounts();
+
+      expect(counts).toBeInstanceOf(Map);
+      expect(counts.get('spec-a')).toBe(2); // 2 running, 1 completed
+      expect(counts.get('spec-b')).toBe(1); // 1 running
+    });
+
+    it('should return 0 for specs with only non-running agents', async () => {
+      const completedAgent: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'completed',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:05:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(completedAgent);
+
+      const counts = await service.getRunningAgentCounts();
+
+      expect(counts.get('spec-a')).toBe(0);
+    });
+
+    it('should return empty Map when no agents exist', async () => {
+      const counts = await service.getRunningAgentCounts();
+
+      expect(counts).toBeInstanceOf(Map);
+      expect(counts.size).toBe(0);
+    });
+
+    it('should handle empty specId (ProjectAgent)', async () => {
+      const projectAgent: AgentRecord = {
+        agentId: 'agent-001',
+        specId: '',
+        phase: 'steering',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+      };
+
+      await service.writeRecord(projectAgent);
+
+      const counts = await service.getRunningAgentCounts();
+
+      expect(counts.get('')).toBe(1);
+    });
+
+    it('should count only running status', async () => {
+      // Create agents with different statuses
+      const statuses = ['running', 'completed', 'interrupted', 'hang', 'failed'] as const;
+
+      for (let i = 0; i < statuses.length; i++) {
+        await service.writeRecord({
+          agentId: `agent-${i}`,
+          specId: 'spec-test',
+          phase: 'requirements',
+          pid: 12345 + i,
+          sessionId: `session-${i}`,
+          status: statuses[i],
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        });
+      }
+
+      const counts = await service.getRunningAgentCounts();
+
+      // Only 1 agent with 'running' status
+      expect(counts.get('spec-test')).toBe(1);
+    });
+  });
 });

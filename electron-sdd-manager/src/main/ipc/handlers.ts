@@ -12,7 +12,8 @@ import type { Phase, SelectProjectResult, SelectProjectError } from '../../rende
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
-import { getAgentRegistry, type AgentInfo } from '../services/agentRegistry';
+import type { AgentInfo } from '../services/agentRecordService';
+import { getDefaultAgentRecordService } from '../services/agentRecordService';
 import { logger } from '../services/logger';
 import { projectLogger } from '../services/projectLogger';
 import { ProjectChecker } from '../services/projectChecker';
@@ -492,12 +493,13 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   };
 
   // Get agents for remote access
+  // Task 4.2 (agent-state-file-ssot): Updated to use async getAllAgents
   const getAgentsForRemote = async (): Promise<AgentStateInfo[] | null> => {
     if (!specManagerService) {
       logger.error('[handlers] SpecManagerService not initialized for remote access agents');
       return null;
     }
-    const allAgentsMap = specManagerService.getAllAgents();
+    const allAgentsMap = await specManagerService.getAllAgents();
     const agents: AgentStateInfo[] = [];
     for (const agentList of allAgentsMap.values()) {
       for (const agent of agentList) {
@@ -697,16 +699,23 @@ export function registerIpcHandlers(): void {
 
   // agent-watcher-optimization Task 2.2: Get running agent counts per spec
   // Requirements: 2.1 - Get running agent counts efficiently
+  // agent-state-file-ssot: Now uses AgentRecordService (file-based SSOT)
   ipcMain.handle(IPC_CHANNELS.GET_RUNNING_AGENT_COUNTS, async () => {
-    const registry = getAgentRegistry();
-    const countsMap = registry.getRunningAgentCounts();
-    // Convert Map to Record for IPC serialization
-    const result: Record<string, number> = {};
-    for (const [specId, count] of countsMap) {
-      result[specId] = count;
+    try {
+      const recordService = getDefaultAgentRecordService();
+      const countsMap = await recordService.getRunningAgentCounts();
+      // Convert Map to Record for IPC serialization
+      const result: Record<string, number> = {};
+      for (const [specId, count] of countsMap) {
+        result[specId] = count;
+      }
+      logger.debug('[handlers] GET_RUNNING_AGENT_COUNTS', { result });
+      return result;
+    } catch (error) {
+      // AgentRecordService might not be initialized yet
+      logger.warn('[handlers] GET_RUNNING_AGENT_COUNTS failed', { error });
+      return {};
     }
-    logger.debug('[handlers] GET_RUNNING_AGENT_COUNTS', { result });
-    return result;
   });
 
   // Agent Management Handlers (Task 27.1)
@@ -752,7 +761,8 @@ export function registerIpcHandlers(): void {
           }
         });
 
-        service.onStatusChange((agentId, status) => {
+        // Task 4.1 (agent-state-file-ssot): Updated to use async getAgentById
+        service.onStatusChange(async (agentId, status) => {
           logger.info('[handlers] Agent status change', { agentId, status });
           if (!window.isDestroyed()) {
             window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
@@ -763,7 +773,7 @@ export function registerIpcHandlers(): void {
           const remoteServer = getRemoteAccessServer();
           const wsHandler = remoteServer.getWebSocketHandler();
           if (wsHandler) {
-            const agentInfo = service.getAgentById(agentId);
+            const agentInfo = await service.getAgentById(agentId);
             wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
               specId: agentInfo.specId,
               phase: agentInfo.phase,
@@ -843,17 +853,19 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // Task 4.1 (agent-state-file-ssot): Update handler to use async getAgents
   ipcMain.handle(
     IPC_CHANNELS.GET_AGENTS,
     async (_event, specId: string) => {
       const service = getSpecManagerService();
-      return service.getAgents(specId);
+      return await service.getAgents(specId);
     }
   );
 
+  // Task 4.2 (agent-state-file-ssot): Update handler to use async getAllAgents
   ipcMain.handle(IPC_CHANNELS.GET_ALL_AGENTS, async () => {
     const service = getSpecManagerService();
-    const agentsMap = service.getAllAgents();
+    const agentsMap = await service.getAllAgents();
 
     // Convert Map to plain object for IPC serialization
     const result: Record<string, AgentInfo[]> = {};
@@ -2205,7 +2217,8 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
     }
   });
 
-  service.onStatusChange((agentId, status) => {
+  // Task 4.1 (agent-state-file-ssot): Updated to use async getAgentById
+  service.onStatusChange(async (agentId, status) => {
     logger.info('[handlers] Agent status change', { agentId, status });
     if (!window.isDestroyed()) {
       window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
@@ -2216,7 +2229,7 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
     if (wsHandler) {
-      const agentInfo = service.getAgentById(agentId);
+      const agentInfo = await service.getAgentById(agentId);
       wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
         specId: agentInfo.specId,
         phase: agentInfo.phase,

@@ -16,6 +16,7 @@ const mockReadBugDetail = vi.fn();
 const mockStartBugsWatcher = vi.fn();
 const mockStopBugsWatcher = vi.fn();
 const mockOnBugsChanged = vi.fn();
+const mockSwitchAgentWatchScope = vi.fn();
 
 vi.stubGlobal('window', {
   electronAPI: {
@@ -24,6 +25,7 @@ vi.stubGlobal('window', {
     startBugsWatcher: mockStartBugsWatcher,
     stopBugsWatcher: mockStopBugsWatcher,
     onBugsChanged: mockOnBugsChanged,
+    switchAgentWatchScope: mockSwitchAgentWatchScope,
   },
 });
 

@@ -1,0 +1,55 @@
+{
+  "feature_name": "agent-state-file-ssot",
+  "created_at": "2026-01-13T19:26:27Z",
+  "updated_at": "2026-01-14T12:25:00.000Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-14T03:00:00Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-01-14T12:15:00Z",
+        "fixedAt": "2026-01-14T12:20:00Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-14T12:25:00Z"
+      }
+    ]
+  }
+}

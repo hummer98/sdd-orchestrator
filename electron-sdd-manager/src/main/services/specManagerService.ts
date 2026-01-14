@@ -7,14 +7,13 @@
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { readFile, writeFile } from 'fs/promises';
-import { AgentRegistry, AgentInfo, AgentStatus } from './agentRegistry';
 import { createAgentProcess, AgentProcess, getClaudeCommand } from './agentProcess';
 import {
   createProviderAgentProcess,
   getProviderTypeFromPath,
   type AgentProcess as ProviderAgentProcess,
 } from './providerAgentProcess';
-import { AgentRecordService } from './agentRecordService';
+import { AgentRecordService, AgentInfo, AgentStatus } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
@@ -345,7 +344,6 @@ export type Result<T, E> =
  * Now supports both local and SSH providers for transparent remote execution
  */
 export class SpecManagerService {
-  private registry: AgentRegistry;
   private recordService: AgentRecordService;
   private logService: LogFileService;
   private logParserService: LogParserService;
@@ -372,7 +370,7 @@ export class SpecManagerService {
     this.projectPath = projectPath;
     // Determine provider type from project path
     this.providerType = getProviderTypeFromPath(projectPath);
-    this.registry = new AgentRegistry();
+    // agent-state-file-ssot: AgentRecordService is SSOT for agent state
     this.recordService = new AgentRecordService(
       path.join(projectPath, '.kiro', 'runtime', 'agents')
     );
@@ -430,12 +428,17 @@ export class SpecManagerService {
 
   /**
    * Get the currently running execution group for a specific spec
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    * @param specId - The spec ID to check (if null, checks all specs)
    */
-  private getRunningGroup(specId?: string): ExecutionGroup | null {
-    const agents = specId
-      ? this.registry.getBySpec(specId)
-      : this.registry.getAll();
+  private async getRunningGroup(specId?: string): Promise<ExecutionGroup | null> {
+    let agents: AgentInfo[];
+    if (specId) {
+      agents = await this.getAgents(specId);
+    } else {
+      const allAgentsMap = await this.getAllAgents();
+      agents = Array.from(allAgentsMap.values()).flat();
+    }
     const runningAgents = agents.filter((a) => a.status === 'running');
 
     for (const agent of runningAgents) {
@@ -453,9 +456,10 @@ export class SpecManagerService {
 
   /**
    * Check if an agent is already running for the given spec and phase
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    */
-  private isPhaseRunning(specId: string, phase: string): boolean {
-    const agents = this.registry.getBySpec(specId);
+  private async isPhaseRunning(specId: string, phase: string): Promise<boolean> {
+    const agents = await this.getAgents(specId);
     return agents.some((a) => a.phase === phase && a.status === 'running');
   }
 
@@ -510,16 +514,19 @@ export class SpecManagerService {
     const { specId, phase, command, args, group, sessionId, providerType, skipPermissions } = options;
     const effectiveProviderType = providerType ?? this.providerType;
 
-    // Normalize args: ensure base flags are always present (SSOT for Claude CLI flags)
-    // This allows callers to pass just the command without worrying about base flags
-    const effectiveArgs = this.normalizeClaudeArgs(args, skipPermissions);
+    // Normalize args only for Claude CLI commands
+    // This prevents breaking non-Claude commands (like 'sleep' in tests)
+    const effectiveArgs = command === 'claude' || command === getClaudeCommand()
+      ? this.normalizeClaudeArgs(args, skipPermissions)
+      : args;
 
     logger.info('[SpecManagerService] startAgent called', {
       specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions,
     });
 
     // Check if phase is already running
-    if (this.isPhaseRunning(specId, phase)) {
+    // agent-state-file-ssot: Now async since it reads from files
+    if (await this.isPhaseRunning(specId, phase)) {
       logger.warn('[SpecManagerService] Phase already running', { specId, phase });
       return {
         ok: false,
@@ -529,7 +536,8 @@ export class SpecManagerService {
 
     // Check for group conflicts (doc vs impl) within the same spec
     if (group === 'impl') {
-      const runningGroup = this.getRunningGroup(specId);
+      // agent-state-file-ssot: Now async since it reads from files
+      const runningGroup = await this.getRunningGroup(specId);
       if (runningGroup && runningGroup !== group) {
         return {
           ok: false,
@@ -600,11 +608,43 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       };
 
-      // Register the agent
-      this.registry.register(agentInfo);
+      // agent-state-file-ssot: Store process handle for stdin/kill operations
       this.processes.set(agentId, process);
 
-      // Write agent record
+      // IMPORTANT: Register event handlers BEFORE any async operation
+      // This prevents race conditions where the process exits before we register handlers
+      // Events that fire before the file is written will wait for the file to exist
+
+      // Track if file has been written (for event handlers)
+      let fileWritten = false;
+      const pendingEvents: Array<{ type: 'output' | 'exit' | 'error'; data?: unknown }> = [];
+
+      // Set up event handlers synchronously (no await before this)
+      process.onOutput((stream, data) => {
+        if (!fileWritten) {
+          pendingEvents.push({ type: 'output', data: { stream, data } });
+          return;
+        }
+        this.handleAgentOutput(agentId, specId, process, stream, data);
+      });
+
+      process.onExit((code) => {
+        if (!fileWritten) {
+          pendingEvents.push({ type: 'exit', data: code });
+          return;
+        }
+        this.handleAgentExit(agentId, specId, code);
+      });
+
+      process.onError(() => {
+        if (!fileWritten) {
+          pendingEvents.push({ type: 'error' });
+          return;
+        }
+        this.handleAgentError(agentId, specId);
+      });
+
+      // agent-state-file-ssot: Write agent record to file (SSOT)
       await this.recordService.writeRecord({
         agentId,
         specId,
@@ -617,84 +657,23 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
-      // Set up event handlers
-      process.onOutput((stream, data) => {
-        logger.debug('[SpecManagerService] Process output received', { agentId, stream, dataLength: data.length });
-        this.registry.updateActivity(agentId);
-
-        // Parse sessionId from Claude Code init message
-        if (stream === 'stdout') {
-          this.parseAndUpdateSessionId(agentId, specId, data);
-
-          // Bug Fix: Check for result message and force kill if process doesn't exit
-          // See docs/memo/claude-cli-process-not-exiting.md
-          if (data.includes('"type":"result"')) {
-            setTimeout(() => {
-              if (this.processes.has(agentId)) {
-                logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
-                this.forcedKillSuccess.add(agentId);
-                process.kill();
-              }
-            }, 5000);
+      // Mark file as written and process any pending events
+      fileWritten = true;
+      for (const event of pendingEvents) {
+        switch (event.type) {
+          case 'output': {
+            const { stream, data } = event.data as { stream: 'stdout' | 'stderr'; data: string };
+            this.handleAgentOutput(agentId, specId, process, stream, data);
+            break;
           }
+          case 'exit':
+            this.handleAgentExit(agentId, specId, event.data as number);
+            break;
+          case 'error':
+            this.handleAgentError(agentId, specId);
+            break;
         }
-
-        // Save log to file
-        const logEntry: LogEntry = {
-          timestamp: new Date().toISOString(),
-          stream,
-          data,
-        };
-        this.logService.appendLog(specId, agentId, logEntry).catch((err) => {
-          logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
-        });
-
-        logger.debug('[SpecManagerService] Calling output callbacks', { agentId, callbackCount: this.outputCallbacks.length });
-        this.outputCallbacks.forEach((cb) => cb(agentId, stream, data));
-      });
-
-      process.onExit((code) => {
-        // Check current status - if already interrupted (by stopAgent), don't change
-        const currentAgent = this.registry.get(agentId);
-        if (currentAgent?.status === 'interrupted') {
-          this.processes.delete(agentId);
-          this.forcedKillSuccess.delete(agentId);
-          this.sessionIdParseBuffers.delete(agentId);
-          return;
-        }
-
-        const isForcedSuccess = this.forcedKillSuccess.has(agentId);
-        this.forcedKillSuccess.delete(agentId);
-        this.sessionIdParseBuffers.delete(agentId);
-
-        const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
-        this.registry.updateStatus(agentId, newStatus);
-        this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
-        this.processes.delete(agentId);
-
-        // Update agent record
-        this.recordService.updateRecord(specId, agentId, {
-          status: newStatus,
-          lastActivityAt: new Date().toISOString(),
-        }).catch(() => {
-          // Ignore errors when updating agent record on exit
-        });
-      });
-
-      process.onError(() => {
-        this.registry.updateStatus(agentId, 'failed');
-        this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
-        this.processes.delete(agentId);
-        this.sessionIdParseBuffers.delete(agentId);
-
-        // Update agent record on error
-        this.recordService.updateRecord(specId, agentId, {
-          status: 'failed',
-          lastActivityAt: new Date().toISOString(),
-        }).catch(() => {
-          // Ignore errors when updating agent record on error
-        });
-      });
+      }
 
       return { ok: true, value: agentInfo };
     } catch (error) {
@@ -709,11 +688,114 @@ export class SpecManagerService {
   }
 
   /**
+   * Handle agent output event
+   * agent-state-file-ssot: Extracted for reuse with pending events
+   */
+  private handleAgentOutput(
+    agentId: string,
+    specId: string,
+    process: AgentProcess | ProviderAgentProcess,
+    stream: 'stdout' | 'stderr',
+    data: string
+  ): void {
+    logger.debug('[SpecManagerService] Process output received', { agentId, stream, dataLength: data.length });
+    // agent-state-file-ssot: Update activity in file (fire and forget)
+    this.recordService.updateRecord(specId, agentId, {
+      lastActivityAt: new Date().toISOString(),
+    }).catch(() => {
+      // Ignore errors when updating activity
+    });
+
+    // Parse sessionId from Claude Code init message
+    if (stream === 'stdout') {
+      this.parseAndUpdateSessionId(agentId, specId, data);
+
+      // Bug Fix: Check for result message and force kill if process doesn't exit
+      // See docs/memo/claude-cli-process-not-exiting.md
+      if (data.includes('"type":"result"')) {
+        setTimeout(() => {
+          if (this.processes.has(agentId)) {
+            logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
+            this.forcedKillSuccess.add(agentId);
+            process.kill();
+          }
+        }, 5000);
+      }
+    }
+
+    // Save log to file
+    const logEntry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      stream,
+      data,
+    };
+    this.logService.appendLog(specId, agentId, logEntry).catch((err) => {
+      logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
+    });
+
+    logger.debug('[SpecManagerService] Calling output callbacks', { agentId, callbackCount: this.outputCallbacks.length });
+    this.outputCallbacks.forEach((cb) => cb(agentId, stream, data));
+  }
+
+  /**
+   * Handle agent exit event
+   * agent-state-file-ssot: Extracted for reuse with pending events
+   */
+  private handleAgentExit(agentId: string, specId: string, code: number): void {
+    // agent-state-file-ssot: Check current status from file
+    // If already interrupted (by stopAgent), don't change
+    this.recordService.readRecord(specId, agentId).then((currentRecord) => {
+      if (currentRecord?.status === 'interrupted') {
+        this.processes.delete(agentId);
+        this.forcedKillSuccess.delete(agentId);
+        this.sessionIdParseBuffers.delete(agentId);
+        return;
+      }
+
+      const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+      this.forcedKillSuccess.delete(agentId);
+      this.sessionIdParseBuffers.delete(agentId);
+
+      const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
+      this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
+      this.processes.delete(agentId);
+
+      // agent-state-file-ssot: Update agent record (SSOT)
+      return this.recordService.updateRecord(specId, agentId, {
+        status: newStatus,
+        lastActivityAt: new Date().toISOString(),
+      });
+    }).catch(() => {
+      // Ignore errors when updating agent record on exit
+    });
+  }
+
+  /**
+   * Handle agent error event
+   * agent-state-file-ssot: Extracted for reuse with pending events
+   */
+  private handleAgentError(agentId: string, specId: string): void {
+    this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
+    this.processes.delete(agentId);
+    this.sessionIdParseBuffers.delete(agentId);
+
+    // agent-state-file-ssot: Update agent record on error (SSOT)
+    this.recordService.updateRecord(specId, agentId, {
+      status: 'failed',
+      lastActivityAt: new Date().toISOString(),
+    }).catch(() => {
+      // Ignore errors when updating agent record on error
+    });
+  }
+
+  /**
    * Stop a running agent
    * Requirements: 5.1
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    */
   async stopAgent(agentId: string): Promise<Result<void, AgentError>> {
-    const agent = this.registry.get(agentId);
+    // agent-state-file-ssot: Find agent by ID from files
+    const agent = await this.getAgentById(agentId);
     if (!agent) {
       return {
         ok: false,
@@ -721,17 +803,8 @@ export class SpecManagerService {
       };
     }
 
-    const process = this.processes.get(agentId);
-    if (process) {
-      process.kill();
-      this.processes.delete(agentId);
-    }
-
-    // Update status
-    this.registry.updateStatus(agentId, 'interrupted');
-    this.statusCallbacks.forEach((cb) => cb(agentId, 'interrupted'));
-
-    // Update agent record
+    // agent-state-file-ssot: Update agent record BEFORE killing process
+    // This prevents race condition with onExit handler
     try {
       await this.recordService.updateRecord(agent.specId, agentId, {
         status: 'interrupted',
@@ -741,14 +814,26 @@ export class SpecManagerService {
       // Ignore errors
     }
 
+    // Kill the process after updating the file
+    const process = this.processes.get(agentId);
+    if (process) {
+      process.kill();
+      this.processes.delete(agentId);
+    }
+
+    // Notify status change
+    this.statusCallbacks.forEach((cb) => cb(agentId, 'interrupted'));
+
     return { ok: true, value: undefined };
   }
 
   /**
    * Stop all running agents
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    */
   async stopAllAgents(): Promise<void> {
-    const allAgents = this.registry.getAll();
+    const allAgentsMap = await this.getAllAgents();
+    const allAgents = Array.from(allAgentsMap.values()).flat();
     const runningAgents = allAgents.filter((a) => a.status === 'running');
 
     for (const agent of runningAgents) {
@@ -757,15 +842,17 @@ export class SpecManagerService {
   }
 
   /**
-   * Delete an agent record and remove from registry
+   * Delete an agent record
    * Bug fix: global-agent-display-issues
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    * @param specId - The spec ID (empty string for global agents)
    * @param agentId - The ID of the agent to delete
    */
   async deleteAgent(specId: string, agentId: string): Promise<Result<void, AgentError>> {
-    const agent = this.registry.get(agentId);
+    // agent-state-file-ssot: Check agent status from file
+    const agent = await this.recordService.readRecord(specId, agentId);
 
-    // Don't allow deleting running or hang agents (only check if agent exists in registry)
+    // Don't allow deleting running or hang agents
     if (agent && (agent.status === 'running' || agent.status === 'hang')) {
       return {
         ok: false,
@@ -773,7 +860,7 @@ export class SpecManagerService {
       };
     }
 
-    // Delete the agent record file (try even if not in registry)
+    // agent-state-file-ssot: Delete the agent record file (SSOT)
     try {
       await this.recordService.deleteRecord(specId, agentId);
       logger.info('[SpecManagerService] Agent record deleted', { specId, agentId });
@@ -782,19 +869,13 @@ export class SpecManagerService {
       // Continue even if file deletion fails (file might not exist)
     }
 
-    // Remove from registry if exists
-    if (agent) {
-      this.registry.unregister(agentId);
-      logger.info('[SpecManagerService] Agent unregistered', { specId, agentId });
-    }
-
     return { ok: true, value: undefined };
   }
 
   /**
    * Restore agents from agent records after restart
    * Requirements: 5.6, 5.7
-   * Now also restores completed/failed agents as history
+   * agent-state-file-ssot: Updates file records for dead processes, no in-memory registry
    */
   async restoreAgents(): Promise<void> {
     const records = await this.recordService.readAllRecords();
@@ -803,13 +884,11 @@ export class SpecManagerService {
       const isAlive = this.recordService.checkProcessAlive(record.pid);
 
       // Determine the correct status based on process state
-      let status = record.status;
       if (!isAlive && record.status === 'running') {
-        // Process died unexpectedly while running - mark as interrupted
-        status = 'interrupted';
+        // Process died unexpectedly while running - mark as interrupted in file
         console.log(`[SpecManagerService] Agent process died unexpectedly: ${record.agentId} (pid: ${record.pid}), marking as interrupted`);
 
-        // Update the agent record with the new status
+        // agent-state-file-ssot: Update the agent record file with the new status
         await this.recordService.updateRecord(record.specId, record.agentId, {
           status: 'interrupted',
           lastActivityAt: new Date().toISOString(),
@@ -818,27 +897,15 @@ export class SpecManagerService {
         });
       }
 
-      const agentInfo: AgentInfo = {
-        agentId: record.agentId,
-        specId: record.specId,
-        phase: record.phase,
-        pid: record.pid,
-        sessionId: record.sessionId,
-        status,
-        startedAt: record.startedAt,
-        lastActivityAt: record.lastActivityAt,
-        command: record.command,
-      };
-
-      // Register all agents (including completed/failed) as history
-      this.registry.register(agentInfo);
-      console.log(`[SpecManagerService] Restored agent: ${record.agentId} (pid: ${record.pid}, status: ${status}, alive: ${isAlive})`);
+      // agent-state-file-ssot: No need to register in memory - files are SSOT
+      console.log(`[SpecManagerService] Restored agent: ${record.agentId} (pid: ${record.pid}, status: ${record.status}, alive: ${isAlive})`);
     }
   }
 
   /**
    * Resume an interrupted agent
    * Requirements: 5.8
+   * agent-state-file-ssot: Now reads from file system via recordService (SSOT)
    * @param agentId - The ID of the agent to resume
    * @param prompt - Optional custom prompt to send (defaults to '続けて')
    */
@@ -847,7 +914,8 @@ export class SpecManagerService {
     prompt?: string,
     skipPermissions?: boolean
   ): Promise<Result<AgentInfo, AgentError>> {
-    const agent = this.registry.get(agentId);
+    // agent-state-file-ssot: Find agent by ID from files
+    const agent = await this.getAgentById(agentId);
     if (!agent) {
       return {
         ok: false,
@@ -910,12 +978,10 @@ export class SpecManagerService {
         command: `${command} ${args.join(' ')}`,
       };
 
-      // Update registry
-      this.registry.updateStatus(agentId, 'running');
-      this.registry.updateActivity(agentId);
+      // agent-state-file-ssot: Store process handle for stdin/kill operations
       this.processes.set(agentId, process);
 
-      // Update agent record
+      // agent-state-file-ssot: Update agent record (SSOT)
       await this.recordService.updateRecord(agent.specId, agentId, {
         pid: process.pid,
         status: 'running',
@@ -925,7 +991,10 @@ export class SpecManagerService {
 
       // Set up event handlers (same as startAgent)
       process.onOutput((stream, data) => {
-        this.registry.updateActivity(agentId);
+        // agent-state-file-ssot: Update activity in file (fire and forget)
+        this.recordService.updateRecord(agent.specId, agentId, {
+          lastActivityAt: new Date().toISOString(),
+        }).catch(() => {});
 
         if (stream === 'stdout' && data.includes('"type":"result"')) {
           setTimeout(() => {
@@ -951,35 +1020,37 @@ export class SpecManagerService {
       });
 
       process.onExit((code) => {
-        const currentAgent = this.registry.get(agentId);
-        if (currentAgent?.status === 'interrupted') {
-          this.processes.delete(agentId);
+        // agent-state-file-ssot: Check current status from file
+        this.recordService.readRecord(agent.specId, agentId).then((currentRecord) => {
+          if (currentRecord?.status === 'interrupted') {
+            this.processes.delete(agentId);
+            this.forcedKillSuccess.delete(agentId);
+            this.sessionIdParseBuffers.delete(agentId);
+            return;
+          }
+
+          const isForcedSuccess = this.forcedKillSuccess.has(agentId);
           this.forcedKillSuccess.delete(agentId);
           this.sessionIdParseBuffers.delete(agentId);
-          return;
-        }
 
-        const isForcedSuccess = this.forcedKillSuccess.has(agentId);
-        this.forcedKillSuccess.delete(agentId);
-        this.sessionIdParseBuffers.delete(agentId);
+          const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
+          this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
+          this.processes.delete(agentId);
 
-        const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
-        this.registry.updateStatus(agentId, newStatus);
-        this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
-        this.processes.delete(agentId);
-
-        this.recordService.updateRecord(agent.specId, agentId, {
-          status: newStatus,
-          lastActivityAt: new Date().toISOString(),
+          // agent-state-file-ssot: Update agent record (SSOT)
+          return this.recordService.updateRecord(agent.specId, agentId, {
+            status: newStatus,
+            lastActivityAt: new Date().toISOString(),
+          });
         }).catch(() => {});
       });
 
       process.onError(() => {
-        this.registry.updateStatus(agentId, 'failed');
         this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
         this.processes.delete(agentId);
         this.sessionIdParseBuffers.delete(agentId);
 
+        // agent-state-file-ssot: Update agent record on error (SSOT)
         this.recordService.updateRecord(agent.specId, agentId, {
           status: 'failed',
           lastActivityAt: new Date().toISOString(),
@@ -1004,6 +1075,7 @@ export class SpecManagerService {
   /**
    * Send input to a running agent's stdin
    * Requirements: 10.1, 10.2
+   * agent-state-file-ssot: Activity update is fire-and-forget via file
    */
   sendInput(agentId: string, input: string): Result<void, AgentError> {
     const process = this.processes.get(agentId);
@@ -1015,39 +1087,88 @@ export class SpecManagerService {
     }
 
     process.writeStdin(input);
-    this.registry.updateActivity(agentId);
+    // agent-state-file-ssot: Update activity in file (fire and forget)
+    // Need to find specId first, then update
+    this.recordService.findRecordByAgentId(agentId).then((record) => {
+      if (record) {
+        return this.recordService.updateRecord(record.specId, agentId, {
+          lastActivityAt: new Date().toISOString(),
+        });
+      }
+    }).catch(() => {
+      // Ignore errors when updating activity
+    });
 
     return { ok: true, value: undefined };
   }
 
   /**
    * Get agents for a specific spec
+   * Requirements: 3.2 (agent-state-file-ssot) - File-based agent state management
+   * Reads from file system via recordService (SSOT)
    */
-  getAgents(specId: string): AgentInfo[] {
-    return this.registry.getBySpec(specId);
+  async getAgents(specId: string): Promise<AgentInfo[]> {
+    const records = await this.recordService.readRecordsForSpec(specId);
+    return records.map((record) => this.recordToAgentInfo(record));
   }
 
   /**
    * Get agent by ID
+   * Requirements: 3.4 (agent-state-file-ssot) - File-based agent state management
+   * Searches all spec directories via recordService (SSOT)
    */
-  getAgentById(agentId: string): AgentInfo | undefined {
-    return this.registry.get(agentId);
+  async getAgentById(agentId: string): Promise<AgentInfo | undefined> {
+    const record = await this.recordService.findRecordByAgentId(agentId);
+    if (!record) {
+      return undefined;
+    }
+    return this.recordToAgentInfo(record);
   }
 
   /**
    * Get all agents grouped by spec
+   * Requirements: 3.3 (agent-state-file-ssot) - File-based agent state management
+   * Reads from file system via recordService (SSOT)
    */
-  getAllAgents(): Map<string, AgentInfo[]> {
+  async getAllAgents(): Promise<Map<string, AgentInfo[]>> {
     const result = new Map<string, AgentInfo[]>();
-    const allAgents = this.registry.getAll();
 
-    for (const agent of allAgents) {
-      const existing = result.get(agent.specId) || [];
-      existing.push(agent);
-      result.set(agent.specId, existing);
+    // Get all spec IDs from file system
+    const specIds = await this.recordService.getAllSpecIds();
+
+    // Read records for each spec
+    for (const specId of specIds) {
+      const records = await this.recordService.readRecordsForSpec(specId);
+      if (records.length > 0) {
+        result.set(specId, records.map((r) => this.recordToAgentInfo(r)));
+      }
+    }
+
+    // Also read project agents (empty specId)
+    const projectAgents = await this.recordService.readProjectAgents();
+    if (projectAgents.length > 0) {
+      result.set('', projectAgents.map((r) => this.recordToAgentInfo(r)));
     }
 
     return result;
+  }
+
+  /**
+   * Convert AgentRecord to AgentInfo
+   * Helper method for file-based agent state management
+   */
+  private recordToAgentInfo(record: import('./agentRecordService').AgentRecord): AgentInfo {
+    return {
+      agentId: record.agentId,
+      specId: record.specId,
+      phase: record.phase,
+      pid: record.pid,
+      sessionId: record.sessionId,
+      status: record.status,
+      startedAt: record.startedAt,
+      lastActivityAt: record.lastActivityAt,
+      command: record.command,
+    };
   }
 
   /**
@@ -1319,15 +1440,21 @@ export class SpecManagerService {
    * line-aligned chunks).
    */
   private parseAndUpdateSessionId(agentId: string, specId: string, data: string): void {
-    // Already have sessionId for this agent - cleanup buffer and return
-    const agent = this.registry.get(agentId);
-    if (agent?.sessionId) {
-      this.sessionIdParseBuffers.delete(agentId);
+    // Check if we already found sessionId (buffer would be deleted)
+    // We use 'sessionIdFound' marker in buffer to avoid re-reading file
+    if (!this.sessionIdParseBuffers.has(agentId) && this.sessionIdParseBuffers.get(agentId) === undefined) {
+      // First call for this agent - initialize buffer
+      this.sessionIdParseBuffers.set(agentId, '');
+    }
+
+    // If buffer was explicitly deleted (sessionId found), skip further processing
+    const currentBuffer = this.sessionIdParseBuffers.get(agentId);
+    if (currentBuffer === undefined) {
       return;
     }
 
     // Combine with previous incomplete data from buffer
-    const buffer = (this.sessionIdParseBuffers.get(agentId) || '') + data;
+    const buffer = currentBuffer + data;
     const lines = buffer.split('\n');
 
     // Last element after split: empty string if buffer ended with \n, otherwise incomplete line
@@ -1337,7 +1464,7 @@ export class SpecManagerService {
       this.sessionIdParseBuffers.set(agentId, lastLine);
     } else {
       // Buffer ended with \n - no incomplete data
-      this.sessionIdParseBuffers.delete(agentId);
+      this.sessionIdParseBuffers.set(agentId, '');
     }
 
     // Process complete lines only
@@ -1352,10 +1479,7 @@ export class SpecManagerService {
             sessionId: parsed.session_id,
           });
 
-          // Update registry
-          this.registry.updateSessionId(agentId, parsed.session_id);
-
-          // Update agent record
+          // agent-state-file-ssot: Update agent record (SSOT)
           this.recordService.updateRecord(specId, agentId, {
             sessionId: parsed.session_id,
           }).catch((err) => {
@@ -1510,8 +1634,9 @@ export class SpecManagerService {
       return { ok: true, value: { status: 'stalled' } };
     }
 
-    // Find the original agent by sessionId
-    const allAgents = this.registry.getAll();
+    // agent-state-file-ssot: Find the original agent by sessionId from files
+    const allAgentsMap = await this.getAllAgents();
+    const allAgents = Array.from(allAgentsMap.values()).flat();
     const originalAgent = allAgents.find((a) => a.sessionId === sessionId);
 
     if (!originalAgent) {

@@ -2,11 +2,31 @@
  * Agent Record Service
  * Manages Agent record files for SDD Agent persistence and history
  * Requirements: 5.5, 5.6, 5.7
+ *
+ * agent-state-file-ssot: This service is the Single Source of Truth (SSOT)
+ * for agent state. All agent state reads and writes go through this service.
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { AgentStatus } from './agentRegistry';
+
+// Agent status types - SSOT for agent state
+// agent-state-file-ssot: Moved from agentRegistry.ts
+export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'failed';
+
+// AgentInfo interface for compatibility with existing code
+// agent-state-file-ssot: This is the same as AgentRecord for read operations
+export interface AgentInfo {
+  readonly agentId: string;
+  readonly specId: string;
+  readonly phase: string;
+  readonly pid: number;
+  readonly sessionId: string;
+  readonly status: AgentStatus;
+  readonly startedAt: string;
+  readonly lastActivityAt: string;
+  readonly command: string;
+}
 
 export interface AgentRecord {
   agentId: string;
@@ -75,6 +95,7 @@ export class AgentRecordService {
   /**
    * Read all agent records from all spec directories
    * Requirements: 5.6
+   * @deprecated Use readRecordsForSpec instead for scoped reads (agent-state-file-ssot)
    */
   async readAllRecords(): Promise<AgentRecord[]> {
     const result: AgentRecord[] = [];
@@ -109,6 +130,132 @@ export class AgentRecordService {
     }
 
     return result;
+  }
+
+  /**
+   * Read agent records for a specific spec
+   * Requirements: 1.1 (agent-state-file-ssot)
+   * @param specId - The spec ID to read records for
+   * @returns Array of AgentRecord for the specified spec
+   */
+  async readRecordsForSpec(specId: string): Promise<AgentRecord[]> {
+    const result: AgentRecord[] = [];
+    const specPath = path.join(this.basePath, specId);
+
+    try {
+      const files = await fs.readdir(specPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+
+        const agentId = file.replace('.json', '');
+        try {
+          const record = await this.readRecord(specId, agentId);
+          if (record) {
+            result.push(record);
+          }
+        } catch {
+          // Skip corrupted JSON files - log would be useful but not required
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Spec directory doesn't exist yet
+        return [];
+      }
+      throw error;
+    }
+
+    return result;
+  }
+
+  /**
+   * Read project-level agent records (specId = "")
+   * Requirements: 1.2 (agent-state-file-ssot)
+   * ProjectAgent records are stored in root directory with empty specId
+   * @returns Array of AgentRecord for project-level agents
+   */
+  async readProjectAgents(): Promise<AgentRecord[]> {
+    // ProjectAgents use empty string as specId, stored in base directory directly
+    return this.readRecordsForSpec('');
+  }
+
+  /**
+   * Get running agent counts per spec
+   * Requirements: 1.3 (agent-state-file-ssot)
+   * Scans all agent records and counts running agents per spec
+   * @returns Map of specId to running agent count
+   */
+  async getRunningAgentCounts(): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+
+    try {
+      // Get all entries in base directory
+      const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+
+      // Check for ProjectAgents (empty specId) - JSON files directly in basePath
+      const projectAgentFiles = entries.filter((e) => e.isFile() && e.name.endsWith('.json'));
+      if (projectAgentFiles.length > 0) {
+        const projectAgents = await this.readProjectAgents();
+        const runningCount = projectAgents.filter((r) => r.status === 'running').length;
+        counts.set('', runningCount);
+      }
+
+      // Process spec directories
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+
+        const specId = entry.name;
+        const records = await this.readRecordsForSpec(specId);
+
+        const runningCount = records.filter((r) => r.status === 'running').length;
+        counts.set(specId, runningCount);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Base directory doesn't exist yet
+        return counts;
+      }
+      throw error;
+    }
+
+    return counts;
+  }
+
+  /**
+   * Get all spec IDs that have agent records
+   * Requirements: agent-state-file-ssot (for getAllAgents)
+   * @returns Array of spec IDs (directory names under basePath)
+   */
+  async getAllSpecIds(): Promise<string[]> {
+    try {
+      const specDirs = await fs.readdir(this.basePath, { withFileTypes: true });
+      return specDirs.filter((d) => d.isDirectory()).map((d) => d.name);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Find an agent record by agentId across all specs
+   * Requirements: agent-state-file-ssot (for getAgentById)
+   * @param agentId - The agent ID to search for
+   * @returns AgentRecord if found, null otherwise
+   */
+  async findRecordByAgentId(agentId: string): Promise<AgentRecord | null> {
+    const specIds = await this.getAllSpecIds();
+
+    for (const specId of specIds) {
+      const record = await this.readRecord(specId, agentId);
+      if (record) {
+        return record;
+      }
+    }
+
+    return null;
   }
 
   /**

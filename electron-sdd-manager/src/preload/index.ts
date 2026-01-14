@@ -8,7 +8,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, SelectProjectResult } from '../renderer/types';
 import type { ExecutionGroup, WorkflowPhase } from '../main/services/specManagerService';
-import type { AgentInfo, AgentStatus } from '../main/services/agentRegistry';
+// agent-state-file-ssot: Import AgentInfo/AgentStatus from agentRecordService (SSOT)
+import type { AgentInfo, AgentStatus } from '../main/services/agentRecordService';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';

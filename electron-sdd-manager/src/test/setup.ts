@@ -140,6 +140,8 @@ const mockElectronAPI = {
   // Phase/Review Sync APIs
   syncSpecPhase: vi.fn(),
   syncDocumentReview: vi.fn().mockResolvedValue(false),
+  // Agent Watcher APIs (bugs-agent-list-not-updating bug fix)
+  switchAgentWatchScope: vi.fn().mockResolvedValue(undefined),
 };
 
 Object.defineProperty(window, 'electronAPI', {

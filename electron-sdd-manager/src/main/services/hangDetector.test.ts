@@ -1,25 +1,40 @@
 /**
  * HangDetector Tests
  * Requirements: 5.3
+ * agent-state-file-ssot: Updated to use AgentRecordService
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import { HangDetector } from './hangDetector';
-import { AgentRegistry, AgentInfo } from './agentRegistry';
+import { AgentRecordService, AgentRecord } from './agentRecordService';
+
+// Helper to wait for async operations
+const flushPromises = () => new Promise(process.nextTick);
 
 describe('HangDetector', () => {
-  let registry: AgentRegistry;
+  let testDir: string;
+  let recordService: AgentRecordService;
   let detector: HangDetector;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
-    registry = new AgentRegistry();
-    detector = new HangDetector(registry);
+    testDir = path.join(os.tmpdir(), `hang-detector-test-${Date.now()}`);
+    await fs.mkdir(testDir, { recursive: true });
+    recordService = new AgentRecordService(testDir);
+    detector = new HangDetector(recordService);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     detector.stop();
     vi.useRealTimers();
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 
   // Task 25.1: 定期チェックタイマー
@@ -48,12 +63,12 @@ describe('HangDetector', () => {
   });
 
   describe('hang detection', () => {
-    it('should detect hanging agents', () => {
+    it('should detect hanging agents', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      // Register an agent with old lastActivityAt
-      const hangingAgent: AgentInfo = {
+      // Create an agent record with old lastActivityAt
+      const hangingRecord: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -65,7 +80,7 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(hangingAgent);
+      await recordService.writeRecord(hangingRecord);
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
@@ -73,6 +88,7 @@ describe('HangDetector', () => {
 
       // Advance time by 1 minute (interval)
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
       // Should detect the hanging agent
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
@@ -80,12 +96,12 @@ describe('HangDetector', () => {
       }));
     });
 
-    it('should not detect active agents', () => {
+    it('should not detect active agents', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      // Register an active agent
-      const activeAgent: AgentInfo = {
+      // Create an active agent record
+      const activeRecord: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -97,7 +113,7 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(activeAgent);
+      await recordService.writeRecord(activeRecord);
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
@@ -105,17 +121,18 @@ describe('HangDetector', () => {
 
       // Advance time by 1 minute (interval)
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
       // Should not detect the active agent
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it('should not detect completed agents', () => {
+    it('should not detect completed agents', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      // Register a completed agent with old lastActivityAt
-      const completedAgent: AgentInfo = {
+      // Create a completed agent record with old lastActivityAt
+      const completedRecord: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -127,23 +144,25 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(completedAgent);
+      await recordService.writeRecord(completedRecord);
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
       detector.start(300000, 60000);
 
+      // Advance time by 1 minute (interval)
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
       // Should not detect completed agents
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it('should update agent status to hang when detected', () => {
+    it('should update agent status to hang when detected', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      const hangingAgent: AgentInfo = {
+      const hangingRecord: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -155,21 +174,22 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(hangingAgent);
+      await recordService.writeRecord(hangingRecord);
 
       detector.start(300000, 60000);
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
-      // Check that status was updated
-      const agent = registry.get('agent-001');
-      expect(agent?.status).toBe('hang');
+      // Check that status was updated in file
+      const record = await recordService.readRecord('spec-a', 'agent-001');
+      expect(record?.status).toBe('hang');
     });
 
-    it('should only detect each hanging agent once', () => {
+    it('should only detect each hanging agent once', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      const hangingAgent: AgentInfo = {
+      const hangingRecord: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -181,7 +201,7 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(hangingAgent);
+      await recordService.writeRecord(hangingRecord);
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
@@ -189,8 +209,11 @@ describe('HangDetector', () => {
 
       // Advance by multiple intervals
       vi.advanceTimersByTime(60000);
+      await flushPromises();
       vi.advanceTimersByTime(60000);
+      await flushPromises();
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
       // Should only be called once (status changes to 'hang' after first detection)
       expect(callback).toHaveBeenCalledTimes(1);
@@ -198,14 +221,14 @@ describe('HangDetector', () => {
   });
 
   describe('setThreshold', () => {
-    it('should update threshold', () => {
+    it('should update threshold', async () => {
       detector.setThreshold(600000); // 10 minutes
 
       const now = Date.now();
       vi.setSystemTime(now);
 
       // Agent hanging for 7 minutes (below new threshold)
-      const agent: AgentInfo = {
+      const record: AgentRecord = {
         agentId: 'agent-001',
         specId: 'spec-a',
         phase: 'requirements',
@@ -217,13 +240,14 @@ describe('HangDetector', () => {
         command: 'claude',
       };
 
-      registry.register(agent);
+      await recordService.writeRecord(record);
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
       detector.start(600000, 60000);
 
       vi.advanceTimersByTime(60000);
+      await flushPromises();
 
       // Should not detect (7 min < 10 min threshold)
       expect(callback).not.toHaveBeenCalled();

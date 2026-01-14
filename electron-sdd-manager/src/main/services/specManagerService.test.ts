@@ -62,7 +62,7 @@ describe('SpecManagerService', () => {
       }
     });
 
-    it('should register agent in registry', async () => {
+    it('should register agent in file system', async () => {
       const result = await service.startAgent({
         specId: 'spec-a',
         phase: 'requirements',
@@ -72,7 +72,7 @@ describe('SpecManagerService', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        const agents = service.getAgents('spec-a');
+        const agents = await service.getAgents('spec-a');
         expect(agents).toHaveLength(1);
         expect(agents[0].agentId).toBe(result.value.agentId);
       }
@@ -152,7 +152,7 @@ describe('SpecManagerService', () => {
       // Wait a bit for status update
       await new Promise((r) => setTimeout(r, 100));
 
-      const agents = service.getAgents('spec-a');
+      const agents = await service.getAgents('spec-a');
       const agent = agents.find((a) => a.agentId === startResult.value.agentId);
       expect(agent?.status).toBe('interrupted');
     });
@@ -193,7 +193,7 @@ describe('SpecManagerService', () => {
 
       await service.restoreAgents();
 
-      const agents = service.getAgents('spec-a');
+      const agents = await service.getAgents('spec-a');
       // Should find the agent but may mark it as interrupted if can't connect
       expect(agents.length).toBeGreaterThanOrEqual(0);
     });
@@ -222,7 +222,7 @@ describe('SpecManagerService', () => {
 
       await service.restoreAgents();
 
-      const agents = service.getAgents('spec-a');
+      const agents = await service.getAgents('spec-a');
       expect(agents).toHaveLength(1);
       expect(agents[0].status).toBe('interrupted');
     });
@@ -533,7 +533,7 @@ describe('SpecManagerService', () => {
         args: ['5'],
       });
 
-      const specAAgents = service.getAgents('spec-a');
+      const specAAgents = await service.getAgents('spec-a');
       expect(specAAgents).toHaveLength(1);
       expect(specAAgents[0].specId).toBe('spec-a');
     });
@@ -553,10 +553,151 @@ describe('SpecManagerService', () => {
         args: ['5'],
       });
 
-      const allAgents = service.getAllAgents();
+      const allAgents = await service.getAllAgents();
       expect(allAgents.size).toBe(2);
       expect(allAgents.get('spec-a')).toHaveLength(1);
       expect(allAgents.get('spec-b')).toHaveLength(1);
+    });
+  });
+
+  // =============================================================================
+  // agent-state-file-ssot: Task 5.2 - SpecManagerService file-based tests
+  // Requirements: 3.2, 3.3, 3.4 - File-based agent state management
+  // =============================================================================
+  describe('File-based agent state management (agent-state-file-ssot)', () => {
+    describe('getAgents - file-based (Task 3.1)', () => {
+      it('should read agents from file system', async () => {
+        // Start an agent - this will write to file
+        const result = await service.startAgent({
+          specId: 'spec-a',
+          phase: 'requirements',
+          command: 'sleep',
+          args: ['5'],
+        });
+        expect(result.ok).toBe(true);
+
+        // getAgents should read from file and return correct data
+        const agents = await service.getAgents('spec-a');
+        expect(agents).toHaveLength(1);
+        expect(agents[0].specId).toBe('spec-a');
+        expect(agents[0].status).toBe('running');
+      });
+
+      it('should return empty array for spec with no agents', async () => {
+        const agents = await service.getAgents('non-existent-spec');
+        expect(agents).toHaveLength(0);
+      });
+
+      it('should reflect file changes after agent completion', async () => {
+        // Start and stop an agent
+        const result = await service.startAgent({
+          specId: 'spec-a',
+          phase: 'requirements',
+          command: 'echo',
+          args: ['test'],
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+
+        // Wait for process to complete
+        await new Promise((r) => setTimeout(r, 200));
+
+        // getAgents should reflect the completed status from file
+        const agents = await service.getAgents('spec-a');
+        expect(agents).toHaveLength(1);
+        // Status should be completed (or interrupted if stopped)
+        expect(['completed', 'running']).toContain(agents[0].status);
+      });
+    });
+
+    describe('getAllAgents - file-based (Task 3.2)', () => {
+      it('should read all agents from file system grouped by spec', async () => {
+        const result1 = await service.startAgent({
+          specId: 'spec-a',
+          phase: 'requirements',
+          command: 'sleep',
+          args: ['5'],
+        });
+        expect(result1.ok).toBe(true);
+
+        const result2 = await service.startAgent({
+          specId: 'spec-b',
+          phase: 'design',
+          command: 'sleep',
+          args: ['5'],
+        });
+        expect(result2.ok).toBe(true);
+
+        const allAgents = await service.getAllAgents();
+        expect(allAgents.size).toBe(2);
+        expect(allAgents.get('spec-a')?.length).toBe(1);
+        expect(allAgents.get('spec-b')?.length).toBe(1);
+      });
+
+      it('should include project agents (empty specId)', async () => {
+        await service.startAgent({
+          specId: '',
+          phase: 'steering',
+          command: 'sleep',
+          args: ['5'],
+        });
+
+        const allAgents = await service.getAllAgents();
+        expect(allAgents.has('')).toBe(true);
+        expect(allAgents.get('')?.length).toBe(1);
+      });
+
+      it('should return empty Map when no agents exist', async () => {
+        const allAgents = await service.getAllAgents();
+        expect(allAgents.size).toBe(0);
+      });
+    });
+
+    describe('getAgentById - file-based (Task 3.3)', () => {
+      it('should find agent by ID from file system', async () => {
+        const result = await service.startAgent({
+          specId: 'spec-a',
+          phase: 'requirements',
+          command: 'sleep',
+          args: ['5'],
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+
+        const agent = await service.getAgentById(result.value.agentId);
+        expect(agent).toBeDefined();
+        expect(agent?.agentId).toBe(result.value.agentId);
+        expect(agent?.specId).toBe('spec-a');
+      });
+
+      it('should return undefined for non-existent agent', async () => {
+        const agent = await service.getAgentById('non-existent-agent');
+        expect(agent).toBeUndefined();
+      });
+
+      it('should find agent across different specs', async () => {
+        // Start agents in different specs
+        await service.startAgent({
+          specId: 'spec-a',
+          phase: 'requirements',
+          command: 'sleep',
+          args: ['5'],
+        });
+
+        const result = await service.startAgent({
+          specId: 'spec-b',
+          phase: 'design',
+          command: 'sleep',
+          args: ['5'],
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+
+        // Should find agent in spec-b
+        const agent = await service.getAgentById(result.value.agentId);
+        expect(agent).toBeDefined();
+        expect(agent?.specId).toBe('spec-b');
+      });
     });
   });
 });

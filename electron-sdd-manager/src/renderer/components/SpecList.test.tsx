@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SpecList } from './SpecList';
 import { useSpecStore } from '../stores/specStore';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
 import type { SpecMetadata, SpecPhase } from '../types';
 
 // Mock the stores
@@ -24,7 +24,8 @@ describe('SpecList - Task 33.1', () => {
   const mockSetSortOrder = vi.fn();
   const mockSetStatusFilter = vi.fn();
   const mockGetSortedFilteredSpecs = vi.fn();
-  const mockGetAgentsForSpec = vi.fn();
+  // agent-watcher-optimization: Updated to use getRunningAgentCount instead of getAgentsForSpec
+  const mockGetRunningAgentCount = vi.fn();
 
   const baseSpec: SpecMetadata = {
     name: 'feature-1',
@@ -36,18 +37,6 @@ describe('SpecList - Task 33.1', () => {
       design: { generated: true, approved: true },
       tasks: { generated: true, approved: true },
     },
-  };
-
-  const runningAgent: AgentInfo = {
-    agentId: 'agent-1',
-    specId: 'feature-1',
-    phase: 'requirements',
-    pid: 12345,
-    sessionId: 'session-1',
-    status: 'running',
-    startedAt: '2025-01-01T00:00:00Z',
-    lastActivityAt: '2025-01-01T00:00:00Z',
-    command: 'claude -p "/kiro:spec-requirements"',
   };
 
   beforeEach(() => {
@@ -69,8 +58,9 @@ describe('SpecList - Task 33.1', () => {
       specJsonMap: new Map(),
     });
 
+    // agent-watcher-optimization: Use getRunningAgentCount mock
     mockUseAgentStore.mockReturnValue({
-      getAgentsForSpec: mockGetAgentsForSpec.mockReturnValue([]),
+      getRunningAgentCount: mockGetRunningAgentCount.mockReturnValue(0),
     });
   });
 
@@ -86,10 +76,11 @@ describe('SpecList - Task 33.1', () => {
       expect(screen.queryByTestId('agent-count-feature-1')).not.toBeInTheDocument();
     });
 
+    // agent-watcher-optimization: Updated tests to use getRunningAgentCount
     it('should display running agent count badge when agents are running', () => {
-      mockGetAgentsForSpec.mockReturnValue([runningAgent]);
+      mockGetRunningAgentCount.mockReturnValue(1);
       mockUseAgentStore.mockReturnValue({
-        getAgentsForSpec: mockGetAgentsForSpec,
+        getRunningAgentCount: mockGetRunningAgentCount,
       });
 
       render(<SpecList />);
@@ -100,10 +91,9 @@ describe('SpecList - Task 33.1', () => {
     });
 
     it('should display correct count for multiple running agents', () => {
-      const agent2 = { ...runningAgent, agentId: 'agent-2', phase: 'design' };
-      mockGetAgentsForSpec.mockReturnValue([runningAgent, agent2]);
+      mockGetRunningAgentCount.mockReturnValue(2);
       mockUseAgentStore.mockReturnValue({
-        getAgentsForSpec: mockGetAgentsForSpec,
+        getRunningAgentCount: mockGetRunningAgentCount,
       });
 
       render(<SpecList />);
@@ -113,10 +103,10 @@ describe('SpecList - Task 33.1', () => {
     });
 
     it('should only count running agents', () => {
-      const completedAgent = { ...runningAgent, agentId: 'agent-2', status: 'completed' as const };
-      mockGetAgentsForSpec.mockReturnValue([runningAgent, completedAgent]);
+      // getRunningAgentCount already returns only running agent count
+      mockGetRunningAgentCount.mockReturnValue(1);
       mockUseAgentStore.mockReturnValue({
-        getAgentsForSpec: mockGetAgentsForSpec,
+        getRunningAgentCount: mockGetRunningAgentCount,
       });
 
       render(<SpecList />);

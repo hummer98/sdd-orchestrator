@@ -57,7 +57,8 @@ export function SpecList() {
   } = useSpecStore();
 
   // Task 33.1: Get agent store for running agent counts
-  const { getAgentsForSpec } = useAgentStore();
+  // agent-watcher-optimization Task 5.1, 5.2: Use getRunningAgentCount for lightweight badge display
+  const { getRunningAgentCount } = useAgentStore();
 
   const specs = getSortedFilteredSpecs();
 
@@ -107,10 +108,8 @@ export function SpecList() {
           <ul data-testid="spec-list-items">
             {specs.map((spec) => {
               // Task 33.1: Count running agents for this spec
-              const agents = getAgentsForSpec(spec.name);
-              const runningAgentCount = agents.filter(
-                (a) => a.status === 'running'
-              ).length;
+              // agent-watcher-optimization Task 5.2: Use lightweight counts API
+              const runningAgentCount = getRunningAgentCount(spec.name);
 
               // git-worktree-support: Task 11.2 - Get worktree info from specJsonMap
               const specJson = specJsonMap.get(spec.name);

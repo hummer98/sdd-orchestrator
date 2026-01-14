@@ -375,4 +375,165 @@ describe('AgentRegistry', () => {
       expect(hangAgents).toHaveLength(0);
     });
   });
+
+  // =============================================================================
+  // Task 2.1 & 6.2: getRunningAgentCounts (agent-watcher-optimization)
+  // Requirements: 2.1 - Get running agent counts per spec efficiently
+  // =============================================================================
+  describe('getRunningAgentCounts (Task 2.1, 6.2)', () => {
+    it('should return Map<specId, runningCount>', () => {
+      const now = Date.now();
+
+      // Register agents with different specs and statuses
+      const runningAgent1: AgentInfo = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      const runningAgent2: AgentInfo = {
+        agentId: 'agent-002',
+        specId: 'spec-a',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'running',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      const completedAgent: AgentInfo = {
+        agentId: 'agent-003',
+        specId: 'spec-a',
+        phase: 'tasks',
+        pid: 12347,
+        sessionId: 'session-3',
+        status: 'completed',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      const runningAgentSpecB: AgentInfo = {
+        agentId: 'agent-004',
+        specId: 'spec-b',
+        phase: 'requirements',
+        pid: 12348,
+        sessionId: 'session-4',
+        status: 'running',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      registry.register(runningAgent1);
+      registry.register(runningAgent2);
+      registry.register(completedAgent);
+      registry.register(runningAgentSpecB);
+
+      const counts = registry.getRunningAgentCounts();
+
+      expect(counts).toBeInstanceOf(Map);
+      expect(counts.get('spec-a')).toBe(2); // 2 running, 1 completed
+      expect(counts.get('spec-b')).toBe(1); // 1 running
+    });
+
+    it('should return 0 for specs with only non-running agents', () => {
+      const now = Date.now();
+
+      const completedAgent: AgentInfo = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'completed',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      const interruptedAgent: AgentInfo = {
+        agentId: 'agent-002',
+        specId: 'spec-a',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'interrupted',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      registry.register(completedAgent);
+      registry.register(interruptedAgent);
+
+      const counts = registry.getRunningAgentCounts();
+
+      // spec-a should have 0 running agents
+      expect(counts.get('spec-a')).toBe(0);
+    });
+
+    it('should return empty Map when no agents registered', () => {
+      const counts = registry.getRunningAgentCounts();
+
+      expect(counts).toBeInstanceOf(Map);
+      expect(counts.size).toBe(0);
+    });
+
+    it('should handle empty specId (ProjectAgent)', () => {
+      const now = Date.now();
+
+      const projectAgent: AgentInfo = {
+        agentId: 'agent-001',
+        specId: '', // ProjectAgent
+        phase: 'steering',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: new Date(now).toISOString(),
+        lastActivityAt: new Date(now).toISOString(),
+        command: 'claude',
+      };
+
+      registry.register(projectAgent);
+
+      const counts = registry.getRunningAgentCounts();
+
+      expect(counts.get('')).toBe(1);
+    });
+
+    it('should count all running statuses correctly', () => {
+      const now = Date.now();
+
+      // Only 'running' status should be counted
+      const statuses: AgentStatus[] = ['running', 'completed', 'interrupted', 'hang', 'failed'];
+
+      statuses.forEach((status, index) => {
+        registry.register({
+          agentId: `agent-${index}`,
+          specId: 'spec-test',
+          phase: 'requirements',
+          pid: 12345 + index,
+          sessionId: `session-${index}`,
+          status,
+          startedAt: new Date(now).toISOString(),
+          lastActivityAt: new Date(now).toISOString(),
+          command: 'claude',
+        });
+      });
+
+      const counts = registry.getRunningAgentCounts();
+
+      // Only 1 agent with 'running' status
+      expect(counts.get('spec-test')).toBe(1);
+    });
+  });
 });

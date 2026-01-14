@@ -98,6 +98,30 @@ export class AgentRegistry {
   }
 
   /**
+   * Get running agent counts per spec
+   * agent-watcher-optimization Task 2.1
+   * Requirements: 2.1 - Get running agent counts efficiently
+   * @returns Map of specId to running agent count
+   */
+  getRunningAgentCounts(): Map<string, number> {
+    const counts = new Map<string, number>();
+
+    for (const agent of this.agents.values()) {
+      const specId = agent.specId;
+      const currentCount = counts.get(specId) ?? 0;
+
+      if (agent.status === 'running') {
+        counts.set(specId, currentCount + 1);
+      } else if (!counts.has(specId)) {
+        // Initialize spec with 0 if not yet in map
+        counts.set(specId, 0);
+      }
+    }
+
+    return counts;
+  }
+
+  /**
    * Check for agents that have exceeded hang threshold
    * Requirements: 5.3, 5.4
    * @param thresholdMs Time threshold in milliseconds

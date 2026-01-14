@@ -34,11 +34,29 @@ interface AgentState {
   // Skip permissions flag for claude CLI (--dangerously-skip-permissions)
   // Per-project, in-memory only, default OFF
   skipPermissions: boolean;
+  /**
+   * Running agent counts per spec (lightweight cache)
+   * agent-watcher-optimization Task 5.1
+   * Requirements: 2.1, 2.2
+   */
+  runningAgentCounts: Map<string, number>;
 }
 
 interface AgentActions {
   // Task 29.2: Agent操作アクション
   loadAgents: () => Promise<void>;
+  /**
+   * Load running agent counts (lightweight)
+   * agent-watcher-optimization Task 5.1
+   * Requirements: 2.1, 2.2
+   */
+  loadRunningAgentCounts: () => Promise<void>;
+  /**
+   * Get running agent count for a spec (from lightweight cache)
+   * agent-watcher-optimization Task 5.2
+   * Requirements: 2.2
+   */
+  getRunningAgentCount: (specId: string) => number;
   selectAgent: (agentId: string | null) => Promise<void>;
   loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
   addAgent: (specId: string, agent: AgentInfo) => void;
@@ -92,6 +110,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   isLoading: false,
   error: null,
   skipPermissions: false,
+  runningAgentCounts: new Map<string, number>(), // agent-watcher-optimization Task 5.1
 
   // Task 29.2: Agent操作アクション
   // Requirements: 5.1-5.8
@@ -108,8 +127,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         agentsMap.set(specId, agentList as AgentInfo[]);
       }
 
+      // Also update runningAgentCounts from full data
+      const runningCounts = new Map<string, number>();
+      for (const [specId, agentList] of agentsMap) {
+        const runningCount = agentList.filter((a) => a.status === 'running').length;
+        runningCounts.set(specId, runningCount);
+      }
+
       set({
         agents: agentsMap,
+        runningAgentCounts: runningCounts,
         isLoading: false,
       });
     } catch (error) {
@@ -118,6 +145,39 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         isLoading: false,
       });
     }
+  },
+
+  // agent-watcher-optimization Task 5.1: Lightweight running agent counts load
+  // Requirements: 2.1, 2.2
+  loadRunningAgentCounts: async () => {
+    try {
+      const countsRecord = await window.electronAPI.getRunningAgentCounts();
+      const countsMap = new Map<string, number>();
+
+      for (const [specId, count] of Object.entries(countsRecord)) {
+        countsMap.set(specId, count);
+      }
+
+      set({ runningAgentCounts: countsMap });
+      console.log('[agentStore] Loaded running agent counts:', countsMap.size, 'specs');
+    } catch (error) {
+      console.error('[agentStore] Failed to load running agent counts:', error);
+      // Don't set error state - this is a non-critical optimization
+    }
+  },
+
+  // agent-watcher-optimization Task 5.2: Get running agent count from cache
+  // Requirements: 2.2
+  getRunningAgentCount: (specId: string) => {
+    // First check lightweight counts cache
+    const cachedCount = get().runningAgentCounts.get(specId);
+    if (cachedCount !== undefined) {
+      return cachedCount;
+    }
+
+    // Fallback to calculating from full agents data
+    const agents = get().agents.get(specId) || [];
+    return agents.filter((a) => a.status === 'running').length;
   },
 
   selectAgent: async (agentId: string | null) => {

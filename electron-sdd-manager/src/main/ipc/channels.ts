@@ -59,6 +59,10 @@ export const IPC_CHANNELS = {
 
   // Agent Record Watcher
   AGENT_RECORD_CHANGED: 'ipc:agent-record-changed',
+  // agent-watcher-optimization Task 4.1: Switch watch scope for specific spec/bug
+  SWITCH_AGENT_WATCH_SCOPE: 'ipc:switch-agent-watch-scope',
+  // agent-watcher-optimization Task 2.2: Get running agent counts per spec
+  GET_RUNNING_AGENT_COUNTS: 'ipc:get-running-agent-counts',
 
   // spec-manager Install (Requirements: 4.1-4.6)
   CHECK_SPEC_MANAGER_FILES: 'ipc:check-spec-manager-files',

@@ -12,7 +12,7 @@ import type { Phase, SelectProjectResult, SelectProjectError } from '../../rende
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
-import type { AgentInfo } from '../services/agentRegistry';
+import { getAgentRegistry, type AgentInfo } from '../services/agentRegistry';
 import { logger } from '../services/logger';
 import { projectLogger } from '../services/projectLogger';
 import { ProjectChecker } from '../services/projectChecker';
@@ -683,6 +683,30 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.STOP_SPECS_WATCHER, async () => {
     await stopSpecsWatcher();
     await stopAgentRecordWatcher();
+  });
+
+  // agent-watcher-optimization Task 4.1: Switch watch scope for specific spec/bug
+  ipcMain.handle(IPC_CHANNELS.SWITCH_AGENT_WATCH_SCOPE, async (_event, scopeId: string | null) => {
+    if (agentRecordWatcherService) {
+      logger.info('[handlers] Switching agent watch scope', { scopeId });
+      await agentRecordWatcherService.switchWatchScope(scopeId);
+    } else {
+      logger.warn('[handlers] Cannot switch scope: agent record watcher not running');
+    }
+  });
+
+  // agent-watcher-optimization Task 2.2: Get running agent counts per spec
+  // Requirements: 2.1 - Get running agent counts efficiently
+  ipcMain.handle(IPC_CHANNELS.GET_RUNNING_AGENT_COUNTS, async () => {
+    const registry = getAgentRegistry();
+    const countsMap = registry.getRunningAgentCounts();
+    // Convert Map to Record for IPC serialization
+    const result: Record<string, number> = {};
+    for (const [specId, count] of countsMap) {
+      result[specId] = count;
+    }
+    logger.debug('[handlers] GET_RUNNING_AGENT_COUNTS', { result });
+    return result;
   });
 
   // Agent Management Handlers (Task 27.1)

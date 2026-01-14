@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-01-14
+
+### Added
+- **Agent状態SSOTリファクタリング**: AgentRecordServiceをエージェント状態の単一の真実の源（SSOT）に変更し、状態管理を一元化
+- **Agent監視の最適化**: Agent監視の最適化とSpec単位スコープ切り替え機能を実装し、パフォーマンスを向上
+- **/commitコマンド正式化**: /commitコマンドを正式コマンドに昇格し、--check-branchオプションを追加
+
+### Fixed
+- **spec-inspection言語設定対応**: spec-inspection agentの出力言語をspec.json.languageに従うよう修正
+- **spec.json構文修正**: spec.jsonの不正なJSON構文を修正
+- **Bug/Spec選択時のAgent監視スコープ切り替え**: Bug/Spec選択時にエージェント監視スコープを正しく切り替えるよう修正
+- **タスク進捗計算修正**: タスク進捗計算でChecklistが誤カウントされる問題（false positive）を修正
+- **自動実行停止ボタン修正**: 自動実行停止ボタンがMain Process状態消失時に機能しない問題を修正
+- **未承認フェーズの自動実行修正**: 未承認フェーズがある状態での自動実行が何も起きない問題を修正
+- **SpecListItemクリック時の問題修正**: 存在しないタブが一瞬表示される問題を修正
+- **Spec/プロジェクト切り替え時の表示修正**: 古いコンテンツが一瞬表示される問題を修正
+- **inspection/deploy-complete状態修正**: SpecListItemクリック時にinspection/deploy-completeがダウングレードされる問題を修正
+- **SpecListItemスピナー修正**: クリック時にリスト全体がスピナーになる問題を修正
+- **N+1 IPC問題修正**: loadSpecs/refreshSpecs削除でN+1 IPC問題を修正
+- **specJsonMap一括読み込み**: specJsonMapをMain processで一括読み込みして返すよう修正
+- **phase表示修正**: selectProject後にloadSpecJsonsを呼び出してphase表示を修正
+
+### Changed
+- **validate-gap/validate-design機能削除**: 未使用のvalidate-gap/validate-design機能を削除しコードベースを簡素化
+
+### Testing
+- **モックパターン修正**: spec-metadata-ssot-refactorのモックパターンとインターフェース構造を修正
+- **テスト修正**: loadSpecs/refreshSpecs削除に伴うテスト修正
+
+### Documentation
+- **PROJECT引数ドキュメント追加**: PROJECT引数によるプロジェクト選択済み起動方法をドキュメントに追加
+
 ## [0.25.0] - 2026-01-13
 
 ### Added

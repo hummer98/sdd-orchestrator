@@ -1,0 +1,59 @@
+{
+  "feature_name": "bugs-worktree-support",
+  "created_at": "2026-01-14T01:31:00+09:00",
+  "updated_at": "2026-01-14T00:55:17.247Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "inspectionFlag": "pause"
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 3,
+        "status": "reply_complete",
+        "fixApplied": true
+      },
+      {
+        "roundNumber": 4,
+        "status": "reply_complete",
+        "fixApplied": false
+      }
+    ]
+  }
+}

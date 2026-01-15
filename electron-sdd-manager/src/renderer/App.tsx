@@ -493,10 +493,7 @@ export function App() {
               <div className="ml-4 flex items-center gap-2">
                 <span className="text-gray-400">/</span>
                 <span className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                  {specDetail.metadata.name}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {specDetail.specJson.feature_name || ''}
+                  {specDetail.specJson.feature_name || specDetail.metadata.name}
                 </span>
               </div>
             )}

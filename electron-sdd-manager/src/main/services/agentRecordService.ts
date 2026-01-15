@@ -5,6 +5,10 @@
  *
  * agent-state-file-ssot: This service is the Single Source of Truth (SSOT)
  * for agent state. All agent state reads and writes go through this service.
+ *
+ * Bug fix: agent-record-json-corruption
+ * - Added per-agent mutex to prevent race conditions in updateRecord
+ * - Added throttling for lastActivityAt updates to reduce write frequency
  */
 
 import * as fs from 'fs/promises';
@@ -43,13 +47,63 @@ export interface AgentRecord {
 export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;
 
 /**
+ * Simple mutex implementation for per-agent locking
+ * Bug fix: agent-record-json-corruption
+ */
+class AgentMutex {
+  private locks: Map<string, Promise<void>> = new Map();
+
+  async acquire(key: string): Promise<() => void> {
+    // Wait for any existing lock to release
+    while (this.locks.has(key)) {
+      await this.locks.get(key);
+    }
+
+    // Create a new lock
+    let release: () => void;
+    const lockPromise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.locks.set(key, lockPromise);
+
+    // Return release function
+    return () => {
+      this.locks.delete(key);
+      release!();
+    };
+  }
+}
+
+/**
+ * Throttle state for lastActivityAt updates
+ * Bug fix: agent-record-json-corruption
+ */
+interface ThrottleState {
+  lastWriteTime: number;
+  pendingUpdate: AgentRecordUpdate | null;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
+// Throttle interval in milliseconds (1 second)
+const ACTIVITY_UPDATE_THROTTLE_MS = 1000;
+
+/**
  * Service for managing Agent record files
  */
 export class AgentRecordService {
   private basePath: string;
+  private mutex: AgentMutex = new AgentMutex();
+  private throttleStates: Map<string, ThrottleState> = new Map();
 
   constructor(basePath: string) {
     this.basePath = basePath;
+  }
+
+  /**
+   * Get throttle key for an agent
+   */
+  private getThrottleKey(specId: string, agentId: string): string {
+    return `${specId}/${agentId}`;
   }
 
   /**
@@ -259,22 +313,98 @@ export class AgentRecordService {
   }
 
   /**
-   * Update an agent record
+   * Update an agent record with mutex protection
    * Requirements: 5.5, 5.6
+   * Bug fix: agent-record-json-corruption - Added mutex to prevent race conditions
    */
   async updateRecord(specId: string, agentId: string, update: AgentRecordUpdate): Promise<void> {
-    const record = await this.readRecord(specId, agentId);
+    const key = this.getThrottleKey(specId, agentId);
 
-    if (!record) {
-      throw new Error(`Agent record not found: ${specId}/${agentId}`);
+    // Acquire mutex for this agent
+    const release = await this.mutex.acquire(key);
+
+    try {
+      const record = await this.readRecord(specId, agentId);
+
+      if (!record) {
+        throw new Error(`Agent record not found: ${specId}/${agentId}`);
+      }
+
+      const updatedRecord: AgentRecord = {
+        ...record,
+        ...update,
+      };
+
+      await this.writeRecord(updatedRecord);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Update lastActivityAt with throttling to reduce write frequency
+   * Bug fix: agent-record-json-corruption - Throttled updates to prevent race conditions
+   * @param specId - The spec ID
+   * @param agentId - The agent ID
+   * @param update - The update to apply (should contain lastActivityAt)
+   */
+  updateActivityThrottled(specId: string, agentId: string, update: AgentRecordUpdate): void {
+    const key = this.getThrottleKey(specId, agentId);
+    const now = Date.now();
+
+    let state = this.throttleStates.get(key);
+    if (!state) {
+      state = { lastWriteTime: 0, pendingUpdate: null, timer: null };
+      this.throttleStates.set(key, state);
     }
 
-    const updatedRecord: AgentRecord = {
-      ...record,
-      ...update,
-    };
+    // Check if we can write immediately
+    const timeSinceLastWrite = now - state.lastWriteTime;
+    if (timeSinceLastWrite >= ACTIVITY_UPDATE_THROTTLE_MS) {
+      // Write immediately
+      state.lastWriteTime = now;
+      state.pendingUpdate = null;
+      if (state.timer) {
+        clearTimeout(state.timer);
+        state.timer = null;
+      }
+      this.updateRecord(specId, agentId, update).catch(() => {
+        // Ignore errors for activity updates
+      });
+    } else {
+      // Schedule a delayed write
+      state.pendingUpdate = update;
+      if (!state.timer) {
+        const delay = ACTIVITY_UPDATE_THROTTLE_MS - timeSinceLastWrite;
+        state.timer = setTimeout(() => {
+          const currentState = this.throttleStates.get(key);
+          if (currentState && currentState.pendingUpdate) {
+            currentState.lastWriteTime = Date.now();
+            const pendingUpdate = currentState.pendingUpdate;
+            currentState.pendingUpdate = null;
+            currentState.timer = null;
+            this.updateRecord(specId, agentId, pendingUpdate).catch(() => {
+              // Ignore errors for activity updates
+            });
+          }
+        }, delay);
+      }
+    }
+  }
 
-    await this.writeRecord(updatedRecord);
+  /**
+   * Clear throttle state for an agent (call when agent completes)
+   * Bug fix: agent-record-json-corruption
+   */
+  clearThrottleState(specId: string, agentId: string): void {
+    const key = this.getThrottleKey(specId, agentId);
+    const state = this.throttleStates.get(key);
+    if (state) {
+      if (state.timer) {
+        clearTimeout(state.timer);
+      }
+      this.throttleStates.delete(key);
+    }
   }
 
   /**

@@ -699,11 +699,10 @@ export class SpecManagerService {
     data: string
   ): void {
     logger.debug('[SpecManagerService] Process output received', { agentId, stream, dataLength: data.length });
-    // agent-state-file-ssot: Update activity in file (fire and forget)
-    this.recordService.updateRecord(specId, agentId, {
+    // agent-state-file-ssot: Update activity in file (throttled to prevent race conditions)
+    // Bug fix: agent-record-json-corruption - Use throttled updates
+    this.recordService.updateActivityThrottled(specId, agentId, {
       lastActivityAt: new Date().toISOString(),
-    }).catch(() => {
-      // Ignore errors when updating activity
     });
 
     // Parse sessionId from Claude Code init message
@@ -742,6 +741,9 @@ export class SpecManagerService {
    * agent-state-file-ssot: Extracted for reuse with pending events
    */
   private handleAgentExit(agentId: string, specId: string, code: number): void {
+    // Bug fix: agent-record-json-corruption - Clear throttle state on exit
+    this.recordService.clearThrottleState(specId, agentId);
+
     // agent-state-file-ssot: Check current status from file
     // If already interrupted (by stopAgent), don't change
     this.recordService.readRecord(specId, agentId).then((currentRecord) => {

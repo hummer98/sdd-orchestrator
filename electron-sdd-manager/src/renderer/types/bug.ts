@@ -1,7 +1,10 @@
 /**
  * Bug Workflow Types
  * Requirements: 3.1, 6.1
+ * Requirements: 1.1, 1.2, 1.3, 1.4 (bugs-worktree-support) - worktree field added to BugMetadata
  */
+
+import type { BugWorktreeConfig } from './bugJson';
 
 /**
  * Bug phase type representing the current workflow state
@@ -18,6 +21,7 @@ export type BugAction = 'analyze' | 'fix' | 'verify';
 /**
  * Bug metadata interface
  * Requirements: 6.1
+ * Requirements: 1.1 (bugs-worktree-support) - worktree field for UI display
  */
 export interface BugMetadata {
   readonly name: string;           // バグ名（ディレクトリ名）
@@ -25,6 +29,8 @@ export interface BugMetadata {
   readonly phase: BugPhase;        // 現在のフェーズ
   readonly updatedAt: string;      // 最終更新日時
   readonly reportedAt: string;     // 報告日時
+  /** Worktree configuration (optional) - mapped from bug.json for UI display */
+  readonly worktree?: BugWorktreeConfig;
 }
 
 /**

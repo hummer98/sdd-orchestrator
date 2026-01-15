@@ -86,6 +86,8 @@ describe('BugWorkflowView', () => {
     mockUseBugStore.mockReturnValue({
       selectedBug: mockBugMetadata,
       bugDetail: mockBugDetail,
+      useWorktree: false,
+      setUseWorktree: vi.fn(),
     });
 
     mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
@@ -161,6 +163,8 @@ describe('BugWorkflowView', () => {
       mockUseBugStore.mockReturnValue({
         selectedBug: mockBugMetadata,
         bugDetail: bugDetailWithAnalysis,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
       });
 
       render(<BugWorkflowView />);
@@ -204,6 +208,8 @@ describe('BugWorkflowView', () => {
       mockUseBugStore.mockReturnValue({
         selectedBug: mockBugMetadata,
         bugDetail: completedBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
       });
       mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
         const state = {
@@ -243,6 +249,267 @@ describe('BugWorkflowView', () => {
   });
 
   // ============================================================
+  // bugs-worktree-support Task 12.1: worktreeチェックボックス
+  // Requirements: 8.2
+  // ============================================================
+  describe('Task 12.1: worktree checkbox', () => {
+    beforeEach(() => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+    });
+
+    it('should display worktree checkbox', () => {
+      render(<BugWorkflowView />);
+      expect(screen.getByTestId('workflow-use-worktree-checkbox')).toBeInTheDocument();
+    });
+
+    it('should display worktree label', () => {
+      render(<BugWorkflowView />);
+      expect(screen.getByText('Worktreeを使用')).toBeInTheDocument();
+    });
+
+    it('should initialize checkbox with store value (false)', () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<BugWorkflowView />);
+
+      const checkbox = screen.getByTestId('workflow-use-worktree-checkbox') as HTMLInputElement;
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it('should initialize checkbox with store value (true)', () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+        useWorktree: true,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<BugWorkflowView />);
+
+      const checkbox = screen.getByTestId('workflow-use-worktree-checkbox') as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it('should call setUseWorktree when checkbox is changed', () => {
+      const mockSetUseWorktree = vi.fn();
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: mockBugDetail,
+        useWorktree: false,
+        setUseWorktree: mockSetUseWorktree,
+      });
+
+      render(<BugWorkflowView />);
+
+      const checkbox = screen.getByTestId('workflow-use-worktree-checkbox');
+      fireEvent.click(checkbox);
+
+      expect(mockSetUseWorktree).toHaveBeenCalledWith(true);
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 12.2: bug-fix実行時のworktree作成判定
+  // Requirements: 8.5, 3.2, 3.6
+  // ============================================================
+  describe('Task 12.2: bug-fix with worktree', () => {
+    beforeEach(() => {
+      // Setup: report exists, analysis exists (so fix phase is executable)
+      const bugDetailReadyForFix: BugDetail = {
+        ...mockBugDetail,
+        artifacts: {
+          report: { exists: true, path: '/test/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+          analysis: { exists: true, path: '/test/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+          fix: null,
+          verification: null,
+        },
+      };
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: bugDetailReadyForFix,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+    });
+
+    it('should call createBugWorktree when useWorktree is true and fix button is clicked', async () => {
+      const mockCreateBugWorktree = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+      Object.defineProperty(window, 'electronAPI', {
+        value: {
+          ...mockElectronAPI,
+          createBugWorktree: mockCreateBugWorktree,
+        },
+        writable: true,
+      });
+
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: {
+          ...mockBugDetail,
+          artifacts: {
+            report: { exists: true, path: '/test/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+            analysis: { exists: true, path: '/test/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+            fix: null,
+            verification: null,
+          },
+        },
+        useWorktree: true,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<BugWorkflowView />);
+
+      const button = screen.getByTestId('bug-phase-execute-button-fix');
+      fireEvent.click(button);
+
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockCreateBugWorktree).toHaveBeenCalledWith(mockBugMetadata.name);
+    });
+
+    it('should not call createBugWorktree when useWorktree is false', async () => {
+      const mockCreateBugWorktree = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+      Object.defineProperty(window, 'electronAPI', {
+        value: {
+          ...mockElectronAPI,
+          createBugWorktree: mockCreateBugWorktree,
+        },
+        writable: true,
+      });
+
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: {
+          ...mockBugDetail,
+          artifacts: {
+            report: { exists: true, path: '/test/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+            analysis: { exists: true, path: '/test/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+            fix: null,
+            verification: null,
+          },
+        },
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<BugWorkflowView />);
+
+      const button = screen.getByTestId('bug-phase-execute-button-fix');
+      fireEvent.click(button);
+
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockCreateBugWorktree).not.toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 12.3: Deployボタンの条件分岐
+  // Requirements: 4.1
+  // ============================================================
+  describe('Task 12.3: Deploy button conditional command', () => {
+    const completedBugDetail: BugDetail = {
+      ...mockBugDetail,
+      artifacts: {
+        report: { exists: true, path: '/test/report.md', updatedAt: '2024-01-01T00:00:00Z' },
+        analysis: { exists: true, path: '/test/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
+        fix: { exists: true, path: '/test/fix.md', updatedAt: '2024-01-01T00:00:00Z' },
+        verification: { exists: true, path: '/test/verification.md', updatedAt: '2024-01-01T00:00:00Z' },
+      },
+    };
+
+    it('should call /kiro:bug-merge when bug has worktree field', async () => {
+      const bugWithWorktree: BugMetadata = {
+        ...mockBugMetadata,
+        worktree: {
+          path: '../test-worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      };
+
+      mockUseBugStore.mockReturnValue({
+        selectedBug: bugWithWorktree,
+        bugDetail: {
+          ...completedBugDetail,
+          metadata: bugWithWorktree,
+        },
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+        const state = {
+          agents: new Map(),
+          getAgentsForSpec: () => [],
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<BugWorkflowView />);
+
+      const button = screen.getByTestId('bug-phase-execute-button-deploy');
+      fireEvent.click(button);
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Should call bug-merge for worktree mode
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'deploy',
+        'claude',
+        ['/kiro:bug-merge test-bug'],
+        undefined,
+        undefined
+      );
+    });
+
+    it('should call /commit when bug has no worktree field', async () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: completedBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+        const state = {
+          agents: new Map(),
+          getAgentsForSpec: () => [],
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<BugWorkflowView />);
+
+      const button = screen.getByTestId('bug-phase-execute-button-deploy');
+      fireEvent.click(button);
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Should call /commit for non-worktree mode
+      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'deploy',
+        'claude',
+        ['/commit test-bug'],
+        undefined,
+        undefined
+      );
+    });
+  });
+
+  // ============================================================
   // bugs-workflow-auto-execution Task 4: Auto execution support
   // Requirements: 1.1-1.6, 6.1
   // ============================================================
@@ -251,6 +518,8 @@ describe('BugWorkflowView', () => {
       mockUseBugStore.mockReturnValue({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
       });
 
       mockUseWorkflowStore.mockReturnValue({

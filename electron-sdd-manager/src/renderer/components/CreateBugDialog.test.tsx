@@ -56,6 +56,8 @@ describe('CreateBugDialog', () => {
 
     (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       refreshBugs: mockRefreshBugs,
+      useWorktree: false,
+      setUseWorktree: vi.fn(),
     });
   });
 
@@ -255,6 +257,61 @@ describe('CreateBugDialog', () => {
         expect(mockSelectForProjectAgents).toHaveBeenCalled();
         expect(mockSelectAgent).toHaveBeenCalledWith('agent-123');
       });
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 11.1: worktreeチェックボックス
+  // Requirements: 8.1, 8.3, 8.4
+  // ============================================================
+  describe('worktree checkbox', () => {
+    it('should display worktree checkbox', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByTestId('use-worktree-checkbox')).toBeInTheDocument();
+      expect(screen.getByText('Worktreeを使用')).toBeInTheDocument();
+    });
+
+    it('should initialize checkbox with store value (false)', () => {
+      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        refreshBugs: mockRefreshBugs,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const checkbox = screen.getByTestId('use-worktree-checkbox') as HTMLInputElement;
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it('should initialize checkbox with store value (true)', () => {
+      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        refreshBugs: mockRefreshBugs,
+        useWorktree: true,
+        setUseWorktree: vi.fn(),
+      });
+
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const checkbox = screen.getByTestId('use-worktree-checkbox') as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it('should call setUseWorktree when checkbox is changed', () => {
+      const mockSetUseWorktree = vi.fn();
+      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        refreshBugs: mockRefreshBugs,
+        useWorktree: false,
+        setUseWorktree: mockSetUseWorktree,
+      });
+
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const checkbox = screen.getByTestId('use-worktree-checkbox');
+      fireEvent.click(checkbox);
+
+      expect(mockSetUseWorktree).toHaveBeenCalledWith(true);
     });
   });
 

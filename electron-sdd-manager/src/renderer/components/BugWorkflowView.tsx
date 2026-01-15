@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { ArrowDown, Play, Square } from 'lucide-react';
+import { ArrowDown, Play, Square, GitBranch } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useBugStore } from '../stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -61,7 +61,7 @@ function calculatePhaseStatus(
 }
 
 export function BugWorkflowView() {
-  const { selectedBug, bugDetail } = useBugStore();
+  const { selectedBug, bugDetail, useWorktree, setUseWorktree } = useBugStore();
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
 
@@ -135,6 +135,8 @@ export function BugWorkflowView() {
 
   // Task 3.3: フェーズ実行機能
   // Requirements: 4.1-4.5, 6.4
+  // bugs-worktree-support Task 12.2: bug-fix実行時のworktree作成判定
+  // Requirements: 8.5, 3.2, 3.6
   // Use startAgent directly with appropriate command formatting
   const handleExecutePhase = useCallback(async (phase: BugWorkflowPhase) => {
     if (!selectedBug) return;
@@ -143,9 +145,26 @@ export function BugWorkflowView() {
     if (!commandTemplate) return; // Report phase has no command
 
     try {
+      // bugs-worktree-support Task 12.2: fixフェーズでworktree使用時はworktreeを作成
+      if (phase === 'fix' && useWorktree) {
+        const result = await window.electronAPI.createBugWorktree(selectedBug.name);
+        if (!result.ok) {
+          notify.error(result.error?.message || 'worktreeの作成に失敗しました');
+          return;
+        }
+      }
+
+      // bugs-worktree-support Task 12.3: Deployボタンの条件分岐
+      // Requirements: 4.1
+      // worktreeフィールドが存在する場合は/kiro:bug-merge、そうでない場合は/commit
+      let command = commandTemplate;
+      if (phase === 'deploy' && selectedBug.worktree) {
+        command = '/kiro:bug-merge';
+      }
+
       // Build the command: all phases (including deploy) append bug name
       // /commit accepts bug name to collect related files from .kiro/bugs/{bug-name}/
-      const fullCommand = `${commandTemplate} ${selectedBug.name}`;
+      const fullCommand = `${command} ${selectedBug.name}`;
 
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       await window.electronAPI.startAgent(
@@ -159,7 +178,7 @@ export function BugWorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
     }
-  }, [selectedBug]);
+  }, [selectedBug, useWorktree]);
 
   // ============================================================
   // Task 4: Auto execution handlers
@@ -249,6 +268,26 @@ export function BugWorkflowView() {
           />
         </div>
       )}
+
+      {/* bugs-worktree-support Task 12.1: worktreeチェックボックス */}
+      {/* Requirements: 8.2 */}
+      <div className="px-4 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+        <input
+          type="checkbox"
+          id="workflow-use-worktree"
+          checked={useWorktree}
+          onChange={(e) => setUseWorktree(e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          data-testid="workflow-use-worktree-checkbox"
+        />
+        <label
+          htmlFor="workflow-use-worktree"
+          className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+        >
+          <GitBranch className="w-4 h-4" />
+          Worktreeを使用
+        </label>
+      </div>
 
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">

@@ -4,6 +4,9 @@
  * Maintains backward compatibility with existing useSpecStore interface
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
  * spec-metadata-ssot-refactor: Updated to expose specJsonMap
+ * execution-store-consolidation: specManagerExecutionStore REMOVED
+ *   - specManagerExecution state is now derived from agentStore (SSOT)
+ *   - Req 1.1, 3.1-3.4, 4.1-4.6
  */
 
 import { create } from 'zustand';
@@ -13,7 +16,9 @@ import type { WorkflowPhase } from '../../types/workflow';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
-import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
+// execution-store-consolidation: specManagerExecutionStore REMOVED (Req 1.1)
+// import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
+import { useAgentStore, type AgentInfo, type AgentStatus } from '../agentStore';
 import { specSyncService } from '../../services/specSyncService';
 import { specWatcherService } from '../../services/specWatcherService';
 import type {
@@ -22,11 +27,72 @@ import type {
   ArtifactType,
   SpecManagerPhase,
   ImplTaskStatus,
-  CheckImplResult,
+  // execution-store-consolidation: CheckImplResult REMOVED (Req 6.1)
   AutoExecutionRuntimeState,
+  SpecManagerExecutionState,
 } from './types';
+import { DEFAULT_SPEC_MANAGER_EXECUTION_STATE } from './types';
 
 type SpecStoreFacade = SpecStoreState & SpecStoreActions;
+
+// ============================================================
+// execution-store-consolidation: Derived Value Computation
+// Requirements: 3.1, 3.2, 3.3, 3.4
+// ============================================================
+
+/**
+ * Map AgentStatus to ImplTaskStatus (Req 3.2)
+ * AgentStatus: 'running' | 'completed' | 'interrupted' | 'hang' | 'failed'
+ * ImplTaskStatus: 'pending' | 'running' | 'continuing' | 'success' | 'error' | 'stalled'
+ */
+function mapAgentStatusToImplTaskStatus(status?: AgentStatus): ImplTaskStatus | null {
+  if (!status) return null;
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'success';
+    case 'failed':
+      return 'error';
+    case 'interrupted':
+      return 'stalled';
+    case 'hang':
+      return 'stalled';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Compute specManagerExecution state from agentStore (Req 3.1, 3.2, 3.3, 3.4)
+ * This replaces the old specManagerExecutionStore
+ */
+function getSpecManagerExecution(specId: string | null): SpecManagerExecutionState {
+  if (!specId) {
+    return DEFAULT_SPEC_MANAGER_EXECUTION_STATE;
+  }
+
+  const agentState = useAgentStore.getState();
+  const specAgents = agentState.getAgentsForSpec(specId);
+  const runningAgents = specAgents.filter((a: AgentInfo) => a.status === 'running');
+
+  // Sort by startedAt to get the latest running agent (Req 3.4)
+  const latestRunningAgent = runningAgents
+    .sort((a: AgentInfo, b: AgentInfo) =>
+      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    )[0];
+
+  return {
+    isRunning: runningAgents.length > 0,
+    currentPhase: latestRunningAgent?.phase as SpecManagerPhase | null,
+    currentSpecId: runningAgents.length > 0 ? specId : null,
+    // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
+    error: agentState.error,
+    implTaskStatus: mapAgentStatusToImplTaskStatus(latestRunningAgent?.status),
+    retryCount: latestRunningAgent?.retryCount ?? 0,
+    executionMode: latestRunningAgent?.executionMode ?? null,
+  };
+}
 
 /** Flag to track initialization status */
 let isInitialized = false;
@@ -34,12 +100,17 @@ let isInitialized = false;
 /**
  * Get aggregated state from all child stores
  * spec-metadata-ssot-refactor: Added specJsonMap to aggregated state
+ * execution-store-consolidation: specManagerExecution now derived from agentStore
  */
 function getAggregatedState(): SpecStoreState {
   const listState = useSpecListStore.getState();
   const detailState = useSpecDetailStore.getState();
   const autoExecState = useAutoExecutionStore.getState();
-  const specManagerState = useSpecManagerExecutionStore.getState();
+  // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 1.1)
+  // specManagerExecution is now computed from agentStore
+
+  // Get current specId for derived value computation (Req 3.1)
+  const currentSpecId = detailState.selectedSpec?.name ?? null;
 
   return {
     // SpecListStore state
@@ -62,17 +133,8 @@ function getAggregatedState(): SpecStoreState {
     // AutoExecutionStore state
     autoExecutionRuntimeMap: autoExecState.autoExecutionRuntimeMap,
 
-    // SpecManagerExecutionStore state
-    specManagerExecution: {
-      isRunning: specManagerState.isRunning,
-      currentPhase: specManagerState.currentPhase,
-      currentSpecId: specManagerState.currentSpecId,
-      lastCheckResult: specManagerState.lastCheckResult,
-      error: specManagerState.error,
-      implTaskStatus: specManagerState.implTaskStatus,
-      retryCount: specManagerState.retryCount,
-      executionMode: specManagerState.executionMode,
-    },
+    // execution-store-consolidation: specManagerExecution derived from agentStore (Req 3.1, 3.2)
+    specManagerExecution: getSpecManagerExecution(currentSpecId),
 
     // Watcher state
     isWatching: specWatcherService.isWatching,
@@ -238,7 +300,9 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
     },
 
     // ============================================================
-    // SpecManagerExecutionStore Actions (Req 7.4)
+    // SpecManagerExecution Actions
+    // execution-store-consolidation: Actions now operate on agentStore (Req 4.2-4.6)
+    // specManagerExecution state is derived from agentStore, not stored separately
     // ============================================================
 
     executeSpecManagerGeneration: async (
@@ -246,30 +310,40 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
       phase: SpecManagerPhase,
       featureName: string,
       taskId: string | undefined,
-      executionMode: 'auto' | 'manual'
+      _executionMode: 'auto' | 'manual'
     ) => {
-      await useSpecManagerExecutionStore.getState().executeSpecManagerGeneration(
-        specId,
-        phase,
-        featureName,
-        taskId,
-        executionMode
-      );
-      set(getAggregatedState());
+      // execution-store-consolidation: Execution is now handled via IPC
+      // The agentStore will be updated via onAgentRecordChanged callback
+      // when the agent starts. We just call the IPC here.
+      try {
+        if (phase === 'impl' && taskId) {
+          await window.electronAPI.executeTaskImpl(specId, featureName, taskId);
+        } else {
+          await window.electronAPI.executePhase(specId, phase, featureName);
+        }
+        // Note: Agent state is updated via IPC callbacks, no need to update here
+        set(getAggregatedState());
+      } catch (error) {
+        // Error is handled via agentStore.error
+        console.error('[specStoreFacade] executeSpecManagerGeneration error:', error);
+        set(getAggregatedState());
+      }
     },
 
-    handleCheckImplResult: (result: CheckImplResult) => {
-      useSpecManagerExecutionStore.getState().handleCheckImplResult(result);
-      set(getAggregatedState());
-    },
+    // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
+    // Task completion state is managed via TaskProgress from tasks.md
 
-    updateImplTaskStatus: (status: ImplTaskStatus, retryCount?: number) => {
-      useSpecManagerExecutionStore.getState().updateImplTaskStatus(status, retryCount);
+    updateImplTaskStatus: (_status: ImplTaskStatus, _retryCount?: number) => {
+      // execution-store-consolidation: This is now a no-op (Req 4.5)
+      // Status is derived from agentStore, not stored separately
+      // The agentStore is updated via IPC callbacks from Main Process
+      console.warn('[specStoreFacade] updateImplTaskStatus is deprecated - status is derived from agentStore');
       set(getAggregatedState());
     },
 
     clearSpecManagerError: () => {
-      useSpecManagerExecutionStore.getState().clearSpecManagerError();
+      // execution-store-consolidation: Clear error in agentStore (Req 4.6)
+      useAgentStore.getState().clearError();
       set(getAggregatedState());
     },
 
@@ -337,6 +411,9 @@ useAutoExecutionStore.subscribe(() => {
   useSpecStoreFacade.setState(getAggregatedState());
 });
 
-useSpecManagerExecutionStore.subscribe(() => {
+// execution-store-consolidation: specManagerExecutionStore subscription REMOVED (Req 5.1)
+// specManagerExecution is now derived from agentStore
+// Subscribe to agentStore changes for specManagerExecution updates
+useAgentStore.subscribe(() => {
   useSpecStoreFacade.setState(getAggregatedState());
 });

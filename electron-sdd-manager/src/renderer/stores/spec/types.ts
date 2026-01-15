@@ -170,30 +170,32 @@ export type ImplTaskStatus =
   | 'error'        // Error
   | 'stalled';     // Retry limit reached
 
-/** impl completion analysis result */
-export interface CheckImplResult {
-  readonly status: 'success';
-  readonly completedTasks: readonly string[];
-  readonly stats: {
-    readonly num_turns: number;
-    readonly duration_ms: number;
-    readonly total_cost_usd: number;
-  };
-}
+// execution-store-consolidation: CheckImplResult type REMOVED
+// Task completion state is now managed via tasks.md (TaskProgress) as SSOT
+// Req 6.1: Delete CheckImplResult type
 
-/** SpecManagerExecutionStore state interface */
+/**
+ * SpecManagerExecutionState interface
+ * execution-store-consolidation: This is now a derived value interface
+ * computed from agentStore, not a separate store state.
+ * Req 4.1: Maintain interface shape (except lastCheckResult)
+ */
 export interface SpecManagerExecutionState {
   readonly isRunning: boolean;
   readonly currentPhase: SpecManagerPhase | null;
   readonly currentSpecId: string | null;
-  readonly lastCheckResult: CheckImplResult | null;
+  // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
+  // Task completion state is managed via TaskProgress
   readonly error: string | null;
   readonly implTaskStatus: ImplTaskStatus | null;
   readonly retryCount: number;
   readonly executionMode: 'auto' | 'manual' | null;
 }
 
-/** SpecManagerExecutionStore actions interface */
+/**
+ * SpecManagerExecutionActions interface
+ * execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
+ */
 export interface SpecManagerExecutionActions {
   executeSpecManagerGeneration(
     specId: string,
@@ -202,7 +204,7 @@ export interface SpecManagerExecutionActions {
     taskId: string | undefined,
     executionMode: 'auto' | 'manual'
   ): Promise<void>;
-  handleCheckImplResult(result: CheckImplResult): void;
+  // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
   updateImplTaskStatus(status: ImplTaskStatus, retryCount?: number): void;
   clearSpecManagerError(): void;
 }
@@ -212,7 +214,7 @@ export const DEFAULT_SPEC_MANAGER_EXECUTION_STATE: SpecManagerExecutionState = {
   isRunning: false,
   currentPhase: null,
   currentSpecId: null,
-  lastCheckResult: null,
+  // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
   error: null,
   implTaskStatus: null,
   retryCount: 0,

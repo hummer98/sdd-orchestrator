@@ -336,3 +336,9 @@ export interface VersionCheckResult {
 // Requirements: 2.1, 2.2, 2.3
 // ============================================================
 export * from './worktree';
+
+// ============================================================
+// Bug Worktree Support Types (bugs-worktree-support feature)
+// Requirements: 1.1, 1.2, 1.3, 1.4
+// ============================================================
+export * from './bugJson';

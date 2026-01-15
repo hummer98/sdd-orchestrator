@@ -16,9 +16,30 @@ import {
 import { AgentRecordService, AgentInfo, AgentStatus } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { LogParserService, ResultSubtype } from './logParserService';
-import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
+// execution-store-consolidation: ImplCompletionAnalyzer REMOVED (Req 6.2)
+// import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
 import { logger } from './logger';
 import type { ProviderType } from './ssh/providerFactory';
+
+// execution-store-consolidation: AnalyzeError type retained for backward compatibility
+export type AnalyzeError =
+  | { type: 'API_ERROR'; message: string }
+  | { type: 'RATE_LIMITED' }
+  | { type: 'TIMEOUT' }
+  | { type: 'INVALID_INPUT'; message: string };
+
+// execution-store-consolidation: CheckImplResult type DEPRECATED (Req 6.1)
+// Retained for backward compatibility, but no longer used for task completion tracking
+// Task completion state is now managed via TaskProgress from tasks.md
+export interface CheckImplResult {
+  readonly status: 'success';
+  readonly completedTasks: readonly string[];
+  readonly stats: {
+    readonly num_turns: number;
+    readonly duration_ms: number;
+    readonly total_cost_usd: number;
+  };
+}
 
 /** Maximum number of continue retries */
 export const MAX_CONTINUE_RETRIES = 2;
@@ -347,7 +368,7 @@ export class SpecManagerService {
   private recordService: AgentRecordService;
   private logService: LogFileService;
   private logParserService: LogParserService;
-  private implAnalyzer: ImplCompletionAnalyzer | null = null;
+  // execution-store-consolidation: implAnalyzer REMOVED (Req 6.2)
   private processes: Map<string, AgentProcess | ProviderAgentProcess> = new Map();
   private projectPath: string;
   private outputCallbacks: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void)[] = [];
@@ -380,14 +401,8 @@ export class SpecManagerService {
     );
     this.logParserService = new LogParserService();
 
-    // Initialize ImplCompletionAnalyzer if API key is available
-    const analyzerResult = createImplCompletionAnalyzer();
-    if (analyzerResult.ok) {
-      this.implAnalyzer = analyzerResult.value;
-      logger.info('[SpecManagerService] ImplCompletionAnalyzer initialized');
-    } else {
-      logger.warn('[SpecManagerService] ImplCompletionAnalyzer not available', { error: analyzerResult.error });
-    }
+    // execution-store-consolidation: ImplCompletionAnalyzer initialization REMOVED (Req 6.2)
+    // Task completion state is now managed via TaskProgress from tasks.md
   }
 
   /**
@@ -1670,68 +1685,38 @@ export class SpecManagerService {
   }
 
   /**
-   * Analyze impl completion using ImplCompletionAnalyzer
-   * Requirements: 2.4, 5.1
+   * execution-store-consolidation: analyzeImplCompletion DEPRECATED (Req 6.2)
+   * Task completion state is now managed via TaskProgress from tasks.md
    *
-   * @param logPath - Path to the impl execution log
-   * @returns CheckImplResult from ImplCompletionAnalyzer
+   * This method is kept for backward compatibility but now returns a placeholder result.
+   * @deprecated Use TaskProgress from tasks.md instead
    */
   async analyzeImplCompletion(
     logPath: string
   ): Promise<Result<CheckImplResult, AgentError>> {
-    logger.info('[SpecManagerService] analyzeImplCompletion called', { logPath });
+    logger.warn('[SpecManagerService] analyzeImplCompletion is deprecated - use TaskProgress instead', { logPath });
 
-    // Check if analyzer is available
-    if (!this.implAnalyzer) {
-      return {
-        ok: false,
-        error: {
-          type: 'ANALYZE_ERROR',
-          error: { type: 'API_ERROR', message: 'ImplCompletionAnalyzer not initialized - API key may not be set' },
+    // Return a placeholder result indicating the method is deprecated
+    return {
+      ok: true,
+      value: {
+        status: 'success',
+        completedTasks: [],
+        stats: {
+          num_turns: 0,
+          duration_ms: 0,
+          total_cost_usd: 0,
         },
-      };
-    }
-
-    // Get result line from log
-    const resultLineResult = await this.logParserService.getResultLine(logPath);
-    if (!resultLineResult.ok) {
-      return {
-        ok: false,
-        error: { type: 'PARSE_ERROR', message: `Failed to get result line: ${resultLineResult.error.type}` },
-      };
-    }
-
-    // Get last assistant message from log
-    const lastMessageResult = await this.logParserService.getLastAssistantMessage(logPath);
-    if (!lastMessageResult.ok) {
-      return {
-        ok: false,
-        error: { type: 'PARSE_ERROR', message: `Failed to get last assistant message: ${lastMessageResult.error.type}` },
-      };
-    }
-
-    // Analyze using ImplCompletionAnalyzer
-    const analyzeResult = await this.implAnalyzer.analyzeCompletion(
-      resultLineResult.value,
-      lastMessageResult.value
-    );
-
-    if (!analyzeResult.ok) {
-      return {
-        ok: false,
-        error: { type: 'ANALYZE_ERROR', error: analyzeResult.error },
-      };
-    }
-
-    return { ok: true, value: analyzeResult.value };
+      },
+    };
   }
 
   /**
    * Check completion status for a spec-manager phase
    * Requirements: 3.1, 3.2, 5.1
    *
-   * For requirements/design/tasks: uses LogParserService.parseResultSubtype
-   * For impl: uses analyzeImplCompletion
+   * execution-store-consolidation: For impl phase, now uses LogParserService only (Req 6.2)
+   * Task completion details are managed via TaskProgress from tasks.md
    */
   async checkSpecManagerCompletion(
     specId: string,
@@ -1740,24 +1725,16 @@ export class SpecManagerService {
   ): Promise<Result<{ subtype: ResultSubtype; implResult?: CheckImplResult }, AgentError>> {
     logger.info('[SpecManagerService] checkSpecManagerCompletion called', { specId, phase, logPath });
 
-    if (phase === 'impl') {
-      // For impl, use ImplCompletionAnalyzer
-      const implResult = await this.analyzeImplCompletion(logPath);
-      if (!implResult.ok) {
-        return implResult;
-      }
-      return { ok: true, value: { subtype: 'success', implResult: implResult.value } };
-    } else {
-      // For requirements/design/tasks, use LogParserService
-      const subtypeResult = await this.logParserService.parseResultSubtype(logPath);
-      if (!subtypeResult.ok) {
-        return {
-          ok: false,
-          error: { type: 'PARSE_ERROR', message: `Failed to parse result subtype: ${subtypeResult.error.type}` },
-        };
-      }
-      return { ok: true, value: { subtype: subtypeResult.value } };
+    // execution-store-consolidation: All phases now use LogParserService.parseResultSubtype
+    // Task completion details for impl are managed via TaskProgress from tasks.md
+    const subtypeResult = await this.logParserService.parseResultSubtype(logPath);
+    if (!subtypeResult.ok) {
+      return {
+        ok: false,
+        error: { type: 'PARSE_ERROR', message: `Failed to parse result subtype: ${subtypeResult.error.type}` },
+      };
     }
+    return { ok: true, value: { subtype: subtypeResult.value } };
   }
 
   /**

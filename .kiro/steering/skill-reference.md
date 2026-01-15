@@ -149,26 +149,81 @@ Electron UI統合用純粋生成コマンド。**spec.jsonの状態管理はElec
 
 ## 共通コマンド: bug-*
 
-プロファイル非依存の軽量バグ修正ワークフロー。**bug.jsonは存在しない**（ファイル存在ベースでステータス管理）。
+プロファイル非依存の軽量バグ修正ワークフロー。
 
-| コマンド | ファイル作成 | ファイル編集 | 前提条件 | ステータス判定 |
-|---------|-------------|-------------|---------|--------------|
-| bug-create | `report.md` | - | bug名, 説明 | → Reported |
-| bug-analyze | `analysis.md` | - | report.md存在 | → Analyzed |
-| bug-fix | `fix.md` | アプリコード | analysis.md存在 | → Fixed |
-| bug-verify | `verification.md` | - | fix.md存在 | → Resolved |
-| bug-status | - | - | bugsディレクトリ存在 | ファイル存在から計算 |
+### bug.json管理
+
+**bug.json**: バグのメタデータを管理するJSONファイル（bugs-worktree-support feature導入）。
+
+```json
+{
+  "bug_name": "memory-leak-fix",
+  "created_at": "2025-01-15T00:00:00Z",
+  "updated_at": "2025-01-15T12:00:00Z",
+  "worktree": {                          // オプショナル: worktreeモード時のみ
+    "path": "../project-worktrees/bugs/memory-leak-fix",
+    "branch": "bugfix/memory-leak-fix",
+    "created_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+**モード判定**: `worktree`フィールドの存在で判定
+- フィールドあり → worktreeモード（分離された作業環境）
+- フィールドなし → 通常モード
+
+### コマンド一覧
+
+| コマンド | ファイル作成 | ファイル編集 | 前提条件 | ステータス判定 | bug.json更新 |
+|---------|-------------|-------------|---------|--------------|-------------|
+| bug-create | `bug.json`, `report.md` | - | bug名, 説明 | → Reported | 新規作成 |
+| bug-analyze | `analysis.md` | - | report.md存在 | → Analyzed | updated_at更新 |
+| bug-fix | `fix.md` | アプリコード | analysis.md存在 | → Fixed | updated_at更新, worktreeフィールド追加(worktree使用時) |
+| bug-verify | `verification.md` | - | fix.md存在 | → Resolved | updated_at更新 |
+| bug-merge | - | - | worktreeモード | → Resolved | worktreeフィールド削除 |
+| bug-status | - | - | bugsディレクトリ存在 | ファイル存在から計算 | - (読取専用) |
+
+### Worktreeモードワークフロー
+
+```
+Report → Analyze → Fix(worktree作成) → Verify → Merge(worktree削除)
+```
+
+**bug-fix実行時（worktreeモード）**:
+1. mainブランチ確認（main/master以外はエラー）
+2. `git branch bugfix/{bug-name}` 実行
+3. `git worktree add ../{project}-worktrees/bugs/{bug-name} bugfix/{bug-name}` 実行
+4. bug.jsonにworktreeフィールド追加
+5. worktree内で修正作業を実施
+
+**bug-merge実行時**:
+1. mainブランチ確認
+2. `git merge --squash bugfix/{bug-name}` 実行
+3. コンフリクト解決（自動解決を最大7回試行）
+4. `git commit -m "fix({bug-name}): ..."` 実行
+5. `git worktree remove` + `git branch -d` 実行
+6. bug.jsonからworktreeフィールド削除
 
 **ファイル構造**:
 ```
 .kiro/bugs/{bug-name}/
+├── bug.json       # メタデータ (bugs-worktree-support)
 ├── report.md      # Reported
 ├── analysis.md    # Analyzed
 ├── fix.md         # Fixed
 └── verification.md # Resolved
 ```
 
-**書き換え主体**: 全て Claude プロセス
+**worktree配置**:
+```
+{parent-dir}/
+├── {project}/                    # メインプロジェクト
+└── {project}-worktrees/
+    └── bugs/
+        └── {bug-name}/           # Bug worktree
+```
+
+**書き換え主体**: 全て Claude プロセス（bug-merge含む）
 
 ---
 

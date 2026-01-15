@@ -48,6 +48,11 @@ Verify the bug fix and document verification results.
      - Test suite results
      - Side effect check results
    - Write `verification.md` to bug directory
+6. **Update bug.json Timestamp**:
+   - Read `.kiro/bugs/$1/bug.json`
+   - Update `updated_at` field to current ISO-8601 timestamp
+   - Preserve all other fields (including `worktree` if present)
+   - Write updated bug.json
 
 ## Verification Checklist
 - [ ] Original bug no longer reproducible

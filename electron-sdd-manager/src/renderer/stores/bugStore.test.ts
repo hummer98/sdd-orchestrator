@@ -413,6 +413,38 @@ describe('bugStore', () => {
     });
   });
 
+  // ============================================================
+  // bugs-worktree-support Task 10.1: useWorktree state management
+  // Requirements: 8.4
+  // ============================================================
+  describe('useWorktree state', () => {
+    it('should have initial useWorktree as false', () => {
+      expect(useBugStore.getState().useWorktree).toBe(false);
+    });
+
+    it('should update useWorktree with setUseWorktree', () => {
+      useBugStore.getState().setUseWorktree(true);
+      expect(useBugStore.getState().useWorktree).toBe(true);
+
+      useBugStore.getState().setUseWorktree(false);
+      expect(useBugStore.getState().useWorktree).toBe(false);
+    });
+
+    it('should initialize useWorktree from default value', () => {
+      // Reset store to initial state
+      useBugStore.setState({ useWorktree: false });
+
+      // Initialize with default value true
+      useBugStore.getState().initializeUseWorktree(true);
+      expect(useBugStore.getState().useWorktree).toBe(true);
+
+      // Reset and initialize with default value false
+      useBugStore.setState({ useWorktree: true });
+      useBugStore.getState().initializeUseWorktree(false);
+      expect(useBugStore.getState().useWorktree).toBe(false);
+    });
+  });
+
   // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
   // Requirements: 5.4
   describe('refreshBugs - selection consistency', () => {

@@ -1,13 +1,15 @@
 /**
  * Bug Service Tests
  * Requirements: 3.1, 6.1, 6.3
+ * Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5, 11.1, 11.2 (bugs-worktree-support)
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BugService } from './bugService';
-import { mkdir, writeFile, rm } from 'fs/promises';
+import { mkdir, writeFile, rm, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import type { BugJson, BugWorktreeConfig } from '../../renderer/types/bugJson';
 
 describe('BugService', () => {
   let service: BugService;
@@ -219,6 +221,341 @@ describe('BugService', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe('NOT_FOUND');
+      }
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 2.1: bug.json CRUD operations
+  // Requirements: 1.1, 2.1, 2.2, 2.4, 2.5
+  // ============================================================
+  describe('createBugJson', () => {
+    it('should create bug.json with correct structure', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'new-bug');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.createBugJson(bugPath, 'new-bug');
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.bug_name).toBe('new-bug');
+        expect(result.value.created_at).toBeDefined();
+        expect(result.value.updated_at).toBeDefined();
+        expect(result.value.worktree).toBeUndefined();
+      }
+
+      // Verify file was created
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.bug_name).toBe('new-bug');
+    });
+
+    it('should return error if directory does not exist', async () => {
+      const bugPath = join(testDir, 'non-existent-dir', 'bug');
+      const result = await service.createBugJson(bugPath, 'test-bug');
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('readBugJson', () => {
+    it('should read existing bug.json', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'read-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'read-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugJson(bugPath);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.bug_name).toBe('read-bug');
+        expect(result.value?.created_at).toBe('2025-01-15T00:00:00Z');
+      }
+    });
+
+    it('should return null for non-existent bug.json', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json-bug');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.readBugJson(bugPath);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBeNull();
+      }
+    });
+
+    it('should read bug.json with worktree field', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'worktree-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'worktree-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+        worktree: {
+          path: '../project-worktrees/bugs/worktree-bug',
+          branch: 'bugfix/worktree-bug',
+          created_at: '2025-01-15T10:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugJson(bugPath);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value?.worktree).toBeDefined();
+        expect(result.value?.worktree?.path).toBe('../project-worktrees/bugs/worktree-bug');
+        expect(result.value?.worktree?.branch).toBe('bugfix/worktree-bug');
+      }
+    });
+  });
+
+  describe('updateBugJsonTimestamp', () => {
+    it('should update updated_at timestamp', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'timestamp-bug');
+      await mkdir(bugPath, { recursive: true });
+      const originalTime = '2025-01-01T00:00:00Z';
+      const bugJson: BugJson = {
+        bug_name: 'timestamp-bug',
+        created_at: originalTime,
+        updated_at: originalTime,
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.updateBugJsonTimestamp(bugPath);
+      expect(result.ok).toBe(true);
+
+      // Verify timestamp was updated
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.created_at).toBe(originalTime); // Should not change
+      expect(parsed.updated_at).not.toBe(originalTime); // Should be updated
+    });
+
+    it('should preserve worktree field when updating timestamp', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'preserve-worktree-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'preserve-worktree-bug',
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        worktree: {
+          path: '../project-worktrees/bugs/preserve-worktree-bug',
+          branch: 'bugfix/preserve-worktree-bug',
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      await service.updateBugJsonTimestamp(bugPath);
+
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.worktree).toBeDefined();
+      expect(parsed.worktree.path).toBe('../project-worktrees/bugs/preserve-worktree-bug');
+    });
+
+    it('should return error if bug.json does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.updateBugJsonTimestamp(bugPath);
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 2.2: worktree field operations
+  // Requirements: 2.3, 3.5, 3.7, 4.7
+  // ============================================================
+  describe('addWorktreeField', () => {
+    it('should add worktree field to bug.json', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'add-worktree-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'add-worktree-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const worktreeConfig: BugWorktreeConfig = {
+        path: '../project-worktrees/bugs/add-worktree-bug',
+        branch: 'bugfix/add-worktree-bug',
+        created_at: '2025-01-15T10:00:00Z',
+      };
+
+      const result = await service.addWorktreeField(bugPath, worktreeConfig);
+      expect(result.ok).toBe(true);
+
+      // Verify field was added
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.worktree).toBeDefined();
+      expect(parsed.worktree.path).toBe('../project-worktrees/bugs/add-worktree-bug');
+      expect(parsed.worktree.branch).toBe('bugfix/add-worktree-bug');
+    });
+
+    it('should return error if bug.json does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json-worktree');
+      await mkdir(bugPath, { recursive: true });
+
+      const worktreeConfig: BugWorktreeConfig = {
+        path: '../project-worktrees/bugs/no-json-worktree',
+        branch: 'bugfix/no-json-worktree',
+        created_at: '2025-01-15T10:00:00Z',
+      };
+
+      const result = await service.addWorktreeField(bugPath, worktreeConfig);
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('removeWorktreeField', () => {
+    it('should remove worktree field from bug.json', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'remove-worktree-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'remove-worktree-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+        worktree: {
+          path: '../project-worktrees/bugs/remove-worktree-bug',
+          branch: 'bugfix/remove-worktree-bug',
+          created_at: '2025-01-15T10:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.removeWorktreeField(bugPath);
+      expect(result.ok).toBe(true);
+
+      // Verify field was removed
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.worktree).toBeUndefined();
+      expect(parsed.bug_name).toBe('remove-worktree-bug'); // Other fields preserved
+    });
+
+    it('should handle bug.json without worktree field gracefully', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-worktree-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'no-worktree-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.removeWorktreeField(bugPath);
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return error if bug.json does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json-remove');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.removeWorktreeField(bugPath);
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 2.3: Agent cwd for worktree mode
+  // Requirements: 11.1, 11.2
+  // ============================================================
+  describe('getAgentCwd', () => {
+    it('should return worktree path when worktree field exists', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'agent-cwd-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'agent-cwd-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+        worktree: {
+          path: '../project-worktrees/bugs/agent-cwd-bug',
+          branch: 'bugfix/agent-cwd-bug',
+          created_at: '2025-01-15T10:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.getAgentCwd(bugPath, testDir);
+      // Should resolve relative path to absolute
+      expect(result).toContain('project-worktrees/bugs/agent-cwd-bug');
+    });
+
+    it('should return project path when no worktree field', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-worktree-cwd-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'no-worktree-cwd-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.getAgentCwd(bugPath, testDir);
+      expect(result).toBe(testDir);
+    });
+
+    it('should return project path when bug.json does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json-cwd-bug');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.getAgentCwd(bugPath, testDir);
+      expect(result).toBe(testDir);
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support: worktree field in BugMetadata
+  // Requirements: 10.1, 10.2
+  // ============================================================
+  describe('readBugs with worktree', () => {
+    it('should include worktree field in BugMetadata when present', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'worktree-metadata-bug');
+      await mkdir(bugPath, { recursive: true });
+      await writeFile(join(bugPath, 'report.md'), '# Bug Report');
+      const bugJson: BugJson = {
+        bug_name: 'worktree-metadata-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+        worktree: {
+          path: '../project-worktrees/bugs/worktree-metadata-bug',
+          branch: 'bugfix/worktree-metadata-bug',
+          created_at: '2025-01-15T10:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].worktree).toBeDefined();
+        expect(result.value[0].worktree?.path).toBe('../project-worktrees/bugs/worktree-metadata-bug');
+      }
+    });
+
+    it('should not include worktree field when not present in bug.json', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-worktree-metadata-bug');
+      await mkdir(bugPath, { recursive: true });
+      await writeFile(join(bugPath, 'report.md'), '# Bug Report');
+      const bugJson: BugJson = {
+        bug_name: 'no-worktree-metadata-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].worktree).toBeUndefined();
       }
     });
   });

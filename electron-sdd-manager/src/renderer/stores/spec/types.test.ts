@@ -2,6 +2,7 @@
  * Spec Store Types Tests
  * TDD: Testing shared type definitions for decomposed spec stores
  * Requirements: 1.1, 2.1, 2.2, 5.1, 6.1
+ * execution-store-consolidation: CheckImplResult REMOVED (Req 6.1)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -17,7 +18,7 @@ import type {
   ArtifactType,
   SpecManagerPhase,
   ImplTaskStatus,
-  CheckImplResult,
+  // execution-store-consolidation: CheckImplResult REMOVED (Req 6.1)
   AutoExecutionRuntimeState,
 } from './types';
 import {
@@ -73,11 +74,12 @@ describe('Spec Store Types', () => {
   });
 
   describe('SpecManagerExecutionState', () => {
+    // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
     it('should have default state with all fields initialized', () => {
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.isRunning).toBe(false);
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.currentPhase).toBeNull();
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.currentSpecId).toBeNull();
-      expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.lastCheckResult).toBeNull();
+      // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.error).toBeNull();
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.implTaskStatus).toBeNull();
       expect(DEFAULT_SPEC_MANAGER_EXECUTION_STATE.retryCount).toBe(0);

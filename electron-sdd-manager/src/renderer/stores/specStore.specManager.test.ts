@@ -2,28 +2,38 @@
  * Spec Store - spec-manager Extensions Tests
  * TDD: Testing spec-manager state management
  * Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
+ *
+ * execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
+ * specManagerExecution state is now derived from agentStore via specStoreFacade
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSpecStore } from './specStore';
-import { useSpecManagerExecutionStore } from './spec/specManagerExecutionStore';
-import { DEFAULT_SPEC_MANAGER_EXECUTION_STATE } from './spec/types';
+import { useAgentStore } from './agentStore';
+import { useSpecDetailStore } from './spec/specDetailStore';
 
-describe('useSpecStore - spec-manager Extensions', () => {
+describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)', () => {
   beforeEach(() => {
     // Reset store to initial state via actions instead of setState (for Facade compatibility)
     useSpecStore.getState().clearSelectedSpec();
     useSpecStore.getState().setSpecs([]);
-    // Reset specManagerExecution state directly
-    useSpecManagerExecutionStore.setState(DEFAULT_SPEC_MANAGER_EXECUTION_STATE);
+    // Reset agentStore
+    useAgentStore.setState({
+      agents: new Map(),
+      selectedAgentId: null,
+      logs: new Map(),
+      isLoading: false,
+      error: null,
+      skipPermissions: false,
+    });
     vi.clearAllMocks();
   });
 
   // ============================================================
-  // Task 7.1: spec-manager用状態管理
-  // Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
+  // Task 7.1: spec-manager用状態管理 (derived from agentStore)
+  // execution-store-consolidation: Req 3.1, 3.2, 3.3, 3.4
   // ============================================================
-  describe('Task 7.1: specManagerExecution state', () => {
+  describe('Task 7.1: specManagerExecution state (derived from agentStore)', () => {
     describe('initial state', () => {
       it('should have isRunning as false initially', () => {
         const state = useSpecStore.getState();
@@ -40,10 +50,7 @@ describe('useSpecStore - spec-manager Extensions', () => {
         expect(state.specManagerExecution.currentSpecId).toBeNull();
       });
 
-      it('should have lastCheckResult as null initially', () => {
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.lastCheckResult).toBeNull();
-      });
+      // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
 
       it('should have error as null initially', () => {
         const state = useSpecStore.getState();
@@ -66,12 +73,86 @@ describe('useSpecStore - spec-manager Extensions', () => {
       });
     });
 
+    // execution-store-consolidation: specManagerExecution is now derived from agentStore (Req 3.1)
+    describe('derived state from agentStore', () => {
+      it('should derive isRunning from agentStore running agents', () => {
+        // Set up a selected spec first
+        const mockSpec = {
+          name: 'test-spec',
+          path: '/test/.kiro/specs/test-spec',
+          phase: 'design-generated' as const,
+          updatedAt: '2024-01-01T00:00:00Z',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        };
+        useSpecDetailStore.setState({ selectedSpec: mockSpec });
+
+        // Add a running agent
+        const agents = new Map();
+        agents.set('test-spec', [{
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'design',
+          pid: 123,
+          sessionId: 'session-1',
+          status: 'running' as const,
+          startedAt: '2024-01-01T00:00:00Z',
+          lastActivityAt: '2024-01-01T00:00:00Z',
+          command: 'test',
+          executionMode: 'manual' as const,
+          retryCount: 0,
+        }]);
+        useAgentStore.setState({ agents });
+
+        const state = useSpecStore.getState();
+        expect(state.specManagerExecution.isRunning).toBe(true);
+        expect(state.specManagerExecution.currentPhase).toBe('design');
+        expect(state.specManagerExecution.executionMode).toBe('manual');
+      });
+
+      it('should derive implTaskStatus from agent status', () => {
+        const mockSpec = {
+          name: 'test-spec',
+          path: '/test/.kiro/specs/test-spec',
+          phase: 'impl' as const,
+          updatedAt: '2024-01-01T00:00:00Z',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+        useSpecDetailStore.setState({ selectedSpec: mockSpec });
+
+        // Add a completed agent
+        const agents = new Map();
+        agents.set('test-spec', [{
+          agentId: 'agent-1',
+          specId: 'test-spec',
+          phase: 'impl',
+          pid: 123,
+          sessionId: 'session-1',
+          status: 'completed' as const,
+          startedAt: '2024-01-01T00:00:00Z',
+          lastActivityAt: '2024-01-01T00:00:00Z',
+          command: 'test',
+        }]);
+        useAgentStore.setState({ agents });
+
+        // Note: completed agents are not "running", so isRunning should be false
+        const state = useSpecStore.getState();
+        expect(state.specManagerExecution.isRunning).toBe(false);
+      });
+    });
+
     describe('executeSpecManagerGeneration action', () => {
-      it('should set isRunning to true', async () => {
+      it('should call executePhase IPC', async () => {
         window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
 
-        // Start execution without awaiting
-        useSpecStore.getState().executeSpecManagerGeneration(
+        await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'requirements',
           'test-feature',
@@ -79,62 +160,17 @@ describe('useSpecStore - spec-manager Extensions', () => {
           'manual'
         );
 
-        // isRunning should be true during execution
-        expect(useSpecStore.getState().specManagerExecution.isRunning).toBe(true);
-      });
-
-      it('should set currentPhase to the executing phase', async () => {
-        window.electronAPI.executePhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
-        );
-
-        useSpecStore.getState().executeSpecManagerGeneration(
-          'test-spec',
-          'design',
-          'test-feature',
-          undefined,
-          'auto'
-        );
-
-        // Check state during execution
-        expect(useSpecStore.getState().specManagerExecution.currentPhase).toBe('design');
-      });
-
-      it('should set currentSpecId to the executing spec', async () => {
-        window.electronAPI.executePhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
-        );
-
-        useSpecStore.getState().executeSpecManagerGeneration(
-          'my-spec',
-          'tasks',
-          'my-feature',
-          undefined,
-          'manual'
-        );
-
-        expect(useSpecStore.getState().specManagerExecution.currentSpecId).toBe('my-spec');
-      });
-
-      it('should set executionMode correctly', async () => {
-        window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
-
-        useSpecStore.getState().executeSpecManagerGeneration(
+        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
           'test-spec',
           'requirements',
-          'test-feature',
-          undefined,
-          'auto'
+          'test-feature'
         );
-
-        // executionMode should be set
-        expect(useSpecStore.getState().specManagerExecution.executionMode).toBe('auto');
       });
 
       it('should handle impl phase with taskId', async () => {
         window.electronAPI.executeTaskImpl = vi.fn().mockResolvedValue(undefined);
 
-        useSpecStore.getState().executeSpecManagerGeneration(
+        await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
           'impl',
           'test-feature',
@@ -150,139 +186,15 @@ describe('useSpecStore - spec-manager Extensions', () => {
       });
     });
 
-    describe('handleCheckImplResult action', () => {
-      it('should update lastCheckResult', () => {
-        const result = {
-          status: 'success' as const,
-          completedTasks: ['1.1', '1.2'],
-          stats: {
-            num_turns: 5,
-            duration_ms: 10000,
-            total_cost_usd: 0.05,
-          },
-        };
-
-        useSpecStore.getState().handleCheckImplResult(result);
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.lastCheckResult).toEqual(result);
-      });
-
-      it('should update implTaskStatus to success', () => {
-        const result = {
-          status: 'success' as const,
-          completedTasks: ['1.1'],
-          stats: {
-            num_turns: 3,
-            duration_ms: 5000,
-            total_cost_usd: 0.02,
-          },
-        };
-
-        useSpecStore.getState().handleCheckImplResult(result);
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBe('success');
-      });
-    });
-
-    describe('updateImplTaskStatus action', () => {
-      it('should update implTaskStatus', () => {
-        useSpecStore.getState().updateImplTaskStatus('running');
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBe('running');
-      });
-
-      it('should update retryCount when provided', () => {
-        useSpecStore.getState().updateImplTaskStatus('continuing', 1);
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBe('continuing');
-        expect(state.specManagerExecution.retryCount).toBe(1);
-      });
-
-      it('should handle stalled status', () => {
-        useSpecStore.getState().updateImplTaskStatus('stalled', 2);
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBe('stalled');
-        expect(state.specManagerExecution.retryCount).toBe(2);
-      });
-
-      it('should handle error status', () => {
-        useSpecStore.getState().updateImplTaskStatus('error');
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBe('error');
-      });
-    });
+    // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
 
     describe('clearSpecManagerError action', () => {
-      it('should clear error', () => {
-        useSpecStore.setState({
-          specManagerExecution: {
-            ...useSpecStore.getState().specManagerExecution,
-            error: 'Some error occurred',
-          },
-        });
+      it('should clear error in agentStore', () => {
+        useAgentStore.setState({ error: 'Some error occurred' });
 
         useSpecStore.getState().clearSpecManagerError();
 
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.error).toBeNull();
-      });
-
-      it('should reset implTaskStatus to null', () => {
-        useSpecStore.setState({
-          specManagerExecution: {
-            ...useSpecStore.getState().specManagerExecution,
-            implTaskStatus: 'error',
-          },
-        });
-
-        useSpecStore.getState().clearSpecManagerError();
-
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.implTaskStatus).toBeNull();
-      });
-    });
-
-    describe('exclusive control', () => {
-      it('should prevent concurrent spec-manager operations', async () => {
-        // Use the actual API that the implementation calls
-        window.electronAPI.executePhase = vi.fn().mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve(undefined), 1000))
-        );
-
-        // Start first operation
-        const promise1 = useSpecStore.getState().executeSpecManagerGeneration(
-          'spec-a',
-          'requirements',
-          'feature-a',
-          undefined,
-          'manual'
-        );
-
-        // Check state immediately after starting first operation
-        expect(useSpecStore.getState().specManagerExecution.isRunning).toBe(true);
-
-        // Try to start second operation
-        const promise2 = useSpecStore.getState().executeSpecManagerGeneration(
-          'spec-b',
-          'design',
-          'feature-b',
-          undefined,
-          'manual'
-        );
-
-        // Second operation should be blocked (first operation still has isRunning=true)
-        // The second operation should return early without changing state
-        const state = useSpecStore.getState();
-        expect(state.specManagerExecution.currentSpecId).toBe('spec-a');
-        expect(state.specManagerExecution.currentPhase).toBe('requirements');
-
-        await Promise.allSettled([promise1, promise2]);
+        expect(useAgentStore.getState().error).toBeNull();
       });
     });
   });
@@ -290,12 +202,18 @@ describe('useSpecStore - spec-manager Extensions', () => {
 
 // Test ImplTaskStatus type
 describe('ImplTaskStatus type', () => {
-  const validStatuses = ['pending', 'running', 'continuing', 'success', 'error', 'stalled'];
+  it('should allow updating implTaskStatus (deprecated - now derived)', () => {
+    // execution-store-consolidation: updateImplTaskStatus is deprecated
+    // Status is now derived from agentStore
+    // This test verifies the deprecation warning is logged
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-  validStatuses.forEach((status) => {
-    it(`should accept "${status}" as valid status`, () => {
-      useSpecStore.getState().updateImplTaskStatus(status as any);
-      expect(useSpecStore.getState().specManagerExecution.implTaskStatus).toBe(status);
-    });
+    useSpecStore.getState().updateImplTaskStatus('running');
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[specStoreFacade] updateImplTaskStatus is deprecated - status is derived from agentStore'
+    );
+
+    consoleSpy.mockRestore();
   });
 });

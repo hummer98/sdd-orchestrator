@@ -8,6 +8,7 @@ import { join, dirname } from 'path';
 
 /**
  * Bug Workflow コマンド一覧
+ * bugs-worktree-support: bug-merge added for worktree merge workflow
  */
 export const BUG_COMMANDS = [
   'bug-create',
@@ -15,27 +16,31 @@ export const BUG_COMMANDS = [
   'bug-fix',
   'bug-verify',
   'bug-status',
+  'bug-merge',  // bugs-worktree-support: worktree merge command
 ] as const;
 
 /**
  * Bug Workflow テンプレート一覧
+ * bugs-worktree-support: bug.json template added
  */
 export const BUG_TEMPLATES = [
   'report.md',
   'analysis.md',
   'fix.md',
   'verification.md',
+  'bug.json',  // bugs-worktree-support: bug metadata template
 ] as const;
 
 /**
  * CLAUDE.mdに追加するBug Workflowセクション
+ * bugs-worktree-support: Added bug-merge and worktree mode explanation
  */
 export const BUG_WORKFLOW_CLAUDE_MD_SECTION = `### Bug Fix (Lightweight Workflow)
 
 小規模なバグ修正にはフルSDDプロセスは不要。以下の軽量ワークフローを使用：
 
 \`\`\`
-Report → Analyze → Fix → Verify
+Report → Analyze → Fix → Verify → (Merge)
 \`\`\`
 
 | コマンド | 説明 |
@@ -45,10 +50,13 @@ Report → Analyze → Fix → Verify
 | \`/kiro:bug-fix [name]\` | 修正の実装 |
 | \`/kiro:bug-verify [name]\` | 修正の検証 |
 | \`/kiro:bug-status [name]\` | 進捗確認 |
+| \`/kiro:bug-merge <name>\` | Worktreeモードのマージ（worktree使用時のみ） |
 
 **使い分け**:
 - **小規模バグ**: Bug Fixワークフロー（軽量・高速）
-- **設計変更を伴う複雑なバグ**: Full SDDワークフロー`;
+- **設計変更を伴う複雑なバグ**: Full SDDワークフロー
+
+**Worktreeモード**: 大きな修正が必要な場合、git worktreeを使用して分離した作業環境で修正可能。`;
 
 /**
  * Install options

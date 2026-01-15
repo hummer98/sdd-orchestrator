@@ -42,6 +42,11 @@ Analyze the bug specified by $ARGUMENTS (or auto-detect from context) and docume
      - Impact assessment
      - Proposed solution(s)
    - Write `analysis.md` to bug directory
+5. **Update bug.json Timestamp**:
+   - Read `.kiro/bugs/$1/bug.json`
+   - Update `updated_at` field to current ISO-8601 timestamp
+   - Preserve all other fields (including `worktree` if present)
+   - Write updated bug.json
 
 ## Analysis Guidelines
 - Focus on identifying the **root cause**, not just symptoms

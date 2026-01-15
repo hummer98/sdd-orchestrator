@@ -15,6 +15,8 @@ import { useVersionStatusStore } from './versionStatusStore';
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
+// header-profile-badge feature: export ProfileConfig type
+export type { ProfileName, ProfileConfig } from './projectStore';
 export { useSpecStore } from './specStore';
 export { useEditorStore } from './editorStore';
 export { useNotificationStore, notify } from './notificationStore';

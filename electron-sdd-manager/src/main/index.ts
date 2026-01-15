@@ -11,6 +11,7 @@ import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ip
 import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
+import { registerBugWorktreeHandlers } from './ipc/bugWorktreeHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
@@ -194,6 +195,9 @@ app.whenReady().then(async () => {
 
   // Register Worktree handlers (git-worktree-support feature)
   registerWorktreeHandlers();
+
+  // Register Bug Worktree handlers (bugs-worktree-support feature)
+  registerBugWorktreeHandlers();
 
   // Create application menu
   createMenu();

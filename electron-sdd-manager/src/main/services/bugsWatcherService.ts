@@ -12,6 +12,7 @@ import * as chokidar from 'chokidar';
 import * as path from 'path';
 import { logger } from './logger';
 import type { BugsChangeEvent } from '../../renderer/types';
+import type { BugWorktreeConfig } from '../../renderer/types/bugJson';
 
 export type BugsChangeCallback = (event: BugsChangeEvent) => void;
 
@@ -184,5 +185,78 @@ export class BugsWatcherService {
    */
   isRunning(): boolean {
     return this.watcher !== null;
+  }
+
+  // ============================================================
+  // bugs-worktree-support Task 14.1: worktreeモード時の監視パス切り替え
+  // Requirements: 3.7
+  // ============================================================
+
+  /**
+   * Get watch path for file monitoring
+   * Returns the bugs directory path based on worktree configuration
+   *
+   * @param _bugId - Bug ID (not used currently but kept for interface compatibility)
+   * @param worktreeConfig - Optional worktree configuration from bug.json
+   * @returns Absolute path to the bugs directory to watch
+   */
+  getWatchPath(_bugId: string, worktreeConfig?: BugWorktreeConfig): string {
+    if (worktreeConfig) {
+      // Resolve worktree path relative to main project
+      const worktreePath = path.resolve(this.projectPath, worktreeConfig.path);
+      return path.join(worktreePath, '.kiro', 'bugs');
+    }
+    // Default: main project bugs directory
+    return path.join(this.projectPath, '.kiro', 'bugs');
+  }
+
+  /**
+   * Reset watch path to a new location
+   * Closes the current watcher and creates a new one for the specified path
+   *
+   * @param bugId - Bug ID for logging purposes
+   * @param newWatchPath - New absolute path to watch
+   */
+  async resetWatchPath(bugId: string, newWatchPath: string): Promise<void> {
+    logger.info('[BugsWatcherService] Resetting watch path', { bugId, newWatchPath });
+
+    // Close existing watcher if running
+    if (this.watcher) {
+      await this.watcher.close();
+      this.watcher = null;
+    }
+
+    // Clear all debounce timers
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+
+    // Start new watcher with the new path
+    logger.info('[BugsWatcherService] Starting new watcher', { newWatchPath });
+
+    this.watcher = chokidar.watch(newWatchPath, {
+      ignoreInitial: true,
+      persistent: true,
+      depth: 2, // Watch bug folders and their immediate contents
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 100,
+      },
+    });
+
+    this.watcher
+      .on('add', (filePath) => this.handleEvent('add', filePath))
+      .on('change', (filePath) => this.handleEvent('change', filePath))
+      .on('unlink', (filePath) => this.handleEvent('unlink', filePath))
+      .on('addDir', (dirPath) => this.handleEvent('addDir', dirPath))
+      .on('unlinkDir', (dirPath) => this.handleEvent('unlinkDir', dirPath))
+      .on('error', (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('[BugsWatcherService] Watcher error', { error: message });
+      })
+      .on('ready', () => {
+        logger.info('[BugsWatcherService] New watcher ready', { bugId, newWatchPath });
+      });
   }
 }

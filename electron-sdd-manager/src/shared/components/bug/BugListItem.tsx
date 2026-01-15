@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { Copy, Check, Bot } from 'lucide-react';
+import { Copy, Check, Bot, GitBranch } from 'lucide-react';
 import type { BugMetadata } from '@shared/api/types';
 
 // =============================================================================
@@ -161,7 +161,7 @@ export function BugListItem({
           </button>
         </div>
 
-        {/* Row 2: Phase badge, running agent count, and update time */}
+        {/* Row 2: Phase badge, worktree badge, running agent count, and update time */}
         <div className="flex items-center gap-2">
           <span
             data-testid="phase-badge"
@@ -172,6 +172,19 @@ export function BugListItem({
           >
             {PHASE_LABELS[phase] ?? phase}
           </span>
+
+          {/* bugs-worktree-support Task 13.1: worktreeインジケーター */}
+          {/* Requirements: 10.1, 10.2, 10.3 */}
+          {bug.worktree && (
+            <span
+              data-testid="worktree-badge"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+              title={`Path: ${bug.worktree.path}\nBranch: ${bug.worktree.branch}`}
+            >
+              <GitBranch className="w-3 h-3" />
+              worktree
+            </span>
+          )}
 
           {runningAgentCount !== undefined && runningAgentCount > 0 && (
             <span

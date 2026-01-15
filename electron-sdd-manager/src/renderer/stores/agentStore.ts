@@ -21,6 +21,11 @@ export interface AgentInfo {
   readonly startedAt: string;
   readonly lastActivityAt: string;
   readonly command: string;
+
+  // execution-store-consolidation: Extended fields (Req 2.1, 2.2)
+  // Optional fields for backward compatibility
+  executionMode?: 'auto' | 'manual';
+  retryCount?: number;
 }
 
 export type { LogEntry };

@@ -30,7 +30,11 @@ Display the status of bug fix workflow for specified bug or all bugs.
    - `analysis.md` → Analyzed
    - `fix.md` → Fixed
    - `verification.md` → Verified
-3. Determine current phase and next action
+3. Check `bug.json` for worktree mode:
+   - Read `.kiro/bugs/$1/bug.json`
+   - If `worktree` field exists, display worktree indicator
+   - Show worktree path and branch name if in worktree mode
+4. Determine current phase and next action
 
 ### If no bug name (`$1` empty):
 1. List all directories in `.kiro/bugs/`
@@ -58,12 +62,17 @@ Display the status of bug fix workflow for specified bug or all bugs.
 ## Bug: {bug-name}
 
 **Status**: {Reported | Analyzed | Fixed | Verified}
+**Mode**: {Normal | Worktree (bugfix/{bug-name})}
 
 ### Workflow Progress
 - [x] Report    → report.md
 - [x] Analysis  → analysis.md
 - [ ] Fix       → fix.md
 - [ ] Verify    → verification.md
+
+### Worktree Information (if in worktree mode)
+- Branch: bugfix/{bug-name}
+- Path: ../{project}-worktrees/bugs/{bug-name}
 
 ### Next Step
 `/kiro:bug-fix {bug-name}`
@@ -73,11 +82,11 @@ Display the status of bug fix workflow for specified bug or all bugs.
 ```
 ## Bug Fix Status Overview
 
-| Bug Name | Status | Next Action |
-|----------|--------|-------------|
-| bug-1 | Analyzed | `/kiro:bug-fix bug-1` |
-| bug-2 | Verified | Ready to close |
-| bug-3 | Reported | `/kiro:bug-analyze bug-3` |
+| Bug Name | Status | Worktree | Next Action |
+|----------|--------|----------|-------------|
+| bug-1 | Analyzed | Yes | `/kiro:bug-fix bug-1` |
+| bug-2 | Verified | No | Ready to close |
+| bug-3 | Reported | No | `/kiro:bug-analyze bug-3` |
 
 Total: 3 bugs tracked
 - Resolved: 1

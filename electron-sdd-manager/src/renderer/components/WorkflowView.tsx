@@ -740,6 +740,7 @@ export function WorkflowView() {
 // ============================================================
 // spec-manager Status Display Component
 // Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
+// execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
 // ============================================================
 
 interface SpecManagerStatusDisplayProps {
@@ -747,7 +748,7 @@ interface SpecManagerStatusDisplayProps {
     isRunning: boolean;
     currentPhase: string | null;
     currentSpecId: string | null;
-    lastCheckResult: { completedTasks: readonly string[] } | null;
+    // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
     error: string | null;
     implTaskStatus: ImplTaskStatus | null;
     retryCount: number;
@@ -757,7 +758,7 @@ interface SpecManagerStatusDisplayProps {
 }
 
 function SpecManagerStatusDisplay({ execution, onClearError }: SpecManagerStatusDisplayProps) {
-  const { isRunning, implTaskStatus, error, retryCount, lastCheckResult } = execution;
+  const { isRunning, implTaskStatus, error, retryCount } = execution;
 
   // No status to display
   if (!isRunning && !implTaskStatus && !error) {
@@ -784,18 +785,12 @@ function SpecManagerStatusDisplay({ execution, onClearError }: SpecManagerStatus
       )}
 
       {/* Success State */}
-      {/* Requirements: 5.4 */}
-      {implTaskStatus === 'success' && lastCheckResult && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-            <CheckCircle className="w-4 h-4" />
-            <span>完了</span>
-          </div>
-          {lastCheckResult.completedTasks.length > 0 && (
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              完了したタスク: {lastCheckResult.completedTasks.join(', ')}
-            </div>
-          )}
+      {/* execution-store-consolidation: lastCheckResult REMOVED (Req 6.5) */}
+      {/* Task completion state is now shown via TaskProgressView */}
+      {implTaskStatus === 'success' && (
+        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+          <CheckCircle className="w-4 h-4" />
+          <span>完了</span>
         </div>
       )}
 

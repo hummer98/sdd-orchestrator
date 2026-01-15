@@ -1066,6 +1066,136 @@ describe('useAgentStore', () => {
       });
     });
 
+    // ============================================================
+    // Task 1.1 (execution-store-consolidation): AgentInfo型拡張テスト
+    // Requirements: 2.1, 2.2, 2.3
+    // ============================================================
+    describe('AgentInfo extended fields (execution-store-consolidation)', () => {
+      it('should support executionMode field in AgentInfo', () => {
+        const agentWithMode: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'agent-with-mode',
+          executionMode: 'auto',
+        };
+
+        useAgentStore.getState().addAgent('spec-1', agentWithMode);
+
+        const state = useAgentStore.getState();
+        const agent = state.agents.get('spec-1')?.find(a => a.agentId === 'agent-with-mode');
+        expect(agent?.executionMode).toBe('auto');
+      });
+
+      it('should support retryCount field in AgentInfo', () => {
+        const agentWithRetry: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'agent-with-retry',
+          retryCount: 2,
+        };
+
+        useAgentStore.getState().addAgent('spec-1', agentWithRetry);
+
+        const state = useAgentStore.getState();
+        const agent = state.agents.get('spec-1')?.find(a => a.agentId === 'agent-with-retry');
+        expect(agent?.retryCount).toBe(2);
+      });
+
+      it('should allow executionMode and retryCount to be undefined (backward compatible)', () => {
+        // Existing AgentInfo without new fields should still work
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+
+        const state = useAgentStore.getState();
+        const agent = state.agents.get('spec-1')?.find(a => a.agentId === mockAgentInfo.agentId);
+        expect(agent).toBeDefined();
+        expect(agent?.executionMode).toBeUndefined();
+        expect(agent?.retryCount).toBeUndefined();
+      });
+    });
+
+// ============================================================
+    // Task 7.3 (execution-store-consolidation): 派生値テスト
+    // Requirements: 3.1, 3.2, 3.3, 3.4
+    // ============================================================
+    describe('Derived value computation for execution state (execution-store-consolidation)', () => {
+      it('should return isRunning=true when at least one agent has status=running', () => {
+        const runningAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'running-agent',
+          specId: 'spec-1',
+          status: 'running' as AgentStatus,
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [runningAgent]);
+        useAgentStore.setState({ agents });
+
+        const count = useAgentStore.getState().getRunningAgentCount('spec-1');
+        expect(count).toBeGreaterThan(0);
+        // isRunning = count > 0
+        expect(count > 0).toBe(true);
+      });
+
+      it('should return isRunning=false when no agent is running', () => {
+        const completedAgent: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'completed-agent',
+          specId: 'spec-1',
+          status: 'completed' as AgentStatus,
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [completedAgent]);
+        useAgentStore.setState({ agents });
+
+        const count = useAgentStore.getState().getRunningAgentCount('spec-1');
+        expect(count).toBe(0);
+      });
+
+      it('should count multiple running agents correctly (Req 3.4)', () => {
+        const runningAgent1: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'running-agent-1',
+          specId: 'spec-1',
+          status: 'running' as AgentStatus,
+          phase: 'impl',
+          startedAt: '2024-01-01T00:00:00Z',
+        };
+        const runningAgent2: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'running-agent-2',
+          specId: 'spec-1',
+          status: 'running' as AgentStatus,
+          phase: 'design',
+          startedAt: '2024-01-01T00:01:00Z',
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [runningAgent1, runningAgent2]);
+        useAgentStore.setState({ agents });
+
+        const count = useAgentStore.getState().getRunningAgentCount('spec-1');
+        expect(count).toBe(2);
+      });
+
+      it('should isolate running agent counts per spec', () => {
+        const runningAgentSpec1: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'running-spec1',
+          specId: 'spec-1',
+          status: 'running' as AgentStatus,
+        };
+        const completedAgentSpec2: AgentInfo = {
+          ...mockAgentInfo,
+          agentId: 'completed-spec2',
+          specId: 'spec-2',
+          status: 'completed' as AgentStatus,
+        };
+        const agents = new Map<string, AgentInfo[]>();
+        agents.set('spec-1', [runningAgentSpec1]);
+        agents.set('spec-2', [completedAgentSpec2]);
+        useAgentStore.setState({ agents });
+
+        expect(useAgentStore.getState().getRunningAgentCount('spec-1')).toBe(1);
+        expect(useAgentStore.getState().getRunningAgentCount('spec-2')).toBe(0);
+      });
+    });
+
     describe('addAgent duplicate handling', () => {
       it('should not create duplicate when adding same agentId twice', () => {
         // 同じagentIdで2回addAgentを呼び出しても重複しない

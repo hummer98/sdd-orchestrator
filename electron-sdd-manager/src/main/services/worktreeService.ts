@@ -2,6 +2,7 @@
  * WorktreeService
  * Git worktree operations wrapper for Spec-Driven Development
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 7.6, 7.7, 8.1, 8.2 (git-worktree-support)
+ * Requirements: 3.1, 3.3, 3.4, 4.6 (bugs-worktree-support)
  */
 
 import { exec as nodeExec } from 'child_process';
@@ -314,5 +315,143 @@ export class WorktreeService {
       return this.resolveWorktreePath(worktreeConfig.path);
     }
     return this.projectPath;
+  }
+
+  // ============================================================
+  // bugs-worktree-support Task 3.1: Bugs worktree path generation
+  // Requirements: 3.3, 3.7
+  // ============================================================
+
+  /**
+   * Get worktree path for a bug
+   * Requirements: 3.3, 3.7
+   *
+   * @param bugName - Bug name (directory name)
+   * @returns Object with relative and absolute paths
+   */
+  getBugWorktreePath(bugName: string): { relative: string; absolute: string } {
+    const worktreeDir = `${this.projectName}-worktrees`;
+    // Bugs go into a 'bugs' subdirectory
+    const relative = `../${worktreeDir}/bugs/${bugName}`;
+    const absolute = path.resolve(this.projectPath, relative);
+    return { relative, absolute };
+  }
+
+  // ============================================================
+  // bugs-worktree-support Task 3.2: Bugs worktree creation
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.6
+  // ============================================================
+
+  /**
+   * Create a worktree for a bug
+   * Requirements: 3.1, 3.2, 3.3, 3.4, 3.6
+   *
+   * @param bugName - Bug name (will be used for branch: bugfix/{bugName})
+   * @returns WorktreeInfo on success
+   */
+  async createBugWorktree(bugName: string): Promise<WorktreeServiceResult<WorktreeInfo>> {
+    // Validate bug name (reuse feature name validation)
+    const validation = validateFeatureName(bugName);
+    if (!validation.ok) {
+      return validation;
+    }
+
+    // Check if on main branch
+    const branchResult = await this.getCurrentBranch();
+    if (!branchResult.ok) {
+      return branchResult;
+    }
+
+    const currentBranch = branchResult.value;
+    if (currentBranch !== 'main' && currentBranch !== 'master') {
+      return {
+        ok: false,
+        error: { type: 'NOT_ON_MAIN_BRANCH', currentBranch },
+      };
+    }
+
+    // Bug branches use bugfix/ prefix
+    const branchName = `bugfix/${bugName}`;
+    const { relative: relativePath, absolute: absolutePath } = this.getBugWorktreePath(bugName);
+
+    // Create the bugfix branch
+    const createBranchResult = await this.execGit(`git branch ${branchName}`);
+    if (!createBranchResult.ok) {
+      // Check if branch already exists
+      if (createBranchResult.error.type === 'GIT_ERROR' &&
+          createBranchResult.error.message.includes('already exists')) {
+        return {
+          ok: false,
+          error: { type: 'BRANCH_EXISTS', branch: branchName },
+        };
+      }
+      return createBranchResult;
+    }
+
+    // Create the worktree
+    const createWorktreeResult = await this.execGit(`git worktree add "${absolutePath}" ${branchName}`);
+    if (!createWorktreeResult.ok) {
+      // Rollback: delete the branch we just created
+      await this.execGit(`git branch -d ${branchName}`).catch(() => {
+        logger.warn('[WorktreeService] Failed to rollback branch creation', { branchName });
+      });
+
+      // Check if worktree already exists
+      if (createWorktreeResult.error.type === 'GIT_ERROR' &&
+          createWorktreeResult.error.message.includes('already exists')) {
+        return {
+          ok: false,
+          error: { type: 'WORKTREE_EXISTS', path: absolutePath },
+        };
+      }
+      return createWorktreeResult;
+    }
+
+    const worktreeInfo: WorktreeInfo = {
+      path: relativePath,
+      absolutePath,
+      branch: branchName,
+      created_at: new Date().toISOString(),
+    };
+
+    logger.info('[WorktreeService] Bug worktree created', worktreeInfo);
+    return { ok: true, value: worktreeInfo };
+  }
+
+  // ============================================================
+  // bugs-worktree-support Task 3.3: Bugs worktree removal
+  // Requirements: 4.6
+  // ============================================================
+
+  /**
+   * Remove a bug worktree and its branch
+   * Requirements: 4.6
+   *
+   * @param bugName - Bug name
+   * @returns void on success
+   */
+  async removeBugWorktree(bugName: string): Promise<WorktreeServiceResult<void>> {
+    const branchName = `bugfix/${bugName}`;
+    const { absolute: absolutePath } = this.getBugWorktreePath(bugName);
+
+    // Remove worktree (force to handle uncommitted changes)
+    const removeResult = await this.execGit(`git worktree remove "${absolutePath}" --force`);
+    if (!removeResult.ok) {
+      return removeResult;
+    }
+
+    // Delete the branch
+    const deleteBranchResult = await this.execGit(`git branch -d ${branchName}`);
+    if (!deleteBranchResult.ok) {
+      // Try force delete if normal delete fails
+      const forceDeleteResult = await this.execGit(`git branch -D ${branchName}`);
+      if (!forceDeleteResult.ok) {
+        logger.warn('[WorktreeService] Failed to delete bug branch', { branchName, error: forceDeleteResult.error });
+        // Don't return error - worktree was removed successfully
+      }
+    }
+
+    logger.info('[WorktreeService] Bug worktree removed', { bugName, absolutePath, branchName });
+    return { ok: true, value: undefined };
   }
 }

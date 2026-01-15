@@ -10,8 +10,9 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig } from '../services/webSocketHandler';
 import { getDefaultLogFileService } from '../services/logFileService';
+import { projectConfigService } from '../services/layoutConfigService';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
@@ -62,6 +63,17 @@ export function createStateProvider(
       return agents || [];
     },
     getVersion: () => app.getVersion(),
+    // header-profile-badge feature: provide profile config for Remote UI
+    // Requirements: 1.4, 3.1
+    getProfile: async (): Promise<ProfileConfig | null> => {
+      try {
+        const profile = await projectConfigService.loadProfile(projectPath);
+        return profile as ProfileConfig | null;
+      } catch (error) {
+        logger.warn('[remoteAccessHandlers] Failed to load profile', { projectPath, error });
+        return null;
+      }
+    },
   };
 }
 

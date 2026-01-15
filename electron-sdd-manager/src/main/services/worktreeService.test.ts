@@ -2,6 +2,7 @@
  * WorktreeService Unit Tests
  * TDD: Testing git worktree operations
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 7.6, 7.7, 8.1, 8.2 (git-worktree-support)
+ * Requirements: 3.1, 3.3, 3.4, 4.6 (bugs-worktree-support)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -345,6 +346,172 @@ describe('WorktreeService', () => {
       expect(result.relative).toBe('../my-project-worktrees/my-feature');
       expect(result.absolute).toContain('my-project-worktrees');
       expect(result.absolute).toContain('my-feature');
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 3.1: Bugs worktree path generation
+  // Requirements: 3.3, 3.7
+  // ============================================================
+  describe('getBugWorktreePath', () => {
+    it('should generate correct bug worktree path with bugs subdirectory', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = service.getBugWorktreePath('memory-leak-fix');
+
+      expect(result.relative).toBe('../my-project-worktrees/bugs/memory-leak-fix');
+      expect(result.absolute).toContain('my-project-worktrees/bugs');
+      expect(result.absolute).toContain('memory-leak-fix');
+    });
+
+    it('should handle bug names with hyphens correctly', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = service.getBugWorktreePath('fix-issue-123');
+
+      expect(result.relative).toBe('../my-project-worktrees/bugs/fix-issue-123');
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 3.2: Bugs worktree creation
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.6
+  // ============================================================
+  describe('createBugWorktree', () => {
+    it('should create bug worktree with bugfix/ branch prefix', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'main\n' },
+        { pattern: /branch bugfix\//, stdout: '' },
+        { pattern: /worktree add/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createBugWorktree('test-bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.branch).toBe('bugfix/test-bug');
+        expect(result.value.path).toContain('bugs/test-bug');
+        expect(result.value.absolutePath).toContain('my-project-worktrees/bugs');
+      }
+    });
+
+    it('should return error when not on main branch', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'bugfix/other\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createBugWorktree('test-bug');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('NOT_ON_MAIN_BRANCH');
+      }
+    });
+
+    it('should return BRANCH_EXISTS when bugfix branch already exists', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'main\n' },
+        { pattern: /branch bugfix\//, error: new Error('fatal: a branch named bugfix/existing already exists') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createBugWorktree('existing');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('BRANCH_EXISTS');
+      }
+    });
+
+    it('should return error for invalid bug name', async () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createBugWorktree('invalid bug name');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_FEATURE_NAME');
+      }
+    });
+
+    it('should rollback branch creation if worktree add fails', async () => {
+      let branchDeleteCalled = false;
+      const mockExec = (
+        command: string,
+        _options: { cwd: string },
+        callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+      ) => {
+        if (/branch --show-current/.test(command)) {
+          callback(null, { stdout: 'main\n', stderr: '' });
+        } else if (/branch bugfix\//.test(command) && !/branch -d/.test(command)) {
+          callback(null, { stdout: '', stderr: '' });
+        } else if (/worktree add/.test(command)) {
+          callback(new Error('fatal: worktree add failed'), { stdout: '', stderr: '' });
+        } else if (/branch -d/.test(command)) {
+          branchDeleteCalled = true;
+          callback(null, { stdout: '', stderr: '' });
+        } else {
+          callback(null, { stdout: '', stderr: '' });
+        }
+        return { kill: () => {} };
+      };
+      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
+
+      const result = await service.createBugWorktree('rollback-test');
+
+      expect(result.ok).toBe(false);
+      expect(branchDeleteCalled).toBe(true);
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-support Task 3.3: Bugs worktree removal
+  // Requirements: 4.6
+  // ============================================================
+  describe('removeBugWorktree', () => {
+    it('should remove bug worktree and branch', async () => {
+      const mockExec = createMockExec([
+        { pattern: /worktree remove/, stdout: '' },
+        { pattern: /branch -d/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.removeBugWorktree('test-bug');
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return error on worktree remove failure', async () => {
+      const mockExec = createMockExec([
+        { pattern: /worktree remove/, error: new Error('fatal: worktree not found') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.removeBugWorktree('nonexistent');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('GIT_ERROR');
+      }
+    });
+
+    it('should handle branch delete failure gracefully (worktree still removed)', async () => {
+      const mockExec = createMockExec([
+        { pattern: /worktree remove/, stdout: '' },
+        { pattern: /branch -d/, error: new Error('branch not fully merged') },
+        { pattern: /branch -D/, error: new Error('branch not found') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Should succeed even if branch delete fails
+      const result = await service.removeBugWorktree('test-bug');
+
+      expect(result.ok).toBe(true);
     });
   });
 });

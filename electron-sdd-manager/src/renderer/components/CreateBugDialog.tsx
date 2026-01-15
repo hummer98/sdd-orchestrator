@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { X, Plus, Loader2, AlertCircle, Bug } from 'lucide-react';
+import { X, Plus, Loader2, AlertCircle, Bug, GitBranch } from 'lucide-react';
 import { useProjectStore, useAgentStore, notify } from '../stores';
 import { useBugStore } from '../stores/bugStore';
 import { clsx } from 'clsx';
@@ -25,7 +25,7 @@ interface CreateBugDialogProps {
 export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): React.ReactElement | null {
   const { currentProject } = useProjectStore();
   const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
-  const { refreshBugs } = useBugStore();
+  const { refreshBugs, useWorktree, setUseWorktree } = useBugStore();
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +148,27 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
               )}
               data-testid="bug-description-input"
             />
+          </div>
+
+          {/* bugs-worktree-support Task 11.1: worktreeチェックボックス */}
+          {/* Requirements: 8.1, 8.3, 8.4 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="use-worktree"
+              checked={useWorktree}
+              onChange={(e) => setUseWorktree(e.target.checked)}
+              disabled={isCreating}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              data-testid="use-worktree-checkbox"
+            />
+            <label
+              htmlFor="use-worktree"
+              className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+            >
+              <GitBranch className="w-4 h-4" />
+              Worktreeを使用
+            </label>
           </div>
 
           {/* Error message */}

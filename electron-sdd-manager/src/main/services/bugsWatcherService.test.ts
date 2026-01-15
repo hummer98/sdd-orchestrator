@@ -117,6 +117,53 @@ describe('BugsWatcherService', () => {
     });
   });
 
+  // ============================================================
+  // bugs-worktree-support Task 14.1: worktreeモード時の監視パス切り替え
+  // Requirements: 3.7
+  // ============================================================
+  describe('worktree watch path', () => {
+    it('should return main project bugs path when no worktree config', () => {
+      const service = new BugsWatcherService('/project');
+      const watchPath = service.getWatchPath('test-bug');
+      expect(watchPath).toBe('/project/.kiro/bugs');
+    });
+
+    it('should return worktree bugs path when worktree config is provided', () => {
+      const service = new BugsWatcherService('/project');
+      const worktreeConfig = {
+        path: '../project-worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+      const watchPath = service.getWatchPath('test-bug', worktreeConfig);
+      // Relative path should be resolved from main project
+      expect(watchPath).toContain('.kiro/bugs');
+      expect(watchPath).toContain('project-worktrees');
+    });
+
+    it('should reset watch path to new location', async () => {
+      const chokidar = await import('chokidar');
+      const service = new BugsWatcherService('/project');
+
+      // Start the watcher first
+      service.start();
+
+      // Reset watch path
+      const newPath = '/project-worktrees/bugs/test-bug/.kiro/bugs';
+      await service.resetWatchPath('test-bug', newPath);
+
+      // chokidar.watch should have been called twice (initial + reset)
+      expect(chokidar.watch).toHaveBeenCalledTimes(2);
+      expect(chokidar.watch).toHaveBeenLastCalledWith(
+        newPath,
+        expect.objectContaining({
+          ignoreInitial: true,
+          persistent: true,
+        })
+      );
+    });
+  });
+
   // Bug fix: bugs-tab-list-not-updating
   describe('path filtering', () => {
     it('should filter out events for paths outside .kiro/bugs/', async () => {

@@ -1,0 +1,5 @@
+{
+  "bug_name": "{bug-name}",
+  "created_at": "{ISO-8601}",
+  "updated_at": "{ISO-8601}"
+}

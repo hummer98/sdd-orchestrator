@@ -101,6 +101,55 @@ describe('BugListItem', () => {
     });
   });
 
+  // ============================================================
+  // bugs-worktree-support Task 13.1: worktreeインジケーター
+  // Requirements: 10.1, 10.2, 10.3
+  // ============================================================
+  describe('Worktree indicator', () => {
+    it('should display worktree badge when bug has worktree field', () => {
+      const bug = createMockBug({
+        worktree: {
+          path: '../test-worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      });
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      expect(screen.getByTestId('worktree-badge')).toBeInTheDocument();
+    });
+
+    it('should not display worktree badge when bug has no worktree field', () => {
+      const bug = createMockBug();
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      expect(screen.queryByTestId('worktree-badge')).not.toBeInTheDocument();
+    });
+
+    it('should display GitBranch icon in worktree badge', () => {
+      const bug = createMockBug({
+        worktree: {
+          path: '../test-worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      });
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      const badge = screen.getByTestId('worktree-badge');
+      expect(badge.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('should display "worktree" text in badge', () => {
+      const bug = createMockBug({
+        worktree: {
+          path: '../test-worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      });
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      expect(screen.getByText('worktree')).toBeInTheDocument();
+    });
+  });
+
   describe('Running agent count', () => {
     it('should display running agent count when provided and > 0', () => {
       const bug = createMockBug();

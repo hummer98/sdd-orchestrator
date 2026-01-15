@@ -2,6 +2,7 @@
  * Config Store Service
  * Handles application configuration persistence
  * Requirements: 1.4, 1.5
+ * Requirements: 9.2, 9.3, 9.4 (bugs-worktree-support)
  */
 
 import Store from 'electron-store';
@@ -27,6 +28,8 @@ interface AppConfig {
   hangThreshold: number;
   version: number;
   multiWindowStates: MultiWindowState[];
+  // bugs-worktree-support: Default worktree mode for bugs
+  bugsWorktreeDefault: boolean;
 }
 
 const schema = {
@@ -75,6 +78,11 @@ const schema = {
         isMinimized: { type: 'boolean' },
       },
     },
+  },
+  // bugs-worktree-support: Default worktree mode for bugs
+  bugsWorktreeDefault: {
+    type: 'boolean',
+    default: false,
   },
 } as const;
 
@@ -181,6 +189,30 @@ export class ConfigStore {
    */
   setMultiWindowStates(states: MultiWindowState[]): void {
     this.store.set('multiWindowStates', states);
+  }
+
+  // ============================================================
+  // bugs-worktree-support Task 8.1: Bugs worktree default setting
+  // Requirements: 9.2, 9.3, 9.4
+  // ============================================================
+
+  /**
+   * Get bugs worktree default setting
+   * Requirements: 9.2, 9.3
+   * @returns true if worktree should be used by default for bugs
+   */
+  getBugsWorktreeDefault(): boolean {
+    const value = this.store.get('bugsWorktreeDefault');
+    return value ?? false; // Default is OFF
+  }
+
+  /**
+   * Set bugs worktree default setting
+   * Requirements: 9.2
+   * @param value - true to use worktree by default
+   */
+  setBugsWorktreeDefault(value: boolean): void {
+    this.store.set('bugsWorktreeDefault', value);
   }
 }
 

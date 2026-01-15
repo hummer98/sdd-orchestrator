@@ -2,6 +2,7 @@
  * SpecStoreFacade Tests
  * TDD: Testing facade that combines all decomposed stores
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
+ * execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1, 7.2)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -9,7 +10,9 @@ import { useSpecStoreFacade, initSpecStoreFacade } from './specStoreFacade';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
-import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
+// execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
+// import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
+import { useAgentStore } from '../agentStore';
 import type { SpecMetadata } from '../../types';
 
 const mockSpecs: SpecMetadata[] = [
@@ -66,15 +69,15 @@ describe('useSpecStoreFacade', () => {
     useAutoExecutionStore.setState({
       autoExecutionRuntimeMap: new Map(),
     });
-    useSpecManagerExecutionStore.setState({
-      isRunning: false,
-      currentPhase: null,
-      currentSpecId: null,
-      lastCheckResult: null,
+    // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
+    // Reset agentStore instead
+    useAgentStore.setState({
+      agents: new Map(),
+      selectedAgentId: null,
+      logs: new Map(),
+      isLoading: false,
       error: null,
-      implTaskStatus: null,
-      retryCount: 0,
-      executionMode: null,
+      skipPermissions: false,
     });
     vi.clearAllMocks();
   });
@@ -106,8 +109,27 @@ describe('useSpecStoreFacade', () => {
       expect(state.autoExecutionRuntimeMap.size).toBe(1);
     });
 
-    it('should aggregate specManagerExecution from SpecManagerExecutionStore', () => {
-      useSpecManagerExecutionStore.setState({ isRunning: true, currentPhase: 'design' });
+    // execution-store-consolidation: specManagerExecution derived from agentStore (Req 3.1)
+    it('should derive specManagerExecution from agentStore', () => {
+      // Set up a selected spec first
+      useSpecDetailStore.setState({ selectedSpec: mockSpecs[0] });
+
+      // Add a running agent for the selected spec
+      const agents = new Map();
+      agents.set('feature-a', [{
+        agentId: 'agent-1',
+        specId: 'feature-a',
+        phase: 'design',
+        pid: 123,
+        sessionId: 'session-1',
+        status: 'running' as const,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        command: 'test',
+        executionMode: 'manual' as const,
+        retryCount: 0,
+      }]);
+      useAgentStore.setState({ agents });
 
       const state = useSpecStoreFacade.getState();
       expect(state.specManagerExecution.isRunning).toBe(true);
@@ -194,11 +216,12 @@ describe('useSpecStoreFacade', () => {
       });
     });
 
-    describe('SpecManagerExecutionStore actions', () => {
-      it('should delegate executeSpecManagerGeneration to SpecManagerExecutionStore', async () => {
+    // execution-store-consolidation: SpecManagerExecutionStore actions (Req 4.2-4.6)
+    describe('SpecManagerExecution actions (derived from agentStore)', () => {
+      it('should call IPC for executeSpecManagerGeneration', async () => {
         window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
 
-        useSpecStoreFacade.getState().executeSpecManagerGeneration(
+        await useSpecStoreFacade.getState().executeSpecManagerGeneration(
           'test-spec',
           'design',
           'test-feature',
@@ -206,27 +229,22 @@ describe('useSpecStoreFacade', () => {
           'manual'
         );
 
-        expect(useSpecManagerExecutionStore.getState().isRunning).toBe(true);
+        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
+          'test-spec',
+          'design',
+          'test-feature'
+        );
       });
 
-      it('should delegate handleCheckImplResult to SpecManagerExecutionStore', () => {
-        useSpecManagerExecutionStore.setState({ isRunning: true });
+      // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
+      // Task completion state is managed via TaskProgress from tasks.md
 
-        useSpecStoreFacade.getState().handleCheckImplResult({
-          status: 'success',
-          completedTasks: ['1.1'],
-          stats: { num_turns: 1, duration_ms: 1000, total_cost_usd: 0.01 },
-        });
-
-        expect(useSpecManagerExecutionStore.getState().implTaskStatus).toBe('success');
-      });
-
-      it('should delegate clearSpecManagerError to SpecManagerExecutionStore', () => {
-        useSpecManagerExecutionStore.setState({ error: 'Some error' });
+      it('should clear error in agentStore via clearSpecManagerError', () => {
+        useAgentStore.setState({ error: 'Some error' });
 
         useSpecStoreFacade.getState().clearSpecManagerError();
 
-        expect(useSpecManagerExecutionStore.getState().error).toBeNull();
+        expect(useAgentStore.getState().error).toBeNull();
       });
     });
   });
@@ -316,9 +334,9 @@ describe('useSpecStoreFacade', () => {
       expect(typeof actions.startAutoExecution).toBe('function');
       expect(typeof actions.stopAutoExecution).toBe('function');
 
-      // SpecManagerExecutionStore actions
+      // SpecManagerExecution actions (derived from agentStore)
+      // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)
       expect(typeof actions.executeSpecManagerGeneration).toBe('function');
-      expect(typeof actions.handleCheckImplResult).toBe('function');
       expect(typeof actions.updateImplTaskStatus).toBe('function');
       expect(typeof actions.clearSpecManagerError).toBe('function');
 

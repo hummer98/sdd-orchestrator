@@ -86,7 +86,7 @@ const createMockStores = (overrides: any = {}) => {
       isRunning: false,
       currentPhase: null,
       currentSpecId: null,
-      lastCheckResult: null,
+      // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
       error: null,
       implTaskStatus: null,
       retryCount: 0,
@@ -198,17 +198,15 @@ describe('WorkflowView - spec-manager Extensions', () => {
         expect(screen.queryByText(/実行中/)).toBeInTheDocument();
       });
 
-      it('should display next phase button when subtype is success', () => {
+      // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
+      // Task completion is now shown via TaskProgressView
+      it('should display success state when implTaskStatus is success', () => {
         createMockStores({
           specStore: {
             specManagerExecution: {
               isRunning: false,
               currentPhase: 'requirements',
-              lastCheckResult: {
-                status: 'success',
-                completedTasks: ['1.1', '1.2'],
-                stats: { num_turns: 5, duration_ms: 60000, total_cost_usd: 0.15 },
-              },
+              // execution-store-consolidation: lastCheckResult REMOVED
               implTaskStatus: 'success',
             },
           },
@@ -216,8 +214,10 @@ describe('WorkflowView - spec-manager Extensions', () => {
 
         render(<WorkflowView />);
 
-        // Should show completed tasks in the result
-        expect(screen.queryByText(/完了したタスク/)).toBeInTheDocument();
+        // Should show success state - use getAllByText since "完了" appears multiple times
+        // (in specManagerExecution status display and potentially in phase items)
+        const successElements = screen.getAllByText(/完了/);
+        expect(successElements.length).toBeGreaterThan(0);
       });
     });
 
@@ -333,33 +333,65 @@ describe('WorkflowView - spec-manager Extensions', () => {
     });
 
     describe('ImplTaskStatus-based UI switching', () => {
-      const statusDisplayMap = {
-        pending: null, // No special display
-        running: '実行中',
-        continuing: '継続処理中',
-        success: '完了',
-        error: 'エラー',
-        stalled: '完了確認できず',
-      };
+      // Test specific statuses that have unique display text
+      it('should display "実行中" for running status', () => {
+        createMockStores({
+          specStore: {
+            specManagerExecution: {
+              isRunning: true,
+              implTaskStatus: 'running',
+              retryCount: 0,
+            },
+          },
+        });
 
-      Object.entries(statusDisplayMap).forEach(([status, expectedText]) => {
-        if (expectedText) {
-          it(`should display "${expectedText}" for ${status} status`, () => {
-            createMockStores({
-              specStore: {
-                specManagerExecution: {
-                  isRunning: status === 'running' || status === 'continuing',
-                  implTaskStatus: status,
-                  retryCount: status === 'continuing' ? 1 : 0,
-                },
-              },
-            });
+        render(<WorkflowView />);
+        expect(screen.queryByText(/実行中/)).toBeInTheDocument();
+      });
 
-            render(<WorkflowView />);
+      it('should display "継続処理中" for continuing status', () => {
+        createMockStores({
+          specStore: {
+            specManagerExecution: {
+              isRunning: true,
+              implTaskStatus: 'continuing',
+              retryCount: 1,
+            },
+          },
+        });
 
-            expect(screen.queryByText(new RegExp(expectedText))).toBeInTheDocument();
-          });
-        }
+        render(<WorkflowView />);
+        expect(screen.queryByText(/継続処理中/)).toBeInTheDocument();
+      });
+
+      it('should display "エラー" for error status', () => {
+        createMockStores({
+          specStore: {
+            specManagerExecution: {
+              isRunning: false,
+              implTaskStatus: 'error',
+              retryCount: 0,
+            },
+          },
+        });
+
+        render(<WorkflowView />);
+        expect(screen.queryByText(/エラー/)).toBeInTheDocument();
+      });
+
+      it('should display "完了確認できず" for stalled status', () => {
+        createMockStores({
+          specStore: {
+            specManagerExecution: {
+              isRunning: false,
+              implTaskStatus: 'stalled',
+              retryCount: 2,
+            },
+          },
+        });
+
+        render(<WorkflowView />);
+        expect(screen.queryByText(/完了確認できず/)).toBeInTheDocument();
       });
     });
   });

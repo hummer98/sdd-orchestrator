@@ -8,6 +8,7 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
 import { logger } from '../services/logger';
+import { handleImplStartWithWorktree } from './worktreeImplHandlers';
 import type {
   WorktreeInfo,
   WorktreeServiceResult,
@@ -172,6 +173,20 @@ export function registerWorktreeHandlers(): void {
     IPC_CHANNELS.WORKTREE_RESOLVE_PATH,
     async (_event, projectPath: string, relativePath: string) => {
       return handleWorktreeResolvePath(projectPath, relativePath);
+    }
+  );
+
+  // worktree:impl-start - Task 14.3: Start impl in worktree mode
+  // Requirements: 9.5, 9.6, 9.7
+  ipcMain.handle(
+    IPC_CHANNELS.WORKTREE_IMPL_START,
+    async (_event, projectPath: string, specPath: string, featureName: string) => {
+      logger.info('[worktreeHandlers] worktree:impl-start called', {
+        projectPath,
+        specPath,
+        featureName,
+      });
+      return handleImplStartWithWorktree(projectPath, specPath, featureName);
     }
   );
 

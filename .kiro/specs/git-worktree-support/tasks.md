@@ -153,3 +153,34 @@
 - [x] 13.2 SpecDetailView（Remote UI）にworktree情報を追加
   - Electronレンダラー版と同等のworktree情報セクション
   - _Requirements: 4.1, 4.2_
+
+## Task 14. Impl開始UIの分岐実装
+- [x] 14.1 (P) ImplパネルにImpl開始オプションの2ボタンUIを実装
+  - 「カレントブランチで実装」ボタンの追加
+  - 「Worktreeで実装」ボタンの追加
+  - worktreeフィールド未存在時は両方のボタンを表示
+  - _Requirements: 9.1, 9.2, 9.3_
+- [x] 14.2 「カレントブランチで実装」ボタンの処理を実装
+  - 現在のブランチ・ディレクトリでAgent起動
+  - 既存のimpl開始処理を流用
+  - _Requirements: 9.4_
+- [x] 14.3 「Worktreeで実装」ボタンの処理を実装
+  - mainブランチ確認の実行
+  - mainブランチ以外の場合はエラー表示
+  - mainブランチの場合はworktree作成→Agent起動
+  - worktree:impl-start IPCチャネルの登録と接続
+  - _Requirements: 9.5, 9.6, 9.7_
+- [x] 14.4 (P) worktreeフィールド既存時のUI表示を実装
+  - worktreeフィールドが存在する場合は「Worktreeで実装（継続）」ボタンのみ表示
+  - 「カレントブランチで実装」ボタンを非表示
+  - _Requirements: 9.8, 9.9_
+
+## Task 15. Impl開始UIのテスト
+- [x] 15.1 ImplパネルのUIテストを追加
+  - 2ボタン表示の確認
+  - worktreeフィールド有無による表示切り替え
+  - _Requirements: 9.1, 9.2, 9.3, 9.8, 9.9_
+- [x] 15.2 「Worktreeで実装」ボタンのE2Eテストを追加
+  - mainブランチでのworktree作成フロー
+  - 非mainブランチでのエラー表示
+  - _Requirements: 9.5, 9.6, 9.7_

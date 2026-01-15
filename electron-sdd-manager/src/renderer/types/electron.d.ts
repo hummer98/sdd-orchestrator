@@ -752,7 +752,7 @@ export interface ElectronAPI {
 
   // ============================================================
   // Git Worktree Support (git-worktree-support feature)
-  // Requirements: 6.1
+  // Requirements: 1.1, 1.3, 1.6, 6.1, 9.1-9.9
   // ============================================================
 
   /**
@@ -768,6 +768,102 @@ export interface ElectronAPI {
     featureName: string,
     commandPrefix?: 'kiro' | 'spec-manager'
   ): Promise<AgentInfo>;
+
+  /**
+   * Check if currently on main/master branch
+   * Task 14.3: Used to validate before worktree creation
+   * @param projectPath Project root path
+   * @returns Result with isMain flag and current branch name
+   */
+  worktreeCheckMain(projectPath: string): Promise<{
+    ok: true;
+    value: { isMain: boolean; currentBranch: string };
+  } | {
+    ok: false;
+    error: { type: string; message?: string };
+  }>;
+
+  /**
+   * Create a worktree for a feature
+   * @param projectPath Project root path
+   * @param featureName Feature name (will create branch feature/{featureName})
+   * @returns Result with WorktreeInfo on success
+   */
+  worktreeCreate(projectPath: string, featureName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error: { type: string; currentBranch?: string; path?: string; message?: string };
+  }>;
+
+  /**
+   * Remove a worktree and its associated branch
+   * @param projectPath Project root path
+   * @param featureName Feature name of the worktree to remove
+   * @returns Result with void on success
+   */
+  worktreeRemove(projectPath: string, featureName: string): Promise<{
+    ok: true;
+    value: void;
+  } | {
+    ok: false;
+    error: { type: string; message?: string };
+  }>;
+
+  /**
+   * Resolve a relative worktree path to absolute path
+   * @param projectPath Project root path
+   * @param relativePath Relative path from spec.json
+   * @returns Result with absolutePath on success
+   */
+  worktreeResolvePath(projectPath: string, relativePath: string): Promise<{
+    ok: true;
+    value: { absolutePath: string };
+  } | {
+    ok: false;
+    error: { type: string; path?: string; reason?: string };
+  }>;
+
+  /**
+   * Start impl in worktree mode
+   * Task 14.3: Create worktree and prepare for impl execution
+   * Requirements: 9.5, 9.6, 9.7
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @param featureName Feature name
+   * @returns Result with worktree info on success
+   */
+  worktreeImplStart(
+    projectPath: string,
+    specPath: string,
+    featureName: string
+  ): Promise<{
+    ok: true;
+    value: {
+      worktreePath: string;
+      worktreeAbsolutePath: string;
+      branch: string;
+      worktreeConfig: {
+        path: string;
+        branch: string;
+        created_at: string;
+      };
+    };
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      currentBranch?: string;
+      path?: string;
+      message?: string;
+    };
+  }>;
 
   // ============================================================
   // Commandset Version Check (commandset-version-detection feature)

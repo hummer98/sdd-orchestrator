@@ -67,6 +67,11 @@
 - **Conclusion**: スコープ外
 - **Rationale**: 用途が不明確であり、必要性が低い
 
+### Impl開始UIの分岐
+- **Discussion**: Impl開始時にworktree作成を強制するか、選択制にするか
+- **Conclusion**: 「カレントブランチで実装」と「Worktreeで実装」の2つのボタンを提供
+- **Rationale**: ユーザーにワークフローの選択権を与え、既存のカレントブランチ実装も継続サポート。worktreeが既に存在する場合は継続のみ許可
+
 ## Introduction
 
 Git worktree機能を活用し、mainブランチで仕様策定を行いながら、別のworktreeで実装作業を並行して行えるようにする機能。impl開始時にworktreeを自動作成し、実装・inspection完了後にspec-mergeでmainブランチにマージ、worktreeをクリーンアップする一連のワークフローを提供する。
@@ -161,13 +166,28 @@ Git worktree機能を活用し、mainブランチで仕様策定を行いなが�
 1. When worktreeフィールドが存在する場合, the system shall worktreeパスを基準にファイル監視を行う
 2. When worktreeフィールドが存在しない場合, the system shall mainプロジェクトパスを基準にファイル監視を行う
 
+### Requirement 9: Impl開始UIの分岐
+
+**Objective:** 開発者として、カレントブランチで実装するか、worktreeを作成して実装するかを選択したい
+
+#### Acceptance Criteria
+1. When Implパネルを表示するとき, the system shall 2つのImpl開始オプションを提供する
+2. The system shall 「カレントブランチで実装」ボタンを表示する
+3. The system shall 「Worktreeで実装」ボタンを表示する
+4. When 「カレントブランチで実装」ボタンが押下されたとき, the system shall 現在のブランチ・ディレクトリでAgentを起動する
+5. When 「Worktreeで実装」ボタンが押下されたとき, the system shall mainブランチにいることを確認する
+6. If 「Worktreeで実装」選択時にmainブランチにいない場合, then the system shall エラーを表示してimplを中断する
+7. When 「Worktreeで実装」がmainブランチで実行されたとき, the system shall worktreeを作成してからAgentを起動する
+8. When spec.jsonにworktreeフィールドが既に存在する場合, the system shall 「Worktreeで実装」ボタンのみを表示する（既存worktreeで継続）
+9. When spec.jsonにworktreeフィールドが既に存在する場合, the system shall 「カレントブランチで実装」ボタンを非表示にする
+
 ## Out of Scope
 
 - 既存worktreeの検出・紐付け機能（手動でspec.json編集は可能）
 - worktree作成場所のカスタマイズ
 - ブランチ命名規則のカスタマイズ
 - 「Open in Main」ボタン
-- worktreeモードと通常モードの切り替えUI
+- worktreeモード実行中の解除UI（impl開始後にworktreeを途中で解除する機能。impl開始時の選択UIはRequirement 9でサポート）
 - Remote UI対応（初期スコープ外、Desktop UI専用機能）
 
 ### 複数specのworktreeモード同時使用

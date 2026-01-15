@@ -103,7 +103,46 @@ sequenceDiagram
 
 ## System Flows
 
-### Worktree Creation Flow (impl開始時)
+### Impl Start UI Flow (Impl開始UIの分岐)
+
+```mermaid
+sequenceDiagram
+    participant UI as ImplPanel
+    participant IPC as IPC Handler
+    participant WTS as WorktreeService
+    participant SMS as SpecManagerService
+    participant Git as Git CLI
+
+    Note over UI: Implパネル表示時
+    UI->>IPC: spec.jsonを確認
+    alt worktreeフィールドが存在
+        UI->>UI: 「Worktreeで実装」ボタンのみ表示（継続）
+    else worktreeフィールドなし
+        UI->>UI: 「カレントブランチで実装」と「Worktreeで実装」の2ボタン表示
+    end
+
+    alt 「カレントブランチで実装」クリック
+        UI->>IPC: startImplCurrentBranch()
+        IPC->>SMS: startAgent(cwd=projectPath)
+        SMS-->>UI: Agent started in current branch
+    else 「Worktreeで実装」クリック
+        UI->>IPC: startImplWithWorktree()
+        IPC->>WTS: checkMainBranch()
+        alt mainブランチでない
+            WTS-->>UI: エラー: mainブランチで実行してください
+        else mainブランチ
+            IPC->>WTS: createWorktree(featureName)
+            WTS->>Git: git branch feature/{featureName}
+            WTS->>Git: git worktree add {path} feature/{featureName}
+            WTS->>IPC: worktreePath
+            IPC->>SMS: updateSpecJson(worktreeField)
+            IPC->>SMS: startAgent(cwd=worktreePath)
+            SMS-->>UI: Agent started in worktree
+        end
+    end
+```
+
+### Worktree Creation Flow (impl開始時 - 旧フロー、Requirement 9で置き換え)
 
 ```mermaid
 sequenceDiagram
@@ -200,6 +239,7 @@ sequenceDiagram
 | 6.1-6.5 | 自動実行フロー | AutoExecutionCoordinator拡張 | startAutoExecution, handleInspectionComplete | Auto Execution Flow |
 | 7.1-7.8 | spec-mergeスキル | spec-merge skill, WorktreeService | executeSpecMerge, cleanupWorktree | Spec-Merge Flow |
 | 8.1-8.2 | 監視パスの切り替え | SpecsWatcherService | getWatchPath | - |
+| 9.1-9.9 | Impl開始UIの分岐 | ImplPanel, IPC Handler | startImplWithWorktree, startImplCurrentBranch | Impl Start UI Flow |
 
 ## Components and Interfaces
 
@@ -420,6 +460,7 @@ interface SpecJson {
 | invoke | worktree:create | `{ projectPath: string; featureName: string }` | `WorktreeInfo` | NOT_ON_MAIN_BRANCH, WORKTREE_EXISTS, GIT_ERROR |
 | invoke | worktree:remove | `{ projectPath: string; featureName: string }` | `void` | PATH_NOT_FOUND, GIT_ERROR |
 | invoke | worktree:resolve-path | `{ projectPath: string; relativePath: string }` | `{ absolutePath: string }` | - |
+| invoke | worktree:impl-start | `{ projectPath: string; featureName: string; useWorktree: boolean }` | `{ success: boolean; worktreeInfo?: WorktreeInfo }` | NOT_ON_MAIN_BRANCH, WORKTREE_EXISTS, GIT_ERROR |
 
 ### Renderer/UI
 
@@ -445,6 +486,29 @@ interface SpecJson {
 - Integration: specJson.worktreeの有無でボタン動作を分岐
 - worktreeなし: `/commit`実行
 - worktreeあり: `/kiro:spec-merge {feature-name}`実行
+
+#### ImplPanel拡張
+
+| Field | Detail |
+|-------|--------|
+| Intent | Impl開始時にカレントブランチとworktreeの選択UIを提供 |
+| Requirements | 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9 |
+
+**Responsibilities & Constraints**
+- 2つのImpl開始ボタンを表示（「カレントブランチで実装」「Worktreeで実装」）
+- worktreeフィールド既存時は「Worktreeで実装」のみ表示（継続モード）
+- 「Worktreeで実装」選択時はmainブランチ確認を実行
+- mainブランチ以外ではworktree作成をエラーとして中断
+
+**Dependencies**
+- Outbound: IPC Handler - worktree:impl-start呼び出し (P0)
+- Outbound: specStore - spec.jsonのworktreeフィールド参照 (P1)
+
+**Implementation Notes**
+- Integration: 既存のImpl開始ボタンを2つのボタンに分岐
+- ボタンラベル: 「カレントブランチで実装」「Worktreeで実装」
+- worktreeフィールド存在時: 「Worktreeで実装（継続）」のみ表示
+- エラー表示: mainブランチ以外でのworktree作成時にトースト通知
 
 ### Skills
 
@@ -719,3 +783,14 @@ erDiagram
 | Rationale | worktree内の変更を正しく検出するため |
 | Alternatives Considered | 1. 両方を監視 2. 監視を無効化 |
 | Consequences | SpecsWatcherServiceの初期化/再初期化ロジックが必要 |
+
+### DD-009: Impl開始UIの2ボタン分岐
+
+| Field | Detail |
+|-------|--------|
+| Status | Accepted |
+| Context | Impl開始時にworktree作成を強制するか、選択制にするかを決定する必要がある（要件9.1-9.9） |
+| Decision | 「カレントブランチで実装」と「Worktreeで実装」の2つのボタンを提供し、ユーザーに選択権を付与 |
+| Rationale | 既存のカレントブランチ実装ワークフローも継続サポートしつつ、worktree機能を提供。worktreeが既に存在する場合は継続のみ許可 |
+| Alternatives Considered | 1. worktree作成を強制（選択肢なし） 2. 設定画面でデフォルト動作を設定 3. トグルスイッチでOn/Off |
+| Consequences | UI上に2つのボタンが表示される、worktree既存時は継続ボタンのみ表示

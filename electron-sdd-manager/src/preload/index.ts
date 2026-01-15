@@ -1457,6 +1457,42 @@ const electronAPI = {
     error: { type: string; path?: string; reason?: string };
   }> =>
     ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_RESOLVE_PATH, projectPath, relativePath),
+
+  /**
+   * Start impl in worktree mode
+   * Task 14.3: Create worktree and prepare for impl execution
+   * Requirements: 9.5, 9.6, 9.7
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @param featureName Feature name
+   * @returns Result with worktree info on success
+   */
+  worktreeImplStart: (
+    projectPath: string,
+    specPath: string,
+    featureName: string
+  ): Promise<{
+    ok: true;
+    value: {
+      worktreePath: string;
+      worktreeAbsolutePath: string;
+      branch: string;
+      worktreeConfig: {
+        path: string;
+        branch: string;
+        created_at: string;
+      };
+    };
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      currentBranch?: string;
+      path?: string;
+      message?: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_IMPL_START, projectPath, specPath, featureName),
 };
 
 // Expose API to renderer

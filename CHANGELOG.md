@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-01-15
+
+### Added
+- **ヘッダープロファイルバッジ表示機能**: ヘッダーにプロファイルバッジ表示機能を追加
+- **Git Worktree対応強化**: Impl開始UIの2ボタン分岐を実装し、worktreeを使用した分離開発をサポート
+- **Verification Commands検証ステップ**: spec-implにVerification Commands検証ステップを追加
+
+### Fixed
+- **ヘッダーspec名二重表示修正**: ヘッダーのspec名二重表示を修正
+- **Bug選択時のAgent watcherスコープ**: Bug選択時のAgent watcherスコープ引数を修正
+- **vite.configエイリアス追加**: vite.config.tsに@shared, @remote-uiエイリアス追加
+
+### Changed
+- **agentStore統合**: specManagerExecutionStoreを廃止しagentStoreに統合
+
+### Testing
+- **worktree E2Eテスト**: worktree実装開始ボタンのE2Eテストを追加
+
+### Documentation
+- **Entry Point Connection必須ルール**: Entry Point Connection必須ルールとDead Code Detection強化
+- **data-testid命名規則**: data-testid命名規則をoperations.mdに追記
+
 ## [0.26.0] - 2026-01-14
 
 ### Added

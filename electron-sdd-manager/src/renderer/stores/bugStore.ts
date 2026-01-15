@@ -123,8 +123,9 @@ export const useBugStore = create<BugStore>((set, get) => ({
 
     try {
       // Bug fix: bugs-agent-list-not-updating
-      // Switch agent watcher scope to this bug's directory for real-time updates
-      await window.electronAPI.switchAgentWatchScope(bug.path);
+      // Switch agent watcher scope to this bug's specId for real-time updates
+      // Bug fix: switchAgentWatchScope expects specId format (bug:{name}), not full path
+      await window.electronAPI.switchAgentWatchScope(`bug:${bug.name}`);
 
       const bugDetail = await window.electronAPI.readBugDetail(bug.path);
 

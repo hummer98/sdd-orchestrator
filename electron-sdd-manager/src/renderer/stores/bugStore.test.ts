@@ -135,6 +135,16 @@ describe('bugStore', () => {
       expect(useBugStore.getState().bugDetail).toEqual(mockBugDetail);
     });
 
+    it('should switch agent watch scope with bug:name format', async () => {
+      // Bug fix: switchAgentWatchScope expects specId format (bug:{name}), not full path
+      mockReadBugDetail.mockResolvedValue(mockBugDetail);
+
+      await useBugStore.getState().selectBug(mockBugs[0]);
+
+      // Should be called with bug:{name} format, not bug.path
+      expect(mockSwitchAgentWatchScope).toHaveBeenCalledWith(`bug:${mockBugs[0].name}`);
+    });
+
     it('should set error on failure', async () => {
       mockReadBugDetail.mockRejectedValue(new Error('Failed to read detail'));
 

@@ -63,6 +63,41 @@ Focus on capabilities and outcomes, not code structure.
 - User testing
 - Marketing/business activities
 
+### 6. Entry Point Connection (MANDATORY)
+
+**Every feature implementation MUST include tasks that connect new code to application entry points.**
+
+**Entry Points by Layer**:
+| Layer | Entry Points |
+|-------|-------------|
+| UI (Renderer) | `main.tsx`, `App.tsx`, Router config, existing views/components |
+| IPC (Main) | `handlers.ts` with `ipcMain.handle()` registration |
+| API | Endpoint registration, route handlers |
+| CLI | Command registration, argument parsing |
+
+**Required Tasks**:
+1. **Entry Point Connection Task**: Wire new functionality to an entry point
+   - Example: "Add worktree creation button to WorkflowView"
+   - Example: "Register IPC handler for worktree operations"
+
+2. **User Reachability Task**: Ensure users can access the new feature
+   - Example: "User can select worktree mode when starting Impl phase"
+
+**Anti-pattern to detect and reject**:
+```
+Task: Implement handleImplStartWithWorktree function
+Task: Implement WorktreeService
+Task: Add unit tests for worktree operations
+↓
+MISSING: "Add UI to trigger worktree creation" ← Entry Point Connection required!
+MISSING: "Register IPC handler in handlers.ts" ← Entry Point Connection required!
+```
+
+**Validation Rule**:
+- For every new service/handler/component created, there MUST be a task connecting it to an entry point
+- Code that is only called from tests is considered **orphaned** and fails validation
+- If this pattern is detected: STOP, add missing connection tasks, then resume
+
 ### Optional Test Coverage Tasks
 
 - When the design already guarantees functional coverage and rapid MVP delivery is prioritized, mark purely test-oriented follow-up work (e.g., baseline rendering/unit tests) as **optional** using the `- [ ]*` checkbox form.

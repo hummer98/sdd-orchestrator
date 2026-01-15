@@ -99,11 +99,45 @@ Check adherence to CLAUDE.md Design Principles:
 - Flag violations as Minor to Major depending on scope
 
 #### 2.6 Dead Code Detection (DeadCodeChecker)
-For new components/services created:
-- Use Grep to verify they are imported and used
-- Check that components are rendered/called
-- Verify exports are consumed
-- Flag orphaned code as Major
+
+**Target**: Components/services/functions created in this Spec
+
+**Detection Levels**:
+
+1. **Static Check**: Verify code is imported somewhere
+2. **Reachability Check**: Verify code is reachable from application entry points
+
+**Entry Points by Layer**:
+| Layer | Entry Points |
+|-------|-------------|
+| UI (Renderer) | `main.tsx`, `App.tsx`, Router config |
+| IPC (Main) | `handlers.ts` with `ipcMain.handle()` registration |
+| API | Endpoint registration, route handlers |
+
+**Reachability Check Procedure**:
+
+1. **Identify new exports**: List all new functions/classes/components exported by this Spec
+2. **Trace call chain from entry points**:
+   - For IPC handlers: Is there an `ipcMain.handle(CHANNEL, handler)` that calls this code?
+   - For UI components: Is the component rendered in JSX from a routed view?
+   - For services: Is the service called from a handler or component that is reachable?
+3. **Exclude test-only usage**: Calls from `*.test.ts`, `*.spec.ts` do NOT count as "used"
+
+**Detection Patterns**:
+| Pattern | Judgment | Severity |
+|---------|----------|----------|
+| Reachable from entry point | OK | - |
+| Called only from tests | Dead Code | **Critical** |
+| Called only from other dead code | Dead Code | **Critical** |
+| Unreachable due to conditional branch | Dead Code | Major |
+| Exported but never imported | Dead Code | Major |
+
+**Verification Examples**:
+- `handleImplStartWithWorktree()` exported → Check if any `ipcMain.handle()` calls it → If only tests import it → **Critical: Implementation incomplete**
+- `WorktreeService` class → Check if instantiated in reachable code → If only in tests → **Critical**
+- UI component → Check if rendered in JSX from App/Router → If not → **Critical**
+
+**IMPORTANT**: Test-only usage indicates implementation was prepared but never connected to the application. This is a **Critical** finding as it represents incomplete implementation.
 
 #### 2.7 Integration Verification (IntegrationChecker)
 Verify all components work together:

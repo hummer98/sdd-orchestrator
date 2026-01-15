@@ -7,9 +7,9 @@
   "layout": {
     "leftPaneWidth": 288,
     "rightPaneWidth": 500,
-    "bottomPaneHeight": 466,
+    "bottomPaneHeight": 389,
     "agentListHeight": 261,
-    "projectAgentPanelHeight": 120
+    "projectAgentPanelHeight": 234
   },
   "commandsets": {
     "cc-sdd-agent": {

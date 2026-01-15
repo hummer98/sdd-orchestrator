@@ -117,6 +117,25 @@ click_by_text: "Create Spec"
 click_by_selector: "[data-testid='spec-list-item']"
 ```
 
+### data-testid 命名規則
+
+本プロジェクトでは`data-testid`属性を使用してUI要素を識別する。命名規則は以下の通り:
+
+| パターン | 形式 | 例 |
+|----------|------|-----|
+| コンポーネント | `{component}` | `agent-list-panel`, `bug-workflow-view` |
+| 要素 | `{component}-{element}` | `bug-list-items`, `artifact-content` |
+| ボタン | `{component}-{action}-button` | `cancel-button`, `apply-fix-button` |
+| フェーズ関連 | `phase-{action}-{phase}` | `phase-button-impl`, `phase-item-design` |
+| Bugフェーズ | `bug-phase-{element}-{phase}` | `bug-phase-execute-button-verify` |
+| 状態付き | `{component}-{state}` | `bug-phase-status-completed` |
+
+**よく使うtestid**:
+- Spec Workflow: `phase-button-{phase}` (requirements/design/tasks/impl)
+- Bug Workflow: `bug-phase-execute-button-{phase}` (analyze/fix/verify/deploy)
+- 自動実行: `auto-execute-button`, `bug-auto-execute-button`
+- 一覧: `spec-list-items`, `bug-list-items`, `agent-list-panel`
+
 ### 制限事項
 
 - **メニューバー操作不可**: File, Edit, View等のネイティブメニューはMCPでクリック不可

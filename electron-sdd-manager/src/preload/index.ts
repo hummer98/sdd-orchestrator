@@ -921,6 +921,19 @@ const electronAPI = {
   saveSkipPermissions: (projectPath: string, skipPermissions: boolean): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SAVE_SKIP_PERMISSIONS, projectPath, skipPermissions),
 
+  // ============================================================
+  // Profile Badge (header-profile-badge feature)
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+
+  /**
+   * Load profile configuration from project
+   * @param projectPath Project root path
+   * @returns ProfileConfig (name, installedAt) or null if not installed
+   */
+  loadProfile: (projectPath: string): Promise<{ name: string; installedAt: string } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_PROFILE, projectPath),
+
   /**
    * Subscribe to menu reset layout event
    * @param callback Function called when reset layout menu item is clicked

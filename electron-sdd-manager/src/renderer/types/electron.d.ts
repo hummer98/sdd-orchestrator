@@ -623,6 +623,10 @@ export interface ElectronAPI {
   loadSkipPermissions(projectPath: string): Promise<boolean>;
   saveSkipPermissions(projectPath: string, skipPermissions: boolean): Promise<void>;
 
+  // Profile Badge (header-profile-badge feature)
+  // Requirements: 1.1, 1.2, 1.3
+  loadProfile(projectPath: string): Promise<{ name: string; installedAt: string } | null>;
+
   // Menu Events - Layout Reset
   onMenuResetLayout(callback: () => void): () => void;
 
@@ -863,6 +867,42 @@ export interface ElectronAPI {
       path?: string;
       message?: string;
     };
+  }>;
+
+  // ============================================================
+  // Bugs Worktree Support (bugs-worktree-support feature)
+  // Requirements: 3.1, 3.3, 4.6, 8.5
+  // ============================================================
+
+  /**
+   * Create a worktree for a bug fix
+   * @param bugName Bug name (will create branch bugfix/{bugName})
+   * @returns Result with worktree info on success
+   */
+  createBugWorktree(bugName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error?: { type: string; currentBranch?: string; path?: string; message?: string };
+  }>;
+
+  /**
+   * Remove a bug worktree and its associated branch
+   * @param bugName Bug name of the worktree to remove
+   * @returns Result with void on success
+   */
+  removeBugWorktree(bugName: string): Promise<{
+    ok: true;
+    value: void;
+  } | {
+    ok: false;
+    error?: { type: string; message?: string };
   }>;
 
   // ============================================================

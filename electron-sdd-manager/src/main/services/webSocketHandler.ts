@@ -88,6 +88,15 @@ export interface AgentLogsProvider {
  * State provider interface for retrieving project/spec/bug information
  * Requirements: 1.1, 5.5 (Task 1.1 - StateProvider.getBugs())
  */
+/**
+ * Profile configuration from sdd-orchestrator.json
+ * Requirements: header-profile-badge 1.4, 3.1
+ */
+export interface ProfileConfig {
+  readonly name: 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
+  readonly installedAt: string;
+}
+
 export interface StateProvider {
   /** Get the current project path */
   getProjectPath(): string;
@@ -99,6 +108,8 @@ export interface StateProvider {
   getAgents?(): Promise<AgentStateInfo[]>;
   /** Get the application version (optional for backward compatibility) */
   getVersion?(): string;
+  /** Get the installed profile configuration (optional for backward compatibility) */
+  getProfile?(): Promise<ProfileConfig | null>;
 }
 
 /**
@@ -611,6 +622,10 @@ export class WebSocketHandler {
       // Spec detail handlers (remote-ui-react-migration Task 6.3)
       case 'GET_SPEC_DETAIL':
         await this.handleGetSpecDetail(client, message);
+        break;
+      // Profile handlers (header-profile-badge feature)
+      case 'GET_PROFILE':
+        await this.handleGetProfile(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2164,5 +2179,26 @@ export class WebSocketHandler {
         timestamp: Date.now(),
       });
     }
+  }
+
+  // ============================================================
+  // Profile Handlers (header-profile-badge feature)
+  // Requirements: 1.4, 3.1, 3.2
+  // ============================================================
+
+  /**
+   * Handle GET_PROFILE message
+   * Requirements: header-profile-badge 3.1
+   * Retrieves installed profile configuration
+   */
+  private async handleGetProfile(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const profile = this.stateProvider?.getProfile ? await this.stateProvider.getProfile() : null;
+
+    this.send(client.id, {
+      type: 'PROFILE_UPDATED',
+      payload: { profile },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
   }
 }

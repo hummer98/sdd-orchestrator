@@ -214,6 +214,10 @@ export class WebSocketApiClient implements ApiClient {
       case 'AUTO_EXECUTION_STATUS_CHANGED':
         this.emit('autoExecutionStatusChanged', message.payload);
         break;
+      // header-profile-badge feature: profile updates from server
+      case 'PROFILE_UPDATED':
+        this.emit('profileUpdated', message.payload);
+        break;
     }
   }
 
@@ -410,6 +414,19 @@ export class WebSocketApiClient implements ApiClient {
 
   async saveFile(filePath: string, content: string): Promise<Result<void, ApiError>> {
     return this.wrapRequest<void>('SAVE_FILE', { filePath, content });
+  }
+
+  // ===========================================================================
+  // Profile Operations (header-profile-badge feature)
+  // Requirements: 3.1, 5.1
+  // ===========================================================================
+
+  /**
+   * Get installed profile configuration
+   * @returns ProfileConfig or null if not installed
+   */
+  async getProfile(): Promise<Result<{ name: string; installedAt: string } | null, ApiError>> {
+    return this.wrapRequest<{ name: string; installedAt: string } | null>('GET_PROFILE');
   }
 
   // ===========================================================================

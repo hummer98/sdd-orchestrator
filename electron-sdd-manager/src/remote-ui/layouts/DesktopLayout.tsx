@@ -8,9 +8,15 @@
  * - Similar structure to Electron renderer layout
  *
  * Design Decision: DD-003 in design.md
+ *
+ * header-profile-badge feature: ProfileBadge added to sidebar header
+ * Requirements: 4.1, 4.2, 4.3
  */
 
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
+import { ProfileBadge } from '../../shared/components/ui';
+import { useApi } from '../../shared';
+import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
 
 // =============================================================================
 // Types
@@ -78,15 +84,8 @@ export function DesktopLayout({
         style={{ width: currentSidebarWidth }}
         className="flex-shrink-0 flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
       >
-        {/* Sidebar Header */}
-        <div className="flex-shrink-0 h-12 px-4 flex items-center border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
-            SDD Orchestrator
-          </h1>
-          <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-            Remote
-          </span>
-        </div>
+        {/* Sidebar Header with ProfileBadge */}
+        <SidebarHeader />
 
         {/* Sidebar Content */}
         <div className="flex-1 overflow-y-auto">
@@ -152,6 +151,43 @@ export function DesktopLayout({
 // =============================================================================
 // Sub-components
 // =============================================================================
+
+/**
+ * SidebarHeader - Sidebar header with ProfileBadge
+ * header-profile-badge feature: ProfileBadge added
+ * Requirements: 4.1, 4.2, 4.3
+ */
+function SidebarHeader(): React.ReactElement {
+  const apiClient = useApi();
+  const [profile, setProfile] = useState<{ name: string } | null>(null);
+
+  useEffect(() => {
+    // Load profile on mount (only if getProfile is available)
+    if (apiClient.getProfile) {
+      apiClient.getProfile().then(result => {
+        if (result.ok) {
+          setProfile(result.value);
+        }
+      });
+    }
+  }, [apiClient]);
+
+  return (
+    <div className="flex-shrink-0 h-12 px-4 flex items-center border-b border-gray-200 dark:border-gray-700">
+      <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
+        SDD Orchestrator
+      </h1>
+      <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+        Remote
+      </span>
+      {/* header-profile-badge feature: ProfileBadge */}
+      <ProfileBadge
+        profile={(profile?.name as ProfileName) ?? null}
+        className="ml-2"
+      />
+    </div>
+  );
+}
 
 /**
  * DesktopHeader - Fixed header for desktop layout

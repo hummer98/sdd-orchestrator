@@ -1683,6 +1683,19 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // Profile Badge (header-profile-badge feature)
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_PROFILE,
+    async (_event, projectPath: string): Promise<import('../services/layoutConfigService').ProfileConfig | null> => {
+      logger.debug('[handlers] LOAD_PROFILE called', { projectPath });
+      return layoutConfigService.loadProfile(projectPath);
+    }
+  );
+
+  // ============================================================
   // Experimental Tools Install (experimental-tools-installer feature)
   // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
   // ============================================================

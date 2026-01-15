@@ -246,6 +246,19 @@ export const IPC_CHANNELS = {
   // Spec merge execution (git-worktree-support Task 6.1)
   // Requirements: 5.1, 5.2
   EXECUTE_SPEC_MERGE: 'ipc:execute-spec-merge',
+
+  // Bug Worktree Support (bugs-worktree-support feature)
+  // Requirements: 3.1, 3.3, 4.6, 8.5
+  BUG_WORKTREE_CREATE: 'bug-worktree:create',
+  BUG_WORKTREE_REMOVE: 'bug-worktree:remove',
+  // Settings: Default worktree mode for bugs
+  // Requirements: 9.1, 9.2
+  SETTINGS_BUGS_WORKTREE_DEFAULT_GET: 'settings:bugs-worktree-default:get',
+  SETTINGS_BUGS_WORKTREE_DEFAULT_SET: 'settings:bugs-worktree-default:set',
+
+  // Profile Badge (header-profile-badge feature)
+  // Requirements: 1.1, 1.2, 1.3
+  LOAD_PROFILE: 'ipc:load-profile',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

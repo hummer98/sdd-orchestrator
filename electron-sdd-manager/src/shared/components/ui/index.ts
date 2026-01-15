@@ -31,3 +31,6 @@ export type { SpinnerProps, SpinnerSize } from './Spinner';
 
 export { Toast } from './Toast';
 export type { ToastProps, ToastType, ToastAction } from './Toast';
+
+export { ProfileBadge } from './ProfileBadge';
+export type { ProfileBadgeProps, ProfileName } from './ProfileBadge';

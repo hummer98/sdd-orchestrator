@@ -36,10 +36,12 @@ import {
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
-import type { CommandPrefix } from './stores';
+import type { CommandPrefix, ProfileConfig } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
 // Task 8.2: Shared providers for API abstraction and platform capabilities
 import { ApiClientProvider, PlatformProvider } from '../shared';
+// header-profile-badge feature
+import { ProfileBadge } from '../shared/components/ui';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -66,7 +68,7 @@ const DEFAULT_LAYOUT = {
 };
 
 export function App() {
-  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles } = useProjectStore();
+  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles, installedProfile } = useProjectStore();
   const { specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   // Task 5: bugs-pane-integration - Bug選択状態の参照
@@ -486,6 +488,11 @@ export function App() {
                 <span className="text-base font-medium text-gray-700 dark:text-gray-300">
                   {currentProject.split('/').pop()}
                 </span>
+                {/* header-profile-badge feature: show installed profile */}
+                <ProfileBadge
+                  profile={installedProfile?.name ?? null}
+                  className="ml-2"
+                />
               </div>
             )}
             {/* Spec title in header */}
@@ -657,6 +664,17 @@ export function App() {
 
             // Refresh spec-manager files check to update UI (bug fix: commandset-install-warning-persists)
             await checkSpecManagerFiles(currentProject);
+
+            // header-profile-badge feature: Reload profile after successful install
+            // Requirements: 3.2, 3.3 - Auto-update profile badge after installation
+            try {
+              const profile = await window.electronAPI.loadProfile(currentProject);
+              // Cast to ProfileConfig since we know the IPC returns the correct structure
+              useProjectStore.setState({ installedProfile: profile as ProfileConfig | null });
+              console.log('[App] Profile reloaded after commandset install:', profile);
+            } catch (error) {
+              console.error('[App] Failed to reload profile after install:', error);
+            }
 
             // Return summary for the dialog to display
             return {

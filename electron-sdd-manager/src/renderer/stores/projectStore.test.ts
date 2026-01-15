@@ -2,6 +2,7 @@
  * Project Store Tests
  * TDD: Testing project state management
  * Requirements: 1.1-1.5
+ * Requirements (header-profile-badge): 3.1, 3.2, 4.1, 4.2
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,6 +21,9 @@ describe('useProjectStore', () => {
       error: null,
       permissionsCheck: null,
       lastSelectResult: null,
+      // header-profile-badge feature
+      installedProfile: null,
+      profileLoading: false,
       // Note: specs/bugs are now managed by specStore/bugStore (SSOT)
     });
     // Reset specStore and bugStore
@@ -305,6 +309,162 @@ describe('useProjectStore', () => {
       expect(state.currentProject).toBe('/test/project');
       // permissionsCheck should be null on error
       expect(state.permissionsCheck).toBeNull();
+    });
+  });
+
+  // ============================================================
+  // Profile Badge (header-profile-badge feature)
+  // Requirements: 3.1, 3.2, 4.1, 4.2
+  // ============================================================
+
+  describe('profile management', () => {
+    it('should have null installedProfile initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.installedProfile).toBeNull();
+    });
+
+    it('should load profile after project selection', async () => {
+      const mockProfile = { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' };
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(mockProfile);
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(state.installedProfile).toEqual(mockProfile);
+      expect(window.electronAPI.loadProfile).toHaveBeenCalledWith('/test/project');
+    });
+
+    it('should set installedProfile to null when no profile is installed', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(null);
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(state.installedProfile).toBeNull();
+    });
+
+    it('should clear profile when switching projects', async () => {
+      // Set up initial profile
+      useProjectStore.setState({
+        currentProject: '/old-project',
+        installedProfile: { name: 'spec-manager', installedAt: '2024-01-01' },
+      });
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      const newProfile = { name: 'cc-sdd-agent', installedAt: '2024-06-01' };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/new-project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(newProfile);
+
+      await useProjectStore.getState().selectProject('/new-project');
+
+      const state = useProjectStore.getState();
+      expect(state.installedProfile).toEqual(newProfile);
+    });
+
+    it('should handle profile loading error gracefully', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadProfile = vi.fn().mockRejectedValue(new Error('Load failed'));
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      // Should still succeed project selection even if profile load fails
+      expect(state.currentProject).toBe('/test/project');
+      expect(state.installedProfile).toBeNull();
+    });
+
+    it('should clear profile when clearing project', () => {
+      useProjectStore.setState({
+        currentProject: '/test/project',
+        installedProfile: { name: 'cc-sdd', installedAt: '2024-01-01' },
+      });
+
+      useProjectStore.getState().clearProject();
+
+      const state = useProjectStore.getState();
+      expect(state.currentProject).toBeNull();
+      expect(state.installedProfile).toBeNull();
     });
   });
 });

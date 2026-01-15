@@ -45,6 +45,13 @@ export interface PermissionsCheckResult {
   readonly present: readonly string[];
 }
 
+/** Profile configuration type (header-profile-badge feature) */
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
+export interface ProfileConfig {
+  readonly name: ProfileName;
+  readonly installedAt: string;
+}
+
 interface ProjectState {
   currentProject: string | null;
   recentProjects: string[];
@@ -65,6 +72,10 @@ interface ProjectState {
   // permissions check
   permissionsCheck: PermissionsCheckResult | null;
   permissionsFixLoading: boolean;
+  // header-profile-badge feature
+  // Requirements: 3.1, 3.2
+  installedProfile: ProfileConfig | null;
+  profileLoading: boolean;
 }
 
 /** シェル許可追加結果 */
@@ -109,6 +120,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   installError: null,
   permissionsCheck: null,
   permissionsFixLoading: false,
+  // header-profile-badge feature
+  installedProfile: null,
+  profileLoading: false,
 
   // Actions
   // ============================================================
@@ -215,6 +229,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         // Don't fail project selection if permissions check fails
         set({ permissionsCheck: null });
       }
+
+      // header-profile-badge feature: Load installed profile
+      // Requirements: 3.1, 4.1
+      try {
+        const profile = await window.electronAPI.loadProfile(path);
+        set({ installedProfile: profile as ProfileConfig | null });
+      } catch (error) {
+        console.error('[projectStore] Failed to load profile:', error);
+        // Don't fail project selection if profile load fails
+        set({ installedProfile: null });
+      }
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'プロジェクトの選択に失敗しました',
@@ -256,6 +281,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       installError: null,
       permissionsCheck: null,
       permissionsFixLoading: false,
+      // header-profile-badge feature
+      installedProfile: null,
+      profileLoading: false,
     });
   },
 

@@ -366,6 +366,18 @@ export interface ApiClient {
    * Check if connected
    */
   isConnected?(): boolean;
+
+  // ===========================================================================
+  // Profile Operations (header-profile-badge feature)
+  // Requirements: 3.1, 5.1
+  // ===========================================================================
+
+  /**
+   * Get installed profile configuration
+   * Optional: Only implemented for Remote UI (WebSocket client)
+   * @returns ProfileConfig or null if not installed
+   */
+  getProfile?(): Promise<Result<{ name: string; installedAt: string } | null, ApiError>>;
 }
 
 // =============================================================================

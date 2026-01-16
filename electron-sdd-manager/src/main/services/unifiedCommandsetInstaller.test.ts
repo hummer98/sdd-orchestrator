@@ -94,7 +94,7 @@ describe('UnifiedCommandsetInstaller', () => {
     }
 
     // Bug commands
-    const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status'];
+    const bugCommands = ['bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status', 'bug-merge'];
     for (const cmd of bugCommands) {
       const filePath = path.join(templateDir, 'commands', 'bug', `${cmd}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -155,6 +155,7 @@ describe('UnifiedCommandsetInstaller', () => {
       'templates/bugs/analysis.md',
       'templates/bugs/fix.md',
       'templates/bugs/verification.md',
+      'templates/bugs/bug.json',
     ];
     for (const setting of settings) {
       const filePath = path.join(templateDir, 'settings', setting);

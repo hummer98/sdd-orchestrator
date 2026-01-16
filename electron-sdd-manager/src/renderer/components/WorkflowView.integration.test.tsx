@@ -10,6 +10,10 @@ import { WorkflowView } from './WorkflowView';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
+// Import child stores directly for proper test setup
+import { useSpecDetailStore } from '../stores/spec/specDetailStore';
+import { useSpecListStore } from '../stores/spec/specListStore';
+import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import type { SpecDetail } from '../types';
 import type { ExtendedSpecJson } from '../types/workflow';
 
@@ -50,16 +54,27 @@ describe('WorkflowView Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset stores
-    useSpecStore.setState({
-      specs: [],
+    // Reset child stores directly (facade aggregates these)
+    // This ensures selectedSpec is properly set in the underlying store
+    useSpecDetailStore.setState({
       selectedSpec: mockSpecDetail.metadata,
       specDetail: mockSpecDetail,
+      isLoading: false,
+      error: null,
+    });
+
+    useSpecListStore.setState({
+      specs: [],
+      specJsonMap: new Map(),
       sortBy: 'name',
       sortOrder: 'asc',
       statusFilter: 'all',
       isLoading: false,
       error: null,
+    });
+
+    useAutoExecutionStore.setState({
+      autoExecutionRuntimeMap: new Map(),
     });
 
     useWorkflowStore.setState({

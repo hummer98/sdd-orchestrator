@@ -201,7 +201,7 @@ describe('CommandsetDefinitionManager', () => {
       const definition = manager.getDefinition('bug');
       const commandFiles = definition.files.filter(f => f.includes('commands/'));
 
-      expect(commandFiles.length).toBe(5);
+      expect(commandFiles.length).toBe(6);
     });
   });
 

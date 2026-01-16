@@ -63,6 +63,9 @@ describe('HangDetector', () => {
   });
 
   describe('hang detection', () => {
+    // Note: These tests call checkForHangingAgents directly because fake timers
+    // cannot properly await async callbacks inside setInterval
+
     it('should detect hanging agents', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
@@ -82,13 +85,17 @@ describe('HangDetector', () => {
 
       await recordService.writeRecord(hangingRecord);
 
+      // Verify record was written
+      const writtenRecord = await recordService.readRecord('spec-a', 'agent-001');
+      expect(writtenRecord).not.toBeNull();
+      expect(writtenRecord?.status).toBe('running');
+
       const callback = vi.fn();
       detector.onHangDetected(callback);
-      detector.start(300000, 60000); // 5 min threshold, 1 min interval
+      detector.setThreshold(300000); // 5 min threshold
 
-      // Advance time by 1 minute (interval)
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      // Directly call checkForHangingAgents (public for testing)
+      await detector.checkForHangingAgents();
 
       // Should detect the hanging agent
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
@@ -117,11 +124,10 @@ describe('HangDetector', () => {
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
-      detector.start(300000, 60000); // 5 min threshold, 1 min interval
+      detector.setThreshold(300000); // 5 min threshold
 
-      // Advance time by 1 minute (interval)
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      // Directly call checkForHangingAgents
+      await detector.checkForHangingAgents();
 
       // Should not detect the active agent
       expect(callback).not.toHaveBeenCalled();
@@ -148,11 +154,10 @@ describe('HangDetector', () => {
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
-      detector.start(300000, 60000);
+      detector.setThreshold(300000); // 5 min threshold
 
-      // Advance time by 1 minute (interval)
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      // Directly call checkForHangingAgents
+      await detector.checkForHangingAgents();
 
       // Should not detect completed agents
       expect(callback).not.toHaveBeenCalled();
@@ -175,10 +180,10 @@ describe('HangDetector', () => {
       };
 
       await recordService.writeRecord(hangingRecord);
+      detector.setThreshold(300000); // 5 min threshold
 
-      detector.start(300000, 60000);
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      // Directly call checkForHangingAgents
+      await detector.checkForHangingAgents();
 
       // Check that status was updated in file
       const record = await recordService.readRecord('spec-a', 'agent-001');
@@ -205,15 +210,12 @@ describe('HangDetector', () => {
 
       const callback = vi.fn();
       detector.onHangDetected(callback);
-      detector.start(300000, 60000);
+      detector.setThreshold(300000); // 5 min threshold
 
-      // Advance by multiple intervals
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      // Call checkForHangingAgents multiple times
+      await detector.checkForHangingAgents();
+      await detector.checkForHangingAgents();
+      await detector.checkForHangingAgents();
 
       // Should only be called once (status changes to 'hang' after first detection)
       expect(callback).toHaveBeenCalledTimes(1);
@@ -246,8 +248,7 @@ describe('HangDetector', () => {
       detector.onHangDetected(callback);
       detector.start(600000, 60000);
 
-      vi.advanceTimersByTime(60000);
-      await flushPromises();
+      await vi.advanceTimersByTimeAsync(60000);
 
       // Should not detect (7 min < 10 min threshold)
       expect(callback).not.toHaveBeenCalled();

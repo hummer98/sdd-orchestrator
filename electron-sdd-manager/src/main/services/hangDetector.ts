@@ -74,8 +74,9 @@ export class HangDetector {
   /**
    * Check for hanging agents and update their status
    * agent-state-file-ssot: Now async, reads from files
+   * Note: Made public for testing purposes (fake timers cannot await internal async callbacks)
    */
-  private async checkForHangingAgents(): Promise<void> {
+  async checkForHangingAgents(): Promise<void> {
     const allRecords = await this.recordService.readAllRecords();
     const now = Date.now();
 

@@ -17,9 +17,20 @@ vi.mock('../stores/bugStore', () => ({
   useBugStore: vi.fn(),
 }));
 
-vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(),
-}));
+vi.mock('../stores/agentStore', () => {
+  // Create a mock that includes subscribe for Zustand store compatibility
+  const mockFn = vi.fn();
+  mockFn.subscribe = vi.fn(() => vi.fn());
+  mockFn.getState = vi.fn(() => ({
+    agents: new Map(),
+    selectedAgentId: null,
+    logs: new Map(),
+    isLoading: false,
+    error: null,
+  }));
+  mockFn.setState = vi.fn();
+  return { useAgentStore: mockFn };
+});
 
 vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),

@@ -59,7 +59,8 @@ describe('BugWorkflowInstaller', () => {
       expect(BUG_COMMANDS).toContain('bug-fix');
       expect(BUG_COMMANDS).toContain('bug-verify');
       expect(BUG_COMMANDS).toContain('bug-status');
-      expect(BUG_COMMANDS.length).toBe(5);
+      expect(BUG_COMMANDS).toContain('bug-merge');
+      expect(BUG_COMMANDS.length).toBe(6);
     });
 
     it('should define all bug templates', () => {
@@ -67,7 +68,8 @@ describe('BugWorkflowInstaller', () => {
       expect(BUG_TEMPLATES).toContain('analysis.md');
       expect(BUG_TEMPLATES).toContain('fix.md');
       expect(BUG_TEMPLATES).toContain('verification.md');
-      expect(BUG_TEMPLATES.length).toBe(4);
+      expect(BUG_TEMPLATES).toContain('bug.json');
+      expect(BUG_TEMPLATES.length).toBe(5);
     });
 
     it('should have CLAUDE.md section with Bug Fix workflow', () => {
@@ -78,6 +80,7 @@ describe('BugWorkflowInstaller', () => {
       expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-fix');
       expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-verify');
       expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-status');
+      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-merge');
     });
   });
 
@@ -92,7 +95,8 @@ describe('BugWorkflowInstaller', () => {
         expect(result.value.installed).toContain('bug-fix');
         expect(result.value.installed).toContain('bug-verify');
         expect(result.value.installed).toContain('bug-status');
-        expect(result.value.installed.length).toBe(5);
+        expect(result.value.installed).toContain('bug-merge');
+        expect(result.value.installed.length).toBe(6);
       }
 
       // Verify files were created in correct location
@@ -114,7 +118,7 @@ describe('BugWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.skipped).toContain('bug-create');
-        expect(result.value.installed.length).toBe(4);
+        expect(result.value.installed.length).toBe(5);
       }
 
       // Verify existing file was not overwritten
@@ -133,7 +137,7 @@ describe('BugWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.overwritten).toContain('bug-create');
-        expect(result.value.installed.length).toBe(4);
+        expect(result.value.installed.length).toBe(5);
       }
 
       // Verify file was overwritten
@@ -152,7 +156,8 @@ describe('BugWorkflowInstaller', () => {
         expect(result.value.installed).toContain('analysis.md');
         expect(result.value.installed).toContain('fix.md');
         expect(result.value.installed).toContain('verification.md');
-        expect(result.value.installed.length).toBe(4);
+        expect(result.value.installed).toContain('bug.json');
+        expect(result.value.installed.length).toBe(5);
       }
 
       // Verify files were created in correct location
@@ -174,7 +179,7 @@ describe('BugWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.skipped).toContain('report.md');
-        expect(result.value.installed.length).toBe(3);
+        expect(result.value.installed.length).toBe(4);
       }
     });
   });
@@ -279,8 +284,8 @@ describe('BugWorkflowInstaller', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.commands.installed.length).toBe(5);
-        expect(result.value.templates.installed.length).toBe(4);
+        expect(result.value.commands.installed.length).toBe(6);
+        expect(result.value.templates.installed.length).toBe(5);
         expect(result.value.claudeMd.action).toBe('created');
       }
     });
@@ -300,8 +305,8 @@ describe('BugWorkflowInstaller', () => {
       if (result.ok) {
         expect(result.value.commands.skipped).toContain('bug-create');
         expect(result.value.templates.skipped).toContain('report.md');
-        expect(result.value.commands.installed.length).toBe(4);
-        expect(result.value.templates.installed.length).toBe(3);
+        expect(result.value.commands.installed.length).toBe(5);
+        expect(result.value.templates.installed.length).toBe(4);
       }
     });
   });
@@ -340,7 +345,7 @@ describe('BugWorkflowInstaller', () => {
 
       expect(status.commands.installed).toContain('bug-create');
       expect(status.commands.missing).not.toContain('bug-create');
-      expect(status.commands.missing.length).toBe(4);
+      expect(status.commands.missing.length).toBe(5);
     });
   });
 });

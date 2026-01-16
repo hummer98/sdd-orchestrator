@@ -9,7 +9,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import type { ResultSubtype } from './logParserService';
-import type { CheckImplResult, AnalyzeError } from './implCompletionAnalyzer';
 
 // Mock dependencies before importing SpecManagerService
 vi.mock('./logParserService', () => ({
@@ -18,14 +17,6 @@ vi.mock('./logParserService', () => ({
     getResultLine: vi.fn(),
     getLastAssistantMessage: vi.fn(),
   })),
-}));
-
-vi.mock('./implCompletionAnalyzer', () => ({
-  ImplCompletionAnalyzer: vi.fn().mockImplementation(() => ({
-    analyzeCompletion: vi.fn(),
-  })),
-  createImplCompletionAnalyzer: vi.fn().mockReturnValue({ ok: false, error: { type: 'API_KEY_NOT_SET' } }),
-  getAnthropicApiKey: vi.fn().mockReturnValue({ ok: false, error: { type: 'API_KEY_NOT_SET' } }),
 }));
 
 vi.mock('./fileService', () => ({
@@ -38,7 +29,6 @@ vi.mock('./fileService', () => ({
 // Import after mocks
 import { SpecManagerService, MAX_CONTINUE_RETRIES } from './specManagerService';
 import { LogParserService } from './logParserService';
-import { ImplCompletionAnalyzer } from './implCompletionAnalyzer';
 
 describe('SpecManagerService - spec-manager Extensions', () => {
   let testDir: string;
@@ -205,51 +195,10 @@ describe('SpecManagerService - spec-manager Extensions', () => {
   });
 
   // ============================================================
-  // Task 5.3: impl完了解析機能
-  // Requirements: 2.4, 5.1
+  // Task 5.3: impl完了解析機能 (implCompletionAnalyzer was removed in execution-store-consolidation)
+  // NOTE: analyzeImplCompletion method and ImplCompletionAnalyzer were removed.
+  // Tests for this functionality have been removed.
   // ============================================================
-  describe('Task 5.3: analyzeImplCompletion', () => {
-    it('should exist as a method', () => {
-      expect(typeof service.analyzeImplCompletion).toBe('function');
-    });
-
-    it('should use LogParserService to get result line and last assistant message', async () => {
-      const mockLogParser = new LogParserService() as any;
-      mockLogParser.getResultLine = vi.fn().mockResolvedValue({
-        ok: true,
-        value: '{"type":"result","subtype":"success"}',
-      });
-      mockLogParser.getLastAssistantMessage = vi.fn().mockResolvedValue({
-        ok: true,
-        value: 'Task 1.1 completed successfully.',
-      });
-
-      // The service should internally use these methods
-      expect(typeof mockLogParser.getResultLine).toBe('function');
-      expect(typeof mockLogParser.getLastAssistantMessage).toBe('function');
-    });
-
-    it('should return CheckImplResult from ImplCompletionAnalyzer', async () => {
-      const expectedResult: CheckImplResult = {
-        status: 'success',
-        completedTasks: ['1.1', '1.2'],
-        stats: {
-          num_turns: 5,
-          duration_ms: 10000,
-          total_cost_usd: 0.05,
-        },
-      };
-
-      // Mock the analyzer
-      const mockAnalyzer = new ImplCompletionAnalyzer('test-key') as any;
-      mockAnalyzer.analyzeCompletion = vi.fn().mockResolvedValue({
-        ok: true,
-        value: expectedResult,
-      });
-
-      expect(typeof mockAnalyzer.analyzeCompletion).toBe('function');
-    });
-  });
 
   // ============================================================
   // Mutex Pattern for Exclusive Control

@@ -59,7 +59,9 @@ export function SpecActionsView({
           status: (rd.status ?? 'incomplete') as 'review_complete' | 'reply_complete' | 'incomplete',
           reviewCompletedAt: rd.reviewCompletedAt,
           replyCompletedAt: rd.replyCompletedAt,
-          fixApplied: rd.fixApplied,
+          fixStatus: rd.fixStatus,
+          fixRequired: rd.fixRequired,
+          needsDiscussion: rd.needsDiscussion,
         })),
       }
     : null;

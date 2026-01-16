@@ -11,7 +11,7 @@ import { clsx } from 'clsx';
 import { Bot, Copy, Check, GitBranch } from 'lucide-react';
 import type { SpecPhase } from '@shared/api/types';
 import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
-import type { WorktreeConfig } from '@renderer/types/worktree';
+import { isActualWorktreeMode, type WorktreeConfig } from '@renderer/types/worktree';
 import type { DocumentReviewState } from '@shared/types/review';
 
 // =============================================================================
@@ -213,7 +213,8 @@ export function SpecListItem({
           })()}
 
           {/* git-worktree-support: Task 11.1 - worktree badge */}
-          {worktree && (
+          {/* worktree-execution-ui Task 8.2: Only show when actual worktree mode (path exists) */}
+          {worktree && isActualWorktreeMode({ worktree }) && (
             <span
               data-testid="worktree-badge"
               className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"

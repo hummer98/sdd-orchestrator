@@ -8,6 +8,8 @@ import { describe, it, expect } from 'vitest';
 import {
   isWorktreeConfig,
   isWorktreeMode,
+  isActualWorktreeMode,
+  isImplStarted,
   type WorktreeConfig,
   type WorktreeError,
   type WorktreeInfo,
@@ -39,12 +41,13 @@ describe('WorktreeConfig type guard', () => {
       expect(isWorktreeConfig(true)).toBe(false);
     });
 
-    it('should return false for missing path', () => {
+    // worktree-execution-ui: path is now optional, this test updated
+    it('should return true for missing path (normal mode)', () => {
       const config = {
         branch: 'feature/my-feature',
         created_at: '2026-01-12T12:00:00+09:00',
       };
-      expect(isWorktreeConfig(config)).toBe(false);
+      expect(isWorktreeConfig(config)).toBe(true);
     });
 
     it('should return false for missing branch', () => {
@@ -63,13 +66,14 @@ describe('WorktreeConfig type guard', () => {
       expect(isWorktreeConfig(config)).toBe(false);
     });
 
-    it('should return false for empty path', () => {
+    // worktree-execution-ui: path is now optional, empty path is valid (treated as normal mode)
+    it('should return true for empty path (treated as normal mode)', () => {
       const config = {
         path: '',
         branch: 'feature/my-feature',
         created_at: '2026-01-12T12:00:00+09:00',
       };
-      expect(isWorktreeConfig(config)).toBe(false);
+      expect(isWorktreeConfig(config)).toBe(true);
     });
 
     it('should return false for empty branch', () => {
@@ -90,8 +94,10 @@ describe('WorktreeConfig type guard', () => {
       expect(isWorktreeConfig(config)).toBe(false);
     });
 
-    it('should return false for wrong types', () => {
-      expect(isWorktreeConfig({ path: 123, branch: 'test', created_at: 'test' })).toBe(false);
+    // worktree-execution-ui: path type is not checked since path is optional
+    it('should return false for wrong types on branch and created_at', () => {
+      // path with wrong type doesn't fail since path is optional
+      expect(isWorktreeConfig({ path: 123, branch: 'test', created_at: 'test' })).toBe(true);
       expect(isWorktreeConfig({ path: 'test', branch: 123, created_at: 'test' })).toBe(false);
       expect(isWorktreeConfig({ path: 'test', branch: 'test', created_at: 123 })).toBe(false);
     });
@@ -258,5 +264,147 @@ describe('WorktreeServiceResult type', () => {
     if (!result.ok) {
       expect(result.error.type).toBe('GIT_ERROR');
     }
+  });
+});
+
+// =============================================================================
+// worktree-execution-ui: Task 1.1 - Extended tests for new requirements
+// Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3
+// =============================================================================
+
+describe('WorktreeConfig with optional path (worktree-execution-ui)', () => {
+  describe('isWorktreeConfig with optional path', () => {
+    // Requirement 1.1: path field is now optional
+    it('should return true for config without path (normal mode)', () => {
+      const config = {
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      };
+      expect(isWorktreeConfig(config)).toBe(true);
+    });
+
+    // Requirement 1.2: worktree mode config (with path)
+    it('should return true for config with path (worktree mode)', () => {
+      const config: WorktreeConfig = {
+        path: '../sdd-orchestrator-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      };
+      expect(isWorktreeConfig(config)).toBe(true);
+    });
+
+    // Requirement 2.1: isWorktreeConfig validates branch + created_at only
+    it('should return false if branch is missing', () => {
+      const config = {
+        created_at: '2026-01-17T12:00:00Z',
+      };
+      expect(isWorktreeConfig(config)).toBe(false);
+    });
+
+    it('should return false if created_at is missing', () => {
+      const config = {
+        branch: 'feature/my-feature',
+      };
+      expect(isWorktreeConfig(config)).toBe(false);
+    });
+  });
+});
+
+describe('isActualWorktreeMode (worktree-execution-ui)', () => {
+  // Requirement 2.2: isActualWorktreeMode checks for path presence
+  it('should return true when worktree.path exists', () => {
+    const specJson = {
+      worktree: {
+        path: '../sdd-orchestrator-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isActualWorktreeMode(specJson)).toBe(true);
+  });
+
+  it('should return false when worktree exists but path is absent (normal mode)', () => {
+    const specJson = {
+      worktree: {
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isActualWorktreeMode(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree is undefined', () => {
+    const specJson = {};
+    expect(isActualWorktreeMode(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree is null', () => {
+    const specJson = { worktree: null };
+    expect(isActualWorktreeMode(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree.path is empty string', () => {
+    const specJson = {
+      worktree: {
+        path: '',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isActualWorktreeMode(specJson)).toBe(false);
+  });
+});
+
+describe('isImplStarted (worktree-execution-ui)', () => {
+  // Requirement 2.3: isImplStarted checks for branch presence
+  it('should return true when worktree.branch exists (worktree mode)', () => {
+    const specJson = {
+      worktree: {
+        path: '../sdd-orchestrator-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isImplStarted(specJson)).toBe(true);
+  });
+
+  it('should return true when worktree.branch exists (normal mode)', () => {
+    const specJson = {
+      worktree: {
+        branch: 'main',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isImplStarted(specJson)).toBe(true);
+  });
+
+  // Requirement 1.4: impl not started when worktree field does not exist
+  it('should return false when worktree is undefined', () => {
+    const specJson = {};
+    expect(isImplStarted(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree is null', () => {
+    const specJson = { worktree: null };
+    expect(isImplStarted(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree.branch is empty string', () => {
+    const specJson = {
+      worktree: {
+        branch: '',
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isImplStarted(specJson)).toBe(false);
+  });
+
+  it('should return false when worktree.branch is missing', () => {
+    const specJson = {
+      worktree: {
+        created_at: '2026-01-17T12:00:00Z',
+      },
+    };
+    expect(isImplStarted(specJson)).toBe(false);
   });
 });

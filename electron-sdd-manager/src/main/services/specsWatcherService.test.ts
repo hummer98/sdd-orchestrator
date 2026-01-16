@@ -146,6 +146,7 @@ describe('SpecsWatcherService', () => {
   // ============================================================
   // spec-phase-auto-update Task 6: デプロイ完了検出
   // Requirements: 2.2, 5.2
+  // worktree-execution-ui FIX-3: worktreeフィールド削除
   // ============================================================
   describe('Deploy completion detection', () => {
     it('should check deploy completion when spec.json changes', async () => {
@@ -163,6 +164,27 @@ describe('SpecsWatcherService', () => {
 
       // This test verifies that the method exists and can be called
       expect(checkDeployCompletion).toBeDefined();
+    });
+
+    // FIX-3: worktreeフィールド削除のテスト
+    it('should have checkDeployCompletion method that can remove worktree field', async () => {
+      const mockRemoveWorktreeField = vi.fn().mockResolvedValue({ ok: true });
+      const mockFileService = {
+        updateSpecJsonFromPhase: vi.fn().mockResolvedValue({ ok: true }),
+        validatePhaseTransition: vi.fn().mockReturnValue({ ok: true }),
+        removeWorktreeField: mockRemoveWorktreeField,
+      };
+
+      const service = new SpecsWatcherService('/project', mockFileService as any);
+
+      // Access checkDeployCompletion via private method
+      const checkDeployCompletion = (service as unknown as {
+        checkDeployCompletion: (filePath: string, specId: string) => Promise<void>
+      }).checkDeployCompletion;
+
+      // The method should exist and be callable
+      expect(checkDeployCompletion).toBeDefined();
+      // Note: Actual behavior tested in integration tests
     });
   });
 

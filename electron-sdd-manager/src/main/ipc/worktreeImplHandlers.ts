@@ -124,6 +124,88 @@ export async function handleImplStartWithWorktree(
   }
 }
 
+// =============================================================================
+// worktree-execution-ui Task 5.1: Normal Mode Impl Start
+// Requirements: 9.1, 9.2
+// =============================================================================
+
+/**
+ * Result type for normal mode impl start
+ */
+export type ImplStartNormalModeResult =
+  | { ok: true; value: { branch: string } }
+  | { ok: false; error: ImplStartError };
+
+/**
+ * Handle impl start in normal mode (without worktree)
+ * Creates spec.json.worktree with only branch and created_at fields
+ * worktree-execution-ui: Task 5.1
+ * Requirements: 9.1, 9.2
+ *
+ * @param projectPath - Path to the main project
+ * @param specPath - Path to the spec directory (.kiro/specs/{feature})
+ * @returns Result with current branch name, or error
+ */
+export async function handleImplStartNormalMode(
+  projectPath: string,
+  specPath: string
+): Promise<ImplStartNormalModeResult> {
+  const worktreeService = new WorktreeService(projectPath);
+
+  // Get current branch name (Requirement 9.1)
+  const branchResult = await worktreeService.getCurrentBranch();
+  if (!branchResult.ok) {
+    return branchResult;
+  }
+
+  const currentBranch = branchResult.value;
+  const createdAt = new Date().toISOString();
+
+  // Update spec.json with worktree field (branch + created_at only, no path)
+  // (Requirement 9.2)
+  const specJsonPath = path.join(specPath, 'spec.json');
+
+  try {
+    // Read existing spec.json
+    const specJsonContent = await fs.readFile(specJsonPath, 'utf-8');
+    const specJson = JSON.parse(specJsonContent);
+
+    // Add worktree configuration (without path for normal mode)
+    specJson.worktree = {
+      branch: currentBranch,
+      created_at: createdAt,
+    };
+
+    // Write updated spec.json
+    await fs.writeFile(specJsonPath, JSON.stringify(specJson, null, 2));
+
+    logger.info('[WorktreeImplHandlers] Normal mode impl started and spec.json updated', {
+      specPath,
+      branch: currentBranch,
+    });
+
+    return {
+      ok: true,
+      value: {
+        branch: currentBranch,
+      },
+    };
+  } catch (error) {
+    logger.error('[WorktreeImplHandlers] Failed to update spec.json for normal mode impl start', {
+      specPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      ok: false,
+      error: {
+        type: 'SPEC_JSON_ERROR',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
 /**
  * Get the working directory for Agent execution
  * If spec has worktree config, returns worktree absolute path
@@ -146,6 +228,12 @@ export function getWorktreeCwd(
 
   // TypeScript now knows specJson.worktree is WorktreeConfig
   const worktreeConfig = specJson.worktree as WorktreeConfig;
+
+  // worktree-execution-ui: path is now optional, check before resolving
+  if (!worktreeConfig.path) {
+    // Normal mode - no worktree path, use project path
+    return projectPath;
+  }
 
   // Use WorktreeService to resolve the path
   const worktreeService = new WorktreeService(projectPath);

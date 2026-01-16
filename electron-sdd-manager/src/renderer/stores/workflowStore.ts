@@ -123,6 +123,19 @@ export interface DocumentReviewOptions {
 // and in DEFAULT_SPEC_AUTO_EXECUTION_STATE (types/index.ts)
 
 // ============================================================
+// worktree-execution-ui Task 2.1: Worktree Mode Selection
+// Requirements: 3.1, 3.2, 3.3, 3.4
+// ============================================================
+
+/**
+ * Worktree mode selection state
+ * - 'undecided': User has not yet selected a mode (default)
+ * - 'normal': User selected to work on current branch
+ * - 'worktree': User selected to work in a worktree
+ */
+export type WorktreeModeSelection = 'undecided' | 'normal' | 'worktree';
+
+// ============================================================
 // Task 1.1: Auto Execution Status Types (DEPRECATED)
 // Requirements: 7.4
 // NOTE: AutoExecutionStatus has been migrated to spec.json
@@ -187,6 +200,13 @@ interface WorkflowState {
   // ============================================================
   /** Inspection自動実行フラグ */
   inspectionAutoExecutionFlag: InspectionAutoExecutionFlag;
+
+  // ============================================================
+  // worktree-execution-ui Task 2.1: Worktree Mode Selection State
+  // Requirements: 3.1, 3.2, 3.3, 3.4
+  // ============================================================
+  /** Worktreeモード選択状態（runtime、非永続化） */
+  worktreeModeSelection: WorktreeModeSelection;
 }
 
 interface WorkflowActions {
@@ -249,6 +269,15 @@ interface WorkflowActions {
   // ============================================================
   /** Inspection自動実行フラグを設定 */
   setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => void;
+
+  // ============================================================
+  // worktree-execution-ui Task 2.1: Worktree Mode Selection Actions
+  // Requirements: 3.2, 3.3, 3.4
+  // ============================================================
+  /** Worktreeモード選択を設定 */
+  setWorktreeModeSelection: (selection: WorktreeModeSelection) => void;
+  /** Worktreeモード選択をリセット（undecidedに戻す） */
+  resetWorktreeModeSelection: () => void;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -286,6 +315,10 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // Bug fix: inspection-auto-execution-toggle - initial state
       // Default to 'pause' - consistent with documentReviewOptions.autoExecutionFlag
       inspectionAutoExecutionFlag: 'pause' as InspectionAutoExecutionFlag,
+
+      // worktree-execution-ui Task 2.1: Worktree Mode Selection - initial state
+      // Requirement 3.1: Default to 'undecided'
+      worktreeModeSelection: 'undecided' as WorktreeModeSelection,
 
       // Task 2.1: Auto Execution Permissions
       // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
@@ -425,6 +458,18 @@ export const useWorkflowStore = create<WorkflowStore>()(
         set({ inspectionAutoExecutionFlag: flag });
         // Persist to spec.json after state update
         persistSettingsToSpec();
+      },
+
+      // ============================================================
+      // worktree-execution-ui Task 2.1: Worktree Mode Selection Actions
+      // Requirements: 3.2, 3.3, 3.4
+      // ============================================================
+      setWorktreeModeSelection: (selection: WorktreeModeSelection) => {
+        set({ worktreeModeSelection: selection });
+      },
+
+      resetWorktreeModeSelection: () => {
+        set({ worktreeModeSelection: 'undecided' });
       },
     }),
     {

@@ -18,7 +18,7 @@ import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { InspectionPanel } from './InspectionPanel';
-import { ImplStartButtons } from '@shared/components/workflow';
+import { ImplFlowFrame } from '@shared/components/workflow';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
@@ -33,7 +33,7 @@ import {
   type PhaseStatus,
   type ExtendedSpecJson,
 } from '../types/workflow';
-import { isWorktreeConfig } from '../types/worktree';
+import { isActualWorktreeMode, isImplStarted } from '../types/worktree';
 
 /** Maximum continue retries - should match MAX_CONTINUE_RETRIES in specManagerService */
 const MAX_CONTINUE_RETRIES = 2;
@@ -405,106 +405,6 @@ export function WorkflowView() {
   // Requirements: 9.4, 9.5, 9.6, 9.7
   // ============================================================
 
-  /**
-   * Handler for "カレントブランチで実装" button
-   * Requirements: 9.4 - Execute impl on current branch/directory
-   */
-  const handleImplStartCurrentBranch = useCallback(async () => {
-    if (!specDetail) return;
-
-    try {
-      // Execute impl phase on current branch using existing impl phase execution
-      await window.electronAPI.executePhase(
-        specDetail.metadata.name,
-        'impl',
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : '実装の開始に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
-
-  /**
-   * Handler for "Worktreeで実装" and "Worktreeで実装（継続）" buttons
-   * Requirements: 9.5, 9.6, 9.7 - Check main branch, create worktree, start impl
-   */
-  const handleImplStartWithWorktree = useCallback(async () => {
-    if (!specDetail) return;
-
-    // Get project path from the spec path
-    // specDetail.metadata.path is like /path/to/project/.kiro/specs/feature-name
-    const specPath = specDetail.metadata.path;
-    const projectPath = specPath.replace(/\/.kiro\/specs\/[^/]+$/, '');
-    const featureName = specDetail.metadata.name;
-
-    try {
-      // If worktree already exists, just execute impl phase in worktree context
-      if (specJson?.worktree) {
-        // Continue impl in existing worktree
-        await window.electronAPI.executePhase(
-          specDetail.metadata.name,
-          'impl',
-          specDetail.metadata.name,
-          workflowStore.commandPrefix
-        );
-        return;
-      }
-
-      // Check if on main branch first
-      const checkResult = await window.electronAPI.worktreeCheckMain(projectPath);
-      if (!checkResult.ok) {
-        notify.error(`ブランチ確認エラー: ${checkResult.error.message || checkResult.error.type}`);
-        return;
-      }
-
-      if (!checkResult.value.isMain) {
-        notify.error(
-          `Worktreeモードはmainブランチでのみ使用できます。現在のブランチ: ${checkResult.value.currentBranch}`
-        );
-        return;
-      }
-
-      // Create worktree and update spec.json
-      const implStartResult = await window.electronAPI.worktreeImplStart(
-        projectPath,
-        specPath,
-        featureName
-      );
-
-      if (!implStartResult.ok) {
-        const error = implStartResult.error;
-        let message = 'Worktree作成に失敗しました';
-        if (error.type === 'NOT_ON_MAIN_BRANCH') {
-          message = `mainブランチではありません。現在: ${error.currentBranch}`;
-        } else if (error.type === 'WORKTREE_EXISTS') {
-          message = `Worktreeが既に存在します: ${error.path}`;
-        } else if (error.message) {
-          message = error.message;
-        }
-        notify.error(message);
-        return;
-      }
-
-      notify.success(`Worktree作成完了: ${implStartResult.value.branch}`);
-
-      // Now start impl in the worktree
-      await window.electronAPI.executePhase(
-        specDetail.metadata.name,
-        'impl',
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Worktree実装の開始に失敗しました');
-    }
-  }, [specDetail, specJson?.worktree, workflowStore.commandPrefix]);
-
-  // Check if spec has worktree configuration
-  const hasWorktree = useMemo(() => {
-    return isWorktreeConfig(specJson?.worktree);
-  }, [specJson?.worktree]);
-
   // Check if impl phase is executing
   const isImplExecuting = useMemo(() => {
     return runningPhases.has('impl');
@@ -515,6 +415,134 @@ export function WorkflowView() {
     // Can start impl if tasks phase is approved and no agents are running
     return phaseStatuses.tasks === 'approved' && runningPhases.size === 0;
   }, [phaseStatuses.tasks, runningPhases.size]);
+
+  // ============================================================
+  // worktree-execution-ui FIX-1: ImplFlowFrame integration
+  // Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.4, 8.1, 8.2, 8.3
+  // ============================================================
+
+  // Get worktree mode selection from workflowStore
+  const worktreeModeSelection = workflowStore.worktreeModeSelection;
+
+  // Determine if worktree mode is selected
+  // - If 'worktree' explicitly selected, use worktree mode
+  // - If existing worktree (path exists), auto-select worktree mode
+  const isWorktreeModeSelected = useMemo(() => {
+    // If actual worktree exists (with path), always consider it worktree mode
+    if (isActualWorktreeMode({ worktree: specJson?.worktree })) {
+      return true;
+    }
+    // Otherwise, use the user's selection
+    return worktreeModeSelection === 'worktree';
+  }, [specJson?.worktree, worktreeModeSelection]);
+
+  // Check if impl has started (for checkbox locking)
+  const hasImplStarted = useMemo(() => {
+    return isImplStarted({ worktree: specJson?.worktree });
+  }, [specJson?.worktree]);
+
+  // Check if actual worktree exists (with path)
+  const hasExistingWorktree = useMemo(() => {
+    return isActualWorktreeMode({ worktree: specJson?.worktree });
+  }, [specJson?.worktree]);
+
+  // Handler for worktree mode checkbox change
+  // FIX-1: Connect checkbox to workflowStore.worktreeModeSelection
+  const handleWorktreeModeChange = useCallback((enabled: boolean) => {
+    workflowStore.setWorktreeModeSelection(enabled ? 'worktree' : 'normal');
+  }, [workflowStore]);
+
+  // FIX-2: Handler for impl execution based on worktree mode
+  const handleImplExecute = useCallback(async () => {
+    if (!specDetail) return;
+
+    // Get project path from the spec path
+    const specPath = specDetail.metadata.path;
+    const projectPath = specPath.replace(/\/.kiro\/specs\/[^/]+$/, '');
+    const featureName = specDetail.metadata.name;
+
+    try {
+      if (isWorktreeModeSelected) {
+        // Worktree mode: Check if worktree already exists
+        if (hasExistingWorktree) {
+          // Continue impl in existing worktree
+          await window.electronAPI.executePhase(
+            specDetail.metadata.name,
+            'impl',
+            specDetail.metadata.name,
+            workflowStore.commandPrefix
+          );
+        } else {
+          // Create new worktree and start impl
+          // Check if on main branch first
+          const checkResult = await window.electronAPI.worktreeCheckMain(projectPath);
+          if (!checkResult.ok) {
+            notify.error(`ブランチ確認エラー: ${checkResult.error.message || checkResult.error.type}`);
+            return;
+          }
+
+          if (!checkResult.value.isMain) {
+            notify.error(
+              `Worktreeモードはmainブランチでのみ使用できます。現在のブランチ: ${checkResult.value.currentBranch}`
+            );
+            return;
+          }
+
+          // Create worktree and update spec.json
+          const implStartResult = await window.electronAPI.worktreeImplStart(
+            projectPath,
+            specPath,
+            featureName
+          );
+
+          if (!implStartResult.ok) {
+            const error = implStartResult.error;
+            let message = 'Worktree作成に失敗しました';
+            if (error.type === 'NOT_ON_MAIN_BRANCH') {
+              message = `mainブランチではありません。現在: ${error.currentBranch}`;
+            } else if (error.type === 'WORKTREE_EXISTS') {
+              message = `Worktreeが既に存在します: ${error.path}`;
+            } else if (error.message) {
+              message = error.message;
+            }
+            notify.error(message);
+            return;
+          }
+
+          notify.success(`Worktree作成完了: ${implStartResult.value.branch}`);
+
+          // Now start impl in the worktree
+          await window.electronAPI.executePhase(
+            specDetail.metadata.name,
+            'impl',
+            specDetail.metadata.name,
+            workflowStore.commandPrefix
+          );
+        }
+      } else {
+        // Normal mode: Save branch info and execute impl
+        const normalResult = await window.electronAPI.normalModeImplStart(
+          projectPath,
+          specPath
+        );
+
+        if (!normalResult.ok) {
+          notify.error(normalResult.error.message || '通常モード実装開始に失敗しました');
+          return;
+        }
+
+        // Execute impl phase
+        await window.electronAPI.executePhase(
+          specDetail.metadata.name,
+          'impl',
+          specDetail.metadata.name,
+          workflowStore.commandPrefix
+        );
+      }
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : '実装の開始に失敗しました');
+    }
+  }, [specDetail, isWorktreeModeSelected, hasExistingWorktree, workflowStore.commandPrefix]);
 
   // Handle empty and loading states (after all hooks)
   if (!selectedSpec) {
@@ -584,55 +612,53 @@ export function WorkflowView() {
               </div>
             )}
 
-            {/* Task 14.1, 14.4: Impl start buttons (git-worktree-support) */}
-            {/* Requirements: 9.1, 9.2, 9.3, 9.8, 9.9 */}
+            {/* worktree-execution-ui FIX-1: ImplFlowFrame integration */}
+            {/* Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.4, 8.1, 8.2, 8.3 */}
+            {/* Wraps impl phase, TaskProgressView, and InspectionPanel */}
             {phase === 'impl' && (
-              <div className="mt-2 ml-4">
-                <ImplStartButtons
-                  featureName={specDetail.metadata.name}
-                  hasWorktree={hasWorktree}
-                  isExecuting={isImplExecuting}
+              <div className="my-2">
+                <ImplFlowFrame
+                  worktreeModeSelected={isWorktreeModeSelected}
+                  onWorktreeModeChange={handleWorktreeModeChange}
+                  isImplStarted={hasImplStarted}
+                  hasExistingWorktree={hasExistingWorktree}
                   canExecute={canStartImpl}
-                  onExecuteCurrentBranch={handleImplStartCurrentBranch}
-                  onExecuteWithWorktree={handleImplStartWithWorktree}
-                />
-              </div>
-            )}
+                  isExecuting={isImplExecuting}
+                  onExecute={handleImplExecute}
+                >
+                  {/* Task Progress (for impl phase) */}
+                  {specDetail.taskProgress && (
+                    <div className="mt-2">
+                      <TaskProgressView
+                        tasks={parsedTasks}
+                        progress={specDetail.taskProgress}
+                        onExecuteTask={handleExecuteTask}
+                        canExecute={runningPhases.size === 0}
+                      />
+                    </div>
+                  )}
 
-            {/* Task Progress (for impl phase) */}
-            {phase === 'impl' && specDetail.taskProgress && (
-              <div className="mt-2 ml-4">
-                <TaskProgressView
-                  tasks={parsedTasks}
-                  progress={specDetail.taskProgress}
-                  onExecuteTask={handleExecuteTask}
-                  canExecute={runningPhases.size === 0}
-                />
-              </div>
-            )}
+                  {/* Arrow to InspectionPanel */}
+                  <div className="flex justify-center py-1">
+                    <ArrowDown className="w-4 h-4 text-gray-400" />
+                  </div>
 
-            {/* Arrow to InspectionPanel */}
-            {phase === 'impl' && (
-              <div className="flex justify-center py-1">
-                <ArrowDown className="w-4 h-4 text-gray-400" />
-              </div>
-            )}
-
-            {/* Task 4: InspectionPanel (after impl, before deploy) */}
-            {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
-            {/* Bug fix: inspection-auto-execution-toggle - Use workflowStore.setInspectionAutoExecutionFlag */}
-            {phase === 'impl' && (
-              <div className="my-3">
-                <InspectionPanel
-                  inspectionState={inspectionState}
-                  isExecuting={isInspectionExecuting}
-                  isAutoExecuting={isAutoExecuting}
-                  autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
-                  canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
-                  onStartInspection={handleStartInspection}
-                  onExecuteFix={handleExecuteInspectionFix}
-                  onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
-                />
+                  {/* Task 4: InspectionPanel (after impl, before deploy) */}
+                  {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
+                  {/* Bug fix: inspection-auto-execution-toggle - Use workflowStore.setInspectionAutoExecutionFlag */}
+                  <div className="my-3">
+                    <InspectionPanel
+                      inspectionState={inspectionState}
+                      isExecuting={isInspectionExecuting}
+                      isAutoExecuting={isAutoExecuting}
+                      autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
+                      canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
+                      onStartInspection={handleStartInspection}
+                      onExecuteFix={handleExecuteInspectionFix}
+                      onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
+                    />
+                  </div>
+                </ImplFlowFrame>
               </div>
             )}
 

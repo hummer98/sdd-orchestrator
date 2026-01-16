@@ -312,7 +312,8 @@ export class WorktreeService {
    * @returns Absolute path to watch
    */
   getWatchPath(_specId: string, worktreeConfig?: WorktreeConfig): string {
-    if (worktreeConfig) {
+    // worktree-execution-ui: path is now optional, check before using
+    if (worktreeConfig && worktreeConfig.path) {
       return this.resolveWorktreePath(worktreeConfig.path);
     }
     return this.projectPath;

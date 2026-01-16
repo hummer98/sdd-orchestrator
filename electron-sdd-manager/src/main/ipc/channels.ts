@@ -242,6 +242,9 @@ export const IPC_CHANNELS = {
   // Worktree impl start (git-worktree-support Task 4.1)
   // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
   WORKTREE_IMPL_START: 'worktree:impl-start',
+  // worktree-execution-ui Task 5.1: Normal mode impl start
+  // Requirements: 9.1, 9.2
+  NORMAL_MODE_IMPL_START: 'worktree:normal-mode-impl-start',
   // Spec merge execution (git-worktree-support Task 6.1)
   // Requirements: 5.1, 5.2
   EXECUTE_SPEC_MERGE: 'ipc:execute-spec-merge',

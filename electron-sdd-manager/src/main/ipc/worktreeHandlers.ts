@@ -8,7 +8,7 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
 import { logger } from '../services/logger';
-import { handleImplStartWithWorktree } from './worktreeImplHandlers';
+import { handleImplStartWithWorktree, handleImplStartNormalMode } from './worktreeImplHandlers';
 import type {
   WorktreeInfo,
   WorktreeServiceResult,
@@ -187,6 +187,19 @@ export function registerWorktreeHandlers(): void {
         featureName,
       });
       return handleImplStartWithWorktree(projectPath, specPath, featureName);
+    }
+  );
+
+  // worktree-execution-ui Task 5.1: Normal mode impl start
+  // Requirements: 9.1, 9.2
+  ipcMain.handle(
+    IPC_CHANNELS.NORMAL_MODE_IMPL_START,
+    async (_event, projectPath: string, specPath: string) => {
+      logger.info('[worktreeHandlers] worktree:normal-mode-impl-start called', {
+        projectPath,
+        specPath,
+      });
+      return handleImplStartNormalMode(projectPath, specPath);
     }
   );
 

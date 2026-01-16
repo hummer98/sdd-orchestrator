@@ -6,6 +6,10 @@
 export { PhaseItem } from './PhaseItem';
 export type { PhaseItemProps, WorkflowPhase, PhaseStatus } from './PhaseItem';
 
-// git-worktree-support Task 14.1: Impl start buttons component
-export { ImplStartButtons } from './ImplStartButtons';
-export type { ImplStartButtonsProps } from './ImplStartButtons';
+// worktree-execution-ui Task 3.1: Worktree mode checkbox component
+export { WorktreeModeCheckbox } from './WorktreeModeCheckbox';
+export type { WorktreeModeCheckboxProps, WorktreeLockReason } from './WorktreeModeCheckbox';
+
+// worktree-execution-ui Task 4.1, 4.2, 4.3: Impl flow frame component
+export { ImplFlowFrame } from './ImplFlowFrame';
+export type { ImplFlowFrameProps } from './ImplFlowFrame';

@@ -630,4 +630,48 @@ ${description}
       },
     };
   }
+
+  /**
+   * Remove worktree field from spec.json
+   * worktree-execution-ui FIX-3: Called when deploy completes to reset worktree state
+   * Requirements: 5.3, 10.3
+   *
+   * @param specPath - Path to the spec directory
+   * @returns Result indicating success or failure
+   */
+  async removeWorktreeField(specPath: string): Promise<Result<void, FileError>> {
+    try {
+      const specJsonPath = join(specPath, 'spec.json');
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      // Check if worktree field exists
+      if (!specJson.worktree) {
+        // Nothing to remove
+        return { ok: true, value: undefined };
+      }
+
+      // Remove worktree field
+      delete specJson.worktree;
+
+      // Note: Do not update timestamp - this is an automatic cleanup action
+      await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+      return { ok: true, value: undefined };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          ok: false,
+          error: { type: 'NOT_FOUND', path: specPath },
+        };
+      }
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: specPath,
+          message: String(error),
+        },
+      };
+    }
+  }
 }

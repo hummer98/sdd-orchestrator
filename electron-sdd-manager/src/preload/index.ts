@@ -1505,6 +1505,35 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_IMPL_START, projectPath, specPath, featureName),
 
   // ============================================================
+  // worktree-execution-ui Task 5.1: Normal Mode Impl Start
+  // Requirements: 9.1, 9.2
+  // ============================================================
+
+  /**
+   * Start impl in normal mode (without worktree)
+   * Creates spec.json.worktree with { branch, created_at } only (no path)
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @returns Result with branch name on success
+   */
+  normalModeImplStart: (
+    projectPath: string,
+    specPath: string
+  ): Promise<{
+    ok: true;
+    value: {
+      branch: string;
+    };
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      message?: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.NORMAL_MODE_IMPL_START, projectPath, specPath),
+
+  // ============================================================
   // Bug Worktree Support (bugs-worktree-support feature)
   // Requirements: 3.1, 3.3, 4.6, 8.5, 12.1-12.4
   // ============================================================

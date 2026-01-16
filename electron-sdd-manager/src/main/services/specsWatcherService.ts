@@ -309,14 +309,34 @@ export class SpecsWatcherService {
 
   /**
    * spec-phase-auto-update Task 6: Check deploy completion
-   * Note: deploy_completed フラグは廃止。/commit コマンドが直接 phase: 'deploy-complete' を設定するため、
-   * このメソッドは後方互換性のために残しているが、実質的には何もしない。
-   * Requirements: 2.2, 5.2
+   * worktree-execution-ui FIX-3: Remove worktree field when deploy completes
+   * Requirements: 2.2, 5.2, 5.3, 10.3
    */
-  private async checkDeployCompletion(_specJsonPath: string, specId: string): Promise<void> {
-    // deploy_completed フラグは廃止。phase は /commit コマンドで直接設定される。
-    // このメソッドは後方互換性のために残すが、何もしない。
-    logger.debug('[SpecsWatcherService] checkDeployCompletion called but no-op (deploy_completed flag deprecated)', { specId });
+  private async checkDeployCompletion(specJsonPath: string, specId: string): Promise<void> {
+    if (!this.fileService) {
+      logger.debug('[SpecsWatcherService] FileService not available, skipping deploy completion check');
+      return;
+    }
+
+    try {
+      const specJsonContent = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(specJsonContent);
+
+      // FIX-3: Remove worktree field when phase is deploy-complete
+      if (specJson.phase === 'deploy-complete' && specJson.worktree) {
+        const specPath = path.dirname(specJsonPath);
+        logger.info('[SpecsWatcherService] Deploy complete detected, removing worktree field', { specId });
+        const result = await this.fileService.removeWorktreeField(specPath);
+
+        if (!result.ok) {
+          logger.error('[SpecsWatcherService] Failed to remove worktree field', { specId, error: result.error });
+        } else {
+          logger.info('[SpecsWatcherService] Worktree field removed successfully', { specId });
+        }
+      }
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to check deploy completion', { specId, error });
+    }
   }
 
   /**
@@ -369,7 +389,8 @@ export class SpecsWatcherService {
    * @returns Absolute path to the specs directory to watch
    */
   getWatchPath(_specId: string, worktreeConfig?: WorktreeConfig): string {
-    if (worktreeConfig) {
+    // worktree-execution-ui: path is now optional, check before using
+    if (worktreeConfig && worktreeConfig.path) {
       // Resolve worktree path relative to main project
       const worktreePath = path.resolve(this.projectPath, worktreeConfig.path);
       return path.join(worktreePath, '.kiro', 'specs');

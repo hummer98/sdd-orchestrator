@@ -493,87 +493,10 @@ describe('WorkflowView', () => {
   });
 
   // ============================================================
-  // Task 14.1, 14.4: Impl start UI with worktree options (git-worktree-support)
-  // Requirements: 9.1, 9.2, 9.3, 9.8, 9.9
+  // NOTE: Task 14.1, 14.4 tests (Impl start buttons) removed
+  // These tests were for the deprecated ImplStartButtons component.
+  // ImplFlowFrame now handles these features. See ImplFlowFrame.test.tsx for coverage.
   // ============================================================
-  describe('Task 14.1, 14.4: Impl start buttons', () => {
-    it('should show ImplStartButtons when impl phase is ready', () => {
-      mockSpecStoreStateForSelector = {
-        ...mockSpecStoreState,
-        specDetail: {
-          ...mockSpecDetail,
-          specJson: {
-            ...mockSpecDetail.specJson,
-            approvals: {
-              requirements: { generated: true, approved: true },
-              design: { generated: true, approved: true },
-              tasks: { generated: true, approved: true },
-            },
-          },
-        },
-      };
-
-      render(<WorkflowView />);
-
-      // Should show both impl start buttons when no worktree
-      expect(screen.getByTestId('impl-start-current-branch')).toBeInTheDocument();
-      expect(screen.getByTestId('impl-start-worktree')).toBeInTheDocument();
-    });
-
-    it('should show only continue button when worktree exists', () => {
-      const specWithWorktree = {
-        ...mockSpecDetail,
-        specJson: {
-          ...mockSpecDetail.specJson,
-          worktree: {
-            path: '../worktrees/test-feature',
-            branch: 'feature/test-feature',
-            created_at: '2024-01-01T00:00:00Z',
-          },
-          approvals: {
-            requirements: { generated: true, approved: true },
-            design: { generated: true, approved: true },
-            tasks: { generated: true, approved: true },
-          },
-        },
-      };
-      mockSpecStoreStateForSelector = {
-        ...mockSpecStoreState,
-        specDetail: specWithWorktree,
-      };
-
-      render(<WorkflowView />);
-
-      // Should show only continue button when worktree exists
-      expect(screen.getByTestId('impl-start-worktree-continue')).toBeInTheDocument();
-      expect(screen.queryByTestId('impl-start-current-branch')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('impl-start-worktree')).not.toBeInTheDocument();
-    });
-
-    it('should disable impl start buttons when tasks phase is not approved', () => {
-      const specWithUnapprovedTasks = {
-        ...mockSpecDetail,
-        specJson: {
-          ...mockSpecDetail.specJson,
-          approvals: {
-            requirements: { generated: true, approved: true },
-            design: { generated: true, approved: true },
-            tasks: { generated: true, approved: false },
-          },
-        },
-      };
-      mockSpecStoreStateForSelector = {
-        ...mockSpecStoreState,
-        specDetail: specWithUnapprovedTasks,
-      };
-
-      render(<WorkflowView />);
-
-      // Buttons should be disabled when tasks phase is not approved
-      expect(screen.getByTestId('impl-start-current-branch')).toBeDisabled();
-      expect(screen.getByTestId('impl-start-worktree')).toBeDisabled();
-    });
-  });
 
   // ============================================================
   // Task 6.1: Deploy button conditional branching (git-worktree-support)

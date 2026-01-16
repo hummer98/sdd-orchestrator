@@ -1,6 +1,8 @@
 /**
  * Worktree Types for Git Worktree Support
  * Requirements: 2.1, 2.2, 2.3 (git-worktree-support)
+ * worktree-execution-ui: Task 1.1 - Extended for normal mode support
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3 (worktree-execution-ui)
  *
  * This module defines types for managing git worktree state in spec.json.
  * The worktree field is optional for backward compatibility.
@@ -9,11 +11,15 @@
 /**
  * Worktree configuration stored in spec.json
  * Requirements: 2.1 - worktree field structure
+ * worktree-execution-ui Requirement 1.1: path is now optional for normal mode support
+ *
+ * When worktree mode: { path, branch, created_at }
+ * When normal mode:   { branch, created_at } (no path)
  */
 export interface WorktreeConfig {
-  /** Relative path from main project root to worktree directory */
-  path: string;
-  /** Branch name (feature/{feature-name}) */
+  /** Relative path from main project root to worktree directory (optional) */
+  path?: string;
+  /** Branch name (feature/{feature-name} or current branch) */
   branch: string;
   /** Creation timestamp (ISO-8601) */
   created_at: string;
@@ -57,9 +63,10 @@ export type WorktreeServiceResult<T> =
 /**
  * Check if a value is a valid WorktreeConfig
  * Requirements: 2.2, 2.3 - mode detection via field presence
+ * worktree-execution-ui Requirement 2.1: path is no longer required, only branch and created_at
  *
  * @param value - Value to check
- * @returns true if value is a valid WorktreeConfig
+ * @returns true if value has valid branch and created_at
  */
 export function isWorktreeConfig(value: unknown): value is WorktreeConfig {
   if (typeof value !== 'object' || value === null) {
@@ -68,9 +75,9 @@ export function isWorktreeConfig(value: unknown): value is WorktreeConfig {
 
   const obj = value as Record<string, unknown>;
 
+  // worktree-execution-ui: path is now optional
+  // Only require branch and created_at for a valid WorktreeConfig
   return (
-    typeof obj.path === 'string' &&
-    obj.path.length > 0 &&
     typeof obj.branch === 'string' &&
     obj.branch.length > 0 &&
     typeof obj.created_at === 'string' &&
@@ -87,4 +94,36 @@ export function isWorktreeConfig(value: unknown): value is WorktreeConfig {
  */
 export function isWorktreeMode(specJson: { worktree?: unknown }): boolean {
   return isWorktreeConfig(specJson.worktree);
+}
+
+/**
+ * Check if spec is in "actual" worktree mode (has path)
+ * worktree-execution-ui Requirement 2.2: Distinguishes actual worktree from normal mode
+ *
+ * @param specJson - SpecJson object
+ * @returns true if spec.worktree.path exists and is non-empty
+ */
+export function isActualWorktreeMode(specJson: { worktree?: WorktreeConfig | null | unknown }): boolean {
+  if (!specJson.worktree || typeof specJson.worktree !== 'object') {
+    return false;
+  }
+
+  const worktree = specJson.worktree as Record<string, unknown>;
+  return typeof worktree.path === 'string' && worktree.path.length > 0;
+}
+
+/**
+ * Check if implementation has started
+ * worktree-execution-ui Requirement 2.3: Uses worktree.branch existence
+ *
+ * @param specJson - SpecJson object
+ * @returns true if spec.worktree?.branch exists and is non-empty
+ */
+export function isImplStarted(specJson: { worktree?: WorktreeConfig | null | unknown }): boolean {
+  if (!specJson.worktree || typeof specJson.worktree !== 'object') {
+    return false;
+  }
+
+  const worktree = specJson.worktree as Record<string, unknown>;
+  return typeof worktree.branch === 'string' && worktree.branch.length > 0;
 }

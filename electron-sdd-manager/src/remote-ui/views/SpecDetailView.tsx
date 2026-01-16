@@ -406,9 +406,10 @@ export default SpecDetailView;
 // Requirements: 4.1, 4.2
 // =============================================================================
 
+// worktree-execution-ui: path is now optional for normal mode support
 interface WorktreeSectionProps {
   worktree: {
-    path: string;
+    path?: string;
     branch: string;
     created_at: string;
   };

@@ -173,7 +173,7 @@ export function BugDetailView({
   const actions: BugAction[] = ['analyze', 'fix', 'verify'];
 
   return (
-    <div data-testid="bug-detail-view" className="flex flex-col h-full overflow-y-auto">
+    <div data-testid="bug-detail-view remote-bug-detail" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
@@ -181,6 +181,13 @@ export function BugDetailView({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {bugDetail.metadata.name}
           </h2>
+          {/* remote-ui-vanilla-removal: Phase tag for E2E */}
+          <span
+            data-testid="remote-bug-phase-tag"
+            className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700"
+          >
+            {currentPhase}
+          </span>
         </div>
       </div>
 
@@ -253,10 +260,11 @@ export function BugDetailView({
               </div>
 
               {/* Right side: Action button */}
+              {/* Note: Keep bug-phase-{action}-button for existing unit tests, add remote-bug-action for E2E */}
               <div className="flex items-center gap-2">
                 {!isComplete && (
                   <button
-                    data-testid={`bug-phase-${action}-button`}
+                    data-testid={`bug-phase-${action}-button remote-bug-action`}
                     onClick={() => handleExecutePhase(action)}
                     disabled={!canExecute || isExecuting}
                     className={clsx(

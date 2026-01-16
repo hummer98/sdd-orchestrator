@@ -894,13 +894,15 @@ export class WebSocketHandler {
 
   /**
    * Handle GET_SPECS message
+   * Response payload is the specs array directly for compatibility with wrapRequest
    */
   private async handleGetSpecs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
 
     this.send(client.id, {
       type: 'SPECS_UPDATED',
-      payload: { specs },
+      // Type assertion: payload is normally Record but arrays work with JSON.stringify
+      payload: specs as unknown as Record<string, unknown>,
       requestId: message.requestId,
       timestamp: Date.now(),
     });
@@ -909,13 +911,15 @@ export class WebSocketHandler {
   /**
    * Handle GET_BUGS message
    * Requirements: 2.2 (Task 2.2 - GET_BUGS message handler)
+   * Response payload is the bugs array directly for compatibility with wrapRequest
    */
   private async handleGetBugs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
 
     this.send(client.id, {
       type: 'BUGS_UPDATED',
-      payload: { bugs },
+      // Type assertion: payload is normally Record but arrays work with JSON.stringify
+      payload: bugs as unknown as Record<string, unknown>,
       requestId: message.requestId,
       timestamp: Date.now(),
     });
@@ -923,13 +927,15 @@ export class WebSocketHandler {
 
   /**
    * Handle GET_AGENTS message
+   * Response payload is the agents array directly for compatibility with wrapRequest
    */
   private async handleGetAgents(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     const agents = this.stateProvider?.getAgents ? await this.stateProvider.getAgents() : [];
 
     this.send(client.id, {
       type: 'AGENT_LIST',
-      payload: { agents },
+      // Type assertion: payload is normally Record but arrays work with JSON.stringify
+      payload: agents as unknown as Record<string, unknown>,
       requestId: message.requestId,
       timestamp: Date.now(),
     });

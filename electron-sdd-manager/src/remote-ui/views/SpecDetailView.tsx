@@ -308,7 +308,7 @@ export function SpecDetailView({
   const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
 
   return (
-    <div data-testid="spec-detail-view" className="flex flex-col h-full overflow-y-auto">
+    <div data-testid="spec-detail-view remote-spec-detail" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
@@ -317,9 +317,18 @@ export function SpecDetailView({
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {specDetail.metadata.name}
             </h2>
+            {/* remote-ui-vanilla-removal: Phase tag for E2E */}
+            <span
+              data-testid="remote-spec-phase-tag"
+              className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700"
+            >
+              {specDetail.specJson?.phase || 'initialized'}
+            </span>
           </div>
+          {/* remote-ui-vanilla-removal: Next action button for E2E */}
+          {/* Note: Keep auto-execution-button for existing unit tests, add remote-spec-next-action for E2E */}
           <button
-            data-testid="auto-execution-button"
+            data-testid="auto-execution-button remote-spec-next-action"
             onClick={handleStartAutoExecution}
             disabled={autoExecutionStatus === 'running' || autoExecutionStatus === 'paused'}
             className={clsx(

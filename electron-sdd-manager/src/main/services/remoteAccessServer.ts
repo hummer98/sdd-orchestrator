@@ -118,13 +118,11 @@ export class RemoteAccessServer {
   private tunnelActive: boolean = false;
 
   constructor(accessTokenService?: AccessTokenService, tunnelManager?: CloudflareTunnelManager) {
-    // Initialize static file server with mobile UI directory
-    // In development, use src directory for hot reload; in production, use dist
-    const isDev = process.env.NODE_ENV === 'development' || import.meta.env?.DEV;
-    const uiDir = isDev
-      ? join(__dirname, '../../src/main/remote-ui') // dev: dist/main -> src/main/remote-ui
-      : join(__dirname, 'remote-ui'); // prod: dist/main/remote-ui
-    logger.debug(`[remoteAccessServer] Using UI directory: ${uiDir} (isDev: ${isDev})`);
+    // Initialize static file server with React UI directory
+    // remote-ui-vanilla-removal: Use React build output (dist/remote-ui/) for both dev and prod
+    // Note: In development, run `npm run build:remote` to generate the React build output
+    const uiDir = join(__dirname, '../../dist/remote-ui');
+    logger.debug(`[remoteAccessServer] Using UI directory: ${uiDir}`);
     this.staticFileServer = new StaticFileServer(uiDir);
     // Initialize WebSocketHandler
     this.webSocketHandler = new WebSocketHandler();

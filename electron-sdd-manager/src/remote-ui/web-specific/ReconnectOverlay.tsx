@@ -62,7 +62,7 @@ export const ReconnectOverlay: React.FC<ReconnectOverlayProps> = ({
 
   return (
     <div
-      data-testid="reconnect-overlay"
+      data-testid="reconnect-overlay remote-reconnect-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     >
       <div className="w-full max-w-sm rounded-lg bg-gray-800 p-6 text-center shadow-2xl">

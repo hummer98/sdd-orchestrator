@@ -20,11 +20,20 @@ import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, Ag
 import type { SpecMetadata, SpecDetail, BugMetadata } from '../shared/api/types';
 
 /**
+ * MainContent props
+ */
+interface MainContentProps {
+  /** Current active tab */
+  activeTab: MobileTab;
+  /** Callback when tab changes */
+  onTabChange: (tab: MobileTab) => void;
+}
+
+/**
  * MainContent - Tab-based content area with views
  */
-function MainContent() {
+function MainContent({ activeTab, onTabChange }: MainContentProps) {
   const apiClient = useApi();
-  const [activeTab, setActiveTab] = useState<MobileTab>('specs');
   const [selectedSpec, setSelectedSpec] = useState<SpecMetadata | null>(null);
   const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
   const [selectedBug, setSelectedBug] = useState<BugMetadata | null>(null);
@@ -51,14 +60,14 @@ function MainContent() {
     setSelectedBug(null);
   }, []);
 
-  // Handle tab change
+  // Handle tab change - use the prop callback
   const handleTabChange = useCallback((tab: MobileTab) => {
-    setActiveTab(tab);
+    onTabChange(tab);
     // Clear selections when changing tabs
     setSelectedSpec(null);
     setSelectedSpecDetail(null);
     setSelectedBug(null);
-  }, []);
+  }, [onTabChange]);
 
   // Render content based on active tab
   const renderContent = () => {
@@ -175,20 +184,33 @@ function MainContent() {
  * AppContent - Main content component that uses device type to select layout
  *
  * This component must be inside providers to use useDeviceType hook.
+ * Manages tab state and passes it to both layout and content components.
  */
 function AppContent() {
   const { isMobile } = useDeviceType();
+  const [activeTab, setActiveTab] = useState<MobileTab>('specs');
 
-  // Device-responsive layout selection
-  // MobileLayout for mobile devices, DesktopLayout for tablets and desktops
-  const Layout = isMobile ? MobileLayout : DesktopLayout;
+  // Handle tab change from either layout or content
+  const handleTabChange = useCallback((tab: MobileTab) => {
+    setActiveTab(tab);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <MobileLayout activeTab={activeTab} onTabChange={handleTabChange}>
+        <div className="h-screen bg-gray-50 dark:bg-gray-900">
+          <MainContent activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+      </MobileLayout>
+    );
+  }
 
   return (
-    <Layout>
+    <DesktopLayout>
       <div className="h-screen bg-gray-50 dark:bg-gray-900">
-        <MainContent />
+        <MainContent activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
-    </Layout>
+    </DesktopLayout>
   );
 }
 

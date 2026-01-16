@@ -17,6 +17,7 @@ import React, { ReactNode, useState, useEffect } from 'react';
 import { ProfileBadge } from '../../shared/components/ui';
 import { useApi } from '../../shared';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
+import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 
 // =============================================================================
 // Types
@@ -191,13 +192,56 @@ function SidebarHeader(): React.ReactElement {
 
 /**
  * DesktopHeader - Fixed header for desktop layout
+ * remote-ui-vanilla-removal: Added data-testid attributes for E2E testing
  */
 function DesktopHeader(): React.ReactElement {
+  const apiClient = useApi();
+  const [projectPath, setProjectPath] = useState<string>('');
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    // Check connection status and get project path
+    const wsClient = apiClient as WebSocketApiClient;
+    if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
+      setIsConnected(wsClient.isConnected());
+      // Poll connection status and project path
+      const interval = setInterval(() => {
+        if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
+          setIsConnected(wsClient.isConnected());
+        }
+        if ('getProjectPath' in wsClient && typeof wsClient.getProjectPath === 'function') {
+          const path = wsClient.getProjectPath();
+          if (path) setProjectPath(path);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      // IpcApiClient doesn't have isConnected, assume connected
+      setIsConnected(true);
+    }
+  }, [apiClient]);
+
   return (
     <header className="flex-shrink-0 h-10 px-4 flex items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div className="text-sm text-gray-600 dark:text-gray-400">
-        {/* Breadcrumb or context info will go here */}
-        Remote UI Connected
+      {/* remote-ui-vanilla-removal: Project path for E2E */}
+      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <span>Project:</span>
+        <span data-testid="remote-project-path" className="truncate max-w-md" title={projectPath || undefined}>
+          {projectPath || 'Loading...'}
+        </span>
+      </div>
+      {/* remote-ui-vanilla-removal: Status display for E2E */}
+      <div className="flex items-center gap-2">
+        <span
+          data-testid="remote-status-dot"
+          className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}
+        />
+        <span
+          data-testid="remote-status-text"
+          className="text-sm text-gray-600 dark:text-gray-400"
+        >
+          {isConnected ? 'Connected' : 'Connecting...'}
+        </span>
       </div>
     </header>
   );

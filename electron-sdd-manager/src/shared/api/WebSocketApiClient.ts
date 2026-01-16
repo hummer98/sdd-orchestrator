@@ -72,10 +72,29 @@ export class WebSocketApiClient implements ApiClient {
   private reconnectAttempts = 0;
   private eventListeners: Map<string, Set<(...args: unknown[]) => void>> = new Map();
   private connectionPromise: Promise<void> | null = null;
+  // remote-ui-vanilla-removal: Store project path from INIT message
+  private projectPath: string = '';
+  private appVersion: string = '';
 
   constructor(url: string, token: string) {
     this.url = url;
     this.token = token;
+  }
+
+  /**
+   * Get the current project path received from INIT message
+   * remote-ui-vanilla-removal: For E2E testing compatibility
+   */
+  getProjectPath(): string {
+    return this.projectPath;
+  }
+
+  /**
+   * Get the app version received from INIT message
+   * remote-ui-vanilla-removal: For E2E testing compatibility
+   */
+  getAppVersion(): string {
+    return this.appVersion;
   }
 
   // ===========================================================================
@@ -200,6 +219,30 @@ export class WebSocketApiClient implements ApiClient {
 
   private handlePushMessage(message: WebSocketResponse): void {
     switch (message.type) {
+      // remote-ui-vanilla-removal: Handle INIT message for project path
+      case 'INIT': {
+        const initPayload = message.payload as {
+          project?: string;
+          version?: string;
+          specs?: SpecMetadata[];
+          bugs?: BugMetadata[];
+        } | undefined;
+        if (initPayload?.project) {
+          this.projectPath = initPayload.project;
+        }
+        if (initPayload?.version) {
+          this.appVersion = initPayload.version;
+        }
+        // Emit events for initial data
+        if (initPayload?.specs) {
+          this.emit('specsUpdated', initPayload.specs);
+        }
+        if (initPayload?.bugs) {
+          this.emit('bugsUpdated', initPayload.bugs);
+        }
+        this.emit('initialized', initPayload);
+        break;
+      }
       case 'SPECS_UPDATED':
         this.emit('specsUpdated', message.payload);
         break;

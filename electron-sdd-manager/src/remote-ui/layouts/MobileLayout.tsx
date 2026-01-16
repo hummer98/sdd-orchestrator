@@ -11,12 +11,16 @@
  *
  * header-profile-badge feature: ProfileBadge added to MobileHeader
  * Requirements: 4.1, 4.2, 4.3
+ *
+ * remote-ui-vanilla-removal: Added data-testid attributes for E2E testing
+ * - remote-status-dot, remote-status-text, remote-project-path for E2E compatibility
  */
 
 import React, { ReactNode, useState, useEffect } from 'react';
 import { ProfileBadge } from '../../shared/components/ui';
 import { useApi } from '../../shared';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
+import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 
 // =============================================================================
 // Types
@@ -48,8 +52,9 @@ interface MobileLayoutProps {
 const TAB_CONFIG: { id: MobileTab; label: string; icon: string }[] = [
   { id: 'specs', label: 'Specs', icon: 'file-text' },
   { id: 'bugs', label: 'Bugs', icon: 'bug' },
-  { id: 'agents', label: 'Agents', icon: 'terminal' },
-  { id: 'settings', label: 'Settings', icon: 'settings' },
+  // Note: 'agent' and 'project' match MainContent's renderContent switch cases
+  // { id: 'agent', label: 'Agent', icon: 'terminal' },
+  // { id: 'project', label: 'Project', icon: 'settings' },
 ];
 
 // =============================================================================
@@ -58,16 +63,18 @@ const TAB_CONFIG: { id: MobileTab; label: string; icon: string }[] = [
 
 /**
  * MobileLayout - Mobile-optimized layout with bottom tab navigation
+ *
+ * Tab state is now controlled by parent component (AppContent).
+ * This allows tab changes from the bottom bar to update content in MainContent.
  */
 export function MobileLayout({
   activeTab = 'specs',
   onTabChange,
   children,
 }: MobileLayoutProps): React.ReactElement {
-  const [currentTab, setCurrentTab] = useState<MobileTab>(activeTab);
-
+  // Use prop value directly instead of internal state
+  // Tab state is controlled by parent (AppContent)
   const handleTabChange = (tab: MobileTab) => {
-    setCurrentTab(tab);
     onTabChange?.(tab);
   };
 
@@ -83,7 +90,7 @@ export function MobileLayout({
 
       {/* Bottom Tab Bar */}
       <MobileTabBar
-        activeTab={currentTab}
+        activeTab={activeTab}
         onTabChange={handleTabChange}
       />
     </div>
@@ -97,11 +104,36 @@ export function MobileLayout({
 /**
  * MobileHeader - Fixed header for mobile layout
  * header-profile-badge feature: ProfileBadge added
+ * remote-ui-vanilla-removal: Added data-testid attributes for E2E testing
  * Requirements: 4.1, 4.2, 4.3
  */
 function MobileHeader(): React.ReactElement {
   const apiClient = useApi();
+  const [projectPath, setProjectPath] = useState<string>('');
   const [profile, setProfile] = useState<{ name: string } | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    // Check connection status and get project path
+    const wsClient = apiClient as WebSocketApiClient;
+    if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
+      setIsConnected(wsClient.isConnected());
+      // Poll connection status and project path
+      const interval = setInterval(() => {
+        if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
+          setIsConnected(wsClient.isConnected());
+        }
+        if ('getProjectPath' in wsClient && typeof wsClient.getProjectPath === 'function') {
+          const path = wsClient.getProjectPath();
+          if (path) setProjectPath(path);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      // IpcApiClient doesn't have isConnected, assume connected
+      setIsConnected(true);
+    }
+  }, [apiClient]);
 
   useEffect(() => {
     // Load profile on mount (only if getProfile is available)
@@ -114,20 +146,47 @@ function MobileHeader(): React.ReactElement {
     }
   }, [apiClient]);
 
+  // Extract directory name from project path for display
+  const projectName = projectPath ? projectPath.split('/').pop() || projectPath : 'Loading...';
+
   return (
-    <header className="flex-shrink-0 h-14 px-4 flex items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-          SDD Orchestrator
-        </h1>
-        {/* header-profile-badge feature: ProfileBadge */}
-        <ProfileBadge
-          profile={(profile?.name as ProfileName) ?? null}
-        />
+    <header className="flex-shrink-0 px-4 py-2 flex flex-col bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      {/* Row 1: Title and connection status */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+            SDD Orchestrator
+          </h1>
+          {/* header-profile-badge feature: ProfileBadge */}
+          <ProfileBadge
+            profile={(profile?.name as ProfileName) ?? null}
+          />
+        </div>
+        {/* remote-ui-vanilla-removal: Status display for E2E testing */}
+        <div className="flex items-center gap-2">
+          <span
+            data-testid="remote-status-dot"
+            className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}
+          />
+          <span
+            data-testid="remote-status-text"
+            className="text-sm text-gray-600 dark:text-gray-400"
+          >
+            {isConnected ? 'Connected' : 'Connecting...'}
+          </span>
+        </div>
       </div>
-      <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-        Remote
-      </span>
+      {/* Row 2: Project path */}
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-xs text-gray-500 dark:text-gray-400">Project:</span>
+        <span
+          data-testid="remote-project-path"
+          className="text-xs text-gray-600 dark:text-gray-300 truncate"
+          title={projectPath || undefined}
+        >
+          {projectName}
+        </span>
+      </div>
     </header>
   );
 }
@@ -139,6 +198,7 @@ interface MobileTabBarProps {
 
 /**
  * MobileTabBar - Bottom tab navigation
+ * remote-ui-vanilla-removal: Added data-testid and aria attributes for E2E testing
  */
 function MobileTabBar({
   activeTab,
@@ -149,6 +209,8 @@ function MobileTabBar({
       {TAB_CONFIG.map((tab) => (
         <button
           key={tab.id}
+          data-testid={`remote-tab-${tab.id}`}
+          aria-selected={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
           className={`
             flex-1 flex flex-col items-center justify-center gap-1

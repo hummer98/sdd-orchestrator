@@ -246,21 +246,25 @@ export function SpecsView({
           </div>
         ) : (
           <ul data-testid="specs-list" className="divide-y-0">
-            {filteredSpecs.map((spec) => {
-              // git-worktree-support: Task 13.1 - Get worktree info from specJsonMap
-              const specJson = specJsonMap.get(spec.name);
-              const worktree = specJson?.worktree;
+            {/* remote-ui-vanilla-removal: Added remote-spec-list wrapper for E2E */}
+            <div data-testid="remote-spec-list">
+              {filteredSpecs.map((spec) => {
+                // git-worktree-support: Task 13.1 - Get worktree info from specJsonMap
+                const specJson = specJsonMap.get(spec.name);
+                const worktree = specJson?.worktree;
 
-              return (
-                <SpecListItem
-                  key={spec.name}
-                  spec={spec}
-                  isSelected={selectedSpecId === spec.name}
-                  onSelect={() => handleSelectSpec(spec)}
-                  worktree={worktree}
-                />
-              );
-            })}
+                return (
+                  <div key={spec.name} data-testid={`remote-spec-item-${spec.name}`}>
+                    <SpecListItem
+                      spec={spec}
+                      isSelected={selectedSpecId === spec.name}
+                      onSelect={() => handleSelectSpec(spec)}
+                      worktree={worktree}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </ul>
         )}
       </div>

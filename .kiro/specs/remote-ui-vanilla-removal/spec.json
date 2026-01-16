@@ -1,0 +1,73 @@
+{
+  "feature_name": "remote-ui-vanilla-removal",
+  "created_at": "2026-01-17T16:12:02Z",
+  "updated_at": "2026-01-16T18:35:19Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": false,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": "skip",
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "inspectionFlag": "pause"
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 3,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-16T16:54:35Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-01-16T16:57:35Z",
+        "fixedAt": "2026-01-16T17:01:21Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-16T18:32:46Z"
+      }
+    ]
+  }
+}

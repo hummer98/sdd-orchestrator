@@ -180,14 +180,18 @@ export function BugsView({
           </div>
         ) : (
           <ul data-testid="bugs-list" className="divide-y-0">
-            {filteredBugs.map((bug) => (
-              <BugListItem
-                key={bug.name}
-                bug={bug}
-                isSelected={selectedBugId === bug.name}
-                onSelect={() => handleSelectBug(bug)}
-              />
-            ))}
+            {/* remote-ui-vanilla-removal: Added remote-bug-list wrapper for E2E */}
+            <div data-testid="remote-bug-list">
+              {filteredBugs.map((bug) => (
+                <div key={bug.name} data-testid={`remote-bug-item-${bug.name}`}>
+                  <BugListItem
+                    bug={bug}
+                    isSelected={selectedBugId === bug.name}
+                    onSelect={() => handleSelectBug(bug)}
+                  />
+                </div>
+              ))}
+            </div>
           </ul>
         )}
       </div>

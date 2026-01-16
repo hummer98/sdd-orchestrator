@@ -11,25 +11,26 @@ import { WorktreeService, isValidFeatureName, validateFeatureName, type ExecFunc
 
 /**
  * Create a mock exec function that returns specified results based on command patterns
+ * Matches Node.js child_process.exec callback signature: (error, stdout, stderr)
  */
 function createMockExec(responses: Array<{ pattern: RegExp; stdout?: string; stderr?: string; error?: Error }>): ExecFunction {
   return (
     command: string,
     _options: { cwd: string },
-    callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+    callback: (error: Error | null, stdout: string, stderr: string) => void
   ) => {
     for (const response of responses) {
       if (response.pattern.test(command)) {
         if (response.error) {
-          callback(response.error, { stdout: '', stderr: response.stderr || response.error.message });
+          callback(response.error, '', response.stderr || response.error.message);
         } else {
-          callback(null, { stdout: response.stdout || '', stderr: response.stderr || '' });
+          callback(null, response.stdout || '', response.stderr || '');
         }
         return { kill: vi.fn() };
       }
     }
     // Default: success with empty output
-    callback(null, { stdout: '', stderr: '' });
+    callback(null, '', '');
     return { kill: vi.fn() };
   };
 }
@@ -444,19 +445,19 @@ describe('WorktreeService', () => {
       const mockExec = (
         command: string,
         _options: { cwd: string },
-        callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+        callback: (error: Error | null, stdout: string, stderr: string) => void
       ) => {
         if (/branch --show-current/.test(command)) {
-          callback(null, { stdout: 'main\n', stderr: '' });
+          callback(null, 'main\n', '');
         } else if (/branch bugfix\//.test(command) && !/branch -d/.test(command)) {
-          callback(null, { stdout: '', stderr: '' });
+          callback(null, '', '');
         } else if (/worktree add/.test(command)) {
-          callback(new Error('fatal: worktree add failed'), { stdout: '', stderr: '' });
+          callback(new Error('fatal: worktree add failed'), '', '');
         } else if (/branch -d/.test(command)) {
           branchDeleteCalled = true;
-          callback(null, { stdout: '', stderr: '' });
+          callback(null, '', '');
         } else {
-          callback(null, { stdout: '', stderr: '' });
+          callback(null, '', '');
         }
         return { kill: () => {} };
       };

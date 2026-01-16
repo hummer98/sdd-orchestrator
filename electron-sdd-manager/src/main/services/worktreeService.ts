@@ -16,11 +16,12 @@ import type {
 
 /**
  * Type for exec function for dependency injection
+ * Matches Node.js child_process.exec callback signature
  */
 export type ExecFunction = (
   command: string,
   options: { cwd: string },
-  callback: (error: Error | null, result: { stdout: string; stderr: string }) => void
+  callback: (error: Error | null, stdout: string, stderr: string) => void
 ) => { kill: () => void };
 
 /**
@@ -110,7 +111,7 @@ export class WorktreeService {
       this.execFn(
         command,
         { cwd: this.projectPath },
-        (error, result) => {
+        (error, stdout, _stderr) => {
           if (error) {
             const message = error.message || String(error);
             logger.error('[WorktreeService] Git command failed', { command, error: message });
@@ -119,7 +120,7 @@ export class WorktreeService {
               error: { type: 'GIT_ERROR', message },
             });
           } else {
-            resolve({ ok: true, value: result.stdout.trim() });
+            resolve({ ok: true, value: stdout.trim() });
           }
         }
       );

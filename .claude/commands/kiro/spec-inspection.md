@@ -26,13 +26,9 @@ Before invoking Subagent, verify that all required spec files exist:
 - Suggest: "Complete previous phases: `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`"
 - Stop execution
 
-## Read spec.json for Language Setting
-
-Before invoking Subagent, read `.kiro/specs/$1/spec.json` and extract the `language` field value.
-
 ## Invoke Subagent
 
-Delegate inspection to spec-inspection-agent:
+Delegate to spec-inspection-agent:
 
 Use the Task tool to invoke the Subagent with file path patterns:
 
@@ -44,16 +40,18 @@ Task(
 Feature: {$1}
 Spec directory: .kiro/specs/{$1}/
 Options: {$2 or none}
-Language: {spec.json.language or "en"}
-
-**IMPORTANT**: Generate ALL output (including inspection-{n}.md report) in the specified language.
 
 File patterns to read:
 - .kiro/specs/{$1}/*.{json,md}
 - .kiro/steering/*.md
 - CLAUDE.md
 
-Inspection scope:
+Mode:
+- If Options is "--fix": Skip inspection, read existing inspection-{n}.md and generate fix tasks only
+- If Options is "--autofix": Run inspection, then auto-fix if NOGO (max 3 cycles)
+- Otherwise: Run full inspection and generate report
+
+Inspection scope (when running inspection):
 - Requirements compliance
 - Design alignment
 - Task completion

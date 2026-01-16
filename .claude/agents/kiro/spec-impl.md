@@ -2,7 +2,6 @@
 name: spec-tdd-impl-agent
 description: Execute implementation tasks using Test-Driven Development methodology
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, WebSearch, WebFetch
-permissionMode: bypassPermissions
 model: inherit
 color: red
 ---

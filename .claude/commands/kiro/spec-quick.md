@@ -99,7 +99,7 @@ Execute these 4 phases in order:
    b. Replace placeholders:
    ```
    {{FEATURE_NAME}} → feature-name
-   {{TIMESTAMP}} → current UTC timestamp (ISO 8601)
+   {{TIMESTAMP}} → current ISO 8601 timestamp (use `date -u +"%Y-%m-%dT%H:%M:%SZ"`)
    {{PROJECT_DESCRIPTION}} → description
    ```
 
@@ -235,7 +235,7 @@ Output final completion summary (see Output Description section) and exit.
 
 ### Phase 1 Tools
 - **Glob**: Check `.kiro/specs/*/` for existing feature names
-- **Bash**: Create directory with `mkdir -p`, generate UTC timestamp
+- **Bash**: Create directory with `mkdir -p`, generate timestamp with `date -u`
 - **Read**: Fetch templates from `.kiro/settings/templates/specs/`
 - **Write**: Create `spec.json` and `requirements.md` in spec directory
 

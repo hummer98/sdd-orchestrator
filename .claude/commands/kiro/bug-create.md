@@ -26,7 +26,17 @@ Create a new bug report from the provided bug name and description ($ARGUMENTS).
 ## Execution Steps
 1. **Check Uniqueness**: Verify `.kiro/bugs/` for naming conflicts (append number suffix if needed)
 2. **Create Directory**: `.kiro/bugs/[bug-name]/`
-3. **Initialize Files Using Templates**:
+3. **Initialize bug.json**:
+   - Create `bug.json` with the following structure:
+     ```json
+     {
+       "bug_name": "[bug-name]",
+       "created_at": "[ISO-8601 timestamp]",
+       "updated_at": "[ISO-8601 timestamp]"
+     }
+     ```
+   - Note: `worktree` field is NOT added at this stage (added later by bug-fix if worktree mode is used)
+4. **Initialize Files Using Templates**:
    - Read `.kiro/settings/templates/bugs/report.md`
    - Replace placeholders:
      - `{{BUG_NAME}}` → bug name
@@ -44,7 +54,7 @@ Create a new bug report from the provided bug name and description ($ARGUMENTS).
 ## Tool Guidance
 - Use **Glob** to check existing bug directories for name uniqueness
 - Use **Read** to fetch template: `report.md`
-- Use **Write** to create report.md after placeholder replacement
+- Use **Write** to create `bug.json` and `report.md` after placeholder replacement
 - Use **Bash** to create directory if needed
 
 ## Output Description
@@ -52,7 +62,7 @@ Provide output in the language specified in steering documents with the followin
 
 1. **Bug Name**: `bug-name` format
 2. **Summary**: Brief summary of the reported issue (1-2 sentences)
-3. **Created Files**: Bullet list with full paths
+3. **Created Files**: Bullet list with full paths (including bug.json)
 4. **Next Step**: Command block showing `/kiro:bug-analyze`
 5. **Workflow Overview**: Brief reminder of the bug fix workflow
 

@@ -37,17 +37,6 @@
 # Test: [command]
 ```
 
-## Verification Commands
-
-spec-impl 完了時に実行する検証コマンド（必須）:
-
-```bash
-# [プロジェクトの検証コマンドを記載]
-# 例: npm run build && npm run typecheck
-# 例: go build ./... && go vet ./...
-# 例: cargo build && cargo clippy
-```
-
 ## Key Technical Decisions
 
 [Important architectural choices and rationale]

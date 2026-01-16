@@ -41,17 +41,16 @@ When `--fix` flag is present:
 1. Read existing `document-review-{n}-reply.md`
 2. Parse the "Files to Modify" section and "Action Items" from each issue
 3. Apply ONLY the items marked as "Fix Required" ✅
-4. Update spec.json `documentReview.roundDetails[n-1]` with the following schema:
+4. Update spec.json `documentReview.roundDetails[n-1]`:
    ```json
    {
-     "roundNumber": n,           // Required: round number (1-indexed)
-     "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
-     "fixStatus": "applied",     // Set to "applied" when fixes are applied
-     "fixRequired": <number>,    // Fix Required count (preserve from reply generation)
-     "needsDiscussion": <number> // Needs Discussion count (preserve from reply generation)
+     "roundNumber": n,
+     "status": "reply_complete",
+     "fixStatus": "applied",
+     "fixRequired": <number>,
+     "needsDiscussion": <number>
    }
    ```
-   **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
    **fixStatus values**:
    - `"not_required"`: No fixes or discussion needed, proceed to next process
    - `"pending"`: Fixes or discussion needed, pause execution
@@ -212,14 +211,13 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 3. Update spec.json `documentReview.roundDetails[n-1]`:
    ```json
    {
-     "roundNumber": n,           // Required: round number (1-indexed)
-     "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
-     "fixStatus": "<status>",    // "not_required" | "pending" | "applied"
-     "fixRequired": <number>,    // Fix Required count from Response Summary
-     "needsDiscussion": <number> // Needs Discussion count from Response Summary
+     "roundNumber": n,
+     "status": "reply_complete",
+     "fixStatus": "<status>",
+     "fixRequired": <number>,
+     "needsDiscussion": <number>
    }
    ```
-   **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
    **fixStatus values**:
    - `"not_required"`: No fixes or discussion needed, proceed to next process
    - `"pending"`: Fixes or discussion needed, pause execution
@@ -227,9 +225,6 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 4. **CRITICAL: Setting `documentReview.status = "approved"`**
    - Set `approved` **ONLY IF** `fixStatus` is `"not_required"`
    - **DO NOT set `approved` if `fixStatus` is `"applied"` or `"pending"`**
-5. **If fixStatus is "pending"**:
-   - Do NOT set `documentReview.status = "approved"`
-   - This indicates human intervention is required
 
 #### If `--autofix` flag is present AND modifications are needed:
 
@@ -328,4 +323,4 @@ Display to user:
 5. Next step recommendation:
    - If default mode and modifications are needed: suggest running with `--fix`
    - If `--autofix` or `--fix` was used: inform that **a new document-review round will verify the changes** (auto-execution will handle this automatically)
-   - If Fix Required = 0 AND Needs Discussion = 0 AND no fixes applied in this round: suggest `/kiro:spec-impl $1`
+   - If Fix Required = 0 AND no fixes applied in this round: suggest `/kiro:spec-impl $1`

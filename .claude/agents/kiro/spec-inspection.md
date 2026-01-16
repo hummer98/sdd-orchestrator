@@ -23,13 +23,6 @@ You are a specialized agent for comprehensive inspection of implementation again
   - Integration verified
   - GO/NOGO judgment rendered with actionable findings
 
-## Language Configuration
-
-**CRITICAL**: All output including the inspection report file (inspection-{n}.md) MUST be written in the language specified in spec.json's `language` field.
-- If `spec.json.language` is `"ja"`, write everything in Japanese
-- If `spec.json.language` is `"en"` or not specified, write in English
-- This includes: report headings, table headers, findings descriptions, recommendations, and all prose text
-
 ## Execution Protocol
 
 You will receive task prompts containing:
@@ -99,45 +92,11 @@ Check adherence to CLAUDE.md Design Principles:
 - Flag violations as Minor to Major depending on scope
 
 #### 2.6 Dead Code Detection (DeadCodeChecker)
-
-**Target**: Components/services/functions created in this Spec
-
-**Detection Levels**:
-
-1. **Static Check**: Verify code is imported somewhere
-2. **Reachability Check**: Verify code is reachable from application entry points
-
-**Entry Points by Layer**:
-| Layer | Entry Points |
-|-------|-------------|
-| UI (Renderer) | `main.tsx`, `App.tsx`, Router config |
-| IPC (Main) | `handlers.ts` with `ipcMain.handle()` registration |
-| API | Endpoint registration, route handlers |
-
-**Reachability Check Procedure**:
-
-1. **Identify new exports**: List all new functions/classes/components exported by this Spec
-2. **Trace call chain from entry points**:
-   - For IPC handlers: Is there an `ipcMain.handle(CHANNEL, handler)` that calls this code?
-   - For UI components: Is the component rendered in JSX from a routed view?
-   - For services: Is the service called from a handler or component that is reachable?
-3. **Exclude test-only usage**: Calls from `*.test.ts`, `*.spec.ts` do NOT count as "used"
-
-**Detection Patterns**:
-| Pattern | Judgment | Severity |
-|---------|----------|----------|
-| Reachable from entry point | OK | - |
-| Called only from tests | Dead Code | **Critical** |
-| Called only from other dead code | Dead Code | **Critical** |
-| Unreachable due to conditional branch | Dead Code | Major |
-| Exported but never imported | Dead Code | Major |
-
-**Verification Examples**:
-- `handleImplStartWithWorktree()` exported → Check if any `ipcMain.handle()` calls it → If only tests import it → **Critical: Implementation incomplete**
-- `WorktreeService` class → Check if instantiated in reachable code → If only in tests → **Critical**
-- UI component → Check if rendered in JSX from App/Router → If not → **Critical**
-
-**IMPORTANT**: Test-only usage indicates implementation was prepared but never connected to the application. This is a **Critical** finding as it represents incomplete implementation.
+For new components/services created:
+- Use Grep to verify they are imported and used
+- Check that components are rendered/called
+- Verify exports are consumed
+- Flag orphaned code as Major
 
 #### 2.7 Integration Verification (IntegrationChecker)
 Verify all components work together:
@@ -172,11 +131,7 @@ Check adherence to steering/logging.md guidelines:
 
 ### 4. Generate Report
 
-Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`.
-
-**IMPORTANT**: Generate the report in the language specified in `spec.json.language`. The template below shows the structure - translate all headings, labels, and prose to the target language.
-
-**Template (English - translate to target language)**:
+Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 ```markdown
 # Inspection Report - {feature}
@@ -229,25 +184,6 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`.
 - For GO: Ready for deployment
 - For NOGO: Address Critical/Major issues and re-run inspection
 ```
-
-**Japanese Translation Reference** (when `language: "ja"`):
-- "Inspection Report" → "検査レポート"
-- "Summary" → "概要"
-- "Judgment" → "判定"
-- "Findings by Category" → "カテゴリ別検出結果"
-- "Requirements Compliance" → "要件準拠"
-- "Design Alignment" → "設計整合性"
-- "Task Completion" → "タスク完了状況"
-- "Steering Consistency" → "ステアリング整合性"
-- "Design Principles" → "設計原則"
-- "Dead Code Detection" → "デッドコード検出"
-- "Integration Verification" → "統合検証"
-- "Logging Compliance" → "ロギング準拠"
-- "Statistics" → "統計"
-- "Recommended Actions" → "推奨アクション"
-- "Next Steps" → "次のステップ"
-- "Ready for deployment" → "デプロイ準備完了"
-- "Address Critical/Major issues and re-run inspection" → "Critical/Major問題を修正し、再検査を実行"
 
 ### 5. Handle Options
 
@@ -365,9 +301,7 @@ If NOGO judgment AND --autofix option:
 
 ## Output Description
 
-**Reminder**: Use the language from `spec.json.language` for ALL output.
-
-Provide output with:
+Provide output in the language specified in spec.json with:
 
 1. **Judgment**: GO or NOGO with brief rationale
 2. **Summary**: Key findings by category (counts by severity)

@@ -5,6 +5,8 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { readFile, writeFile } from 'fs/promises';
+import { join } from 'path';
 import { IPC_CHANNELS } from './channels';
 import { logger } from '../services/logger';
 import type {
@@ -15,6 +17,42 @@ import type {
   Result,
 } from '../services/autoExecutionCoordinator';
 import type { WorkflowPhase } from '../services/specManagerService';
+
+// ============================================================
+// Helper: Disable autoExecution in spec.json
+// ============================================================
+
+type DisableAutoExecutionResult =
+  | { ok: true }
+  | { ok: false; error: { message: string } };
+
+/**
+ * Disable autoExecution.enabled in spec.json while preserving other autoExecution fields
+ * @param specPath Path to the spec directory
+ */
+async function disableAutoExecutionInSpecJson(specPath: string): Promise<DisableAutoExecutionResult> {
+  try {
+    const specJsonPath = join(specPath, 'spec.json');
+    const content = await readFile(specJsonPath, 'utf-8');
+    const specJson = JSON.parse(content);
+
+    // Preserve existing autoExecution fields, only update enabled
+    if (specJson.autoExecution) {
+      specJson.autoExecution.enabled = false;
+    }
+
+    // Update timestamp
+    specJson.updated_at = new Date().toISOString();
+
+    await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: { message: String(error) },
+    };
+  }
+}
 
 // ============================================================
 // Types for IPC communication
@@ -110,7 +148,20 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
     IPC_CHANNELS.AUTO_EXECUTION_STOP,
     async (_event, params: StopParams): Promise<Result<void, AutoExecutionError>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_STOP', { specPath: params.specPath });
-      return coordinator.stop(params.specPath);
+      const result = await coordinator.stop(params.specPath);
+
+      // Reset autoExecution.enabled in spec.json when stopped
+      if (result.ok) {
+        const updateResult = await disableAutoExecutionInSpecJson(params.specPath);
+        if (!updateResult.ok) {
+          logger.warn('[autoExecutionHandlers] Failed to update spec.json autoExecution.enabled', {
+            specPath: params.specPath,
+            error: updateResult.error,
+          });
+        }
+      }
+
+      return result;
     }
   );
 
@@ -221,6 +272,18 @@ function setupEventForwarding(coordinator: AutoExecutionCoordinator): void {
   // Forward execution-completed events
   coordinator.on('execution-completed', (specPath: string, summary) => {
     broadcastToRenderers(IPC_CHANNELS.AUTO_EXECUTION_COMPLETED, { specPath, summary });
+
+    // Reset autoExecution.enabled in spec.json when execution completes
+    disableAutoExecutionInSpecJson(specPath).then((result) => {
+      if (!result.ok) {
+        logger.warn('[autoExecutionHandlers] Failed to reset autoExecution.enabled on completion', {
+          specPath,
+          error: result.error,
+        });
+      } else {
+        logger.info('[autoExecutionHandlers] Reset autoExecution.enabled on completion', { specPath });
+      }
+    });
   });
 
   // Forward execution-error events

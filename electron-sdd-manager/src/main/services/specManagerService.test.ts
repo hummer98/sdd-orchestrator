@@ -1004,7 +1004,7 @@ describe('spec-scoped-auto-execution-state: spec.json autoExecution Integration'
           inspection: false,
           deploy: false,
         },
-        documentReviewFlag: 'skip',
+        documentReviewFlag: 'run',
         validationOptions: {
           gap: false,
           design: false,
@@ -1027,7 +1027,7 @@ describe('spec-scoped-auto-execution-state: spec.json autoExecution Integration'
       expect(updatedParsed.autoExecution.permissions.requirements).toBe(true);
       expect(updatedParsed.autoExecution.permissions.design).toBe(true);
       expect(updatedParsed.autoExecution.permissions.tasks).toBe(true);
-      expect(updatedParsed.autoExecution.documentReviewFlag).toBe('skip');
+      expect(updatedParsed.autoExecution.documentReviewFlag).toBe('run');
     });
 
     it('should preserve other spec.json fields when updating autoExecution', async () => {

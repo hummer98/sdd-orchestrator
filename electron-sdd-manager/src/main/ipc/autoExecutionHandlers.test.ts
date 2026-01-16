@@ -97,7 +97,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       };
@@ -120,7 +120,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       };
@@ -149,7 +149,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -184,7 +184,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -217,7 +217,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'spec-1',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -227,7 +227,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'spec-2',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -252,7 +252,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -310,7 +310,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: false, tasks: false, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       };
@@ -370,7 +370,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       });
@@ -398,7 +398,7 @@ describe('autoExecutionHandlers', () => {
         specId: 'test-feature',
         options: {
           permissions: { requirements: true, design: true, tasks: true, impl: false },
-          documentReviewFlag: 'skip' as const,
+          documentReviewFlag: 'run' as const,
           validationOptions: { gap: false, design: false, impl: false },
         },
       })).resolves.toBeDefined();
@@ -436,7 +436,7 @@ describe('autoExecutionHandlers', () => {
           specId: 'shared-test',
           options: {
             permissions: { requirements: true, design: true, tasks: true, impl: false },
-            documentReviewFlag: 'skip' as const,
+            documentReviewFlag: 'run' as const,
             validationOptions: { gap: false, design: false, impl: false },
           },
         });
@@ -469,7 +469,7 @@ describe('autoExecutionHandlers', () => {
           specId: 'e2e-test',
           options: {
             permissions: { requirements: true, design: true, tasks: true, impl: false },
-            documentReviewFlag: 'skip' as const,
+            documentReviewFlag: 'run' as const,
             validationOptions: { gap: false, design: false, impl: false },
           },
         });
@@ -505,7 +505,7 @@ describe('autoExecutionHandlers', () => {
           specId: 'spy-test',
           options: {
             permissions: { requirements: true, design: false, tasks: false, impl: false },
-            documentReviewFlag: 'skip' as const,
+            documentReviewFlag: 'run' as const,
             validationOptions: { gap: false, design: false, impl: false },
           },
         });

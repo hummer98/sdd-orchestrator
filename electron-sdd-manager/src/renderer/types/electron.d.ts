@@ -340,6 +340,54 @@ export interface AutoExecutionSummary {
   status: 'completed' | 'error' | 'paused';
 }
 
+/**
+ * Bug workflow phase type
+ */
+export type BugWorkflowPhase = 'report' | 'analyze' | 'fix' | 'verify' | 'deploy';
+
+/**
+ * Bug auto execution state
+ * (bug fix: auto-execution-ui-state-dependency)
+ */
+export interface BugAutoExecutionState {
+  bugPath: string;
+  bugName: string;
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  currentPhase: BugWorkflowPhase | null;
+  executedPhases: BugWorkflowPhase[];
+  errors: string[];
+  startTime: number;
+  lastActivityTime: number;
+  retryCount: number;
+  lastFailedPhase: BugWorkflowPhase | null;
+}
+
+/**
+ * Bug auto execution error
+ */
+export type BugAutoExecutionError =
+  | { type: 'ALREADY_EXECUTING'; bugName: string }
+  | { type: 'NOT_EXECUTING'; bugName: string }
+  | { type: 'MAX_CONCURRENT_REACHED'; limit: number }
+  | { type: 'NO_BUG_SELECTED' }
+  | { type: 'NO_BUG_DETAIL' }
+  | { type: 'NO_PERMITTED_PHASES' }
+  | { type: 'PHASE_EXECUTION_FAILED'; phase: BugWorkflowPhase; message?: string }
+  | { type: 'TIMEOUT'; bugName: string; phase: BugWorkflowPhase | null }
+  | { type: 'AGENT_CRASH'; agentId: string; exitCode: number; phase: BugWorkflowPhase | null }
+  | { type: 'MAX_RETRIES_EXCEEDED'; bugName: string; retryCount: number };
+
+/**
+ * Bug auto execution summary
+ */
+export interface BugAutoExecutionSummary {
+  bugName: string;
+  executedPhases: BugWorkflowPhase[];
+  totalDuration: number;
+  errors: string[];
+  status: 'completed' | 'error' | 'paused';
+}
+
 export interface ElectronAPI {
   // File System
   showOpenDialog(): Promise<string | null>;
@@ -678,7 +726,7 @@ export interface ElectronAPI {
         tasks: boolean;
         impl: boolean;
       };
-      documentReviewFlag: 'run' | 'pause' | 'skip';
+      documentReviewFlag: 'run' | 'pause';
       timeoutMs?: number;
       /** Current approvals status from spec.json (used to skip completed phases) */
       approvals?: {
@@ -752,7 +800,7 @@ export interface ElectronAPI {
   /**
    * Set inspection auto execution flag
    */
-  setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void>;
+  setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause'): Promise<void>;
 
   // ============================================================
   // Git Worktree Support (git-worktree-support feature)
@@ -905,6 +953,32 @@ export interface ElectronAPI {
     error?: { type: string; message?: string };
   }>;
 
+  /**
+   * Get bugs worktree default setting
+   * Requirements: 12.1 (bugs-worktree-support)
+   * @returns true if worktree should be used by default for bugs
+   */
+  getBugsWorktreeDefault(): Promise<boolean>;
+
+  /**
+   * Create worktree for auto-execution
+   * Uses the same logic as UI checkbox (DRY principle)
+   * Requirements: 12.1, 12.2, 12.3, 12.4 (bugs-worktree-support)
+   * @param bugName Bug name
+   * @returns Result with worktree config if created, null if not needed
+   */
+  createBugWorktreeWithAutoExecution(bugName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      branch: string;
+      created_at: string;
+    } | null;
+  } | {
+    ok: false;
+    error?: { type: string; currentBranch?: string; message?: string };
+  }>;
+
   // ============================================================
   // Commandset Version Check (commandset-version-detection feature)
   // Requirements: 2.1
@@ -933,6 +1007,80 @@ export interface ElectronAPI {
     message: string,
     context?: Record<string, unknown>
   ): void;
+
+  // ============================================================
+  // Bug Auto Execution (bug fix: auto-execution-ui-state-dependency)
+  // Main Process側でBug自動実行の状態を管理
+  // ============================================================
+
+  /**
+   * Start bug auto-execution
+   */
+  bugAutoExecutionStart(params: {
+    bugPath: string;
+    bugName: string;
+    options: {
+      permissions: {
+        analyze: boolean;
+        fix: boolean;
+        verify: boolean;
+        deploy: boolean;
+      };
+      timeoutMs?: number;
+    };
+    lastCompletedPhase: 'report' | 'analyze' | 'fix' | 'verify' | 'deploy' | null;
+  }): Promise<{ ok: true; value: BugAutoExecutionState } | { ok: false; error: BugAutoExecutionError }>;
+
+  /**
+   * Stop bug auto-execution
+   */
+  bugAutoExecutionStop(params: { bugPath: string }): Promise<{ ok: true; value: void } | { ok: false; error: BugAutoExecutionError }>;
+
+  /**
+   * Get bug auto-execution status
+   */
+  bugAutoExecutionStatus(params: { bugPath: string }): Promise<BugAutoExecutionState | null>;
+
+  /**
+   * Get all bug auto-execution statuses
+   */
+  bugAutoExecutionAllStatus(): Promise<Record<string, BugAutoExecutionState>>;
+
+  /**
+   * Retry bug auto-execution from a specific phase
+   */
+  bugAutoExecutionRetryFrom(params: { bugPath: string; phase: string }): Promise<{ ok: true; value: BugAutoExecutionState } | { ok: false; error: BugAutoExecutionError }>;
+
+  /**
+   * Reset bug auto-execution coordinator state (E2E test support)
+   */
+  bugAutoExecutionReset(): Promise<void>;
+
+  /**
+   * Subscribe to bug auto-execution status changes
+   */
+  onBugAutoExecutionStatusChanged(callback: (data: { bugPath: string; state: BugAutoExecutionState }) => void): () => void;
+
+  /**
+   * Subscribe to bug auto-execution phase completed events
+   */
+  onBugAutoExecutionPhaseCompleted(callback: (data: { bugPath: string; phase: string }) => void): () => void;
+
+  /**
+   * Subscribe to bug auto-execution error events
+   */
+  onBugAutoExecutionError(callback: (data: { bugPath: string; error: BugAutoExecutionError }) => void): () => void;
+
+  /**
+   * Subscribe to bug auto-execution completed events
+   */
+  onBugAutoExecutionCompleted(callback: (data: { bugPath: string; summary: BugAutoExecutionSummary }) => void): () => void;
+
+  /**
+   * Subscribe to bug auto-execution execute phase events
+   * Main Processが次のフェーズを実行するようRendererに通知
+   */
+  onBugAutoExecutionExecutePhase(callback: (data: { bugPath: string; phase: string; bugName: string }) => void): () => void;
 }
 
 declare global {

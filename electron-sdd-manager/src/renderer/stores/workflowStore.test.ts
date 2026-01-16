@@ -433,14 +433,10 @@ describe('useWorkflowStore', () => {
         expect(state.documentReviewOptions.autoExecutionFlag).toBe('pause');
       });
 
-      it('should set autoExecutionFlag to skip', () => {
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
-        const state = useWorkflowStore.getState();
-        expect(state.documentReviewOptions.autoExecutionFlag).toBe('skip');
-      });
+      // NOTE: skip flag test removed - skip option is no longer available
 
       it('should set autoExecutionFlag to run', () => {
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
+        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
         useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
         const state = useWorkflowStore.getState();
         expect(state.documentReviewOptions.autoExecutionFlag).toBe('run');
@@ -449,10 +445,6 @@ describe('useWorkflowStore', () => {
       it('should cycle through all flags correctly', () => {
         // Start with pause (default)
         expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
-
-        // Set to skip
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('skip');
-        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('skip');
 
         // Set to run
         useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');

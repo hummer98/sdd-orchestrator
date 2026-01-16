@@ -73,9 +73,9 @@ export interface DocumentReviewState {
 }
 
 /**
- * Auto execution flag for document review (3 values)
+ * Auto execution flag for document review (2 values - skip removed)
  */
-export type DocumentReviewAutoExecutionFlag = 'run' | 'pause' | 'skip';
+export type DocumentReviewAutoExecutionFlag = 'run' | 'pause';
 
 // =============================================================================
 // Inspection Types
@@ -87,7 +87,6 @@ export type DocumentReviewAutoExecutionFlag = 'run' | 'pause' | 'skip';
 export const INSPECTION_AUTO_EXECUTION_FLAG = {
   RUN: 'run',
   PAUSE: 'pause',
-  SKIP: 'skip',
 } as const;
 
 /**
@@ -103,7 +102,6 @@ export const INSPECTION_PROGRESS_INDICATOR_STATE = {
   CHECKED: 'checked',
   UNCHECKED: 'unchecked',
   EXECUTING: 'executing',
-  SKIP_SCHEDULED: 'skip-scheduled',
 } as const;
 
 /**
@@ -179,23 +177,18 @@ export function needsFix(state: InspectionState | null | undefined): boolean {
 export function getInspectionProgressIndicatorState(
   state: InspectionState | null | undefined,
   isExecuting: boolean,
-  autoExecutionFlag: InspectionAutoExecutionFlag
+  _autoExecutionFlag: InspectionAutoExecutionFlag
 ): InspectionProgressIndicatorState {
-  // Priority 1: skip-scheduled
-  if (autoExecutionFlag === 'skip') {
-    return 'skip-scheduled';
-  }
-
-  // Priority 2: executing
+  // Priority 1: executing
   if (isExecuting) {
     return 'executing';
   }
 
-  // Priority 3: checked (1 or more rounds completed)
+  // Priority 2: checked (1 or more rounds completed)
   if (getRoundCount(state) >= 1) {
     return 'checked';
   }
 
-  // Priority 4: unchecked (default)
+  // Priority 3: unchecked (default)
   return 'unchecked';
 }

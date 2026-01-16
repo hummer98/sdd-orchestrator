@@ -324,7 +324,7 @@ describe('Workflow Types', () => {
         expect(typeof state.enabled).toBe('boolean');
         expect(typeof state.permissions).toBe('object');
         expect(typeof state.documentReviewFlag).toBe('string');
-        expect(['skip', 'run', 'pause']).toContain(state.documentReviewFlag);
+        expect(['run', 'pause']).toContain(state.documentReviewFlag);
       });
     });
   });

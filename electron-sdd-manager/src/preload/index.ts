@@ -1108,7 +1108,7 @@ const electronAPI = {
         tasks: boolean;
         impl: boolean;
       };
-      documentReviewFlag: 'run' | 'pause' | 'skip';
+      documentReviewFlag: 'run' | 'pause';
       validationOptions: {
         gap: boolean;
         design: boolean;
@@ -1330,11 +1330,11 @@ const electronAPI = {
   /**
    * Set inspection auto execution flag
    * @param specPath Full path to spec directory
-   * @param flag Auto execution flag ('run' | 'pause' | 'skip')
+   * @param flag Auto execution flag ('run' | 'pause')
    */
   setInspectionAutoExecutionFlag: (
     specPath: string,
-    flag: 'run' | 'pause' | 'skip'
+    flag: 'run' | 'pause'
   ): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG, specPath, flag),
 
@@ -1506,6 +1506,294 @@ const electronAPI = {
     };
   }> =>
     ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_IMPL_START, projectPath, specPath, featureName),
+
+  // ============================================================
+  // Bug Worktree Support (bugs-worktree-support feature)
+  // Requirements: 3.1, 3.3, 4.6, 8.5, 12.1-12.4
+  // ============================================================
+
+  /**
+   * Create a worktree for a bug fix
+   * @param bugName Bug name (will create branch bugfix/{bugName})
+   * @returns Result with worktree info on success
+   */
+  createBugWorktree: (bugName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error?: { type: string; currentBranch?: string; path?: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_WORKTREE_CREATE, bugName),
+
+  /**
+   * Remove a bug worktree and its associated branch
+   * @param bugName Bug name of the worktree to remove
+   * @returns Result with void on success
+   */
+  removeBugWorktree: (bugName: string): Promise<{
+    ok: true;
+    value: void;
+  } | {
+    ok: false;
+    error?: { type: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_WORKTREE_REMOVE, bugName),
+
+  /**
+   * Get bugs worktree default setting
+   * Requirements: 12.1 (bugs-worktree-support)
+   * @returns true if worktree should be used by default for bugs
+   */
+  getBugsWorktreeDefault: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_BUGS_WORKTREE_DEFAULT_GET),
+
+  /**
+   * Create worktree for auto-execution
+   * Uses the same logic as UI checkbox (DRY principle)
+   * Requirements: 12.1, 12.2, 12.3, 12.4 (bugs-worktree-support)
+   * @param bugName Bug name
+   * @returns Result with worktree config if created, null if not needed
+   */
+  createBugWorktreeWithAutoExecution: (bugName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      branch: string;
+      created_at: string;
+    } | null;
+  } | {
+    ok: false;
+    error?: { type: string; currentBranch?: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_WORKTREE_AUTO_EXECUTION, bugName),
+
+  // ============================================================
+  // Bug Auto Execution (bug fix: auto-execution-ui-state-dependency)
+  // Main Process側でBug自動実行の状態を管理
+  // ============================================================
+
+  /**
+   * Start bug auto-execution
+   * @param params Start parameters (bugPath, bugName, options, lastCompletedPhase)
+   * @returns Result with BugAutoExecutionState on success, or error
+   */
+  bugAutoExecutionStart: (params: {
+    bugPath: string;
+    bugName: string;
+    options: {
+      permissions: {
+        analyze: boolean;
+        fix: boolean;
+        verify: boolean;
+        deploy: boolean;
+      };
+      timeoutMs?: number;
+    };
+    lastCompletedPhase: 'report' | 'analyze' | 'fix' | 'verify' | 'deploy' | null;
+  }): Promise<{ ok: true; value: {
+    bugPath: string;
+    bugName: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+    retryCount: number;
+    lastFailedPhase: string | null;
+  } } | { ok: false; error: { type: string; bugName?: string; limit?: number; message?: string; phase?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_START, params),
+
+  /**
+   * Stop bug auto-execution
+   * @param params Stop parameters (bugPath)
+   * @returns Result with void on success, or error
+   */
+  bugAutoExecutionStop: (params: { bugPath: string }): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; bugName?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_STOP, params),
+
+  /**
+   * Get bug auto-execution status
+   * @param params Status parameters (bugPath)
+   * @returns BugAutoExecutionState or null
+   */
+  bugAutoExecutionStatus: (params: { bugPath: string }): Promise<{
+    bugPath: string;
+    bugName: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+    retryCount: number;
+    lastFailedPhase: string | null;
+  } | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_STATUS, params),
+
+  /**
+   * Get all bug auto-execution statuses
+   * @returns Record of bugPath to BugAutoExecutionState
+   */
+  bugAutoExecutionAllStatus: (): Promise<Record<string, {
+    bugPath: string;
+    bugName: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+    retryCount: number;
+    lastFailedPhase: string | null;
+  }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_ALL_STATUS),
+
+  /**
+   * Retry bug auto-execution from a specific phase
+   * @param params Retry parameters (bugPath, phase)
+   * @returns Result with BugAutoExecutionState on success, or error
+   */
+  bugAutoExecutionRetryFrom: (params: { bugPath: string; phase: string }): Promise<{ ok: true; value: {
+    bugPath: string;
+    bugName: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+    retryCount: number;
+    lastFailedPhase: string | null;
+  } } | { ok: false; error: { type: string; bugName?: string } }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_RETRY_FROM, params),
+
+  /**
+   * Reset bug auto-execution coordinator state (E2E test support)
+   */
+  bugAutoExecutionReset: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_AUTO_EXECUTION_RESET),
+
+  /**
+   * Subscribe to bug auto-execution status changes
+   * @param callback Function called when status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugAutoExecutionStatusChanged: (callback: (data: { bugPath: string; state: {
+    bugPath: string;
+    bugName: string;
+    status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+    currentPhase: string | null;
+    executedPhases: string[];
+    errors: string[];
+    startTime: number;
+    lastActivityTime: number;
+    retryCount: number;
+    lastFailedPhase: string | null;
+  } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bugPath: string; state: unknown }) => {
+      callback(data as { bugPath: string; state: {
+        bugPath: string;
+        bugName: string;
+        status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+        currentPhase: string | null;
+        executedPhases: string[];
+        errors: string[];
+        startTime: number;
+        lastActivityTime: number;
+        retryCount: number;
+        lastFailedPhase: string | null;
+      } });
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUG_AUTO_EXECUTION_STATUS_CHANGED, handler);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_STATUS_CHANGED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to bug auto-execution phase completed events
+   * @param callback Function called when a phase completes
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugAutoExecutionPhaseCompleted: (callback: (data: { bugPath: string; phase: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bugPath: string; phase: string }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUG_AUTO_EXECUTION_PHASE_COMPLETED, handler);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_PHASE_COMPLETED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to bug auto-execution error events
+   * @param callback Function called when an error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugAutoExecutionError: (callback: (data: { bugPath: string; error: { type: string; message?: string } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bugPath: string; error: { type: string; message?: string } }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUG_AUTO_EXECUTION_ERROR, handler);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_ERROR, handler);
+    };
+  },
+
+  /**
+   * Subscribe to bug auto-execution completed events
+   * @param callback Function called when execution completes
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugAutoExecutionCompleted: (callback: (data: { bugPath: string; summary: {
+    bugName: string;
+    executedPhases: string[];
+    totalDuration: number;
+    errors: string[];
+    status: 'completed' | 'error' | 'paused';
+  } }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bugPath: string; summary: unknown }) => {
+      callback(data as { bugPath: string; summary: {
+        bugName: string;
+        executedPhases: string[];
+        totalDuration: number;
+        errors: string[];
+        status: 'completed' | 'error' | 'paused';
+      } });
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUG_AUTO_EXECUTION_COMPLETED, handler);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_COMPLETED, handler);
+    };
+  },
+
+  /**
+   * Subscribe to bug auto-execution execute phase events
+   * Main Processが次のフェーズを実行するようRendererに通知
+   * @param callback Function called when next phase should be executed
+   * @returns Cleanup function to unsubscribe
+   */
+  onBugAutoExecutionExecutePhase: (callback: (data: { bugPath: string; phase: string; bugName: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bugPath: string; phase: string; bugName: string }) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.BUG_AUTO_EXECUTION_EXECUTE_PHASE, handler);
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_EXECUTE_PHASE, handler);
+    };
+  },
 };
 
 // Expose API to renderer

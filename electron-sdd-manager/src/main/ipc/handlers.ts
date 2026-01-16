@@ -35,6 +35,8 @@ import {
 } from '../services/unifiedCommandsetInstaller';
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
+import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
+import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../services/autoExecutionCoordinator';
 import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHandler';
@@ -89,6 +91,15 @@ let eventCallbacksRegistered = false;
 let initialProjectPath: string | null = null;
 // Current project path
 let currentProjectPath: string | null = null;
+
+/**
+ * Get current project path
+ * Used by other modules that need access to the current project
+ * @returns Current project path or null if not set
+ */
+export function getCurrentProjectPath(): string | null {
+  return currentProjectPath;
+}
 
 /**
  * Convert AgentError to user-friendly error message
@@ -1878,7 +1889,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG,
-    async (_event, specPath: string, flag: 'run' | 'pause' | 'skip') => {
+    async (_event, specPath: string, flag: 'run' | 'pause') => {
       logger.info('[handlers] SET_INSPECTION_AUTO_EXECUTION_FLAG called', { specPath, flag });
       const service = getSpecManagerService();
       await service.setInspectionAutoExecutionFlag(specPath, flag);
@@ -1959,6 +1970,14 @@ export function registerIpcHandlers(): void {
   const coordinator = getAutoExecutionCoordinator();
   registerAutoExecutionHandlers(coordinator);
   logger.info('[handlers] Auto Execution handlers registered');
+
+  // ============================================================
+  // Bug Auto Execution Handlers (bug fix: auto-execution-ui-state-dependency)
+  // Main Process側でBug自動実行の状態を管理
+  // ============================================================
+  const bugCoordinator = getBugAutoExecutionCoordinator();
+  registerBugAutoExecutionHandlers(bugCoordinator);
+  logger.info('[handlers] Bug Auto Execution handlers registered');
 
   // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService

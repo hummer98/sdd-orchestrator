@@ -1418,7 +1418,7 @@ export class SpecManagerService {
    * Set inspection auto execution flag in spec.json
    * Requirements: 4.5 (inspection-workflow-ui)
    */
-  async setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause' | 'skip'): Promise<void> {
+  async setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause'): Promise<void> {
     logger.info('[SpecManagerService] setInspectionAutoExecutionFlag called', { specPath, flag });
 
     const specJsonPath = `${specPath}/spec.json`;

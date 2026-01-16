@@ -14,7 +14,6 @@ import {
   Play,
   Check,
   Circle,
-  ArrowRight,
   Ban,
   PlayCircle,
   Wrench,
@@ -53,24 +52,19 @@ export interface DocumentReviewPanelProps {
 // Helper Types & Functions
 // =============================================================================
 
-type ProgressIndicatorState = 'checked' | 'unchecked' | 'executing' | 'skip-scheduled';
+type ProgressIndicatorState = 'checked' | 'unchecked' | 'executing';
 
 function getProgressIndicatorState(
   reviewState: DocumentReviewState | null,
   isExecuting: boolean,
-  autoExecutionFlag: DocumentReviewAutoExecutionFlag
+  _autoExecutionFlag: DocumentReviewAutoExecutionFlag
 ): ProgressIndicatorState {
-  // Priority 1: Skip scheduled (autoExecutionFlag is 'skip')
-  if (autoExecutionFlag === 'skip') {
-    return 'skip-scheduled';
-  }
-
-  // Priority 2: Executing (status === 'in_progress' or isExecuting)
+  // Priority 1: Executing (status === 'in_progress' or isExecuting)
   if (isExecuting || reviewState?.status === 'in_progress') {
     return 'executing';
   }
 
-  // Priority 3: Checked (has roundDetails)
+  // Priority 2: Checked (has roundDetails)
   if (reviewState && (reviewState.roundDetails?.length ?? 0) >= 1) {
     return 'checked';
   }
@@ -102,13 +96,6 @@ function renderProgressIndicator(state: ProgressIndicatorState): React.ReactNode
           className="w-4 h-4 text-blue-500 animate-spin"
         />
       );
-    case 'skip-scheduled':
-      return (
-        <ArrowRight
-          data-testid="progress-indicator-skip-scheduled"
-          className="w-4 h-4 text-yellow-500"
-        />
-      );
   }
 }
 
@@ -119,8 +106,6 @@ function getNextAutoExecutionFlag(
     case 'run':
       return 'pause';
     case 'pause':
-      return 'skip';
-    case 'skip':
       return 'run';
   }
 }
@@ -133,10 +118,6 @@ function renderAutoExecutionFlagIcon(flag: DocumentReviewAutoExecutionFlag): Rea
       );
     case 'pause':
       return <Ban data-testid="auto-flag-pause" className="w-4 h-4 text-yellow-500" />;
-    case 'skip':
-      return (
-        <ArrowRight data-testid="auto-flag-skip" className="w-4 h-4 text-gray-400" />
-      );
   }
 }
 
@@ -146,8 +127,6 @@ function getAutoExecutionFlagTooltip(flag: DocumentReviewAutoExecutionFlag): str
       return '自動実行: 実行';
     case 'pause':
       return '自動実行: 一時停止';
-    case 'skip':
-      return '自動実行: スキップ';
   }
 }
 

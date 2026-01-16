@@ -89,7 +89,7 @@ export interface AutoExecutionPermissions {
  * ドキュメントレビューフラグ
  * Requirements: 7.1
  */
-export type DocumentReviewFlag = 'run' | 'pause' | 'skip';
+export type DocumentReviewFlag = 'run' | 'pause';
 
 /**
  * Approval状態
@@ -657,7 +657,8 @@ export class AutoExecutionCoordinator extends EventEmitter {
         const options = this.executionOptions.get(specPath);
         if (options) {
           // tasksフェーズ完了時のDocument Review処理
-          if (currentPhase === 'tasks' && options.documentReviewFlag !== 'skip') {
+          // NOTE: skip option removed - document review is always executed
+          if (currentPhase === 'tasks') {
             logger.info('[AutoExecutionCoordinator] Tasks completed, triggering document review', {
               specPath,
               documentReviewFlag: options.documentReviewFlag,

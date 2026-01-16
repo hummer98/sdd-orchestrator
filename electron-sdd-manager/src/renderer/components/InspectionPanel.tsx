@@ -13,7 +13,6 @@ import {
   Play,
   Check,
   Circle,
-  ArrowRight,
   Ban,
   PlayCircle,
   Wrench,
@@ -83,13 +82,6 @@ function renderProgressIndicator(state: InspectionProgressIndicatorState): React
           className="w-4 h-4 text-blue-500 animate-spin"
         />
       );
-    case 'skip-scheduled':
-      return (
-        <ArrowRight
-          data-testid="inspection-progress-indicator-skip-scheduled"
-          className="w-4 h-4 text-yellow-500"
-        />
-      );
   }
 }
 
@@ -105,8 +97,6 @@ function getNextAutoExecutionFlag(
     case 'run':
       return 'pause';
     case 'pause':
-      return 'skip';
-    case 'skip':
       return 'run';
   }
 }
@@ -127,13 +117,6 @@ function renderAutoExecutionFlagIcon(flag: InspectionAutoExecutionFlag): React.R
           className="w-4 h-4 text-yellow-500"
         />
       );
-    case 'skip':
-      return (
-        <ArrowRight
-          data-testid="inspection-auto-flag-skip"
-          className="w-4 h-4 text-gray-400"
-        />
-      );
   }
 }
 
@@ -143,8 +126,6 @@ function getAutoExecutionFlagTooltip(flag: InspectionAutoExecutionFlag): string 
       return '自動実行: 実行';
     case 'pause':
       return '自動実行: 一時停止';
-    case 'skip':
-      return '自動実行: スキップ';
   }
 }
 

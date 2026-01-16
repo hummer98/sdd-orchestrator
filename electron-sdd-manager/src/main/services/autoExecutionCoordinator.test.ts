@@ -23,7 +23,7 @@ const createDefaultOptions = (): AutoExecutionOptions => ({
     tasks: true,
     impl: false,
   },
-  documentReviewFlag: 'skip',
+  documentReviewFlag: 'run',
   validationOptions: { gap: false, design: false, impl: false },
 });
 
@@ -101,7 +101,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: true,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: {
             gap: false,
             design: false,
@@ -113,7 +113,7 @@ describe('AutoExecutionCoordinator', () => {
         expect(options.permissions.design).toBe(true);
         expect(options.permissions.tasks).toBe(true);
         expect(options.permissions.impl).toBe(false);
-        expect(options.documentReviewFlag).toBe('skip');
+        expect(options.documentReviewFlag).toBe('run');
         expect(options.validationOptions.gap).toBe(false);
       });
 
@@ -125,7 +125,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           timeoutMs: 60000,
         };
@@ -682,7 +682,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
 
@@ -702,7 +702,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const eventHandler = vi.fn();
@@ -1251,7 +1251,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const eventHandler = vi.fn();
@@ -1294,15 +1294,19 @@ describe('AutoExecutionCoordinator', () => {
             tasks: true,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const executedPhases: WorkflowPhase[] = [];
+        let documentReviewTriggered = false;
 
         await coordinator.start(specPath, 'test-feature', options);
 
         coordinator.on('execute-next-phase', (_specPath, phase) => {
           executedPhases.push(phase);
+        });
+        coordinator.on('execute-document-review', () => {
+          documentReviewTriggered = true;
         });
 
         // Phase 1: requirements完了
@@ -1315,13 +1319,15 @@ describe('AutoExecutionCoordinator', () => {
         await coordinator.handleAgentCompleted('agent-2', specPath, 'completed');
         expect(executedPhases).toContain('tasks');
 
-        // Phase 3: tasks完了 (impl is false, so no more phases)
+        // Phase 3: tasks完了 - document review is now mandatory (skip option removed)
         coordinator.setCurrentPhase(specPath, 'tasks', 'agent-3');
         await coordinator.handleAgentCompleted('agent-3', specPath, 'completed');
 
-        // impl は許可されていないので、ここで完了
+        // tasks完了後、document reviewが実行される（スキップオプション削除済み）
+        expect(documentReviewTriggered).toBe(true);
         const state = coordinator.getStatus(specPath);
-        expect(state?.status).toBe('completed');
+        // document review実行中なのでまだrunning
+        expect(state?.status).toBe('running');
         expect(executedPhases).toEqual(['design', 'tasks']);
       });
     });
@@ -1355,7 +1361,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: true,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const eventHandler = vi.fn();
@@ -1382,7 +1388,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const eventHandler = vi.fn();
@@ -1664,7 +1670,7 @@ describe('AutoExecutionCoordinator', () => {
             impl: true,
             inspection: true,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
 
@@ -1685,7 +1691,7 @@ describe('AutoExecutionCoordinator', () => {
             impl: true,
             inspection: true,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },
@@ -1720,7 +1726,7 @@ describe('AutoExecutionCoordinator', () => {
             impl: true,
             inspection: false, // Disabled
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },
@@ -1755,7 +1761,7 @@ describe('AutoExecutionCoordinator', () => {
             impl: false,
             inspection: true,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },
@@ -1790,7 +1796,7 @@ describe('AutoExecutionCoordinator', () => {
             impl: false,
             inspection: true,
           },
-          documentReviewFlag: 'skip',
+          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },

@@ -156,7 +156,7 @@ export interface AutoExecutionOptionsWS {
     readonly tasks: boolean;
     readonly impl: boolean;
   };
-  readonly documentReviewFlag: 'run' | 'pause' | 'skip';
+  readonly documentReviewFlag: 'run' | 'pause';
 }
 
 /**

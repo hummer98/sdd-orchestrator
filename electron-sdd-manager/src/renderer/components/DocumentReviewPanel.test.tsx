@@ -160,16 +160,7 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('progress-indicator-executing')).toBeInTheDocument();
     });
 
-    it('should show skip-scheduled state when autoExecutionFlag is skip', () => {
-      render(
-        <DocumentReviewPanel
-          {...defaultProps}
-          reviewState={null}
-          autoExecutionFlag="skip"
-        />
-      );
-      expect(screen.getByTestId('progress-indicator-skip-scheduled')).toBeInTheDocument();
-    });
+    // NOTE: skip-scheduled test removed - skip option is no longer available
   });
 
   // ============================================================
@@ -192,10 +183,7 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('auto-flag-pause')).toBeInTheDocument();
     });
 
-    it('should show skip state when flag is skip', () => {
-      render(<DocumentReviewPanel {...defaultProps} autoExecutionFlag="skip" />);
-      expect(screen.getByTestId('auto-flag-skip')).toBeInTheDocument();
-    });
+    // NOTE: skip state test removed - skip option is no longer available
 
     it('should call onAutoExecutionFlagChange with next value when clicked - run to pause', () => {
       const onAutoExecutionFlagChange = vi.fn();
@@ -210,7 +198,7 @@ describe('DocumentReviewPanel', () => {
       expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('pause');
     });
 
-    it('should call onAutoExecutionFlagChange with next value when clicked - pause to skip', () => {
+    it('should call onAutoExecutionFlagChange with next value when clicked - pause to run', () => {
       const onAutoExecutionFlagChange = vi.fn();
       render(
         <DocumentReviewPanel
@@ -220,20 +208,9 @@ describe('DocumentReviewPanel', () => {
         />
       );
       fireEvent.click(screen.getByTestId('auto-execution-flag-control'));
-      expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('skip');
-    });
-
-    it('should call onAutoExecutionFlagChange with next value when clicked - skip to run', () => {
-      const onAutoExecutionFlagChange = vi.fn();
-      render(
-        <DocumentReviewPanel
-          {...defaultProps}
-          autoExecutionFlag="skip"
-          onAutoExecutionFlagChange={onAutoExecutionFlagChange}
-        />
-      );
-      fireEvent.click(screen.getByTestId('auto-execution-flag-control'));
       expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('run');
     });
+
+    // NOTE: skip to run test removed - skip option is no longer available
   });
 });

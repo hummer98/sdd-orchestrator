@@ -110,8 +110,8 @@ export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
 // Requirements: 7.4
 // ============================================================
 
-/** Auto execution flag for document review (3 values) */
-export type DocumentReviewAutoExecutionFlag = 'run' | 'pause' | 'skip';
+/** Auto execution flag for document review (2 values - skip removed) */
+export type DocumentReviewAutoExecutionFlag = 'run' | 'pause';
 
 export interface DocumentReviewOptions {
   /** Auto execution flag (run/pause/skip) - Requirements: 6.7, 6.8 */

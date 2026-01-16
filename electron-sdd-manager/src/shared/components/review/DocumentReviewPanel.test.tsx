@@ -132,11 +132,7 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('progress-indicator-executing')).toBeInTheDocument();
     });
 
-    it('skipフラグの場合skip-scheduledアイコンを表示する', () => {
-      render(<DocumentReviewPanel {...defaultProps} autoExecutionFlag="skip" />);
-
-      expect(screen.getByTestId('progress-indicator-skip-scheduled')).toBeInTheDocument();
-    });
+    // NOTE: skip-scheduled test removed - skip option is no longer available
   });
 
   describe('自動実行フラグ制御', () => {
@@ -152,11 +148,7 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('auto-flag-pause')).toBeInTheDocument();
     });
 
-    it('skipフラグでArrowRightアイコンを表示する', () => {
-      render(<DocumentReviewPanel {...defaultProps} autoExecutionFlag="skip" />);
-
-      expect(screen.getByTestId('auto-flag-skip')).toBeInTheDocument();
-    });
+    // NOTE: skip flag test removed - skip option is no longer available
 
     it('フラグボタンクリックでonAutoExecutionFlagChangeを呼び出す', () => {
       const onAutoExecutionFlagChange = vi.fn();
@@ -175,8 +167,7 @@ describe('DocumentReviewPanel', () => {
 
     it.each<[DocumentReviewAutoExecutionFlag, DocumentReviewAutoExecutionFlag]>([
       ['run', 'pause'],
-      ['pause', 'skip'],
-      ['skip', 'run'],
+      ['pause', 'run'],
     ])('フラグ %s から %s に変更する', (current, expected) => {
       const onAutoExecutionFlagChange = vi.fn();
       render(

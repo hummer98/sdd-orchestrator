@@ -308,10 +308,7 @@ describe('Inspection Types', () => {
     });
 
     describe('getInspectionProgressIndicatorState', () => {
-      it('should return skip-scheduled when autoExecutionFlag is skip', () => {
-        const state: InspectionState = { rounds: [] };
-        expect(getInspectionProgressIndicatorState(state, false, 'skip')).toBe('skip-scheduled');
-      });
+      // NOTE: skip-scheduled test removed - skip option is no longer available
 
       it('should return executing when isExecuting is true', () => {
         const state: InspectionState = { rounds: [] };
@@ -449,24 +446,21 @@ describe('Inspection Types', () => {
   // Constants Tests
   // ============================================================
   describe('InspectionAutoExecutionFlag', () => {
-    it('should define run, pause, and skip values', () => {
+    it('should define run and pause values (skip removed)', () => {
       expect(INSPECTION_AUTO_EXECUTION_FLAG.RUN).toBe('run');
       expect(INSPECTION_AUTO_EXECUTION_FLAG.PAUSE).toBe('pause');
-      expect(INSPECTION_AUTO_EXECUTION_FLAG.SKIP).toBe('skip');
     });
 
-    it('should have exactly 3 flag values', () => {
-      expect(Object.keys(INSPECTION_AUTO_EXECUTION_FLAG)).toHaveLength(3);
+    it('should have exactly 2 flag values (skip removed)', () => {
+      expect(Object.keys(INSPECTION_AUTO_EXECUTION_FLAG)).toHaveLength(2);
     });
 
     it('should allow valid flag type values', () => {
       const run: InspectionAutoExecutionFlag = 'run';
       const pause: InspectionAutoExecutionFlag = 'pause';
-      const skip: InspectionAutoExecutionFlag = 'skip';
 
       expect(run).toBe('run');
       expect(pause).toBe('pause');
-      expect(skip).toBe('skip');
     });
   });
 
@@ -475,23 +469,20 @@ describe('Inspection Types', () => {
       expect(INSPECTION_PROGRESS_INDICATOR_STATE.CHECKED).toBe('checked');
       expect(INSPECTION_PROGRESS_INDICATOR_STATE.UNCHECKED).toBe('unchecked');
       expect(INSPECTION_PROGRESS_INDICATOR_STATE.EXECUTING).toBe('executing');
-      expect(INSPECTION_PROGRESS_INDICATOR_STATE.SKIP_SCHEDULED).toBe('skip-scheduled');
     });
 
-    it('should have exactly 4 indicator states', () => {
-      expect(Object.keys(INSPECTION_PROGRESS_INDICATOR_STATE)).toHaveLength(4);
+    it('should have exactly 3 indicator states (skip-scheduled removed)', () => {
+      expect(Object.keys(INSPECTION_PROGRESS_INDICATOR_STATE)).toHaveLength(3);
     });
 
     it('should allow valid indicator state type values', () => {
       const checked: InspectionProgressIndicatorState = 'checked';
       const unchecked: InspectionProgressIndicatorState = 'unchecked';
       const executing: InspectionProgressIndicatorState = 'executing';
-      const skipScheduled: InspectionProgressIndicatorState = 'skip-scheduled';
 
       expect(checked).toBe('checked');
       expect(unchecked).toBe('unchecked');
       expect(executing).toBe('executing');
-      expect(skipScheduled).toBe('skip-scheduled');
     });
   });
 });

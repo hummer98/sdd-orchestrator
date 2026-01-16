@@ -229,10 +229,10 @@ export interface AutoExecutionPermissions {
 }
 
 /** ドキュメントレビューフラグ */
-export type DocumentReviewFlag = 'skip' | 'run' | 'pause';
+export type DocumentReviewFlag = 'run' | 'pause';
 
 /** Inspection自動実行フラグ */
-export type InspectionAutoExecutionFlag = 'run' | 'pause' | 'skip';
+export type InspectionAutoExecutionFlag = 'run' | 'pause';
 
 /**
  * Spec単位の自動実行状態

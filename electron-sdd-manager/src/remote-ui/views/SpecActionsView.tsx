@@ -74,7 +74,7 @@ export function SpecActionsView({
     specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run';
   const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection;
   const inspectionFlag: InspectionAutoExecutionFlag =
-    inspectionPermission === true ? 'run' : inspectionPermission === false ? 'skip' : 'pause';
+    inspectionPermission === true ? 'run' : 'pause';
 
   // Check if tasks are approved (required for some actions)
   const tasksApproved = specDetail.specJson?.approvals?.tasks?.approved ?? false;

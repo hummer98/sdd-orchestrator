@@ -15,7 +15,6 @@
 export const INSPECTION_AUTO_EXECUTION_FLAG = {
   RUN: 'run',
   PAUSE: 'pause',
-  SKIP: 'skip',
 } as const;
 
 /** Valid inspection auto execution flag values */
@@ -32,7 +31,6 @@ export const INSPECTION_PROGRESS_INDICATOR_STATE = {
   CHECKED: 'checked',
   UNCHECKED: 'unchecked',
   EXECUTING: 'executing',
-  SKIP_SCHEDULED: 'skip-scheduled',
 } as const;
 
 /** Valid inspection progress indicator state values */
@@ -358,32 +356,26 @@ export function getRoundCount(state: InspectionState | null | undefined): number
  * Requirements: 7.1, 7.2, 7.3, 7.4
  *
  * Priority order:
- * 1. skip-scheduled: when autoExecutionFlag is 'skip'
- * 2. executing: when isExecuting is true
- * 3. checked: when at least 1 round completed
- * 4. unchecked: otherwise
+ * 1. executing: when isExecuting is true
+ * 2. checked: when at least 1 round completed
+ * 3. unchecked: otherwise
  */
 export function getInspectionProgressIndicatorState(
   state: InspectionState | null | undefined,
   isExecuting: boolean,
-  autoExecutionFlag: InspectionAutoExecutionFlag
+  _autoExecutionFlag: InspectionAutoExecutionFlag
 ): InspectionProgressIndicatorState {
-  // Priority 1: skip-scheduled
-  if (autoExecutionFlag === 'skip') {
-    return 'skip-scheduled';
-  }
-
-  // Priority 2: executing
+  // Priority 1: executing
   if (isExecuting) {
     return 'executing';
   }
 
-  // Priority 3: checked (1 or more rounds completed)
+  // Priority 2: checked (1 or more rounds completed)
   if (getRoundCount(state) >= 1) {
     return 'checked';
   }
 
-  // Priority 4: unchecked (default)
+  // Priority 3: unchecked (default)
   return 'unchecked';
 }
 

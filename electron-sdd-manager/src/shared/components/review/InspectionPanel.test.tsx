@@ -164,13 +164,7 @@ describe('InspectionPanel', () => {
       ).toBeInTheDocument();
     });
 
-    it('skipフラグの場合skip-scheduledアイコンを表示する', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="skip" />);
-
-      expect(
-        screen.getByTestId('inspection-progress-indicator-skip-scheduled')
-      ).toBeInTheDocument();
-    });
+    // NOTE: skip-scheduled test removed - skip option is no longer available
   });
 
   describe('自動実行フラグ制御', () => {
@@ -186,16 +180,11 @@ describe('InspectionPanel', () => {
       expect(screen.getByTestId('inspection-auto-flag-pause')).toBeInTheDocument();
     });
 
-    it('skipフラグでArrowRightアイコンを表示する', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="skip" />);
-
-      expect(screen.getByTestId('inspection-auto-flag-skip')).toBeInTheDocument();
-    });
+    // NOTE: skip flag test removed - skip option is no longer available
 
     it.each<[InspectionAutoExecutionFlag, InspectionAutoExecutionFlag]>([
       ['run', 'pause'],
-      ['pause', 'skip'],
-      ['skip', 'run'],
+      ['pause', 'run'],
     ])('フラグ %s から %s に変更する', (current, expected) => {
       const onAutoExecutionFlagChange = vi.fn();
       render(

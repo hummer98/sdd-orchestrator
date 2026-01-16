@@ -44,7 +44,7 @@ export interface ApprovalsStatus {
  */
 export interface AutoExecutionOptions {
   readonly permissions: AutoExecutionPermissions;
-  readonly documentReviewFlag: 'run' | 'pause' | 'skip';
+  readonly documentReviewFlag: 'run' | 'pause';
   readonly timeoutMs?: number;
   /** Current approvals status from spec.json (used to skip completed phases) */
   readonly approvals?: ApprovalsStatus;

@@ -82,16 +82,7 @@ describe('InspectionPanel', () => {
       expect(screen.getByTestId('inspection-progress-indicator-executing')).toBeInTheDocument();
     });
 
-    it('should show skip-scheduled state when autoExecutionFlag is skip', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="skip" />);
-      expect(screen.getByTestId('inspection-progress-indicator-skip-scheduled')).toBeInTheDocument();
-    });
-
-    it('should prioritize skip-scheduled over executing', () => {
-      // When autoExecutionFlag is 'skip', it should show skip-scheduled even if executing
-      render(<InspectionPanel {...defaultProps} isExecuting={true} autoExecutionFlag="skip" />);
-      expect(screen.getByTestId('inspection-progress-indicator-skip-scheduled')).toBeInTheDocument();
-    });
+    // NOTE: skip-scheduled tests removed - skip option is no longer available
 
     it('should prioritize executing over checked', () => {
       const inspectionState: InspectionState = {
@@ -240,10 +231,7 @@ describe('InspectionPanel', () => {
       expect(screen.getByTestId('inspection-auto-flag-pause')).toBeInTheDocument();
     });
 
-    it('should show skip icon when autoExecutionFlag is skip', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="skip" />);
-      expect(screen.getByTestId('inspection-auto-flag-skip')).toBeInTheDocument();
-    });
+    // NOTE: skip icon test removed - skip option is no longer available
 
     it('should call onAutoExecutionFlagChange with "pause" when clicked from "run"', () => {
       const onAutoExecutionFlagChange = vi.fn();
@@ -258,7 +246,7 @@ describe('InspectionPanel', () => {
       expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('pause');
     });
 
-    it('should call onAutoExecutionFlagChange with "skip" when clicked from "pause"', () => {
+    it('should call onAutoExecutionFlagChange with "run" when clicked from "pause"', () => {
       const onAutoExecutionFlagChange = vi.fn();
       render(
         <InspectionPanel
@@ -268,20 +256,9 @@ describe('InspectionPanel', () => {
         />
       );
       fireEvent.click(screen.getByTestId('inspection-auto-execution-flag-control'));
-      expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('skip');
-    });
-
-    it('should call onAutoExecutionFlagChange with "run" when clicked from "skip"', () => {
-      const onAutoExecutionFlagChange = vi.fn();
-      render(
-        <InspectionPanel
-          {...defaultProps}
-          autoExecutionFlag="skip"
-          onAutoExecutionFlagChange={onAutoExecutionFlagChange}
-        />
-      );
-      fireEvent.click(screen.getByTestId('inspection-auto-execution-flag-control'));
       expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('run');
     });
+
+    // NOTE: skip to run test removed - skip option is no longer available
   });
 });

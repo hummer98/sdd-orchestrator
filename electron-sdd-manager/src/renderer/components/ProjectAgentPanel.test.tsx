@@ -96,12 +96,6 @@ describe('ProjectAgentPanel', () => {
       expect(screen.queryByText('プロジェクトエージェントなし')).not.toBeInTheDocument();
     });
 
-    it('should hide empty state message when collapsed', () => {
-      // project-agent-panel-always-visible feature: 折りたたみ時は空状態メッセージも非表示
-      render(<ProjectAgentPanel collapsed={true} />);
-      expect(screen.queryByText('プロジェクトエージェントなし')).not.toBeInTheDocument();
-    });
-
     it('should render panel when project agents exist', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]);
@@ -204,47 +198,6 @@ describe('ProjectAgentPanel', () => {
 
       render(<ProjectAgentPanel />);
       expect(screen.queryByRole('button', { name: /停止/i })).not.toBeInTheDocument();
-    });
-  });
-
-  // ============================================================
-  // Collapse functionality
-  // ============================================================
-  describe('Collapse functionality', () => {
-    it('should allow collapsing the panel', () => {
-      const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
-
-      render(<ProjectAgentPanel collapsed={false} />);
-
-      // Initially expanded, agents visible
-      expect(screen.getByText('steering')).toBeInTheDocument();
-    });
-
-    it('should hide agent list when collapsed', () => {
-      const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
-
-      render(<ProjectAgentPanel collapsed={true} />);
-
-      // When collapsed, agent list is hidden
-      expect(screen.queryByText('steering')).not.toBeInTheDocument();
-    });
-
-    it('should call onCollapsedChange when header is clicked', () => {
-      const agents = new Map<string, AgentInfo[]>();
-      agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
-
-      const onCollapsedChange = vi.fn();
-      render(<ProjectAgentPanel collapsed={false} onCollapsedChange={onCollapsedChange} />);
-
-      const header = screen.getByTestId('project-agent-panel-header');
-      fireEvent.click(header);
-
-      expect(onCollapsedChange).toHaveBeenCalledWith(true);
     });
   });
 

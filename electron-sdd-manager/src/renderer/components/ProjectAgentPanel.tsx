@@ -5,7 +5,7 @@
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
  */
 
-import { Bot, ChevronDown, ChevronRight, StopCircle, PlayCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
+import { Bot, StopCircle, PlayCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
@@ -55,17 +55,9 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; className: string; ico
   },
 };
 
-interface ProjectAgentPanelProps {
-  /** 折りたたみ状態 */
-  collapsed?: boolean;
-  /** 折りたたみ状態変更コールバック */
-  onCollapsedChange?: (collapsed: boolean) => void;
-}
-
-export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgentPanelProps) {
+export function ProjectAgentPanel() {
   const { selectedAgentId, stopAgent, resumeAgent, selectAgent, getProjectAgents, removeAgent, addAgent, selectForProjectAgents } = useAgentStore();
   const { currentProject } = useProjectStore();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 
@@ -80,17 +72,6 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
     });
 
   // project-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
-
-  const isCollapsed = collapsed !== undefined ? collapsed : internalCollapsed;
-
-  const handleToggleCollapse = () => {
-    const newCollapsed = !isCollapsed;
-    if (onCollapsedChange) {
-      onCollapsedChange(newCollapsed);
-    } else {
-      setInternalCollapsed(newCollapsed);
-    }
-  };
 
   const handleStop = async (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -151,17 +132,8 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
       {/* Header */}
       <div
         data-testid="project-agent-panel-header"
-        onClick={handleToggleCollapse}
-        className={clsx(
-          'flex items-center gap-2 px-4 py-2 cursor-pointer',
-          'hover:bg-gray-100 dark:hover:bg-gray-800'
-        )}
+        className="flex items-center gap-2 px-4 py-2"
       >
-        {isCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-gray-500" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-500" />
-        )}
         <Bot className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           Project Agent
@@ -188,29 +160,27 @@ export function ProjectAgentPanel({ collapsed, onCollapsedChange }: ProjectAgent
       </div>
 
       {/* Agent List or Empty State */}
-      {!isCollapsed && (
-        projectAgents.length === 0 ? (
-          <div
-            data-testid="project-agent-panel-empty"
-            className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
-          >
-            プロジェクトエージェントなし
-          </div>
-        ) : (
-          <ul className="px-2 pb-2 space-y-1">
-            {projectAgents.map((agent) => (
-              <ProjectAgentListItem
-                key={agent.agentId}
-                agent={agent}
-                isSelected={selectedAgentId === agent.agentId}
-                onSelect={() => selectAgent(agent.agentId)}
-                onStop={(e) => handleStop(agent.agentId, e)}
-                onResume={(e) => handleResume(agent.agentId, e)}
-                onRemove={(e) => handleRemoveClick(agent, e)}
-              />
-            ))}
-          </ul>
-        )
+      {projectAgents.length === 0 ? (
+        <div
+          data-testid="project-agent-panel-empty"
+          className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+        >
+          プロジェクトエージェントなし
+        </div>
+      ) : (
+        <ul className="px-2 pb-2 space-y-1">
+          {projectAgents.map((agent) => (
+            <ProjectAgentListItem
+              key={agent.agentId}
+              agent={agent}
+              isSelected={selectedAgentId === agent.agentId}
+              onSelect={() => selectAgent(agent.agentId)}
+              onStop={(e) => handleStop(agent.agentId, e)}
+              onResume={(e) => handleResume(agent.agentId, e)}
+              onRemove={(e) => handleRemoveClick(agent, e)}
+            />
+          ))}
+        </ul>
       )}
 
       {/* 削除確認ダイアログ */}

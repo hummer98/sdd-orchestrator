@@ -217,6 +217,10 @@ sequenceDiagram
 | 10.3 | Specと一貫したデザイン | BugListItem | 既存SpecListItemパターン踏襲 |
 | 11.1 | Agent起動時にworktree.pathをpwd設定 | BugService | 新規実装: cwd設定 |
 | 11.2 | 複数Agent起動時に同じworktreeパス | BugService | 新規実装: 一貫性確保 |
+| 12.1 | 自動実行時にbugsWorktreeDefault参照 | BugWorkflowService | 新規実装: 設定取得 |
+| 12.2 | bugsWorktreeDefault=true時にworktree作成 | BugWorkflowService, WorktreeService | 新規実装: 自動worktree作成 |
+| 12.3 | bugsWorktreeDefault=false時に通常動作 | BugWorkflowService | 既存動作維持 |
+| 12.4 | UIと同じロジックを使用 | BugWorkflowService | 共通ロジック呼び出し |
 
 ### Coverage Validation Checklist
 
@@ -240,6 +244,7 @@ sequenceDiagram
 | Menu Manager拡張 | Main/Menu | worktreeデフォルト設定トグル | 9.1-9.4 | configStore (P0) | - |
 | configStore拡張 | Main/Service | bugsWorktreeDefault設定 | 9.2-9.4 | - | State |
 | BugsWatcherService拡張 | Main/Service | worktreeモード時の監視パス切り替え | 3.7 | WorktreeService (P1) | Service |
+| BugWorkflowService拡張 | Main/Service | 自動実行時のworktree設定参照・作成 | 12.1-12.4 | configStore (P0), WorktreeService (P0), BugService (P1) | Service |
 | bug.jsonテンプレート | Templates | bug.json生成用テンプレート | 6.1-6.2 | - | - |
 
 ### Types
@@ -473,6 +478,48 @@ interface ConfigStoreExtension {
 
 - 初期値: `false`（Requirements: 9.3）
 - 永続化: electron-storeによるファイル保存
+
+#### BugWorkflowService拡張
+
+| Field | Detail |
+|-------|--------|
+| Intent | 自動実行時のworktree設定参照とworktree作成 |
+| Requirements | 12.1, 12.2, 12.3, 12.4 |
+
+**Responsibilities & Constraints**
+- 自動実行（autoExecution）時にbugsWorktreeDefault設定を参照
+- 設定に基づいてworktree作成の判断と実行
+- UIチェックボックスと同じworktree作成ロジックを共有
+
+**Dependencies**
+- Outbound: configStore - bugsWorktreeDefault取得 (P0)
+- Outbound: WorktreeService - worktree作成 (P0)
+- Outbound: BugService - bug.json更新 (P1)
+
+**Contracts**: Service [x]
+
+##### Service Interface (追加分)
+```typescript
+interface BugWorkflowServiceExtension {
+  /**
+   * Start bug-fix with auto-execution worktree handling
+   * Requirements: 12.1, 12.2, 12.3, 12.4
+   *
+   * @param bugName - Bug name
+   * @param projectPath - Project path
+   * @returns Result with worktree info if created, or void if not
+   */
+  startBugFixWithAutoWorktree(
+    bugName: string,
+    projectPath: string
+  ): Promise<Result<BugWorktreeConfig | null, WorktreeError>>;
+}
+```
+
+**Implementation Notes**
+- Integration: 既存のbug-fix開始フローに自動worktree判定を追加
+- Logic: `configStore.getBugsWorktreeDefault()` がtrueの場合のみworktree作成
+- Reuse: UIチェックボックスからの呼び出しと同じworktree作成ロジックを使用（DRY原則）
 
 ### Main/IPC
 

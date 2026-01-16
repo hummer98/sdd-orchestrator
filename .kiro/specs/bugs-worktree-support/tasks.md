@@ -240,6 +240,21 @@
   - 新規バグ作成時にデフォルト値が反映されることを確認
   - _Requirements: 9.1, 9.2, 9.4_
 
+- [x] 19. 自動実行時のworktreeオプション対応
+- [x] 19.1 BugWorkflowServiceに自動worktree判定機能を実装する
+  - startBugFixWithAutoWorktree: 自動実行時のworktree作成判定と実行
+  - configStore.getBugsWorktreeDefault()を参照
+  - true時: worktree作成後にbug-fix開始
+  - false時: 通常通りbug-fix開始
+  - UIチェックボックスと同じworktree作成ロジックを共有（DRY原則）
+  - _Requirements: 12.1, 12.2, 12.3, 12.4_
+
+- [x] 19.2 (P) 自動実行時のworktree作成フローのテストを作成する
+  - bugsWorktreeDefault=true時にworktreeが作成されることを確認
+  - bugsWorktreeDefault=false時にworktreeが作成されないことを確認
+  - mainブランチ外でのエラーハンドリング確認
+  - _Requirements: 12.1, 12.2, 12.3_
+
 ---
 
 ## Appendix: Requirements Coverage Matrix
@@ -292,3 +307,7 @@
 | 10.3 | Specと一貫したデザイン | 13.1, 18.4 | Feature |
 | 11.1 | Agent起動時にworktree.pathをpwd設定 | 2.3, 16.3 | Feature |
 | 11.2 | 複数Agent起動時に同じworktreeパス | 2.3, 16.3 | Feature |
+| 12.1 | 自動実行時にbugsWorktreeDefault参照 | 19.1, 19.2 | Feature |
+| 12.2 | bugsWorktreeDefault=true時にworktree作成 | 19.1, 19.2 | Feature |
+| 12.3 | bugsWorktreeDefault=false時に通常動作 | 19.1, 19.2 | Feature |
+| 12.4 | UIと同じロジックを使用 | 19.1 | Feature |

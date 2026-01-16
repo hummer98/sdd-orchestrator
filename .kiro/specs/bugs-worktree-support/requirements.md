@@ -181,6 +181,16 @@ Bugsワークフロー（bug-create → bug-analyze → bug-fix → bug-verify�
 1. When bug.jsonにworktreeフィールドが存在する状態でAgentを起動するとき, the system shall worktree.pathをpwdとして設定する
 2. When 同じバグに対して複数のAgentを起動するとき, the system shall 全てのAgentに同じworktreeパスを設定する
 
+### Requirement 12: 自動実行時のworktreeオプション尊重
+
+**Objective:** 開発者として、自動実行（autoExecution）時もworktreeデフォルト設定に従ってworktreeを作成したい
+
+#### Acceptance Criteria
+1. When autoExecutionが有効な状態でbug-fixが自動開始されるとき, the system shall プロジェクト設定のbugsWorktreeDefaultを参照する
+2. If bugsWorktreeDefaultがtrueの場合, then the system shall worktreeを作成してからbug-fixを開始する
+3. If bugsWorktreeDefaultがfalseの場合, then the system shall worktreeを作成せずに通常通りbug-fixを開始する
+4. The 自動実行時のworktree作成 shall UIチェックボックスと同じロジック（mainブランチ確認、パス生成、bug.json更新）を使用する
+
 ## Out of Scope
 
 - 既存worktreeの検出・紐付け機能（手動でbug.json編集は可能）

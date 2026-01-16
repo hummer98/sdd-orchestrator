@@ -184,9 +184,9 @@ export function BugWorkflowView() {
   // Task 4: Auto execution handlers
   // Requirements: 1.3, 1.4, 5.1
   // ============================================================
-  const handleStartAutoExecution = useCallback(() => {
+  const handleStartAutoExecution = useCallback(async () => {
     const service = getBugAutoExecutionService();
-    const started = service.start();
+    const started = await service.start();
     if (!started) {
       notify.error('自動実行を開始できませんでした');
     }

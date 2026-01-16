@@ -200,9 +200,10 @@ export class BugAutoExecutionService {
    * Main Process requests Renderer to execute agent for a phase
    */
   private async handleExecutePhase(bugPath: string, phase: BugWorkflowPhase, bugName: string): Promise<void> {
-    console.log(`[BugAutoExecutionService] Execute phase requested by Main Process`, { bugPath, phase, bugName });
+    console.log(`[BugAutoExecutionService] Execute phase requested by Main Process`, { bugPath, phase, bugName, currentBugPath: this.currentBugPath });
 
     if (bugPath !== this.currentBugPath) {
+      console.warn(`[BugAutoExecutionService] Skipping execute phase - bugPath mismatch`, { bugPath, currentBugPath: this.currentBugPath });
       return;
     }
 

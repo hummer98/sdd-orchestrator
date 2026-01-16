@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-01-16
+
+### Added
+- **Worktree実行フローUI**: worktreeモード選択UIと実装開始フローの実装
+- **Bug自動実行状態管理**: Bug毎の自動実行状態管理を実装
+- **ドキュメントレビュー状態表示**: SpecListItemのフェーズバッジにドキュメントレビュー状態を表示
+
+### Changed
+- **Remote UI完全移行**: vanillaJS版Remote UIを削除しReact版に完全移行
+- **Bug workflowリファクタ**: bug workflow worktree対応とテンプレート簡略化
+
+### Fixed
+- **ProjectAgentPanel簡素化**: ヘッダ折り畳み機能を削除
+- **自動実行状態リセット**: spec.json の autoExecution.enabled を完了/停止時にリセット
+- **DocumentReviewPanel表示**: 冗長なラウンド表示を削除
+- **Worktree型修正**: ExecFunction型をNode.js execのシグネチャに修正
+- **UTCタイムスタンプルール**: CLAUDE.mdに集約
+- **タブ選択状態維持**: タブ切り替え時に選択状態を維持
+
 ## [0.28.0] - 2026-01-16
 
 ### Added

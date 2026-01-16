@@ -18,6 +18,9 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - Use `/kiro:spec-status [feature-name]` to check progress
 
 ## Development Guidelines
+
+- **Timestamps**: Always generate UTC timestamps using `date -u +"%Y-%m-%dT%H:%M:%SZ"` for ISO 8601 fields (spec.json, bug.json, inspection reports, etc.). Never use local time with Z suffix.
+
 {{DEV_GUIDELINES}}
 
 ## Minimal Workflow

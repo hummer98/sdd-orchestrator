@@ -92,14 +92,9 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
-1. **Get current timestamp**:
-   ```bash
-   date -u +"%Y-%m-%dT%H:%M:%SZ"
-   ```
+1. **Create directory**: `.kiro/specs/{feature-name}/`
 
-2. **Create directory**: `.kiro/specs/{feature-name}/`
-
-3. **Generate spec.json** (use the timestamp from step 1):
+2. **Generate spec.json** (get current UTC timestamp first):
 ```json
 {
   "feature_name": "{feature-name}",

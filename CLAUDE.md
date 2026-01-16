@@ -23,6 +23,7 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 ## Development Guidelines
 
 - Think in English, generate responses in Japanese. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
+- **Timestamps**: Always generate UTC timestamps using `date -u +"%Y-%m-%dT%H:%M:%SZ"` for ISO 8601 fields (spec.json, bug.json, inspection reports, etc.). Never use local time with Z suffix.
 
 ## Minimal Workflow
 

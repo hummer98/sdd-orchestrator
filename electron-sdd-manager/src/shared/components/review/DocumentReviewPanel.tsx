@@ -220,12 +220,6 @@ export function DocumentReviewPanel({
           ラウンド:{' '}
           <strong className="text-gray-800 dark:text-gray-200">{rounds}</strong>
         </span>
-        {reviewState?.currentRound && (
-          <span>
-            現在:{' '}
-            <strong className="text-blue-500">Round {reviewState.currentRound}</strong>
-          </span>
-        )}
       </div>
 
       {/* Action Buttons */}
@@ -275,8 +269,17 @@ export function DocumentReviewPanel({
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
             )}
           >
-            <Play className="w-4 h-4" />
-            レビュー開始
+            {isExecuting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {reviewState?.currentRound ?? rounds + 1}ラウンド目 review実行中...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                レビュー開始
+              </>
+            )}
           </button>
         )}
       </div>

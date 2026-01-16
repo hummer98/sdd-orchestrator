@@ -89,8 +89,10 @@ describe('DocumentReviewPanel', () => {
 
     it('should disable start review button when isExecuting is true', () => {
       render(<DocumentReviewPanel {...defaultProps} isExecuting={true} />);
-      const startButton = screen.getByRole('button', { name: /レビュー開始/ });
+      // ボタンは実行中は「Nラウンド目 review実行中...」と表示される
+      const startButton = screen.getByTestId('start-review-button');
       expect(startButton).toBeDisabled();
+      expect(startButton).toHaveTextContent(/review実行中/);
     });
   });
 

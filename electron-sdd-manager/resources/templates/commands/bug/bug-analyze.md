@@ -50,9 +50,17 @@ Analyze the bug specified by $ARGUMENTS (or auto-detect from context) and docume
 
 ## Analysis Guidelines
 - Focus on identifying the **root cause**, not just symptoms
-- Document the **minimum viable fix** - avoid over-engineering
-- Consider **side effects** of potential fixes
-- Reference specific **file paths and line numbers**
+- **Architectural Integrity**: Do NOT propose "quick hacks" or "patches" that violate design principles (e.g., duplicating state).
+- **Correctness over Minimalism**: The goal is the *architecturally correct* fix, even if it requires refactoring. Avoid "minimum viable fix" if it leads to technical debt.
+- **Side Effects**: Consider impact on other components.
+- Reference specific **file paths and line numbers**.
+
+## Check against Design Principles
+Before proposing a fix, ask:
+1. Does this fix duplicate state? (Violates SSOT)
+2. Does this fix rely on manual sync? (Fragile)
+3. Is this where the data naturally belongs? (Cohesion)
+
 </instructions>
 
 ## Tool Guidance
@@ -67,7 +75,7 @@ Provide output with the following structure:
 1. **Bug Summary**: One-line description
 2. **Root Cause**: Clear explanation with file:line references
 3. **Impact**: Severity and scope assessment
-4. **Proposed Fix**: Recommended solution approach
+4. **Proposed Fix**: Recommended solution approach (Architecturally Correct)
 5. **Next Step**: Command block showing `/kiro:bug-fix`
 
 **Format Requirements**:

@@ -23,7 +23,7 @@ electron-sdd-manager/src/
 ├── renderer/       # レンダラープロセス（Electron React）
 │   ├── components/ # Electron専用UIコンポーネント
 │   ├── electron-specific/ # Electron専用コンポーネント（SSH, CLI等）
-│   ├── stores/     # Zustand状態管理
+│   ├── stores/     # [UI State Only] UI専用状態管理 (editorStore, modalStore)
 │   ├── hooks/      # カスタムフック
 │   ├── types/      # TypeScript型定義
 │   ├── services/   # レンダラー側サービス
@@ -33,7 +33,7 @@ electron-sdd-manager/src/
 │   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, etc.)
 │   ├── hooks/      # 共有フック (useDeviceType等)
 │   ├── providers/  # React Context Provider (PlatformProvider等)
-│   ├── stores/     # 共有Zustand stores
+│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore)
 │   └── types/      # 共有型定義
 ├── remote-ui/      # Remote UIアプリケーション（Web版React）
 │   ├── layouts/    # MobileLayout, DesktopLayout
@@ -44,17 +44,19 @@ electron-sdd-manager/src/
 └── test/           # テストセットアップ
 ```
 
-### Kiro/SDD Configuration
-**Location**: `/.kiro/`
-**Purpose**: Spec-Driven Development設定・仕様
-**Structure**:
-```
-.kiro/
-├── steering/       # プロジェクトメモリ (product.md, tech.md, structure.md)
-├── specs/          # 機能仕様 (feature単位)
-├── bugs/           # バグレポート (bug単位)
-└── settings/       # SDD設定・テンプレート
-```
+## State Management Rules (Strict)
+
+### 1. Domain State (SSOT)
+**Location**: `src/shared/stores/`
+**Content**: ビジネスロジック、データモデル、APIレスポンス
+**Examples**: `agentStore` (エージェント一覧), `bugStore` (バグ一覧), `specStore` (仕様書)
+**Rule**: **重複禁止**。Renderer/RemoteUIに関わらず、ドメインデータは必ずここを参照する。
+
+### 2. UI State
+**Location**: `src/renderer/stores/` (Electron), `src/remote-ui/stores/` (Web)
+**Content**: UIの一時的な状態、表示制御
+**Examples**: `editorStore` (スクロール位置), `modalStore` (ダイアログ開閉)
+**Rule**: ドメインデータを含めてはならない。ドメインデータが必要な場合は `shared` ストアを参照するか、Selectorを使用する。
 
 ## Naming Conventions
 
@@ -100,17 +102,6 @@ components/
 └── ApprovalPanel.test.tsx
 ```
 
-### Store Pattern (Zustand)
-```typescript
-// stores/configStore.ts
-export const useConfigStore = create<ConfigState>((set) => ({
-  // state
-  projectPath: null,
-  // actions
-  setProjectPath: (path) => set({ projectPath: path }),
-}))
-```
-
 ### Service Pattern (main process)
 ドメイン別にサービスを分離:
 - **Spec管理**: `specManagerService.ts`
@@ -132,4 +123,4 @@ main/ipc/
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
-_updated_at: 2025-12-19_
+_updated_at: 2025-01-16_

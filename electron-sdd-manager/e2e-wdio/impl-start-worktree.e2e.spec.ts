@@ -214,12 +214,12 @@ describe('Impl Start Worktree E2E', () => {
   // ============================================================
   // Test Setup
   // ============================================================
-  beforeAll(async () => {
+  before(async () => {
     // Ensure we're on main branch before tests
     checkoutBranch('main') || checkoutBranch('master');
   });
 
-  afterAll(async () => {
+  after(async () => {
     // Clean up test spec and return to main branch
     cleanupTestSpec(WORKTREE_SPEC_NAME);
     checkoutBranch('main') || checkoutBranch('master');

@@ -958,31 +958,6 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_SPEC_STATUS,
-    async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_SPEC_STATUS called', { specId, featureName, commandPrefix });
-      const service = getSpecManagerService();
-      const window = BrowserWindow.fromWebContents(event.sender);
-
-      // Ensure event callbacks are registered
-      if (window && !eventCallbacksRegistered) {
-        registerEventCallbacks(service, window);
-      }
-
-      const result = await service.executeSpecStatus(specId, featureName, commandPrefix);
-
-      if (!result.ok) {
-        logger.error('[handlers] executeSpecStatus failed', { error: result.error });
-        const errorMessage = getErrorMessage(result.error);
-        throw new Error(errorMessage);
-      }
-
-      logger.info('[handlers] executeSpecStatus succeeded', { agentId: result.value.agentId });
-      return result.value;
-    }
-  );
-
-  ipcMain.handle(
     IPC_CHANNELS.EXECUTE_TASK_IMPL,
     async (event, specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[handlers] EXECUTE_TASK_IMPL called', { specId, featureName, taskId, commandPrefix });

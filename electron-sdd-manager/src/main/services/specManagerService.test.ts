@@ -500,23 +500,6 @@ describe('SpecManagerService', () => {
     });
   });
 
-  describe('executeSpecStatus', () => {
-    it('should build command with --verbose and --output-format stream-json', async () => {
-      const startAgentSpy = vi.spyOn(service, 'startAgent');
-
-      await service.executeSpecStatus('test-spec', 'my-feature');
-
-      expect(startAgentSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          command: 'claude',
-          args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
-        })
-      );
-
-      startAgentSpy.mockRestore();
-    });
-  });
-
   describe('getAgents / getAllAgents', () => {
     it('should return agents for specific spec', async () => {
       await service.startAgent({

@@ -236,19 +236,6 @@ describe('WorkflowView', () => {
       expect(screen.getByTestId('auto-execute-button')).toBeInTheDocument();
     });
 
-    it('should display spec-status button', () => {
-      render(<WorkflowView />);
-
-      expect(screen.getByRole('button', { name: /spec-status/i })).toBeInTheDocument();
-    });
-
-    it('should spec-status button be always enabled', () => {
-      render(<WorkflowView />);
-
-      const button = screen.getByRole('button', { name: /spec-status/i });
-      expect(button).not.toBeDisabled();
-    });
-
     it('should disable auto-execute button when an agent is running in the spec', () => {
       // セレクタ対応モックのため状態を直接変更
       const agentsMap = new Map();

@@ -446,7 +446,6 @@ export interface ElectronAPI {
 
   // Phase Execution (high-level commands)
   executePhase(specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
-  executeSpecStatus(specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   executeTaskImpl(specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
 
   // Spec Init (Task 5.2 sidebar-refactor)

@@ -28,7 +28,6 @@ export const IPC_CHANNELS = {
 
   // Phase Execution (high-level commands)
   EXECUTE_PHASE: 'ipc:execute-phase',
-  EXECUTE_SPEC_STATUS: 'ipc:execute-spec-status',
   EXECUTE_TASK_IMPL: 'ipc:execute-task-impl',
   EXECUTE_SPEC_INIT: 'ipc:execute-spec-init',
   EXECUTE_SPEC_PLAN: 'ipc:execute-spec-plan', // spec-plan-ui-integration feature

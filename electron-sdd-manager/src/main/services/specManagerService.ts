@@ -143,12 +143,6 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
   },
 };
 
-/** spec-status コマンドマッピング */
-const SPEC_STATUS_COMMANDS: Record<CommandPrefix, string> = {
-  kiro: '/kiro:spec-status',
-  'spec-manager': '/spec-manager:status',
-};
-
 /** spec-init コマンドマッピング */
 export const SPEC_INIT_COMMANDS: Record<CommandPrefix, string> = {
   kiro: '/kiro:spec-init',
@@ -1229,22 +1223,6 @@ export class SpecManagerService {
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group,
-    });
-  }
-
-  /**
-   * Execute spec-status command
-   */
-  async executeSpecStatus(specId: string, featureName: string, commandPrefix: CommandPrefix = 'kiro'): Promise<Result<AgentInfo, AgentError>> {
-    const slashCommand = SPEC_STATUS_COMMANDS[commandPrefix];
-    logger.info('[SpecManagerService] executeSpecStatus called', { specId, featureName, commandPrefix, slashCommand });
-
-    return this.startAgent({
-      specId,
-      phase: 'status',
-      command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
-      group: 'doc',
     });
   }
 

@@ -146,36 +146,6 @@ describe('WorkflowView Integration', () => {
         );
       });
     });
-
-    it('should call executeSpecStatus for spec-status command', async () => {
-      const mockAgent = {
-        agentId: 'agent-1',
-        specId: 'test-feature',
-        phase: 'status',
-        pid: 12345,
-        sessionId: 'session-1',
-        status: 'running' as const,
-        startedAt: new Date().toISOString(),
-        lastActivityAt: new Date().toISOString(),
-        command: 'claude',
-      };
-      const mockExecuteSpecStatus = vi.fn().mockResolvedValue(mockAgent);
-      window.electronAPI.executeSpecStatus = mockExecuteSpecStatus;
-
-      render(<WorkflowView />);
-
-      // Click spec-status button
-      const specStatusButton = screen.getByRole('button', { name: /spec-status/i });
-      fireEvent.click(specStatusButton);
-
-      await waitFor(() => {
-        expect(mockExecuteSpecStatus).toHaveBeenCalledWith(
-          'test-feature',
-          'test-feature',
-          'kiro'
-        );
-      });
-    });
   });
 
   // ============================================================

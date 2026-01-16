@@ -122,7 +122,6 @@ const mockElectronAPI = {
   executeSpecManagerPhase: vi.fn(),
   executePhase: vi.fn().mockResolvedValue(undefined),
   executeValidation: vi.fn().mockResolvedValue(undefined),
-  executeSpecStatus: vi.fn().mockResolvedValue(undefined),
   executeTaskImpl: vi.fn().mockResolvedValue(undefined),
   // Agent Management APIs (Task 29)
   startAgent: vi.fn(),

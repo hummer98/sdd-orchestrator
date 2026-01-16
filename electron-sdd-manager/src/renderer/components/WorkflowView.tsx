@@ -8,7 +8,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square, RefreshCw, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowDown, Play, Square, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
 import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -265,22 +265,6 @@ export function WorkflowView() {
       }
     }
   }, [workflowStore.lastFailedPhase, specDetail, autoExecution]);
-
-  const handleSpecStatus = useCallback(async () => {
-    if (!specDetail) return;
-
-    try {
-      // サービス層でコマンドを構築（commandPrefixをストアから取得）
-      // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeSpecStatus(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'spec-statusの実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
     // TODO: Show agent log for this phase
@@ -718,19 +702,6 @@ export function WorkflowView() {
               自動実行
             </>
           )}
-        </button>
-
-        <button
-          onClick={handleSpecStatus}
-          className={clsx(
-            'flex items-center justify-center gap-2 px-4 py-2 rounded',
-            'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-            'hover:bg-gray-300 dark:hover:bg-gray-600',
-            'font-medium transition-colors'
-          )}
-        >
-          <RefreshCw className="w-4 h-4" />
-          spec-status
         </button>
       </div>
     </div>

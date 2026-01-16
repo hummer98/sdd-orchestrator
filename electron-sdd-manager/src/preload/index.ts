@@ -129,9 +129,6 @@ const electronAPI = {
   executePhase: (specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName, commandPrefix),
 
-  executeSpecStatus: (specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_STATUS, specId, featureName, commandPrefix),
-
   executeTaskImpl: (specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId, commandPrefix),
 

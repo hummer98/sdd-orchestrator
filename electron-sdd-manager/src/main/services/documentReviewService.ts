@@ -460,6 +460,7 @@ export class DocumentReviewService {
    */
   async completeRound(specPath: string, roundNumber: number): Promise<Result<void, ReviewError>> {
     return this.updateReviewState(specPath, {
+      status: 'pending',
       currentRound: undefined,
       roundDetail: {
         roundNumber,

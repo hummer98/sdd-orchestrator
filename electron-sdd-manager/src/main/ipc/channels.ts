@@ -255,10 +255,29 @@ export const IPC_CHANNELS = {
   // Requirements: 9.1, 9.2
   SETTINGS_BUGS_WORKTREE_DEFAULT_GET: 'settings:bugs-worktree-default:get',
   SETTINGS_BUGS_WORKTREE_DEFAULT_SET: 'settings:bugs-worktree-default:set',
+  // Auto-execution worktree creation (Task 19.1)
+  // Requirements: 12.1, 12.2, 12.3, 12.4
+  BUG_WORKTREE_AUTO_EXECUTION: 'bug-worktree:auto-execution',
 
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   LOAD_PROFILE: 'ipc:load-profile',
+
+  // Bug Auto Execution (bug fix: auto-execution-ui-state-dependency)
+  // Main Process側でBug自動実行の状態を管理
+  BUG_AUTO_EXECUTION_START: 'bug-auto-execution:start',
+  BUG_AUTO_EXECUTION_STOP: 'bug-auto-execution:stop',
+  BUG_AUTO_EXECUTION_STATUS: 'bug-auto-execution:status',
+  BUG_AUTO_EXECUTION_ALL_STATUS: 'bug-auto-execution:all-status',
+  BUG_AUTO_EXECUTION_RETRY_FROM: 'bug-auto-execution:retry-from',
+  BUG_AUTO_EXECUTION_RESET: 'bug-auto-execution:reset',
+  // Events (Main -> Renderer)
+  BUG_AUTO_EXECUTION_STATUS_CHANGED: 'bug-auto-execution:status-changed',
+  BUG_AUTO_EXECUTION_PHASE_STARTED: 'bug-auto-execution:phase-started',
+  BUG_AUTO_EXECUTION_PHASE_COMPLETED: 'bug-auto-execution:phase-completed',
+  BUG_AUTO_EXECUTION_ERROR: 'bug-auto-execution:error',
+  BUG_AUTO_EXECUTION_COMPLETED: 'bug-auto-execution:completed',
+  BUG_AUTO_EXECUTION_EXECUTE_PHASE: 'bug-auto-execution:execute-phase',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

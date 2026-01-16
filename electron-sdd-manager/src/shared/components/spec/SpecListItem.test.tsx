@@ -10,6 +10,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SpecListItem } from './SpecListItem';
 import type { SpecMetadata, SpecPhase } from '@shared/api/types';
 import type { WorktreeConfig } from '@renderer/types/worktree';
+import type { DocumentReviewState } from '@shared/types/review';
 
 const createMockSpec = (overrides: Partial<SpecMetadata> = {}): SpecMetadata => ({
   name: 'test-feature',
@@ -27,6 +28,25 @@ const createMockWorktree = (overrides: Partial<WorktreeConfig> = {}): WorktreeCo
   path: '../my-project-worktrees/test-feature',
   branch: 'feature/test-feature',
   created_at: '2026-01-12T12:00:00+09:00',
+  ...overrides,
+});
+
+/**
+ * Create mock document review state for testing
+ */
+const createMockDocumentReview = (
+  overrides: Partial<DocumentReviewState> = {}
+): DocumentReviewState => ({
+  status: 'approved',
+  roundDetails: [
+    {
+      roundNumber: 1,
+      status: 'reply_complete',
+      reviewCompletedAt: '2026-01-12T10:00:00Z',
+      replyCompletedAt: '2026-01-12T11:00:00Z',
+      fixStatus: 'not_required',
+    },
+  ],
   ...overrides,
 });
 
@@ -230,6 +250,89 @@ describe('SpecListItem', () => {
       const title = badge.getAttribute('title') ?? '';
       expect(title).toContain('../project-worktrees/my-feature');
       expect(title).toContain('feature/my-feature');
+    });
+  });
+
+  /**
+   * Document review state in phase badge
+   * When phase is 'tasks-generated', phase badge shows document review state
+   */
+  describe('Document review state in phase badge', () => {
+    it('should show "レビュー済" in phase badge when phase is tasks-generated and documentReview has at least 1 round', () => {
+      const spec = createMockSpec({ phase: 'tasks-generated' });
+      const documentReview = createMockDocumentReview();
+      render(
+        <SpecListItem
+          spec={spec}
+          isSelected={false}
+          onSelect={() => {}}
+          documentReview={documentReview}
+        />
+      );
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('レビュー済');
+    });
+
+    it('should show "レビュー中" in phase badge when phase is tasks-generated and documentReview status is in_progress', () => {
+      const spec = createMockSpec({ phase: 'tasks-generated' });
+      const documentReview: DocumentReviewState = { status: 'in_progress' };
+      render(
+        <SpecListItem
+          spec={spec}
+          isSelected={false}
+          onSelect={() => {}}
+          documentReview={documentReview}
+        />
+      );
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('レビュー中');
+    });
+
+    it('should show "タスク済" in phase badge when phase is tasks-generated and no documentReview', () => {
+      const spec = createMockSpec({ phase: 'tasks-generated' });
+      render(<SpecListItem spec={spec} isSelected={false} onSelect={() => {}} />);
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('タスク済');
+    });
+
+    it('should show "タスク済" in phase badge when phase is tasks-generated and documentReview has empty roundDetails', () => {
+      const spec = createMockSpec({ phase: 'tasks-generated' });
+      const documentReview = createMockDocumentReview({ roundDetails: [], status: 'pending' });
+      render(
+        <SpecListItem
+          spec={spec}
+          isSelected={false}
+          onSelect={() => {}}
+          documentReview={documentReview}
+        />
+      );
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('タスク済');
+    });
+
+    it('should not override phase badge for non-tasks-generated phases', () => {
+      const spec = createMockSpec({ phase: 'design-generated' });
+      const documentReview = createMockDocumentReview();
+      render(
+        <SpecListItem
+          spec={spec}
+          isSelected={false}
+          onSelect={() => {}}
+          documentReview={documentReview}
+        />
+      );
+      // Should still show the original phase, not review state
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('設計済');
+    });
+
+    it('should not override phase badge for implementation-complete phase', () => {
+      const spec = createMockSpec({ phase: 'implementation-complete' });
+      const documentReview = createMockDocumentReview();
+      render(
+        <SpecListItem
+          spec={spec}
+          isSelected={false}
+          onSelect={() => {}}
+          documentReview={documentReview}
+        />
+      );
+      expect(screen.getByTestId('phase-badge')).toHaveTextContent('実装完了');
     });
   });
 });

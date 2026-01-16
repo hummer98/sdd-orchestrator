@@ -12,6 +12,7 @@ import { Bot, Copy, Check, GitBranch } from 'lucide-react';
 import type { SpecPhase } from '@shared/api/types';
 import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
 import type { WorktreeConfig } from '@renderer/types/worktree';
+import type { DocumentReviewState } from '@shared/types/review';
 
 // =============================================================================
 // Types
@@ -32,63 +33,85 @@ export interface SpecListItemProps {
    * Requirements: 4.1
    */
   worktree?: WorktreeConfig;
+  /**
+   * Document review state (optional)
+   * Shows review completion badge when roundDetails has at least 1 entry
+   */
+  documentReview?: DocumentReviewState | null;
   /** Additional CSS classes */
   className?: string;
 }
 
 // =============================================================================
-// Phase Configuration
+// Component
 // =============================================================================
+/**
+ * Display state for phase badge, including document review states
+ */
+type DisplayPhaseState = SpecPhase | 'review-in-progress' | 'review-complete';
 
 /**
- * Phase labels for display
+ * Get display phase state based on spec phase and document review state
+ * When phase is 'tasks-generated', check document review state to show review progress
  */
-const PHASE_LABELS: Record<SpecPhase, string> = {
+function getDisplayPhaseState(
+  phase: SpecPhase,
+  documentReview: DocumentReviewState | null | undefined
+): DisplayPhaseState {
+  // Only override for tasks-generated phase
+  if (phase !== 'tasks-generated') {
+    return phase;
+  }
+
+  // Check document review state
+  if (documentReview?.status === 'in_progress') {
+    return 'review-in-progress';
+  }
+
+  if ((documentReview?.roundDetails?.length ?? 0) >= 1) {
+    return 'review-complete';
+  }
+
+  return phase;
+}
+
+/**
+ * Extended phase labels including document review states
+ */
+const DISPLAY_PHASE_LABELS: Record<DisplayPhaseState, string> = {
   initialized: '初期化',
   'requirements-generated': '要件定義済',
   'design-generated': '設計済',
   'tasks-generated': 'タスク済',
+  'review-in-progress': 'レビュー中',
+  'review-complete': 'レビュー済',
   'implementation-complete': '実装完了',
   'inspection-complete': '検査完了',
   'deploy-complete': 'デプロイ完了',
 };
 
 /**
- * Phase colors for badges
+ * Extended phase colors including document review states
  */
-const PHASE_COLORS: Record<SpecPhase, string> = {
+const DISPLAY_PHASE_COLORS: Record<DisplayPhaseState, string> = {
   initialized: 'bg-gray-200 text-gray-700',
   'requirements-generated': 'bg-blue-100 text-blue-700',
   'design-generated': 'bg-yellow-100 text-yellow-700',
   'tasks-generated': 'bg-orange-100 text-orange-700',
+  'review-in-progress': 'bg-purple-100 text-purple-700',
+  'review-complete': 'bg-purple-200 text-purple-800',
   'implementation-complete': 'bg-green-100 text-green-700',
   'inspection-complete': 'bg-purple-100 text-purple-700',
   'deploy-complete': 'bg-emerald-100 text-emerald-700',
 };
 
-// =============================================================================
-// Component
-// =============================================================================
-
-/**
- * SpecListItem - Individual spec item in a list
- *
- * Usage:
- * ```tsx
- * <SpecListItem
- *   spec={spec}
- *   isSelected={selectedSpec?.name === spec.name}
- *   onSelect={() => selectSpec(spec)}
- *   runningAgentCount={runningCount}
- * />
- * ```
- */
 export function SpecListItem({
   spec,
   isSelected,
   onSelect,
   runningAgentCount,
   worktree,
+  documentReview,
   className,
 }: SpecListItemProps): React.ReactElement {
   const [copied, setCopied] = useState(false);
@@ -172,17 +195,22 @@ export function SpecListItem({
           </button>
         </div>
 
-        {/* Row 2: Phase, worktree badge, agent count, updated date */}
+        {/* Row 2: Phase (with document review state), worktree badge, agent count, updated date */}
         <div className="flex items-center gap-2">
-          <span
-            data-testid="phase-badge"
-            className={clsx(
-              'px-2 py-0.5 text-xs rounded-full',
-              PHASE_COLORS[spec.phase] ?? 'bg-gray-200 text-gray-700'
-            )}
-          >
-            {PHASE_LABELS[spec.phase] ?? spec.phase}
-          </span>
+          {(() => {
+            const displayPhase = getDisplayPhaseState(spec.phase, documentReview);
+            return (
+              <span
+                data-testid="phase-badge"
+                className={clsx(
+                  'px-2 py-0.5 text-xs rounded-full',
+                  DISPLAY_PHASE_COLORS[displayPhase] ?? 'bg-gray-200 text-gray-700'
+                )}
+              >
+                {DISPLAY_PHASE_LABELS[displayPhase] ?? displayPhase}
+              </span>
+            );
+          })()}
 
           {/* git-worktree-support: Task 11.1 - worktree badge */}
           {worktree && (

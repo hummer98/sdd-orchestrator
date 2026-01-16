@@ -114,6 +114,8 @@ export function SpecList() {
               // git-worktree-support: Task 11.2 - Get worktree info from specJsonMap
               const specJson = specJsonMap.get(spec.name);
               const worktree = specJson?.worktree;
+              // Get documentReview state for badge display
+              const documentReview = specJson?.documentReview;
 
               return (
                 <SpecListItem
@@ -123,6 +125,7 @@ export function SpecList() {
                   onSelect={() => selectSpec(spec)}
                   runningAgentCount={runningAgentCount}
                   worktree={worktree}
+                  documentReview={documentReview}
                 />
               );
             })}
@@ -133,6 +136,64 @@ export function SpecList() {
   );
 }
 
+/** Document review state type (subset of SpecJson.documentReview) */
+interface DocumentReviewState {
+  status: string;
+  currentRound?: number;
+  roundDetails?: Array<{
+    roundNumber: number;
+    status: string;
+  }>;
+}
+
+/**
+ * Display state for phase badge, including document review states
+ */
+type DisplayPhaseState = SpecPhase | 'review-in-progress' | 'review-complete';
+
+/**
+ * Get display phase state based on spec phase and document review state
+ * When phase is 'tasks-generated', check document review state to show review progress
+ */
+function getDisplayPhaseState(
+  phase: SpecPhase,
+  documentReview: DocumentReviewState | null | undefined
+): DisplayPhaseState {
+  // Only override for tasks-generated phase
+  if (phase !== 'tasks-generated') {
+    return phase;
+  }
+
+  // Check document review state
+  if (documentReview?.status === 'in_progress') {
+    return 'review-in-progress';
+  }
+
+  if ((documentReview?.roundDetails?.length ?? 0) >= 1) {
+    return 'review-complete';
+  }
+
+  return phase;
+}
+
+/**
+ * Extended phase labels including document review states
+ */
+const DISPLAY_PHASE_LABELS: Record<DisplayPhaseState, string> = {
+  ...PHASE_LABELS,
+  'review-in-progress': 'レビュー中',
+  'review-complete': 'レビュー済',
+};
+
+/**
+ * Extended phase colors including document review states
+ */
+const DISPLAY_PHASE_COLORS: Record<DisplayPhaseState, string> = {
+  ...PHASE_COLORS,
+  'review-in-progress': 'bg-purple-100 text-purple-700',
+  'review-complete': 'bg-purple-200 text-purple-800',
+};
+
 interface SpecListItemProps {
   /** spec-metadata-ssot-refactor: Updated to use SpecMetadataWithPhase */
   spec: SpecMetadataWithPhase;
@@ -141,9 +202,11 @@ interface SpecListItemProps {
   runningAgentCount: number;
   /** git-worktree-support: Task 11.2 - worktree config (Requirements: 4.1) */
   worktree?: WorktreeConfig;
+  /** Document review state for badge display */
+  documentReview?: DocumentReviewState | null;
 }
 
-function SpecListItem({ spec, isSelected, onSelect, runningAgentCount, worktree }: SpecListItemProps) {
+function SpecListItem({ spec, isSelected, onSelect, runningAgentCount, worktree, documentReview }: SpecListItemProps) {
   const [copied, setCopied] = useState(false);
   const updatedDate = new Date(spec.updatedAt);
   const now = new Date();
@@ -216,16 +279,21 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount, worktree 
           </button>
         </div>
 
-        {/* 2行目: フェーズ、worktreeバッジ、エージェント数、更新日時 */}
+        {/* 2行目: フェーズ（ドキュメントレビュー状態含む）、worktreeバッジ、エージェント数、更新日時 */}
         <div className="flex items-center gap-2">
-          <span
-            className={clsx(
-              'px-2 py-0.5 text-xs rounded-full',
-              PHASE_COLORS[spec.phase] ?? 'bg-gray-200 text-gray-700'
-            )}
-          >
-            {PHASE_LABELS[spec.phase] ?? spec.phase}
-          </span>
+          {(() => {
+            const displayPhase = getDisplayPhaseState(spec.phase, documentReview);
+            return (
+              <span
+                className={clsx(
+                  'px-2 py-0.5 text-xs rounded-full',
+                  DISPLAY_PHASE_COLORS[displayPhase] ?? 'bg-gray-200 text-gray-700'
+                )}
+              >
+                {DISPLAY_PHASE_LABELS[displayPhase] ?? displayPhase}
+              </span>
+            );
+          })()}
           {/* git-worktree-support: Task 11.1 - worktree badge */}
           {worktree && (
             <span

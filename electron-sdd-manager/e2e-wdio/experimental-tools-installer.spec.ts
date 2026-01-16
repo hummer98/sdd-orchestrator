@@ -91,25 +91,8 @@ describe('Experimental Tools Installer E2E', () => {
       expect(hasDebugMenuItem).toBe(true);
     });
 
-    it('Commitコマンドインストールメニュー項目が存在する', async () => {
-      const hasCommitMenuItem = await browser.electron.execute((electron) => {
-        const menu = electron.Menu.getApplicationMenu();
-        if (!menu) return false;
-        const toolsMenu = menu.items.find(
-          (item) => item.label === 'ツール'
-        );
-        if (!toolsMenu || !toolsMenu.submenu) return false;
-        const experimentalMenu = toolsMenu.submenu.items.find(
-          (item) => item.label === '実験的ツール'
-        );
-        if (!experimentalMenu || !experimentalMenu.submenu) return false;
-        const commitItem = experimentalMenu.submenu.items.find(
-          (item) => item.label === 'Commitコマンドをインストール (実験的)'
-        );
-        return commitItem !== undefined;
-      });
-      expect(hasCommitMenuItem).toBe(true);
-    });
+    // Note: Commitコマンドはプロジェクト選択時に自動インストールされるコア機能に昇格したため、
+    // 実験的ツールメニューからは削除されました (menu.ts参照)
   });
 
   // ============================================================
@@ -137,25 +120,7 @@ describe('Experimental Tools Installer E2E', () => {
       expect(isDisabled).toBe(true);
     });
 
-    it('プロジェクト未選択時、Commitコマンドメニューが無効化されている', async () => {
-      const isDisabled = await browser.electron.execute((electron) => {
-        const menu = electron.Menu.getApplicationMenu();
-        if (!menu) return true;
-        const toolsMenu = menu.items.find(
-          (item) => item.label === 'ツール'
-        );
-        if (!toolsMenu || !toolsMenu.submenu) return true;
-        const experimentalMenu = toolsMenu.submenu.items.find(
-          (item) => item.label === '実験的ツール'
-        );
-        if (!experimentalMenu || !experimentalMenu.submenu) return true;
-        const commitItem = experimentalMenu.submenu.items.find(
-          (item) => item.label === 'Commitコマンドをインストール (実験的)'
-        );
-        return commitItem ? !commitItem.enabled : true;
-      });
-      expect(isDisabled).toBe(true);
-    });
+    // Note: Commitコマンドは実験的ツールメニューから削除されました
   });
 
   // ============================================================

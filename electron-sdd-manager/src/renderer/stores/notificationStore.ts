@@ -2,49 +2,29 @@
  * Notification Store
  * Manages toast notifications
  * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
- * renderer-error-logging feature: Added auto-context logging to main process
+ * renderer-unified-logging feature: Uses rendererLogger for logging
  */
 
 import { create } from 'zustand';
 import type { Notification } from '../types';
 import type { ExecutionSummary } from './workflowStore';
-import { useSpecDetailStore } from './spec/specDetailStore';
-import { useBugStore } from './bugStore';
+import { rendererLogger } from '../utils/rendererLogger';
 
 const DEFAULT_DURATION = 5000;
 const MAX_NOTIFICATIONS = 5;
 const COMPLETION_SUMMARY_DURATION = 10000;
 
 /**
- * Get auto-context from stores for logging
- * renderer-error-logging feature
+ * Send notification log via rendererLogger
+ * renderer-unified-logging feature: Requirements 5.1, 5.2, 5.3
+ *
+ * @param level - Log level
+ * @param message - Notification message
  */
-function getAutoContext(): Record<string, unknown> {
-  const specDetail = useSpecDetailStore.getState().specDetail;
-  const selectedBug = useBugStore.getState().selectedBug;
-
-  const context: Record<string, unknown> = {};
-
-  if (specDetail?.metadata?.name) {
-    context.specId = specDetail.metadata.name;
-  }
-  if (selectedBug?.name) {
-    context.bugName = selectedBug.name;
-  }
-
-  return context;
-}
-
-/**
- * Send log to main process via IPC
- * renderer-error-logging feature
- */
-function logToMain(level: 'error' | 'warn' | 'info' | 'debug', message: string): void {
-  // Guard for test environment where electronAPI may not exist
-  if (typeof window !== 'undefined' && window.electronAPI?.logRenderer) {
-    const context = getAutoContext();
-    window.electronAPI.logRenderer(level, message, context);
-  }
+function logNotification(level: 'error' | 'warn' | 'info', message: string): void {
+  // Use rendererLogger.logWithContext with explicit source
+  // This allows auto-context (specId, bugName) to be included automatically
+  rendererLogger.logWithContext(level, `[notify] ${message}`, { source: 'notificationStore' });
 }
 
 interface NotificationState {
@@ -103,7 +83,8 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 }));
 
 // Helper functions for common notifications
-// renderer-error-logging feature: Each function logs to main process
+// renderer-unified-logging feature: Uses rendererLogger for logging
+// Requirements: 5.1, 5.2, 5.3
 export const notify = {
   success: (message: string, action?: Notification['action']) => {
     useNotificationStore.getState().addNotification({
@@ -111,8 +92,8 @@ export const notify = {
       message,
       action,
     });
-    // Log to main process
-    logToMain('info', message);
+    // Log via rendererLogger (Requirement 5.1)
+    logNotification('info', message);
   },
 
   error: (message: string, action?: Notification['action']) => {
@@ -122,8 +103,8 @@ export const notify = {
       action,
       duration: 8000, // Errors stay longer
     });
-    // Log to main process
-    logToMain('error', message);
+    // Log via rendererLogger (Requirement 5.1)
+    logNotification('error', message);
   },
 
   warning: (message: string, action?: Notification['action']) => {
@@ -132,8 +113,8 @@ export const notify = {
       message,
       action,
     });
-    // Log to main process
-    logToMain('warn', message);
+    // Log via rendererLogger (Requirement 5.1)
+    logNotification('warn', message);
   },
 
   info: (message: string, action?: Notification['action']) => {
@@ -142,11 +123,12 @@ export const notify = {
       message,
       action,
     });
-    // Log to main process
-    logToMain('info', message);
+    // Log via rendererLogger (Requirement 5.1)
+    logNotification('info', message);
   },
 
   // Task 2.2: Completion summary notification
+  // Requirement 5.2: showCompletionSummary uses rendererLogger
   showCompletionSummary: (summary: ExecutionSummary) => {
     const phaseCount = summary.executedPhases.length;
     const durationSeconds = Math.round(summary.totalDuration / 1000);
@@ -163,7 +145,7 @@ export const notify = {
       message,
       duration: COMPLETION_SUMMARY_DURATION,
     });
-    // Log to main process
-    logToMain(hasErrors ? 'warn' : 'info', message);
+    // Log via rendererLogger (Requirement 5.2)
+    logNotification(hasErrors ? 'warn' : 'info', message);
   },
 };

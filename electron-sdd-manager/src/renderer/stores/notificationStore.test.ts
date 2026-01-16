@@ -3,6 +3,7 @@
  * TDD: Testing notification state management
  * Requirements: 10.1-10.5, 5.2-5.4 (workflow-auto-execution)
  * renderer-error-logging feature: Added tests for auto-context logging
+ * renderer-unified-logging feature: Updated to use rendererLogger
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -18,6 +19,20 @@ const mockLogRenderer = vi.fn();
     logRenderer: mockLogRenderer,
   },
 };
+
+// Mock the rendererLogger module
+vi.mock('../utils/rendererLogger', () => ({
+  rendererLogger: {
+    logWithContext: vi.fn(),
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+import { rendererLogger } from '../utils/rendererLogger';
 
 describe('useNotificationStore', () => {
   beforeEach(() => {
@@ -307,119 +322,61 @@ describe('useNotificationStore', () => {
   });
 
   // ============================================================
-  // renderer-error-logging feature: Auto-context logging tests
+  // renderer-unified-logging feature: rendererLogger integration tests
+  // Requirements: 5.1, 5.2, 5.3
   // ============================================================
-  describe('renderer-error-logging: logToMain', () => {
+  describe('renderer-unified-logging: rendererLogger integration', () => {
     beforeEach(() => {
       // Reset stores
       useSpecDetailStore.setState({ specDetail: null });
       useBugStore.setState({ selectedBug: null });
+      // Reset rendererLogger mock
+      vi.mocked(rendererLogger.logWithContext).mockClear();
     });
 
-    it('should call logRenderer with error level for notify.error', () => {
+    // Requirement 5.1: notify.error/warning/info/success use rendererLogger
+    it('should call rendererLogger.logWithContext with error level for notify.error', () => {
       notify.error('Test error message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('error', 'Test error message', expect.any(Object));
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'error',
+        expect.stringContaining('Test error message'),
+        expect.objectContaining({ source: 'notificationStore' })
+      );
     });
 
-    it('should call logRenderer with warn level for notify.warning', () => {
+    it('should call rendererLogger.logWithContext with warn level for notify.warning', () => {
       notify.warning('Test warning message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('warn', 'Test warning message', expect.any(Object));
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('Test warning message'),
+        expect.objectContaining({ source: 'notificationStore' })
+      );
     });
 
-    it('should call logRenderer with info level for notify.info', () => {
+    it('should call rendererLogger.logWithContext with info level for notify.info', () => {
       notify.info('Test info message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Test info message', expect.any(Object));
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'info',
+        expect.stringContaining('Test info message'),
+        expect.objectContaining({ source: 'notificationStore' })
+      );
     });
 
-    it('should call logRenderer with info level for notify.success', () => {
+    it('should call rendererLogger.logWithContext with info level for notify.success', () => {
       notify.success('Test success message');
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Test success message', expect.any(Object));
-    });
-
-    it('should include specId in context when spec is selected', () => {
-      // Set up spec detail
-      useSpecDetailStore.setState({
-        specDetail: {
-          metadata: { name: 'test-feature' },
-          status: {
-            requirements: 'completed',
-            design: 'pending',
-            tasks: 'pending',
-            implementation: 'pending',
-          },
-        },
-      });
-
-      notify.error('Error with spec context');
-
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'error',
-        'Error with spec context',
-        expect.objectContaining({ specId: 'test-feature' })
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'info',
+        expect.stringContaining('Test success message'),
+        expect.objectContaining({ source: 'notificationStore' })
       );
     });
 
-    it('should include bugName in context when bug is selected', () => {
-      // Set up selected bug
-      useBugStore.setState({
-        selectedBug: {
-          name: 'test-bug-123',
-          status: 'analyzing',
-        },
-      });
-
-      notify.error('Error with bug context');
-
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'error',
-        'Error with bug context',
-        expect.objectContaining({ bugName: 'test-bug-123' })
-      );
-    });
-
-    it('should include both specId and bugName when both are selected', () => {
-      // Set up both stores
-      useSpecDetailStore.setState({
-        specDetail: {
-          metadata: { name: 'feature-auth' },
-          status: {
-            requirements: 'completed',
-            design: 'completed',
-            tasks: 'pending',
-            implementation: 'pending',
-          },
-        },
-      });
-      useBugStore.setState({
-        selectedBug: {
-          name: 'auth-bug-456',
-          status: 'fixing',
-        },
-      });
-
-      notify.warning('Warning with both contexts');
-
-      expect(mockLogRenderer).toHaveBeenCalledWith(
-        'warn',
-        'Warning with both contexts',
-        expect.objectContaining({
-          specId: 'feature-auth',
-          bugName: 'auth-bug-456',
-        })
-      );
-    });
-
-    it('should send empty context when no spec or bug is selected', () => {
-      notify.info('Message without context');
-
-      expect(mockLogRenderer).toHaveBeenCalledWith('info', 'Message without context', {});
-    });
-
-    it('should log completion summary to main process', () => {
+    // Requirement 5.2: notify.showCompletionSummary uses rendererLogger
+    it('should log completion summary via rendererLogger', () => {
       const summary: ExecutionSummary = {
         executedPhases: ['requirements', 'design'],
         executedValidations: ['gap'],
@@ -429,7 +386,11 @@ describe('useNotificationStore', () => {
 
       notify.showCompletionSummary(summary);
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('info', expect.stringContaining('自動実行完了'), expect.any(Object));
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'info',
+        expect.stringContaining('自動実行完了'),
+        expect.objectContaining({ source: 'notificationStore' })
+      );
     });
 
     it('should log completion summary with warning level when errors exist', () => {
@@ -442,7 +403,34 @@ describe('useNotificationStore', () => {
 
       notify.showCompletionSummary(summary);
 
-      expect(mockLogRenderer).toHaveBeenCalledWith('warn', expect.stringContaining('エラー'), expect.any(Object));
+      expect(rendererLogger.logWithContext).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('エラー'),
+        expect.objectContaining({ source: 'notificationStore' })
+      );
+    });
+
+    // Requirement 5.3: External API unchanged
+    it('should not change external API for notify.success', () => {
+      const action = { label: 'View', onClick: vi.fn() };
+      notify.success('Success message', action);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('success');
+      expect(state.notifications[0].message).toBe('Success message');
+      expect(state.notifications[0].action).toBe(action);
+    });
+
+    it('should not change external API for notify.error', () => {
+      const action = { label: 'Retry', onClick: vi.fn() };
+      notify.error('Error message', action);
+
+      const state = useNotificationStore.getState();
+      expect(state.notifications).toHaveLength(1);
+      expect(state.notifications[0].type).toBe('error');
+      expect(state.notifications[0].message).toBe('Error message');
+      expect(state.notifications[0].action).toBe(action);
     });
   });
 });

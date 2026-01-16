@@ -20,6 +20,10 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Test reports and results
+playwright-report/
+test-results/
+
 # Environment
 .env
 .env.local

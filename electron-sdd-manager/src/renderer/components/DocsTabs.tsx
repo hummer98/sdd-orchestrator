@@ -11,7 +11,7 @@ import { SpecList } from './SpecList';
 import { BugList } from './BugList';
 import { CreateSpecDialog } from './CreateSpecDialog';
 import { CreateBugDialog } from './CreateBugDialog';
-import { useProjectStore, useSpecStore, useBugStore, useAgentStore } from '../stores';
+import { useProjectStore, useAgentStore } from '../stores';
 
 export type DocsTab = 'specs' | 'bugs';
 
@@ -45,24 +45,19 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
   const [isCreateSpecDialogOpen, setIsCreateSpecDialogOpen] = useState(false);
   const [isCreateBugDialogOpen, setIsCreateBugDialogOpen] = useState(false);
   const { currentProject } = useProjectStore();
-  const { clearSelectedSpec } = useSpecStore();
-  const { clearSelectedBug } = useBugStore();
   const { selectAgent } = useAgentStore();
 
   /**
-   * Handle tab change with mutual exclusion of selection state
-   * Bug fix: bugs-tab-selection-not-updating
-   * When switching tabs, clear the selection from the opposite store
-   * to ensure App.tsx conditional rendering works correctly
+   * Handle tab change - preserve selection state per tab
+   *
+   * App.tsxがactiveTabベースで条件分岐するようになったため、
+   * タブ切り替え時に選択状態をクリアする必要がなくなった。
+   * これにより、タブを戻したときに以前の選択状態が復元される。
+   *
    * Bug fix: agent-log-shows-selection-without-spec
-   * Also clear agent selection to prevent stale agent logs from being displayed
+   * エージェント選択のみクリアして、古いログ表示を防ぐ
    */
   const handleTabChange = (tabId: DocsTab) => {
-    if (tabId === 'specs') {
-      clearSelectedBug();
-    } else {
-      clearSelectedSpec();
-    }
     selectAgent(null);
     onTabChange(tabId);
   };

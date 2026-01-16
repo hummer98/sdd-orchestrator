@@ -7,17 +7,13 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DocsTabs, type DocsTab } from './DocsTabs';
-import { useProjectStore, useSpecStore, useBugStore, useAgentStore } from '../stores';
+import { useProjectStore, useAgentStore } from '../stores';
 
 // Mock stores
-const mockClearSelectedSpec = vi.fn();
-const mockClearSelectedBug = vi.fn();
 const mockSelectAgent = vi.fn();
 
 vi.mock('../stores', () => ({
   useProjectStore: vi.fn(),
-  useSpecStore: vi.fn(),
-  useBugStore: vi.fn(),
   useAgentStore: vi.fn(),
 }));
 
@@ -59,12 +55,6 @@ describe('DocsTabs', () => {
     vi.clearAllMocks();
     (useProjectStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       currentProject: '/test/project',
-    });
-    (useSpecStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      clearSelectedSpec: mockClearSelectedSpec,
-    });
-    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      clearSelectedBug: mockClearSelectedBug,
     });
     (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       selectAgent: mockSelectAgent,
@@ -135,27 +125,21 @@ describe('DocsTabs', () => {
       expect(screen.getByTestId('tabpanel-specs')).toBeInTheDocument();
     });
 
-    // Bug fix: bugs-tab-selection-not-updating
-    it('should clear spec selection when switching to Bugs tab', () => {
+    // Feature: タブ毎の選択状態を維持
+    // App.tsxがactiveTabベースで条件分岐するようになったため、
+    // タブ切り替え時に選択状態をクリアする必要がなくなった
+    // 注: clearSelectedSpec/clearSelectedBugはDocsTabsから呼び出されなくなったため、
+    // ストアの選択状態は各タブで独立して維持される
+    it('should preserve selection state when switching tabs (no clear calls)', () => {
       render(<DocsTabsWrapper />);
 
+      // Switch to bugs and back to specs
       fireEvent.click(screen.getByTestId('tab-bugs'));
-
-      expect(mockClearSelectedSpec).toHaveBeenCalledTimes(1);
-      expect(mockClearSelectedBug).not.toHaveBeenCalled();
-    });
-
-    it('should clear bug selection when switching to Specs tab', () => {
-      render(<DocsTabsWrapper />);
-
-      // First switch to bugs
-      fireEvent.click(screen.getByTestId('tab-bugs'));
-      vi.clearAllMocks();
-      // Then switch back to specs
       fireEvent.click(screen.getByTestId('tab-specs'));
 
-      expect(mockClearSelectedBug).toHaveBeenCalledTimes(1);
-      expect(mockClearSelectedSpec).not.toHaveBeenCalled();
+      // Only agent selection should be cleared (twice, once per tab switch)
+      expect(mockSelectAgent).toHaveBeenCalledTimes(2);
+      expect(mockSelectAgent).toHaveBeenCalledWith(null);
     });
 
     // Bug fix: agent-log-shows-selection-without-spec

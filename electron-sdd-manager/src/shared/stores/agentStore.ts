@@ -77,14 +77,15 @@ export interface SharedAgentActions {
 
   /**
    * Spec選択時のAgent自動選択
-   * agent-watcher-optimization Task 3.2
-   * Requirements: 3.1, 3.2, 3.4
-   * - 保存された選択状態があり、そのAgentがまだ存在する場合は復元
-   * - 保存状態がない場合は実行中Agentの有無を判定
-   * - 実行中Agentがある場合は最新（startedAtが最も新しい）のAgentを選択
-   * - 実行中Agentがない場合は何もしない（null状態を維持）
+   * Bug fix: agent-log-auto-select-rule
+   *
+   * 新しい自動選択ルール:
+   * - specId === null (未選択状態): 全Agentから実行中の最新を選択。なければnull
+   * - specId !== null (選択状態): そのspec/bugの実行中Agentから最新を選択。なければnull
+   *
+   * 実行中Agentを最優先し、なければAgentログエリアを空にする
    */
-  autoSelectAgentForSpec: (specId: string) => void;
+  autoSelectAgentForSpec: (specId: string | null) => void;
 }
 
 export type SharedAgentStore = SharedAgentState & SharedAgentActions;
@@ -219,35 +220,49 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     return get().selectedAgentIdBySpec.get(specId) ?? null;
   },
 
-  autoSelectAgentForSpec: (specId: string) => {
+  autoSelectAgentForSpec: (specId: string | null) => {
     const state = get();
 
-    // Check for saved selection
-    const savedAgentId = state.selectedAgentIdBySpec.get(specId);
-    if (savedAgentId) {
-      // Verify agent still exists
-      const savedAgent = state.agents.get(savedAgentId);
-      if (savedAgent) {
-        set({ selectedAgentId: savedAgentId });
+    // Bug fix: agent-log-auto-select-rule
+    // 新しい自動選択ルール: 実行中Agentを最優先、なければAgentログエリアを空にする
+
+    // Case 1: spec/bugが未選択（specId === null）
+    if (specId === null) {
+      // 全Agentから実行中のものを取得
+      const allRunningAgents = Array.from(state.agents.values())
+        .filter((agent) => agent.status === 'running');
+
+      if (allRunningAgents.length === 0) {
+        // 実行中なし → 選択をクリア（Agentログエリア空）
+        set({ selectedAgentId: null });
         return;
       }
+
+      // 最新の実行中Agentを選択
+      const sortedAgents = allRunningAgents.sort((a, b) => {
+        const timeA = new Date(a.startedAt).getTime();
+        const timeB = new Date(b.startedAt).getTime();
+        return timeB - timeA; // Descending (newest first)
+      });
+
+      set({ selectedAgentId: sortedAgents[0].id });
+      return;
     }
 
-    // Get agents for this spec
+    // Case 2: spec/bugが選択されている
     const specAgents = Array.from(state.agents.values()).filter(
       (agent) => agent.specId === specId
     );
 
-    // Filter to running agents only (Requirement 3.1)
     const runningAgents = specAgents.filter((agent) => agent.status === 'running');
 
     if (runningAgents.length === 0) {
-      // No running agents - don't auto-select (Requirement 3.1)
+      // 実行中なし → 選択をクリア（Agentログエリア空）
+      set({ selectedAgentId: null });
       return;
     }
 
-    // Select the most recent running agent (by startedAt)
-    // Requirement 3.2: Select newest running agent
+    // 最新の実行中Agentを選択
     const sortedAgents = runningAgents.sort((a, b) => {
       const timeA = new Date(a.startedAt).getTime();
       const timeB = new Date(b.startedAt).getTime();
@@ -256,7 +271,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
 
     const selectedAgentId = sortedAgents[0].id;
 
-    // Save to per-spec state and set as current selection
+    // per-spec状態も更新
     const newMap = new Map(state.selectedAgentIdBySpec);
     newMap.set(specId, selectedAgentId);
     set({ selectedAgentId, selectedAgentIdBySpec: newMap });

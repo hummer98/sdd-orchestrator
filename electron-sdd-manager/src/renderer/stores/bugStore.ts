@@ -143,6 +143,12 @@ export const useBugStore = create<BugStore>((set, get) => ({
       // Bug fix: switchAgentWatchScope expects specId format (bug:{name}), not full path
       await window.electronAPI.switchAgentWatchScope(`bug:${bug.name}`);
 
+      // Bug fix: agent-log-auto-select-rule
+      // Auto-select running agent for this bug (consistent with specDetailStore behavior)
+      const { useSharedAgentStore } = await import('../../shared/stores/agentStore');
+      useSharedAgentStore.getState().autoSelectAgentForSpec(`bug:${bug.name}`);
+      console.log('[bugStore] Auto-selected agent for bug:', bug.name);
+
       const bugDetail = await window.electronAPI.readBugDetail(bug.path);
 
       if (silent) {

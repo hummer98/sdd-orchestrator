@@ -89,112 +89,148 @@ describe('SharedAgentStore', () => {
 
   // =============================================================================
   // Task 3.2: autoSelectAgentForSpec メソッド
-  // Requirements: 3.1, 3.2, 3.4
+  // Bug fix: agent-log-auto-select-rule - 新しい自動選択ルール
   // =============================================================================
-  describe('Task 3.2: autoSelectAgentForSpec method', () => {
-    it('should restore saved selection if agent still exists', () => {
-      const store = getSharedAgentStore();
+  describe('Task 3.2: autoSelectAgentForSpec method (agent-log-auto-select-rule)', () => {
+    // -------------------------------------------------------------------------
+    // Case 1: specId === null (未選択状態)
+    // -------------------------------------------------------------------------
+    describe('when specId is null (no spec/bug selected)', () => {
+      it('should select most recent running agent globally', () => {
+        const store = getSharedAgentStore();
 
-      // Add agent
-      const agent = createAgent('agent-1', 'spec-a', 'running');
-      store.addAgent('spec-a', agent);
+        // Add running agents for different specs
+        const olderAgent = createAgent('agent-old', 'spec-a', 'running', '2025-01-01T10:00:00Z');
+        const newerAgent = createAgent('agent-new', 'spec-b', 'running', '2025-01-01T11:00:00Z');
 
-      // Save selection
-      store.setSelectedAgentForSpec('spec-a', 'agent-1');
+        store.addAgent('spec-a', olderAgent);
+        store.addAgent('spec-b', newerAgent);
 
-      // Clear current selection
-      store.selectAgent(null);
+        // Auto-select with null specId should choose newest running agent globally
+        store.autoSelectAgentForSpec(null);
 
-      // Auto-select should restore
-      store.autoSelectAgentForSpec('spec-a');
+        const freshState = getSharedAgentStore();
+        expect(freshState.selectedAgentId).toBe('agent-new');
+      });
 
-      // Get fresh state after mutations
-      const freshState = getSharedAgentStore();
-      expect(freshState.selectedAgentId).toBe('agent-1');
+      it('should set selectedAgentId to null when no running agents globally', () => {
+        const store = getSharedAgentStore();
+
+        // Add only completed agents
+        const completedAgent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', completedAgent);
+
+        // Auto-select with null specId should clear selection
+        store.autoSelectAgentForSpec(null);
+
+        expect(store.selectedAgentId).toBeNull();
+      });
+
+      it('should set selectedAgentId to null when no agents exist', () => {
+        const store = getSharedAgentStore();
+
+        // Auto-select with null specId on empty store
+        store.autoSelectAgentForSpec(null);
+
+        expect(store.selectedAgentId).toBeNull();
+      });
     });
 
-    it('should not restore saved selection if agent no longer exists', () => {
-      const store = getSharedAgentStore();
+    // -------------------------------------------------------------------------
+    // Case 2: specId !== null (Spec/Bug選択状態)
+    // -------------------------------------------------------------------------
+    describe('when specId is provided (spec/bug selected)', () => {
+      it('should select most recent running agent for that spec', () => {
+        const store = getSharedAgentStore();
 
-      // Save selection for non-existent agent
-      store.setSelectedAgentForSpec('spec-a', 'deleted-agent');
+        // Add agents with different startedAt times
+        const olderAgent = createAgent('agent-old', 'spec-a', 'running', '2025-01-01T10:00:00Z');
+        const newerAgent = createAgent('agent-new', 'spec-a', 'running', '2025-01-01T11:00:00Z');
 
-      // Auto-select should not select deleted agent
-      store.autoSelectAgentForSpec('spec-a');
+        store.addAgent('spec-a', olderAgent);
+        store.addAgent('spec-a', newerAgent);
 
-      expect(store.selectedAgentId).toBeNull();
-    });
+        // Auto-select should choose newest running agent
+        store.autoSelectAgentForSpec('spec-a');
 
-    it('should select most recent running agent when no saved selection', () => {
-      const store = getSharedAgentStore();
+        const freshState = getSharedAgentStore();
+        expect(freshState.selectedAgentId).toBe('agent-new');
+      });
 
-      // Add agents with different startedAt times
-      const olderAgent = createAgent('agent-old', 'spec-a', 'running', '2025-01-01T10:00:00Z');
-      const newerAgent = createAgent('agent-new', 'spec-a', 'running', '2025-01-01T11:00:00Z');
+      it('should set selectedAgentId to null when no running agents for spec', () => {
+        const store = getSharedAgentStore();
 
-      store.addAgent('spec-a', olderAgent);
-      store.addAgent('spec-a', newerAgent);
+        // Add only completed agents for spec-a
+        const completedAgent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', completedAgent);
 
-      // Auto-select should choose newest running agent
-      store.autoSelectAgentForSpec('spec-a');
+        // Auto-select should clear selection (not select non-running agent)
+        store.autoSelectAgentForSpec('spec-a');
 
-      // Get fresh state after mutations
-      const freshState = getSharedAgentStore();
-      expect(freshState.selectedAgentId).toBe('agent-new');
-    });
+        expect(store.selectedAgentId).toBeNull();
+      });
 
-    it('should not auto-select if no running agents (Requirement 3.1)', () => {
-      const store = getSharedAgentStore();
+      it('should set selectedAgentId to null when spec has no agents', () => {
+        const store = getSharedAgentStore();
 
-      // Add only completed agents
-      const completedAgent = createAgent('agent-1', 'spec-a', 'completed');
-      store.addAgent('spec-a', completedAgent);
+        // Auto-select on empty spec
+        store.autoSelectAgentForSpec('empty-spec');
 
-      // Auto-select should not select non-running agent
-      store.autoSelectAgentForSpec('spec-a');
+        expect(store.selectedAgentId).toBeNull();
+      });
 
-      expect(store.selectedAgentId).toBeNull();
-    });
+      it('should select running agent even if completed agents exist', () => {
+        const store = getSharedAgentStore();
 
-    it('should select running agent even if completed agents exist (Requirement 3.2)', () => {
-      const store = getSharedAgentStore();
+        // Add mix of agents
+        const completedAgent = createAgent('agent-completed', 'spec-a', 'completed');
+        const runningAgent = createAgent('agent-running', 'spec-a', 'running');
 
-      // Add mix of agents
-      const completedAgent = createAgent('agent-completed', 'spec-a', 'completed');
-      const runningAgent = createAgent('agent-running', 'spec-a', 'running');
+        store.addAgent('spec-a', completedAgent);
+        store.addAgent('spec-a', runningAgent);
 
-      store.addAgent('spec-a', completedAgent);
-      store.addAgent('spec-a', runningAgent);
+        // Auto-select should choose running agent
+        store.autoSelectAgentForSpec('spec-a');
 
-      // Auto-select should choose running agent
-      store.autoSelectAgentForSpec('spec-a');
+        const freshState = getSharedAgentStore();
+        expect(freshState.selectedAgentId).toBe('agent-running');
+      });
 
-      // Get fresh state after mutations
-      const freshState = getSharedAgentStore();
-      expect(freshState.selectedAgentId).toBe('agent-running');
-    });
+      it('should update selectedAgentIdBySpec when auto-selecting', () => {
+        const store = getSharedAgentStore();
 
-    it('should not change selection if spec has no agents', () => {
-      const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+        store.addAgent('spec-a', agent);
 
-      // Auto-select on empty spec
-      store.autoSelectAgentForSpec('empty-spec');
+        store.autoSelectAgentForSpec('spec-a');
 
-      expect(store.selectedAgentId).toBeNull();
-    });
+        const freshState = getSharedAgentStore();
+        // Should save the auto-selected agent to per-spec state
+        expect(freshState.selectedAgentIdBySpec.get('spec-a')).toBe('agent-1');
+      });
 
-    it('should update selectedAgentIdBySpec when auto-selecting', () => {
-      const store = getSharedAgentStore();
+      it('should NOT restore saved selection (running agent takes priority)', () => {
+        const store = getSharedAgentStore();
 
-      const agent = createAgent('agent-1', 'spec-a', 'running');
-      store.addAgent('spec-a', agent);
+        // Add two running agents
+        const olderAgent = createAgent('agent-old', 'spec-a', 'running', '2025-01-01T10:00:00Z');
+        const newerAgent = createAgent('agent-new', 'spec-a', 'running', '2025-01-01T11:00:00Z');
 
-      store.autoSelectAgentForSpec('spec-a');
+        store.addAgent('spec-a', olderAgent);
+        store.addAgent('spec-a', newerAgent);
 
-      // Get fresh state after mutations
-      const freshState = getSharedAgentStore();
-      // Should save the auto-selected agent to per-spec state
-      expect(freshState.selectedAgentIdBySpec.get('spec-a')).toBe('agent-1');
+        // Save selection for older agent (simulating previous manual selection)
+        store.setSelectedAgentForSpec('spec-a', 'agent-old');
+
+        // Clear current selection
+        store.selectAgent(null);
+
+        // Auto-select should choose newest running agent, NOT restore saved selection
+        store.autoSelectAgentForSpec('spec-a');
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.selectedAgentId).toBe('agent-new');
+      });
     });
   });
 

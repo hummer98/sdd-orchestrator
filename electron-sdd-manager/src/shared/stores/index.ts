@@ -25,3 +25,15 @@ export type {
   SharedExecutionStore,
   ExecutionStateEntry,
 } from './executionStore';
+
+// Bug Auto Execution store (bug-auto-execution-per-bug-state)
+export {
+  useBugAutoExecutionStore,
+  initBugAutoExecutionIpcListeners,
+  cleanupBugAutoExecutionIpcListeners,
+  DEFAULT_BUG_AUTO_EXECUTION_RUNTIME,
+} from './bugAutoExecutionStore';
+export type {
+  BugAutoExecutionRuntimeState,
+  BugAutoExecutionRuntimeMap,
+} from './bugAutoExecutionStore';

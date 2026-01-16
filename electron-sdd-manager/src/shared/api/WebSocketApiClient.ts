@@ -24,6 +24,7 @@ import type {
   BugMetadata,
   BugDetail,
   BugAction,
+  BugAutoExecutionState,
 } from './types';
 
 // =============================================================================
@@ -213,6 +214,19 @@ export class WebSocketApiClient implements ApiClient {
         break;
       case 'AUTO_EXECUTION_STATUS_CHANGED':
         this.emit('autoExecutionStatusChanged', message.payload);
+        break;
+      // bug-auto-execution-per-bug-state Task 6.1, 6.2: Bug auto execution events
+      case 'BUG_AUTO_EXECUTION_STATUS':
+        this.emit('bugAutoExecutionStatus', message.payload);
+        break;
+      case 'BUG_AUTO_EXECUTION_PHASE_COMPLETED':
+        this.emit('bugAutoExecutionPhaseCompleted', message.payload);
+        break;
+      case 'BUG_AUTO_EXECUTION_COMPLETED':
+        this.emit('bugAutoExecutionCompleted', message.payload);
+        break;
+      case 'BUG_AUTO_EXECUTION_ERROR':
+        this.emit('bugAutoExecutionError', message.payload);
         break;
       // header-profile-badge feature: profile updates from server
       case 'PROFILE_UPDATED':
@@ -406,6 +420,32 @@ export class WebSocketApiClient implements ApiClient {
     specPath: string
   ): Promise<Result<AutoExecutionState | null, ApiError>> {
     return this.wrapRequest<AutoExecutionState | null>('GET_AUTO_EXECUTION_STATUS', { specPath });
+  }
+
+  // ===========================================================================
+  // Bug Auto Execution Operations
+  // Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
+  // ===========================================================================
+
+  /**
+   * Get bug auto execution status
+   * @param bugPath - Full path to bug directory
+   */
+  async getBugAutoExecutionStatus(
+    bugPath: string
+  ): Promise<Result<BugAutoExecutionState | null, ApiError>> {
+    interface BugAutoExecutionStatusResponse {
+      bugPath: string;
+      state: BugAutoExecutionState | null;
+    }
+    const response = await this.wrapRequest<BugAutoExecutionStatusResponse>(
+      'GET_BUG_AUTO_EXECUTION_STATUS',
+      { bugPath }
+    );
+    if (response.ok) {
+      return { ok: true, value: response.value.state };
+    }
+    return response;
   }
 
   // ===========================================================================

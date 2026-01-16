@@ -173,6 +173,33 @@ export interface AutoExecutionStateWS {
 }
 
 /**
+ * Bug Auto Execution State for Remote UI
+ * Requirements: 6.2, 6.3 (bug-auto-execution-per-bug-state Task 6.1, 6.2)
+ */
+export interface BugAutoExecutionStateWS {
+  readonly bugPath: string;
+  readonly bugName: string;
+  readonly status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  readonly currentPhase: string | null;
+  readonly executedPhases: string[];
+  readonly errors: string[];
+  readonly startTime: number;
+  readonly lastActivityTime: number;
+  readonly retryCount: number;
+  readonly lastFailedPhase: string | null;
+}
+
+/**
+ * Bug Auto Execution Error for Remote UI
+ * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
+ */
+export interface BugAutoExecutionErrorWS {
+  readonly type: string;
+  readonly message?: string;
+  readonly phase?: string;
+}
+
+/**
  * Workflow controller interface for executing workflow operations
  * Requirements: 6.2, 6.3, 6.4 (internal-webserver-sync Tasks 2.1, 2.2, 2.3)
  */
@@ -204,6 +231,11 @@ export interface WorkflowController {
   autoExecuteStatus?(specPath: string): Promise<AutoExecutionStateWS | null>;
   /** Get all auto execution statuses */
   autoExecuteAllStatus?(): Promise<Record<string, AutoExecutionStateWS>>;
+
+  // Bug auto execution methods (bug-auto-execution-per-bug-state feature)
+  // Requirements: 6.2, 6.3 (Task 6.1, 6.2)
+  /** Get bug auto execution status */
+  bugAutoExecuteStatus?(bugPath: string): Promise<BugAutoExecutionStateWS | null>;
 
   // Inspection workflow methods (inspection-workflow-ui feature)
   // Requirements: 6.1, 6.4 (Task 6.2)
@@ -626,6 +658,10 @@ export class WebSocketHandler {
       // Profile handlers (header-profile-badge feature)
       case 'GET_PROFILE':
         await this.handleGetProfile(client, message);
+        break;
+      // Bug auto execution handlers (bug-auto-execution-per-bug-state Task 6.2)
+      case 'GET_BUG_AUTO_EXECUTION_STATUS':
+        await this.handleGetBugAutoExecutionStatus(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2198,6 +2234,124 @@ export class WebSocketHandler {
       type: 'PROFILE_UPDATED',
       payload: { profile },
       requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  // ============================================================
+  // Bug Auto Execution Handlers (bug-auto-execution-per-bug-state Task 6.2)
+  // Requirements: 6.2, 6.3
+  // ============================================================
+
+  /**
+   * Handle GET_BUG_AUTO_EXECUTION_STATUS message
+   * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
+   * Retrieves bug auto execution status for Remote UI
+   */
+  private async handleGetBugAutoExecutionStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.bugAutoExecuteStatus) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution status not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const bugPath = payload.bugPath as string;
+
+    if (!bugPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const state = await this.workflowController.bugAutoExecuteStatus(bugPath);
+
+    this.send(client.id, {
+      type: 'BUG_AUTO_EXECUTION_STATUS',
+      payload: { bugPath, state },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  // ============================================================
+  // Bug Auto Execution Broadcast Methods (bug-auto-execution-per-bug-state Task 6.1)
+  // Requirements: 6.2
+  // ============================================================
+
+  /**
+   * Broadcast bug auto execution status change to all connected clients
+   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
+   *
+   * @param bugPath Bug path
+   * @param state Current bug auto execution state
+   */
+  broadcastBugAutoExecutionStatus(bugPath: string, state: BugAutoExecutionStateWS): void {
+    this.broadcast({
+      type: 'BUG_AUTO_EXECUTION_STATUS',
+      payload: { bugPath, state },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast bug auto execution phase completed to all connected clients
+   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
+   *
+   * @param bugPath Bug path
+   * @param phase Completed phase
+   */
+  broadcastBugAutoExecutionPhaseCompleted(bugPath: string, phase: string): void {
+    this.broadcast({
+      type: 'BUG_AUTO_EXECUTION_PHASE_COMPLETED',
+      payload: { bugPath, phase },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast bug auto execution completed to all connected clients
+   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
+   *
+   * @param bugPath Bug path
+   */
+  broadcastBugAutoExecutionCompleted(bugPath: string): void {
+    this.broadcast({
+      type: 'BUG_AUTO_EXECUTION_COMPLETED',
+      payload: { bugPath },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Broadcast bug auto execution error to all connected clients
+   * Requirements: 6.2 (bug-auto-execution-per-bug-state Task 6.1)
+   *
+   * @param bugPath Bug path
+   * @param error Error details
+   */
+  broadcastBugAutoExecutionError(bugPath: string, error: BugAutoExecutionErrorWS): void {
+    this.broadcast({
+      type: 'BUG_AUTO_EXECUTION_ERROR',
+      payload: { bugPath, error },
       timestamp: Date.now(),
     });
   }

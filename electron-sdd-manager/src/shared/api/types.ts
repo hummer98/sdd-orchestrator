@@ -132,6 +132,23 @@ export interface AutoExecutionState {
   error?: ApiError;
 }
 
+/**
+ * Bug auto execution state returned by bug auto execution APIs
+ * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
+ */
+export interface BugAutoExecutionState {
+  bugPath: string;
+  bugName: string;
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  currentPhase: string | null;
+  executedPhases: string[];
+  errors: string[];
+  startTime: number;
+  lastActivityTime: number;
+  retryCount: number;
+  lastFailedPhase: string | null;
+}
+
 // =============================================================================
 // Event Types
 // =============================================================================
@@ -291,6 +308,13 @@ export interface ApiClient {
    * @param specPath - Full path to spec directory
    */
   getAutoExecutionStatus(specPath: string): Promise<Result<AutoExecutionState | null, ApiError>>;
+
+  /**
+   * Get bug auto execution status
+   * Requirements: 6.3 (bug-auto-execution-per-bug-state Task 6.2)
+   * @param bugPath - Full path to bug directory
+   */
+  getBugAutoExecutionStatus?(bugPath: string): Promise<Result<BugAutoExecutionState | null, ApiError>>;
 
   // ===========================================================================
   // File Operations

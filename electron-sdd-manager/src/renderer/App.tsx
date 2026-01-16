@@ -38,6 +38,8 @@ import type { ProfileName } from './components/CommandsetInstallDialog';
 import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
 import type { CommandPrefix, ProfileConfig } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
+// bug-auto-execution-per-bug-state: Import bug auto-execution IPC listeners
+import { initBugAutoExecutionIpcListeners, cleanupBugAutoExecutionIpcListeners } from '../shared/stores/bugAutoExecutionStore';
 // Task 8.2: Shared providers for API abstraction and platform capabilities
 import { ApiClientProvider, PlatformProvider } from '../shared';
 // header-profile-badge feature
@@ -270,6 +272,21 @@ export function App() {
     return () => {
       autoExecutionIpcInitialized.current = false;
       cleanupAutoExecutionIpcListeners();
+    };
+  }, []);
+
+  // bug-auto-execution-per-bug-state Task 7.1: Initialize bug auto-execution IPC listeners
+  // This enables bugAutoExecutionStore to receive state updates from Main Process
+  const bugAutoExecutionIpcInitialized = useRef(false);
+  useEffect(() => {
+    if (bugAutoExecutionIpcInitialized.current) {
+      return;
+    }
+    bugAutoExecutionIpcInitialized.current = true;
+    initBugAutoExecutionIpcListeners();
+    return () => {
+      bugAutoExecutionIpcInitialized.current = false;
+      cleanupBugAutoExecutionIpcListeners();
     };
   }, []);
 

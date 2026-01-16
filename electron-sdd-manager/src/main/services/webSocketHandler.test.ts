@@ -2209,6 +2209,392 @@ describe('WebSocketHandler - GET_SPEC_DETAIL Handler (remote-ui-react-migration 
 });
 
 // ============================================================
+// bug-auto-execution-per-bug-state Task 6.1: Bug Auto Execution Broadcast Tests
+// Requirements: 6.2 (Remote UIがWebSocket経由で状態受信)
+// ============================================================
+
+describe('WebSocketHandler - Bug Auto Execution Broadcasts (bug-auto-execution-per-bug-state Task 6.1)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('broadcastBugAutoExecutionStatus', () => {
+    it('should broadcast BUG_AUTO_EXECUTION_STATUS to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // Connect multiple clients
+      const mockWs1 = createMockWebSocket();
+      const mockWs2 = createMockWebSocket();
+      connectionHandler!(mockWs1, createMockRequest('192.168.1.1'));
+      connectionHandler!(mockWs2, createMockRequest('192.168.1.2'));
+
+      mockWs1.send.mockClear();
+      mockWs2.send.mockClear();
+
+      // Broadcast bug auto execution status
+      handler.broadcastBugAutoExecutionStatus('/project/.kiro/bugs/test-bug', {
+        bugPath: '/project/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        status: 'running',
+        currentPhase: 'analyze',
+        executedPhases: [],
+        errors: [],
+        startTime: Date.now(),
+        lastActivityTime: Date.now(),
+        retryCount: 0,
+        lastFailedPhase: null,
+      });
+
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STATUS"')
+      );
+      expect(mockWs1.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugPath":"/project/.kiro/bugs/test-bug"')
+      );
+      expect(mockWs2.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STATUS"')
+      );
+    });
+
+    it('should include status and currentPhase in broadcast', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      handler.broadcastBugAutoExecutionStatus('/project/.kiro/bugs/test-bug', {
+        bugPath: '/project/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        status: 'error',
+        currentPhase: null,
+        executedPhases: ['analyze'],
+        errors: ['Phase execution failed'],
+        startTime: Date.now(),
+        lastActivityTime: Date.now(),
+        retryCount: 2,
+        lastFailedPhase: 'fix',
+      });
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"status":"error"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"retryCount":2')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"lastFailedPhase":"fix"')
+      );
+    });
+  });
+
+  describe('broadcastBugAutoExecutionPhaseCompleted', () => {
+    it('should broadcast BUG_AUTO_EXECUTION_PHASE_COMPLETED to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      handler.broadcastBugAutoExecutionPhaseCompleted('/project/.kiro/bugs/test-bug', 'analyze');
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_PHASE_COMPLETED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugPath":"/project/.kiro/bugs/test-bug"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"phase":"analyze"')
+      );
+    });
+  });
+
+  describe('broadcastBugAutoExecutionCompleted', () => {
+    it('should broadcast BUG_AUTO_EXECUTION_COMPLETED to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      handler.broadcastBugAutoExecutionCompleted('/project/.kiro/bugs/test-bug');
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_COMPLETED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugPath":"/project/.kiro/bugs/test-bug"')
+      );
+    });
+  });
+
+  describe('broadcastBugAutoExecutionError', () => {
+    it('should broadcast BUG_AUTO_EXECUTION_ERROR to all connected clients', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      handler.broadcastBugAutoExecutionError('/project/.kiro/bugs/test-bug', {
+        type: 'PHASE_EXECUTION_FAILED',
+        message: 'Fix phase failed',
+        phase: 'fix',
+      });
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"bugPath":"/project/.kiro/bugs/test-bug"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"error"')
+      );
+    });
+  });
+});
+
+// ============================================================
+// bug-auto-execution-per-bug-state Task 6.2: GET_BUG_AUTO_EXECUTION_STATUS Handler Tests
+// Requirements: 6.3 (Remote UIでバグ選択時にWebSocket経由で状態取得)
+// ============================================================
+
+describe('WebSocketHandler - GET_BUG_AUTO_EXECUTION_STATUS Handler (bug-auto-execution-per-bug-state Task 6.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('GET_BUG_AUTO_EXECUTION_STATUS message handling', () => {
+    it('should return bug auto execution status when workflowController is configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const mockState = {
+        bugPath: '/project/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        status: 'running',
+        currentPhase: 'fix',
+        executedPhases: ['analyze'],
+        errors: [],
+        startTime: Date.now(),
+        lastActivityTime: Date.now(),
+        retryCount: 0,
+        lastFailedPhase: null,
+      };
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        bugAutoExecuteStatus: vi.fn().mockResolvedValue(mockState),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUG_AUTO_EXECUTION_STATUS',
+        payload: { bugPath: '/project/.kiro/bugs/test-bug' },
+        requestId: 'req-bug-status-1',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(workflowController.bugAutoExecuteStatus).toHaveBeenCalledWith('/project/.kiro/bugs/test-bug');
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STATUS"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"requestId":"req-bug-status-1"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"status":"running"')
+      );
+    });
+
+    it('should return null state when bug has no auto execution state', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        bugAutoExecuteStatus: vi.fn().mockResolvedValue(null),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUG_AUTO_EXECUTION_STATUS',
+        payload: { bugPath: '/project/.kiro/bugs/unknown-bug' },
+        requestId: 'req-bug-status-2',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STATUS"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"state":null')
+      );
+    });
+
+    it('should send ERROR when bugAutoExecuteStatus is not supported', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      // WorkflowController without bugAutoExecuteStatus
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUG_AUTO_EXECUTION_STATUS',
+        payload: { bugPath: '/project/.kiro/bugs/test-bug' },
+        requestId: 'req-bug-status-3',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+
+    it('should send ERROR when bugPath is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+      const workflowController = {
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        bugAutoExecuteStatus: vi.fn(),
+      };
+      handler.setWorkflowController(workflowController);
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'GET_BUG_AUTO_EXECUTION_STATUS',
+        payload: {},
+        requestId: 'req-bug-status-4',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+  });
+});
+
+// ============================================================
 // agent-ask-execution Task 6: ASK_PROJECT/ASK_SPEC Message Handler Tests
 // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
 // ============================================================

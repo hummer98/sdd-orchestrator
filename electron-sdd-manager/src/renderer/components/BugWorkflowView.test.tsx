@@ -36,18 +36,34 @@ vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
 }));
 
-// Mock BugAutoExecutionService
-vi.mock('../services/BugAutoExecutionService', () => ({
-  getBugAutoExecutionService: vi.fn().mockReturnValue({
-    getStatus: () => 'idle',
-    getCurrentPhase: () => null,
-    getLastFailedPhase: () => null,
-    getRetryCount: () => 0,
-    start: vi.fn().mockReturnValue(true),
-    stop: vi.fn().mockResolvedValue(undefined),
-    retryFrom: vi.fn().mockReturnValue(true),
+// bug-auto-execution-per-bug-state: Mock bugAutoExecutionStore
+const mockBugAutoExecutionStore = {
+  bugAutoExecutionRuntimeMap: new Map(),
+  getBugAutoExecutionRuntime: vi.fn().mockReturnValue({
+    isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle',
+    lastFailedPhase: null,
+    retryCount: 0,
   }),
-}));
+  fetchBugAutoExecutionState: vi.fn().mockResolvedValue(undefined),
+  startAutoExecution: vi.fn(),
+  stopAutoExecution: vi.fn(),
+  setErrorState: vi.fn(),
+};
+
+vi.mock('../../shared/stores/bugAutoExecutionStore', () => {
+  const mockFn = vi.fn((selector?: (state: unknown) => unknown) => {
+    if (selector) {
+      return selector(mockBugAutoExecutionStore);
+    }
+    return mockBugAutoExecutionStore;
+  });
+  mockFn.subscribe = vi.fn(() => vi.fn());
+  mockFn.getState = vi.fn(() => mockBugAutoExecutionStore);
+  mockFn.setState = vi.fn();
+  return { useBugAutoExecutionStore: mockFn };
+});
 
 // Mock electronAPI
 const mockElectronAPI = {

@@ -3,15 +3,17 @@
  * Displays bug workflow with 5 phases and execution controls
  * Task 3: bugs-pane-integration
  * Task 4: bugs-workflow-auto-execution
+ * bug-auto-execution-per-bug-state: Tasks 4.1-4.3 - Migrate to bugAutoExecutionStore
  * Requirements: 3.1, 3.2, 3.3, 4.1-4.7, 6.2, 6.4
  * Requirements: 1.1-1.6, 6.1 (auto execution)
  */
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { ArrowDown, Play, Square, GitBranch } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useBugStore } from '../stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
+import { useWorkflowStore } from '../stores/workflowStore';
 import { BugPhaseItem } from './BugPhaseItem';
 import { BugAutoExecutionStatusDisplay } from './BugAutoExecutionStatusDisplay';
 import {
@@ -23,8 +25,8 @@ import {
   type BugDetail,
 } from '../types/bug';
 import { notify } from '../stores';
-import { getBugAutoExecutionService } from '../services/BugAutoExecutionService';
-import type { BugAutoExecutionStatus } from '../types/bugAutoExecution';
+// bug-auto-execution-per-bug-state: Use store instead of service (Req 4.1-4.5)
+import { useBugAutoExecutionStore } from '../../shared/stores/bugAutoExecutionStore';
 
 /**
  * Task 3.1: フェーズステータス算出ロジック
@@ -64,35 +66,43 @@ export function BugWorkflowView() {
   const { selectedBug, bugDetail, useWorktree, setUseWorktree } = useBugStore();
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
+  const bugAutoExecutionPermissions = useWorkflowStore((state) => state.bugAutoExecutionPermissions);
 
   // ============================================================
-  // Task 4: Auto execution state
-  // Requirements: 1.1-1.6, 6.1
+  // bug-auto-execution-per-bug-state Task 4.1: Read state from store
+  // Requirements: 4.1, 4.2
   // ============================================================
-  const [autoExecutionStatus, setAutoExecutionStatus] = useState<BugAutoExecutionStatus>('idle');
-  const [currentAutoPhase, setCurrentAutoPhase] = useState<BugWorkflowPhase | null>(null);
-  const [lastFailedPhase, setLastFailedPhase] = useState<BugWorkflowPhase | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const getBugAutoExecutionRuntime = useBugAutoExecutionStore((state) => state.getBugAutoExecutionRuntime);
+  const fetchBugAutoExecutionState = useBugAutoExecutionStore((state) => state.fetchBugAutoExecutionState);
+  const startAutoExecutionInStore = useBugAutoExecutionStore((state) => state.startAutoExecution);
+  const stopAutoExecutionInStore = useBugAutoExecutionStore((state) => state.stopAutoExecution);
 
-  // Update auto execution state periodically
+  // Get bug path for store key
+  const bugPath = selectedBug?.path ?? null;
+
+  // Get auto execution runtime state for current bug
+  const runtime = bugPath ? getBugAutoExecutionRuntime(bugPath) : null;
+  const autoExecutionStatus = runtime?.autoExecutionStatus ?? 'idle';
+  const currentAutoPhase = runtime?.currentAutoPhase ?? null;
+  const lastFailedPhase = runtime?.lastFailedPhase ?? null;
+  const retryCount = runtime?.retryCount ?? 0;
+  const isAutoExecuting = runtime?.isAutoExecuting ?? false;
+
+  // ============================================================
+  // bug-auto-execution-per-bug-state Task 7.2: Fetch state on bug selection
+  // Requirements: 3.1
+  // ============================================================
+  const lastFetchedBugPath = useRef<string | null>(null);
+
   useEffect(() => {
-    const updateState = () => {
-      const service = getBugAutoExecutionService();
-      setAutoExecutionStatus(service.getStatus());
-      setCurrentAutoPhase(service.getCurrentPhase());
-      setLastFailedPhase(service.getLastFailedPhase());
-      setRetryCount(service.getRetryCount());
-    };
-
-    // Update immediately
-    updateState();
-
-    // Update on interval while auto-executing
-    const interval = setInterval(updateState, 100);
-    return () => clearInterval(interval);
-  }, []);
-
-  const isAutoExecuting = autoExecutionStatus === 'running' || autoExecutionStatus === 'paused';
+    if (bugPath && bugPath !== lastFetchedBugPath.current) {
+      lastFetchedBugPath.current = bugPath;
+      // Fetch state from Main Process when bug is selected
+      fetchBugAutoExecutionState(bugPath).catch((err) => {
+        console.error('[BugWorkflowView] Failed to fetch bug auto-execution state:', err);
+      });
+    }
+  }, [bugPath, fetchBugAutoExecutionState]);
 
   // Get running phases for the selected bug
   // Use bug:{name} format to match AgentListPanel filtering
@@ -181,30 +191,89 @@ export function BugWorkflowView() {
   }, [selectedBug, useWorktree]);
 
   // ============================================================
-  // Task 4: Auto execution handlers
-  // Requirements: 1.3, 1.4, 5.1
+  // bug-auto-execution-per-bug-state Task 4.2, 4.3: Auto execution handlers
+  // Requirements: 4.3, 4.4, 4.5, 5.1, 5.2
+  // Use existing IPC APIs defined in electron.d.ts
   // ============================================================
+
+  // Determine last completed phase from bugDetail
+  const getLastCompletedPhase = useCallback((): BugWorkflowPhase | null => {
+    if (!bugDetail) return null;
+    if (bugDetail.artifacts.verification?.exists) return 'verify';
+    if (bugDetail.artifacts.fix?.exists) return 'fix';
+    if (bugDetail.artifacts.analysis?.exists) return 'analyze';
+    if (bugDetail.artifacts.report?.exists) return 'report';
+    return null;
+  }, [bugDetail]);
+
   const handleStartAutoExecution = useCallback(async () => {
-    const service = getBugAutoExecutionService();
-    const started = await service.start();
-    if (!started) {
+    if (!bugPath || !selectedBug) {
       notify.error('自動実行を開始できませんでした');
+      return;
     }
-  }, []);
+
+    try {
+      // Update store state first (optimistic update)
+      startAutoExecutionInStore(bugPath);
+
+      // Call Main Process to start auto-execution using existing IPC API
+      const result = await window.electronAPI.bugAutoExecutionStart({
+        bugPath,
+        bugName: selectedBug.name,
+        options: {
+          permissions: bugAutoExecutionPermissions,
+        },
+        lastCompletedPhase: getLastCompletedPhase(),
+      });
+
+      if (!result.ok) {
+        // Revert optimistic update on failure
+        stopAutoExecutionInStore(bugPath);
+        const errorMsg = 'message' in result.error ? result.error.message : result.error.type;
+        notify.error(errorMsg || '自動実行を開始できませんでした');
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      stopAutoExecutionInStore(bugPath);
+      notify.error(error instanceof Error ? error.message : '自動実行を開始できませんでした');
+    }
+  }, [bugPath, selectedBug, bugAutoExecutionPermissions, startAutoExecutionInStore, stopAutoExecutionInStore, getLastCompletedPhase]);
 
   const handleStopAutoExecution = useCallback(async () => {
-    const service = getBugAutoExecutionService();
-    await service.stop();
-  }, []);
+    if (!bugPath) return;
 
-  const handleRetryAutoExecution = useCallback(() => {
-    if (!lastFailedPhase) return;
-    const service = getBugAutoExecutionService();
-    const retried = service.retryFrom(lastFailedPhase);
-    if (!retried) {
-      notify.error('リトライを開始できませんでした');
+    try {
+      // Call Main Process to stop auto-execution using existing IPC API
+      await window.electronAPI.bugAutoExecutionStop({ bugPath });
+      // Store will be updated by IPC event
+    } catch (error) {
+      // Force stop in store if IPC fails
+      stopAutoExecutionInStore(bugPath);
+      console.error('[BugWorkflowView] Failed to stop auto-execution:', error);
     }
-  }, [lastFailedPhase]);
+  }, [bugPath, stopAutoExecutionInStore]);
+
+  const handleRetryAutoExecution = useCallback(async () => {
+    if (!bugPath || !lastFailedPhase) {
+      notify.error('リトライを開始できませんでした');
+      return;
+    }
+
+    try {
+      // Call Main Process to retry from failed phase using existing IPC API
+      const result = await window.electronAPI.bugAutoExecutionRetryFrom({
+        bugPath,
+        phase: lastFailedPhase,
+      });
+
+      if (!result.ok) {
+        const errorMsg = 'message' in result.error ? result.error.message : result.error.type;
+        notify.error(errorMsg || 'リトライを開始できませんでした');
+      }
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'リトライを開始できませんでした');
+    }
+  }, [bugPath, lastFailedPhase]);
 
   // If no bug is selected, show placeholder
   if (!selectedBug) {

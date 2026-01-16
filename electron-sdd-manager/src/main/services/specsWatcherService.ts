@@ -6,7 +6,7 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
 import { normalizeInspectionState, hasPassed } from '../../renderer/types/inspection';
@@ -97,8 +97,17 @@ export class SpecsWatcherService {
 
     logger.debug('[SpecsWatcherService] File event', { type, filePath, specId });
 
-    // Check if tasks.md was modified and handle completion detection
+    // Check for artifact file generation (requirements.md, design.md, tasks.md)
+    // These are user-initiated actions via skills, so we update updated_at
     const fileName = path.basename(filePath);
+    const artifactFiles = ['requirements.md', 'design.md', 'tasks.md'];
+    if (type === 'add' && artifactFiles.includes(fileName) && specId) {
+      this.handleArtifactGeneration(filePath, specId, fileName).catch((error) => {
+        logger.error('[SpecsWatcherService] Failed to handle artifact generation', { error, specId, fileName });
+      });
+    }
+
+    // Check if tasks.md was modified and handle completion detection
     if ((type === 'change' || type === 'add') && fileName === 'tasks.md' && specId) {
       this.checkTaskCompletion(filePath, specId).catch((error) => {
         logger.error('[SpecsWatcherService] Failed to check task completion', { error, specId });
@@ -128,6 +137,61 @@ export class SpecsWatcherService {
     }, this.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
+  }
+
+  /**
+   * Handle artifact file generation (requirements.md, design.md, tasks.md)
+   * Updates spec.json updated_at when these files are created by user-initiated skill execution
+   * This is a user action, so we update the timestamp (unlike auto-corrections which skip it)
+   */
+  private async handleArtifactGeneration(
+    filePath: string,
+    specId: string,
+    fileName: string
+  ): Promise<void> {
+    if (!this.fileService) {
+      logger.debug('[SpecsWatcherService] FileService not available, skipping artifact generation handling');
+      return;
+    }
+
+    try {
+      const specPath = path.dirname(filePath);
+      const specJsonPath = path.join(specPath, 'spec.json');
+
+      const specJsonContent = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(specJsonContent);
+
+      // Determine the expected phase based on the artifact file
+      const artifactToPhase: Record<string, string> = {
+        'requirements.md': 'requirements',
+        'design.md': 'design',
+        'tasks.md': 'tasks',
+      };
+      const expectedPhase = artifactToPhase[fileName];
+
+      if (!expectedPhase) {
+        return;
+      }
+
+      // Update spec.json with new timestamp (user action, so no skipTimestamp)
+      // Note: Phase transition is handled by existing logic in specSyncService/fileService
+      // Here we only ensure updated_at is refreshed when artifact is generated
+      specJson.updated_at = new Date().toISOString();
+
+      await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+
+      logger.info('[SpecsWatcherService] Artifact generation detected, updated_at refreshed', {
+        specId,
+        artifact: fileName,
+        expectedPhase,
+      });
+    } catch (error) {
+      logger.error('[SpecsWatcherService] Failed to handle artifact generation', {
+        specId,
+        fileName,
+        error,
+      });
+    }
   }
 
   /**

@@ -104,6 +104,29 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 - `handlers.ts`: IPCハンドラ実装
 - preload経由でrendererに公開
 
+### spec.json updated_at 更新ルール
+
+`updated_at`フィールドはSpec一覧のソート順に使用される。更新タイミングの設計原則:
+
+| 更新タイプ | `updated_at`の更新 | 例 |
+|-----------|-------------------|-----|
+| ユーザーアクション | **更新する** | 設定変更、承認、レビュー操作、アーティファクト生成 |
+| 自動補正 | **更新しない**（`skipTimestamp: true`） | タスク完了検知、Inspection GO検知、UI同期 |
+
+**アーティファクト生成検知**（specsWatcherService）:
+- requirements.md, design.md, tasks.mdの生成を検知
+- スキル実行によるファイル生成はユーザーアクションとして扱う
+- `add`イベントのみ対象（`change`は含まない）
+
+**実装パターン**:
+```typescript
+// ユーザーアクション: タイムスタンプ更新あり
+await fileService.updateSpecJsonFromPhase(specPath, 'design-approved');
+
+// 自動補正: タイムスタンプ更新なし
+await fileService.updateSpecJsonFromPhase(specPath, 'impl-complete', { skipTimestamp: true });
+```
+
 ### Remote UI アーキテクチャ
 
 Electronアプリはブラウザからアクセス可能なRemote UIを提供する。

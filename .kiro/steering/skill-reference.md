@@ -227,6 +227,40 @@ Report → Analyze → Fix(worktree作成) → Verify → Merge(worktree削除)
 
 ---
 
+## 付録: RoundDetail スキーマ
+
+Document Reviewの各ラウンド詳細を管理する `roundDetails` の各要素は以下のスキーマに従う：
+
+```json
+{
+  "roundNumber": 1,           // Required: ラウンド番号 (1-indexed)
+  "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
+  "fixStatus": "not_required", // Optional: "not_required" | "pending" | "applied"
+  "fixRequired": 0,           // Optional: Fix Required 件数
+  "needsDiscussion": 0,       // Optional: Needs Discussion 件数
+  "reviewCompletedAt": "...", // Optional: レビュー完了タイムスタンプ
+  "replyCompletedAt": "..."   // Optional: リプライ完了タイムスタンプ
+}
+```
+
+**fixStatus の値と意味**:
+
+| 値 | 意味 | 自動実行時の動作 |
+|---|------|----------------|
+| `not_required` | 修正も議論も不要 | レビューサイクル脱出（`documentReview.status: 'approved'`） |
+| `pending` | 修正待ち or Discussion待ち | 自動実行停止（人間の介入待ち） |
+| `applied` | 修正適用済み | 次ラウンドの document-review 開始 |
+
+**fixStatus の判定ロジック** (document-review-reply コマンドで設定):
+
+1. `--autofix` / `--fix` で修正を適用した場合: `"applied"`
+2. `fixRequired > 0` OR `needsDiscussion > 0` の場合: `"pending"`
+3. `fixRequired === 0` AND `needsDiscussion === 0` の場合: `"not_required"`
+
+**後方互換性**: 古い `fixApplied: boolean` フィールドは読み込み時に自動的に `fixStatus` に変換される。
+
+---
+
 ## 付録: spec.json 書き換え責任まとめ
 
 | フェーズ | cc-sdd | cc-sdd-agent | spec-manager |

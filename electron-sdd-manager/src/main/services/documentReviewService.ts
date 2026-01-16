@@ -13,6 +13,7 @@ import type {
   RoundDetail,
   ReviewStatus,
   RoundStatus,
+  FixStatus,
 } from '../../renderer/types/documentReview';
 import {
   createInitialReviewState,
@@ -614,6 +615,7 @@ export class DocumentReviewService {
   /**
    * Normalize a round detail object to ensure it has the correct schema
    * Handles legacy data with 'round' instead of 'roundNumber' and missing fields
+   * Also migrates fixApplied -> fixStatus (fix-status-field-migration Task 2.1)
    */
   private normalizeRoundDetail(detail: Record<string, unknown>, index: number): RoundDetail | null {
     // Extract roundNumber from various possible sources
@@ -638,9 +640,43 @@ export class DocumentReviewService {
     if (detail.replyCompletedAt) {
       normalized.replyCompletedAt = detail.replyCompletedAt as string;
     }
-    if (detail.fixApplied !== undefined) {
-      normalized.fixApplied = detail.fixApplied as boolean;
+    // Preserve fixRequired and needsDiscussion
+    if (detail.fixRequired !== undefined) {
+      normalized.fixRequired = detail.fixRequired as number;
     }
+    if (detail.needsDiscussion !== undefined) {
+      normalized.needsDiscussion = detail.needsDiscussion as number;
+    }
+
+    // Legacy migration: fixApplied -> fixStatus (fix-status-field-migration Task 2.1)
+    // Requirements: 5.1, 5.2, 5.3, 5.4
+    if (detail.fixStatus !== undefined) {
+      // fixStatus already exists, preserve it (takes priority over fixApplied)
+      normalized.fixStatus = detail.fixStatus as FixStatus;
+    } else if (detail.fixApplied === true) {
+      // fixApplied: true -> fixStatus: 'applied'
+      normalized.fixStatus = 'applied';
+      logger.debug('[DocumentReviewService] Migrated fixApplied: true to fixStatus: applied', { roundNumber });
+    } else if (
+      (normalized.fixRequired ?? 0) > 0 ||
+      (normalized.needsDiscussion ?? 0) > 0
+    ) {
+      // fixApplied: false/undefined + counts > 0 -> fixStatus: 'pending'
+      normalized.fixStatus = 'pending';
+      logger.debug('[DocumentReviewService] Derived fixStatus: pending from counts', {
+        roundNumber,
+        fixRequired: normalized.fixRequired,
+        needsDiscussion: normalized.needsDiscussion,
+      });
+    } else if (
+      normalized.fixRequired === 0 &&
+      normalized.needsDiscussion === 0
+    ) {
+      // fixApplied: undefined + counts = 0 -> fixStatus: 'not_required'
+      normalized.fixStatus = 'not_required';
+      logger.debug('[DocumentReviewService] Derived fixStatus: not_required', { roundNumber });
+    }
+    // Note: If counts are undefined, we don't set fixStatus (leave it undefined)
 
     return normalized;
   }

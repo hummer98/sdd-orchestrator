@@ -41,6 +41,26 @@ export const ROUND_STATUS = {
 export type RoundStatus = (typeof ROUND_STATUS)[keyof typeof ROUND_STATUS];
 
 /**
+ * Fix status constants for document review rounds
+ * - NOT_REQUIRED: No fixes or discussion needed, proceed to next process
+ * - PENDING: Fixes or discussion needed, pause execution
+ * - APPLIED: Fixes applied, re-review required
+ */
+export const FIX_STATUS = {
+  NOT_REQUIRED: 'not_required',
+  PENDING: 'pending',
+  APPLIED: 'applied',
+} as const;
+
+/**
+ * Fix status for document review rounds
+ * - 'not_required': No fixes or discussion needed, proceed to next process
+ * - 'pending': Fixes or discussion needed, pause execution
+ * - 'applied': Fixes applied, re-review required
+ */
+export type FixStatus = (typeof FIX_STATUS)[keyof typeof FIX_STATUS];
+
+/**
  * Details of a single review round
  */
 export interface RoundDetail {
@@ -52,8 +72,8 @@ export interface RoundDetail {
   replyCompletedAt?: string;
   /** Status of this round */
   status: RoundStatus;
-  /** Whether fixes from this round's reply have been applied */
-  fixApplied?: boolean;
+  /** Fix status determining next action (replaces fixApplied) */
+  fixStatus?: FixStatus;
   /** Number of "Fix Required" items in this round's reply */
   fixRequired?: number;
   /** Number of "Needs Discussion" items in this round's reply */

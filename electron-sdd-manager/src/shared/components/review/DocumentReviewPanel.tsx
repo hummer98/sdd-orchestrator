@@ -157,10 +157,13 @@ export function DocumentReviewPanel({
     reviewState?.roundDetails?.find((detail) => detail.status === 'review_complete')
       ?.roundNumber ?? null;
 
-  // Check if there's a reply that hasn't had fixes applied yet (reply_complete but fixApplied !== true)
+  // Check if there's a reply that needs action (fixStatus is 'pending' or 'applied')
+  // 'pending' = fixes/discussion needed, 'applied' = awaiting re-review
   const pendingFixRound =
     reviewState?.roundDetails?.find(
-      (detail) => detail.status === 'reply_complete' && detail.fixApplied !== true
+      (detail) =>
+        detail.status === 'reply_complete' &&
+        (detail.fixStatus === 'pending' || detail.fixStatus === 'applied')
     )?.roundNumber ?? null;
 
   // Progress indicator state

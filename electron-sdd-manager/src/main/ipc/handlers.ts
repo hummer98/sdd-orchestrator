@@ -2146,44 +2146,67 @@ async function executeDocumentReviewReply(
           const documentReview = specJson.documentReview;
           const isApproved = documentReview?.status === 'approved';
 
-          // Get fixRequired and needsDiscussion from the latest roundDetails
+          // Get fixStatus from the latest roundDetails (fix-status-field-migration Task 4.1)
+          // fixStatus values: 'not_required' | 'pending' | 'applied'
           const roundDetails = documentReview?.roundDetails || [];
           const latestRound = roundDetails[roundDetails.length - 1];
+          const fixStatus = latestRound?.fixStatus;
           const fixRequired = latestRound?.fixRequired ?? 0;
           const needsDiscussion = latestRound?.needsDiscussion ?? 0;
           const currentRoundNumber = roundDetails.length;
 
           logger.info('[handlers] executeDocumentReviewReply: analyzing result', {
             isApproved,
+            fixStatus,
             fixRequired,
             needsDiscussion,
             currentRoundNumber,
             maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
           });
 
+          // fixStatus-based decision logic (fix-status-field-migration Task 4.1)
+          // Priority: isApproved check first (backward compat), then fixStatus
           if (isApproved) {
-            // Document review approved (fixRequired = 0 AND needsDiscussion = 0)
+            // Document review approved (prompt sets this when fixStatus = 'not_required')
             logger.info('[handlers] executeDocumentReviewReply: documentReview.status is approved');
             coordinator.handleDocumentReviewCompleted(specPath, true);
-          } else if (needsDiscussion > 0) {
-            // Needs Discussion > 0: pause for human review
-            logger.info('[handlers] executeDocumentReviewReply: needs discussion, pausing for human review', { needsDiscussion });
+          } else if (fixStatus === 'not_required') {
+            // fixStatus: not_required -> approved flow
+            logger.info('[handlers] executeDocumentReviewReply: fixStatus is not_required, approving');
+            coordinator.handleDocumentReviewCompleted(specPath, true);
+          } else if (fixStatus === 'pending') {
+            // fixStatus: pending -> pause for human review (fix or discussion needed)
+            logger.info('[handlers] executeDocumentReviewReply: fixStatus is pending, pausing for human review', { fixRequired, needsDiscussion });
             coordinator.handleDocumentReviewCompleted(specPath, false);
-          } else if (fixRequired > 0 && currentRoundNumber < MAX_DOCUMENT_REVIEW_ROUNDS) {
-            // Fix Required > 0 AND under max rounds: continue the loop
+          } else if (fixStatus === 'applied' && currentRoundNumber < MAX_DOCUMENT_REVIEW_ROUNDS) {
+            // fixStatus: applied AND under max rounds -> continue the loop
             const nextRound = currentRoundNumber + 1;
-            logger.info('[handlers] executeDocumentReviewReply: fix required, continuing loop', { fixRequired, nextRound });
-
-            // Continue the document review loop
+            logger.info('[handlers] executeDocumentReviewReply: fixStatus is applied, continuing loop', { nextRound });
             coordinator.continueDocumentReviewLoop(specPath, nextRound);
-          } else {
-            // Max rounds reached with fixes still required: pause for human review
-            logger.info('[handlers] executeDocumentReviewReply: max rounds reached or no fixes needed, pausing', {
-              fixRequired,
+          } else if (fixStatus === 'applied') {
+            // fixStatus: applied but max rounds reached -> pause for human review
+            logger.info('[handlers] executeDocumentReviewReply: fixStatus is applied but max rounds reached, pausing', {
               currentRoundNumber,
               maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS,
             });
             coordinator.handleDocumentReviewCompleted(specPath, false);
+          } else {
+            // Fallback for undefined fixStatus: use legacy logic (handled by normalizeRoundDetail during sync)
+            // This branch handles old data that hasn't been normalized yet
+            logger.info('[handlers] executeDocumentReviewReply: fixStatus undefined, using fallback', {
+              fixRequired,
+              needsDiscussion,
+              currentRoundNumber,
+            });
+            if (fixRequired === 0 && needsDiscussion === 0) {
+              coordinator.handleDocumentReviewCompleted(specPath, true);
+            } else if (needsDiscussion > 0) {
+              coordinator.handleDocumentReviewCompleted(specPath, false);
+            } else if (fixRequired > 0 && currentRoundNumber < MAX_DOCUMENT_REVIEW_ROUNDS) {
+              coordinator.continueDocumentReviewLoop(specPath, currentRoundNumber + 1);
+            } else {
+              coordinator.handleDocumentReviewCompleted(specPath, false);
+            }
           }
         } else if (status === 'failed' || status === 'stopped') {
           logger.error('[handlers] executeDocumentReviewReply: failed/stopped', { replyAgentId, status });

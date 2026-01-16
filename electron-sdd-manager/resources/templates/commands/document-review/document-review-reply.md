@@ -41,8 +41,20 @@ When `--fix` flag is present:
 1. Read existing `document-review-{n}-reply.md`
 2. Parse the "Files to Modify" section and "Action Items" from each issue
 3. Apply ONLY the items marked as "Fix Required" ✅
-4. Update spec.json to mark this round's fix as applied:
-   - Set `roundDetails[n-1].fixApplied = true`
+4. Update spec.json `documentReview.roundDetails[n-1]`:
+   ```json
+   {
+     "roundNumber": n,
+     "status": "reply_complete",
+     "fixStatus": "applied",
+     "fixRequired": <number>,
+     "needsDiscussion": <number>
+   }
+   ```
+   **fixStatus values**:
+   - `"not_required"`: No fixes or discussion needed, proceed to next process
+   - `"pending"`: Fixes or discussion needed, pause execution
+   - `"applied"`: Fixes applied, re-review required
 5. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
 6. Report changes made
 
@@ -191,24 +203,33 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 
 **IMPORTANT**: After generating the reply, you MUST update spec.json:
 
-1. Count total "Fix Required" items from the Response Summary table
-2. Update spec.json `documentReview.roundDetails[n-1]`:
+1. Count total "Fix Required" and "Needs Discussion" items from the Response Summary table
+2. Determine `fixStatus` based on the judgment:
+   - If modifications were applied (via `--autofix`): `"applied"`
+   - Else if `fixRequired > 0` OR `needsDiscussion > 0`: `"pending"`
+   - Else (fixRequired = 0 AND needsDiscussion = 0): `"not_required"`
+3. Update spec.json `documentReview.roundDetails[n-1]`:
    ```json
    {
      "roundNumber": n,
-     "status": "reply_complete"
+     "status": "reply_complete",
+     "fixStatus": "<status>",
+     "fixRequired": <number>,
+     "needsDiscussion": <number>
    }
    ```
-3. **CRITICAL: Setting `documentReview.status = "approved"`**
-   - Set `approved` **ONLY IF ALL** of the following conditions are met:
-     - Fix Required total is 0 (no fixes needed)
-     - No modifications were applied in this round (no `--autofix` or `--fix` was used)
-   - **DO NOT set `approved` if fixes were applied** - the documents need to be re-reviewed in the next round to verify the fixes are correct
+   **fixStatus values**:
+   - `"not_required"`: No fixes or discussion needed, proceed to next process
+   - `"pending"`: Fixes or discussion needed, pause execution
+   - `"applied"`: Fixes applied, re-review required
+4. **CRITICAL: Setting `documentReview.status = "approved"`**
+   - Set `approved` **ONLY IF** `fixStatus` is `"not_required"`
+   - **DO NOT set `approved` if `fixStatus` is `"applied"` or `"pending"`**
 
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. Update spec.json `documentReview.roundDetails[n-1].fixApplied = true`
+2. Update spec.json `documentReview.roundDetails[n-1].fixStatus = "applied"`
 3. **Append "Applied Fixes" section** to the reply document (see format below)
 4. **DO NOT set `documentReview.status = "approved"`** - a new review round is needed to verify the fixes
 

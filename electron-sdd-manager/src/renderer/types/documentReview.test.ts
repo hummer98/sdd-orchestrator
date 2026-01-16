@@ -8,9 +8,11 @@ import { describe, it, expect } from 'vitest';
 import {
   REVIEW_STATUS,
   ROUND_STATUS,
+  FIX_STATUS,
   type DocumentReviewState,
   type RoundDetail,
   type ReviewError,
+  type FixStatus,
   isDocumentReviewState,
   createInitialReviewState,
 } from './documentReview';
@@ -162,6 +164,62 @@ describe('Document Review Types', () => {
       };
       expect(detail.reviewCompletedAt).toBe('2025-12-11T01:00:00Z');
       expect(detail.replyCompletedAt).toBe('2025-12-11T01:30:00Z');
+    });
+  });
+
+  // ============================================================
+  // fix-status-field-migration Task 1.1: FixStatus type
+  // Requirements: 1.1, 1.2, 6.1, 6.2, 6.3
+  // ============================================================
+  describe('fix-status-field-migration Task 1.1: FixStatus type', () => {
+    it('should define FIX_STATUS constants with three values', () => {
+      expect(FIX_STATUS.NOT_REQUIRED).toBe('not_required');
+      expect(FIX_STATUS.PENDING).toBe('pending');
+      expect(FIX_STATUS.APPLIED).toBe('applied');
+    });
+
+    it('should allow fixStatus field in RoundDetail', () => {
+      const detail: RoundDetail = {
+        roundNumber: 1,
+        status: 'reply_complete',
+        fixStatus: 'not_required',
+      };
+      expect(detail.fixStatus).toBe('not_required');
+    });
+
+    it('should allow all three fixStatus values', () => {
+      const notRequired: RoundDetail = {
+        roundNumber: 1,
+        status: 'reply_complete',
+        fixStatus: 'not_required',
+      };
+      const pending: RoundDetail = {
+        roundNumber: 2,
+        status: 'reply_complete',
+        fixStatus: 'pending',
+      };
+      const applied: RoundDetail = {
+        roundNumber: 3,
+        status: 'reply_complete',
+        fixStatus: 'applied',
+      };
+      expect(notRequired.fixStatus).toBe('not_required');
+      expect(pending.fixStatus).toBe('pending');
+      expect(applied.fixStatus).toBe('applied');
+    });
+
+    it('should not require fixApplied field (removed from type)', () => {
+      // fixApplied has been removed, only fixStatus should be used
+      const detail: RoundDetail = {
+        roundNumber: 1,
+        status: 'reply_complete',
+        fixStatus: 'applied',
+        fixRequired: 2,
+        needsDiscussion: 0,
+      };
+      // TypeScript would fail if fixApplied was still required
+      expect(detail.fixStatus).toBe('applied');
+      expect((detail as { fixApplied?: boolean }).fixApplied).toBeUndefined();
     });
   });
 });

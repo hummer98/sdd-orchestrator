@@ -44,7 +44,9 @@ export interface SpecJson {
       status: string;
       reviewCompletedAt?: string;
       replyCompletedAt?: string;
-      fixApplied?: boolean;
+      fixStatus?: 'not_required' | 'pending' | 'applied';
+      fixRequired?: number;
+      needsDiscussion?: number;
     }>;
   };
   /** Auto execution state (optional for backward compatibility) */

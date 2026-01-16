@@ -94,11 +94,11 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByText(/レビュー内容判定/)).toBeInTheDocument();
     });
 
-    it('reply_complete状態で「replyを適用」ボタンを表示する', () => {
+    it('reply_complete状態でfixStatus: pendingの時「replyを適用」ボタンを表示する', () => {
       const reviewState: DocumentReviewState = {
         status: 'in_progress',
         currentRound: 1,
-        roundDetails: [{ roundNumber: 1, status: 'reply_complete', fixApplied: false }],
+        roundDetails: [{ roundNumber: 1, status: 'reply_complete', fixStatus: 'pending' }],
       };
 
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
@@ -220,7 +220,7 @@ describe('DocumentReviewPanel', () => {
       const reviewState: DocumentReviewState = {
         status: 'in_progress',
         currentRound: 1,
-        roundDetails: [{ roundNumber: 1, status: 'reply_complete', fixApplied: false }],
+        roundDetails: [{ roundNumber: 1, status: 'reply_complete', fixStatus: 'pending' }],
       };
 
       render(

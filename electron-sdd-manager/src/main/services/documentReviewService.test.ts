@@ -631,4 +631,168 @@ describe('DocumentReviewService', () => {
     });
   });
 
+  // ============================================================
+  // fix-status-field-migration Task 2.1: normalizeRoundDetail migration
+  // Requirements: 5.1, 5.2, 5.3, 5.4
+  // ============================================================
+  describe('fix-status-field-migration Task 2.1: normalizeRoundDetail migration', () => {
+    it('should convert fixApplied: true to fixStatus: applied', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            { roundNumber: 1, status: 'reply_complete' as const, fixApplied: true, fixRequired: 2 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1] as string);
+      expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('applied');
+    });
+
+    it('should convert fixApplied: false with fixRequired > 0 to fixStatus: pending', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            { roundNumber: 1, status: 'reply_complete' as const, fixApplied: false, fixRequired: 3 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1] as string);
+      expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('pending');
+    });
+
+    it('should convert fixApplied: undefined with needsDiscussion > 0 to fixStatus: pending', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            { roundNumber: 1, status: 'reply_complete' as const, fixRequired: 0, needsDiscussion: 2 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1] as string);
+      expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('pending');
+    });
+
+    it('should convert fixApplied: undefined with fixRequired = 0 AND needsDiscussion = 0 to fixStatus: not_required', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            { roundNumber: 1, status: 'reply_complete' as const, fixRequired: 0, needsDiscussion: 0 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      const writtenContent = JSON.parse(writeCall[1] as string);
+      expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('not_required');
+    });
+
+    it('should preserve existing fixStatus (not overwrite)', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            { roundNumber: 1, status: 'reply_complete' as const, fixStatus: 'applied', fixRequired: 0 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      // Should not write if nothing changed except normalization
+      // The fixStatus was already set, so it should be preserved
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      if (writeCall) {
+        const writtenContent = JSON.parse(writeCall[1] as string);
+        expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('applied');
+      }
+    });
+
+    it('should prioritize fixStatus over fixApplied when both exist', async () => {
+      const specJson = {
+        ...createMockSpecJson(),
+        documentReview: {
+          status: 'pending' as const,
+          roundDetails: [
+            // Both fixApplied and fixStatus exist - fixStatus should take priority
+            { roundNumber: 1, status: 'reply_complete' as const, fixApplied: true, fixStatus: 'pending', fixRequired: 5 },
+          ],
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        { name: 'document-review-1.md', isFile: () => true, isDirectory: () => false },
+        { name: 'document-review-1-reply.md', isFile: () => true, isDirectory: () => false },
+      ] as unknown as fs.Dirent[]);
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+
+      await service.syncReviewState(mockSpecPath);
+
+      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
+      if (writeCall) {
+        const writtenContent = JSON.parse(writeCall[1] as string);
+        // fixStatus should be preserved as 'pending' even though fixApplied: true
+        expect(writtenContent.documentReview.roundDetails[0].fixStatus).toBe('pending');
+      }
+    });
+  });
+
 });

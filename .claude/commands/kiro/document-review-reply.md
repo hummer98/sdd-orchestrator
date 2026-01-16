@@ -46,12 +46,16 @@ When `--fix` flag is present:
    {
      "roundNumber": n,           // Required: round number (1-indexed)
      "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
-     "fixApplied": true,         // Set to true when fixes are applied
+     "fixStatus": "applied",     // Set to "applied" when fixes are applied
      "fixRequired": <number>,    // Fix Required count (preserve from reply generation)
      "needsDiscussion": <number> // Needs Discussion count (preserve from reply generation)
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
+   **fixStatus values**:
+   - `"not_required"`: No fixes or discussion needed, proceed to next process
+   - `"pending"`: Fixes or discussion needed, pause execution
+   - `"applied"`: Fixes applied, re-review required
 5. **Append "Applied Fixes" section** to `document-review-{n}-reply.md` (see format below)
 6. Report changes made
 
@@ -201,30 +205,36 @@ Output file: `.kiro/specs/$1/document-review-{n}-reply.md`
 **IMPORTANT**: After generating the reply, you MUST update spec.json:
 
 1. Count total "Fix Required" and "Needs Discussion" items from the Response Summary table
-2. Update spec.json `documentReview.roundDetails[n-1]`:
+2. Determine `fixStatus` based on the judgment:
+   - If modifications were applied (via `--autofix`): `"applied"`
+   - Else if `fixRequired > 0` OR `needsDiscussion > 0`: `"pending"`
+   - Else (fixRequired = 0 AND needsDiscussion = 0): `"not_required"`
+3. Update spec.json `documentReview.roundDetails[n-1]`:
    ```json
    {
      "roundNumber": n,           // Required: round number (1-indexed)
      "status": "reply_complete", // Required: "incomplete" | "review_complete" | "reply_complete"
+     "fixStatus": "<status>",    // "not_required" | "pending" | "applied"
      "fixRequired": <number>,    // Fix Required count from Response Summary
      "needsDiscussion": <number> // Needs Discussion count from Response Summary
    }
    ```
    **IMPORTANT**: Always use `roundNumber` (not `round`). This is the official schema.
-3. **CRITICAL: Setting `documentReview.status = "approved"`**
-   - Set `approved` **ONLY IF ALL** of the following conditions are met:
-     - Fix Required total is 0 (no fixes needed)
-     - Needs Discussion total is 0 (no discussion needed)
-     - No modifications were applied in this round (no `--autofix` or `--fix` was used)
-   - **DO NOT set `approved` if fixes were applied** - the documents need to be re-reviewed in the next round to verify the fixes are correct
-4. **If Fix Required total is 0 AND Needs Discussion total > 0**:
+   **fixStatus values**:
+   - `"not_required"`: No fixes or discussion needed, proceed to next process
+   - `"pending"`: Fixes or discussion needed, pause execution
+   - `"applied"`: Fixes applied, re-review required
+4. **CRITICAL: Setting `documentReview.status = "approved"`**
+   - Set `approved` **ONLY IF** `fixStatus` is `"not_required"`
+   - **DO NOT set `approved` if `fixStatus` is `"applied"` or `"pending"`**
+5. **If fixStatus is "pending"**:
    - Do NOT set `documentReview.status = "approved"`
-   - This indicates human intervention is required for discussion items
+   - This indicates human intervention is required
 
 #### If `--autofix` flag is present AND modifications are needed:
 
 1. Apply the modifications to spec documents (requirements.md, design.md, tasks.md)
-2. Update spec.json `documentReview.roundDetails[n-1].fixApplied = true`
+2. Update spec.json `documentReview.roundDetails[n-1].fixStatus = "applied"`
 3. **Append "Applied Fixes" section** to the reply document (see format below)
 4. **DO NOT set `documentReview.status = "approved"`** - a new review round is needed to verify the fixes
 

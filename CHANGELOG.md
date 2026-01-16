@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-01-16
+
+### Added
+- **BugWorkflowService追加**: Bug Workflowに自動実行worktree対応を追加
+- **Rendererログ統合**: RendererプロセスのログをMainプロセスに統合し、ログ管理を一元化
+- **fixStatusフィールド移行**: fixApplied から fixStatus への移行を実施
+- **spec.json updated_at更新**: アーティファクト生成時にupdated_atを自動更新
+- **Bugs worktree対応**: Requirement 12追加と自動実行worktree対応
+
+### Fixed
+- **Remote UI SpecActionsView**: fixStatusフィールドに対応
+- **E2Eテスト修正**: beforeAll/afterAllをbefore/afterに修正（Mochaとの互換性）
+- **Agentログ自動選択ルール**: Agentログエリアの自動選択ルールを改善
+- **Bug自動実行IPC移行**: BugAutoExecutionServiceをIPCクライアントパターンに移行
+- **IPC契約不整合修正**: worktree作成エラーの原因となるIPC契約不整合を修正
+- **spec-statusボタン削除**: spec-statusボタンと関連コードを完全削除
+- **自動実行UI状態依存**: Bug自動実行の状態管理をMain Processに移行（Phase 1）
+- **自動スキップ設定削除**: 自動実行のdocument-review/inspectionスキップオプションを削除
+- **document-review loading状態**: completeRound()でstatusをpendingに更新
+
+### Changed
+- **gitignore更新**: playwright-report/とtest-results/を除外
+
+### Documentation
+- **技術ノート追加**: 状態管理統一リファクタリング計画
+- **技術ノート追加**: Electron IPC改善とtRPC移行計画
+- **E2Eテスト失敗分析**: 失敗分析メモを追加
+
 ## [0.27.0] - 2026-01-15
 
 ### Added

@@ -9,14 +9,55 @@ import { BugAutoExecutionService, getBugAutoExecutionService, disposeBugAutoExec
 import { useBugStore } from '../stores/bugStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
+import { useProjectStore } from '../stores/projectStore';
 import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
 import type { BugDetail, BugMetadata } from '../types/bug';
 
-// Mock window.electronAPI
+// Mock window.electronAPI with IPC methods for bug auto-execution
 const mockElectronAPI = {
   startAgent: vi.fn().mockResolvedValue({ agentId: 'test-agent-id' }),
   stopAgent: vi.fn().mockResolvedValue(undefined),
   onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+  getProjectPath: vi.fn().mockResolvedValue('/mock/project/path'),
+  // Bug auto-execution IPC methods
+  bugAutoExecutionStart: vi.fn().mockResolvedValue({
+    ok: true,
+    value: {
+      bugPath: '/mock/project/path/.kiro/bugs/test-bug',
+      bugName: 'test-bug',
+      status: 'running',
+      currentPhase: 'analyze',
+      executedPhases: [],
+      errors: [],
+      startTime: Date.now(),
+      lastActivityTime: Date.now(),
+      retryCount: 0,
+      lastFailedPhase: null,
+    },
+  }),
+  bugAutoExecutionStop: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  bugAutoExecutionStatus: vi.fn().mockResolvedValue(null),
+  bugAutoExecutionRetryFrom: vi.fn().mockResolvedValue({
+    ok: true,
+    value: {
+      bugPath: '/mock/project/path/.kiro/bugs/test-bug',
+      bugName: 'test-bug',
+      status: 'running',
+      currentPhase: 'analyze',
+      executedPhases: [],
+      errors: [],
+      startTime: Date.now(),
+      lastActivityTime: Date.now(),
+      retryCount: 1,
+      lastFailedPhase: null,
+    },
+  }),
+  // IPC event listeners
+  onBugAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
+  onBugAutoExecutionPhaseCompleted: vi.fn().mockReturnValue(() => {}),
+  onBugAutoExecutionCompleted: vi.fn().mockReturnValue(() => {}),
+  onBugAutoExecutionError: vi.fn().mockReturnValue(() => {}),
+  onBugAutoExecutionExecutePhase: vi.fn().mockReturnValue(() => {}),
 };
 
 vi.stubGlobal('window', {
@@ -75,6 +116,10 @@ describe('BugAutoExecutionService', () => {
     useAgentStore.setState({
       agents: [],
     });
+
+    useProjectStore.setState({
+      currentProject: '/mock/project/path',
+    });
   });
 
   afterEach(() => {
@@ -120,51 +165,51 @@ describe('BugAutoExecutionService', () => {
   });
 
   describe('Task 2.2: start() method', () => {
-    it('should return false when no bug is selected', () => {
+    it('should return false when no bug is selected', async () => {
       useBugStore.setState({ selectedBug: null, bugDetail: null });
 
-      const result = service.start();
+      const result = await service.start();
 
       expect(result).toBe(false);
     });
 
-    it('should return false when bug detail is not available', () => {
+    it('should return false when bug detail is not available', async () => {
       useBugStore.setState({ selectedBug: mockBugMetadata, bugDetail: null });
 
-      const result = service.start();
+      const result = await service.start();
 
       expect(result).toBe(false);
     });
 
-    it('should return true when bug is selected and report is completed', () => {
+    it('should return true when bug is selected and report is completed', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
       });
 
-      const result = service.start();
+      const result = await service.start();
 
       expect(result).toBe(true);
     });
 
-    it('should start from analyze phase when report is completed', () => {
+    it('should start from analyze phase when report is completed', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
       });
 
-      service.start();
+      await service.start();
 
       expect(service.getCurrentPhase()).toBe('analyze');
     });
 
-    it('should set status to running on start', () => {
+    it('should set status to running on start', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
       });
 
-      service.start();
+      await service.start();
 
       expect(service.getStatus()).toBe('running');
     });
@@ -404,7 +449,7 @@ describe('BugAutoExecutionService', () => {
   });
 
   describe('retryFrom()', () => {
-    it('should return true when phase is permitted', () => {
+    it('should return true when phase is permitted', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
@@ -418,12 +463,12 @@ describe('BugAutoExecutionService', () => {
         },
       });
 
-      const result = service.retryFrom('analyze');
+      const result = await service.retryFrom('analyze');
 
       expect(result).toBe(true);
     });
 
-    it('should return false when phase is not permitted', () => {
+    it('should return false when phase is not permitted', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
@@ -437,22 +482,28 @@ describe('BugAutoExecutionService', () => {
         },
       });
 
-      const result = service.retryFrom('analyze');
+      // Mock retryFrom to fail for not permitted phase
+      mockElectronAPI.bugAutoExecutionRetryFrom.mockResolvedValueOnce({
+        ok: false,
+        error: { type: 'PHASE_NOT_PERMITTED' },
+      });
+
+      const result = await service.retryFrom('analyze');
 
       expect(result).toBe(false);
     });
 
-    it('should return false when no bug is selected', () => {
+    it('should return false when no bug is selected', async () => {
       useBugStore.setState({ selectedBug: null, bugDetail: null });
 
-      const result = service.retryFrom('analyze');
+      const result = await service.retryFrom('analyze');
 
       expect(result).toBe(false);
     });
   });
 
   describe('MAX_RETRIES handling', () => {
-    it('should stop after 3 consecutive retries', () => {
+    it('should stop after 3 consecutive retries', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
@@ -466,64 +517,27 @@ describe('BugAutoExecutionService', () => {
         },
       });
 
+      // Mock retryFrom to return increasing retry count, then fail on 4th
+      mockElectronAPI.bugAutoExecutionRetryFrom
+        .mockResolvedValueOnce({ ok: true, value: { status: 'running', currentPhase: 'analyze', retryCount: 1, lastFailedPhase: null, executedPhases: [], errors: [], bugPath: '', bugName: '', startTime: 0, lastActivityTime: 0 } })
+        .mockResolvedValueOnce({ ok: true, value: { status: 'running', currentPhase: 'analyze', retryCount: 2, lastFailedPhase: null, executedPhases: [], errors: [], bugPath: '', bugName: '', startTime: 0, lastActivityTime: 0 } })
+        .mockResolvedValueOnce({ ok: true, value: { status: 'running', currentPhase: 'analyze', retryCount: 3, lastFailedPhase: null, executedPhases: [], errors: [], bugPath: '', bugName: '', startTime: 0, lastActivityTime: 0 } })
+        .mockResolvedValueOnce({ ok: false, error: { type: 'MAX_RETRIES_EXCEEDED' } });
+
       // Retry 3 times
-      service.retryFrom('analyze');
-      service.retryFrom('analyze');
-      service.retryFrom('analyze');
+      await service.retryFrom('analyze');
+      await service.retryFrom('analyze');
+      await service.retryFrom('analyze');
 
       // 4th retry should fail
-      const result = service.retryFrom('analyze');
+      const result = await service.retryFrom('analyze');
 
       expect(result).toBe(false);
     });
   });
 
-  describe('Phase command execution', () => {
-    it('should pass bug name to /commit command in deploy phase', async () => {
-      // Setup: bugDetail with all artifacts complete (ready for deploy)
-      const completedBugDetail: BugDetail = {
-        metadata: mockBugMetadata,
-        artifacts: {
-          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
-          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
-          fix: { exists: true, path: '/path/to/fix.md', updatedAt: '2024-01-01T00:00:00Z' },
-          verification: { exists: true, path: '/path/to/verification.md', updatedAt: '2024-01-01T00:00:00Z' },
-        },
-      };
-
-      useBugStore.setState({
-        selectedBug: mockBugMetadata,
-        bugDetail: completedBugDetail,
-      });
-      useWorkflowStore.setState({
-        bugAutoExecutionPermissions: {
-          analyze: true,
-          fix: true,
-          verify: true,
-          deploy: true,
-        },
-      });
-
-      // Start auto-execution (should start from deploy since all others are complete)
-      service.start();
-
-      // Wait for async startAgent call
-      await vi.waitFor(() => {
-        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
-      });
-
-      // Verify startAgent was called with correct arguments including bug name
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',    // specName: bug:{name} format
-        'deploy',          // phase
-        'claude',          // command
-        ['/commit test-bug'], // args: command with bug name
-        undefined,
-        undefined
-      );
-    });
-
-    it('should pass bug name to analyze command', async () => {
+  describe('IPC communication', () => {
+    it('should call bugAutoExecutionStart with correct parameters', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
         bugDetail: mockBugDetail,
@@ -537,100 +551,66 @@ describe('BugAutoExecutionService', () => {
         },
       });
 
-      service.start();
+      await service.start();
 
-      await vi.waitFor(() => {
-        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      expect(mockElectronAPI.bugAutoExecutionStart).toHaveBeenCalledWith({
+        bugPath: '/mock/project/path/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        options: {
+          permissions: {
+            analyze: true,
+            fix: true,
+            verify: true,
+            deploy: false,
+          },
+          timeoutMs: 600000, // 10 minutes
+        },
+        lastCompletedPhase: 'report',
       });
-
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'analyze',
-        'claude',
-        ['/kiro:bug-analyze test-bug'],
-        undefined,
-        undefined
-      );
     });
 
-    it('should pass bug name to fix command', async () => {
-      const analyzedBugDetail: BugDetail = {
-        metadata: mockBugMetadata,
-        artifacts: {
-          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
-          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
-          fix: null,
-          verification: null,
-        },
-      };
-
+    it('should call bugAutoExecutionStop when stop is called', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
-        bugDetail: analyzedBugDetail,
-      });
-      useWorkflowStore.setState({
-        bugAutoExecutionPermissions: {
-          analyze: true,
-          fix: true,
-          verify: true,
-          deploy: false,
-        },
+        bugDetail: mockBugDetail,
       });
 
-      service.start();
+      await service.start();
+      await service.stop();
 
-      await vi.waitFor(() => {
-        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      expect(mockElectronAPI.bugAutoExecutionStop).toHaveBeenCalledWith({
+        bugPath: '/mock/project/path/.kiro/bugs/test-bug',
       });
-
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'fix',
-        'claude',
-        ['/kiro:bug-fix test-bug'],
-        undefined,
-        undefined
-      );
     });
 
-    it('should pass bug name to verify command', async () => {
-      const fixedBugDetail: BugDetail = {
-        metadata: mockBugMetadata,
-        artifacts: {
-          report: { exists: true, path: '/path/to/report.md', updatedAt: '2024-01-01T00:00:00Z' },
-          analysis: { exists: true, path: '/path/to/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
-          fix: { exists: true, path: '/path/to/fix.md', updatedAt: '2024-01-01T00:00:00Z' },
-          verification: null,
-        },
-      };
-
+    it('should call bugAutoExecutionRetryFrom with correct phase', async () => {
       useBugStore.setState({
         selectedBug: mockBugMetadata,
-        bugDetail: fixedBugDetail,
-      });
-      useWorkflowStore.setState({
-        bugAutoExecutionPermissions: {
-          analyze: true,
-          fix: true,
-          verify: true,
-          deploy: false,
-        },
+        bugDetail: mockBugDetail,
       });
 
-      service.start();
+      await service.start();
+      await service.retryFrom('fix');
 
-      await vi.waitFor(() => {
-        expect(mockElectronAPI.startAgent).toHaveBeenCalled();
+      expect(mockElectronAPI.bugAutoExecutionRetryFrom).toHaveBeenCalledWith({
+        bugPath: '/mock/project/path/.kiro/bugs/test-bug',
+        phase: 'fix',
       });
+    });
+  });
 
-      expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'verify',
-        'claude',
-        ['/kiro:bug-verify test-bug'],
-        undefined,
-        undefined
-      );
+  // ============================================================
+  // bugs-worktree-support Task 19.2: Worktree creation is now handled by Main Process
+  // The BugAutoExecutionCoordinator in Main Process handles worktree creation
+  // via BugWorkflowService.startBugFixWithAutoWorktree()
+  // ============================================================
+  describe('IPC event handling', () => {
+    it('should setup IPC event listeners on construction', () => {
+      expect(mockElectronAPI.onBugAutoExecutionStatusChanged).toHaveBeenCalled();
+      expect(mockElectronAPI.onBugAutoExecutionPhaseCompleted).toHaveBeenCalled();
+      expect(mockElectronAPI.onBugAutoExecutionCompleted).toHaveBeenCalled();
+      expect(mockElectronAPI.onBugAutoExecutionError).toHaveBeenCalled();
+      expect(mockElectronAPI.onBugAutoExecutionExecutePhase).toHaveBeenCalled();
     });
   });
 });

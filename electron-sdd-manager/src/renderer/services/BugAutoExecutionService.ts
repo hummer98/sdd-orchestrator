@@ -1,257 +1,243 @@
 /**
  * BugAutoExecutionService
- * Manages auto-execution of bug workflow phases
+ * IPC client for bug auto-execution via Main Process BugAutoExecutionCoordinator
  * bugs-workflow-auto-execution Task 2
+ * Bug fix: bug-auto-execution-ipc-migration
+ *
+ * Architecture:
+ * - Main Process: BugAutoExecutionCoordinator (SSoT for state)
+ * - Renderer Process: BugAutoExecutionService (IPC client)
+ *
  * Requirements: 1.1-1.6, 4.1-4.5, 5.1-5.5
  */
 
 import { useBugStore } from '../stores/bugStore';
 import { useWorkflowStore } from '../stores/workflowStore';
+import { useProjectStore } from '../stores/projectStore';
 import { notify } from '../stores/notificationStore';
 import type { BugWorkflowPhase, BugDetail } from '../types/bug';
-import { BUG_PHASE_COMMANDS, BUG_WORKFLOW_PHASES } from '../types/bug';
+import { BUG_WORKFLOW_PHASES } from '../types/bug';
 import type { BugAutoExecutionStatus, BugAutoExecutionState } from '../types/bugAutoExecution';
 import { DEFAULT_BUG_AUTO_EXECUTION_STATE } from '../types/bugAutoExecution';
+import type { BugAutoExecutionError } from '../types/electron';
 
-// Maximum retries before requiring manual intervention
-const MAX_RETRIES = 3;
 // Default timeout for agent execution (10 minutes)
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 
+// ============================================================
+// Types for IPC communication
+// ============================================================
+
+/**
+ * Permissions for bug auto-execution phases
+ */
+interface BugAutoExecutionPermissions {
+  analyze: boolean;
+  fix: boolean;
+  verify: boolean;
+  deploy: boolean;
+}
+
+/**
+ * State received from Main Process
+ */
+interface MainProcessState {
+  bugPath: string;
+  bugName: string;
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
+  currentPhase: string | null;
+  executedPhases: string[];
+  errors: string[];
+  startTime: number;
+  lastActivityTime: number;
+  retryCount: number;
+  lastFailedPhase: string | null;
+}
+
 /**
  * BugAutoExecutionService Class
+ * IPC client that delegates state management to Main Process
  * Requirements: 1.1, 1.2, 1.4, 4.1-4.5, 5.2, 5.4, 5.5
  */
 export class BugAutoExecutionService {
-  private unsubscribeIPC: (() => void) | null = null;
-  private currentTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private trackedAgentIds: Set<string> = new Set();
-  private pendingEvents: Map<string, string> = new Map();
+  // IPC event listener cleanup functions
+  private cleanupFunctions: (() => void)[] = [];
 
-  // Current auto-execution state
-  private state: BugAutoExecutionState = { ...DEFAULT_BUG_AUTO_EXECUTION_STATE };
+  // Local cache of state (populated from Main Process events)
+  private cachedState: BugAutoExecutionState = { ...DEFAULT_BUG_AUTO_EXECUTION_STATE };
 
-  // Retry counter
-  private retryCount = 0;
-
-  // Current executing bug name
-  private currentExecutingBugName: string | null = null;
+  // Current bug path being tracked
+  private currentBugPath: string | null = null;
 
   constructor() {
-    this.setupDirectIPCListener();
+    this.setupIPCListeners();
   }
 
   /**
-   * Setup IPC listener for agent status changes
+   * Setup IPC event listeners for Main Process notifications
    * Requirements: 1.1
    */
-  private setupDirectIPCListener(): void {
-    this.unsubscribeIPC = window.electronAPI.onAgentStatusChange(
-      (agentId: string, status: string) => {
-        this.handleDirectStatusChange(agentId, status);
+  private setupIPCListeners(): void {
+    // Status changed
+    const cleanupStatusChanged = window.electronAPI.onBugAutoExecutionStatusChanged(
+      (data: { bugPath: string; state: MainProcessState }) => {
+        this.handleStatusChanged(data.bugPath, data.state);
       }
     );
+    this.cleanupFunctions.push(cleanupStatusChanged);
+
+    // Phase completed
+    const cleanupPhaseCompleted = window.electronAPI.onBugAutoExecutionPhaseCompleted(
+      (data: { bugPath: string; phase: string }) => {
+        this.handlePhaseCompleted(data.bugPath, data.phase as BugWorkflowPhase);
+      }
+    );
+    this.cleanupFunctions.push(cleanupPhaseCompleted);
+
+    // Execution completed
+    const cleanupCompleted = window.electronAPI.onBugAutoExecutionCompleted(
+      (data: { bugPath: string }) => {
+        this.handleExecutionCompleted(data.bugPath);
+      }
+    );
+    this.cleanupFunctions.push(cleanupCompleted);
+
+    // Error
+    const cleanupError = window.electronAPI.onBugAutoExecutionError(
+      (data) => {
+        this.handleError(data.bugPath, data.error);
+      }
+    );
+    this.cleanupFunctions.push(cleanupError);
+
+    // Execute phase (Main Process requests Renderer to execute agent)
+    const cleanupExecutePhase = window.electronAPI.onBugAutoExecutionExecutePhase(
+      (data: { bugPath: string; phase: string; bugName: string }) => {
+        this.handleExecutePhase(data.bugPath, data.phase as BugWorkflowPhase, data.bugName);
+      }
+    );
+    this.cleanupFunctions.push(cleanupExecutePhase);
   }
 
   /**
-   * Handle agent status change from IPC
-   * Requirements: 4.1-4.5
+   * Handle status changed event from Main Process
    */
-  private handleDirectStatusChange(agentId: string, status: string): void {
-    console.log(`[BugAutoExecutionService] handleDirectStatusChange: agentId=${agentId}, status=${status}`);
+  private handleStatusChanged(bugPath: string, state: MainProcessState): void {
+    console.log('[BugAutoExecutionService] Status changed from Main Process', { bugPath, status: state.status });
 
-    // Only process if auto-executing
-    if (!this.state.isAutoExecuting) {
-      console.log('[BugAutoExecutionService] Not auto-executing, ignoring status change');
+    if (bugPath !== this.currentBugPath) {
       return;
     }
 
-    // Check if this agent is tracked
-    if (!this.trackedAgentIds.has(agentId)) {
-      console.log(`[BugAutoExecutionService] AgentId ${agentId} not tracked, buffering status=${status}`);
-      this.pendingEvents.set(agentId, status);
-      return;
-    }
-
-    const currentPhase = this.state.currentAutoPhase;
-    console.log(`[BugAutoExecutionService] Processing status change: agentId=${agentId}, status=${status}, currentPhase=${currentPhase}`);
-
-    if (status === 'completed') {
-      if (currentPhase) {
-        this.handleAgentCompleted(currentPhase);
-      }
-    } else if (status === 'error' || status === 'failed') {
-      if (currentPhase) {
-        this.handleAgentFailed(currentPhase, 'Agent execution failed');
-      }
-    }
+    // Update cached state
+    this.cachedState = {
+      isAutoExecuting: state.status === 'running',
+      currentAutoPhase: state.currentPhase as BugWorkflowPhase | null,
+      autoExecutionStatus: state.status as BugAutoExecutionStatus,
+      lastFailedPhase: state.lastFailedPhase as BugWorkflowPhase | null,
+      failedRetryCount: state.retryCount,
+    };
   }
 
   /**
-   * Handle agent completion
-   * Requirements: 4.1-4.5
+   * Handle phase completed event from Main Process
    */
-  private async handleAgentCompleted(completedPhase: BugWorkflowPhase): Promise<void> {
-    console.log(`[BugAutoExecutionService] Phase ${completedPhase} completed`);
+  private handlePhaseCompleted(bugPath: string, phase: BugWorkflowPhase): void {
+    console.log(`[BugAutoExecutionService] Phase ${phase} completed`, { bugPath });
 
-    this.clearTimeout();
-
-    // Reset retry count on success
-    this.retryCount = 0;
+    if (bugPath !== this.currentBugPath) {
+      return;
+    }
 
     // Refresh bug detail to get latest state
     const bugStore = useBugStore.getState();
     if (bugStore.selectedBug) {
-      await bugStore.selectBug(bugStore.selectedBug, { silent: true });
-    }
-
-    // Get next phase
-    const nextPhase = this.getNextPermittedPhase(completedPhase);
-
-    if (nextPhase) {
-      // Continue to next phase
-      this.executePhase(nextPhase);
-    } else {
-      // All phases completed
-      this.completeAutoExecution();
+      bugStore.selectBug(bugStore.selectedBug, { silent: true });
     }
   }
 
   /**
-   * Handle agent failure
-   * Requirements: 5.4, 5.5
+   * Handle execution completed event from Main Process
    */
-  private handleAgentFailed(phase: BugWorkflowPhase, error: string): void {
-    console.error(`[BugAutoExecutionService] Phase ${phase} failed: ${error}`);
+  private handleExecutionCompleted(bugPath: string): void {
+    console.log('[BugAutoExecutionService] Execution completed', { bugPath });
 
-    this.clearTimeout();
-
-    this.state = {
-      ...this.state,
-      autoExecutionStatus: 'error',
-      lastFailedPhase: phase,
-    };
-
-    notify.error(`フェーズ "${phase}" でエラーが発生しました: ${error}`);
-  }
-
-  /**
-   * Complete auto execution
-   * Requirements: 2.4
-   */
-  private completeAutoExecution(): void {
-    console.log('[BugAutoExecutionService] Auto execution completed');
-
-    this.state = {
-      ...this.state,
-      autoExecutionStatus: 'completed',
-      currentAutoPhase: null,
-    };
+    if (bugPath !== this.currentBugPath) {
+      return;
+    }
 
     notify.success('Bug自動実行が完了しました');
 
-    // Reset after a delay
+    // Reset state after delay
     setTimeout(() => {
-      this.resetState();
+      this.resetLocalState();
     }, 2000);
   }
 
   /**
-   * Reset state to idle
+   * Handle error event from Main Process
    */
-  private resetState(): void {
-    this.state = { ...DEFAULT_BUG_AUTO_EXECUTION_STATE };
-    this.currentExecutingBugName = null;
-    this.trackedAgentIds.clear();
-    this.pendingEvents.clear();
-  }
+  private handleError(bugPath: string, error: BugAutoExecutionError): void {
+    console.error('[BugAutoExecutionService] Error from Main Process', { bugPath, error });
 
-  /**
-   * Clear timeout
-   */
-  private clearTimeout(): void {
-    if (this.currentTimeoutId) {
-      clearTimeout(this.currentTimeoutId);
-      this.currentTimeoutId = null;
-    }
-  }
-
-  /**
-   * Setup timeout for phase execution
-   */
-  private setupTimeout(phase: BugWorkflowPhase): void {
-    this.clearTimeout();
-
-    this.currentTimeoutId = setTimeout(() => {
-      console.error(`[BugAutoExecutionService] Phase ${phase} timed out`);
-      this.handleAgentFailed(phase, 'Execution timed out');
-    }, DEFAULT_TIMEOUT_MS);
-  }
-
-  /**
-   * Execute a phase
-   * Requirements: 1.1
-   */
-  private async executePhase(phase: BugWorkflowPhase): Promise<void> {
-    const bugStore = useBugStore.getState();
-    const selectedBug = bugStore.selectedBug;
-
-    if (!selectedBug) {
-      this.handleAgentFailed(phase, 'No bug selected');
+    if (bugPath !== this.currentBugPath) {
       return;
     }
 
-    console.log(`[BugAutoExecutionService] Executing phase: ${phase}`);
+    // Extract phase from error if present
+    const phase = 'phase' in error ? error.phase : null;
+    // Extract message from error if present
+    const message = 'message' in error ? error.message : null;
 
-    // Update current phase
-    this.state = {
-      ...this.state,
-      currentAutoPhase: phase,
-      autoExecutionStatus: 'running',
-    };
+    const errorMessage = phase
+      ? `フェーズ "${phase}" でエラーが発生しました: ${message || error.type}`
+      : `エラーが発生しました: ${message || error.type}`;
+    notify.error(errorMessage);
+  }
 
-    // Setup timeout
-    this.setupTimeout(phase);
+  /**
+   * Handle execute phase event from Main Process
+   * Main Process requests Renderer to execute agent for a phase
+   */
+  private async handleExecutePhase(bugPath: string, phase: BugWorkflowPhase, bugName: string): Promise<void> {
+    console.log(`[BugAutoExecutionService] Execute phase requested by Main Process`, { bugPath, phase, bugName });
+
+    if (bugPath !== this.currentBugPath) {
+      return;
+    }
 
     try {
+      const { BUG_PHASE_COMMANDS } = await import('../types/bug');
       const commandTemplate = BUG_PHASE_COMMANDS[phase];
       if (!commandTemplate) {
-        this.handleAgentFailed(phase, `No command for phase ${phase}`);
+        console.error(`[BugAutoExecutionService] No command for phase ${phase}`);
         return;
       }
 
-      // Build the command: all phases include bug name
-      // Bug fix: commit-unclear-target-files - deploy phase now passes bug name to /commit
-      const fullCommand = `${commandTemplate} ${selectedBug.name}`;
+      const fullCommand = `${commandTemplate} ${bugName}`;
 
-      // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
+      // Execute agent
       const agentInfo = await window.electronAPI.startAgent(
-        `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
+        `bug:${bugName}`,
         phase,
         'claude',
-        [fullCommand], // Args: full command (base flags added by service)
+        [fullCommand],
         undefined,
         undefined
       );
 
-      if (agentInfo && agentInfo.agentId) {
-        console.log(`[BugAutoExecutionService] executePhase returned agentId=${agentInfo.agentId}`);
-        this.trackedAgentIds.add(agentInfo.agentId);
-
-        // Process any buffered events
-        const bufferedStatus = this.pendingEvents.get(agentInfo.agentId);
-        if (bufferedStatus) {
-          console.log(`[BugAutoExecutionService] Processing buffered status=${bufferedStatus}`);
-          this.pendingEvents.delete(agentInfo.agentId);
-          this.handleDirectStatusChange(agentInfo.agentId, bufferedStatus);
-        }
-      }
+      console.log(`[BugAutoExecutionService] Agent started`, { agentId: agentInfo?.agentId, phase });
     } catch (error) {
-      this.handleAgentFailed(
-        phase,
-        error instanceof Error ? error.message : 'Phase execution failed'
-      );
+      console.error(`[BugAutoExecutionService] Failed to execute phase ${phase}`, error);
     }
+  }
+
+  /**
+   * Reset local state
+   */
+  private resetLocalState(): void {
+    this.cachedState = { ...DEFAULT_BUG_AUTO_EXECUTION_STATE };
+    this.currentBugPath = null;
   }
 
   /**
@@ -259,18 +245,15 @@ export class BugAutoExecutionService {
    * Requirements: 1.5
    */
   dispose(): void {
-    if (this.unsubscribeIPC) {
-      this.unsubscribeIPC();
-      this.unsubscribeIPC = null;
+    for (const cleanup of this.cleanupFunctions) {
+      cleanup();
     }
-    this.clearTimeout();
-    this.trackedAgentIds.clear();
-    this.pendingEvents.clear();
-    this.resetState();
+    this.cleanupFunctions = [];
+    this.resetLocalState();
   }
 
   // ============================================================
-  // Public API
+  // Public API - Delegates to Main Process via IPC
   // ============================================================
 
   /**
@@ -309,7 +292,6 @@ export class BugAutoExecutionService {
 
       // Check if phase is permitted
       if (bugAutoExecutionPermissions[phase as keyof typeof bugAutoExecutionPermissions]) {
-        // Bug fix: commit-unclear-target-files - deploy phase now uses /commit with bug name
         return phase;
       }
     }
@@ -318,11 +300,12 @@ export class BugAutoExecutionService {
   }
 
   /**
-   * Start auto execution
+   * Start auto execution via IPC to Main Process
    * Requirements: 1.1, 1.2
    */
-  start(): boolean {
+  async start(): Promise<boolean> {
     const bugStore = useBugStore.getState();
+    const workflowStore = useWorkflowStore.getState();
     const selectedBug = bugStore.selectedBug;
     const bugDetail = bugStore.bugDetail;
 
@@ -347,135 +330,185 @@ export class BugAutoExecutionService {
       return false;
     }
 
-    console.log(`[BugAutoExecutionService] Starting from phase: ${firstPhase} (last completed: ${lastCompletedPhase || 'none'})`);
+    console.log(`[BugAutoExecutionService] Starting via IPC from phase: ${firstPhase} (last completed: ${lastCompletedPhase || 'none'})`);
 
-    // Initialize state
-    this.state = {
-      isAutoExecuting: true,
-      currentAutoPhase: firstPhase,
-      autoExecutionStatus: 'running',
-      lastFailedPhase: null,
-      failedRetryCount: 0,
+    // Build permissions object for Main Process
+    const permissions: BugAutoExecutionPermissions = {
+      analyze: workflowStore.bugAutoExecutionPermissions.analyze,
+      fix: workflowStore.bugAutoExecutionPermissions.fix,
+      verify: workflowStore.bugAutoExecutionPermissions.verify,
+      deploy: workflowStore.bugAutoExecutionPermissions.deploy,
     };
-    this.currentExecutingBugName = selectedBug.name;
-    this.retryCount = 0;
 
-    // Start execution
-    this.executePhase(firstPhase);
+    // Build bug path
+    const projectStore = useProjectStore.getState();
+    const projectPath = projectStore.currentProject || '';
+    const bugPath = `${projectPath}/.kiro/bugs/${selectedBug.name}`;
 
-    return true;
+    // Track this bug
+    this.currentBugPath = bugPath;
+
+    try {
+      // Call Main Process to start auto-execution
+      const result = await window.electronAPI.bugAutoExecutionStart({
+        bugPath,
+        bugName: selectedBug.name,
+        options: {
+          permissions,
+          timeoutMs: DEFAULT_TIMEOUT_MS,
+        },
+        lastCompletedPhase,
+      });
+
+      if (!result.ok) {
+        console.error('[BugAutoExecutionService] Failed to start auto-execution', result.error);
+        this.currentBugPath = null;
+        return false;
+      }
+
+      // Update cached state from result
+      this.cachedState = {
+        isAutoExecuting: result.value.status === 'running',
+        currentAutoPhase: result.value.currentPhase as BugWorkflowPhase | null,
+        autoExecutionStatus: result.value.status as BugAutoExecutionStatus,
+        lastFailedPhase: result.value.lastFailedPhase as BugWorkflowPhase | null,
+        failedRetryCount: result.value.retryCount,
+      };
+
+      return true;
+    } catch (error) {
+      console.error('[BugAutoExecutionService] IPC error', error);
+      this.currentBugPath = null;
+      return false;
+    }
   }
 
   /**
-   * Stop auto execution
+   * Stop auto execution via IPC to Main Process
    * Requirements: 1.4
    */
   async stop(): Promise<void> {
-    console.log('[BugAutoExecutionService] Stopping auto execution');
+    if (!this.currentBugPath) {
+      console.log('[BugAutoExecutionService] No active execution to stop');
+      return;
+    }
 
-    this.clearTimeout();
-    this.trackedAgentIds.clear();
-    this.pendingEvents.clear();
+    console.log('[BugAutoExecutionService] Stopping via IPC');
 
-    this.state = {
-      ...DEFAULT_BUG_AUTO_EXECUTION_STATE,
-    };
-    this.currentExecutingBugName = null;
+    try {
+      const result = await window.electronAPI.bugAutoExecutionStop({
+        bugPath: this.currentBugPath,
+      });
+
+      if (!result.ok) {
+        console.error('[BugAutoExecutionService] Failed to stop auto-execution', result.error);
+      }
+    } catch (error) {
+      console.error('[BugAutoExecutionService] IPC error during stop', error);
+    }
+
+    // Reset local state regardless of result
+    this.resetLocalState();
   }
 
   /**
-   * Retry from a specific phase
+   * Retry from a specific phase via IPC to Main Process
    * Requirements: 5.2, 5.4
    */
-  retryFrom(phase: BugWorkflowPhase): boolean {
-    const bugStore = useBugStore.getState();
-    const workflowStore = useWorkflowStore.getState();
-
-    // Check if bug is selected
-    if (!bugStore.selectedBug || !bugStore.bugDetail) {
-      console.error('[BugAutoExecutionService] No bug selected');
-      return false;
+  async retryFrom(phase: BugWorkflowPhase): Promise<boolean> {
+    if (!this.currentBugPath) {
+      const bugStore = useBugStore.getState();
+      if (!bugStore.selectedBug) {
+        console.error('[BugAutoExecutionService] No bug selected');
+        return false;
+      }
+      const projectStore = useProjectStore.getState();
+      const projectPath = projectStore.currentProject || '';
+      this.currentBugPath = `${projectPath}/.kiro/bugs/${bugStore.selectedBug.name}`;
     }
 
-    // Check if phase is permitted
-    if (!workflowStore.bugAutoExecutionPermissions[phase as keyof typeof workflowStore.bugAutoExecutionPermissions]) {
-      console.error(`[BugAutoExecutionService] Phase ${phase} is not permitted`);
+    console.log(`[BugAutoExecutionService] Retrying from phase ${phase} via IPC`);
+
+    try {
+      const result = await window.electronAPI.bugAutoExecutionRetryFrom({
+        bugPath: this.currentBugPath,
+        phase,
+      });
+
+      if (!result.ok) {
+        console.error('[BugAutoExecutionService] Failed to retry', result.error);
+        if (result.error.type === 'MAX_RETRIES_EXCEEDED') {
+          notify.error('リトライ上限に達しました。手動での確認が必要です。');
+        }
+        return false;
+      }
+
+      // Update cached state from result
+      this.cachedState = {
+        isAutoExecuting: result.value.status === 'running',
+        currentAutoPhase: result.value.currentPhase as BugWorkflowPhase | null,
+        autoExecutionStatus: result.value.status as BugAutoExecutionStatus,
+        lastFailedPhase: result.value.lastFailedPhase as BugWorkflowPhase | null,
+        failedRetryCount: result.value.retryCount,
+      };
+
+      return true;
+    } catch (error) {
+      console.error('[BugAutoExecutionService] IPC error during retry', error);
       return false;
     }
-
-    // Increment retry count
-    this.retryCount++;
-
-    // Check if max retries exceeded
-    if (this.retryCount > MAX_RETRIES) {
-      console.error('[BugAutoExecutionService] Max retries exceeded');
-      notify.error('リトライ上限に達しました。手動での確認が必要です。');
-      return false;
-    }
-
-    // Update state
-    this.state = {
-      isAutoExecuting: true,
-      currentAutoPhase: phase,
-      autoExecutionStatus: 'running',
-      lastFailedPhase: null,
-      failedRetryCount: this.retryCount,
-    };
-    this.currentExecutingBugName = bugStore.selectedBug.name;
-
-    // Execute the phase
-    this.executePhase(phase);
-
-    return true;
   }
 
   /**
    * Get current auto execution status
    */
   getStatus(): BugAutoExecutionStatus {
-    return this.state.autoExecutionStatus;
+    return this.cachedState.autoExecutionStatus;
   }
 
   /**
    * Get current executing phase
    */
   getCurrentPhase(): BugWorkflowPhase | null {
-    return this.state.currentAutoPhase;
+    return this.cachedState.currentAutoPhase;
   }
 
   /**
    * Get current auto execution state (for components)
    */
   getState(): BugAutoExecutionState {
-    return { ...this.state };
+    return { ...this.cachedState };
   }
 
   /**
    * Get current executing bug name
    */
   getCurrentExecutingBugName(): string | null {
-    return this.currentExecutingBugName;
+    if (!this.currentBugPath) return null;
+    // Extract bug name from path: .kiro/bugs/{bugName}
+    const match = this.currentBugPath.match(/\.kiro\/bugs\/([^/]+)$/);
+    return match ? match[1] : null;
   }
 
   /**
    * Get retry count
    */
   getRetryCount(): number {
-    return this.retryCount;
+    return this.cachedState.failedRetryCount;
   }
 
   /**
    * Get last failed phase
    */
   getLastFailedPhase(): BugWorkflowPhase | null {
-    return this.state.lastFailedPhase;
+    return this.cachedState.lastFailedPhase;
   }
 
   /**
    * Check if auto-executing
    */
   isAutoExecuting(): boolean {
-    return this.state.isAutoExecuting;
+    return this.cachedState.isAutoExecuting;
   }
 }
 

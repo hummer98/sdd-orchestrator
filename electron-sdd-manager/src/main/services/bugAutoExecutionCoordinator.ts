@@ -297,11 +297,17 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
       clearTimeout(state.timeoutId);
     }
 
-    // 状態を更新
+    // 状態をidleに更新してリセット
     this.updateState(bugPath, {
-      status: 'paused',
+      status: 'idle',
+      currentPhase: null,
+      currentAgentId: undefined,
       timeoutId: undefined,
     });
+
+    // 状態を削除（完全停止）
+    this.executionStates.delete(bugPath);
+    this.executionOptions.delete(bugPath);
 
     logger.info('[BugAutoExecutionCoordinator] Bug auto-execution stopped', { bugPath });
 

@@ -246,13 +246,12 @@ describe('Remote Access Integration Tests (Task 7.1)', () => {
         setTimeout(() => reject(new Error('Timeout')), 5000);
       });
 
+      // Note: payload is the specs array directly (not payload.specs)
       expect(specsResponse).toMatchObject({
         type: 'SPECS_UPDATED',
-        payload: {
-          specs: expect.arrayContaining([
-            expect.objectContaining({ id: 'spec-1', name: 'Feature A' }),
-          ]),
-        },
+        payload: expect.arrayContaining([
+          expect.objectContaining({ id: 'spec-1', name: 'Feature A' }),
+        ]),
       });
 
       client.close();

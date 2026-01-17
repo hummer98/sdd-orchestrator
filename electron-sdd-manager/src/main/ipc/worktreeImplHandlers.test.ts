@@ -263,19 +263,20 @@ describe('Worktree Impl Start Handlers', () => {
       expect(result).toBe(projectPath);
     });
 
-    it('should return project path when worktree field is invalid', () => {
+    it('should resolve worktree path when only path field is present', () => {
       const specJson = {
         feature_name: 'my-feature',
         phase: 'tasks-generated',
         worktree: {
-          // missing required fields
+          // Only path is required for getWorktreeCwd
           path: '../my-project-worktrees/my-feature',
         },
       };
 
       const result = getWorktreeCwd(projectPath, specJson as unknown);
 
-      expect(result).toBe(projectPath);
+      // hasWorktreePath checks only for path field, so this should resolve
+      expect(result).toBe('/Users/test/my-project-worktrees/my-feature');
     });
   });
 });

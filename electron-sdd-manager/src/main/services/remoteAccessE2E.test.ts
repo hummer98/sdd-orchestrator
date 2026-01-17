@@ -133,9 +133,10 @@ describe('Remote Access E2E Tests (Task 7.2)', () => {
       mobileClient.removeAllListeners('message');
 
       // Request specs
+      // Note: payload is the specs array directly (not payload.specs)
       const specsResponse = await new Promise<{
         type: string;
-        payload: { specs: Array<{ id: string; name: string }> };
+        payload: Array<{ id: string; name: string }>;
       }>((resolve, reject) => {
         mobileClient.on('message', (data) => {
           const msg = JSON.parse(data.toString());
@@ -148,8 +149,8 @@ describe('Remote Access E2E Tests (Task 7.2)', () => {
       });
 
       expect(specsResponse.type).toBe('SPECS_UPDATED');
-      expect(specsResponse.payload.specs.length).toBe(2);
-      expect(specsResponse.payload.specs[0].name).toBe('Mobile Feature');
+      expect(specsResponse.payload.length).toBe(2);
+      expect(specsResponse.payload[0].name).toBe('Mobile Feature');
 
       mobileClient.close();
     });

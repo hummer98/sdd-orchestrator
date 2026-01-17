@@ -78,6 +78,34 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git checkout ".kiro/specs/$1"
 
 **Note**: This step ensures the worktree's spec directory is restored from git, avoiding merge conflicts since spec changes are in main repo only (via symlink during implementation).
 
+### Step 1.6: Commit Pending Changes in Worktree
+Before merging, ensure all implementation changes in worktree are committed.
+
+#### 1.6.1: Check for Uncommitted Changes
+```bash
+cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
+```
+
+#### 1.6.2: Commit All Changes (if any)
+**IF** output is not empty (uncommitted changes exist):
+1. Stage all changes:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add .
+   ```
+2. Commit with message:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git commit -m "feat($1): implementation complete"
+   ```
+3. Log: "Worktree内の未コミット変更をコミットしました"
+
+**ELSE** (no uncommitted changes):
+- Log: "Worktree内に未コミット変更はありません"
+
+#### 1.6.3: Return to Main Project
+```bash
+cd "$PROJECT_ROOT"
+```
+
 ### Step 2: Perform Merge
 1. Ensure working directory is clean:
    - Run `git status --porcelain`

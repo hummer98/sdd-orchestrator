@@ -190,34 +190,84 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 #### --fix Mode
 If NOGO judgment AND --fix option:
-1. Generate fix tasks for each Critical/Major issue
-2. Append to tasks.md with new task numbers (use format `FIX-{n}` for fix task IDs)
-3. Invoke spec-tdd-impl-agent to execute the fix tasks:
-   ```
-   Task(
-     subagent_type="spec-tdd-impl-agent",
-     description="Execute inspection fix tasks",
-     prompt="""
-   Feature: {feature}
-   Spec directory: .kiro/specs/{feature}/
-   Target tasks: FIX-1, FIX-2, ... (the fix tasks just added)
 
-   File patterns to read:
-   - .kiro/specs/{feature}/*.{json,md}
-   - .kiro/steering/*.md
+##### Step 5.1: Determine Task Numbering
+Read tasks.md and determine the next task group number:
+1. Parse all existing task IDs using pattern `/^- \[.\] (\d+)\.(\d+)/gm`
+2. Extract the integer part (N) from each N.M format task ID
+3. Find the maximum N value among all existing tasks
+4. New fix tasks will use (max_N + 1) as their group number
+5. If no tasks found, start from group number 1
 
-   TDD Mode: strict (test-first)
+**Example**: If existing tasks are 1.1, 1.2, 2.1, 2.2, 3.1, the next fix task group is 4 (max=3, so N+1=4)
 
-   Context: These are fix tasks from inspection round {n}. Execute them to resolve Critical/Major issues.
-   """
-   )
-   ```
-4. After impl completes, update spec.json to add `fixedAt` timestamp to the current round:
-   - Read spec.json
-   - Find the latest round in `inspection.rounds`
-   - Add `fixedAt: "{current ISO 8601 timestamp}"` to that round
-   - Write spec.json
-5. Report: "Fix tasks executed. Ready for re-inspection."
+##### Step 5.2: Determine Section Insertion Position
+1. Check if `## Appendix` section exists in tasks.md
+2. Check if `## Inspection Fixes` section already exists
+3. Determine insertion position:
+   - If `## Inspection Fixes` exists: append to it
+   - If `## Appendix` exists but no `## Inspection Fixes`: insert `## Inspection Fixes` before `## Appendix`
+   - Otherwise: append after `---` separator at end of file
+
+##### Step 5.3: Generate Fix Tasks with Sequential Numbering
+Generate fix tasks for each Critical/Major issue:
+1. Create `## Inspection Fixes` section header (if new)
+2. Create `### Round {n} (YYYY-MM-DD)` subsection with current date in ISO 8601 format
+3. For each fix task:
+   - Use sequential task ID: `{group}.{sequence}` (e.g., 7.1, 7.2, 7.3)
+   - Add related information: `- 関連: Task X.Y, Requirement Z.Z`
+   - Include clear description of the fix
+
+**Fix Task Format**:
+```markdown
+## Inspection Fixes
+
+### Round 1 (2026-01-17)
+
+- [ ] 7.1 Fix Task 1 の説明
+  - 関連: Task 2.3, Requirement 1.2
+  - 修正内容の詳細
+
+- [ ] 7.2 Fix Task 2 の説明
+  - 関連: Task 4.1, Requirement 3.1
+```
+
+**IMPORTANT**: Do NOT use `FIX-N` format. Always use sequential `N.M` format (e.g., 7.1, 7.2).
+
+##### Step 5.4: Invoke Implementation Agent
+Invoke spec-tdd-impl-agent to execute the fix tasks:
+```
+Task(
+  subagent_type="spec-tdd-impl-agent",
+  description="Execute inspection fix tasks",
+  prompt="""
+Feature: {feature}
+Spec directory: .kiro/specs/{feature}/
+Target tasks: --inspection-fix {roundNumber}
+
+File patterns to read:
+- .kiro/specs/{feature}/*.{json,md}
+- .kiro/steering/*.md
+
+TDD Mode: strict (test-first)
+
+Context: These are fix tasks from inspection round {n}. Execute tasks in the "### Round {n}" subsection under "## Inspection Fixes".
+"""
+)
+```
+
+##### Step 5.5: Update spec.json (CRITICAL)
+**IMPORTANT**: This step MUST be executed after impl completes. Without this, UI will remain in "Fix required" state.
+
+After impl completes, update spec.json to add `fixedAt` timestamp to the current round:
+1. Read spec.json
+2. Find the latest round in `inspection.rounds`
+3. Add `fixedAt: "{current ISO 8601 timestamp}"` to that round
+4. Write spec.json
+
+**Verification**: After writing, confirm spec.json contains `fixedAt` in the latest round.
+
+Report: "Fix tasks executed. spec.json updated with fixedAt. Ready for re-inspection."
 
 #### --autofix Mode
 If NOGO judgment AND --autofix option:

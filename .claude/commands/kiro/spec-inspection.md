@@ -47,7 +47,7 @@ File patterns to read:
 - CLAUDE.md
 
 Mode:
-- If Options is "--fix": Skip inspection, read existing inspection-{n}.md and generate fix tasks only
+- If Options is "--fix": Skip inspection, read existing inspection-{n}.md, generate fix tasks, execute impl, and update spec.json with fixedAt
 - If Options is "--autofix": Run inspection, then auto-fix if NOGO (max 3 cycles)
 - Otherwise: Run full inspection and generate report
 
@@ -77,7 +77,7 @@ Show Subagent summary to user, then provide next step guidance:
 
 **If NOGO Judgment**:
 - Address issues listed in priority order (Critical > Major > Minor)
-- For `--fix`: Review added tasks in tasks.md, then run `/kiro:spec-impl {feature}` to fix issues
+- For `--fix`: Fix tasks are added to tasks.md, implemented, and spec.json is updated with fixedAt. Ready for re-inspection.
 - For `--autofix`: Fixes are being applied automatically (max 3 cycles)
 - Without options: Manually address issues and re-run `/kiro:spec-inspection {feature}`
 

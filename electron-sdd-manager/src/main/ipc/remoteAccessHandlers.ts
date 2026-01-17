@@ -16,6 +16,8 @@ import { projectConfigService } from '../services/layoutConfigService';
 import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
+import { BugService } from '../services/bugService';
+import { join } from 'path';
 
 // Singleton instance of RemoteAccessServer
 let remoteAccessServer: RemoteAccessServer | null = null;
@@ -177,6 +179,7 @@ export function createWorkflowController(
     /**
      * Execute a bug workflow phase
      * Requirements: 6.2, 6.7 (internal-webserver-sync Task 2.1)
+     * git-worktree-support: Now resolves worktree cwd from bug.json
      *
      * @param bugName - Bug name/identifier
      * @param phase - Bug phase (analyze/fix/verify)
@@ -191,11 +194,19 @@ export function createWorkflowController(
       const slashCommand = bugCommandMap[phase];
       const bugPhase = `bug-${phase}`;
       const allowedTools = getAllowedToolsForPhase(bugPhase);
+
+      // git-worktree-support: Resolve worktree cwd from bug.json
+      const projectPath = specManagerService.getProjectPath();
+      const bugPath = join(projectPath, '.kiro', 'bugs', bugName);
+      const bugService = new BugService();
+      const worktreeCwd = await bugService.getAgentCwd(bugPath, projectPath);
+
       const result = await specManagerService.startAgent({
         specId: '',
         phase: bugPhase,
         command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `${slashCommand} ${bugName}`, allowedTools }),
+        worktreeCwd,
       });
 
       if (result.ok) {

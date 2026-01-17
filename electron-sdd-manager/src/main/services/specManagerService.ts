@@ -20,6 +20,7 @@ import { LogParserService, ResultSubtype } from './logParserService';
 // import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
 import { logger } from './logger';
 import type { ProviderType } from './ssh/providerFactory';
+import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -236,6 +237,8 @@ export interface StartAgentOptions {
   providerType?: ProviderType;
   /** Skip permissions check flag (--dangerously-skip-permissions) */
   skipPermissions?: boolean;
+  /** Working directory override for worktree mode (git-worktree-support) */
+  worktreeCwd?: string;
 }
 
 export interface ExecutePhaseOptions {
@@ -408,6 +411,14 @@ export class SpecManagerService {
   }
 
   /**
+   * Get the project path
+   * git-worktree-support: Exposed for external callers needing to resolve worktree paths
+   */
+  getProjectPath(): string {
+    return this.projectPath;
+  }
+
+  /**
    * Set the provider type for process execution
    * Requirements: 3.1, 4.1, 7.1
    * @param providerType - 'local' for local filesystem, 'ssh' for SSH remote
@@ -433,6 +444,29 @@ export class SpecManagerService {
    */
   private generateAgentId(): string {
     return `agent-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+
+  /**
+   * Get the worktree cwd for a spec by reading spec.json
+   * git-worktree-support: Helper to resolve worktree path for agent execution
+   *
+   * @param specId - The spec ID (directory name)
+   * @returns Worktree cwd if in worktree mode, or projectPath as fallback
+   */
+  private async getSpecWorktreeCwd(specId: string): Promise<string> {
+    try {
+      const specJsonPath = path.join(this.projectPath, '.kiro', 'specs', specId, 'spec.json');
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+      return getWorktreeCwd(this.projectPath, specJson);
+    } catch (error) {
+      // If spec.json cannot be read, fall back to project path
+      logger.warn('[SpecManagerService] getSpecWorktreeCwd failed, using projectPath', {
+        specId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return this.projectPath;
+    }
   }
 
   /**
@@ -520,8 +554,10 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions } = options;
+    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions, worktreeCwd } = options;
     const effectiveProviderType = providerType ?? this.providerType;
+    // git-worktree-support: Use worktreeCwd if provided, fallback to projectPath
+    const effectiveCwd = worktreeCwd || this.projectPath;
 
     // Normalize args only for Claude CLI commands
     // This prevents breaking non-Claude commands (like 'sleep' in tests)
@@ -560,7 +596,7 @@ export class SpecManagerService {
 
     try {
       logger.info('[SpecManagerService] Creating agent process', {
-        agentId, command, args: effectiveArgs, cwd: this.projectPath, providerType: effectiveProviderType,
+        agentId, command, args: effectiveArgs, cwd: effectiveCwd, providerType: effectiveProviderType,
       });
 
       // Create the agent process using provider-aware factory for SSH, or direct for local
@@ -572,7 +608,7 @@ export class SpecManagerService {
           agentId,
           command,
           args: effectiveArgs,
-          cwd: this.projectPath,
+          cwd: effectiveCwd,
           sessionId,
           providerType: 'ssh',
         });
@@ -597,7 +633,7 @@ export class SpecManagerService {
           agentId,
           command,
           args: effectiveArgs,
-          cwd: this.projectPath,
+          cwd: effectiveCwd,
           sessionId,
         });
       }
@@ -923,7 +959,8 @@ export class SpecManagerService {
   async resumeAgent(
     agentId: string,
     prompt?: string,
-    skipPermissions?: boolean
+    skipPermissions?: boolean,
+    worktreeCwd?: string
   ): Promise<Result<AgentInfo, AgentError>> {
     // agent-state-file-ssot: Find agent by ID from files
     const agent = await this.getAgentById(agentId);
@@ -961,6 +998,9 @@ export class SpecManagerService {
     const command = getClaudeCommand();
     const now = new Date().toISOString();
 
+    // git-worktree-support: Use worktreeCwd if provided, fallback to projectPath
+    const effectiveCwd = worktreeCwd || this.projectPath;
+
     try {
       logger.info('[SpecManagerService] Resuming agent', {
         agentId,
@@ -969,6 +1009,7 @@ export class SpecManagerService {
         phase: agent.phase,
         allowedTools,
         skipPermissions,
+        cwd: effectiveCwd,
       });
 
       // Create a new process but keep the same agentId
@@ -976,7 +1017,7 @@ export class SpecManagerService {
         agentId,
         command,
         args,
-        cwd: this.projectPath,
+        cwd: effectiveCwd,
         sessionId: agent.sessionId,
       });
 
@@ -1229,12 +1270,15 @@ export class SpecManagerService {
   /**
    * Execute a specific task implementation
    * Builds the claude command with task ID
+   * git-worktree-support: Now resolves worktree cwd from spec.json
    */
   async executeTaskImpl(options: ExecuteTaskImplOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, taskId, commandPrefix = 'kiro' } = options;
     const implCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].impl;
+    // git-worktree-support: Resolve worktree cwd for agent execution
+    const worktreeCwd = await this.getSpecWorktreeCwd(specId);
 
-    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId, commandPrefix, implCommand });
+    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId, commandPrefix, implCommand, worktreeCwd });
 
     return this.startAgent({
       specId,
@@ -1242,6 +1286,7 @@ export class SpecManagerService {
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${implCommand} ${featureName} ${taskId}` }),
       group: 'impl',
+      worktreeCwd,
     });
   }
 
@@ -1322,12 +1367,15 @@ export class SpecManagerService {
   /**
    * Execute inspection agent (spec-inspection)
    * Requirements: 4.2 (inspection-workflow-ui)
+   * git-worktree-support: Now resolves worktree cwd from spec.json
    */
   async executeInspection(options: ExecuteInspectionOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, commandPrefix = 'kiro' } = options;
     const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
+    // git-worktree-support: Resolve worktree cwd for agent execution
+    const worktreeCwd = await this.getSpecWorktreeCwd(specId);
 
-    logger.info('[SpecManagerService] executeInspection called', { specId, featureName, slashCommand, commandPrefix });
+    logger.info('[SpecManagerService] executeInspection called', { specId, featureName, slashCommand, commandPrefix, worktreeCwd });
 
     return this.startAgent({
       specId,
@@ -1335,12 +1383,14 @@ export class SpecManagerService {
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'impl',
+      worktreeCwd,
     });
   }
 
   /**
    * Execute inspection fix agent (spec-inspection with --fix option)
    * Requirements: 4.3 (inspection-workflow-ui)
+   * git-worktree-support: Now resolves worktree cwd from spec.json
    *
    * This calls spec-inspection --fix which:
    * 1. Generates fix tasks from inspection findings
@@ -1350,8 +1400,10 @@ export class SpecManagerService {
   async executeInspectionFix(options: ExecuteInspectionFixOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, roundNumber, commandPrefix = 'kiro' } = options;
     const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
+    // git-worktree-support: Resolve worktree cwd for agent execution
+    const worktreeCwd = await this.getSpecWorktreeCwd(specId);
 
-    logger.info('[SpecManagerService] executeInspectionFix called', { specId, featureName, roundNumber, slashCommand, commandPrefix });
+    logger.info('[SpecManagerService] executeInspectionFix called', { specId, featureName, roundNumber, slashCommand, commandPrefix, worktreeCwd });
 
     return this.startAgent({
       specId,
@@ -1359,6 +1411,7 @@ export class SpecManagerService {
       command: getClaudeCommand(),
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
       group: 'impl',
+      worktreeCwd,
     });
   }
 

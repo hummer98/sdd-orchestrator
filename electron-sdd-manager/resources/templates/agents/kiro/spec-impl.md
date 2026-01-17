@@ -51,6 +51,9 @@ Execute implementation tasks for feature using Test-Driven Development.
 **Validate approvals**:
 - Verify tasks are approved in spec.json (stop if not, see Safety & Fallback)
 
+**Update metadata** (at execution start):
+- Update `updated_at` timestamp in spec.json to mark implementation activity
+
 ### Step 2: Select Tasks
 
 **Determine which tasks to execute**:

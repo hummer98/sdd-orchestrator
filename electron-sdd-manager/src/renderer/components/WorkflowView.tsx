@@ -3,7 +3,10 @@
  * Main workflow view showing 6 phases with controls
  * Requirements: 1.1-1.4, 3.1-3.5, 5.2-5.8, 6.1-6.6, 7.1-7.6, 9.1-9.9
  * Task 5.1: Use specStore.autoExecutionRuntime instead of workflowStore for auto execution state
- * Task 14.1, 14.4: Impl start UI with worktree options (git-worktree-support)
+ * impl-flow-hierarchy-fix: Task 3.1, 3.2, 3.3
+ * - DISPLAY_PHASES loop for requirements/design/tasks
+ * - ImplFlowFrame contains: ImplPhasePanel, TaskProgressView, InspectionPanel, deploy PhaseItem
+ * - Deploy label dynamic change (worktree mode: "マージ", normal: "コミット")
  */
 
 import { useCallback, useMemo } from 'react';
@@ -18,15 +21,15 @@ import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { InspectionPanel } from './InspectionPanel';
-import { ImplFlowFrame } from '@shared/components/workflow';
+import { ImplFlowFrame, ImplPhasePanel } from '@shared/components/workflow';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
 import { useAutoExecution } from '../hooks/useAutoExecution';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import {
-  WORKFLOW_PHASES,
   ALL_WORKFLOW_PHASES,
+  DISPLAY_PHASES,
   PHASE_LABELS,
   getPhaseStatus,
   type WorkflowPhase,
@@ -561,11 +564,16 @@ export function WorkflowView() {
     );
   }
 
+  // impl-flow-hierarchy-fix Task 3.3: Deploy label dynamic change
+  // Requirement 4.1: worktree mode = "マージ", Requirement 4.2: normal mode = "コミット"
+  const deployLabel = hasExistingWorktree ? 'マージ' : 'コミット';
+
   return (
     <div className="flex flex-col h-full" data-testid="workflow-view">
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2" data-testid="phase-execution-panel">
-        {WORKFLOW_PHASES.map((phase, index) => (
+        {/* impl-flow-hierarchy-fix Task 3.1: Use DISPLAY_PHASES (requirements, design, tasks only) */}
+        {DISPLAY_PHASES.map((phase, index) => (
           <div key={phase}>
             {/* Phase Item */}
             {/* Task 5.1: Use isAutoExecuting and currentAutoPhase from specStore */}
@@ -585,85 +593,8 @@ export function WorkflowView() {
               onShowAgentLog={() => handleShowAgentLog(phase)}
             />
 
-            {/* Arrow to DocumentReviewPanel */}
-            {phase === 'tasks' && (
-              <div className="flex justify-center py-1">
-                <ArrowDown className="w-4 h-4 text-gray-400" />
-              </div>
-            )}
-
-            {/* Task 6.3: Document Review Panel (between tasks and impl) */}
-            {/* Task 6.1: Progress indicator and auto execution flag control added */}
-            {/* Requirements: 6.1, 6.4, 6.5, 6.6, 6.7, 6.8 */}
-            {/* Task 5.1: Use isAutoExecuting from specStore */}
-            {phase === 'tasks' && (
-              <div className="my-3">
-                <DocumentReviewPanel
-                  reviewState={documentReviewState}
-                  isExecuting={isReviewExecuting}
-                  isAutoExecuting={isAutoExecuting}
-                  hasTasks={!!specDetail?.artifacts.tasks?.content}
-                  autoExecutionFlag={workflowStore.documentReviewOptions.autoExecutionFlag}
-                  onStartReview={handleStartDocumentReview}
-                  onExecuteReply={handleExecuteDocumentReviewReply}
-                  onApplyFix={handleApplyDocumentReviewFix}
-                  onAutoExecutionFlagChange={workflowStore.setDocumentReviewAutoExecutionFlag}
-                />
-              </div>
-            )}
-
-            {/* worktree-execution-ui FIX-1: ImplFlowFrame integration */}
-            {/* Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.4, 8.1, 8.2, 8.3 */}
-            {/* Wraps impl phase, TaskProgressView, and InspectionPanel */}
-            {phase === 'impl' && (
-              <div className="my-2">
-                <ImplFlowFrame
-                  worktreeModeSelected={isWorktreeModeSelected}
-                  onWorktreeModeChange={handleWorktreeModeChange}
-                  isImplStarted={hasImplStarted}
-                  hasExistingWorktree={hasExistingWorktree}
-                  canExecute={canStartImpl}
-                  isExecuting={isImplExecuting}
-                  onExecute={handleImplExecute}
-                >
-                  {/* Task Progress (for impl phase) */}
-                  {specDetail.taskProgress && (
-                    <div className="mt-2">
-                      <TaskProgressView
-                        tasks={parsedTasks}
-                        progress={specDetail.taskProgress}
-                        onExecuteTask={handleExecuteTask}
-                        canExecute={runningPhases.size === 0}
-                      />
-                    </div>
-                  )}
-
-                  {/* Arrow to InspectionPanel */}
-                  <div className="flex justify-center py-1">
-                    <ArrowDown className="w-4 h-4 text-gray-400" />
-                  </div>
-
-                  {/* Task 4: InspectionPanel (after impl, before deploy) */}
-                  {/* Requirements: 3.1, 3.2, 3.3, 3.4, 3.5 */}
-                  {/* Bug fix: inspection-auto-execution-toggle - Use workflowStore.setInspectionAutoExecutionFlag */}
-                  <div className="my-3">
-                    <InspectionPanel
-                      inspectionState={inspectionState}
-                      isExecuting={isInspectionExecuting}
-                      isAutoExecuting={isAutoExecuting}
-                      autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
-                      canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
-                      onStartInspection={handleStartInspection}
-                      onExecuteFix={handleExecuteInspectionFix}
-                      onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
-                    />
-                  </div>
-                </ImplFlowFrame>
-              </div>
-            )}
-
-            {/* Connector Arrow */}
-            {index < WORKFLOW_PHASES.length - 1 && (
+            {/* Connector Arrow between DISPLAY_PHASES */}
+            {index < DISPLAY_PHASES.length - 1 && (
               <div
                 data-testid="phase-connector"
                 className="flex justify-center py-1"
@@ -673,6 +604,111 @@ export function WorkflowView() {
             )}
           </div>
         ))}
+
+        {/* Arrow from tasks to DocumentReviewPanel */}
+        <div className="flex justify-center py-1">
+          <ArrowDown className="w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* Task 6.3: Document Review Panel (between tasks and impl) */}
+        {/* Requirement 3.3: DocumentReviewPanel is outside ImplFlowFrame */}
+        <div className="my-3">
+          <DocumentReviewPanel
+            reviewState={documentReviewState}
+            isExecuting={isReviewExecuting}
+            isAutoExecuting={isAutoExecuting}
+            hasTasks={!!specDetail?.artifacts.tasks?.content}
+            autoExecutionFlag={workflowStore.documentReviewOptions.autoExecutionFlag}
+            onStartReview={handleStartDocumentReview}
+            onExecuteReply={handleExecuteDocumentReviewReply}
+            onApplyFix={handleApplyDocumentReviewFix}
+            onAutoExecutionFlagChange={workflowStore.setDocumentReviewAutoExecutionFlag}
+          />
+        </div>
+
+        {/* Arrow from DocumentReviewPanel to ImplFlowFrame */}
+        <div className="flex justify-center py-1">
+          <ArrowDown className="w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* impl-flow-hierarchy-fix Task 3.2: ImplFlowFrame with all impl flow components */}
+        {/* Requirement 3.1: Contains ImplPhasePanel, TaskProgressView, InspectionPanel, deploy PhaseItem */}
+        <div className="my-2">
+          <ImplFlowFrame
+            worktreeModeSelected={isWorktreeModeSelected}
+            onWorktreeModeChange={handleWorktreeModeChange}
+            isImplStarted={hasImplStarted}
+            hasExistingWorktree={hasExistingWorktree}
+          >
+            {/* ImplPhasePanel - replaces impl PhaseItem with worktree-aware button */}
+            <ImplPhasePanel
+              worktreeModeSelected={isWorktreeModeSelected}
+              isImplStarted={hasImplStarted}
+              hasExistingWorktree={hasExistingWorktree}
+              status={phaseStatuses.impl}
+              autoExecutionPermitted={workflowStore.autoExecutionPermissions.impl}
+              isExecuting={isImplExecuting}
+              canExecute={canStartImpl}
+              isAutoPhase={isAutoExecuting && currentAutoPhase === 'impl'}
+              onExecute={handleImplExecute}
+              onToggleAutoPermission={() => workflowStore.toggleAutoPermission('impl')}
+            />
+
+            {/* Task Progress (for impl phase) */}
+            {specDetail.taskProgress && (
+              <div className="mt-2">
+                <TaskProgressView
+                  tasks={parsedTasks}
+                  progress={specDetail.taskProgress}
+                  onExecuteTask={handleExecuteTask}
+                  canExecute={runningPhases.size === 0}
+                />
+              </div>
+            )}
+
+            {/* Arrow to InspectionPanel */}
+            <div className="flex justify-center py-1">
+              <ArrowDown className="w-4 h-4 text-gray-400" />
+            </div>
+
+            {/* InspectionPanel (after impl, before deploy) */}
+            <div className="my-3">
+              <InspectionPanel
+                inspectionState={inspectionState}
+                isExecuting={isInspectionExecuting}
+                isAutoExecuting={isAutoExecuting}
+                autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
+                canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
+                onStartInspection={handleStartInspection}
+                onExecuteFix={handleExecuteInspectionFix}
+                onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
+              />
+            </div>
+
+            {/* Arrow to deploy PhaseItem */}
+            <div className="flex justify-center py-1">
+              <ArrowDown className="w-4 h-4 text-gray-400" />
+            </div>
+
+            {/* Deploy PhaseItem inside ImplFlowFrame */}
+            {/* Requirement 4.1, 4.2: Dynamic label (マージ/コミット) */}
+            <PhaseItem
+              phase="deploy"
+              label={deployLabel}
+              status={phaseStatuses.deploy}
+              previousStatus={phaseStatuses.inspection}
+              autoExecutionPermitted={workflowStore.autoExecutionPermissions.deploy}
+              isExecuting={runningPhases.has('deploy')}
+              canExecute={canExecutePhase('deploy')}
+              isAutoPhase={isAutoExecuting && currentAutoPhase === 'deploy'}
+              onExecute={() => handleExecutePhase('deploy')}
+              onApprove={() => handleApprovePhase('deploy')}
+              onApproveAndExecute={() => handleApproveAndExecutePhase('deploy')}
+              onToggleAutoPermission={() => workflowStore.toggleAutoPermission('deploy')}
+              onShowAgentLog={() => handleShowAgentLog('deploy')}
+            />
+          </ImplFlowFrame>
+        </div>
 
         {/* spec-manager Execution Status Display */}
         {/* Requirements: 5.2-5.8 */}

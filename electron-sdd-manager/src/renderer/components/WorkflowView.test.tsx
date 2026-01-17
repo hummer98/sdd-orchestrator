@@ -211,9 +211,10 @@ describe('WorkflowView', () => {
     it('should display phase connectors (arrows)', () => {
       render(<WorkflowView />);
 
-      // Should have 4 connectors for 5 displayable phases
+      // impl-flow-hierarchy-fix: DISPLAY_PHASES has 3 phases (requirements, design, tasks)
+      // So there are 2 connectors between them
       const connectors = screen.getAllByTestId('phase-connector');
-      expect(connectors.length).toBe(4);
+      expect(connectors.length).toBe(2);
     });
 
     it('should display approved status for approved phases', () => {
@@ -497,6 +498,92 @@ describe('WorkflowView', () => {
   // These tests were for the deprecated ImplStartButtons component.
   // ImplFlowFrame now handles these features. See ImplFlowFrame.test.tsx for coverage.
   // ============================================================
+
+  // ============================================================
+  // impl-flow-hierarchy-fix Task 5.3: Hierarchy structure tests
+  // Requirements: 3.1, 3.2, 4.1, 4.2
+  // ============================================================
+  describe('impl-flow-hierarchy-fix: Hierarchy structure', () => {
+    it('should render ImplFlowFrame containing impl flow components', () => {
+      render(<WorkflowView />);
+
+      // ImplFlowFrame should be rendered
+      expect(screen.getByTestId('impl-flow-frame')).toBeInTheDocument();
+
+      // ImplPhasePanel should be inside ImplFlowFrame
+      expect(screen.getByTestId('impl-phase-panel')).toBeInTheDocument();
+    });
+
+    it('should render deploy PhaseItem inside ImplFlowFrame', () => {
+      render(<WorkflowView />);
+
+      // Deploy PhaseItem should be rendered with test id
+      const deployButton = screen.getByTestId('phase-button-deploy');
+      expect(deployButton).toBeInTheDocument();
+    });
+
+    it('should show "コミット" label for deploy in normal mode', () => {
+      const specWithoutWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: undefined,
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithoutWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // Requirement 4.2: Normal mode = "コミット"
+      expect(screen.getByText('コミット')).toBeInTheDocument();
+    });
+
+    it('should show "マージ" label for deploy in worktree mode', () => {
+      const specWithWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: {
+            path: '../worktrees/test-feature',
+            branch: 'feature/test-feature',
+            created_at: '2024-01-01T00:00:00Z',
+          },
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // Requirement 4.1: Worktree mode = "マージ"
+      expect(screen.getByText('マージ')).toBeInTheDocument();
+    });
+
+    it('should render DocumentReviewPanel outside ImplFlowFrame', () => {
+      render(<WorkflowView />);
+
+      // DocumentReviewPanel should be rendered
+      // (It exists somewhere in the document, not inside ImplFlowFrame)
+      expect(screen.getByRole('heading', { name: 'ドキュメントレビュー' })).toBeInTheDocument();
+    });
+
+    it('should render only requirements, design, tasks in DISPLAY_PHASES loop', () => {
+      render(<WorkflowView />);
+
+      // PhaseItems for requirements, design, tasks should exist
+      expect(screen.getByTestId('phase-item-requirements')).toBeInTheDocument();
+      expect(screen.getByTestId('phase-item-design')).toBeInTheDocument();
+      expect(screen.getByTestId('phase-item-tasks')).toBeInTheDocument();
+
+      // impl PhaseItem should NOT exist (replaced by ImplPhasePanel)
+      expect(screen.queryByTestId('phase-item-impl')).not.toBeInTheDocument();
+    });
+  });
 
   // ============================================================
   // Task 6.1: Deploy button conditional branching (git-worktree-support)

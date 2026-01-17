@@ -33,6 +33,14 @@ export const WORKFLOW_PHASES: DisplayablePhase[] = [
   'deploy',
 ];
 
+/**
+ * impl-flow-hierarchy-fix Task 3.1: DISPLAY_PHASES
+ * Phases rendered in the main map loop (impl/deploy are rendered inside ImplFlowFrame)
+ * Requirements: 3.2
+ */
+export const DISPLAY_PHASES = ['requirements', 'design', 'tasks'] as const;
+export type DisplayPhase = typeof DISPLAY_PHASES[number];
+
 /** 全フェーズ順序定義（inspectionを含む、状態判定用） */
 export const ALL_WORKFLOW_PHASES: WorkflowPhase[] = [
   'requirements',

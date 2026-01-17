@@ -1,18 +1,17 @@
 /**
  * ImplFlowFrame Component
- * worktree-execution-ui: Task 4.1, 4.2, 4.3, FIX-1
- * Requirements: 3.1, 3.2, 3.3, 4.3, 5.1, 5.2, 5.4, 6.1, 6.2, 6.4, 7.1, 7.2, 8.1, 8.2, 8.3
+ * impl-flow-hierarchy-fix: Task 1.1, 1.2
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
  *
  * Frame component that wraps impl, inspection, and deploy phases.
  * - Shows WorktreeModeCheckbox in header
  * - Changes background color based on worktree mode selection
  * - Manages checkbox lock state based on impl/worktree status
- * - FIX-1: Includes start/continue button replacing ImplStartButtons
+ * - Visual frame only - NO execution button (moved to ImplPhasePanel)
  */
 
 import React from 'react';
 import { clsx } from 'clsx';
-import { Play, Loader2, GitBranch } from 'lucide-react';
 import { WorktreeModeCheckbox, type WorktreeLockReason } from './WorktreeModeCheckbox';
 
 // =============================================================================
@@ -28,16 +27,12 @@ export interface ImplFlowFrameProps {
   isImplStarted: boolean;
   /** Whether an actual worktree already exists (path exists in spec.json.worktree) */
   hasExistingWorktree: boolean;
-  /** Children to render inside the frame (PhaseItem for impl, InspectionPanel, deploy PhaseItem) */
+  /** Children to render inside the frame (ImplPhasePanel, TaskProgressView, InspectionPanel, deploy PhaseItem) */
   children: React.ReactNode;
   /** Additional CSS classes */
   className?: string;
-  /** FIX-1: Whether impl can be executed */
-  canExecute?: boolean;
-  /** FIX-1: Whether impl is currently executing */
-  isExecuting?: boolean;
-  /** FIX-1: Callback to execute impl */
-  onExecute?: () => void;
+  // Requirement 1.5: Execution-related props REMOVED
+  // canExecute, isExecuting, onExecute moved to ImplPhasePanel
 }
 
 // =============================================================================
@@ -45,13 +40,13 @@ export interface ImplFlowFrameProps {
 // =============================================================================
 
 /**
- * ImplFlowFrame - Frame component for implementation flow phases
+ * ImplFlowFrame - Visual frame component for implementation flow phases
  *
- * Requirement 3.1: Wraps impl, inspection, and deploy in a visual frame
- * Requirement 3.2: Shows WorktreeModeCheckbox in header
- * Requirement 6.1: Purple background when worktree mode selected
- * Requirement 7.1: Normal background when normal mode selected
- * FIX-1: Includes start/continue button replacing ImplStartButtons
+ * Requirement 1.1: NO execution button (visual frame only)
+ * Requirement 1.2: Shows WorktreeModeCheckbox in header
+ * Requirement 1.3: Purple background when worktree mode selected
+ * Requirement 1.4: Children rendering for impl flow components
+ * Requirement 1.5: No execution-related props
  */
 export function ImplFlowFrame({
   worktreeModeSelected,
@@ -60,9 +55,6 @@ export function ImplFlowFrame({
   hasExistingWorktree,
   children,
   className,
-  canExecute = false,
-  isExecuting = false,
-  onExecute,
 }: ImplFlowFrameProps): React.ReactElement {
   // Determine checkbox disabled state and lock reason
   // Requirement 4.3: Auto-check and lock when worktree exists
@@ -125,49 +117,8 @@ export function ImplFlowFrame({
           />
         </div>
 
-        {/* FIX-1: Start/Continue button (replaces ImplStartButtons) */}
-        {/* Requirement 8.1, 8.2, 8.3: Single button that changes behavior based on mode */}
-        {onExecute && (
-          <button
-            data-testid="impl-start-button"
-            type="button"
-            disabled={!canExecute || isExecuting}
-            onClick={onExecute}
-            className={clsx(
-              'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-              !canExecute || isExecuting
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
-                : worktreeModeSelected
-                  ? 'bg-violet-500 text-white hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700'
-                  : 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-            )}
-          >
-            {isExecuting ? (
-              <>
-                <Loader2 data-testid="impl-start-loading" className="w-3.5 h-3.5 animate-spin" />
-                <span>実行中...</span>
-              </>
-            ) : (
-              <>
-                {worktreeModeSelected ? (
-                  <GitBranch className="w-3.5 h-3.5" />
-                ) : (
-                  <Play className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isImplStarted
-                    ? worktreeModeSelected
-                      ? 'Worktreeで実装継続'
-                      : '実装継続'
-                    : worktreeModeSelected
-                      ? 'Worktreeで実装開始'
-                      : '実装開始'
-                  }
-                </span>
-              </>
-            )}
-          </button>
-        )}
+        {/* Requirement 1.1: Execution button REMOVED */}
+        {/* Start/Continue button functionality moved to ImplPhasePanel */}
       </div>
 
       {/* Content area */}

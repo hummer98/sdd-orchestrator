@@ -13,3 +13,7 @@ export type { WorktreeModeCheckboxProps, WorktreeLockReason } from './WorktreeMo
 // worktree-execution-ui Task 4.1, 4.2, 4.3: Impl flow frame component
 export { ImplFlowFrame } from './ImplFlowFrame';
 export type { ImplFlowFrameProps } from './ImplFlowFrame';
+
+// impl-flow-hierarchy-fix Task 2.1: Impl phase panel component
+export { ImplPhasePanel } from './ImplPhasePanel';
+export type { ImplPhasePanelProps } from './ImplPhasePanel';

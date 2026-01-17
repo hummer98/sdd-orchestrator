@@ -161,7 +161,7 @@ Electron UI統合用純粋生成コマンド。**spec.jsonの状態管理はElec
   "created_at": "2025-01-15T00:00:00Z",
   "updated_at": "2025-01-15T12:00:00Z",
   "worktree": {                          // オプショナル: worktreeモード時のみ
-    "path": "../project-worktrees/bugs/memory-leak-fix",
+    "path": ".kiro/worktrees/bugs/memory-leak-fix",
     "branch": "bugfix/memory-leak-fix",
     "created_at": "2025-01-15T10:00:00Z"
   }
@@ -192,9 +192,13 @@ Report → Analyze → Fix(worktree作成) → Verify → Merge(worktree削除)
 **bug-fix実行時（worktreeモード）**:
 1. mainブランチ確認（main/master以外はエラー）
 2. `git branch bugfix/{bug-name}` 実行
-3. `git worktree add ../{project}-worktrees/bugs/{bug-name} bugfix/{bug-name}` 実行
-4. bug.jsonにworktreeフィールド追加
+3. `git worktree add .kiro/worktrees/bugs/{bug-name} bugfix/{bug-name}` 実行
+4. bug.jsonにworktreeフィールド追加（path: `.kiro/worktrees/bugs/{bug-name}`）
 5. worktree内で修正作業を実施
+
+**Spec用worktree**（参考）:
+- 配置パス: `.kiro/worktrees/specs/{feature-name}`
+- ブランチ: `feature/{feature-name}`
 
 **bug-merge実行時**:
 1. mainブランチ確認
@@ -216,11 +220,16 @@ Report → Analyze → Fix(worktree作成) → Verify → Merge(worktree削除)
 
 **worktree配置**:
 ```
-{parent-dir}/
-├── {project}/                    # メインプロジェクト
-└── {project}-worktrees/
-    └── bugs/
-        └── {bug-name}/           # Bug worktree
+{project}/
+├── .kiro/
+│   ├── specs/
+│   ├── bugs/
+│   └── worktrees/                # worktree配置（git管理対象外）
+│       ├── specs/
+│       │   └── {feature-name}/   # Spec worktree
+│       └── bugs/
+│           └── {bug-name}/       # Bug worktree
+└── ...
 ```
 
 **書き換え主体**: 全て Claude プロセス（bug-merge含む）

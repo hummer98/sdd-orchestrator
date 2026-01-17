@@ -1,7 +1,7 @@
 {
   "feature_name": "bugs-worktree-support",
   "created_at": "2026-01-14T01:31:00+09:00",
-  "updated_at": "2026-01-16T16:00:00Z",
+  "updated_at": "2026-01-16T15:08:32.591Z",
   "language": "ja",
   "phase": "deploy-complete",
   "approvals": {
@@ -37,22 +37,22 @@
       {
         "roundNumber": 1,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 2,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 3,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 4,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 5,

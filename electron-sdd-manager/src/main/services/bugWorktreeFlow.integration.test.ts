@@ -17,14 +17,15 @@ const mockCreateBugWorktree = vi.fn();
 const mockRemoveBugWorktree = vi.fn();
 const mockIsOnMainBranch = vi.fn();
 
+// worktree-internal-path: 新パス形式に更新
 vi.mock('./worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation(() => ({
     createBugWorktree: mockCreateBugWorktree,
     removeBugWorktree: mockRemoveBugWorktree,
     isOnMainBranch: mockIsOnMainBranch,
     getBugWorktreePath: vi.fn().mockReturnValue({
-      relative: '../test-project-worktrees/bugs/test-bug',
-      absolute: '/tmp/test-project-worktrees/bugs/test-bug',
+      relative: '.kiro/worktrees/bugs/test-bug',
+      absolute: '/tmp/test-project/.kiro/worktrees/bugs/test-bug',
     }),
   })),
 }));
@@ -50,11 +51,12 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
     // Default mock implementations
     mockIsOnMainBranch.mockResolvedValue({ ok: true, value: true });
+    // worktree-internal-path: 新パス形式に更新
     mockCreateBugWorktree.mockResolvedValue({
       ok: true,
       value: {
-        path: '../test-project-worktrees/bugs/test-bug',
-        absolutePath: '/tmp/test-project-worktrees/bugs/test-bug',
+        path: '.kiro/worktrees/bugs/test-bug',
+        absolutePath: '/tmp/test-project/.kiro/worktrees/bugs/test-bug',
         branch: 'bugfix/test-bug',
         created_at: new Date().toISOString(),
       },
@@ -168,8 +170,8 @@ describe('Bug Worktree Flow Integration Tests', () => {
       const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
       const parsed: BugJson = JSON.parse(content);
 
-      // Path should be relative (starting with ..)
-      expect(parsed.worktree?.path).toMatch(/^\.\./);
+      // worktree-internal-path: 新パス形式（.kiro/worktrees/）を検証
+      expect(parsed.worktree?.path).toMatch(/^\.kiro\/worktrees\/bugs\//);
     });
   });
 
@@ -180,12 +182,13 @@ describe('Bug Worktree Flow Integration Tests', () => {
   describe('Task 17.2: bug-merge flow', () => {
     it('should remove worktree on successful merge', async () => {
       // Setup: bug.json with worktree field
+      // worktree-internal-path: 新パス形式に更新
       const bugJsonWithWorktree: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
         worktree: {
-          path: '../test-project-worktrees/bugs/test-bug',
+          path: '.kiro/worktrees/bugs/test-bug',
           branch: 'bugfix/test-bug',
           created_at: '2025-01-15T00:00:00Z',
         },
@@ -199,12 +202,13 @@ describe('Bug Worktree Flow Integration Tests', () => {
     });
 
     it('should remove worktree field from bug.json after deletion', async () => {
+      // worktree-internal-path: 新パス形式に更新
       const bugJsonWithWorktree: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
         worktree: {
-          path: '../test-project-worktrees/bugs/test-bug',
+          path: '.kiro/worktrees/bugs/test-bug',
           branch: 'bugfix/test-bug',
           created_at: '2025-01-15T00:00:00Z',
         },
@@ -225,12 +229,13 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
     it('should update updated_at timestamp on worktree removal', async () => {
       const oldTimestamp = '2025-01-15T00:00:00Z';
+      // worktree-internal-path: 新パス形式に更新
       const bugJsonWithWorktree: BugJson = {
         bug_name: 'test-bug',
         created_at: oldTimestamp,
         updated_at: oldTimestamp,
         worktree: {
-          path: '../test-project-worktrees/bugs/test-bug',
+          path: '.kiro/worktrees/bugs/test-bug',
           branch: 'bugfix/test-bug',
           created_at: oldTimestamp,
         },

@@ -1,6 +1,8 @@
 # Kiro runtime and logs
 .kiro/runtime
 .kiro/specs/*/logs
+# worktree-internal-path: worktreeディレクトリ除外（git管理対象外）
+.kiro/worktrees/
 node_modules
 
 # Security sensitive files

@@ -280,7 +280,7 @@ interface BugJson {
  * Requirements: 1.3, 3.4, 3.7
  */
 interface BugWorktreeConfig {
-  /** Relative path from main project root: ../{project}-worktrees/bugs/{bug-name} */
+  /** Relative path from main project root: .kiro/worktrees/bugs/{bug-name} (worktree-internal-path) */
   path: string;
   /** Branch name: bugfix/{bug-name} */
   branch: string;
@@ -410,7 +410,7 @@ interface BugServiceExtension {
 | Requirements | 3.1, 3.3, 3.4, 4.6 |
 
 **Responsibilities & Constraints**
-- Bugs専用のworktreeパス生成（`../{project}-worktrees/bugs/{bug-name}`）
+- Bugs専用のworktreeパス生成（`.kiro/worktrees/bugs/{bug-name}`）（worktree-internal-path更新）
 - `bugfix/{bug-name}`形式のブランチ作成
 - worktree削除
 
@@ -453,7 +453,7 @@ interface WorktreeServiceBugExtension {
 
 **Implementation Notes**
 - Integration: 既存のWorktreeServiceを継承または拡張
-- パス形式: `../{project}-worktrees/bugs/{bug-name}`（Specとは別ディレクトリ）
+- パス形式: `.kiro/worktrees/bugs/{bug-name}`（worktree-internal-path更新）
 - ブランチ形式: `bugfix/{bug-name}`（Specのfeature/とは区別）
 
 #### configStore拡張
@@ -693,7 +693,7 @@ erDiagram
 
 **Structure Definition**:
 - BugWorktreeConfigはbug.jsonのオプショナルフィールド
-- pathは相対パス（mainプロジェクトルート基準）: `../{project}-worktrees/bugs/{bug-name}`
+- pathは相対パス（mainプロジェクトルート基準）: `.kiro/worktrees/bugs/{bug-name}`（worktree-internal-path更新）
 - branchは`bugfix/{bug-name}`形式
 
 **Consistency & Integrity**:
@@ -760,9 +760,9 @@ erDiagram
 |-------|--------|
 | Status | Accepted |
 | Context | BugsのworktreeパスをSpecと共有するか分離するかを決定する必要がある（Requirements: 3.3） |
-| Decision | `../{project}-worktrees/bugs/{bug-name}` 形式でbugs専用サブディレクトリを使用 |
-| Rationale | ファイルシステム上でSpec用（feature）とBug用が明確に分離され、一目で識別可能。管理・クリーンアップが容易 |
-| Alternatives Considered | 1. Specと同じパス（`../{project}-worktrees/{bug-name}`）- 識別困難 |
+| Decision | `.kiro/worktrees/bugs/{bug-name}` 形式でbugs専用サブディレクトリを使用（worktree-internal-path更新） |
+| Rationale | ファイルシステム上でSpec用（feature）とBug用が明確に分離され、一目で識別可能。管理・クリーンアップが容易。プロジェクト内に配置することでポータビリティ向上 |
+| Alternatives Considered | 1. Specと同じパス（`.kiro/worktrees/{bug-name}`）- 識別困難 |
 | Consequences | パス生成ロジックにbugs/サブディレクトリを追加 |
 
 ### DD-003: bugfix/ブランチ命名規則

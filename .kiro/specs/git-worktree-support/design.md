@@ -331,12 +331,12 @@ interface WorktreeService {
 
   /**
    * worktreeの絶対パスを取得
-   * @param relativePath - spec.jsonに保存された相対パス
-   * @throws PATH_VALIDATION_ERROR パスがプロジェクト親ディレクトリ外を指す場合
+   * @param relativePath - spec.jsonに保存された相対パス（例: .kiro/worktrees/specs/{feature}）
+   * @throws PATH_VALIDATION_ERROR パスがプロジェクトディレクトリ外を指す場合
    *
-   * セキュリティ検証:
+   * セキュリティ検証（worktree-internal-path更新）:
    * - path.resolve + path.normalize でパス正規化
-   * - プロジェクトルートの親ディレクトリ内に収まることを検証
+   * - プロジェクトディレクトリ内に収まることを検証
    * - シンボリックリンク解決（fs.realpath）
    */
   resolveWorktreePath(relativePath: string): string;

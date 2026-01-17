@@ -212,9 +212,9 @@ describe('WorktreeService', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.branch).toBe('feature/new-feature');
-        expect(result.value.path).toContain('new-feature');
-        expect(result.value.absolutePath).toContain('my-project-worktrees');
-        expect(result.value.absolutePath).toContain('new-feature');
+        // worktree-internal-path: 新パス形式を検証
+        expect(result.value.path).toBe('.kiro/worktrees/specs/new-feature');
+        expect(result.value.absolutePath).toBe('/Users/test/my-project/.kiro/worktrees/specs/new-feature');
         expect(result.value.created_at).toBeDefined();
       }
     });
@@ -264,25 +264,50 @@ describe('WorktreeService', () => {
   });
 
   describe('resolveWorktreePath', () => {
-    it('should resolve relative path to absolute path', () => {
+    // worktree-internal-path: Task 2.1 - セキュリティ検証を「プロジェクトディレクトリ内」に変更
+    // Requirements: 3.1, 3.2, 3.3 (worktree-internal-path)
+    it('should resolve relative path within project to absolute path', () => {
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
 
-      const relativePath = '../my-project-worktrees/feature-name';
+      // 新パス形式: プロジェクト内の.kiro/worktrees/
+      const relativePath = '.kiro/worktrees/specs/feature-name';
       const result = service.resolveWorktreePath(relativePath);
 
       expect(path.isAbsolute(result)).toBe(true);
-      expect(result).toContain('my-project-worktrees');
-      expect(result).toContain('feature-name');
+      expect(result).toBe('/Users/test/my-project/.kiro/worktrees/specs/feature-name');
     });
 
-    it('should throw for paths outside parent directory', () => {
+    it('should throw for paths outside project directory', () => {
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
 
-      const maliciousPath = '../../../etc/passwd';
+      // プロジェクト外を指すパス
+      const maliciousPath = '../etc/passwd';
 
-      expect(() => service.resolveWorktreePath(maliciousPath)).toThrow();
+      expect(() => service.resolveWorktreePath(maliciousPath)).toThrow('resolves outside project directory');
+    });
+
+    it('should throw for paths that traverse outside project with ..', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // ..を使ってプロジェクト外に出るパス
+      const traversalPath = '.kiro/../../../etc/passwd';
+
+      expect(() => service.resolveWorktreePath(traversalPath)).toThrow('resolves outside project directory');
+    });
+
+    it('should allow paths with .. that resolve within project', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // ..を含むがプロジェクト内に解決されるパス（Requirements: 3.3）
+      const validPath = '.kiro/worktrees/../worktrees/specs/feature';
+      const result = service.resolveWorktreePath(validPath);
+
+      expect(path.isAbsolute(result)).toBe(true);
+      expect(result).toBe('/Users/test/my-project/.kiro/worktrees/specs/feature');
     });
   });
 
@@ -311,12 +336,14 @@ describe('WorktreeService', () => {
   });
 
   describe('getWatchPath', () => {
+    // worktree-internal-path: 新パス形式に更新
     it('should return worktree path when config is provided', () => {
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
 
       const config = {
-        path: '../my-project-worktrees/my-feature',
+        // 新パス形式: プロジェクト内
+        path: '.kiro/worktrees/specs/my-feature',
         branch: 'feature/my-feature',
         created_at: '2026-01-12T12:00:00+09:00',
       };
@@ -324,7 +351,7 @@ describe('WorktreeService', () => {
       const result = service.getWatchPath('my-feature', config);
 
       expect(path.isAbsolute(result)).toBe(true);
-      expect(result).toContain('my-project-worktrees');
+      expect(result).toBe('/Users/test/my-project/.kiro/worktrees/specs/my-feature');
     });
 
     it('should return project path when no config is provided', () => {
@@ -338,32 +365,34 @@ describe('WorktreeService', () => {
   });
 
   describe('getWorktreePath', () => {
-    it('should generate correct worktree path', () => {
+    // worktree-internal-path: Task 1.1 - 新パス形式のテスト
+    it('should generate correct worktree path within .kiro/worktrees/specs/', () => {
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
 
       const result = service.getWorktreePath('my-feature');
 
-      expect(result.relative).toBe('../my-project-worktrees/my-feature');
-      expect(result.absolute).toContain('my-project-worktrees');
-      expect(result.absolute).toContain('my-feature');
+      // Requirements: 1.1, 4.1 - Spec用worktreeは.kiro/worktrees/specs/{feature}に配置
+      expect(result.relative).toBe('.kiro/worktrees/specs/my-feature');
+      expect(result.absolute).toBe('/Users/test/my-project/.kiro/worktrees/specs/my-feature');
     });
   });
 
   // ============================================================
   // bugs-worktree-support Task 3.1: Bugs worktree path generation
-  // Requirements: 3.3, 3.7
+  // worktree-internal-path: Task 1.2 - 新パス形式に更新
+  // Requirements: 1.2, 4.2 (worktree-internal-path)
   // ============================================================
   describe('getBugWorktreePath', () => {
-    it('should generate correct bug worktree path with bugs subdirectory', () => {
+    it('should generate correct bug worktree path within .kiro/worktrees/bugs/', () => {
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
 
       const result = service.getBugWorktreePath('memory-leak-fix');
 
-      expect(result.relative).toBe('../my-project-worktrees/bugs/memory-leak-fix');
-      expect(result.absolute).toContain('my-project-worktrees/bugs');
-      expect(result.absolute).toContain('memory-leak-fix');
+      // Requirements: 1.2, 4.2 - Bug用worktreeは.kiro/worktrees/bugs/{bug}に配置
+      expect(result.relative).toBe('.kiro/worktrees/bugs/memory-leak-fix');
+      expect(result.absolute).toBe('/Users/test/my-project/.kiro/worktrees/bugs/memory-leak-fix');
     });
 
     it('should handle bug names with hyphens correctly', () => {
@@ -372,7 +401,7 @@ describe('WorktreeService', () => {
 
       const result = service.getBugWorktreePath('fix-issue-123');
 
-      expect(result.relative).toBe('../my-project-worktrees/bugs/fix-issue-123');
+      expect(result.relative).toBe('.kiro/worktrees/bugs/fix-issue-123');
     });
   });
 
@@ -394,8 +423,9 @@ describe('WorktreeService', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.branch).toBe('bugfix/test-bug');
-        expect(result.value.path).toContain('bugs/test-bug');
-        expect(result.value.absolutePath).toContain('my-project-worktrees/bugs');
+        // worktree-internal-path: 新パス形式を検証
+        expect(result.value.path).toBe('.kiro/worktrees/bugs/test-bug');
+        expect(result.value.absolutePath).toBe('/Users/test/my-project/.kiro/worktrees/bugs/test-bug');
       }
     });
 

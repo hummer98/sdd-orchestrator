@@ -93,12 +93,10 @@ export function validateFeatureName(featureName: string): WorktreeServiceResult<
  */
 export class WorktreeService {
   private projectPath: string;
-  private projectName: string;
   private execFn: ExecFunction;
 
   constructor(projectPath: string, execFn?: ExecFunction) {
     this.projectPath = projectPath;
-    this.projectName = path.basename(projectPath);
     // Use injected exec or default to node's exec
     this.execFn = execFn || (nodeExec as unknown as ExecFunction);
   }
@@ -149,13 +147,16 @@ export class WorktreeService {
 
   /**
    * Get worktree path for a feature
+   * Requirements: 1.1, 4.1 (worktree-internal-path)
    *
    * @param featureName - Feature name
    * @returns Object with relative and absolute paths
+   *
+   * 変更: .kiro/worktrees/specs/{feature} 形式に変更
    */
   getWorktreePath(featureName: string): { relative: string; absolute: string } {
-    const worktreeDir = `${this.projectName}-worktrees`;
-    const relative = `../${worktreeDir}/${featureName}`;
+    // worktree-internal-path: プロジェクト内の.kiro/worktrees/specs/に配置
+    const relative = `.kiro/worktrees/specs/${featureName}`;
     const absolute = path.resolve(this.projectPath, relative);
     return { relative, absolute };
   }
@@ -268,20 +269,32 @@ export class WorktreeService {
 
   /**
    * Resolve a relative worktree path to absolute path
-   * Requirements: 8.1, 8.2 (security validation)
+   * Requirements: 3.1, 3.2, 3.3 (worktree-internal-path)
    *
    * @param relativePath - Relative path from spec.json
    * @returns Absolute path
    * @throws Error if path validation fails
+   *
+   * セキュリティ検証（変更）:
+   * - path.resolve + path.normalize でパス正規化
+   * - 変更前: プロジェクト親ディレクトリ内に収まることを検証
+   * - 変更後: プロジェクトディレクトリ内に収まることを検証
+   * - `..`を含む相対パスでもプロジェクト内に解決される場合は許可
    */
   resolveWorktreePath(relativePath: string): string {
     const resolved = path.resolve(this.projectPath, relativePath);
     const normalized = path.normalize(resolved);
 
-    // Security check: path must be within parent directory of project
-    const parentDir = path.dirname(this.projectPath);
-    if (!normalized.startsWith(parentDir)) {
-      throw new Error(`Path validation failed: ${relativePath} resolves outside parent directory`);
+    // worktree-internal-path: セキュリティ検証を「プロジェクトディレクトリ内」に変更
+    // パスがプロジェクトディレクトリ内であることを検証
+    // normalized は /path/to/project/... の形式になる
+    // projectPath + path.sep を使って、projectPath自体ではなくその配下を検証
+    const projectPathWithSep = this.projectPath.endsWith(path.sep)
+      ? this.projectPath
+      : this.projectPath + path.sep;
+
+    if (!normalized.startsWith(projectPathWithSep) && normalized !== this.projectPath) {
+      throw new Error(`Path validation failed: ${relativePath} resolves outside project directory`);
     }
 
     return normalized;
@@ -326,15 +339,16 @@ export class WorktreeService {
 
   /**
    * Get worktree path for a bug
-   * Requirements: 3.3, 3.7
+   * Requirements: 1.2, 4.2 (worktree-internal-path)
    *
    * @param bugName - Bug name (directory name)
    * @returns Object with relative and absolute paths
+   *
+   * 変更: .kiro/worktrees/bugs/{bug} 形式に変更
    */
   getBugWorktreePath(bugName: string): { relative: string; absolute: string } {
-    const worktreeDir = `${this.projectName}-worktrees`;
-    // Bugs go into a 'bugs' subdirectory
-    const relative = `../${worktreeDir}/bugs/${bugName}`;
+    // worktree-internal-path: プロジェクト内の.kiro/worktrees/bugs/に配置
+    const relative = `.kiro/worktrees/bugs/${bugName}`;
     const absolute = path.resolve(this.projectPath, relative);
     return { relative, absolute };
   }

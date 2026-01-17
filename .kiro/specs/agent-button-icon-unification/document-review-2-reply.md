@@ -1,0 +1,183 @@
+# Response to Document Review #2
+
+**Feature**: agent-button-icon-unification
+**Review Date**: 2026-01-17
+**Reply Date**: 2026-01-17
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 1      | 1            | 0             | 0                |
+| Warning  | 2      | 2            | 0             | 0                |
+| Info     | 2      | 0            | 2             | 0                |
+
+---
+
+## Response to Critical Issues
+
+### C1: design.mdの行番号参照の妥当性
+
+**Issue**: design.mdに記載された行番号が変動する可能性があり、実装時に誤った箇所を変更するリスクがある。機能的説明を主とすべき。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+コードを実際に確認した結果、現時点では行番号は概ね正確：
+- PhaseItem.tsx L215: `<Play className="w-4 h-4" />` - 一致
+- ImplPhasePanel.tsx L219-222: アイコン分岐 - 一致
+
+しかし、行番号は将来のコード変更で容易にずれる。保守性の観点から、機能的説明を主とし、行番号は参考情報として扱うべき。
+
+**Action Items**:
+- design.mdの「Implementation Notes」セクションを機能的説明を主体とした記述に更新
+- 行番号を「参考」として位置づけ、機能名（「実行ボタンのPlayアイコン」等）で特定できるようにする
+
+---
+
+## Response to Warnings
+
+### W1: constants/ディレクトリの不在
+
+**Issue**: design.mdで`AGENT_ICON_COLOR`を`shared/constants/`に配置すると記載されているが、現在のコードベースに`shared/constants/`ディレクトリが存在しない。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+```
+electron-sdd-manager/src/shared/
+├── api/
+├── components/
+├── hooks/
+├── providers/
+├── stores/
+└── types/
+```
+constantsディレクトリは実際に存在しない。
+
+**Action Items**:
+- design.mdとtasks.mdを更新し、定数配置の方針を明確化
+- 推奨案：AgentIcon.tsx内で`export const AGENT_ICON_COLOR`として定義（新規ディレクトリ作成不要、コンポーネントと定数をco-location）
+
+---
+
+### W2: design.mdの行番号を機能的説明に置換
+
+**Issue**: 行番号（L213-215等）は変動するため、機能的説明への置換が推奨される。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+C1と同じ理由。行番号は実装時の参考にはなるが、主たる識別子としては不適切。
+
+**Action Items**:
+- design.mdの「Implementation Notes」セクションを機能的説明ベースに書き換え
+
+---
+
+## Response to Info (Low Priority)
+
+| #  | Issue | Judgment | Reason |
+| -- | ----- | -------- | ------ |
+| I1 | テストファイル配置の明記 | No Fix Needed | 既存パターン（co-location）が確立されており、design.mdで「Testing Strategy」セクションにテスト対象が明記されている。tasks.mdでも4.1, 4.2でテスト作成が指定済み |
+| I2 | barrel export（index.ts追加） | No Fix Needed | 実装フェーズで対応可能な軽微な作業。design.mdへの明記は必須ではない |
+
+---
+
+## Files to Modify
+
+| File | Changes |
+| ---- | ------- |
+| design.md | 「Implementation Notes」の行番号を機能的説明に置換、定数配置方針をAgentIcon.tsx内exportに変更 |
+| tasks.md | タスク1.1の定数配置場所を更新 |
+
+---
+
+## Conclusion
+
+Critical 1件、Warning 2件の指摘はすべて妥当であり、修正を適用する。
+
+主な変更点：
+1. design.mdの行番号参照を機能的説明ベースに更新
+2. `AGENT_ICON_COLOR`の配置場所を`shared/constants/`から`AgentIcon.tsx内でのexport`に変更
+
+これにより、保守性が向上し、新規ディレクトリ作成も不要となる。
+
+---
+
+## Applied Fixes
+
+**Applied Date**: 2026-01-17
+**Applied By**: --autofix
+
+### Summary
+
+| File | Changes Applied |
+| ---- | --------------- |
+| design.md | 行番号を機能的説明に置換、定数配置場所をAgentIcon.tsx内exportに変更 |
+| tasks.md | タスク1.1の定数配置場所を更新 |
+
+### Details
+
+#### design.md
+
+**Issue(s) Addressed**: C1, W1, W2
+
+**Changes**:
+1. PhaseItemのImplementation Notesを機能的説明に更新
+2. ImplPhasePanelのImplementation Notesを機能的説明に更新
+3. Requirements Traceabilityの3.3行を更新（`constants/agentIcon.ts` → `AgentIcon.tsx`）
+4. Constants Layerに配置場所の明記を追加
+5. DD-004のDecision/Rationale/Alternatives/Consequencesを更新
+
+**Diff Summary**:
+```diff
+# PhaseItem Implementation Notes
+- 変更箇所: L213-215のPlayアイコンをAgentIconに置換
+- 変更対象外: L166-175（PlayCircle）、L101-106（Bot+animate-pulse）
++ 変更箇所: 「実行」ボタン（`status === 'pending'`かつ`!isExecuting`時に表示）内のPlayアイコンをAgentIconに置換
++ 変更対象外:
++   - 自動実行トグル（`data-testid="auto-permission-toggle"`内のPlayCircle/Banアイコン）
++   - 実行中ステータス（`renderProgressIcon()`内の`data-testid="progress-icon-executing"`付きBotアイコン）
+
+# ImplPhasePanel Implementation Notes
+- 変更箇所: L219-222のアイコン分岐をAgentIcon/AgentBranchIconに置換
+- 変更対象外: L174-180（PlayCircle）、L117-122（Bot+animate-pulse）
++ 変更箇所: 実装開始ボタン（`data-testid="impl-execute-button"`）内のアイコン分岐
++   - 通常モード: `data-testid="icon-play"`のPlayアイコンをAgentIconに置換
++   - Worktreeモード: `data-testid="icon-git-branch"`のGitBranchアイコンをAgentBranchIconに置換
++ 変更対象外:
++   - 自動実行トグル（`data-testid="auto-permission-toggle"`内のPlayCircle/Banアイコン）
++   - 実行中ステータス（`renderStatusIcon()`内の`data-testid="status-icon-executing"`付きBotアイコン）
+
+# Requirements Traceability 3.3
+- | 3.3 | AGENT_ICON_COLOR定数定義 | constants/agentIcon.ts | 新規定数ファイル作成 |
++ | 3.3 | AGENT_ICON_COLOR定数定義 | AgentIcon.tsx | AgentIcon.tsx内でexport |
+
+# DD-004
+- Decision | AgentIcon, AgentBranchIconは`shared/components/ui/`に、AGENT_ICON_COLORは`shared/constants/`に配置
++ Decision | AgentIcon, AgentBranchIconは`shared/components/ui/`に配置、AGENT_ICON_COLORはAgentIcon.tsx内でexport
+```
+
+#### tasks.md
+
+**Issue(s) Addressed**: W1
+
+**Changes**:
+- タスク1.1の配置場所を `shared/constants/` から `AgentIcon.tsx内export` に更新
+
+**Diff Summary**:
+```diff
+- `shared/constants/`ディレクトリに配置
++ `shared/components/ui/AgentIcon.tsx`内でexport（新規ディレクトリ作成不要、コンポーネントとco-location）
+```
+
+---
+
+_Fixes applied by document-review-reply command._
+
+---
+
+_This reply was generated by the document-review-reply command._

@@ -185,16 +185,21 @@ describe('ImplPhasePanel', () => {
       expect(button.className).not.toMatch(/violet|purple/);
     });
 
-    // Requirement 2.10: GitBranch icon in worktree mode
-    it('should show GitBranch icon when worktree mode is selected', () => {
+    // Agent Button Icon Unification: AgentBranchIcon in worktree mode (Bot + GitBranch)
+    it('should show AgentBranchIcon (Bot + GitBranch) when worktree mode is selected', () => {
       render(<ImplPhasePanel {...defaultProps} worktreeModeSelected={true} />);
-      expect(screen.getByTestId('icon-git-branch')).toBeInTheDocument();
+      const iconContainer = screen.getByTestId('icon-git-branch');
+      // AgentBranchIcon renders two svgs (Bot + GitBranch)
+      const svgs = iconContainer.querySelectorAll('svg');
+      expect(svgs.length).toBe(2);
     });
 
-    // Normal mode: Play icon
-    it('should show Play icon when not in worktree mode', () => {
+    // Agent Button Icon Unification: AgentIcon in normal mode (Bot only)
+    it('should show AgentIcon (Bot) when not in worktree mode', () => {
       render(<ImplPhasePanel {...defaultProps} worktreeModeSelected={false} />);
-      expect(screen.getByTestId('icon-play')).toBeInTheDocument();
+      const iconContainer = screen.getByTestId('icon-play');
+      // AgentIcon renders single Bot icon (svg)
+      expect(iconContainer.tagName.toLowerCase()).toBe('svg');
     });
   });
 

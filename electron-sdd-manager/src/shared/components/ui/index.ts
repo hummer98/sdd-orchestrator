@@ -34,3 +34,6 @@ export type { ToastProps, ToastType, ToastAction } from './Toast';
 
 export { ProfileBadge } from './ProfileBadge';
 export type { ProfileBadgeProps, ProfileName } from './ProfileBadge';
+
+export { AgentIcon, AgentBranchIcon, AGENT_ICON_COLOR } from './AgentIcon';
+export type { AgentIconProps, AgentBranchIconProps } from './AgentIcon';

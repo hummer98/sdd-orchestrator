@@ -7,7 +7,6 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import {
-  Play,
   Check,
   Ban,
   PlayCircle,
@@ -15,6 +14,7 @@ import {
   Pause,
   Bot,
 } from 'lucide-react';
+import { AgentIcon } from '../ui/AgentIcon';
 
 // =============================================================================
 // Types
@@ -212,7 +212,7 @@ export function PhaseItem({
                   'transition-colors'
                 )}
               >
-                <Play className="w-4 h-4" />
+                <AgentIcon />
                 実行
               </button>
             )}

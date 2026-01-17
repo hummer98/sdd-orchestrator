@@ -248,4 +248,28 @@ describe('AgentInputPanel', () => {
       expect(textarea).toHaveClass('resize-none');
     });
   });
+
+  describe('agent-button-icon-unification: Regression tests (unchanged components)', () => {
+    // Requirement 4.1: AgentInputPanel should NOT be changed
+    it('should keep Play icon in "続行を指示" button (not changed to AgentIcon)', () => {
+      render(<AgentInputPanel />);
+
+      const continueButton = screen.getByRole('button', { name: '続行を指示' });
+      // Play icon has class lucide-play (from lucide-react)
+      const svg = continueButton.querySelector('svg');
+      expect(svg).not.toBeNull();
+      // Verify it's Play icon, not Bot icon
+      const classNames = svg?.getAttribute('class') || '';
+      expect(classNames).toContain('lucide-play');
+      expect(classNames).not.toContain('lucide-bot');
+    });
+
+    it('should keep green color on "続行を指示" button', () => {
+      render(<AgentInputPanel />);
+
+      const continueButton = screen.getByRole('button', { name: '続行を指示' });
+      // Button should have green background
+      expect(continueButton.className).toContain('bg-green-500');
+    });
+  });
 });

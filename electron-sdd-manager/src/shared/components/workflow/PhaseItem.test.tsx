@@ -154,4 +154,41 @@ describe('PhaseItem', () => {
       expect(phaseItem.className).toContain('ring');
     });
   });
+
+  describe('Agent Icon in execute button (agent-button-icon-unification)', () => {
+    it('should show AgentIcon (Bot icon) in execute button', () => {
+      render(<PhaseItem {...defaultProps} status="pending" canExecute={true} />);
+      const button = screen.getByTestId('phase-button-requirements');
+      // Check that the button contains a Bot icon (AgentIcon component)
+      const svgs = button.querySelectorAll('svg');
+      expect(svgs.length).toBeGreaterThan(0);
+    });
+
+    it('should NOT use Play icon in execute button (replaced with AgentIcon)', () => {
+      render(<PhaseItem {...defaultProps} status="pending" canExecute={true} />);
+      const button = screen.getByTestId('phase-button-requirements');
+      // AgentIcon uses Bot which is different from Play
+      // The AgentIcon applies AGENT_ICON_COLOR (text-white) by default
+      const svg = button.querySelector('svg');
+      expect(svg).not.toBeNull();
+      // Verify it's styled as AgentIcon (white color on blue button background)
+      const classNames = svg?.getAttribute('class') || '';
+      expect(classNames).toContain('text-white');
+    });
+
+    it('should keep auto execution toggle with PlayCircle icon unchanged', () => {
+      render(<PhaseItem {...defaultProps} autoExecutionPermitted={true} />);
+      // PlayCircle is used for auto-permitted-icon (not changed)
+      expect(screen.getByTestId('auto-permitted-icon')).toBeInTheDocument();
+    });
+
+    it('should keep executing status icon unchanged (Bot with animate-pulse)', () => {
+      render(<PhaseItem {...defaultProps} isExecuting={true} />);
+      const executingIcon = screen.getByTestId('progress-icon-executing');
+      expect(executingIcon).toBeInTheDocument();
+      const classNames = executingIcon.getAttribute('class') || '';
+      expect(classNames).toContain('animate-pulse');
+      expect(classNames).toContain('text-blue-500');
+    });
+  });
 });

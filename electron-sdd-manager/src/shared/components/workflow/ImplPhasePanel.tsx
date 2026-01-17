@@ -13,15 +13,14 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import {
-  Play,
   Check,
   Ban,
   PlayCircle,
   Loader2,
   Bot,
-  GitBranch,
 } from 'lucide-react';
 import type { PhaseStatus } from './PhaseItem';
+import { AgentIcon, AgentBranchIcon } from '../ui/AgentIcon';
 
 // =============================================================================
 // Types
@@ -217,9 +216,9 @@ export function ImplPhasePanel({
           ) : (
             <>
               {worktreeModeSelected ? (
-                <GitBranch data-testid="icon-git-branch" className="w-4 h-4" />
+                <AgentBranchIcon data-testid="icon-git-branch" />
               ) : (
-                <Play data-testid="icon-play" className="w-4 h-4" />
+                <AgentIcon data-testid="icon-play" />
               )}
               <span>{buttonLabel}</span>
             </>

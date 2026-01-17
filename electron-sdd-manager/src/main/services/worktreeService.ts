@@ -3,6 +3,7 @@
  * Git worktree operations wrapper for Spec-Driven Development
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 7.6, 7.7, 8.1, 8.2 (git-worktree-support)
  * Requirements: 3.1, 3.3, 3.4, 4.6 (bugs-worktree-support)
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 4.1 (worktree-spec-symlink)
  */
 
 import { exec as nodeExec } from 'child_process';
@@ -567,18 +568,25 @@ export class WorktreeService {
    * Create symlinks in worktree to preserve logs in main repository
    *
    * Creates symlinks for:
-   * - .kiro/logs/ → main repo's .kiro/logs/
-   * - .kiro/runtime/ → main repo's .kiro/runtime/
-   * - .kiro/specs/{feature}/logs/ → main repo's .kiro/specs/{feature}/logs/
+   * - .kiro/logs/ → main repo's .kiro/logs/ (preserved - Requirement 2.3)
+   * - .kiro/runtime/ → main repo's .kiro/runtime/ (preserved - Requirement 2.3)
+   * - .kiro/specs/{feature}/ → main repo's .kiro/specs/{feature}/ (new - Requirement 2.1)
+   *
+   * worktree-spec-symlink: Changed from individual logs symlink to entire spec directory
+   * - Removed: .kiro/specs/{feature}/logs/ symlink (Requirement 2.4)
+   * - Added: .kiro/specs/{feature}/ symlink (Requirement 2.1)
+   * - If worktree spec directory exists, it's deleted before creating symlink (Requirement 2.2)
    *
    * @param worktreeAbsolutePath - Absolute path to the worktree
-   * @param featureName - Feature name for spec-specific logs
+   * @param featureName - Feature name for spec directory symlink
    * @returns void on success
    */
   async createSymlinksForWorktree(
     worktreeAbsolutePath: string,
     featureName: string
   ): Promise<WorktreeServiceResult<void>> {
+    // worktree-spec-symlink: Symlink entire spec directory instead of just logs
+    // This allows Electron app to monitor tasks.md changes in real-time
     const symlinks = [
       {
         target: path.join(this.projectPath, '.kiro', 'logs'),
@@ -588,22 +596,31 @@ export class WorktreeService {
         target: path.join(this.projectPath, '.kiro', 'runtime'),
         link: path.join(worktreeAbsolutePath, '.kiro', 'runtime'),
       },
+      // worktree-spec-symlink Requirement 2.1: Create symlink for entire spec directory
+      // Replaced: .kiro/specs/{feature}/logs/ (Requirement 2.4)
       {
-        target: path.join(this.projectPath, '.kiro', 'specs', featureName, 'logs'),
-        link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName, 'logs'),
+        target: path.join(this.projectPath, '.kiro', 'specs', featureName),
+        link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName),
       },
     ];
 
     for (const { target, link } of symlinks) {
       try {
-        // Ensure target directory exists in main repo
-        await fsPromises.mkdir(target, { recursive: true });
+        // For logs and runtime directories, ensure target exists in main repo
+        // For spec directory, it should already exist (contains spec.json, requirements.md, etc.)
+        const isSpecSymlink = link.includes(path.join('.kiro', 'specs', featureName));
+        if (!isSpecSymlink) {
+          await fsPromises.mkdir(target, { recursive: true });
+        }
 
-        // Remove existing directory/file in worktree if exists
+        // worktree-spec-symlink Requirement 2.2:
+        // Remove existing directory/file in worktree if exists before creating symlink
         try {
           const stat = await fsPromises.lstat(link);
           if (stat.isDirectory() && !stat.isSymbolicLink()) {
+            // For spec directory, this removes the checkout-created directory
             await fsPromises.rm(link, { recursive: true });
+            logger.debug('[WorktreeService] Removed existing directory before symlink', { link });
           } else {
             await fsPromises.unlink(link);
           }
@@ -638,6 +655,90 @@ export class WorktreeService {
       worktreePath: worktreeAbsolutePath,
       featureName,
     });
+    return { ok: true, value: undefined };
+  }
+
+  // ============================================================
+  // worktree-spec-symlink Task 3: prepareWorktreeForMerge
+  // Prepares worktree for merge by removing symlink and resetting spec directory
+  // Requirements: 3.2, 3.3, 3.4, 4.2 (worktree-spec-symlink)
+  // ============================================================
+
+  /**
+   * Execute a git command in a specific directory (not the main project)
+   */
+  private execGitInDir(command: string, cwd: string): Promise<WorktreeServiceResult<string>> {
+    return new Promise((resolve) => {
+      this.execFn(
+        command,
+        { cwd },
+        (error, stdout, _stderr) => {
+          if (error) {
+            const message = error.message || String(error);
+            logger.error('[WorktreeService] Git command failed', { command, cwd, error: message });
+            resolve({
+              ok: false,
+              error: { type: 'GIT_ERROR', message },
+            });
+          } else {
+            resolve({ ok: true, value: stdout.trim() });
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Prepare worktree for merge by removing spec symlink and resetting spec directory
+   *
+   * This function should be called before merging worktree branch to main:
+   * 1. Deletes the spec directory symlink in worktree (Requirement 3.2)
+   * 2. Executes git reset .kiro/specs/{feature}/ in worktree (Requirement 3.3)
+   * 3. Executes git checkout .kiro/specs/{feature}/ in worktree (Requirement 3.4)
+   *
+   * After this, the worktree has no spec file changes, avoiding merge conflicts.
+   *
+   * @param featureName - Feature name
+   * @returns void on success
+   */
+  async prepareWorktreeForMerge(featureName: string): Promise<WorktreeServiceResult<void>> {
+    const { absolute: worktreePath } = this.getWorktreePath(featureName);
+    const specPath = `.kiro/specs/${featureName}`;
+    const specSymlinkPath = path.join(worktreePath, specPath);
+
+    // Step 1: Delete spec symlink (Requirement 3.2)
+    try {
+      const stat = await fsPromises.lstat(specSymlinkPath);
+      if (stat.isSymbolicLink()) {
+        await fsPromises.unlink(specSymlinkPath);
+        logger.info('[WorktreeService] Spec symlink deleted', { specSymlinkPath });
+      } else if (stat.isDirectory()) {
+        // If it's a directory (not symlink), still remove it
+        await fsPromises.rm(specSymlinkPath, { recursive: true });
+        logger.info('[WorktreeService] Spec directory deleted', { specSymlinkPath });
+      }
+    } catch {
+      // Symlink/directory doesn't exist, which is fine
+      logger.debug('[WorktreeService] Spec symlink not found (already removed or never created)', { specSymlinkPath });
+    }
+
+    // Step 2: Execute git reset on spec directory (Requirement 3.3)
+    // This unstages any changes in the spec directory
+    const resetResult = await this.execGitInDir(`git reset "${specPath}"`, worktreePath);
+    if (!resetResult.ok) {
+      return resetResult;
+    }
+    logger.info('[WorktreeService] Git reset executed on spec directory', { specPath, worktreePath });
+
+    // Step 3: Execute git checkout on spec directory (Requirement 3.4)
+    // This restores the spec directory to HEAD state
+    const checkoutResult = await this.execGitInDir(`git checkout "${specPath}"`, worktreePath);
+    if (!checkoutResult.ok) {
+      return checkoutResult;
+    }
+    logger.info('[WorktreeService] Git checkout executed on spec directory', { specPath, worktreePath });
+
+    logger.info('[WorktreeService] Worktree prepared for merge', { featureName, worktreePath });
     return { ok: true, value: undefined };
   }
 }

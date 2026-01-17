@@ -2,6 +2,7 @@
  * Worktree Impl Handlers
  * IPC handlers for impl start with automatic worktree creation
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 (git-worktree-support)
+ * Requirements: 1.1, 1.2, 1.3, 4.3 (worktree-spec-symlink)
  */
 
 import * as fs from 'fs/promises';
@@ -59,25 +60,9 @@ export async function handleImplStartWithWorktree(
     };
   }
 
-  // Check for uncommitted spec changes and commit them before creating worktree
-  // This ensures spec files are available in the worktree
-  const relativeSpecPath = path.relative(projectPath, specPath);
-  const uncommittedResult = await worktreeService.checkUncommittedSpecChanges(relativeSpecPath);
-  if (!uncommittedResult.ok) {
-    return uncommittedResult;
-  }
-
-  if (uncommittedResult.value.hasChanges) {
-    logger.info('[WorktreeImplHandlers] Uncommitted spec changes detected, committing before worktree creation', {
-      featureName,
-      files: uncommittedResult.value.files,
-    });
-
-    const commitResult = await worktreeService.commitSpecChanges(relativeSpecPath, featureName);
-    if (!commitResult.ok) {
-      return commitResult;
-    }
-  }
+  // worktree-spec-symlink: Removed automatic commit of spec changes
+  // Spec files will be shared via symlink, so commits are not needed before worktree creation
+  // (Requirements 1.1, 1.2, 1.3 - worktree-spec-symlink)
 
   // Create worktree (Requirements 1.3, 1.4)
   const createResult = await worktreeService.createWorktree(featureName);

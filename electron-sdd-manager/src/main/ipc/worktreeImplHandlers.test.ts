@@ -13,6 +13,9 @@ const mockWorktreeService = {
   createWorktree: vi.fn(),
   removeWorktree: vi.fn(),
   resolveWorktreePath: vi.fn(),
+  checkUncommittedSpecChanges: vi.fn(),
+  commitSpecChanges: vi.fn(),
+  createSymlinksForWorktree: vi.fn(),
 };
 
 // Mock fileService
@@ -80,7 +83,9 @@ describe('Worktree Impl Start Handlers', () => {
       };
 
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({ ok: true, value: worktreeInfo });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
 
       // Mock spec.json reading
       const existingSpecJson = {
@@ -113,8 +118,85 @@ describe('Worktree Impl Start Handlers', () => {
       expect(writtenJson.worktree.branch).toBe(worktreeInfo.branch);
     });
 
+    it('should commit uncommitted spec changes before creating worktree', async () => {
+      const worktreeInfo = {
+        path: '../my-project-worktrees/my-feature',
+        absolutePath: '/Users/test/my-project-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-12T12:00:00.000Z',
+      };
+
+      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({
+        ok: true,
+        value: { hasChanges: true, files: ['requirements.md', 'design.md'] },
+      });
+      mockWorktreeService.commitSpecChanges.mockResolvedValue({ ok: true, value: undefined });
+      mockWorktreeService.createWorktree.mockResolvedValue({ ok: true, value: worktreeInfo });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
+
+      const existingSpecJson = { feature_name: 'my-feature', phase: 'tasks-generated' };
+      mockReadFile.mockResolvedValue(JSON.stringify(existingSpecJson));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await handleImplStartWithWorktree(projectPath, specPath, featureName);
+
+      expect(result.ok).toBe(true);
+      // Verify commitSpecChanges was called
+      expect(mockWorktreeService.commitSpecChanges).toHaveBeenCalledWith('.kiro/specs/my-feature', featureName);
+    });
+
+    it('should not commit when no uncommitted spec changes exist', async () => {
+      const worktreeInfo = {
+        path: '../my-project-worktrees/my-feature',
+        absolutePath: '/Users/test/my-project-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-12T12:00:00.000Z',
+      };
+
+      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({
+        ok: true,
+        value: { hasChanges: false, files: [] },
+      });
+      mockWorktreeService.createWorktree.mockResolvedValue({ ok: true, value: worktreeInfo });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
+
+      const existingSpecJson = { feature_name: 'my-feature', phase: 'tasks-generated' };
+      mockReadFile.mockResolvedValue(JSON.stringify(existingSpecJson));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await handleImplStartWithWorktree(projectPath, specPath, featureName);
+
+      expect(result.ok).toBe(true);
+      // Verify commitSpecChanges was NOT called
+      expect(mockWorktreeService.commitSpecChanges).not.toHaveBeenCalled();
+    });
+
+    it('should return error when spec commit fails', async () => {
+      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({
+        ok: true,
+        value: { hasChanges: true, files: ['requirements.md'] },
+      });
+      mockWorktreeService.commitSpecChanges.mockResolvedValue({
+        ok: false,
+        error: { type: 'GIT_ERROR', message: 'commit failed' },
+      });
+
+      const result = await handleImplStartWithWorktree(projectPath, specPath, featureName);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('GIT_ERROR');
+      }
+      // Verify createWorktree was NOT called
+      expect(mockWorktreeService.createWorktree).not.toHaveBeenCalled();
+    });
+
     it('should return git error when worktree creation fails (Requirement 1.6)', async () => {
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({
         ok: false,
         error: { type: 'GIT_ERROR', message: 'Failed to create worktree' },
@@ -130,6 +212,7 @@ describe('Worktree Impl Start Handlers', () => {
 
     it('should return error when worktree already exists', async () => {
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({
         ok: false,
         error: { type: 'WORKTREE_EXISTS', path: '../my-project-worktrees/my-feature' },
@@ -145,6 +228,7 @@ describe('Worktree Impl Start Handlers', () => {
 
     it('should return error when branch already exists', async () => {
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({
         ok: false,
         error: { type: 'BRANCH_EXISTS', branch: 'feature/my-feature' },
@@ -158,8 +242,40 @@ describe('Worktree Impl Start Handlers', () => {
       }
     });
 
+    it('should continue even if symlink creation fails', async () => {
+      const worktreeInfo = {
+        path: '../my-project-worktrees/my-feature',
+        absolutePath: '/Users/test/my-project-worktrees/my-feature',
+        branch: 'feature/my-feature',
+        created_at: '2026-01-12T12:00:00.000Z',
+      };
+
+      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
+      mockWorktreeService.createWorktree.mockResolvedValue({ ok: true, value: worktreeInfo });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({
+        ok: false,
+        error: { type: 'GIT_ERROR', message: 'Permission denied' },
+      });
+
+      const existingSpecJson = { feature_name: 'my-feature', phase: 'tasks-generated' };
+      mockReadFile.mockResolvedValue(JSON.stringify(existingSpecJson));
+      mockWriteFile.mockResolvedValue(undefined);
+
+      const result = await handleImplStartWithWorktree(projectPath, specPath, featureName);
+
+      // Should succeed even though symlink creation failed
+      expect(result.ok).toBe(true);
+      // Verify symlink creation was attempted
+      expect(mockWorktreeService.createSymlinksForWorktree).toHaveBeenCalledWith(
+        worktreeInfo.absolutePath,
+        featureName
+      );
+    });
+
     it('should return error when spec.json read fails', async () => {
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({
         ok: true,
         value: {
@@ -169,6 +285,7 @@ describe('Worktree Impl Start Handlers', () => {
           created_at: '2026-01-12T12:00:00.000Z',
         },
       });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
       mockReadFile.mockRejectedValue(new Error('File not found'));
 
       // Should rollback worktree creation on spec.json read failure
@@ -186,6 +303,7 @@ describe('Worktree Impl Start Handlers', () => {
 
     it('should return error when spec.json write fails and rollback worktree', async () => {
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: { hasChanges: false, files: [] } });
       mockWorktreeService.createWorktree.mockResolvedValue({
         ok: true,
         value: {
@@ -195,6 +313,7 @@ describe('Worktree Impl Start Handlers', () => {
           created_at: '2026-01-12T12:00:00.000Z',
         },
       });
+      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
       const existingSpecJson = {
         feature_name: 'my-feature',
         phase: 'tasks-generated',

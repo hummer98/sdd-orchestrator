@@ -545,4 +545,104 @@ describe('WorktreeService', () => {
       expect(result.ok).toBe(true);
     });
   });
+
+  // ============================================================
+  // Spec commit check for worktree mode
+  // ============================================================
+  describe('checkUncommittedSpecChanges', () => {
+    it('should return hasChanges: false when no uncommitted changes', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git status --porcelain/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.checkUncommittedSpecChanges('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.hasChanges).toBe(false);
+        expect(result.value.files).toEqual([]);
+      }
+    });
+
+    it('should return hasChanges: true with list of changed files', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git status --porcelain/, stdout: ' M .kiro/specs/my-feature/requirements.md\n?? .kiro/specs/my-feature/design.md\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.checkUncommittedSpecChanges('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.hasChanges).toBe(true);
+        // git status --porcelain format: "XY filename" where XY is 2 chars status
+        // After slice(3), we get the filename
+        expect(result.value.files).toHaveLength(2);
+        expect(result.value.files[0]).toContain('requirements.md');
+        expect(result.value.files[1]).toContain('design.md');
+      }
+    });
+
+    it('should return GIT_ERROR on git command failure', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git status --porcelain/, error: new Error('not a git repository') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.checkUncommittedSpecChanges('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('GIT_ERROR');
+      }
+    });
+  });
+
+  describe('commitSpecChanges', () => {
+    it('should stage and commit spec changes successfully', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git add/, stdout: '' },
+        { pattern: /git commit -m/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.commitSpecChanges('.kiro/specs/my-feature', 'my-feature');
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should return GIT_ERROR on git add failure', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git add/, error: new Error('pathspec did not match any files') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.commitSpecChanges('.kiro/specs/my-feature', 'my-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('GIT_ERROR');
+      }
+    });
+
+    it('should return GIT_ERROR on git commit failure', async () => {
+      const mockExec = createMockExec([
+        { pattern: /git add/, stdout: '' },
+        { pattern: /git commit -m/, error: new Error('nothing to commit') },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.commitSpecChanges('.kiro/specs/my-feature', 'my-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('GIT_ERROR');
+      }
+    });
+  });
+
+  // Note: createSymlinksForWorktree tests require filesystem mocking
+  // which is better suited for integration tests. The method is tested
+  // indirectly through worktreeImplHandlers.test.ts mocks.
 });

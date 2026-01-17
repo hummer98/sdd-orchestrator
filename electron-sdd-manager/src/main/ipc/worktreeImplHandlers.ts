@@ -59,6 +59,26 @@ export async function handleImplStartWithWorktree(
     };
   }
 
+  // Check for uncommitted spec changes and commit them before creating worktree
+  // This ensures spec files are available in the worktree
+  const relativeSpecPath = path.relative(projectPath, specPath);
+  const uncommittedResult = await worktreeService.checkUncommittedSpecChanges(relativeSpecPath);
+  if (!uncommittedResult.ok) {
+    return uncommittedResult;
+  }
+
+  if (uncommittedResult.value.hasChanges) {
+    logger.info('[WorktreeImplHandlers] Uncommitted spec changes detected, committing before worktree creation', {
+      featureName,
+      files: uncommittedResult.value.files,
+    });
+
+    const commitResult = await worktreeService.commitSpecChanges(relativeSpecPath, featureName);
+    if (!commitResult.ok) {
+      return commitResult;
+    }
+  }
+
   // Create worktree (Requirements 1.3, 1.4)
   const createResult = await worktreeService.createWorktree(featureName);
   if (!createResult.ok) {
@@ -66,6 +86,20 @@ export async function handleImplStartWithWorktree(
   }
 
   const worktreeInfo = createResult.value;
+
+  // Create symlinks for logs and runtime directories
+  // This ensures agent logs are preserved in main repo after worktree deletion
+  const symlinkResult = await worktreeService.createSymlinksForWorktree(
+    worktreeInfo.absolutePath,
+    featureName
+  );
+  if (!symlinkResult.ok) {
+    // Log warning but don't fail - symlinks are nice-to-have
+    logger.warn('[WorktreeImplHandlers] Failed to create symlinks, continuing', {
+      featureName,
+      error: symlinkResult.error,
+    });
+  }
 
   // Update spec.json with worktree field (Requirement 1.5)
   const specJsonPath = path.join(specPath, 'spec.json');

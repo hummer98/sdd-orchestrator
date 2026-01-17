@@ -7,6 +7,7 @@
 
 import { exec as nodeExec } from 'child_process';
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { logger } from './logger';
 import type {
@@ -499,6 +500,144 @@ export class WorktreeService {
     }
 
     logger.info('[WorktreeService] Bug worktree removed', { bugName, absolutePath, branchName });
+    return { ok: true, value: undefined };
+  }
+
+  // ============================================================
+  // Spec commit check for worktree mode
+  // Ensures spec files are committed before creating worktree
+  // ============================================================
+
+  /**
+   * Check if there are uncommitted changes in a spec directory
+   *
+   * @param specPath - Relative path to spec directory (e.g., .kiro/specs/{feature})
+   * @returns Object with hasChanges flag and list of changed files
+   */
+  async checkUncommittedSpecChanges(specPath: string): Promise<WorktreeServiceResult<{ hasChanges: boolean; files: string[] }>> {
+    // git status --porcelain shows files with changes
+    // Filter to only spec directory
+    const result = await this.execGit(`git status --porcelain "${specPath}"`);
+    if (!result.ok) {
+      return result;
+    }
+
+    const output = result.value;
+    if (!output) {
+      return { ok: true, value: { hasChanges: false, files: [] } };
+    }
+
+    // Parse git status output: each line is "XY filename"
+    const files = output.split('\n').filter(line => line.trim()).map(line => line.slice(3));
+
+    return { ok: true, value: { hasChanges: files.length > 0, files } };
+  }
+
+  /**
+   * Commit spec changes before creating worktree
+   *
+   * @param specPath - Relative path to spec directory (e.g., .kiro/specs/{feature})
+   * @param featureName - Feature name for commit message
+   * @returns void on success
+   */
+  async commitSpecChanges(specPath: string, featureName: string): Promise<WorktreeServiceResult<void>> {
+    // Stage all changes in spec directory
+    const addResult = await this.execGit(`git add "${specPath}"`);
+    if (!addResult.ok) {
+      return addResult;
+    }
+
+    // Commit with descriptive message
+    const commitMessage = `docs(spec): add spec for ${featureName}`;
+    const commitResult = await this.execGit(`git commit -m "${commitMessage}"`);
+    if (!commitResult.ok) {
+      return commitResult;
+    }
+
+    logger.info('[WorktreeService] Spec changes committed', { specPath, featureName });
+    return { ok: true, value: undefined };
+  }
+
+  // ============================================================
+  // Symlink creation for worktree mode
+  // Creates symlinks for logs and runtime directories
+  // ============================================================
+
+  /**
+   * Create symlinks in worktree to preserve logs in main repository
+   *
+   * Creates symlinks for:
+   * - .kiro/logs/ → main repo's .kiro/logs/
+   * - .kiro/runtime/ → main repo's .kiro/runtime/
+   * - .kiro/specs/{feature}/logs/ → main repo's .kiro/specs/{feature}/logs/
+   *
+   * @param worktreeAbsolutePath - Absolute path to the worktree
+   * @param featureName - Feature name for spec-specific logs
+   * @returns void on success
+   */
+  async createSymlinksForWorktree(
+    worktreeAbsolutePath: string,
+    featureName: string
+  ): Promise<WorktreeServiceResult<void>> {
+    const symlinks = [
+      {
+        target: path.join(this.projectPath, '.kiro', 'logs'),
+        link: path.join(worktreeAbsolutePath, '.kiro', 'logs'),
+      },
+      {
+        target: path.join(this.projectPath, '.kiro', 'runtime'),
+        link: path.join(worktreeAbsolutePath, '.kiro', 'runtime'),
+      },
+      {
+        target: path.join(this.projectPath, '.kiro', 'specs', featureName, 'logs'),
+        link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName, 'logs'),
+      },
+    ];
+
+    for (const { target, link } of symlinks) {
+      try {
+        // Ensure target directory exists in main repo
+        await fsPromises.mkdir(target, { recursive: true });
+
+        // Remove existing directory/file in worktree if exists
+        try {
+          const stat = await fsPromises.lstat(link);
+          if (stat.isDirectory() && !stat.isSymbolicLink()) {
+            await fsPromises.rm(link, { recursive: true });
+          } else {
+            await fsPromises.unlink(link);
+          }
+        } catch {
+          // Link doesn't exist, which is fine
+        }
+
+        // Ensure parent directory exists in worktree
+        await fsPromises.mkdir(path.dirname(link), { recursive: true });
+
+        // Create symlink
+        await fsPromises.symlink(target, link);
+
+        logger.debug('[WorktreeService] Symlink created', { target, link });
+      } catch (error) {
+        logger.error('[WorktreeService] Failed to create symlink', {
+          target,
+          link,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return {
+          ok: false,
+          error: {
+            type: 'GIT_ERROR',
+            message: `Failed to create symlink: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        };
+      }
+    }
+
+    logger.info('[WorktreeService] Symlinks created for worktree', {
+      worktreePath: worktreeAbsolutePath,
+      featureName,
+    });
     return { ok: true, value: undefined };
   }
 }

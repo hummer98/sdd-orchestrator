@@ -9,6 +9,7 @@ argument-hint: <feature-name>
 <background_information>
 - **Mission**: Merge the worktree branch to main branch and cleanup the worktree
 - **Success Criteria**:
+  - Spec symlink removed and git reset/checkout executed (worktree-spec-symlink)
   - Feature branch successfully merged to main (squash merge)
   - Worktree directory removed
   - spec.json worktree field removed
@@ -37,6 +38,73 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
 5. Verify current branch is main or master
    - Run `git branch --show-current`
    - If not main/master, error: "spec-merge must be run from the main branch"
+
+### Step 1.5: Prepare Worktree for Merge (worktree-spec-symlink)
+Before merging, prepare the worktree to avoid conflicts with spec files.
+
+#### 1.5.1: Resolve Worktree Path
+First, resolve the worktree absolute path from the relative path in spec.json:
+```bash
+# Get project root
+PROJECT_ROOT=$(pwd)
+# Resolve relative path to absolute
+WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+```
+
+#### 1.5.2: Delete Spec Directory Symlink
+Remove the spec directory symlink in worktree:
+```bash
+# Remove the symlink (not the actual files in main repo)
+rm -f "${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1"
+```
+- If it's a symlink, this removes just the link
+- If removal fails, log warning but continue
+
+#### 1.5.3: Execute Git Reset on Spec Directory
+Unstage any changes in the spec directory:
+```bash
+cd "${WORKTREE_ABSOLUTE_PATH}" && git reset ".kiro/specs/$1"
+```
+- Execute unconditionally (per design decision DD-003)
+- This command succeeds even if there are no staged changes
+
+#### 1.5.4: Execute Git Checkout on Spec Directory
+Restore the spec directory to HEAD state:
+```bash
+cd "${WORKTREE_ABSOLUTE_PATH}" && git checkout ".kiro/specs/$1"
+```
+- After this, the worktree has no spec file changes
+- The spec files in worktree now match the committed state in the feature branch
+
+**Note**: This step ensures the worktree's spec directory is restored from git, avoiding merge conflicts since spec changes are in main repo only (via symlink during implementation).
+
+### Step 1.6: Commit Pending Changes in Worktree
+Before merging, ensure all implementation changes in worktree are committed.
+
+#### 1.6.1: Check for Uncommitted Changes
+```bash
+cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
+```
+
+#### 1.6.2: Commit All Changes (if any)
+**IF** output is not empty (uncommitted changes exist):
+1. Stage all changes:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add .
+   ```
+2. Commit with message:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git commit -m "feat($1): implementation complete"
+   ```
+3. Log: "Worktree内の未コミット変更をコミットしました"
+
+**ELSE** (no uncommitted changes):
+- Log: "Worktree内に未コミット変更はありません"
+
+#### 1.6.3: Return to Main Project
+```bash
+cd "$PROJECT_ROOT"
+```
 
 ### Step 2: Perform Merge
 1. Ensure working directory is clean:

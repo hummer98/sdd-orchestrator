@@ -397,14 +397,15 @@ describe('SpecManagerService', () => {
   });
 
   // コマンド構築テスト: --output-format stream-json の確認
-  describe('executePhase', () => {
+  // execute-method-unification: Updated to use unified execute method
+  describe('execute', () => {
     it('should build command with --output-format stream-json', async () => {
       // startAgentをスパイして引数を確認
       const startAgentSpy = vi.spyOn(service, 'startAgent');
 
-      await service.executePhase({
+      await service.execute({
+        type: 'requirements',
         specId: 'test-spec',
-        phase: 'requirements',
         featureName: 'my-feature',
       });
 
@@ -421,9 +422,9 @@ describe('SpecManagerService', () => {
     it('should include correct slash command in args', async () => {
       const startAgentSpy = vi.spyOn(service, 'startAgent');
 
-      await service.executePhase({
+      await service.execute({
+        type: 'design',
         specId: 'test-spec',
-        phase: 'design',
         featureName: 'my-feature',
       });
 
@@ -440,14 +441,15 @@ describe('SpecManagerService', () => {
   // ============================================================
   // Task 10.1: PHASE_COMMANDS_BY_PREFIX inspection phase tests
   // Requirements: 13.1, 13.2, 13.3, 13.4
+  // execute-method-unification: Updated to use unified execute method
   // ============================================================
-  describe('executePhase - inspection phase', () => {
+  describe('execute - inspection phase', () => {
     it('should use /kiro:spec-inspection for inspection phase with kiro prefix', async () => {
       const startAgentSpy = vi.spyOn(service, 'startAgent');
 
-      await service.executePhase({
+      await service.execute({
+        type: 'inspection',
         specId: 'test-spec',
-        phase: 'inspection',
         featureName: 'my-feature',
         commandPrefix: 'kiro',
       });
@@ -464,9 +466,9 @@ describe('SpecManagerService', () => {
     it('should use /spec-manager:inspection for inspection phase with spec-manager prefix', async () => {
       const startAgentSpy = vi.spyOn(service, 'startAgent');
 
-      await service.executePhase({
+      await service.execute({
+        type: 'inspection',
         specId: 'test-spec',
-        phase: 'inspection',
         featureName: 'my-feature',
         commandPrefix: 'spec-manager',
       });
@@ -483,9 +485,9 @@ describe('SpecManagerService', () => {
     it('should default to kiro prefix and use /kiro:spec-inspection', async () => {
       const startAgentSpy = vi.spyOn(service, 'startAgent');
 
-      await service.executePhase({
+      await service.execute({
+        type: 'inspection',
         specId: 'test-spec',
-        phase: 'inspection',
         featureName: 'my-feature',
         // No commandPrefix specified - should default to 'kiro'
       });
@@ -1290,5 +1292,399 @@ describe('executeDocumentReview - multi-engine support', () => {
     );
 
     startAgentSpy.mockRestore();
+  });
+
+  // ============================================================
+  // execute-method-unification: Task 2.1
+  // Unified execute method tests
+  // Requirements: 2.1, 2.2, 2.3, 2.5
+  // ============================================================
+  describe('execute - unified method', () => {
+    it('should execute requirements phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'requirements',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'requirements',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:spec-requirements my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute design phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'design',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'design',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:spec-design my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute tasks phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'tasks',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'tasks',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:spec-tasks my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute impl phase with taskId', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'impl',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        taskId: '1.1',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'impl-1.1',
+          group: 'impl',
+          args: expect.arrayContaining(['/kiro:spec-impl my-feature 1.1']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute impl phase without taskId (all pending tasks)', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'impl',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        // No taskId - execute all pending tasks
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'impl',
+          group: 'impl',
+          args: expect.arrayContaining(['/kiro:spec-impl my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute deploy phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'deploy',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'deploy',
+          group: 'doc',
+          args: expect.arrayContaining(['/commit my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute inspection phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'inspection',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'inspection',
+          group: 'impl',
+          args: expect.arrayContaining(['/kiro:spec-inspection my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute inspection-fix phase with roundNumber', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'inspection-fix',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        roundNumber: 1,
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'inspection-fix',
+          group: 'impl',
+          args: expect.arrayContaining(['/kiro:spec-inspection my-feature --fix']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute document-review phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'document-review',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'document-review',
+          group: 'doc',
+          command: 'claude',
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute document-review-reply phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'document-review-reply',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        reviewNumber: 2,
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:document-review-reply my-feature 2']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute document-review-reply with autofix flag', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'document-review-reply',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        reviewNumber: 1,
+        autofix: true,
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'document-review-reply',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:document-review-reply my-feature 1 --autofix']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute document-review-fix phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'document-review-fix',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        reviewNumber: 1,
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'document-review-fix',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:document-review-reply my-feature 1 --fix']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should execute spec-merge phase', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'spec-merge',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'spec-merge',
+          group: 'doc',
+          args: expect.arrayContaining(['/kiro:spec-merge my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should respect commandPrefix option', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'requirements',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        commandPrefix: 'spec-manager',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['/spec-manager:requirements my-feature']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should use gemini-cli for document-review with gemini scheme', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'document-review',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        scheme: 'gemini-cli',
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'test-spec',
+          phase: 'document-review',
+          command: 'gemini',
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
+  // ============================================================
+  // execute-method-unification: Task 3.1
+  // worktreeCwd auto-resolution in startAgent
+  // Requirements: 3.1, 3.2, 3.3, 3.4
+  // ============================================================
+  describe('startAgent - worktreeCwd auto-resolution', () => {
+    it('should auto-resolve worktreeCwd for impl group when not provided', async () => {
+      // Setup: Create spec.json with worktree configuration
+      const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+      await fs.mkdir(specDir, { recursive: true });
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
+        feature_name: 'test-spec',
+        worktree: {
+          branch: 'feature/test',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      }));
+
+      // Create worktree directory
+      const worktreeDir = path.join(testDir, '.git', 'worktrees', 'test-spec');
+      await fs.mkdir(worktreeDir, { recursive: true });
+      await fs.writeFile(path.join(worktreeDir, 'gitdir'), path.join(testDir, '.kiro', 'worktrees', 'test-spec', '.git'));
+
+      // Create expected worktree cwd
+      const expectedWorktreeCwd = path.join(testDir, '.kiro', 'worktrees', 'test-spec');
+      await fs.mkdir(expectedWorktreeCwd, { recursive: true });
+
+      const result = await service.startAgent({
+        specId: 'test-spec',
+        phase: 'impl-1.1',
+        command: 'echo',
+        args: ['test'],
+        group: 'impl',
+        // No worktreeCwd provided - should be auto-resolved
+      });
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should skip worktreeCwd resolution for doc group', async () => {
+      const result = await service.startAgent({
+        specId: 'test-spec',
+        phase: 'requirements',
+        command: 'echo',
+        args: ['test'],
+        group: 'doc',
+        // No worktreeCwd provided - should not auto-resolve for doc group
+      });
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should prefer explicitly provided worktreeCwd', async () => {
+      const explicitCwd = '/explicit/worktree/path';
+      const result = await service.startAgent({
+        specId: 'test-spec',
+        phase: 'impl-1.1',
+        command: 'echo',
+        args: ['test'],
+        group: 'impl',
+        worktreeCwd: explicitCwd,
+      });
+
+      expect(result.ok).toBe(true);
+    });
   });
 });

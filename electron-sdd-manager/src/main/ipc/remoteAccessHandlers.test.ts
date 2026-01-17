@@ -489,8 +489,9 @@ describe('WorkflowController Integration (Task 8.3)', () => {
     it('should create a WorkflowController with executePhase', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: executePhase now delegates to execute internally
       const mockSpecManagerService = {
-        executePhase: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-123' } }),
+        execute: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-123' } }),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
       };
@@ -499,9 +500,9 @@ describe('WorkflowController Integration (Task 8.3)', () => {
 
       const result = await controller.executePhase('spec-1', 'requirements');
 
-      expect(mockSpecManagerService.executePhase).toHaveBeenCalledWith({
+      expect(mockSpecManagerService.execute).toHaveBeenCalledWith({
+        type: 'requirements',
         specId: 'spec-1',
-        phase: 'requirements',
         featureName: 'spec-1',
       });
       expect(result.ok).toBe(true);
@@ -511,7 +512,7 @@ describe('WorkflowController Integration (Task 8.3)', () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
         resumeAgent: vi.fn(),
       };
@@ -528,7 +529,7 @@ describe('WorkflowController Integration (Task 8.3)', () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-123' } }),
       };
@@ -544,8 +545,9 @@ describe('WorkflowController Integration (Task 8.3)', () => {
     it('should handle executePhase errors', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: executePhase now delegates to execute internally
       const mockSpecManagerService = {
-        executePhase: vi.fn().mockResolvedValue({
+        execute: vi.fn().mockResolvedValue({
           ok: false,
           error: { type: 'SPAWN_ERROR', message: 'Failed to spawn agent' },
         }),
@@ -577,8 +579,9 @@ describe('WorkflowController Integration (Task 8.3)', () => {
       // Mock getWebSocketHandler to return our mock
       (server as any).getWebSocketHandler = vi.fn().mockReturnValue(mockWsHandler);
 
+      // execute-method-unification: Mock now needs execute method
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
       };
@@ -588,6 +591,7 @@ describe('WorkflowController Integration (Task 8.3)', () => {
       expect(mockWsHandler.setWorkflowController).toHaveBeenCalledWith(
         expect.objectContaining({
           executePhase: expect.any(Function),
+          execute: expect.any(Function),
           stopAgent: expect.any(Function),
           resumeAgent: expect.any(Function),
         })
@@ -610,11 +614,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should execute bug analyze phase successfully', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-123' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -636,11 +642,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should execute bug fix phase successfully', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-456' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -657,11 +665,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should execute bug verify phase successfully', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-789' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -678,14 +688,16 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should handle executeBugPhase errors', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({
           ok: false,
           error: { type: 'SPAWN_ERROR', message: 'Failed to spawn bug agent' },
         }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -701,11 +713,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should pass allowedTools for bug-analyze phase', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-123' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -729,11 +743,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should pass allowedTools for bug-fix phase', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-456' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -748,11 +764,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
     it('should pass allowedTools for bug-verify phase', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: Mock needs execute and getProjectPath
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn(),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-bug-789' } }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -781,12 +799,12 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
     it('should execute document review successfully', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: executeDocumentReview now delegates to execute
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
+        execute: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
         stopAgent: vi.fn(),
         resumeAgent: vi.fn(),
         startAgent: vi.fn(),
-                executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-review-123' } }),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);
@@ -795,7 +813,8 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
 
       const result = await controller.executeDocumentReview!('my-spec');
 
-      expect(mockSpecManagerService.executeDocumentReview).toHaveBeenCalledWith({
+      expect(mockSpecManagerService.execute).toHaveBeenCalledWith({
+        type: 'document-review',
         specId: 'my-spec',
         featureName: 'my-spec',
       });
@@ -808,15 +827,15 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
     it('should handle executeDocumentReview errors', async () => {
       const { createWorkflowController } = await import('./remoteAccessHandlers');
 
+      // execute-method-unification: executeDocumentReview now delegates to execute
       const mockSpecManagerService = {
-        executePhase: vi.fn(),
-        stopAgent: vi.fn(),
-        resumeAgent: vi.fn(),
-        startAgent: vi.fn(),
-                executeDocumentReview: vi.fn().mockResolvedValue({
+        execute: vi.fn().mockResolvedValue({
           ok: false,
           error: { type: 'SPAWN_ERROR', message: 'Failed to spawn review agent' },
         }),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
       };
 
       const controller = createWorkflowController(mockSpecManagerService as any);

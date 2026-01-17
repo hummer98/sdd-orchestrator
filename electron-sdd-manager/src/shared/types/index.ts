@@ -10,3 +10,6 @@ export * from './review';
 
 // Execution types
 export * from './execution';
+
+// Execute options types (execute-method-unification feature)
+export * from './executeOptions';

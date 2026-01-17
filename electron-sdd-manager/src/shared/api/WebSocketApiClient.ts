@@ -26,6 +26,7 @@ import type {
   BugAction,
   BugAutoExecutionState,
 } from './types';
+import type { ExecuteOptions } from '../types/executeOptions';
 
 // =============================================================================
 // WebSocket Message Types
@@ -377,6 +378,14 @@ export class WebSocketApiClient implements ApiClient {
 
   async executePhase(specId: string, phase: WorkflowPhase): Promise<Result<AgentInfo, ApiError>> {
     return this.wrapRequest<AgentInfo>('EXECUTE_PHASE', { specId, phase });
+  }
+
+  /**
+   * Unified execute method with ExecuteOptions
+   * execute-method-unification: Task 6.2
+   */
+  async execute(options: ExecuteOptions): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('EXECUTE', { options });
   }
 
   async updateApproval(

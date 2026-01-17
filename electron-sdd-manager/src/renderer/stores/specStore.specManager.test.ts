@@ -149,8 +149,8 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
     });
 
     describe('executeSpecManagerGeneration action', () => {
-      it('should call executePhase IPC', async () => {
-        window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
+      it('should call execute IPC with unified API', async () => {
+        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
 
         await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -160,15 +160,15 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
           'manual'
         );
 
-        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
-          'test-spec',
-          'requirements',
-          'test-feature'
-        );
+        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+          type: 'requirements',
+          specId: 'test-spec',
+          featureName: 'test-feature',
+        });
       });
 
       it('should handle impl phase with taskId', async () => {
-        window.electronAPI.executeTaskImpl = vi.fn().mockResolvedValue(undefined);
+        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
 
         await useSpecStore.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -178,11 +178,12 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
           'manual'
         );
 
-        expect(window.electronAPI.executeTaskImpl).toHaveBeenCalledWith(
-          'test-spec',
-          'test-feature',
-          '1.1'
-        );
+        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+          type: 'impl',
+          specId: 'test-spec',
+          featureName: 'test-feature',
+          taskId: '1.1',
+        });
       });
     });
 

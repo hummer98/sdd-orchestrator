@@ -931,10 +931,14 @@ export function registerIpcHandlers(): void {
   // Phase Execution Handlers (high-level commands)
   // These build the claude command internally in the service layer
 
+  // ============================================================
+  // execute-method-unification: Task 4.2 - Unified EXECUTE handler
+  // Requirements: 4.2
+  // ============================================================
   ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_PHASE,
-    async (event, specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_PHASE called', { specId, phase, featureName, commandPrefix });
+    IPC_CHANNELS.EXECUTE,
+    async (event, options: import('../../shared/types/executeOptions').ExecuteOptions) => {
+      logger.info('[handlers] EXECUTE called', { type: options.type, specId: options.specId, featureName: options.featureName });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -943,40 +947,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executePhase({ specId, phase, featureName, commandPrefix });
+      const result = await service.execute(options);
 
       if (!result.ok) {
-        logger.error('[handlers] executePhase failed', { error: result.error });
+        logger.error('[handlers] execute failed', { type: options.type, error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executePhase succeeded', { agentId: result.value.agentId });
-      return result.value;
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_TASK_IMPL,
-    async (event, specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_TASK_IMPL called', { specId, featureName, taskId, commandPrefix });
-      const service = getSpecManagerService();
-      const window = BrowserWindow.fromWebContents(event.sender);
-
-      // Ensure event callbacks are registered
-      if (window && !eventCallbacksRegistered) {
-        registerEventCallbacks(service, window);
-      }
-
-      const result = await service.executeTaskImpl({ specId, featureName, taskId, commandPrefix });
-
-      if (!result.ok) {
-        logger.error('[handlers] executeTaskImpl failed', { error: result.error });
-        const errorMessage = getErrorMessage(result.error);
-        throw new Error(errorMessage);
-      }
-
-      logger.info('[handlers] executeTaskImpl succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { type: options.type, agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1375,10 +1354,11 @@ export function registerIpcHandlers(): void {
   // Document Review Execution Handlers (Requirements: 6.1 - Document Review Workflow)
   // ============================================================
 
+  // execute-method-unification: Delegate to unified execute method
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW called', { specId, featureName, commandPrefix });
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW called (delegating to execute)', { specId, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1387,15 +1367,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeDocumentReview({ specId, featureName, commandPrefix });
+      const result = await service.execute({ type: 'document-review', specId, featureName, commandPrefix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeDocumentReview failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeDocumentReview succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1403,7 +1383,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY,
     async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager', autofix?: boolean) => {
-      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_REPLY called', { specId, featureName, reviewNumber, commandPrefix, autofix });
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_REPLY called (delegating to execute)', { specId, featureName, reviewNumber, commandPrefix, autofix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1412,15 +1392,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeDocumentReviewReply({ specId, featureName, reviewNumber, commandPrefix, autofix });
+      const result = await service.execute({ type: 'document-review-reply', specId, featureName, reviewNumber, commandPrefix, autofix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeDocumentReviewReply failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeDocumentReviewReply succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1428,7 +1408,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_FIX,
     async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_FIX called', { specId, featureName, reviewNumber, commandPrefix });
+      logger.info('[handlers] EXECUTE_DOCUMENT_REVIEW_FIX called (delegating to execute)', { specId, featureName, reviewNumber, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1437,15 +1417,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeDocumentReviewFix({ specId, featureName, reviewNumber, commandPrefix });
+      const result = await service.execute({ type: 'document-review-fix', specId, featureName, reviewNumber, commandPrefix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeDocumentReviewFix failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeDocumentReviewFix succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1821,10 +1801,11 @@ export function registerIpcHandlers(): void {
   // Requirements: 4.2, 4.3, 4.5
   // ============================================================
 
+  // execute-method-unification: Delegate to unified execute method
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_INSPECTION,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_INSPECTION called', { specId, featureName, commandPrefix });
+      logger.info('[handlers] EXECUTE_INSPECTION called (delegating to execute)', { specId, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1833,15 +1814,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeInspection({ specId, featureName, commandPrefix });
+      const result = await service.execute({ type: 'inspection', specId, featureName, commandPrefix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeInspection failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeInspection succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1849,7 +1830,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_INSPECTION_FIX,
     async (event, specId: string, featureName: string, roundNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_INSPECTION_FIX called', { specId, featureName, roundNumber, commandPrefix });
+      logger.info('[handlers] EXECUTE_INSPECTION_FIX called (delegating to execute)', { specId, featureName, roundNumber, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1858,15 +1839,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeInspectionFix({ specId, featureName, roundNumber, commandPrefix });
+      const result = await service.execute({ type: 'inspection-fix', specId, featureName, roundNumber, commandPrefix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeInspectionFix failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeInspectionFix succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1886,10 +1867,11 @@ export function registerIpcHandlers(): void {
   // Requirements: 5.1, 5.2
   // ============================================================
 
+  // execute-method-unification: Delegate to unified execute method
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_SPEC_MERGE,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
-      logger.info('[handlers] EXECUTE_SPEC_MERGE called', { specId, featureName, commandPrefix });
+      logger.info('[handlers] EXECUTE_SPEC_MERGE called (delegating to execute)', { specId, featureName, commandPrefix });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1898,15 +1880,15 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.executeSpecMerge({ specId, featureName, commandPrefix });
+      const result = await service.execute({ type: 'spec-merge', specId, featureName, commandPrefix });
 
       if (!result.ok) {
-        logger.error('[handlers] executeSpecMerge failed', { error: result.error });
+        logger.error('[handlers] execute failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeSpecMerge succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] execute succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
@@ -1982,13 +1964,13 @@ export function registerIpcHandlers(): void {
       // Set current phase in coordinator before execution
       coordinator.setCurrentPhase(specPath, phase);
 
-      // Execute the phase
-      const result = await service.executePhase({
+      // Execute the phase (execute-method-unification: using unified execute)
+      const result = await service.execute({
+        type: phase,
         specId: context.specId,
-        phase,
         featureName: context.featureName,
         commandPrefix: 'kiro', // Use kiro prefix by default for auto-execution
-      });
+      } as import('../../shared/types/executeOptions').ExecuteOptions);
 
       if (result.ok) {
         const agentId = result.value.agentId;
@@ -2072,8 +2054,9 @@ export function registerIpcHandlers(): void {
         // Continue with default scheme (claude-code)
       }
 
-      // Execute document-review with scheme
-      const reviewResult = await service.executeDocumentReview({
+      // Execute document-review with scheme (execute-method-unification: using unified execute)
+      const reviewResult = await service.execute({
+        type: 'document-review',
         specId: context.specId,
         featureName: context.specId,
         commandPrefix: 'kiro',
@@ -2139,7 +2122,9 @@ async function executeDocumentReviewReply(
 
     logger.info('[handlers] executeDocumentReviewReply: starting', { specPath, currentRound, maxRounds: MAX_DOCUMENT_REVIEW_ROUNDS });
 
-    const replyResult = await service.executeDocumentReviewReply({
+    // execute-method-unification: using unified execute
+    const replyResult = await service.execute({
+      type: 'document-review-reply',
       specId,
       featureName: specId,
       reviewNumber: currentRound,

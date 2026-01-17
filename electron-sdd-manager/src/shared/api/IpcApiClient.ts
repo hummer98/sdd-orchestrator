@@ -132,7 +132,12 @@ export class IpcApiClient implements ApiClient {
   async executePhase(specId: string, phase: WorkflowPhase): Promise<Result<AgentInfo, ApiError>> {
     checkElectronAPI();
     return wrapResult(async () => {
-      const result = await window.electronAPI.executePhase(specId, phase, specId);
+      // Use unified execute API
+      const result = await window.electronAPI.execute({
+        type: phase,
+        specId,
+        featureName: specId,
+      });
       return {
         id: result.agentId,
         specId: result.specId,

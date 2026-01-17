@@ -104,9 +104,10 @@ describe('WorkflowView Integration', () => {
   // ============================================================
   // Task 8.1: Phase execution command IPC
   // Requirements: 3.1, 11.1
+  // execute-method-unification: Updated to use unified execute API
   // ============================================================
   describe('Task 8.1: Phase execution command IPC', () => {
-    it('should call executePhase with correct args for requirements phase', async () => {
+    it('should call execute with correct args for requirements phase', async () => {
       const mockAgent = {
         agentId: 'agent-1',
         specId: 'test-feature',
@@ -118,8 +119,8 @@ describe('WorkflowView Integration', () => {
         lastActivityAt: new Date().toISOString(),
         command: 'claude',
       };
-      const mockExecutePhase = vi.fn().mockResolvedValue(mockAgent);
-      window.electronAPI.executePhase = mockExecutePhase;
+      const mockExecute = vi.fn().mockResolvedValue(mockAgent);
+      window.electronAPI.execute = mockExecute;
 
       render(<WorkflowView />);
 
@@ -138,12 +139,12 @@ describe('WorkflowView Integration', () => {
       }
 
       await waitFor(() => {
-        expect(mockExecutePhase).toHaveBeenCalledWith(
-          'test-feature',
-          'requirements',
-          'test-feature',
-          'kiro'
-        );
+        expect(mockExecute).toHaveBeenCalledWith({
+          type: 'requirements',
+          specId: 'test-feature',
+          featureName: 'test-feature',
+          commandPrefix: 'kiro',
+        });
       });
     });
   });
@@ -152,9 +153,10 @@ describe('WorkflowView Integration', () => {
   // Task 8.2: Command result reception and state update
   // Requirements: 11.2, 11.3
   // Note: File as SSOT - agent store is updated via file watcher events
+  // execute-method-unification: Updated to use unified execute API
   // ============================================================
   describe('Task 8.2: Command result reception', () => {
-    it('should call executePhase IPC and update store via file watcher', async () => {
+    it('should call execute IPC and update store via file watcher', async () => {
       const mockAgent = {
         agentId: 'agent-1',
         specId: 'test-feature',
@@ -166,7 +168,7 @@ describe('WorkflowView Integration', () => {
         lastActivityAt: new Date().toISOString(),
         command: 'claude',
       };
-      window.electronAPI.executePhase = vi.fn().mockResolvedValue(mockAgent);
+      window.electronAPI.execute = vi.fn().mockResolvedValue(mockAgent);
 
       render(<WorkflowView />);
 
@@ -180,14 +182,14 @@ describe('WorkflowView Integration', () => {
         fireEvent.click(executeButton);
       }
 
-      // Verify executePhase was called
+      // Verify execute was called
       await waitFor(() => {
-        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
-          'test-feature',
-          'requirements',
-          'test-feature',
-          'kiro'
-        );
+        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+          type: 'requirements',
+          specId: 'test-feature',
+          featureName: 'test-feature',
+          commandPrefix: 'kiro',
+        });
       });
 
       // Simulate file watcher updating the store (File as SSOT architecture)
@@ -204,11 +206,12 @@ describe('WorkflowView Integration', () => {
   // ============================================================
   // Task 8.3: Error handling and retry
   // Requirements: 6.5, 11.4
+  // execute-method-unification: Updated to use unified execute API
   // ============================================================
   describe('Task 8.3: Error handling', () => {
     it('should handle agent start failure', async () => {
-      const mockExecutePhase = vi.fn().mockRejectedValue(new Error('Spawn failed'));
-      window.electronAPI.executePhase = mockExecutePhase;
+      const mockExecute = vi.fn().mockRejectedValue(new Error('Spawn failed'));
+      window.electronAPI.execute = mockExecute;
 
       render(<WorkflowView />);
 
@@ -225,7 +228,7 @@ describe('WorkflowView Integration', () => {
       // Error is shown via notification, not stored in agentStore
       // Just verify the API was called
       await waitFor(() => {
-        expect(mockExecutePhase).toHaveBeenCalled();
+        expect(mockExecute).toHaveBeenCalled();
       });
     });
   });

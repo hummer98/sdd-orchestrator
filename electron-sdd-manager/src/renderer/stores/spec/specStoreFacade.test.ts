@@ -217,9 +217,10 @@ describe('useSpecStoreFacade', () => {
     });
 
     // execution-store-consolidation: SpecManagerExecutionStore actions (Req 4.2-4.6)
+    // execute-method-unification: Updated to use new execute API
     describe('SpecManagerExecution actions (derived from agentStore)', () => {
       it('should call IPC for executeSpecManagerGeneration', async () => {
-        window.electronAPI.executePhase = vi.fn().mockResolvedValue(undefined);
+        window.electronAPI.execute = vi.fn().mockResolvedValue(undefined);
 
         await useSpecStoreFacade.getState().executeSpecManagerGeneration(
           'test-spec',
@@ -229,11 +230,11 @@ describe('useSpecStoreFacade', () => {
           'manual'
         );
 
-        expect(window.electronAPI.executePhase).toHaveBeenCalledWith(
-          'test-spec',
-          'design',
-          'test-feature'
-        );
+        expect(window.electronAPI.execute).toHaveBeenCalledWith({
+          type: 'design',
+          specId: 'test-spec',
+          featureName: 'test-feature',
+        });
       });
 
       // execution-store-consolidation: handleCheckImplResult REMOVED (Req 6.4)

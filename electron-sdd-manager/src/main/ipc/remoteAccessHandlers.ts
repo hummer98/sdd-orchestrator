@@ -13,11 +13,12 @@ import { setMenuRemoteServerStatus } from '../menu';
 import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig } from '../services/webSocketHandler';
 import { getDefaultLogFileService } from '../services/logFileService';
 import { projectConfigService } from '../services/layoutConfigService';
-import type { SpecManagerService, WorkflowPhase } from '../services/specManagerService';
+import type { SpecManagerService } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
 import { getClaudeCommand } from '../services/agentProcess';
 import { BugService } from '../services/bugService';
 import { join } from 'path';
+import type { ExecuteOptions } from '../../shared/types/executeOptions';
 
 // Singleton instance of RemoteAccessServer
 let remoteAccessServer: RemoteAccessServer | null = null;
@@ -114,12 +115,35 @@ export function createWorkflowController(
   specManagerService: SpecManagerService
 ): WorkflowController {
   return {
+    // execute-method-unification: Legacy executePhase now delegates to unified execute
     executePhase: async (specId: string, phase: string): Promise<WorkflowResult<AgentInfo>> => {
-      const result = await specManagerService.executePhase({
+      const result = await specManagerService.execute({
+        type: phase as ExecuteOptions['type'],
         specId,
-        phase: phase as WorkflowPhase,
         featureName: specId,
-      });
+      } as ExecuteOptions);
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    // execute-method-unification: Unified execute method with ExecuteOptions
+    execute: async (options: ExecuteOptions): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.execute(options);
 
       if (result.ok) {
         return {
@@ -230,11 +254,13 @@ export function createWorkflowController(
     /**
      * Execute document review
      * Requirements: 6.4, 6.7 (internal-webserver-sync Task 2.3)
+     * execute-method-unification: Delegate to unified execute
      *
      * @param specId - Specification identifier
      */
     executeDocumentReview: async (specId: string): Promise<WorkflowResult<AgentInfo>> => {
-      const result = await specManagerService.executeDocumentReview({
+      const result = await specManagerService.execute({
+        type: 'document-review',
         specId,
         featureName: specId,
       });

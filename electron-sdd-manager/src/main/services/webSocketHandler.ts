@@ -9,6 +9,7 @@ import { IncomingMessage } from 'http';
 import { isPrivateIP } from '../utils/ipValidator';
 import { RateLimiter, defaultRateLimiter } from '../utils/rateLimiter';
 import { LogBuffer, defaultLogBuffer } from './logBuffer';
+import type { ExecuteOptions } from '../../shared/types/executeOptions';
 
 /**
  * WebSocket message structure for communication
@@ -202,10 +203,13 @@ export interface BugAutoExecutionErrorWS {
 /**
  * Workflow controller interface for executing workflow operations
  * Requirements: 6.2, 6.3, 6.4 (internal-webserver-sync Tasks 2.1, 2.2, 2.3)
+ * execute-method-unification: Task 6.1 - Added unified execute method
  */
 export interface WorkflowController {
-  /** Execute a workflow phase */
+  /** Execute a workflow phase (legacy - use execute for new code) */
   executePhase(specId: string, phase: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Unified execute method with ExecuteOptions */
+  execute?(options: ExecuteOptions): Promise<WorkflowResult<AgentInfo>>;
   /** Stop a running agent */
   stopAgent(agentId: string): Promise<WorkflowResult<void>>;
   /** Resume a stopped agent */
@@ -594,6 +598,10 @@ export class WebSocketHandler {
         break;
       case 'EXECUTE_PHASE':
         await this.handleExecutePhase(client, message);
+        break;
+      // execute-method-unification: Task 6.1 - Unified execute handler
+      case 'EXECUTE':
+        await this.handleExecute(client, message);
         break;
       case 'STOP_WORKFLOW':
         await this.handleStopWorkflow(client, message);
@@ -1051,6 +1059,70 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Phase execution failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle EXECUTE message (unified execute API)
+   * execute-method-unification: Task 6.1
+   */
+  private async handleExecute(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.execute) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Unified execute not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const options = payload.options as ExecuteOptions | undefined;
+
+    if (!options || !options.type || !options.specId || !options.featureName) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing or invalid options' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.execute(options);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'PHASE_STARTED',
+        payload: {
+          specId: options.specId,
+          phase: options.type,
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Execution failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

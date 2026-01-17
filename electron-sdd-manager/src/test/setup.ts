@@ -120,9 +120,9 @@ const mockElectronAPI = {
   stopSpecsWatcher: vi.fn().mockResolvedValue(undefined),
   onSpecsChanged: vi.fn(() => vi.fn()),
   executeSpecManagerPhase: vi.fn(),
-  executePhase: vi.fn().mockResolvedValue(undefined),
+  // execute-method-unification: Unified execute API
+  execute: vi.fn().mockResolvedValue(undefined),
   executeValidation: vi.fn().mockResolvedValue(undefined),
-  executeTaskImpl: vi.fn().mockResolvedValue(undefined),
   // Agent Management APIs (Task 29)
   startAgent: vi.fn(),
   stopAgent: vi.fn(),

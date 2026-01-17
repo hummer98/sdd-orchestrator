@@ -445,8 +445,16 @@ export interface ElectronAPI {
   ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>>;
 
   // Phase Execution (high-level commands)
-  executePhase(specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
-  executeTaskImpl(specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+
+  // ============================================================
+  // execute-method-unification: Unified execute API
+  // ============================================================
+  /**
+   * Execute a phase using the unified execute method
+   * @param options ExecuteOptions with type discriminant
+   * @returns AgentInfo for the started agent
+   */
+  execute(options: import('../../shared/types/executeOptions').ExecuteOptions): Promise<AgentInfo>;
 
   // Spec Init (Task 5.2 sidebar-refactor)
   // Launch spec-init agent with description only

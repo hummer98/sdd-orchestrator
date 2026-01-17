@@ -27,8 +27,8 @@ export const IPC_CHANNELS = {
   GET_AGENT_LOGS: 'ipc:get-agent-logs',
 
   // Phase Execution (high-level commands)
-  EXECUTE_PHASE: 'ipc:execute-phase',
-  EXECUTE_TASK_IMPL: 'ipc:execute-task-impl',
+  // execute-method-unification: Unified execute channel
+  EXECUTE: 'ipc:execute',
   EXECUTE_SPEC_INIT: 'ipc:execute-spec-init',
   EXECUTE_SPEC_PLAN: 'ipc:execute-spec-plan', // spec-plan-ui-integration feature
   EXECUTE_BUG_CREATE: 'ipc:execute-bug-create',

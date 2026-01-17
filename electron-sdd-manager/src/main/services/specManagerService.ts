@@ -218,16 +218,6 @@ export function getAllowedToolsForPhase(phase: string): string[] | undefined {
   return undefined;
 }
 
-/** フェーズからExecutionGroupへのマッピング */
-const PHASE_GROUPS: Record<WorkflowPhase, ExecutionGroup> = {
-  requirements: 'doc',
-  design: 'doc',
-  tasks: 'doc',
-  impl: 'impl',
-  inspection: 'impl',
-  deploy: 'doc',
-};
-
 export interface StartAgentOptions {
   specId: string;
   phase: string;
@@ -241,20 +231,6 @@ export interface StartAgentOptions {
   skipPermissions?: boolean;
   /** Working directory override for worktree mode (git-worktree-support) */
   worktreeCwd?: string;
-}
-
-export interface ExecutePhaseOptions {
-  specId: string;
-  phase: WorkflowPhase;
-  featureName: string;
-  commandPrefix?: CommandPrefix;
-}
-
-export interface ExecuteTaskImplOptions {
-  specId: string;
-  featureName: string;
-  taskId: string;
-  commandPrefix?: CommandPrefix;
 }
 
 /** Document Review execution options (Requirements: 6.1) */
@@ -561,8 +537,24 @@ export class SpecManagerService {
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, phase, command, args, group, sessionId, providerType, skipPermissions, worktreeCwd } = options;
     const effectiveProviderType = providerType ?? this.providerType;
-    // git-worktree-support: Use worktreeCwd if provided, fallback to projectPath
-    const effectiveCwd = worktreeCwd || this.projectPath;
+
+    // execute-method-unification: Task 3.1 - worktreeCwd auto-resolution
+    // Requirements: 3.1, 3.2, 3.3, 3.4
+    let effectiveCwd: string;
+    if (worktreeCwd) {
+      // 3.2: Explicit worktreeCwd takes priority
+      effectiveCwd = worktreeCwd;
+    } else if (group === 'impl' && specId) {
+      // 3.1: Auto-resolve for impl group when worktreeCwd not provided
+      effectiveCwd = await this.getSpecWorktreeCwd(specId);
+      if (effectiveCwd !== this.projectPath) {
+        // 3.4: Log when worktreeCwd is auto-resolved
+        logger.info('[SpecManagerService] worktreeCwd auto-resolved for impl group', { specId, worktreeCwd: effectiveCwd });
+      }
+    } else {
+      // 3.3: Skip resolution for doc group, use projectPath
+      effectiveCwd = this.projectPath;
+    }
 
     // Normalize args only for Claude CLI commands
     // This prevents breaking non-Claude commands (like 'sleep' in tests)
@@ -1252,49 +1244,6 @@ export class SpecManagerService {
     }
   }
 
-  /**
-   * Execute a workflow phase
-   * Builds the claude command internally
-   */
-  async executePhase(options: ExecutePhaseOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, featureName, commandPrefix = 'kiro' } = options;
-    const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix][phase];
-    const group = PHASE_GROUPS[phase];
-
-    logger.info('[SpecManagerService] executePhase called', { specId, phase, featureName, slashCommand, group, commandPrefix });
-
-    return this.startAgent({
-      specId,
-      phase,
-      command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
-      group,
-    });
-  }
-
-  /**
-   * Execute a specific task implementation
-   * Builds the claude command with task ID
-   * git-worktree-support: Now resolves worktree cwd from spec.json
-   */
-  async executeTaskImpl(options: ExecuteTaskImplOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, featureName, taskId, commandPrefix = 'kiro' } = options;
-    const implCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].impl;
-    // git-worktree-support: Resolve worktree cwd for agent execution
-    const worktreeCwd = await this.getSpecWorktreeCwd(specId);
-
-    logger.info('[SpecManagerService] executeTaskImpl called', { specId, featureName, taskId, commandPrefix, implCommand, worktreeCwd });
-
-    return this.startAgent({
-      specId,
-      phase: `impl-${taskId}`,
-      command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${implCommand} ${featureName} ${taskId}` }),
-      group: 'impl',
-      worktreeCwd,
-    });
-  }
-
   // ============================================================
   // Document Review Execution (Requirements: 6.1 - Document Review Workflow)
   // gemini-document-review Task 4.1, 4.2: Multi-engine support
@@ -1480,6 +1429,204 @@ export class SpecManagerService {
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'doc',
     });
+  }
+
+  // ============================================================
+  // Unified Execute Method (execute-method-unification feature)
+  // Requirements: 2.1, 2.2, 2.3, 2.5
+  // ============================================================
+
+  /**
+   * Unified execute method for all phase types
+   *
+   * This method consolidates all executePhase, executeTaskImpl, executeDocumentReview,
+   * executeInspection, and related methods into a single entry point.
+   *
+   * Requirements:
+   * - 2.1: execute(options) method implementation
+   * - 2.2: options.type branching for phase resolution
+   * - 2.3: document-review scheme switching
+   * - 2.5: execute calls startAgent
+   *
+   * @param options ExecuteOptions union type with type discriminant
+   * @returns Result<AgentInfo, AgentError>
+   */
+  async execute(options: import('../../shared/types/executeOptions').ExecuteOptions): Promise<Result<AgentInfo, AgentError>> {
+    const { specId, featureName, commandPrefix = 'kiro' } = options;
+
+    logger.info('[SpecManagerService] execute called', { type: options.type, specId, featureName, commandPrefix });
+
+    switch (options.type) {
+      // ===== Document Generation Phases (group: 'doc') =====
+      case 'requirements': {
+        const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].requirements;
+        return this.startAgent({
+          specId,
+          phase: 'requirements',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'doc',
+        });
+      }
+
+      case 'design': {
+        const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].design;
+        return this.startAgent({
+          specId,
+          phase: 'design',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'doc',
+        });
+      }
+
+      case 'tasks': {
+        const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].tasks;
+        return this.startAgent({
+          specId,
+          phase: 'tasks',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'doc',
+        });
+      }
+
+      case 'deploy': {
+        const slashCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].deploy;
+        return this.startAgent({
+          specId,
+          phase: 'deploy',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'doc',
+        });
+      }
+
+      // ===== Impl Phase (group: 'impl') =====
+      case 'impl': {
+        const implCommand = PHASE_COMMANDS_BY_PREFIX[commandPrefix].impl;
+        // worktreeCwd will be auto-resolved in startAgent for group === 'impl'
+        // When taskId is provided: Execute specific task
+        // When taskId is omitted: Execute all pending tasks
+        const phase = options.taskId ? `impl-${options.taskId}` : 'impl';
+        const commandStr = options.taskId
+          ? `${implCommand} ${featureName} ${options.taskId}`
+          : `${implCommand} ${featureName}`;
+        return this.startAgent({
+          specId,
+          phase,
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: commandStr }),
+          group: 'impl',
+        });
+      }
+
+      // ===== Inspection Phases (group: 'impl') =====
+      case 'inspection': {
+        const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
+        return this.startAgent({
+          specId,
+          phase: 'inspection',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'impl',
+        });
+      }
+
+      case 'inspection-fix': {
+        const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
+        return this.startAgent({
+          specId,
+          phase: 'inspection-fix',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
+          group: 'impl',
+        });
+      }
+
+      // ===== Document Review Phases (group: 'doc') =====
+      case 'document-review': {
+        const { scheme } = options;
+        const engine = getReviewEngine(scheme);
+
+        // For Claude Code (default), use the standard slash command format
+        if (scheme === 'claude-code' || scheme === undefined) {
+          const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
+          return this.startAgent({
+            specId,
+            phase: 'document-review',
+            command: getClaudeCommand(),
+            args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+            group: 'doc',
+          });
+        }
+
+        // For Gemini CLI and debatex, use the engine configuration
+        const command = engine.command;
+        const args = engine.buildArgs(featureName);
+        const cmdString = Array.isArray(command) ? command[0] : command;
+        const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+
+        return this.startAgent({
+          specId,
+          phase: 'document-review',
+          command: cmdString,
+          args: cmdArgs,
+          group: 'doc',
+        });
+      }
+
+      case 'document-review-reply': {
+        const { reviewNumber, autofix } = options;
+        const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review-reply' : '/spec-manager:document-review-reply';
+
+        // Build command with optional --autofix flag
+        const commandParts = [slashCommand, featureName, String(reviewNumber)];
+        if (autofix === true) {
+          commandParts.push('--autofix');
+        }
+        const fullCommand = commandParts.join(' ');
+
+        return this.startAgent({
+          specId,
+          phase: 'document-review-reply',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: fullCommand }),
+          group: 'doc',
+        });
+      }
+
+      case 'document-review-fix': {
+        const { reviewNumber } = options;
+        const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review-reply' : '/spec-manager:document-review-reply';
+
+        return this.startAgent({
+          specId,
+          phase: 'document-review-fix',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
+          group: 'doc',
+        });
+      }
+
+      // ===== Spec Merge Phase (group: 'doc') =====
+      case 'spec-merge': {
+        const slashCommand = SPEC_MERGE_COMMANDS[commandPrefix];
+        return this.startAgent({
+          specId,
+          phase: 'spec-merge',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'doc',
+        });
+      }
+
+      default: {
+        // TypeScript exhaustiveness check
+        const _exhaustive: never = options;
+        throw new Error(`Unknown execute option type: ${(_exhaustive as any).type}`);
+      }
+    }
   }
 
   /**

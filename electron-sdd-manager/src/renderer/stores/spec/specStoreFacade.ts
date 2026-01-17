@@ -315,11 +315,24 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
       // execution-store-consolidation: Execution is now handled via IPC
       // The agentStore will be updated via onAgentRecordChanged callback
       // when the agent starts. We just call the IPC here.
+      // execute-method-unification: Task 5.2 - Use unified execute API
       try {
         if (phase === 'impl' && taskId) {
-          await window.electronAPI.executeTaskImpl(specId, featureName, taskId);
+          // Use unified execute API for impl phase
+          await window.electronAPI.execute({
+            type: 'impl',
+            specId,
+            featureName,
+            taskId,
+          });
         } else {
-          await window.electronAPI.executePhase(specId, phase, featureName);
+          // Use unified execute API for other phases
+          // Cast phase to the appropriate type (requirements, design, tasks)
+          await window.electronAPI.execute({
+            type: phase as 'requirements' | 'design' | 'tasks',
+            specId,
+            featureName,
+          });
         }
         // Note: Agent state is updated via IPC callbacks, no need to update here
         set(getAggregatedState());

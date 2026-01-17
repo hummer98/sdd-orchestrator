@@ -7,7 +7,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, SelectProjectResult } from '../renderer/types';
-import type { ExecutionGroup, WorkflowPhase } from '../main/services/specManagerService';
+import type { ExecutionGroup } from '../main/services/specManagerService';
 // agent-state-file-ssot: Import AgentInfo/AgentStatus from agentRecordService (SSOT)
 import type { AgentInfo, AgentStatus } from '../main/services/agentRecordService';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
@@ -125,11 +125,17 @@ const electronAPI = {
 
   // Phase Execution (high-level commands)
   // These delegate command building to the service layer
-  executePhase: (specId: string, phase: WorkflowPhase, featureName: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PHASE, specId, phase, featureName, commandPrefix),
 
-  executeTaskImpl: (specId: string, featureName: string, taskId: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_TASK_IMPL, specId, featureName, taskId, commandPrefix),
+  // ============================================================
+  // execute-method-unification: Unified execute API
+  // ============================================================
+  /**
+   * Execute a phase using the unified execute method
+   * @param options ExecuteOptions with type discriminant
+   * @returns AgentInfo for the started agent
+   */
+  execute: (options: import('../shared/types/executeOptions').ExecuteOptions): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE, options),
 
   // Task 5.2.2 (sidebar-refactor): spec-init連携
   // Launch spec-init agent with description only (specId='')

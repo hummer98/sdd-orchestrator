@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-01-17
+
+### Added
+- **execute*メソッド統一**: execute*メソッド群を統一しExecuteOptions Union型を導入
+- **investigation-mode Skill化**: investigation-modeをSkillにマイグレーション
+- **AgentIcon/AgentBranchIconコンポーネント**: エージェントアイコン表示を統一
+
+### Changed
+- **SpecManagerStatusDisplayコンポーネント削除**: workflow-viewからコンポーネントを削除しUIを簡素化
+
 ## [0.30.2] - 2026-01-17
 
 ### Added

@@ -152,19 +152,22 @@ export function DocumentReviewPanel({
   // - tasks.md exists
   const canStartReview = !isExecuting && !isAutoExecuting && hasTasks;
 
-  // Check if there's a review without a reply (review_complete but not reply_complete)
-  const pendingReplyRound =
-    reviewState?.roundDetails?.find((detail) => detail.status === 'review_complete')
-      ?.roundNumber ?? null;
+  // Get the latest round (last element in the array)
+  const latestRound = reviewState?.roundDetails?.at(-1) ?? null;
 
-  // Check if there's a reply that needs action (fixStatus is 'pending' or 'applied')
+  // Check if there's a review without a reply (review_complete but not reply_complete)
+  // Only check the latest round - past rounds are historical
+  const pendingReplyRound =
+    latestRound?.status === 'review_complete' ? latestRound.roundNumber : null;
+
+  // Check if the latest reply needs action (fixStatus is 'pending' or 'applied')
   // 'pending' = fixes/discussion needed, 'applied' = awaiting re-review
+  // 'not_required' = no action needed, can proceed to next review round
   const pendingFixRound =
-    reviewState?.roundDetails?.find(
-      (detail) =>
-        detail.status === 'reply_complete' &&
-        (detail.fixStatus === 'pending' || detail.fixStatus === 'applied')
-    )?.roundNumber ?? null;
+    latestRound?.status === 'reply_complete' &&
+    (latestRound.fixStatus === 'pending' || latestRound.fixStatus === 'applied')
+      ? latestRound.roundNumber
+      : null;
 
   // Progress indicator state
   const progressIndicatorState = getProgressIndicatorState(

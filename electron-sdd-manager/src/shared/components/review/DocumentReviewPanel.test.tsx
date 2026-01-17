@@ -106,6 +106,58 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByTestId('apply-fix-button')).toBeInTheDocument();
       expect(screen.getByText(/replyを適用/)).toBeInTheDocument();
     });
+
+    it('最新ラウンドがnot_requiredの場合、過去ラウンドがappliedでも「レビュー開始」ボタンを表示する', () => {
+      // gemini-document-reviewのspec.jsonと同じ状態:
+      // Round 1: applied (修正適用済み)
+      // Round 2: not_required (修正不要)
+      // → 最新のRound 2がnot_requiredなので、次のレビューラウンドに進めるべき
+      const reviewState: DocumentReviewState = {
+        status: 'approved',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete', fixRequired: 1, needsDiscussion: 0, fixStatus: 'applied' },
+          { roundNumber: 2, status: 'reply_complete', fixRequired: 0, needsDiscussion: 0, fixStatus: 'not_required' },
+        ],
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+
+      // 「replyを適用」ボタンではなく「レビュー開始」ボタンが表示されるべき
+      expect(screen.queryByTestId('apply-fix-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('start-review-button')).toBeInTheDocument();
+      expect(screen.getByText('レビュー開始')).toBeInTheDocument();
+    });
+
+    it('最新ラウンドがpendingの場合「replyを適用」ボタンを表示する', () => {
+      // 複数ラウンドがあり、最新ラウンドがpending
+      const reviewState: DocumentReviewState = {
+        status: 'in_progress',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete', fixStatus: 'not_required' },
+          { roundNumber: 2, status: 'reply_complete', fixStatus: 'pending' },
+        ],
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+
+      expect(screen.getByTestId('apply-fix-button')).toBeInTheDocument();
+      expect(screen.getByText(/replyを適用.*Round 2/)).toBeInTheDocument();
+    });
+
+    it('最新ラウンドがappliedの場合「replyを適用」ボタンを表示する（再レビュー待ち）', () => {
+      // 修正が適用され、再レビューが必要な状態
+      const reviewState: DocumentReviewState = {
+        status: 'in_progress',
+        roundDetails: [
+          { roundNumber: 1, status: 'reply_complete', fixStatus: 'applied' },
+        ],
+      };
+
+      render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
+
+      expect(screen.getByTestId('apply-fix-button')).toBeInTheDocument();
+      expect(screen.getByText(/replyを適用.*Round 1/)).toBeInTheDocument();
+    });
   });
 
   describe('進捗インジケーター', () => {

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.1] - 2026-01-17
+
+### Added
+- **Fix Tasksの連番形式**: spec-inspection --fixで追加されるFIX-N形式のタスクIDに対応
+
+### Changed
+- **worktreeパス変更**: worktreeパスをプロジェクト内部（.kiro/worktrees/）に変更
+- **worktree判定関数統一**: hasWorktreePath関数に統一してworktree判定を一元化
+
+### Fixed
+- **AutoExecutionStatusDisplay冗長表示**: WorkflowViewのAutoExecutionStatusDisplay冗長表示を削除
+- **onBugAutoExecutionExecutePhaseリスナー欠落**: Bug自動実行のフェーズ実行リスナーを追加
+- **SpecListのworktreeバッジ表示条件**: worktreeバッジの表示条件を修正
+- **worktreeモードでのClaude CLI cwd**: worktreeモードでClaude CLIのcwdを正しく設定
+- **spec-impl updated_at更新**: 実行開始時にupdated_atを更新する指示を追加
+- **inspection --fixモード仕様**: --fixモードでfixedAt更新を強調
+- **サブエージェントpermissionMode**: サブエージェントにpermissionMode: bypassPermissionsを追加
+
+### Removed
+- **プロジェクト固有表現削除**: コマンドセットからプロジェクト固有表現を削除
+
 ## [0.30.0] - 2026-01-17
 
 ### Added

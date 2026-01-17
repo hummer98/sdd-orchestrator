@@ -8,16 +8,8 @@
  */
 
 import { clsx } from 'clsx';
-import {
-  ClipboardCheck,
-  Loader2,
-  Play,
-  Check,
-  Circle,
-  Ban,
-  PlayCircle,
-  Wrench,
-} from 'lucide-react';
+import { Loader2, Check, Circle, Ban, PlayCircle, Wrench } from 'lucide-react';
+import { AgentIcon } from '../ui/AgentIcon';
 import type {
   InspectionState,
   InspectionAutoExecutionFlag,
@@ -198,7 +190,6 @@ export function InspectionPanel({
           {/* Progress indicator (title left side) */}
           <span className="p-1">{renderProgressIndicator(progressIndicatorState)}</span>
 
-          <ClipboardCheck className="w-5 h-5 text-teal-500" />
           <h3 className="font-medium text-gray-800 dark:text-gray-200">Inspection</h3>
 
           {/* GO/NOGO badge */}
@@ -257,7 +248,7 @@ export function InspectionPanel({
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
             )}
           >
-            <Play className="w-4 h-4" />
+            <AgentIcon data-testid="start-inspection-agent-icon" />
             Inspection開始
           </button>
         )}

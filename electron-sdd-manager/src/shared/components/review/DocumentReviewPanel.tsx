@@ -9,16 +9,8 @@
  */
 
 import { clsx } from 'clsx';
-import {
-  FileSearch,
-  Loader2,
-  Play,
-  Check,
-  Circle,
-  Ban,
-  PlayCircle,
-  Wrench,
-} from 'lucide-react';
+import { Loader2, Check, Circle, Ban, PlayCircle, Wrench } from 'lucide-react';
+import { AgentIcon } from '../ui/AgentIcon';
 import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
@@ -207,7 +199,6 @@ export function DocumentReviewPanel({
           {/* Progress indicator (title left side) */}
           <span className="p-1">{renderProgressIndicator(progressIndicatorState)}</span>
 
-          <FileSearch className="w-5 h-5 text-purple-500" />
           <h3 className="font-medium text-gray-800 dark:text-gray-200">
             ドキュメントレビュー
           </h3>
@@ -262,7 +253,7 @@ export function DocumentReviewPanel({
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
             )}
           >
-            <Play className="w-4 h-4" />
+            <AgentIcon data-testid="execute-reply-agent-icon" />
             レビュー内容判定 (Round {pendingReplyRound})
           </button>
         ) : pendingFixRound !== null ? (
@@ -301,7 +292,7 @@ export function DocumentReviewPanel({
               </>
             ) : (
               <>
-                <Play className="w-4 h-4" />
+                <AgentIcon data-testid="start-review-agent-icon" />
                 レビュー開始
               </>
             )}

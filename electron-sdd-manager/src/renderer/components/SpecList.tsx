@@ -13,7 +13,7 @@ import { useSpecStore } from '../stores/specStore';
 import { useAgentStore } from '../stores/agentStore';
 import { clsx } from 'clsx';
 import type { SpecPhase } from '../types';
-import type { WorktreeConfig } from '../types/worktree';
+import { isActualWorktreeMode, type WorktreeConfig } from '../types/worktree';
 import type { SpecMetadataWithPhase } from '../stores/spec/types';
 
 /**
@@ -295,11 +295,12 @@ function SpecListItem({ spec, isSelected, onSelect, runningAgentCount, worktree,
             );
           })()}
           {/* git-worktree-support: Task 11.1 - worktree badge */}
-          {worktree && (
+          {/* Bug fix: Use isActualWorktreeMode to only show badge when worktree.path exists */}
+          {isActualWorktreeMode({ worktree }) && (
             <span
               data-testid={`worktree-badge-${spec.name}`}
               className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
-              title={`Path: ${worktree.path}\nBranch: ${worktree.branch}`}
+              title={`Path: ${worktree?.path}\nBranch: ${worktree?.branch}`}
             >
               <GitBranch className="w-3 h-3" />
               worktree

@@ -200,4 +200,113 @@ describe('SpecList - Task 33.1', () => {
       expect(labels.some(el => el.tagName === 'SPAN')).toBe(true);
     });
   });
+
+  // ============================================================
+  // Bug fix: Worktree badge display
+  // Only show worktree badge when worktree.path exists (actual worktree mode)
+  // ============================================================
+  describe('Worktree badge display', () => {
+    it('should display worktree badge when worktree.path exists', () => {
+      const specWithWorktree: SpecMetadata = {
+        ...baseSpec,
+        name: 'worktree-feature',
+      };
+
+      mockGetSortedFilteredSpecs.mockReturnValue([specWithWorktree]);
+      const specJsonMap = new Map();
+      specJsonMap.set('worktree-feature', {
+        worktree: {
+          path: '../sdd-orchestrator-worktrees/worktree-feature',
+          branch: 'feature/worktree-feature',
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      });
+
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        statusFilter: 'all',
+        isLoading: false,
+        error: null,
+        selectSpec: mockSelectSpec,
+        setSortBy: mockSetSortBy,
+        setSortOrder: mockSetSortOrder,
+        setStatusFilter: mockSetStatusFilter,
+        getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+        specJsonMap,
+      });
+
+      render(<SpecList />);
+
+      expect(screen.getByTestId('worktree-badge-worktree-feature')).toBeInTheDocument();
+    });
+
+    it('should NOT display worktree badge when worktree exists but path is missing (normal mode)', () => {
+      const specWithNormalMode: SpecMetadata = {
+        ...baseSpec,
+        name: 'normal-mode-feature',
+      };
+
+      mockGetSortedFilteredSpecs.mockReturnValue([specWithNormalMode]);
+      const specJsonMap = new Map();
+      // Normal mode: worktree object exists but without path
+      specJsonMap.set('normal-mode-feature', {
+        worktree: {
+          branch: 'master',
+          created_at: '2025-01-01T00:00:00Z',
+        },
+      });
+
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        statusFilter: 'all',
+        isLoading: false,
+        error: null,
+        selectSpec: mockSelectSpec,
+        setSortBy: mockSetSortBy,
+        setSortOrder: mockSetSortOrder,
+        setStatusFilter: mockSetStatusFilter,
+        getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+        specJsonMap,
+      });
+
+      render(<SpecList />);
+
+      expect(screen.queryByTestId('worktree-badge-normal-mode-feature')).not.toBeInTheDocument();
+    });
+
+    it('should NOT display worktree badge when worktree is undefined', () => {
+      const specWithoutWorktree: SpecMetadata = {
+        ...baseSpec,
+        name: 'no-worktree-feature',
+      };
+
+      mockGetSortedFilteredSpecs.mockReturnValue([specWithoutWorktree]);
+      const specJsonMap = new Map();
+      // No worktree field at all
+      specJsonMap.set('no-worktree-feature', {});
+
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        statusFilter: 'all',
+        isLoading: false,
+        error: null,
+        selectSpec: mockSelectSpec,
+        setSortBy: mockSetSortBy,
+        setSortOrder: mockSetSortOrder,
+        setStatusFilter: mockSetStatusFilter,
+        getSortedFilteredSpecs: mockGetSortedFilteredSpecs,
+        specJsonMap,
+      });
+
+      render(<SpecList />);
+
+      expect(screen.queryByTestId('worktree-badge-no-worktree-feature')).not.toBeInTheDocument();
+    });
+  });
 });

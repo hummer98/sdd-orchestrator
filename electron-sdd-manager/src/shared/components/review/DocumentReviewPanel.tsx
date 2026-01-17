@@ -9,7 +9,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Loader2, Check, Circle, Ban, PlayCircle, Wrench } from 'lucide-react';
+import { Loader2, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   DocumentReviewState,
@@ -117,7 +117,7 @@ function renderAutoExecutionFlagIcon(flag: DocumentReviewAutoExecutionFlag): Rea
         <PlayCircle data-testid="auto-flag-run" className="w-4 h-4 text-green-500" />
       );
     case 'pause':
-      return <Ban data-testid="auto-flag-pause" className="w-4 h-4 text-yellow-500" />;
+      return <Pause data-testid="auto-flag-pause" className="w-4 h-4 text-yellow-500" />;
   }
 }
 

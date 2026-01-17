@@ -8,7 +8,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Loader2, Check, Circle, Ban, PlayCircle, Wrench } from 'lucide-react';
+import { Loader2, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   InspectionState,
@@ -97,7 +97,7 @@ function renderAutoExecutionFlagIcon(flag: InspectionAutoExecutionFlag): React.R
       );
     case 'pause':
       return (
-        <Ban data-testid="inspection-auto-flag-pause" className="w-4 h-4 text-yellow-500" />
+        <Pause data-testid="inspection-auto-flag-pause" className="w-4 h-4 text-yellow-500" />
       );
   }
 }

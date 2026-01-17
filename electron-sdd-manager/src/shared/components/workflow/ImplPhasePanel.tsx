@@ -183,14 +183,6 @@ export function ImplPhasePanel({
           )}
         </button>
 
-        {/* Executing state indicator (inline) */}
-        {isExecuting && (
-          <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            実行中
-          </span>
-        )}
-
         {/* Execute button */}
         {/* Requirement 2.7: Execute button with worktree-aware behavior */}
         {/* Requirement 2.10: Purple styling in worktree mode */}

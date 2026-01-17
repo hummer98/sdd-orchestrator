@@ -13,7 +13,7 @@ argument-hint: <feature-name> [task-numbers]
   - Code passes all tests with no regressions
   - Tasks marked as completed in tasks.md
   - Implementation aligns with design and requirements
-- **Note**: This is a pure implementation command. Status management is handled by Electron.
+- **Note**: This is a pure implementation command. Status management is handled by the caller.
 </background_information>
 
 <instructions>

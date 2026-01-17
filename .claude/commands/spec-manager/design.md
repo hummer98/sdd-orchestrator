@@ -12,7 +12,7 @@ argument-hint: <feature-name>
   - Generate comprehensive design.md following template structure
   - Map all requirements to design components
   - Define clear interfaces and data models
-- **Note**: This is a pure generation command. Status management is handled by Electron. For full discovery process (research.md, WebSearch/WebFetch), use `/kiro:spec-design` instead.
+- **Note**: This is a pure generation command. Status management is handled by the caller. For full discovery process (research.md, WebSearch/WebFetch), use `/kiro:spec-design` instead.
 </background_information>
 
 <instructions>

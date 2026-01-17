@@ -11,7 +11,7 @@ argument-hint: <feature-name>
 - **Success Criteria**:
   - Generate comprehensive requirements.md in EARS format
   - Cover all functional and non-functional requirements from project description
-- **Note**: This is a pure generation command. Status management is handled by Electron.
+- **Note**: This is a pure generation command. Status management is handled by the caller.
 </background_information>
 
 <instructions>

@@ -52,21 +52,13 @@ Generate complete requirements for the feature based on the project description 
    - Read `.kiro/settings/rules/ears-format.md` for EARS syntax rules
    - Read `.kiro/settings/templates/specs/requirements.md` for document structure
 
-3. **Clarify Remote UI Impact** (IMPORTANT):
-   - Before generating requirements, ask the user:
-     - "この機能はRemote UIからも利用可能にしますか？"
-     - "Desktop専用機能ですか、それともRemote UIでも同じ操作を提供しますか？"
-   - Record the answer in requirements.md under a "## Scope" or "## 対象範囲" section
-   - If Remote UI is in scope, clarify which operations should be available remotely
-
-4. **Generate Requirements**:
+3. **Generate Requirements**:
    - Create initial requirements based on project description
    - Group related functionality into logical requirement areas
    - Apply EARS format to all acceptance criteria
    - Use language specified in spec.json
-   - If Remote UI is in scope, include requirements for WebSocket handlers and remote-ui components
 
-5. **Update Metadata**:
+4. **Update Metadata**:
    - Set `phase: "requirements-generated"`
    - Set `approvals.requirements.generated: true`
    - Update `updated_at` timestamp

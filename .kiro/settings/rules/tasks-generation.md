@@ -123,32 +123,16 @@ Focus on capabilities and outcomes, not code structure.
 Every task must be classified as one of:
 
 ### Infrastructure/Preparation Tasks
-Setting up foundations that don't directly deliver user-facing functionality:
-- "Create shared directory structure"
-- "Extract component to shared/"
-- "Define interface types"
-- "Set up build configuration"
+Setting up foundations that don't directly deliver user-facing functionality (e.g., directory structure, shared utilities, type definitions, build configuration).
 
 ### Feature Implementation Tasks
-Delivering user-facing functionality:
-- "Implement SpecsView displaying spec list with search and filter"
-- "Add Bug detail panel with phase execution buttons"
-- "Create Agent control UI with stop/resume/delete actions"
+Delivering user-facing functionality that directly addresses acceptance criteria.
 
 ### Validation Rule
 
 **CRITICAL**: A requirement with user-facing acceptance criteria MUST have at least one Feature Implementation Task, not just Infrastructure Tasks.
 
-**Anti-pattern to detect and reject**:
-```
-Requirement 7: "全機能実装（Electron版と同等）"
-  ↓
-Task 4.2: "Spec関連コンポーネントを共有化する"  ← Infrastructure only!
-  ↓
-MISSING: "SpecsViewを実装しRemote UIにSpec一覧を表示する"  ← Feature task required!
-```
-
-When this pattern is detected:
+When infrastructure-only tasks are detected for a user-facing requirement:
 1. STOP task generation
 2. Add missing Feature Implementation Tasks
 3. Resume generation

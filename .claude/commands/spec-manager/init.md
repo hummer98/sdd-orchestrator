@@ -12,7 +12,7 @@ argument-hint: <project-description>
   - Generate appropriate feature name from project description
   - Create unique spec structure without conflicts
   - Initialize spec.json and requirements.md (with project description only)
-- **Note**: This is a lightweight command that only creates initial files. Status management is handled by Electron.
+- **Note**: This is a lightweight command that only creates initial files. Status management is handled by the caller.
 </background_information>
 
 <instructions>

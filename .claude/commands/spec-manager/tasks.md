@@ -12,7 +12,7 @@ argument-hint: <feature-name> [--sequential]
   - Generate comprehensive tasks.md with checkboxes
   - Map all requirements to implementation tasks
   - Identify parallel-capable tasks (unless --sequential)
-- **Note**: This is a pure generation command. Status management is handled by Electron.
+- **Note**: This is a pure generation command. Status management is handled by the caller.
 </background_information>
 
 <instructions>

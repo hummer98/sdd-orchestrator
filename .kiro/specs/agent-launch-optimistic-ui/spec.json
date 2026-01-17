@@ -1,7 +1,7 @@
 {
   "feature_name": "agent-launch-optimistic-ui",
   "created_at": "2026-01-17T08:09:33Z",
-  "updated_at": "2026-01-17T09:19:49.885Z",
+  "updated_at": "2026-01-17T17:31:23Z",
   "language": "ja",
   "phase": "tasks-generated",
   "approvals": {
@@ -37,10 +37,5 @@
         "fixStatus": "not_required"
       }
     ]
-  },
-  "worktree": {
-    "path": ".kiro/worktrees/specs/agent-launch-optimistic-ui",
-    "branch": "feature/agent-launch-optimistic-ui",
-    "created_at": "2026-01-17T17:09:20.760Z"
   }
 }

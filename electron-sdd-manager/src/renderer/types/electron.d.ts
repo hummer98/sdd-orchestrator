@@ -679,15 +679,11 @@ export interface ElectronAPI {
 
   // Experimental Tools Install (experimental-tools-installer feature)
   // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4
-  installExperimentalPlan(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
   installExperimentalDebug(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
-  installExperimentalCommit(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
-  checkExperimentalToolExists(projectPath: string, toolType: 'plan' | 'debug' | 'commit'): Promise<ExperimentalCheckResult>;
+  checkExperimentalToolExists(projectPath: string, toolType: 'debug'): Promise<ExperimentalCheckResult>;
 
   // Menu Events - Experimental Tools
-  onMenuInstallExperimentalPlan(callback: () => void): () => void;
   onMenuInstallExperimentalDebug(callback: () => void): () => void;
-  onMenuInstallExperimentalCommit(callback: () => void): () => void;
 
   // ============================================================
   // Project Log (project-log-separation feature)

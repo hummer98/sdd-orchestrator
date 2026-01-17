@@ -129,9 +129,7 @@ SDD Orchestrator provides experimental slash commands and agents via **Tools** m
 
 | Menu Item | Install Location | Purpose |
 |-----------|-----------------|---------|
-| Install Plan Command | `.claude/commands/plan.md` | Pre-implementation planning |
 | Install Debug Agent | `.claude/agents/debug.md` | Debugging & troubleshooting |
-| Install Commit Command | `.claude/commands/commit.md` | Structured commit message generation |
 
 ### Profile Details
 

@@ -21,7 +21,6 @@ import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '..
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
 import type { LayoutValues } from '../main/services/layoutConfigService';
 import type {
-  ToolType,
   InstallOptions as ExperimentalInstallOptions,
   InstallResult as ExperimentalInstallResult,
   InstallError as ExperimentalInstallError,
@@ -954,18 +953,6 @@ const electronAPI = {
   // ============================================================
 
   /**
-   * Install Plan command (experimental)
-   * @param projectPath Project root path
-   * @param options Install options (force: boolean)
-   * @returns Installation result
-   */
-  installExperimentalPlan: (
-    projectPath: string,
-    options?: ExperimentalInstallOptions
-  ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_EXPERIMENTAL_PLAN, projectPath, options),
-
-  /**
    * Install Debug agent (experimental)
    * Includes semantic merge to CLAUDE.md
    * @param projectPath Project root path
@@ -979,18 +966,6 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.INSTALL_EXPERIMENTAL_DEBUG, projectPath, options),
 
   /**
-   * Install Commit command (experimental)
-   * @param projectPath Project root path
-   * @param options Install options (force: boolean)
-   * @returns Installation result
-   */
-  installExperimentalCommit: (
-    projectPath: string,
-    options?: ExperimentalInstallOptions
-  ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_EXPERIMENTAL_COMMIT, projectPath, options),
-
-  /**
    * Check if experimental tool target file exists
    * @param projectPath Project root path
    * @param toolType Tool type to check
@@ -998,26 +973,9 @@ const electronAPI = {
    */
   checkExperimentalToolExists: (
     projectPath: string,
-    toolType: ToolType
+    toolType: 'debug'
   ): Promise<ExperimentalCheckResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_EXPERIMENTAL_TOOL_EXISTS, projectPath, toolType),
-
-  /**
-   * Subscribe to menu install experimental Plan command event
-   * @param callback Function called when menu item is clicked
-   * @returns Cleanup function to unsubscribe
-   */
-  onMenuInstallExperimentalPlan: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_PLAN, handler);
-    };
-  },
 
   /**
    * Subscribe to menu install experimental Debug agent event
@@ -1033,23 +991,6 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_DEBUG, handler);
-    };
-  },
-
-  /**
-   * Subscribe to menu install experimental Commit command event
-   * @param callback Function called when menu item is clicked
-   * @returns Cleanup function to unsubscribe
-   */
-  onMenuInstallExperimentalCommit: (callback: () => void): (() => void) => {
-    const handler = () => {
-      callback();
-    };
-    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_COMMIT, handler);
-
-    // Return cleanup function
-    return () => {
-      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_COMMIT, handler);
     };
   },
 

@@ -50,7 +50,6 @@ import {
   getExperimentalTemplateDir,
   getCommonCommandsTemplateDir,
   CommonCommandsInstallerService,
-  type ToolType,
   type InstallOptions as ExperimentalInstallOptions,
   type InstallResult as ExperimentalInstallResult,
   type InstallError as ExperimentalInstallError,
@@ -1699,31 +1698,13 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    IPC_CHANNELS.INSTALL_EXPERIMENTAL_COMMIT,
-    async (
-      _event,
-      projectPath: string,
-      options?: ExperimentalInstallOptions
-    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
-      // Note: Commit command is now auto-installed on project selection.
-      // This handler is kept for backward compatibility but uses CommonCommandsInstallerService.
-      logger.info('[handlers] INSTALL_EXPERIMENTAL_COMMIT called (deprecated, use auto-install)', { projectPath, options });
-      return commonCommandsInstaller.installCommitCommand(projectPath, options);
-    }
-  );
-
-  ipcMain.handle(
     IPC_CHANNELS.CHECK_EXPERIMENTAL_TOOL_EXISTS,
     async (
       _event,
       projectPath: string,
-      toolType: ToolType
+      toolType: 'debug'
     ): Promise<ExperimentalCheckResult> => {
       logger.info('[handlers] CHECK_EXPERIMENTAL_TOOL_EXISTS called', { projectPath, toolType });
-      // Note: commit is now a common command (auto-installed), but check is still valid
-      if (toolType === 'commit') {
-        return commonCommandsInstaller.checkCommitCommandExists(projectPath);
-      }
       return experimentalToolsInstaller.checkTargetExists(projectPath, toolType);
     }
   );

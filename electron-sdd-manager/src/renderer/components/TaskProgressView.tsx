@@ -5,7 +5,7 @@
  */
 
 import { clsx } from 'clsx';
-import { CheckCircle, Circle, Loader2, Play } from 'lucide-react';
+import { CheckCircle, Circle, Bot, Play } from 'lucide-react';
 
 // ============================================================
 // Task 5.1, 5.2: TaskProgressView Types
@@ -143,9 +143,9 @@ function TaskListItem({ task, onExecute, canExecute = true }: TaskListItemProps)
         />
       )}
       {task.status === 'running' && (
-        <Loader2
+        <Bot
           data-testid="task-status-running"
-          className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0"
+          className="w-4 h-4 text-blue-500 animate-pulse flex-shrink-0"
         />
       )}
       {task.status === 'pending' && (

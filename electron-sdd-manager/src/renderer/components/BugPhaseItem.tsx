@@ -6,7 +6,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Play, Check, Loader2, Circle } from 'lucide-react';
+import { Play, Check, Circle, Bot } from 'lucide-react';
 import type { BugWorkflowPhase, BugPhaseStatus } from '../types/bug';
 
 export interface BugPhaseItemProps {
@@ -52,9 +52,9 @@ export function BugPhaseItem({
   const renderStatusIcon = () => {
     if (isExecuting) {
       return (
-        <Loader2
+        <Bot
           data-testid="bug-phase-status-executing"
-          className="w-4 h-4 text-blue-500 animate-spin"
+          className="w-4 h-4 text-blue-500 animate-pulse"
         />
       );
     }
@@ -100,7 +100,7 @@ export function BugPhaseItem({
         {/* 実行中表示 */}
         {isExecuting && (
           <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Bot className="w-3 h-3 animate-pulse" />
             実行中
           </span>
         )}

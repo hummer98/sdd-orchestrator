@@ -9,7 +9,7 @@
 import { clsx } from 'clsx';
 import {
   ClipboardCheck,
-  Loader2,
+  Bot,
   Play,
   Check,
   Circle,
@@ -77,9 +77,9 @@ function renderProgressIndicator(state: InspectionProgressIndicatorState): React
       );
     case 'executing':
       return (
-        <Loader2
+        <Bot
           data-testid="inspection-progress-indicator-executing"
-          className="w-4 h-4 text-blue-500 animate-spin"
+          className="w-4 h-4 text-blue-500 animate-pulse"
         />
       );
   }

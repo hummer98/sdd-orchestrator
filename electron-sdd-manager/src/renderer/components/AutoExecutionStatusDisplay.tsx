@@ -6,7 +6,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Loader2, Pause, AlertCircle, CheckCircle, Square, RotateCcw } from 'lucide-react';
+import { Bot, Pause, AlertCircle, CheckCircle, Square, RotateCcw } from 'lucide-react';
 import type { AutoExecutionStatus } from '../types';
 import type { WorkflowPhase } from '../types/workflow';
 import { PHASE_LABELS } from '../types/workflow';
@@ -60,13 +60,13 @@ export function AutoExecutionStatusDisplay({
         <div className="flex items-center gap-2">
           {/* Status Icon */}
           {status === 'running' && (
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <Bot className="w-4 h-4 text-blue-500 animate-pulse" />
           )}
           {status === 'paused' && (
             <Pause className="w-4 h-4 text-yellow-500" />
           )}
           {status === 'completing' && (
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <Bot className="w-4 h-4 text-blue-500 animate-pulse" />
           )}
           {status === 'error' && (
             <AlertCircle className="w-4 h-4 text-red-500" />

@@ -5,7 +5,7 @@
  */
 
 import { clsx } from 'clsx';
-import { FileSearch, Loader2, Play, Check, Circle, Ban, PlayCircle, Wrench } from 'lucide-react';
+import { FileSearch, Play, Check, Circle, Ban, PlayCircle, Wrench, Bot } from 'lucide-react';
 import type { DocumentReviewState } from '../types/documentReview';
 
 // ============================================================
@@ -86,9 +86,9 @@ function renderProgressIndicator(state: ProgressIndicatorState): React.ReactNode
       );
     case 'executing':
       return (
-        <Loader2
+        <Bot
           data-testid="progress-indicator-executing"
-          className="w-4 h-4 text-blue-500 animate-spin"
+          className="w-4 h-4 text-blue-500 animate-pulse"
         />
       );
   }
@@ -277,7 +277,7 @@ export function DocumentReviewPanel({
           >
             {isExecuting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Bot className="w-4 h-4 animate-pulse" />
                 {reviewState?.currentRound ?? rounds + 1}ラウンド目 review実行中...
               </>
             ) : (

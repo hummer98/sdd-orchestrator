@@ -181,6 +181,8 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 **Purpose**: Generate fix tasks based on an **existing** inspection report (does NOT run inspection)
 
 **Execution**:
+
+#### Step 1: Find and Validate Inspection Report
 1. Find the latest inspection report: `.kiro/specs/{feature}/inspection-{n}.md` (highest n)
 2. If no inspection report exists:
    - Display error: "No inspection report found. Run `/kiro:spec-inspection {feature}` first."
@@ -189,10 +191,61 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 4. If the report shows GO judgment:
    - Display: "Latest inspection passed (GO). No fixes needed."
    - Stop execution
-5. Generate fix tasks for each Critical/Major issue
-6. Append to tasks.md with new task numbers (use format `FIX-{n}`)
-7. Update spec.json: add `fixedAt` timestamp to the latest round
-8. Report: "Fix tasks added to tasks.md. Run `/kiro:spec-impl {feature}` to apply fixes."
+
+#### Step 2: Determine Task Numbering
+Read tasks.md and determine the next task group number:
+1. Parse all existing task IDs using pattern `/^- \[.\] (\d+)\.(\d+)/gm`
+2. Extract the integer part (N) from each N.M format task ID
+3. Find the maximum N value among all existing tasks
+4. New fix tasks will use (max_N + 1) as their group number
+5. If no tasks found, start from group number 1
+
+**Example**: If existing tasks are 1.1, 1.2, 2.1, 2.2, 3.1, the next fix task group is 4 (max=3, so N+1=4)
+
+#### Step 3: Determine Section Insertion Position
+1. Check if `## Appendix` section exists in tasks.md
+2. Check if `## Inspection Fixes` section already exists
+3. Determine insertion position:
+   - If `## Inspection Fixes` exists: append to it
+   - If `## Appendix` exists but no `## Inspection Fixes`: insert `## Inspection Fixes` before `## Appendix`
+   - Otherwise: append after `---` separator at end of file
+
+#### Step 4: Generate Fix Tasks with Sequential Numbering
+Generate fix tasks for each Critical/Major issue:
+1. Create `## Inspection Fixes` section header (if new)
+2. Create `### Round {n} (YYYY-MM-DD)` subsection with current date in ISO 8601 format
+3. For each fix task:
+   - Use sequential task ID: `{group}.{sequence}` (e.g., 7.1, 7.2, 7.3)
+   - Add related information: `- 関連: Task X.Y, Requirement Z.Z`
+   - Include clear description of the fix
+
+**Fix Task Format**:
+```markdown
+## Inspection Fixes
+
+### Round 1 (2026-01-17)
+
+- [ ] 7.1 Fix Task 1 の説明
+  - 関連: Task 2.3, Requirement 1.2
+  - 修正内容の詳細
+
+- [ ] 7.2 Fix Task 2 の説明
+  - 関連: Task 4.1, Requirement 3.1
+```
+
+**IMPORTANT**: Do NOT use `FIX-N` format. Always use sequential `N.M` format (e.g., 7.1, 7.2).
+
+#### Step 5: Update spec.json
+After adding fix tasks, update spec.json to add `fixedAt` timestamp to the latest round:
+1. Read spec.json
+2. Find the latest round in `inspection.rounds`
+3. Add `fixedAt: "{current ISO 8601 timestamp}"` to that round
+4. Write spec.json
+
+**Verification**: After writing, confirm spec.json contains `fixedAt` in the latest round.
+
+#### Step 6: Report Completion
+Report: "Fix tasks added to tasks.md. Run `/kiro:spec-impl {feature}` to apply fixes."
 
 ### --autofix Mode
 If NOGO judgment AND --autofix option:

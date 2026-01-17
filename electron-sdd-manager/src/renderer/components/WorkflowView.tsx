@@ -36,7 +36,7 @@ import {
   type PhaseStatus,
   type ExtendedSpecJson,
 } from '../types/workflow';
-import { isActualWorktreeMode, isImplStarted } from '../types/worktree';
+import { hasWorktreePath, isImplStarted } from '../types/worktree';
 
 /** Maximum continue retries - should match MAX_CONTINUE_RETRIES in specManagerService */
 const MAX_CONTINUE_RETRIES = 2;
@@ -172,9 +172,9 @@ export function WorkflowView() {
 
     try {
       // Task 6.1 (git-worktree-support): Deploy button conditional branching
-      // When spec.json.worktree is present: execute spec-merge
-      // When spec.json.worktree is absent: execute /commit via normal phase execution
-      if (phase === 'deploy' && specJson?.worktree) {
+      // When spec has worktree path: execute spec-merge
+      // When spec has no worktree path (normal mode or no impl): execute /commit via normal phase execution
+      if (phase === 'deploy' && hasWorktreePath({ worktree: specJson?.worktree })) {
         await window.electronAPI.executeSpecMerge(
           specDetail.metadata.name,
           specDetail.metadata.name,
@@ -432,7 +432,7 @@ export function WorkflowView() {
   // - If existing worktree (path exists), auto-select worktree mode
   const isWorktreeModeSelected = useMemo(() => {
     // If actual worktree exists (with path), always consider it worktree mode
-    if (isActualWorktreeMode({ worktree: specJson?.worktree })) {
+    if (hasWorktreePath({ worktree: specJson?.worktree })) {
       return true;
     }
     // Otherwise, use the user's selection
@@ -446,7 +446,7 @@ export function WorkflowView() {
 
   // Check if actual worktree exists (with path)
   const hasExistingWorktree = useMemo(() => {
-    return isActualWorktreeMode({ worktree: specJson?.worktree });
+    return hasWorktreePath({ worktree: specJson?.worktree });
   }, [specJson?.worktree]);
 
   // Handler for worktree mode checkbox change

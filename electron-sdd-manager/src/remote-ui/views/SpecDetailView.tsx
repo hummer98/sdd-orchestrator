@@ -26,6 +26,7 @@ import type {
   AutoExecutionOptions,
 } from '@shared/api/types';
 import type { AutoExecutionStatus } from '@shared/types';
+import { hasWorktreePath } from '@renderer/types/worktree';
 
 // =============================================================================
 // Types
@@ -359,7 +360,8 @@ export function SpecDetailView({
       )}
 
       {/* git-worktree-support: Task 13.2 - Worktree Information Section */}
-      {specDetail.specJson?.worktree && (
+      {/* Only show when actual worktree path exists (not normal mode with just branch) */}
+      {hasWorktreePath({ worktree: specDetail.specJson?.worktree }) && specDetail.specJson?.worktree && (
         <div className="flex-shrink-0 px-4">
           <WorktreeSection worktree={specDetail.specJson.worktree} />
         </div>

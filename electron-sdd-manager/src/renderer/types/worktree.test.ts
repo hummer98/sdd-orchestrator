@@ -7,8 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isWorktreeConfig,
-  isWorktreeMode,
-  isActualWorktreeMode,
+  hasWorktreePath,
   isImplStarted,
   type WorktreeConfig,
   type WorktreeError,
@@ -101,60 +100,6 @@ describe('WorktreeConfig type guard', () => {
       expect(isWorktreeConfig({ path: 'test', branch: 123, created_at: 'test' })).toBe(false);
       expect(isWorktreeConfig({ path: 'test', branch: 'test', created_at: 123 })).toBe(false);
     });
-  });
-});
-
-describe('isWorktreeMode', () => {
-  it('should return true when worktree field is valid', () => {
-    const specJson = {
-      worktree: {
-        path: '../sdd-orchestrator-worktrees/my-feature',
-        branch: 'feature/my-feature',
-        created_at: '2026-01-12T12:00:00+09:00',
-      },
-    };
-    expect(isWorktreeMode(specJson)).toBe(true);
-  });
-
-  it('should return false when worktree field is undefined', () => {
-    const specJson = {};
-    expect(isWorktreeMode(specJson)).toBe(false);
-  });
-
-  it('should return false when worktree field is null', () => {
-    const specJson = { worktree: null };
-    expect(isWorktreeMode(specJson)).toBe(false);
-  });
-
-  it('should return false when worktree field is invalid', () => {
-    const specJson = {
-      worktree: {
-        path: '../sdd-orchestrator-worktrees/my-feature',
-        // missing branch and created_at
-      },
-    };
-    expect(isWorktreeMode(specJson)).toBe(false);
-  });
-
-  it('should work with full SpecJson-like object', () => {
-    const specJson = {
-      feature_name: 'my-feature',
-      created_at: '2026-01-12T12:00:00+09:00',
-      updated_at: '2026-01-12T12:00:00+09:00',
-      language: 'ja',
-      phase: 'tasks-generated',
-      approvals: {
-        requirements: { generated: true, approved: true },
-        design: { generated: true, approved: true },
-        tasks: { generated: true, approved: true },
-      },
-      worktree: {
-        path: '../sdd-orchestrator-worktrees/my-feature',
-        branch: 'feature/my-feature',
-        created_at: '2026-01-12T12:00:00+09:00',
-      },
-    };
-    expect(isWorktreeMode(specJson)).toBe(true);
   });
 });
 
@@ -310,8 +255,8 @@ describe('WorktreeConfig with optional path (worktree-execution-ui)', () => {
   });
 });
 
-describe('isActualWorktreeMode (worktree-execution-ui)', () => {
-  // Requirement 2.2: isActualWorktreeMode checks for path presence
+describe('hasWorktreePath (worktree-execution-ui)', () => {
+  // Requirement 2.2: hasWorktreePath checks for path presence
   it('should return true when worktree.path exists', () => {
     const specJson = {
       worktree: {
@@ -320,7 +265,7 @@ describe('isActualWorktreeMode (worktree-execution-ui)', () => {
         created_at: '2026-01-17T12:00:00Z',
       },
     };
-    expect(isActualWorktreeMode(specJson)).toBe(true);
+    expect(hasWorktreePath(specJson)).toBe(true);
   });
 
   it('should return false when worktree exists but path is absent (normal mode)', () => {
@@ -330,17 +275,17 @@ describe('isActualWorktreeMode (worktree-execution-ui)', () => {
         created_at: '2026-01-17T12:00:00Z',
       },
     };
-    expect(isActualWorktreeMode(specJson)).toBe(false);
+    expect(hasWorktreePath(specJson)).toBe(false);
   });
 
   it('should return false when worktree is undefined', () => {
     const specJson = {};
-    expect(isActualWorktreeMode(specJson)).toBe(false);
+    expect(hasWorktreePath(specJson)).toBe(false);
   });
 
   it('should return false when worktree is null', () => {
     const specJson = { worktree: null };
-    expect(isActualWorktreeMode(specJson)).toBe(false);
+    expect(hasWorktreePath(specJson)).toBe(false);
   });
 
   it('should return false when worktree.path is empty string', () => {
@@ -351,7 +296,7 @@ describe('isActualWorktreeMode (worktree-execution-ui)', () => {
         created_at: '2026-01-17T12:00:00Z',
       },
     };
-    expect(isActualWorktreeMode(specJson)).toBe(false);
+    expect(hasWorktreePath(specJson)).toBe(false);
   });
 });
 

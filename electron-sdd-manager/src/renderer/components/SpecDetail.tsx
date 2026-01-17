@@ -23,7 +23,7 @@ import MDEditor from '@uiw/react-md-editor';
 import { useSpecStore } from '../stores';
 import { clsx } from 'clsx';
 import type { Phase, ArtifactInfo } from '../types';
-import { isActualWorktreeMode, type WorktreeConfig } from '../types/worktree';
+import { hasWorktreePath, type WorktreeConfig } from '../types/worktree';
 
 const PHASE_LABELS = {
   requirements: '要件定義',
@@ -115,7 +115,7 @@ export function SpecDetail() {
 
       {/* git-worktree-support: Task 12.1, 12.2 - Worktree Information Section */}
       {/* worktree-execution-ui Task 8.1: Only show when actual worktree mode (path exists) */}
-      {isActualWorktreeMode(specJson) && specJson.worktree && (
+      {hasWorktreePath(specJson) && specJson.worktree && (
         <WorktreeSection worktree={specJson.worktree} />
       )}
 

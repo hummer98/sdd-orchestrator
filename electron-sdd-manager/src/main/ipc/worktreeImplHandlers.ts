@@ -12,7 +12,7 @@ import type {
   WorktreeConfig,
   WorktreeError,
 } from '../../renderer/types/worktree';
-import { isWorktreeMode } from '../../renderer/types/worktree';
+import { hasWorktreePath } from '../../renderer/types/worktree';
 
 /**
  * Extended error type for impl start operations
@@ -221,24 +221,18 @@ export function getWorktreeCwd(
   projectPath: string,
   specJson: { worktree?: unknown }
 ): string {
-  // Check if spec is in worktree mode using type guard
-  if (!isWorktreeMode(specJson)) {
+  // Check if spec has worktree path (actual worktree mode, not normal mode)
+  if (!hasWorktreePath(specJson)) {
     return projectPath;
   }
 
-  // TypeScript now knows specJson.worktree is WorktreeConfig
+  // TypeScript: we know worktree.path exists from hasWorktreePath check
   const worktreeConfig = specJson.worktree as WorktreeConfig;
-
-  // worktree-execution-ui: path is now optional, check before resolving
-  if (!worktreeConfig.path) {
-    // Normal mode - no worktree path, use project path
-    return projectPath;
-  }
 
   // Use WorktreeService to resolve the path
   const worktreeService = new WorktreeService(projectPath);
   try {
-    return worktreeService.resolveWorktreePath(worktreeConfig.path);
+    return worktreeService.resolveWorktreePath(worktreeConfig.path!);
   } catch (error) {
     // If path resolution fails, fall back to project path
     logger.warn('[WorktreeImplHandlers] Failed to resolve worktree path, falling back to project path', {

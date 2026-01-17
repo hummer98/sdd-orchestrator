@@ -86,24 +86,13 @@ export function isWorktreeConfig(value: unknown): value is WorktreeConfig {
 }
 
 /**
- * Check if a spec is in worktree mode
- * Requirements: 2.2 - mode detection via worktree field presence
- *
- * @param specJson - SpecJson object (or any object with optional worktree field)
- * @returns true if spec has a valid worktree configuration
- */
-export function isWorktreeMode(specJson: { worktree?: unknown }): boolean {
-  return isWorktreeConfig(specJson.worktree);
-}
-
-/**
- * Check if spec is in "actual" worktree mode (has path)
- * worktree-execution-ui Requirement 2.2: Distinguishes actual worktree from normal mode
+ * Check if spec has a worktree directory (actual worktree mode with path)
+ * Use this to determine if spec-merge is needed instead of commit.
  *
  * @param specJson - SpecJson object
  * @returns true if spec.worktree.path exists and is non-empty
  */
-export function isActualWorktreeMode(specJson: { worktree?: WorktreeConfig | null | unknown }): boolean {
+export function hasWorktreePath(specJson: { worktree?: WorktreeConfig | null | unknown }): boolean {
   if (!specJson.worktree || typeof specJson.worktree !== 'object') {
     return false;
   }

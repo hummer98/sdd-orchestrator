@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.2] - 2026-01-17
+
+### Added
+- **Gemini CLI/debatex対応**: ドキュメントレビューのscheme切替機能を実装
+
+### Fixed
+- **停止ボタン修正**: Bug自動実行の停止ボタンが機能しない問題を修正
+- **worktree checkout問題修正**: checkout完了前にAgentが起動する問題を修正
+- **DocumentReviewPanelボタン表示**: 最新ラウンドのfixStatusを基準にボタン表示を判定
+- **TypeScript型定義復元**: v0.30.1以降に欠落した型定義を復元
+
+### Changed
+- **Agent実行中インジケーター統一**: Bot + animate-pulseに統一
+
 ## [0.30.1] - 2026-01-17
 
 ### Added

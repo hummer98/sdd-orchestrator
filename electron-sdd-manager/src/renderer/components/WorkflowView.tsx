@@ -11,8 +11,8 @@
 
 import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square, AlertCircle, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
-import { useSpecStore, type ImplTaskStatus } from '../stores/specStore';
+import { ArrowDown, Play, Square } from 'lucide-react';
+import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
@@ -37,8 +37,7 @@ import {
 } from '../types/workflow';
 import { hasWorktreePath, isImplStarted } from '../types/worktree';
 
-/** Maximum continue retries - should match MAX_CONTINUE_RETRIES in specManagerService */
-const MAX_CONTINUE_RETRIES = 2;
+// SpecManagerStatusDisplay REMOVED - MAX_CONTINUE_RETRIES no longer needed
 
 // ============================================================
 // Task 7.1-7.6: WorkflowView Component
@@ -47,7 +46,8 @@ const MAX_CONTINUE_RETRIES = 2;
 
 export function WorkflowView() {
   // Bug fix: inspection-auto-execution-toggle - removed refreshSpecs (no longer needed)
-  const { specDetail, isLoading, selectedSpec, specManagerExecution, clearSpecManagerError } = useSpecStore();
+  // SpecManagerStatusDisplay REMOVED - Agent state is shown via AgentListPanel
+  const { specDetail, isLoading, selectedSpec } = useSpecStore();
   const workflowStore = useWorkflowStore();
   // agents をセレクタで取得（Zustand reactivity: store全体取得では変更検知されない）
   const agents = useAgentStore((state) => state.agents);
@@ -174,23 +174,28 @@ export function WorkflowView() {
       // Task 6.1 (git-worktree-support): Deploy button conditional branching
       // When spec has worktree path: execute spec-merge
       // When spec has no worktree path (normal mode or no impl): execute /commit via normal phase execution
+      // execute-method-unification: Task 5.3 - Use unified execute API
       if (phase === 'deploy' && hasWorktreePath({ worktree: specJson?.worktree })) {
-        await window.electronAPI.executeSpecMerge(
-          specDetail.metadata.name,
-          specDetail.metadata.name,
-          workflowStore.commandPrefix
-        );
+        await window.electronAPI.execute({
+          type: 'spec-merge',
+          specId: specDetail.metadata.name,
+          featureName: specDetail.metadata.name,
+          commandPrefix: workflowStore.commandPrefix,
+        });
         return;
       }
 
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executePhase(
-        specDetail.metadata.name,
-        phase,
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
+      // execute-method-unification: Task 5.3 - Use unified execute API
+      // Note: For phases that don't have specific options (requirements, design, tasks, deploy),
+      // we cast to the appropriate type. Impl phase is handled separately above.
+      await window.electronAPI.execute({
+        type: phase as 'requirements' | 'design' | 'tasks' | 'deploy',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
     }
@@ -270,16 +275,18 @@ export function WorkflowView() {
     return runningPhases.has('document-review') || runningPhases.has('document-review-reply') || runningPhases.has('document-review-fix');
   }, [runningPhases]);
 
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleStartDocumentReview = useCallback(async () => {
     if (!specDetail) return;
 
     try {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeDocumentReview(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
+      await window.electronAPI.execute({
+        type: 'document-review',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
+        commandPrefix: workflowStore.commandPrefix,
+      });
       // Note: Manual document-review agent tracking was removed as part of
       // deprecated-auto-execution-service-cleanup. Main Process AutoExecutionCoordinator
       // now handles document-review workflow orchestration.
@@ -289,34 +296,38 @@ export function WorkflowView() {
   }, [specDetail, workflowStore.commandPrefix]);
 
   // Handler for executing document-review-reply manually
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
     try {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeDocumentReviewReply(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
-        roundNumber,
-        workflowStore.commandPrefix
-      );
+      await window.electronAPI.execute({
+        type: 'document-review-reply',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
+        reviewNumber: roundNumber,
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'レビュー内容判定の実行に失敗しました');
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
   // Handler for applying fixes from document-review-reply (--fix option)
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleApplyDocumentReviewFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
     try {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeDocumentReviewFix(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
-        roundNumber,
-        workflowStore.commandPrefix
-      );
+      await window.electronAPI.execute({
+        type: 'document-review-fix',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
+        reviewNumber: roundNumber,
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'replyの適用に失敗しました');
     }
@@ -333,31 +344,35 @@ export function WorkflowView() {
   }, [runningPhases]);
 
   // Handler for starting inspection
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleStartInspection = useCallback(async () => {
     if (!specDetail) return;
 
     try {
-      await window.electronAPI.executeInspection(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
-        workflowStore.commandPrefix
-      );
+      await window.electronAPI.execute({
+        type: 'inspection',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Inspectionの実行に失敗しました');
     }
   }, [specDetail, workflowStore.commandPrefix]);
 
   // Handler for executing inspection fix
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleExecuteInspectionFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
     try {
-      await window.electronAPI.executeInspectionFix(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
+      await window.electronAPI.execute({
+        type: 'inspection-fix',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
         roundNumber,
-        workflowStore.commandPrefix
-      );
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'Inspection Fixの実行に失敗しました');
     }
@@ -374,18 +389,20 @@ export function WorkflowView() {
   // 1. User edits being overwritten during Agent execution
   // 2. Redundant full reloads when single files changed
 
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;
 
     try {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
-      await window.electronAPI.executeTaskImpl(
-        specDetail.metadata.name,
-        specDetail.metadata.name,
+      await window.electronAPI.execute({
+        type: 'impl',
+        specId: specDetail.metadata.name,
+        featureName: specDetail.metadata.name,
         taskId,
-        workflowStore.commandPrefix
-      );
+        commandPrefix: workflowStore.commandPrefix,
+      });
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'タスク実装の実行に失敗しました');
     }
@@ -444,6 +461,7 @@ export function WorkflowView() {
   }, [workflowStore]);
 
   // FIX-2: Handler for impl execution based on worktree mode
+  // execute-method-unification: Task 5.3 - Use unified execute API
   const handleImplExecute = useCallback(async () => {
     if (!specDetail) return;
 
@@ -457,12 +475,13 @@ export function WorkflowView() {
         // Worktree mode: Check if worktree already exists
         if (hasExistingWorktree) {
           // Continue impl in existing worktree
-          await window.electronAPI.executePhase(
-            specDetail.metadata.name,
-            'impl',
-            specDetail.metadata.name,
-            workflowStore.commandPrefix
-          );
+          // Execute all pending tasks (no taskId specified)
+          await window.electronAPI.execute({
+            type: 'impl',
+            specId: specDetail.metadata.name,
+            featureName: specDetail.metadata.name,
+            commandPrefix: workflowStore.commandPrefix,
+          });
         } else {
           // Create new worktree and start impl
           // Check if on main branch first
@@ -503,12 +522,13 @@ export function WorkflowView() {
           notify.success(`Worktree作成完了: ${implStartResult.value.worktreeConfig.branch}`);
 
           // Now start impl in the worktree
-          await window.electronAPI.executePhase(
-            specDetail.metadata.name,
-            'impl',
-            specDetail.metadata.name,
-            workflowStore.commandPrefix
-          );
+          // Execute all pending tasks (no taskId specified)
+          await window.electronAPI.execute({
+            type: 'impl',
+            specId: specDetail.metadata.name,
+            featureName: specDetail.metadata.name,
+            commandPrefix: workflowStore.commandPrefix,
+          });
         }
       } else {
         // Normal mode: Save branch info and execute impl
@@ -523,12 +543,13 @@ export function WorkflowView() {
         }
 
         // Execute impl phase
-        await window.electronAPI.executePhase(
-          specDetail.metadata.name,
-          'impl',
-          specDetail.metadata.name,
-          workflowStore.commandPrefix
-        );
+        // Execute all pending tasks (no taskId specified)
+        await window.electronAPI.execute({
+          type: 'impl',
+          specId: specDetail.metadata.name,
+          featureName: specDetail.metadata.name,
+          commandPrefix: workflowStore.commandPrefix,
+        });
       }
     } catch (error) {
       notify.error(error instanceof Error ? error.message : '実装の開始に失敗しました');
@@ -698,16 +719,9 @@ export function WorkflowView() {
           </ImplFlowFrame>
         </div>
 
-        {/* spec-manager Execution Status Display */}
-        {/* Requirements: 5.2-5.8 */}
-        <SpecManagerStatusDisplay
-          execution={specManagerExecution}
-          onClearError={clearSpecManagerError}
-        />
-
-        {/* Bug fix: auto-execution-loading-redundant - AutoExecutionStatusDisplay removed
-            実行状態表示はImplPhasePanel内のisAutoPhase/isExecutingプロップで表示される。
-            停止機能はフッターボタン、リトライはSpecManagerStatusDisplayで提供済み。 */}
+        {/* SpecManagerStatusDisplay REMOVED
+            Agent execution state is now displayed via AgentListPanel
+            (running/completed/failed/hang/interrupted status icons) */}
 
       </div>
 
@@ -746,98 +760,7 @@ export function WorkflowView() {
 }
 
 // ============================================================
-// spec-manager Status Display Component
-// Requirements: 5.2, 5.3, 5.4, 5.5, 5.7, 5.8
-// execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
+// SpecManagerStatusDisplay REMOVED
+// Agent execution state is now displayed via AgentListPanel
+// (running/completed/failed/hang/interrupted status icons)
 // ============================================================
-
-interface SpecManagerStatusDisplayProps {
-  execution: {
-    isRunning: boolean;
-    currentPhase: string | null;
-    currentSpecId: string | null;
-    // execution-store-consolidation: lastCheckResult REMOVED (Req 6.5)
-    error: string | null;
-    implTaskStatus: ImplTaskStatus | null;
-    retryCount: number;
-    executionMode: 'auto' | 'manual' | null;
-  };
-  onClearError: () => void;
-}
-
-function SpecManagerStatusDisplay({ execution, onClearError }: SpecManagerStatusDisplayProps) {
-  const { isRunning, implTaskStatus, error, retryCount } = execution;
-
-  // No status to display
-  if (!isRunning && !implTaskStatus && !error) {
-    return null;
-  }
-
-  return (
-    <div className="mt-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-      {/* Running State */}
-      {isRunning && implTaskStatus === 'running' && (
-        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>実行中...</span>
-        </div>
-      )}
-
-      {/* Continuing State (Retry) */}
-      {/* Requirements: 5.7 */}
-      {implTaskStatus === 'continuing' && (
-        <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
-          <RefreshCcw className="w-4 h-4 animate-spin" />
-          <span>継続処理中...(リトライ {retryCount}/{MAX_CONTINUE_RETRIES})</span>
-        </div>
-      )}
-
-      {/* Success State */}
-      {/* execution-store-consolidation: lastCheckResult REMOVED (Req 6.5) */}
-      {/* Task completion state is now shown via TaskProgressView */}
-      {implTaskStatus === 'success' && (
-        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-          <CheckCircle className="w-4 h-4" />
-          <span>完了</span>
-        </div>
-      )}
-
-      {/* Stalled State */}
-      {/* Requirements: 5.8 */}
-      {implTaskStatus === 'stalled' && (
-        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-          <AlertCircle className="w-4 h-4" />
-          <span>完了確認できず - 手動確認が必要</span>
-        </div>
-      )}
-
-      {/* Error State */}
-      {/* Requirements: 5.5 */}
-      {(implTaskStatus === 'error' || error) && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <AlertCircle className="w-4 h-4" />
-            <span>エラー</span>
-          </div>
-          {error && (
-            <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-              {error}
-            </div>
-          )}
-          <button
-            onClick={onClearError}
-            className={clsx(
-              'flex items-center gap-2 px-3 py-1 text-sm rounded',
-              'bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50',
-              'text-red-700 dark:text-red-400',
-              'transition-colors'
-            )}
-          >
-            <RefreshCcw className="w-3 h-3" />
-            再実行
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}

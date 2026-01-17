@@ -500,7 +500,7 @@ export function WorkflowView() {
             return;
           }
 
-          notify.success(`Worktree作成完了: ${implStartResult.value.branch}`);
+          notify.success(`Worktree作成完了: ${implStartResult.value.worktreeConfig.branch}`);
 
           // Now start impl in the worktree
           await window.electronAPI.executePhase(

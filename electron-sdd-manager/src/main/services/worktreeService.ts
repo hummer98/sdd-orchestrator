@@ -6,6 +6,7 @@
  */
 
 import { exec as nodeExec } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logger';
 import type {
@@ -126,6 +127,30 @@ export class WorktreeService {
   }
 
   /**
+   * Wait for worktree checkout to complete by monitoring index.lock
+   * worktree-checkout-not-complete: Ensures filesystem sync before returning
+   *
+   * @param worktreeName - Name of the worktree (used in .git/worktrees/{name}/)
+   * @param timeout - Maximum wait time in milliseconds (default: 10000)
+   * @returns true if checkout completed, false if timeout
+   */
+  private async waitForWorktreeReady(worktreeName: string, timeout = 10000): Promise<boolean> {
+    const lockFile = path.join(this.projectPath, '.git', 'worktrees', worktreeName, 'index.lock');
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      if (!fs.existsSync(lockFile)) {
+        logger.debug('[WorktreeService] Worktree checkout complete', { worktreeName, waitedMs: Date.now() - startTime });
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    logger.warn('[WorktreeService] Worktree checkout timeout', { worktreeName, timeout });
+    return false;
+  }
+
+  /**
    * Get current git branch
    */
   async getCurrentBranch(): Promise<WorktreeServiceResult<string>> {
@@ -224,6 +249,9 @@ export class WorktreeService {
       }
       return createWorktreeResult;
     }
+
+    // worktree-checkout-not-complete: Wait for checkout to complete before returning
+    await this.waitForWorktreeReady(featureName);
 
     const worktreeInfo: WorktreeInfo = {
       path: relativePath,
@@ -422,6 +450,9 @@ export class WorktreeService {
       }
       return createWorktreeResult;
     }
+
+    // worktree-checkout-not-complete: Wait for checkout to complete before returning
+    await this.waitForWorktreeReady(bugName);
 
     const worktreeInfo: WorktreeInfo = {
       path: relativePath,

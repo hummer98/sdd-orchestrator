@@ -156,8 +156,14 @@ export const IPC_CHANNELS = {
   INSTALL_EXPERIMENTAL_DEBUG: 'ipc:install-experimental-debug',
   CHECK_EXPERIMENTAL_TOOL_EXISTS: 'ipc:check-experimental-tool-exists',
 
+  // gemini-document-review Task 3.2: Gemini Document Review Install
+  INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW: 'ipc:install-experimental-gemini-doc-review',
+  CHECK_EXPERIMENTAL_GEMINI_DOC_REVIEW_EXISTS: 'ipc:check-experimental-gemini-doc-review-exists',
+
   // Menu Events - Experimental Tools
   MENU_INSTALL_EXPERIMENTAL_DEBUG: 'menu:install-experimental-debug',
+  // gemini-document-review Task 3.3: Menu event for Gemini install
+  MENU_INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW: 'menu:install-experimental-gemini-doc-review',
 
   // Unified Project Selection (unified-project-selection feature)
   // Requirements: 1.1, 1.2, 1.6, 5.1-5.4, 6.1-6.4

@@ -2,6 +2,7 @@
  * Document Review Types
  * Type definitions for document review workflow
  * Requirements: 5.1, 5.2, 5.3, 5.4, 8.1, 8.2
+ * gemini-document-review: 3.1, 3.2, 3.3 - ReviewerScheme type
  */
 
 // ============================================================
@@ -61,6 +62,36 @@ export const FIX_STATUS = {
 export type FixStatus = (typeof FIX_STATUS)[keyof typeof FIX_STATUS];
 
 // ============================================================
+// gemini-document-review Task 1.1: ReviewerScheme Type
+// Requirements: 3.1, 3.2, 3.3
+// ============================================================
+
+/**
+ * Reviewer scheme for document review
+ * - 'claude-code': Claude Code CLI (default)
+ * - 'gemini-cli': Gemini CLI
+ * - 'debatex': Debatex CLI
+ */
+export type ReviewerScheme = 'claude-code' | 'gemini-cli' | 'debatex';
+
+/**
+ * Default reviewer scheme
+ */
+export const DEFAULT_REVIEWER_SCHEME: ReviewerScheme = 'claude-code';
+
+/**
+ * Valid reviewer scheme values for validation
+ */
+const VALID_REVIEWER_SCHEMES = ['claude-code', 'gemini-cli', 'debatex'] as const;
+
+/**
+ * Type guard to check if a value is a valid ReviewerScheme
+ */
+export function isReviewerScheme(value: unknown): value is ReviewerScheme {
+  return typeof value === 'string' && VALID_REVIEWER_SCHEMES.includes(value as ReviewerScheme);
+}
+
+// ============================================================
 // Task 1.1: RoundDetail Type
 // Requirements: 5.4, 6.2, 6.3 (fix-status-field-migration)
 // ============================================================
@@ -96,6 +127,8 @@ export interface DocumentReviewState {
   currentRound?: number;
   /** Details for each round */
   roundDetails?: RoundDetail[];
+  /** Reviewer CLI scheme (default: claude-code) - gemini-document-review Task 1.1 */
+  scheme?: ReviewerScheme;
 }
 
 // ============================================================

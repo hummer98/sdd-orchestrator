@@ -13,6 +13,9 @@ import {
   type RoundDetail,
   type ReviewError,
   type FixStatus,
+  type ReviewerScheme,
+  DEFAULT_REVIEWER_SCHEME,
+  isReviewerScheme,
   isDocumentReviewState,
   createInitialReviewState,
 } from './documentReview';
@@ -220,6 +223,77 @@ describe('Document Review Types', () => {
       // TypeScript would fail if fixApplied was still required
       expect(detail.fixStatus).toBe('applied');
       expect((detail as { fixApplied?: boolean }).fixApplied).toBeUndefined();
+    });
+  });
+
+  // ============================================================
+  // gemini-document-review Task 1.1: ReviewerScheme type
+  // Requirements: 3.1, 3.2, 3.3
+  // ============================================================
+  describe('gemini-document-review Task 1.1: ReviewerScheme type', () => {
+    describe('DEFAULT_REVIEWER_SCHEME constant', () => {
+      it('should default to claude-code', () => {
+        expect(DEFAULT_REVIEWER_SCHEME).toBe('claude-code');
+      });
+    });
+
+    describe('isReviewerScheme type guard', () => {
+      it('should return true for claude-code', () => {
+        expect(isReviewerScheme('claude-code')).toBe(true);
+      });
+
+      it('should return true for gemini-cli', () => {
+        expect(isReviewerScheme('gemini-cli')).toBe(true);
+      });
+
+      it('should return true for debatex', () => {
+        expect(isReviewerScheme('debatex')).toBe(true);
+      });
+
+      it('should return false for unknown scheme', () => {
+        expect(isReviewerScheme('unknown')).toBe(false);
+        expect(isReviewerScheme('')).toBe(false);
+        expect(isReviewerScheme('openai')).toBe(false);
+      });
+
+      it('should return false for non-string values', () => {
+        expect(isReviewerScheme(null)).toBe(false);
+        expect(isReviewerScheme(undefined)).toBe(false);
+        expect(isReviewerScheme(123)).toBe(false);
+      });
+    });
+
+    describe('DocumentReviewState with scheme field', () => {
+      it('should allow scheme field with claude-code', () => {
+        const state: DocumentReviewState = {
+          status: 'pending',
+          scheme: 'claude-code',
+        };
+        expect(state.scheme).toBe('claude-code');
+      });
+
+      it('should allow scheme field with gemini-cli', () => {
+        const state: DocumentReviewState = {
+          status: 'pending',
+          scheme: 'gemini-cli',
+        };
+        expect(state.scheme).toBe('gemini-cli');
+      });
+
+      it('should allow scheme field with debatex', () => {
+        const state: DocumentReviewState = {
+          status: 'pending',
+          scheme: 'debatex',
+        };
+        expect(state.scheme).toBe('debatex');
+      });
+
+      it('should allow scheme to be undefined (backward compatibility)', () => {
+        const state: DocumentReviewState = {
+          status: 'pending',
+        };
+        expect(state.scheme).toBeUndefined();
+      });
     });
   });
 });

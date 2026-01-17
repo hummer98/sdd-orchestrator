@@ -995,6 +995,51 @@ const electronAPI = {
   },
 
   // ============================================================
+  // gemini-document-review Task 3.2: Gemini Document Review Install
+  // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
+  // ============================================================
+
+  /**
+   * Install Gemini document-review commands (experimental)
+   * Installs TOML templates to .gemini/commands/kiro/
+   * @param projectPath Project root path
+   * @param options Install options (force: boolean)
+   * @returns Installation result
+   */
+  installExperimentalGeminiDocReview: (
+    projectPath: string,
+    options?: ExperimentalInstallOptions
+  ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW, projectPath, options),
+
+  /**
+   * Check if Gemini document-review TOML files exist
+   * @param projectPath Project root path
+   * @returns Check result with exists and path
+   */
+  checkExperimentalGeminiDocReviewExists: (
+    projectPath: string
+  ): Promise<ExperimentalCheckResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_EXPERIMENTAL_GEMINI_DOC_REVIEW_EXISTS, projectPath),
+
+  /**
+   * Subscribe to menu install Gemini document-review event
+   * @param callback Function called when menu item is clicked
+   * @returns Cleanup function to unsubscribe
+   */
+  onMenuInstallExperimentalGeminiDocReview: (callback: () => void): (() => void) => {
+    const handler = () => {
+      callback();
+    };
+    ipcRenderer.on(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW, handler);
+    };
+  },
+
+  // ============================================================
   // E2E Test Mode (for exposing stores in E2E tests)
   // ============================================================
 

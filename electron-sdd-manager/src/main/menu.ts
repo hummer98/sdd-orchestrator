@@ -304,6 +304,18 @@ export function createMenu(): void {
                 }
               },
             },
+            // gemini-document-review Task 3.3: Gemini document-review install menu item
+            // Requirements: 1.1, 1.7, 1.8
+            {
+              label: 'Gemini document-review をインストール (実験的)',
+              enabled: currentProjectPathForMenu !== null,
+              click: () => {
+                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+                if (window) {
+                  window.webContents.send(IPC_CHANNELS.MENU_INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW);
+                }
+              },
+            },
             // Note: Commit command is now auto-installed on project selection
             // It's no longer an experimental tool but a core command for the deploy phase
           ],

@@ -215,4 +215,90 @@ describe('DocumentReviewPanel', () => {
 
     // NOTE: skip to run test removed - skip option is no longer available
   });
+
+  // ============================================================
+  // gemini-document-review Task 5.2, 5.3: Scheme tag and selector
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.3, 5.4, 5.5
+  // ============================================================
+  describe('scheme tag and selector', () => {
+    it('should display scheme tag when scheme is provided', () => {
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          scheme="claude-code"
+          onSchemeChange={vi.fn()}
+        />
+      );
+      expect(screen.getByTestId('scheme-selector-button')).toBeInTheDocument();
+      expect(screen.getByText('Claude')).toBeInTheDocument();
+    });
+
+    it('should display default Claude tag when scheme is undefined', () => {
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          onSchemeChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText('Claude')).toBeInTheDocument();
+    });
+
+    it('should display Gemini tag when scheme is gemini-cli', () => {
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          scheme="gemini-cli"
+          onSchemeChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText('Gemini')).toBeInTheDocument();
+    });
+
+    it('should display Debatex tag when scheme is debatex', () => {
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          scheme="debatex"
+          onSchemeChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText('Debatex')).toBeInTheDocument();
+    });
+
+    it('should call onSchemeChange when scheme is selected', () => {
+      const onSchemeChange = vi.fn();
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          scheme="claude-code"
+          onSchemeChange={onSchemeChange}
+        />
+      );
+
+      // Click the scheme selector button
+      fireEvent.click(screen.getByTestId('scheme-selector-button'));
+
+      // Select Gemini from dropdown
+      const dropdown = screen.getByTestId('scheme-selector-dropdown');
+      expect(dropdown).toBeInTheDocument();
+
+      // Find and click the Gemini option
+      const geminiOption = screen.getAllByText('Gemini')[0];
+      fireEvent.click(geminiOption);
+
+      expect(onSchemeChange).toHaveBeenCalledWith('gemini-cli');
+    });
+
+    it('should disable scheme selector when executing', () => {
+      render(
+        <DocumentReviewPanel
+          {...defaultProps}
+          scheme="claude-code"
+          isExecuting={true}
+          onSchemeChange={vi.fn()}
+        />
+      );
+      expect(screen.getByTestId('scheme-selector-button')).toBeDisabled();
+    });
+  });
 });

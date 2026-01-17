@@ -1171,3 +1171,124 @@ describe('executeSpecMerge', () => {
     startAgentSpy.mockRestore();
   });
 });
+
+// ============================================================
+// gemini-document-review Task 4.1, 4.2: Multi-engine Document Review
+// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8
+// ============================================================
+describe('executeDocumentReview - multi-engine support', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `spec-manager-engine-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    await service.stopAllAgents();
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should use Claude CLI for claude-code scheme', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'claude-code',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'claude',
+        args: expect.arrayContaining(['/kiro:document-review my-feature']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should use Gemini CLI for gemini-cli scheme with --yolo and --output-format stream-json', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'gemini-cli',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'gemini',
+        args: expect.arrayContaining(['--yolo', '--output-format', 'stream-json']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should use debatex CLI for debatex scheme', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'debatex',
+    });
+
+    // debatex uses ['npx', 'debatex'] as command, which gets split:
+    // command: 'npx', args: ['debatex', 'sdd-document-review', 'my-feature']
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'npx',
+        args: expect.arrayContaining(['debatex', 'sdd-document-review', 'my-feature']),
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should default to Claude CLI when scheme is undefined', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      // No scheme specified
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'claude',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should default to Claude CLI for unknown scheme', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'unknown-engine' as any,
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'claude',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+});

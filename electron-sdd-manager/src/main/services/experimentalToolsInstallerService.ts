@@ -432,6 +432,95 @@ ${templateContent}
       });
     });
   }
+
+  // ============================================================
+  // gemini-document-review Task 3.1: Gemini Document Review Installer
+  // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
+  // ============================================================
+
+  /**
+   * Check if Gemini document-review TOML file exists
+   * @param projectPath - Project root path
+   * @returns Check result with existence and path
+   */
+  async checkGeminiDocumentReviewExists(projectPath: string): Promise<CheckResult> {
+    const targetPath = join(projectPath, '.gemini', 'commands', 'kiro', 'document-review.toml');
+    const exists = await fileExists(targetPath);
+    return { exists, path: targetPath };
+  }
+
+  /**
+   * Install Gemini CLI document-review commands
+   * @param projectPath - Project root path
+   * @param options - Install options
+   * @returns Install result or error
+   */
+  async installGeminiDocumentReview(
+    projectPath: string,
+    options: InstallOptions = {}
+  ): Promise<Result<InstallResult, InstallError>> {
+    const { force = false } = options;
+
+    const files = [
+      {
+        relativePath: '.gemini/commands/kiro/document-review.toml',
+        templateSubPath: 'gemini/kiro/document-review.toml',
+      },
+      {
+        relativePath: '.gemini/commands/kiro/document-review-reply.toml',
+        templateSubPath: 'gemini/kiro/document-review-reply.toml',
+      },
+    ];
+
+    const installedFiles: string[] = [];
+    const skippedFiles: string[] = [];
+    const overwrittenFiles: string[] = [];
+
+    for (const file of files) {
+      const targetPath = join(projectPath, file.relativePath);
+      const templatePath = join(this.templateDir, file.templateSubPath);
+
+      // Check if template exists
+      if (!(await fileExists(templatePath))) {
+        return {
+          ok: false,
+          error: { type: 'TEMPLATE_NOT_FOUND', path: templatePath },
+        };
+      }
+
+      // Check if target exists
+      const exists = await fileExists(targetPath);
+      if (exists && !force) {
+        skippedFiles.push(file.relativePath);
+        continue;
+      }
+
+      // Install the file
+      try {
+        const content = await readFile(templatePath, 'utf-8');
+        await mkdir(dirname(targetPath), { recursive: true });
+        await writeFile(targetPath, content, 'utf-8');
+
+        if (exists) {
+          overwrittenFiles.push(file.relativePath);
+        } else {
+          installedFiles.push(file.relativePath);
+        }
+      } catch (error) {
+        return this.handleWriteError(error, targetPath);
+      }
+    }
+
+    return {
+      ok: true,
+      value: {
+        success: true,
+        installedFiles,
+        skippedFiles,
+        overwrittenFiles,
+      },
+    };
+  }
 }
 
 /**

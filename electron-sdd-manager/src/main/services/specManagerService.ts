@@ -21,6 +21,8 @@ import { LogParserService, ResultSubtype } from './logParserService';
 import { logger } from './logger';
 import type { ProviderType } from './ssh/providerFactory';
 import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
+// gemini-document-review Task 4.1, 4.2: Multi-engine support
+import { getReviewEngine, type ReviewerScheme } from '../../shared/registry/reviewEngineRegistry';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -256,10 +258,13 @@ export interface ExecuteTaskImplOptions {
 }
 
 /** Document Review execution options (Requirements: 6.1) */
+// gemini-document-review Task 4.2: Added scheme field for multi-engine support
 export interface ExecuteDocumentReviewOptions {
   specId: string;
   featureName: string;
   commandPrefix?: CommandPrefix;
+  /** Reviewer scheme (default: 'claude-code') - gemini-document-review Req 6.1, 6.2, 6.3 */
+  scheme?: ReviewerScheme;
 }
 
 /** Document Review Reply execution options (Requirements: 6.1, autofix: auto-execution-document-review-autofix) */
@@ -1292,23 +1297,55 @@ export class SpecManagerService {
 
   // ============================================================
   // Document Review Execution (Requirements: 6.1 - Document Review Workflow)
+  // gemini-document-review Task 4.1, 4.2: Multi-engine support
+  // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8
   // ============================================================
 
   /**
    * Execute document-review agent
    * Requirements: 2.1, 2.2, 2.3, 2.4
+   * gemini-document-review: Now supports multiple reviewer engines via scheme option
    */
   async executeDocumentReview(options: ExecuteDocumentReviewOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, featureName, commandPrefix = 'kiro' } = options;
-    const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
+    const { specId, featureName, commandPrefix = 'kiro', scheme } = options;
 
-    logger.info('[SpecManagerService] executeDocumentReview called', { specId, featureName, slashCommand, commandPrefix });
+    // Get engine configuration from registry (falls back to claude-code for unknown schemes)
+    const engine = getReviewEngine(scheme);
+
+    logger.info('[SpecManagerService] executeDocumentReview called', {
+      specId,
+      featureName,
+      commandPrefix,
+      scheme,
+      engineLabel: engine.label,
+    });
+
+    // Build command and args based on engine type
+    const command = engine.command;
+    const args = engine.buildArgs(featureName);
+
+    // For Claude Code, use the standard slash command format
+    if (scheme === 'claude-code' || scheme === undefined) {
+      const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
+      return this.startAgent({
+        specId,
+        phase: 'document-review',
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+        group: 'doc',
+      });
+    }
+
+    // For Gemini CLI and debatex, use the engine configuration
+    // Handle both string and array commands (e.g., 'gemini' vs ['npx', 'debatex'])
+    const cmdString = Array.isArray(command) ? command[0] : command;
+    const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
 
     return this.startAgent({
       specId,
       phase: 'document-review',
-      command: getClaudeCommand(),
-      args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+      command: cmdString,
+      args: cmdArgs,
       group: 'doc',
     });
   }

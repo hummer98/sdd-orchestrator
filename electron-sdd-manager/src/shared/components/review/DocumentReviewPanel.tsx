@@ -2,6 +2,7 @@
  * DocumentReviewPanel Component (Shared)
  *
  * Task 4.6: DocumentReview・Inspection・Validation関連コンポーネントを共有化する
+ * gemini-document-review Task 7.1, 7.2: Added scheme tag and selector
  *
  * ドキュメントレビューのワークフロー制御とステータス表示を行うコンポーネント。
  * props-driven設計で、ストア非依存。Electron版とRemote UI版で共有可能。
@@ -22,6 +23,7 @@ import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
 } from '../../types';
+import { SchemeSelector, type ReviewerScheme } from './SchemeSelector';
 
 // =============================================================================
 // Types
@@ -46,6 +48,12 @@ export interface DocumentReviewPanelProps {
   onApplyFix?: (roundNumber: number) => void;
   /** Handler for auto execution flag change */
   onAutoExecutionFlagChange?: (flag: DocumentReviewAutoExecutionFlag) => void;
+  // gemini-document-review Task 7.1, 7.2: Scheme support
+  // Requirements: 7.1, 7.2, 7.3, 7.4
+  /** Current reviewer scheme (default: claude-code) */
+  scheme?: ReviewerScheme;
+  /** Handler for scheme change */
+  onSchemeChange?: (scheme: ReviewerScheme) => void;
 }
 
 // =============================================================================
@@ -144,6 +152,9 @@ export function DocumentReviewPanel({
   onExecuteReply,
   onApplyFix,
   onAutoExecutionFlagChange,
+  // gemini-document-review Task 7.1, 7.2
+  scheme,
+  onSchemeChange,
 }: DocumentReviewPanelProps) {
   const rounds = reviewState?.roundDetails?.length ?? 0;
   // Review start button is enabled when:
@@ -191,7 +202,7 @@ export function DocumentReviewPanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        {/* Left side: Progress indicator + Icon + Title */}
+        {/* Left side: Progress indicator + Icon + Title + Scheme Tag */}
         <div className="flex items-center gap-2">
           {/* Progress indicator (title left side) */}
           <span className="p-1">{renderProgressIndicator(progressIndicatorState)}</span>
@@ -200,6 +211,17 @@ export function DocumentReviewPanel({
           <h3 className="font-medium text-gray-800 dark:text-gray-200">
             ドキュメントレビュー
           </h3>
+
+          {/* gemini-document-review Task 7.1, 7.2: Scheme Selector */}
+          {/* Requirements: 7.1, 7.2, 7.3, 7.4 */}
+          {onSchemeChange && (
+            <SchemeSelector
+              scheme={scheme}
+              onChange={onSchemeChange}
+              disabled={isExecuting}
+              className="ml-2"
+            />
+          )}
         </div>
 
         {/* Right side: Auto execution flag control */}

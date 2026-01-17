@@ -1710,6 +1710,34 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // gemini-document-review Task 3.2: Gemini Document Review Install
+  // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW,
+    async (
+      _event,
+      projectPath: string,
+      options?: ExperimentalInstallOptions
+    ): Promise<ExperimentalResult<ExperimentalInstallResult, ExperimentalInstallError>> => {
+      logger.info('[handlers] INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW called', { projectPath, options });
+      return experimentalToolsInstaller.installGeminiDocumentReview(projectPath, options);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_EXPERIMENTAL_GEMINI_DOC_REVIEW_EXISTS,
+    async (
+      _event,
+      projectPath: string
+    ): Promise<ExperimentalCheckResult> => {
+      logger.info('[handlers] CHECK_EXPERIMENTAL_GEMINI_DOC_REVIEW_EXISTS called', { projectPath });
+      return experimentalToolsInstaller.checkGeminiDocumentReviewExists(projectPath);
+    }
+  );
+
+  // ============================================================
   // Unified Project Selection (unified-project-selection feature)
   // Requirements: 1.1-1.6, 5.1-5.4, 6.1-6.4
   // ============================================================
@@ -2009,6 +2037,8 @@ export function registerIpcHandlers(): void {
   // ============================================================
   // Document Review Auto-Execution: execute document-review workflow
   // When coordinator emits 'execute-document-review', execute the document review via specManagerService
+  // gemini-document-review Task 8: Added scheme support for auto execution
+  // Requirements: 8.1, 8.2, 8.3
   // ============================================================
   coordinator.on('execute-document-review', async (specPath: string, context: { specId: string }) => {
     logger.info('[handlers] execute-document-review event received', { specPath, context });
@@ -2023,11 +2053,31 @@ export function registerIpcHandlers(): void {
         return;
       }
 
-      // Execute document-review
+      // gemini-document-review Task 8: Read scheme from spec.json
+      // Requirements: 8.1 - Respect scheme setting during auto execution
+      let scheme: import('../../shared/registry/reviewEngineRegistry').ReviewerScheme | undefined;
+      try {
+        const specJsonPath = join(specPath, 'spec.json');
+        const specJsonContent = await access(specJsonPath).then(
+          () => import('fs/promises').then(fs => fs.readFile(specJsonPath, 'utf-8')),
+          () => null
+        );
+        if (specJsonContent) {
+          const specJson = JSON.parse(specJsonContent);
+          scheme = specJson.documentReview?.scheme;
+          logger.debug('[handlers] execute-document-review: scheme loaded from spec.json', { specPath, scheme });
+        }
+      } catch (error) {
+        logger.warn('[handlers] execute-document-review: failed to read scheme from spec.json', { specPath, error });
+        // Continue with default scheme (claude-code)
+      }
+
+      // Execute document-review with scheme
       const reviewResult = await service.executeDocumentReview({
         specId: context.specId,
         featureName: context.specId,
         commandPrefix: 'kiro',
+        scheme,
       });
 
       if (!reviewResult.ok) {

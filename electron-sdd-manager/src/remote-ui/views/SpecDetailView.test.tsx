@@ -2,13 +2,14 @@
  * SpecDetailView Component Tests
  *
  * Task 13.2: Spec詳細・Phase実行UIを実装する
+ * gemini-document-review Task 10.3: scheme表示・切り替えテスト追加
  * TDD: RED phase - Write failing tests first
  *
- * Requirements: 7.1
+ * Requirements: 7.1, 7.2, 7.3, 7.4
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { SpecDetailView } from './SpecDetailView';
 import type { SpecMetadata, SpecDetail, ApiClient, AgentInfo } from '@shared/api/types';
 
@@ -19,9 +20,6 @@ import type { SpecMetadata, SpecDetail, ApiClient, AgentInfo } from '@shared/api
 const mockSpec: SpecMetadata = {
   name: 'user-authentication',
   path: '/project/.kiro/specs/user-authentication',
-  phase: 'design-generated',
-  updatedAt: '2026-01-10T10:00:00Z',
-  createdAt: '2026-01-09T08:00:00Z',
 };
 
 const mockSpecDetail: SpecDetail = {
@@ -41,7 +39,6 @@ const mockSpecDetail: SpecDetail = {
       tasks: { generated: true, approved: false },
     },
     autoExecution: {
-      enabled: false,
       permissions: {
         requirements: true,
         design: true,
@@ -51,11 +48,6 @@ const mockSpecDetail: SpecDetail = {
         deploy: false,
       },
       documentReviewFlag: 'run',
-      validationOptions: {
-        gap: false,
-        design: false,
-        impl: false,
-      },
     },
   },
   artifacts: {
@@ -80,6 +72,22 @@ const mockSpecDetailWithWorktree: SpecDetail = {
       path: '../my-project-worktrees/user-authentication',
       branch: 'feature/user-authentication',
       created_at: '2026-01-10T09:00:00Z',
+    },
+  },
+};
+
+/**
+ * Mock spec detail with scheme config
+ * gemini-document-review: Task 10.3
+ * Requirements: 7.1
+ */
+const mockSpecDetailWithScheme: SpecDetail = {
+  ...mockSpecDetail,
+  specJson: {
+    ...mockSpecDetail.specJson,
+    documentReview: {
+      status: 'pending',
+      scheme: 'gemini-cli',
     },
   },
 };
@@ -110,10 +118,9 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     resumeAgent: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     sendAgentInput: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getAgentLogs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
-    executeValidation: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     executeInspection: vi.fn().mockResolvedValue({ ok: true, value: {} }),
-    startAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: {} }),
+    startAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: { status: 'running' } }),
     stopAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getAutoExecutionStatus: vi.fn().mockResolvedValue({ ok: true, value: null }),
     saveFile: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
@@ -367,6 +374,182 @@ describe('SpecDetailView', () => {
 
       const worktreeSection = screen.getByTestId('worktree-section');
       expect(worktreeSection.querySelector('svg')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * gemini-document-review: Task 10.3
+   * Scheme display and switching tests in Remote UI
+   * Requirements: 7.1, 7.2, 7.3, 7.4
+   */
+  describe('Scheme Selector', () => {
+    it('renders scheme selector in header', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // SchemeSelector should be rendered with default value (Claude)
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      expect(selectorButton).toBeInTheDocument();
+      expect(selectorButton).toHaveTextContent('Claude');
+    });
+
+    it('displays correct scheme label when spec has scheme config', async () => {
+      const apiClientWithScheme = createMockApiClient({
+        getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: mockSpecDetailWithScheme }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithScheme} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // SchemeSelector should display 'Gemini' for gemini-cli scheme
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      expect(selectorButton).toBeInTheDocument();
+      expect(selectorButton).toHaveTextContent('Gemini');
+    });
+
+    it('shows dropdown menu when scheme selector is clicked', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // Click the scheme selector button
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      fireEvent.click(selectorButton);
+
+      // Dropdown should be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('scheme-selector-dropdown')).toBeInTheDocument();
+      });
+
+      // All scheme options should be present in dropdown
+      const dropdown = screen.getByTestId('scheme-selector-dropdown');
+      expect(within(dropdown).getByText('Claude')).toBeInTheDocument();
+      expect(within(dropdown).getByText('Gemini')).toBeInTheDocument();
+      expect(within(dropdown).getByText('Debatex')).toBeInTheDocument();
+    });
+
+    it('calls saveFile when scheme is changed', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // Click the scheme selector button
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      fireEvent.click(selectorButton);
+
+      // Wait for dropdown
+      await waitFor(() => {
+        expect(screen.getByTestId('scheme-selector-dropdown')).toBeInTheDocument();
+      });
+
+      // Click on Gemini option
+      const dropdown = screen.getByTestId('scheme-selector-dropdown');
+      const geminiOption = within(dropdown).getByText('Gemini');
+      fireEvent.click(geminiOption);
+
+      // saveFile should be called with the spec.json path
+      await waitFor(() => {
+        expect(mockApiClient.saveFile).toHaveBeenCalledWith(
+          '/project/.kiro/specs/user-authentication/spec.json',
+          expect.stringContaining('"scheme": "gemini-cli"')
+        );
+      });
+    });
+
+    it('updates scheme tag immediately (optimistic update)', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // Initially shows Claude
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      expect(selectorButton).toHaveTextContent('Claude');
+
+      // Click the scheme selector button
+      fireEvent.click(selectorButton);
+
+      // Wait for dropdown
+      await waitFor(() => {
+        expect(screen.getByTestId('scheme-selector-dropdown')).toBeInTheDocument();
+      });
+
+      // Click on Gemini option
+      const dropdown = screen.getByTestId('scheme-selector-dropdown');
+      const geminiOption = within(dropdown).getByText('Gemini');
+      fireEvent.click(geminiOption);
+
+      // Scheme tag should immediately show Gemini
+      await waitFor(() => {
+        const schemeButton = screen.getByTestId('scheme-selector-button');
+        expect(schemeButton).toHaveTextContent('Gemini');
+      });
+    });
+
+    it('reloads spec detail after scheme change', async () => {
+      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // Initial getSpecDetail call
+      expect(mockApiClient.getSpecDetail).toHaveBeenCalledTimes(1);
+
+      // Click the scheme selector button
+      const selectorButton = screen.getByTestId('scheme-selector-button');
+      fireEvent.click(selectorButton);
+
+      // Wait for dropdown
+      await waitFor(() => {
+        expect(screen.getByTestId('scheme-selector-dropdown')).toBeInTheDocument();
+      });
+
+      // Click on Gemini option
+      const dropdown = screen.getByTestId('scheme-selector-dropdown');
+      const geminiOption = within(dropdown).getByText('Gemini');
+      fireEvent.click(geminiOption);
+
+      // getSpecDetail should be called again to refresh data
+      await waitFor(() => {
+        expect(mockApiClient.getSpecDetail).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('disables scheme selector during auto execution', async () => {
+      const apiClientWithRunning = createMockApiClient({
+        startAutoExecution: vi.fn().mockResolvedValue({
+          ok: true,
+          value: { status: 'running', currentPhase: 'requirements', completedPhases: [] },
+        }),
+      });
+
+      render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithRunning} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+      });
+
+      // Start auto execution
+      const autoButton = screen.getByTestId('auto-execution-button');
+      fireEvent.click(autoButton);
+
+      // Wait for status change
+      await waitFor(() => {
+        const schemeButton = screen.getByTestId('scheme-selector-button');
+        expect(schemeButton).toBeDisabled();
+      });
     });
   });
 });

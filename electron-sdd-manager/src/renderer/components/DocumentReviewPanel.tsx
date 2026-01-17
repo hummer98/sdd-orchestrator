@@ -2,11 +2,14 @@
  * DocumentReviewPanel Component
  * Displays document review workflow controls and status
  * Requirements: 6.1, 6.4, 6.5, 6.6, 6.7, 6.8
+ * gemini-document-review Task 5.2, 5.3: Added scheme tag and selector
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.3, 5.4, 5.5
  */
 
 import { clsx } from 'clsx';
 import { FileSearch, Play, Check, Circle, Ban, PlayCircle, Wrench, Bot } from 'lucide-react';
 import type { DocumentReviewState } from '../types/documentReview';
+import { SchemeSelector, type ReviewerScheme } from '@shared/components/review/SchemeSelector';
 
 // ============================================================
 // Task 6.1: Auto Execution Flag Type
@@ -40,6 +43,12 @@ export interface DocumentReviewPanelProps {
   onApplyFix?: (roundNumber: number) => void;
   /** Handler for auto execution flag change */
   onAutoExecutionFlagChange?: (flag: DocumentReviewAutoExecutionFlag) => void;
+  // gemini-document-review Task 5.2, 5.3: Scheme support
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.3, 5.4, 5.5
+  /** Current reviewer scheme (default: claude-code) */
+  scheme?: ReviewerScheme;
+  /** Handler for scheme change */
+  onSchemeChange?: (scheme: ReviewerScheme) => void;
 }
 
 // ============================================================
@@ -151,6 +160,9 @@ export function DocumentReviewPanel({
   onExecuteReply,
   onApplyFix,
   onAutoExecutionFlagChange,
+  // gemini-document-review Task 5.2, 5.3
+  scheme,
+  onSchemeChange,
 }: DocumentReviewPanelProps) {
   const rounds = reviewState?.roundDetails?.length ?? 0;
   // Review start button is enabled when:
@@ -192,7 +204,7 @@ export function DocumentReviewPanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        {/* Left side: Progress indicator + Icon + Title */}
+        {/* Left side: Progress indicator + Icon + Title + Scheme Tag */}
         <div className="flex items-center gap-2">
           {/* Task 6.1: Progress indicator (title left side) */}
           {/* Requirements: 6.5, 6.6 */}
@@ -204,6 +216,17 @@ export function DocumentReviewPanel({
           <h3 className="font-medium text-gray-800 dark:text-gray-200">
             ドキュメントレビュー
           </h3>
+
+          {/* gemini-document-review Task 5.2, 5.3: Scheme Selector */}
+          {/* Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.3 */}
+          {onSchemeChange && (
+            <SchemeSelector
+              scheme={scheme}
+              onChange={onSchemeChange}
+              disabled={isExecuting}
+              className="ml-2"
+            />
+          )}
         </div>
 
         {/* Right side: Auto execution flag control */}

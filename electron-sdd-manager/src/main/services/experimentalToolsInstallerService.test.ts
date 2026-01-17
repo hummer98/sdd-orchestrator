@@ -210,6 +210,121 @@ describe('ExperimentalToolsInstallerService', () => {
       }
     });
   });
+
+  // ============================================================
+  // gemini-document-review Task 3.1: Gemini Document Review Installer
+  // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
+  // ============================================================
+  describe('gemini-document-review: installGeminiDocumentReview', () => {
+    beforeEach(async () => {
+      // Create gemini template directory and files
+      await mkdir(join(testTemplateDir, 'gemini', 'kiro'), { recursive: true });
+      await writeFile(
+        join(testTemplateDir, 'gemini', 'kiro', 'document-review.toml'),
+        'description = "Test document review"\nprompt = "Test prompt"'
+      );
+      await writeFile(
+        join(testTemplateDir, 'gemini', 'kiro', 'document-review-reply.toml'),
+        'description = "Test document review reply"\nprompt = "Test reply prompt"'
+      );
+    });
+
+    it('should install both TOML files when target does not exist', async () => {
+      const result = await service.installGeminiDocumentReview(testProjectPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.success).toBe(true);
+        expect(result.value.installedFiles).toContain('.gemini/commands/kiro/document-review.toml');
+        expect(result.value.installedFiles).toContain('.gemini/commands/kiro/document-review-reply.toml');
+      }
+
+      // Verify files were created
+      const reviewContent = await readFile(
+        join(testProjectPath, '.gemini', 'commands', 'kiro', 'document-review.toml'),
+        'utf-8'
+      );
+      expect(reviewContent).toContain('document review');
+
+      const replyContent = await readFile(
+        join(testProjectPath, '.gemini', 'commands', 'kiro', 'document-review-reply.toml'),
+        'utf-8'
+      );
+      expect(replyContent).toContain('document review reply');
+    });
+
+    it('should create .gemini/commands/kiro directory if it does not exist', async () => {
+      const result = await service.installGeminiDocumentReview(testProjectPath);
+
+      expect(result.ok).toBe(true);
+
+      // Verify directory was created
+      const content = await readFile(
+        join(testProjectPath, '.gemini', 'commands', 'kiro', 'document-review.toml'),
+        'utf-8'
+      );
+      expect(content).toBeDefined();
+    });
+
+    it('should skip when files exist and force is false', async () => {
+      const targetDir = join(testProjectPath, '.gemini', 'commands', 'kiro');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'document-review.toml'), 'existing content');
+      await writeFile(join(targetDir, 'document-review-reply.toml'), 'existing content');
+
+      const result = await service.installGeminiDocumentReview(testProjectPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.skippedFiles).toContain('.gemini/commands/kiro/document-review.toml');
+        expect(result.value.skippedFiles).toContain('.gemini/commands/kiro/document-review-reply.toml');
+      }
+    });
+
+    it('should overwrite when files exist and force is true', async () => {
+      const targetDir = join(testProjectPath, '.gemini', 'commands', 'kiro');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'document-review.toml'), 'existing content');
+      await writeFile(join(targetDir, 'document-review-reply.toml'), 'existing content');
+
+      const result = await service.installGeminiDocumentReview(testProjectPath, { force: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.overwrittenFiles).toContain('.gemini/commands/kiro/document-review.toml');
+        expect(result.value.overwrittenFiles).toContain('.gemini/commands/kiro/document-review-reply.toml');
+      }
+    });
+
+    it('should return TEMPLATE_NOT_FOUND for missing gemini templates', async () => {
+      const badService = new ExperimentalToolsInstallerService('/nonexistent/path');
+      const result = await badService.installGeminiDocumentReview(testProjectPath);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('TEMPLATE_NOT_FOUND');
+      }
+    });
+  });
+
+  describe('gemini-document-review: checkGeminiDocumentReviewExists', () => {
+    it('should return exists: false when TOML files do not exist', async () => {
+      const result = await service.checkGeminiDocumentReviewExists(testProjectPath);
+
+      expect(result.exists).toBe(false);
+      expect(result.path).toContain('.gemini/commands/kiro/document-review.toml');
+    });
+
+    it('should return exists: true when document-review.toml exists', async () => {
+      const targetDir = join(testProjectPath, '.gemini', 'commands', 'kiro');
+      await mkdir(targetDir, { recursive: true });
+      await writeFile(join(targetDir, 'document-review.toml'), 'existing content');
+
+      const result = await service.checkGeminiDocumentReviewExists(testProjectPath);
+
+      expect(result.exists).toBe(true);
+    });
+  });
 });
 
 describe('CommonCommandsInstallerService', () => {

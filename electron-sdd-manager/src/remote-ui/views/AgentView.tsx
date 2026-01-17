@@ -263,7 +263,7 @@ export function AgentView({
       {/* Log Panel */}
       {/* remote-ui-vanilla-removal: Added remote-log-viewer for E2E */}
       {selectedAgent && (
-        <div data-testid="agent-log-panel remote-log-viewer" className="flex-1 flex flex-col overflow-hidden">
+        <div data-testid="agent-log-panel" className="flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
             <Terminal className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

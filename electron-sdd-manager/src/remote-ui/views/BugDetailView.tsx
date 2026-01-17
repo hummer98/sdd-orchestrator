@@ -173,7 +173,7 @@ export function BugDetailView({
   const actions: BugAction[] = ['analyze', 'fix', 'verify'];
 
   return (
-    <div data-testid="bug-detail-view remote-bug-detail" className="flex flex-col h-full overflow-y-auto">
+    <div data-testid="bug-detail-view" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
@@ -264,7 +264,7 @@ export function BugDetailView({
               <div className="flex items-center gap-2">
                 {!isComplete && (
                   <button
-                    data-testid={`bug-phase-${action}-button remote-bug-action`}
+                    data-testid={`bug-phase-${action}-button`}
                     onClick={() => handleExecutePhase(action)}
                     disabled={!canExecute || isExecuting}
                     className={clsx(

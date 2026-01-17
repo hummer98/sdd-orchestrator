@@ -386,11 +386,44 @@ export function initBugAutoExecutionIpcListeners(): void {
     }
   );
 
+  // Bug fix: bug-auto-execution-execute-phase-missing
+  // Listen for execute phase events (Main Process requests agent execution)
+  // This was missing during migration from BugAutoExecutionService to bugAutoExecutionStore
+  const unsubscribeExecutePhase = window.electronAPI.onBugAutoExecutionExecutePhase?.(
+    async (data: { bugPath: string; phase: string; bugName: string }) => {
+      const { BUG_PHASE_COMMANDS } = await import('../../renderer/types/bug');
+      const phase = data.phase as BugWorkflowPhase;
+      const commandTemplate = BUG_PHASE_COMMANDS[phase];
+
+      if (!commandTemplate) {
+        console.error(`[BugAutoExecutionStore] No command for phase ${phase}`);
+        return;
+      }
+
+      const fullCommand = `${commandTemplate} ${data.bugName}`;
+
+      try {
+        await window.electronAPI.startAgent(
+          `bug:${data.bugName}`,
+          phase,
+          'claude',
+          [fullCommand],
+          undefined,
+          undefined
+        );
+        console.log(`[BugAutoExecutionStore] Agent started for phase ${phase}`);
+      } catch (error) {
+        console.error(`[BugAutoExecutionStore] Failed to execute phase ${phase}`, error);
+      }
+    }
+  );
+
   // Store cleanup functions
   if (unsubscribeStatus) ipcCleanupFunctions.push(unsubscribeStatus);
   if (unsubscribePhase) ipcCleanupFunctions.push(unsubscribePhase);
   if (unsubscribeCompleted) ipcCleanupFunctions.push(unsubscribeCompleted);
   if (unsubscribeError) ipcCleanupFunctions.push(unsubscribeError);
+  if (unsubscribeExecutePhase) ipcCleanupFunctions.push(unsubscribeExecutePhase);
 
   console.debug('[BugAutoExecutionStore] IPC listeners registered');
 }

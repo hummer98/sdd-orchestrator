@@ -390,12 +390,15 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
   let phaseCompletedCallback: ((data: { bugPath: string; phase: string }) => void) | null = null;
   let completedCallback: ((data: { bugPath: string }) => void) | null = null;
   let errorCallback: ((data: { bugPath: string; error: { type: string; message?: string; phase?: string } }) => void) | null = null;
+  // Bug fix: bug-auto-execution-execute-phase-missing
+  let executePhaseCallback: ((data: { bugPath: string; phase: string; bugName: string }) => void) | null = null;
 
   // Mock unsubscribe functions
   const mockUnsubscribeStatus = vi.fn();
   const mockUnsubscribePhase = vi.fn();
   const mockUnsubscribeCompleted = vi.fn();
   const mockUnsubscribeError = vi.fn();
+  const mockUnsubscribeExecutePhase = vi.fn();
 
   beforeEach(() => {
     // Reset store state
@@ -407,10 +410,12 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
     statusChangedCallback = null;
     phaseCompletedCallback = null;
     completedCallback = null;
+    executePhaseCallback = null;
     errorCallback = null;
 
     // Reset mocks
     mockUnsubscribeStatus.mockClear();
+    mockUnsubscribeExecutePhase.mockClear();
     mockUnsubscribePhase.mockClear();
     mockUnsubscribeCompleted.mockClear();
     mockUnsubscribeError.mockClear();
@@ -434,6 +439,12 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
           errorCallback = callback;
           return mockUnsubscribeError;
         }),
+        // Bug fix: bug-auto-execution-execute-phase-missing
+        onBugAutoExecutionExecutePhase: vi.fn((callback) => {
+          executePhaseCallback = callback;
+          return mockUnsubscribeExecutePhase;
+        }),
+        startAgent: vi.fn().mockResolvedValue({ agentId: 'test-agent-id' }),
         bugAutoExecutionStatus: vi.fn(),
       },
     };
@@ -452,6 +463,8 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(window.electronAPI.onBugAutoExecutionPhaseCompleted).toHaveBeenCalledTimes(1);
       expect(window.electronAPI.onBugAutoExecutionCompleted).toHaveBeenCalledTimes(1);
       expect(window.electronAPI.onBugAutoExecutionError).toHaveBeenCalledTimes(1);
+      // Bug fix: bug-auto-execution-execute-phase-missing
+      expect(window.electronAPI.onBugAutoExecutionExecutePhase).toHaveBeenCalledTimes(1);
     });
 
     it('should not register duplicate listeners on second call (Req 2.5)', () => {
@@ -472,6 +485,8 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(mockUnsubscribePhase).toHaveBeenCalledTimes(1);
       expect(mockUnsubscribeCompleted).toHaveBeenCalledTimes(1);
       expect(mockUnsubscribeError).toHaveBeenCalledTimes(1);
+      // Bug fix: bug-auto-execution-execute-phase-missing
+      expect(mockUnsubscribeExecutePhase).toHaveBeenCalledTimes(1);
     });
 
     it('should allow re-registration after cleanup', () => {
@@ -633,6 +648,45 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
 
       expect(runtime2.isAutoExecuting).toBe(true);
       expect(runtime2.currentAutoPhase).toBe('fix');
+    });
+
+    // Bug fix: bug-auto-execution-execute-phase-missing
+    it('should call startAgent when execute phase event is received', async () => {
+      initBugAutoExecutionIpcListeners();
+
+      // Simulate execute phase event from Main Process
+      await executePhaseCallback?.({
+        bugPath: TEST_BUG_PATH,
+        phase: 'analyze',
+        bugName: 'test-bug',
+      });
+
+      // Wait for async handler to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
+        'bug:test-bug',
+        'analyze',
+        'claude',
+        ['/kiro:bug-analyze test-bug'],
+        undefined,
+        undefined
+      );
+    });
+
+    it('should not call startAgent for report phase (no command)', async () => {
+      initBugAutoExecutionIpcListeners();
+
+      // Report phase has no command (null)
+      await executePhaseCallback?.({
+        bugPath: TEST_BUG_PATH,
+        phase: 'report',
+        bugName: 'test-bug',
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(window.electronAPI.startAgent).not.toHaveBeenCalled();
     });
   });
 });

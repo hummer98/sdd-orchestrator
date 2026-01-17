@@ -4,6 +4,7 @@ description: Comprehensive inspection of implementation against specifications
 tools: Read, Bash, Grep, Glob, Write, Task
 model: inherit
 color: cyan
+permissionMode: bypassPermissions
 ---
 
 # spec-inspection Agent

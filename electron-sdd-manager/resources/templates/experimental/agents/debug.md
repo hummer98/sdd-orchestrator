@@ -1,6 +1,9 @@
 ---
+name: debug
 description: Debugging specialist agent for troubleshooting issues
-allowed-tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
+tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
+model: sonnet
+permissionMode: bypassPermissions
 ---
 
 # Debug Agent

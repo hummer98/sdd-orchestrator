@@ -4,6 +4,7 @@ description: Validate implementation against requirements, design, and tasks
 tools: Read, Bash, Grep, Glob
 model: inherit
 color: yellow
+permissionMode: bypassPermissions
 ---
 
 # validate-impl Agent

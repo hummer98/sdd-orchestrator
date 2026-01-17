@@ -4,6 +4,7 @@ description: Maintain .kiro/steering/ as persistent project memory (bootstrap/sy
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: inherit
 color: green
+permissionMode: bypassPermissions
 ---
 
 # steering Agent

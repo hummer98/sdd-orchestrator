@@ -4,6 +4,7 @@ description: Generate comprehensive technical design translating requirements (W
 tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch
 model: inherit
 color: purple
+permissionMode: bypassPermissions
 ---
 
 # spec-design Agent

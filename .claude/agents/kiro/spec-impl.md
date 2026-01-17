@@ -4,6 +4,7 @@ description: Execute implementation tasks using Test-Driven Development methodol
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, WebSearch, WebFetch
 model: inherit
 color: red
+permissionMode: bypassPermissions
 ---
 
 # spec-tdd-impl Agent

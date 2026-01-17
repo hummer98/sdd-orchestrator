@@ -4,6 +4,7 @@ description: Generate EARS-format requirements based on project description and 
 tools: Read, Write, Edit, Glob, WebSearch, WebFetch
 model: inherit
 color: purple
+permissionMode: bypassPermissions
 ---
 
 # spec-requirements Agent

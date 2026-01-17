@@ -18,7 +18,6 @@ import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
 import { PhaseItem } from './PhaseItem';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
-import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
 import { InspectionPanel } from './InspectionPanel';
 import { ImplFlowFrame, ImplPhasePanel } from '@shared/components/workflow';
@@ -67,7 +66,8 @@ export function WorkflowView() {
       autoExecutionStatus: 'idle' as const,
     };
   }, [autoExecutionRuntimeMap, specId]);
-  const { isAutoExecuting, currentAutoPhase, autoExecutionStatus } = autoExecutionRuntime;
+  // Bug fix: auto-execution-loading-redundant - autoExecutionStatus removed (unused after AutoExecutionStatusDisplay removal)
+  const { isAutoExecuting, currentAutoPhase } = autoExecutionRuntime;
 
 
   // All hooks must be called before any conditional returns
@@ -254,20 +254,8 @@ export function WorkflowView() {
     }
   }, [isAutoExecuting, specDetail, autoExecution, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag]);
 
-  // Task 10.4: Retry handler
-  // Requirements: 8.2, 8.3
-  // Bug fix: deprecated-auto-execution-service-cleanup - Use Main Process IPC instead of old Renderer service
-  const handleRetry = useCallback(async () => {
-    if (!specDetail) return;
-
-    const lastFailedPhase = workflowStore.lastFailedPhase;
-    if (lastFailedPhase) {
-      const result = await autoExecution.retryFromPhase(specDetail.metadata.path, lastFailedPhase);
-      if (!result.ok) {
-        notify.error('リトライできませんでした。');
-      }
-    }
-  }, [workflowStore.lastFailedPhase, specDetail, autoExecution]);
+  // Bug fix: auto-execution-loading-redundant - handleRetry removed
+  // リトライ機能はSpecManagerStatusDisplayのonClearError経由で提供
 
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
     // TODO: Show agent log for this phase
@@ -717,22 +705,9 @@ export function WorkflowView() {
           onClearError={clearSpecManagerError}
         />
 
-        {/* Task 11.2: Auto Execution Status Display */}
-        {/* Requirements: 5.1, 5.5, 8.2 */}
-        {/* Task 5.1: Use autoExecutionStatus and currentAutoPhase from specStore */}
-        {/* Bug fix: deprecated-auto-execution-service-cleanup - Use Main Process IPC for stop */}
-        <AutoExecutionStatusDisplay
-          status={autoExecutionStatus}
-          currentPhase={currentAutoPhase}
-          lastFailedPhase={workflowStore.lastFailedPhase}
-          retryCount={workflowStore.failedRetryCount}
-          onRetry={handleRetry}
-          onStop={async () => {
-            if (specDetail) {
-              await autoExecution.stopAutoExecution(specDetail.metadata.path);
-            }
-          }}
-        />
+        {/* Bug fix: auto-execution-loading-redundant - AutoExecutionStatusDisplay removed
+            実行状態表示はImplPhasePanel内のisAutoPhase/isExecutingプロップで表示される。
+            停止機能はフッターボタン、リトライはSpecManagerStatusDisplayで提供済み。 */}
 
       </div>
 

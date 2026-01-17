@@ -1,9 +1,9 @@
 {
   "feature_name": "gemini-document-review",
   "created_at": "2026-01-16T21:04:03Z",
-  "updated_at": "2026-01-17T13:16:01Z",
+  "updated_at": "2026-01-17T13:27:28.424Z",
   "language": "ja",
-  "phase": "deploy-complete",
+  "phase": "inspection-complete",
   "approvals": {
     "requirements": {
       "generated": true,

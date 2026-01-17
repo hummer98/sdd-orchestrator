@@ -1,9 +1,9 @@
 {
-  "feature_name": "worktree-internal-path",
-  "created_at": "2026-01-17T08:40:49Z",
-  "updated_at": "2026-01-17T17:03:15.662Z",
+  "feature_name": "agent-launch-optimistic-ui",
+  "created_at": "2026-01-17T08:09:33Z",
+  "updated_at": "2026-01-17T09:19:49.885Z",
   "language": "ja",
-  "phase": "deploy-complete",
+  "phase": "tasks-generated",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -19,12 +19,13 @@
     }
   },
   "documentReview": {
+    "currentRound": 2,
     "status": "approved",
     "roundDetails": [
       {
         "roundNumber": 1,
         "status": "reply_complete",
-        "fixRequired": 2,
+        "fixRequired": 4,
         "needsDiscussion": 0,
         "fixStatus": "applied"
       },
@@ -37,26 +38,9 @@
       }
     ]
   },
-  "inspection": {
-    "rounds": [
-      {
-        "number": 1,
-        "result": "go",
-        "inspectedAt": "2026-01-17T09:32:20Z"
-      }
-    ]
-  },
-  "autoExecution": {
-    "enabled": true,
-    "permissions": {
-      "requirements": true,
-      "design": true,
-      "tasks": true,
-      "impl": false,
-      "inspection": false,
-      "deploy": false
-    },
-    "documentReviewFlag": "run",
-    "inspectionFlag": "pause"
+  "worktree": {
+    "path": ".kiro/worktrees/specs/agent-launch-optimistic-ui",
+    "branch": "feature/agent-launch-optimistic-ui",
+    "created_at": "2026-01-17T17:09:20.760Z"
   }
 }

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.1] - 2026-01-17
+
+### Added
+- **worktree自動コミット機能**: spec未コミット時の自動コミットとマージ前準備処理
+- **specシンボリックリンク**: worktreeへのspec全体のシンボリックリンク作成
+
+### Fixed
+- **spec-merge自動コミット**: worktree内の未コミット変更を自動コミットするStep追加
+- **impl-panel重複表示**: 実行中ローディング表示の重複を解消
+- **remote-ui data-testid**: data-testidの複合値をシングル値に修正
+
+### Changed
+- **停止アイコン統一**: 自動実行停止アイコンをBanからPauseに統一
+- **パネルアイコン削除**: DocumentReviewPanel/InspectionPanelのタイトル横アイコンを削除
+
 ## [0.31.0] - 2026-01-17
 
 ### Added

@@ -88,6 +88,13 @@ describe('InspectionPanel', () => {
       expect(screen.getByText('Inspection開始')).toBeInTheDocument();
     });
 
+    it('Inspection開始ボタンにAgentIcon（Botアイコン）を表示する', () => {
+      render(<InspectionPanel {...defaultProps} />);
+
+      const button = screen.getByTestId('start-inspection-button');
+      expect(button.querySelector('[data-testid="start-inspection-agent-icon"]')).toBeInTheDocument();
+    });
+
     it('実行中の場合ボタンが無効化される', () => {
       render(<InspectionPanel {...defaultProps} isExecuting={true} />);
 

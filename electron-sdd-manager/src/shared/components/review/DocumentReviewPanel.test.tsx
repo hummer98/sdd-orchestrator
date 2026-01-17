@@ -63,6 +63,13 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByText('レビュー開始')).toBeInTheDocument();
     });
 
+    it('レビュー開始ボタンにAgentIcon（Botアイコン）を表示する', () => {
+      render(<DocumentReviewPanel {...defaultProps} />);
+
+      const button = screen.getByTestId('start-review-button');
+      expect(button.querySelector('[data-testid="start-review-agent-icon"]')).toBeInTheDocument();
+    });
+
     it('実行中の場合ボタンが無効化される', () => {
       render(<DocumentReviewPanel {...defaultProps} isExecuting={true} />);
 

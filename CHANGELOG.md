@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-01-17
+
+### Added
+- **ImplFlowFrame責務分離**: ImplFlowFrameの責務分離とUI階層構造の修正を実装
+
+### Changed
+- **実験的ツール整理**: 削除済みのplan/commitコマンド関連コードを削除
+
 ## [0.29.0] - 2026-01-16
 
 ### Added

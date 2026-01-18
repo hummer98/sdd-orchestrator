@@ -74,8 +74,21 @@ For each component/interface in design.md:
 For each task in tasks.md:
 - Verify checkbox is `[x]` (completed)
 - Verify implementation exists for task deliverables
+- **Verify implementation method matches task description**:
+  - Extract explicit method requirements from task description and `_Method:` field
+  - Keywords to look for: "を使用", "use", "via", "call", function/class names
+  - Use Grep to search codebase for evidence of specified method/function/pattern
+  - If `_Verify:` field exists, execute the specified verification command/pattern
+  - Flag method mismatch as Critical (task says "use X" but code doesn't use X)
 - Verify tests exist and pass (if applicable)
 - Flag incomplete tasks as Critical
+
+**Example Method Verification**:
+- Task: "6.2 GENERATE_VERIFICATION_MDハンドラ実装 - executeProjectAgentを使用"
+- Method field: `_Method: executeProjectAgent, startAgent_`
+- Verify field: `_Verify: Grep "startAgent|executeProjectAgent" in handlers.ts_`
+- Required evidence: Code must contain call to specified functions
+- Action: Grep for pattern in relevant files, flag Critical if not found
 
 #### 2.4 Steering Consistency (SteeringChecker)
 Compare implementation against steering documents:
@@ -117,45 +130,6 @@ Check adherence to steering/logging.md guidelines:
   - Dev/prod log separation
   - Log level specification method (CLI/env/config)
   - Investigation variables in error logs
-
-#### 2.9 Verification Execution (VerificationChecker)
-If `.kiro/steering/verification.md` exists, execute verification commands:
-
-##### Step 2.9.1: Read and Parse verification.md
-1. Check if `.kiro/steering/verification.md` exists (use Glob)
-2. If not found, skip this section with Info note: "verification.md not found - skipping automated verification"
-3. Read the file content
-4. Parse the Commands table to extract: Type, Command, Workdir, Description
-
-##### Step 2.9.2: Execute Commands
-For each command in the table (in order):
-1. Change to the specified Workdir (relative to project root)
-2. Execute the command using Bash tool
-3. Capture stdout, stderr, and exit code
-4. Record execution time
-
-##### Step 2.9.3: Determine Result
-For each command:
-- **PASS**: Exit code 0
-- **FAIL**: Non-zero exit code
-- Severity mapping:
-  - `build` failure: **Critical** (blocks release)
-  - `typecheck` failure: **Critical** (type safety broken)
-  - `test` failure: **Major** (tests failing)
-  - `lint` failure: **Minor** (code style issues)
-  - Unknown type failure: **Major**
-
-##### Step 2.9.4: Record Findings
-Add each command result to the Verification Execution category in the report:
-```markdown
-### Verification Execution
-| Type | Command | Status | Duration | Severity | Details |
-|------|---------|--------|----------|----------|---------|
-| build | npm run build | PASS | 12.3s | - | - |
-| typecheck | npm run typecheck | PASS | 8.5s | - | - |
-| test | npm run test:run | FAIL | 45.2s | Major | 3 tests failed |
-| lint | npm run lint | PASS | 5.1s | - | - |
-```
 
 ### 3. Render GO/NOGO Judgment
 
@@ -208,11 +182,6 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 ### Logging Compliance
 ...
-
-### Verification Execution
-| Type | Command | Status | Duration | Severity | Details |
-|------|---------|--------|----------|----------|---------|
-| build | npm run build | PASS/FAIL | Xs | Critical/Major/Minor | ... |
 
 ## Statistics
 - Total checks: N

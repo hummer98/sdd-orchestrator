@@ -72,6 +72,18 @@ Generate implementation tasks for the feature based on approved requirements and
 - Explicitly note dependencies preventing `(P)` when tasks appear parallel but are not safe
 - If sequential mode is true, omit `(P)` entirely
 - If existing tasks.md found, merge with new content
+- **Include implementation method when specified in design.md**:
+  - If design.md specifies "use X", "call Y", or "via Z" for a component, include it in task description
+  - Add `_Method:` field listing function/class/pattern names that MUST be used
+  - Add `_Verify:` field with Grep pattern to confirm method usage during inspection
+  - Format example:
+    ```markdown
+    - [ ] 6.2 IPCハンドラ実装 - executeProjectAgentを使用してエージェント起動
+      - _Requirements: 3.4_
+      - _Method: executeProjectAgent, startAgent_
+      - _Verify: Grep "executeProjectAgent|startAgent" in channels.ts_
+    ```
+  - This makes method requirements explicit and verifiable during inspection
 
 ### Step 3: Finalize
 

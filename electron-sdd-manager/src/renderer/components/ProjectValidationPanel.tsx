@@ -1,13 +1,14 @@
 /**
  * ProjectValidationPanel Component
- * Displays validation status for .kiro directory, spec-manager files, and permissions
- * Requirements: 1.1, 1.2, 1.3, 4.1-4.6
+ * Displays validation status for .kiro directory, spec-manager files, permissions, and steering
+ * Requirements: 1.1, 1.2, 1.3, 4.1-4.6, 3.1-3.6 (steering-verification-integration)
  */
 
 import { CheckCircle, AlertCircle, FolderPlus, Download, Loader2, FileWarning } from 'lucide-react';
 import { useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { InstallError } from '../stores/projectStore';
+import { SteeringSection } from '@shared/components/project';
 
 export function ProjectValidationPanel() {
   const {
@@ -24,15 +25,21 @@ export function ProjectValidationPanel() {
     permissionsCheck,
     permissionsFixLoading,
     fixPermissions,
+    // steering-verification-integration feature
+    steeringCheck,
+    steeringGenerateLoading,
+    generateVerificationMd,
   } = useProjectStore();
 
   // Check if there's anything to display
   const hasKiroIssues = kiroValidation && !(kiroValidation.exists && kiroValidation.hasSpecs && kiroValidation.hasSteering);
   const hasSpecManagerIssues = specManagerCheck && !specManagerCheck.allPresent;
   const hasPermissionIssues = permissionsCheck && !permissionsCheck.allPresent;
+  // steering-verification-integration feature
+  const hasSteeringIssues = steeringCheck && !steeringCheck.verificationMdExists;
 
   // If nothing to display, render nothing
-  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues) {
+  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues && !hasSteeringIssues) {
     return null;
   }
 
@@ -88,6 +95,13 @@ export function ProjectValidationPanel() {
           onFix={fixPermissions}
         />
       )}
+
+      {/* Steering Check (steering-verification-integration feature) */}
+      <SteeringSection
+        steeringCheck={steeringCheck}
+        steeringGenerateLoading={steeringGenerateLoading}
+        onGenerateVerificationMd={generateVerificationMd}
+      />
     </div>
   );
 }

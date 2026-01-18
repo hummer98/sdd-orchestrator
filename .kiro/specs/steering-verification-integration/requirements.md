@@ -79,6 +79,8 @@
 
 3.5. 他のsteeringファイル（product.md, tech.md, structure.md）はチェック対象外とすること
 
+3.6. Remote UI対応: 要（SteeringSectionは`shared/components`として実装し、Remote UIでも利用可能とすること）
+
 ### Requirement 4: spec-inspection 統合
 
 **Objective:** spec-inspection 実行時に、verification.md で定義されたコマンドを自動実行し、失敗時はNOGO判定としたい。

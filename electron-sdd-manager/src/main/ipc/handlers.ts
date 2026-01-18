@@ -1946,6 +1946,74 @@ export function registerIpcHandlers(): void {
   logger.info('[handlers] Bug Auto Execution handlers registered');
 
   // ============================================================
+  // Steering Verification Handlers (steering-verification-integration feature)
+  // Requirements: 3.1, 3.2, 3.3
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_STEERING_FILES,
+    async (_event, projectPath: string) => {
+      try {
+        const verificationMdPath = path.join(projectPath, '.kiro', 'steering', 'verification.md');
+        const exists = await stat(verificationMdPath).then(() => true).catch(() => false);
+        return { verificationMdExists: exists };
+      } catch (error) {
+        logger.error('[handlers] Failed to check steering files', { projectPath, error });
+        return { verificationMdExists: false };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.GENERATE_VERIFICATION_MD,
+    async (_event, projectPath: string) => {
+      try {
+        // Read template
+        const templatePath = path.join(getTemplateDir(), 'steering', 'verification.md');
+        const { readFile, writeFile } = await import('fs/promises');
+        const { mkdir } = await import('fs/promises');
+
+        let template: string;
+        try {
+          template = await readFile(templatePath, 'utf-8');
+        } catch {
+          // Fallback to minimal template if not found
+          template = `# Verification Commands
+
+spec-inspection 実行時に自動実行される検証コマンドを定義します。
+
+## Commands
+
+| Type | Command | Workdir | Description |
+|------|---------|---------|-------------|
+| build | npm run build | . | プロダクションビルド |
+| typecheck | npm run typecheck | . | TypeScript 型チェック |
+| test | npm run test | . | テスト実行 |
+| lint | npm run lint | . | Lint 検証 |
+
+## Notes
+
+カスタマイズが必要な場合は、プロジェクトの設定に合わせてコマンドを変更してください。
+`;
+        }
+
+        // Ensure steering directory exists
+        const steeringDir = path.join(projectPath, '.kiro', 'steering');
+        await mkdir(steeringDir, { recursive: true });
+
+        // Write verification.md
+        const verificationMdPath = path.join(steeringDir, 'verification.md');
+        await writeFile(verificationMdPath, template, 'utf-8');
+
+        logger.info('[handlers] Generated verification.md', { projectPath });
+      } catch (error) {
+        logger.error('[handlers] Failed to generate verification.md', { projectPath, error });
+        throw error;
+      }
+    }
+  );
+  logger.info('[handlers] Steering Verification handlers registered');
+
+  // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService
   // When coordinator emits 'execute-next-phase', execute the phase via specManagerService
   // ============================================================

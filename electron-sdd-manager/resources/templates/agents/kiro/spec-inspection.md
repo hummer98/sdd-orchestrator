@@ -118,6 +118,45 @@ Check adherence to steering/logging.md guidelines:
   - Log level specification method (CLI/env/config)
   - Investigation variables in error logs
 
+#### 2.9 Verification Execution (VerificationChecker)
+If `.kiro/steering/verification.md` exists, execute verification commands:
+
+##### Step 2.9.1: Read and Parse verification.md
+1. Check if `.kiro/steering/verification.md` exists (use Glob)
+2. If not found, skip this section with Info note: "verification.md not found - skipping automated verification"
+3. Read the file content
+4. Parse the Commands table to extract: Type, Command, Workdir, Description
+
+##### Step 2.9.2: Execute Commands
+For each command in the table (in order):
+1. Change to the specified Workdir (relative to project root)
+2. Execute the command using Bash tool
+3. Capture stdout, stderr, and exit code
+4. Record execution time
+
+##### Step 2.9.3: Determine Result
+For each command:
+- **PASS**: Exit code 0
+- **FAIL**: Non-zero exit code
+- Severity mapping:
+  - `build` failure: **Critical** (blocks release)
+  - `typecheck` failure: **Critical** (type safety broken)
+  - `test` failure: **Major** (tests failing)
+  - `lint` failure: **Minor** (code style issues)
+  - Unknown type failure: **Major**
+
+##### Step 2.9.4: Record Findings
+Add each command result to the Verification Execution category in the report:
+```markdown
+### Verification Execution
+| Type | Command | Status | Duration | Severity | Details |
+|------|---------|--------|----------|----------|---------|
+| build | npm run build | PASS | 12.3s | - | - |
+| typecheck | npm run typecheck | PASS | 8.5s | - | - |
+| test | npm run test:run | FAIL | 45.2s | Major | 3 tests failed |
+| lint | npm run lint | PASS | 5.1s | - | - |
+```
+
 ### 3. Render GO/NOGO Judgment
 
 **Severity Levels**:
@@ -169,6 +208,11 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 ### Logging Compliance
 ...
+
+### Verification Execution
+| Type | Command | Status | Duration | Severity | Details |
+|------|---------|--------|----------|----------|---------|
+| build | npm run build | PASS/FAIL | Xs | Critical/Major/Minor | ... |
 
 ## Statistics
 - Total checks: N

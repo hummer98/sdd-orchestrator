@@ -588,6 +588,25 @@ export interface ElectronAPI {
   // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
   syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void>;
 
+  // ============================================================
+  // Steering Verification (steering-verification-integration feature)
+  // Requirements: 3.1, 3.2, 3.3
+  // ============================================================
+
+  /**
+   * Check steering files (verification.md exists)
+   * @param projectPath Project root path
+   * @returns SteeringCheckResult with verificationMdExists
+   */
+  checkSteeringFiles(projectPath: string): Promise<{ verificationMdExists: boolean }>;
+
+  /**
+   * Generate verification.md file
+   * Uses template from settings and project analysis
+   * @param projectPath Project root path
+   */
+  generateVerificationMd(projectPath: string): Promise<void>;
+
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview(specPath: string): Promise<boolean>;
 

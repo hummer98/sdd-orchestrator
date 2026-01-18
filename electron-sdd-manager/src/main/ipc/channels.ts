@@ -267,6 +267,11 @@ export const IPC_CHANNELS = {
   // Requirements: 1.1, 1.2, 1.3
   LOAD_PROFILE: 'ipc:load-profile',
 
+  // Steering Verification (steering-verification-integration feature)
+  // Requirements: 3.1, 3.2, 3.3
+  CHECK_STEERING_FILES: 'ipc:check-steering-files',
+  GENERATE_VERIFICATION_MD: 'ipc:generate-verification-md',
+
   // Bug Auto Execution (bug fix: auto-execution-ui-state-dependency)
   // Main Process側でBug自動実行の状態を管理
   BUG_AUTO_EXECUTION_START: 'bug-auto-execution:start',

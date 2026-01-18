@@ -52,6 +52,11 @@ export interface ProfileConfig {
   readonly installedAt: string;
 }
 
+/** Steering check result (steering-verification-integration feature) */
+export interface SteeringCheckResult {
+  readonly verificationMdExists: boolean;
+}
+
 interface ProjectState {
   currentProject: string | null;
   recentProjects: string[];
@@ -76,6 +81,10 @@ interface ProjectState {
   // Requirements: 3.1, 3.2
   installedProfile: ProfileConfig | null;
   profileLoading: boolean;
+  // steering-verification-integration feature
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  steeringCheck: SteeringCheckResult | null;
+  steeringGenerateLoading: boolean;
 }
 
 /** シェル許可追加結果 */
@@ -101,6 +110,9 @@ interface ProjectActions {
   // shell permissions
   addShellPermissions: () => Promise<AddPermissionsResult | null>;
   fixPermissions: () => Promise<void>;
+  // steering-verification-integration feature
+  checkSteeringFiles: (projectPath: string) => Promise<void>;
+  generateVerificationMd: () => Promise<void>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -123,6 +135,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // header-profile-badge feature
   installedProfile: null,
   profileLoading: false,
+  // steering-verification-integration feature
+  steeringCheck: null,
+  steeringGenerateLoading: false,
 
   // Actions
   // ============================================================
@@ -142,6 +157,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       installError: null,
       permissionsCheck: null,
       lastSelectResult: null,
+      // steering-verification-integration feature
+      steeringCheck: null,
     });
 
     try {
@@ -240,6 +257,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         // Don't fail project selection if profile load fails
         set({ installedProfile: null });
       }
+
+      // steering-verification-integration feature: Check steering files
+      // Requirements: 3.1, 3.2
+      try {
+        await get().checkSteeringFiles(path);
+      } catch (error) {
+        console.error('[projectStore] Failed to check steering files:', error);
+        // Don't fail project selection if steering check fails
+        set({ steeringCheck: null });
+      }
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'プロジェクトの選択に失敗しました',
@@ -284,6 +311,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // header-profile-badge feature
       installedProfile: null,
       profileLoading: false,
+      // steering-verification-integration feature
+      steeringCheck: null,
+      steeringGenerateLoading: false,
     });
   },
 
@@ -523,6 +553,47 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       console.error('[projectStore] Failed to fix permissions:', error);
       set({ permissionsFixLoading: false });
+    }
+  },
+
+  // ============================================================
+  // Steering Files Check (steering-verification-integration feature)
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Check steering files (verification.md)
+   * Requirements: 3.1, 3.2
+   */
+  checkSteeringFiles: async (projectPath: string) => {
+    try {
+      const result = await window.electronAPI.checkSteeringFiles(projectPath);
+      set({ steeringCheck: result });
+    } catch (error) {
+      console.error('[projectStore] Failed to check steering files:', error);
+      set({ steeringCheck: null });
+    }
+  },
+
+  /**
+   * Generate verification.md file
+   * Requirements: 3.3, 3.4
+   */
+  generateVerificationMd: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    set({ steeringGenerateLoading: true });
+
+    try {
+      await window.electronAPI.generateVerificationMd(currentProject);
+
+      // Refresh check result
+      await get().checkSteeringFiles(currentProject);
+      set({ steeringGenerateLoading: false });
+    } catch (error) {
+      console.error('[projectStore] Failed to generate verification.md:', error);
+      set({ steeringGenerateLoading: false });
     }
   },
 }));

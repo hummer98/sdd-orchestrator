@@ -1258,6 +1258,99 @@ describe('executeDocumentReview - multi-engine support', () => {
     startAgentSpy.mockRestore();
   });
 
+  // ============================================================
+  // debatex-document-review Task 6.2: debatex with roundNumber/specPath support
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 6.1, 6.2
+  // ============================================================
+  describe('debatex with BuildArgsContext (roundNumber/specPath)', () => {
+    let specDir: string;
+
+    beforeEach(async () => {
+      // Create spec directory with existing document-review files
+      specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+      await fs.mkdir(specDir, { recursive: true });
+      // Create a document-review-1.md to simulate existing round
+      await fs.writeFile(path.join(specDir, 'document-review-1.md'), '# Review 1');
+    });
+
+    it('should pass specPath and roundNumber to buildArgs for debatex', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeDocumentReview({
+        specId: 'test-spec',
+        featureName: 'test-spec',
+        scheme: 'debatex',
+      });
+
+      // Should include --output with the correct path
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'npx',
+          args: expect.arrayContaining([
+            'debatex',
+            'sdd-document-review',
+            'test-spec',
+            '--output',
+            expect.stringContaining('document-review-2.md'),
+          ]),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should calculate next roundNumber correctly', async () => {
+      // Create document-review-2.md to simulate 2 existing rounds
+      await fs.writeFile(path.join(specDir, 'document-review-2.md'), '# Review 2');
+
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeDocumentReview({
+        specId: 'test-spec',
+        featureName: 'test-spec',
+        scheme: 'debatex',
+      });
+
+      // Should calculate roundNumber as 3 (max existing + 1)
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining([
+            '--output',
+            expect.stringContaining('document-review-3.md'),
+          ]),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should start from roundNumber 1 when no existing reviews', async () => {
+      // Create a new spec without any document-review files
+      const newSpecDir = path.join(testDir, '.kiro', 'specs', 'new-spec');
+      await fs.mkdir(newSpecDir, { recursive: true });
+
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.executeDocumentReview({
+        specId: 'new-spec',
+        featureName: 'new-spec',
+        scheme: 'debatex',
+      });
+
+      // Should use roundNumber 1
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining([
+            '--output',
+            expect.stringContaining('document-review-1.md'),
+          ]),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+  });
+
   it('should default to Claude CLI when scheme is undefined', async () => {
     const startAgentSpy = vi.spyOn(service, 'startAgent');
 

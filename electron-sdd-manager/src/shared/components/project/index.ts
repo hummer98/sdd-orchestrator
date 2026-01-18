@@ -6,3 +6,7 @@
 
 export { AskAgentDialog } from './AskAgentDialog';
 export type { AskAgentDialogProps } from './AskAgentDialog';
+
+// steering-verification-integration feature
+export { SteeringSection } from './SteeringSection';
+export type { SteeringSectionProps, SteeringCheckResult } from './SteeringSection';

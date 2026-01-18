@@ -348,6 +348,27 @@ const electronAPI = {
   syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase, options),
 
+  // ============================================================
+  // Steering Verification (steering-verification-integration feature)
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Check steering files (verification.md exists)
+   * @param projectPath Project root path
+   * @returns SteeringCheckResult with verificationMdExists
+   */
+  checkSteeringFiles: (projectPath: string): Promise<{ verificationMdExists: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_STEERING_FILES, projectPath),
+
+  /**
+   * Generate verification.md file
+   * Uses template from settings and project analysis
+   * @param projectPath Project root path
+   */
+  generateVerificationMd: (projectPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GENERATE_VERIFICATION_MD, projectPath),
+
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview: (specPath: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_DOCUMENT_REVIEW, specPath),

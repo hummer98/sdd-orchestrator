@@ -22,7 +22,9 @@ import { logger } from './logger';
 import type { ProviderType } from './ssh/providerFactory';
 import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
-import { getReviewEngine, type ReviewerScheme } from '../../shared/registry/reviewEngineRegistry';
+// debatex-document-review Task 2.1: BuildArgsContext support
+import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
+import { DocumentReviewService } from './documentReviewService';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -1254,6 +1256,7 @@ export class SpecManagerService {
    * Execute document-review agent
    * Requirements: 2.1, 2.2, 2.3, 2.4
    * gemini-document-review: Now supports multiple reviewer engines via scheme option
+   * debatex-document-review Task 2.1: BuildArgsContext support for debatex
    */
   async executeDocumentReview(options: ExecuteDocumentReviewOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, featureName, commandPrefix = 'kiro', scheme } = options;
@@ -1269,10 +1272,6 @@ export class SpecManagerService {
       engineLabel: engine.label,
     });
 
-    // Build command and args based on engine type
-    const command = engine.command;
-    const args = engine.buildArgs(featureName);
-
     // For Claude Code, use the standard slash command format
     if (scheme === 'claude-code' || scheme === undefined) {
       const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
@@ -1285,8 +1284,45 @@ export class SpecManagerService {
       });
     }
 
-    // For Gemini CLI and debatex, use the engine configuration
-    // Handle both string and array commands (e.g., 'gemini' vs ['npx', 'debatex'])
+    // debatex-document-review Task 2.1: For debatex, use BuildArgsContext with specPath and roundNumber
+    // Requirements: 2.1, 2.2, 2.3, 2.4
+    if (scheme === 'debatex') {
+      const specPath = path.join(this.projectPath, '.kiro', 'specs', specId);
+      const documentReviewService = new DocumentReviewService(this.projectPath);
+      const roundNumber = await documentReviewService.getNextRoundNumber(specPath);
+
+      const buildArgsContext: BuildArgsContext = {
+        featureName,
+        specPath,
+        roundNumber,
+      };
+
+      const args = engine.buildArgs(buildArgsContext);
+
+      logger.info('[SpecManagerService] debatex BuildArgsContext', {
+        specId,
+        featureName,
+        specPath,
+        roundNumber,
+        args,
+      });
+
+      const command = engine.command;
+      const cmdString = Array.isArray(command) ? command[0] : command;
+      const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+
+      return this.startAgent({
+        specId,
+        phase: 'document-review',
+        command: cmdString,
+        args: cmdArgs,
+        group: 'doc',
+      });
+    }
+
+    // For Gemini CLI, use the engine configuration
+    const command = engine.command;
+    const args = engine.buildArgs(featureName);
     const cmdString = Array.isArray(command) ? command[0] : command;
     const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
 
@@ -1561,7 +1597,33 @@ export class SpecManagerService {
           });
         }
 
-        // For Gemini CLI and debatex, use the engine configuration
+        // debatex-document-review Task 2.1: For debatex, use BuildArgsContext with specPath and roundNumber
+        if (scheme === 'debatex') {
+          const specPath = path.join(this.projectPath, '.kiro', 'specs', specId);
+          const documentReviewService = new DocumentReviewService(this.projectPath);
+          const roundNumber = await documentReviewService.getNextRoundNumber(specPath);
+
+          const buildArgsContext: BuildArgsContext = {
+            featureName,
+            specPath,
+            roundNumber,
+          };
+
+          const args = engine.buildArgs(buildArgsContext);
+          const command = engine.command;
+          const cmdString = Array.isArray(command) ? command[0] : command;
+          const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+
+          return this.startAgent({
+            specId,
+            phase: 'document-review',
+            command: cmdString,
+            args: cmdArgs,
+            group: 'doc',
+          });
+        }
+
+        // For Gemini CLI, use the engine configuration
         const command = engine.command;
         const args = engine.buildArgs(featureName);
         const cmdString = Array.isArray(command) ? command[0] : command;

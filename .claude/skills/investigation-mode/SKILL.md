@@ -5,6 +5,7 @@ description: >
   「調査して」「問題を特定して」「ログを確認して」「デバッグして」
   「エラーの原因は？」「なぜ動かない？」などのキーワードで自動検出。
 user-invocable: true
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Investigation Mode - システム調査・デバッグ支援
@@ -22,25 +23,29 @@ user-invocable: true
 
 ## ログファイルの位置
 
-### Electronアプリ
+詳細: [LOGS.md](LOGS.md)
 
-| ログ種別 | 場所 | 確認方法 |
-|----------|------|----------|
-| Mainプロセス | `logs/electron-dev.log` | `task electron:logs` |
-| Rendererコンソール | DevTools Console | MCP経由で取得可能 |
-| Agentログ | `.kiro/logs/` | `task logs:agent` |
+### クイックリファレンス
 
-### 一般的なログ確認コマンド
+| ログ種別 | 開発環境 | 本番環境 (macOS) |
+|----------|----------|------------------|
+| グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/sdd-orchestrator/main.log` |
+| E2Eテストログ | `electron-sdd-manager/logs/main-e2e.log` | `~/Library/Logs/sdd-orchestrator/main-e2e.log` |
+| プロジェクトログ | `{projectPath}/.kiro/logs/main.log` | 同左 |
+| エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左 |
+
+### よく使うコマンド
 
 ```bash
-# Electronアプリのログ（リアルタイム）
-task electron:logs
+# エラーログを抽出
+grep "\[ERROR\]" ~/Library/Logs/sdd-orchestrator/main.log | tail -50
 
-# 最新のAgentログ
-ls -la .kiro/logs/
+# リアルタイム監視
+tail -f ~/Library/Logs/sdd-orchestrator/main.log
 
-# エラーのみ抽出
-grep -i "error\|fail\|exception" logs/electron-dev.log
+# task コマンドでログ表示
+task logs:main
+task logs:agent
 ```
 
 ---
@@ -111,6 +116,8 @@ mcp__electron__read_electron_logs
 
 ## トラブルシューティング
 
+詳細: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
 ### Electronアプリが起動しない
 
 1. `task electron:status` で状態確認
@@ -120,9 +127,9 @@ mcp__electron__read_electron_logs
 
 ### E2Eテストが失敗する
 
-1. アプリが起動しているか確認
+1. アプリがビルドされているか確認: `task electron:build`
 2. `task electron:test:e2e` の出力を確認
-3. スクリーンショット/ログを確認
+3. E2Eログを確認: `~/Library/Logs/sdd-orchestrator/main-e2e.log`
 
 ### IPCが動作しない
 
@@ -135,5 +142,5 @@ mcp__electron__read_electron_logs
 ## 詳細情報
 
 - 操作手順: `.kiro/steering/operations.md`
-- トラブルシューティング: `.kiro/steering/debugging.md`
-- シンボル対応表: `.kiro/steering/symbol-semantic-map.md`
+- 詳細なログ情報: [LOGS.md](LOGS.md)
+- 詳細なトラブルシューティング: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)

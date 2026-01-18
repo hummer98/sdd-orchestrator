@@ -526,125 +526,7 @@ user-invocable: true  # /investigation-mode でも呼び出し可
 
 ### Skill化推奨コマンド
 
-#### 1. `project-ask` → `sdd-project-context` Skill
-
-**現状のコマンド**:
-```markdown
----
-description: Execute a custom prompt with project steering context
-allowed-tools: Read, Glob, Bash
-argument-hint: <prompt>
----
-
-# Load Context
-Read all steering files to understand project context:
-- `.kiro/steering/*.md`
-
-# Execute
-With the loaded steering context, process the user's prompt
-```
-
-**Skill化案**:
-```yaml
-# .claude/skills/sdd-project-context/SKILL.md
----
-name: sdd-project-context
-description: >
-  SDDプロジェクトのコンテキストを自動提供。
-  「このプロジェクトについて」「技術スタックは？」「アーキテクチャは？」
-  などの質問時に自動検出。
-user-invocable: false  # 自動検出のみ
----
-
-# Project Context
-
-このSkillはプロジェクトのSteering情報を自動的にロードします。
-
-## 参照ファイル
-- [product.md](../../.kiro/steering/product.md) - 製品概要
-- [tech.md](../../.kiro/steering/tech.md) - 技術スタック
-- [structure.md](../../.kiro/steering/structure.md) - プロジェクト構造
-```
-
-**メリット**:
-- ユーザーが「このプロジェクトの技術スタックは？」と聞いた時に自動でSteering情報がロードされる
-- `/kiro:project-ask` を明示的に呼ぶ必要がなくなる
-
----
-
-#### 2. `spec-ask` → `sdd-spec-context` Skill
-
-**Skill化案**:
-```yaml
-# .claude/skills/sdd-spec-context/SKILL.md
----
-name: sdd-spec-context
-description: >
-  特定のSpec仕様のコンテキストを自動提供。
-  「この機能の要件は？」「設計はどうなってる？」「タスクの進捗は？」
-  などの質問時に自動検出。
-user-invocable: true  # /sdd-spec-context feature-name でも呼び出し可
----
-
-# Spec Context
-
-## 使用方法
-Specに関する質問をする際、このSkillが自動的にコンテキストを提供します。
-
-例:
-- 「user-auth機能の要件を教えて」
-- 「このSpecの設計方針は？」
-
-## 参照するファイル
-- `.kiro/specs/{feature}/spec.json`
-- `.kiro/specs/{feature}/requirements.md`
-- `.kiro/specs/{feature}/design.md`
-- `.kiro/specs/{feature}/tasks.md`
-```
-
-**メリット**:
-- Specに関する質問時に自動でコンテキストがロードされる
-- 「requirements.mdを読んで」と明示的に指示する必要がなくなる
-
----
-
-#### 3. SDD知識ベース Skill（新規）
-
-**目的**: EARSフォーマット、設計原則などの知識を自動提供
-
-```yaml
-# .claude/skills/sdd-knowledge/SKILL.md
----
-name: sdd-knowledge
-description: >
-  SDD (Spec-Driven Development) の知識ベース。
-  「EARSフォーマットで書いて」「設計原則に従って」「TDDで実装」
-  などのキーワードで自動検出。
-user-invocable: false
----
-
-# SDD Knowledge Base
-
-## EARS Format
-要件はEARS (Easy Approach to Requirements Syntax) 形式で記述します。
-詳細: [EARS-FORMAT.md](EARS-FORMAT.md)
-
-## Design Principles
-設計はDRY, SSOT, KISS, YAGNIの原則に従います。
-詳細: [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md)
-
-## TDD Methodology
-実装はTest-Driven Developmentで行います。
-詳細: [TDD-GUIDE.md](TDD-GUIDE.md)
-```
-
-**メリット**:
-- 「EARSで要件を書いて」と言うだけでフォーマットルールが自動ロード
-- Subagentに `skills: sdd-knowledge` を指定すれば知識を継承
-
----
-
-#### 4. `inv` → `investigation-mode` Skill
+#### 1. `inv` → `investigation-mode` Skill ✅ 実装済み
 
 **現状のコマンド**:
 ```markdown
@@ -667,6 +549,7 @@ description: >
   「調査して」「問題を特定して」「ログを確認して」「デバッグして」
   「エラーの原因は？」などのキーワードで自動検出。
 user-invocable: true  # /investigation-mode でも呼び出し可
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Investigation Mode
@@ -693,42 +576,106 @@ user-invocable: true  # /investigation-mode でも呼び出し可
 
 ---
 
-### Skill化ロードマップ
+#### 2. `project-ask` → `sdd-project-context` Skill ❌ 却下
 
-#### Phase 1: 知識層のSkill化（低リスク）
+**却下理由**:
 
-| Skill | 移行元 | 効果 |
-|-------|--------|------|
-| `sdd-knowledge` | `.kiro/settings/rules/*.md` | ルール・テンプレートの自動提供 |
-| `sdd-project-context` | `project-ask` | Steeringの自動ロード |
-| `sdd-spec-context` | `spec-ask` | Specコンテキストの自動ロード |
-| `investigation-mode` | `inv` | 調査・デバッグ知識の自動提供 |
-
-**実装コスト**: 低
-**効果**: コンテキスト自動ロードによるUX向上
-
-#### Phase 2: Subagentへの知識継承（中リスク）
+Skillは「知識をコンテキストに注入する」だけであり、**能動的にファイルを読みに行く処理は実行されない**。
 
 ```yaml
-# .claude/agents/kiro/spec-design.md
+# Skillができること
+description: "..." → コンテキストに注入
+SKILL.md本文      → コンテキストに注入
+
+# Skillができないこと
+"product.mdを読んで内容を取得" → ❌ Task tool不可
+```
+
+**結果として起こること**:
+
+| 期待 | 実際 |
+|------|------|
+| 「技術スタックは？」→ Steeringの内容を回答 | Skillが「参照ファイルはproduct.md等です」と案内するだけ |
+| Steering情報の自動提供 | 「読んでください」という指示のみ |
+
+**代替案**: CLAUDE.md の `Steering Configuration` セクションを圧縮して維持
+
+```markdown
+## Steering Configuration
+
+プロジェクトコンテキストは `.kiro/steering/` に格納。
+詳細: `/kiro:project-ask` で質問可能。
+```
+
 ---
-name: spec-design-agent
-skills: sdd-knowledge, sdd-project-context
+
+#### 3. `spec-ask` → `sdd-spec-context` Skill ❌ 却下
+
+**却下理由**: `sdd-project-context` と同様。Skillはファイルを読みに行けない。
+
+---
+
+#### 4. SDD知識ベース Skill（新規） ⚠️ 保留
+
+**目的**: EARSフォーマット、設計原則などの知識を自動提供
+
+**保留理由**:
+- 知識は既にSubagentの prompt に埋め込み済み
+- description常時ロードによるトークン増加
+- コスト対効果が不明確
+
+将来的に検討する場合の案:
+```yaml
+# .claude/skills/sdd-knowledge/SKILL.md
+---
+name: sdd-knowledge
+description: >
+  SDD (Spec-Driven Development) の知識ベース。
+  「EARSフォーマットで書いて」「設計原則に従って」「TDDで実装」
+  などのキーワードで自動検出。
+user-invocable: false
 ---
 ```
 
-**実装コスト**: 中（全Subagentの更新が必要）
-**効果**: Subagent実行時の知識自動ロード
+---
 
-#### Phase 3: ガイドSkill（オプション）
+### Skill化しないもの（確定）
 
-| Skill | 目的 |
+| カテゴリ | コマンド/概念 | 理由 |
+|----------|---------------|------|
+| Steering読み込み | `project-ask`, `spec-ask` | Skillはファイルを読みに行けない |
+| ワークフロー実行 | `spec-*`, `bug-*` | Task tool委譲が必須 |
+| Git操作 | `commit`, `release`, `spec-merge` | 明示的実行が必須 |
+| バリデーション | `validate-*`, `spec-inspection` | Task tool委譲が必須 |
+
+---
+
+### Skill化ロードマップ（更新版）
+
+#### Phase 1: investigation-mode のみ ✅ 完了
+
+| Skill | 状態 | 効果 |
+|-------|------|------|
+| `investigation-mode` | ✅ 実装済み | 調査・デバッグ知識の自動提供 |
+
+#### Phase 2: CLAUDE.md の圧縮（推奨）
+
+Skillを増やすのではなく、CLAUDE.md の冗長セクションを圧縮:
+
+| セクション | 現状 | 推奨 |
+|------------|------|------|
+| Steering Configuration | 詳細リスト | パス + 参照先のみ |
+| Development Commands | テーブル詳細 | コマンド名のみ |
+| プロファイル一覧 | テーブル詳細 | 参照先のみ |
+
+#### Phase 3: 追加Skill検討（将来）
+
+必要性が明確になった場合のみ検討:
+
+| Skill | 条件 |
 |-------|------|
-| `sdd-quickstart` | 初心者向けワークフローガイド |
-| `sdd-troubleshooting` | エラー時の自動ヘルプ |
-
-**実装コスト**: 低
-**効果**: 初心者サポート向上
+| `sdd-quickstart` | 新規ユーザーが増えた場合 |
+| `e2e-testing` | E2Eテスト知識の自動提供ニーズ |
 
 ---
 
@@ -749,35 +696,47 @@ skills: sdd-knowledge, sdd-project-context
 
 ---
 
-## 結論（更新版）
+## 結論（最終版）
+
+### 実装状況
+
+| Skill | 状態 | 備考 |
+|-------|------|------|
+| `investigation-mode` | ✅ 実装済み | 調査・デバッグ知識の自動提供 |
+| `sdd-project-context` | ❌ 却下 | Skillはファイルを読みに行けない |
+| `sdd-spec-context` | ❌ 却下 | 同上 |
+| `sdd-knowledge` | ⚠️ 保留 | コスト対効果が不明確 |
+| `sdd-quickstart` | ⚠️ 保留 | CLAUDE.mdと重複 |
 
 ### 推奨アクション
 
 | 優先度 | アクション | 効果 |
 |--------|----------|------|
-| **高** | `sdd-project-context` Skill作成 | Steering自動ロード |
-| **高** | `sdd-spec-context` Skill作成 | Specコンテキスト自動ロード |
-| **高** | `investigation-mode` Skill作成 | 調査・デバッグ知識の自動提供 |
-| **中** | `sdd-knowledge` Skill作成 | ルール・テンプレート自動提供 |
-| **低** | SubagentにSkill継承設定 | 知識の一元管理 |
+| **完了** | `investigation-mode` Skill | 調査・デバッグ知識の自動提供 |
+| **中** | CLAUDE.md 圧縮 | トークン削減（Skill増加より効果的） |
+| **低** | 追加Skill検討 | 必要性が明確になった場合のみ |
 
-### 移行しない理由（再確認）
+### Skill化しない理由（確定）
 
-ワークフロー実行系コマンドは以下の理由でSlash Commandを維持:
+以下は技術的制約によりSlash Commandを維持:
 
-1. **Task tool呼び出しが必須**: Skillからは不可能
-2. **位置引数 (`$1`, `$2`) が必要**: Skillでは `$ARGUMENTS` のみ
-3. **明示的実行が適切**: ワークフロー開始は意図的なアクションであるべき
+1. **Steering/Spec読み込み系**: Skillはファイルを読みに行けない
+2. **ワークフロー実行系**: Task tool委譲が必須
+3. **Git操作系**: 明示的実行が必須
+
+### 学んだこと
+
+- **Skillは「知識注入」であり「アクション実行」ではない**
+- **ファイル読み込みが必要な機能はSkill化できない**
+- **CLAUDE.md圧縮の方がトークン効率改善に効果的**
+- **Skillを増やすとdescription常時ロードでトークン増加**
 
 ### 期待される効果
 
-Skill化により:
-- 「このプロジェクトの技術スタックは？」→ 自動でSteering情報がロード
-- 「EARSフォーマットで要件を書いて」→ 自動でフォーマットルールがロード
-- 「user-auth機能の設計を確認して」→ 自動でSpec情報がロード
+`investigation-mode` Skillにより:
 - 「この問題を調査して」→ 自動で調査・デバッグ手順がロード
-
-**ユーザーが明示的にコマンドを呼ぶ必要が減り、自然な会話でコンテキストが提供される。**
+- `/investigation-mode` で明示的呼び出しも可能
+- CLAUDE.mdからDebuggingセクションを削除し、トークン削減
 
 ---
 
@@ -813,26 +772,20 @@ Skill化により:
 
 ---
 
-## 付録B: 具体的なSkill実装案
+## 付録B: 実装済みSkill
 
-### B.1 investigation-mode Skill（最優先推奨）
+### B.1 investigation-mode Skill ✅ 実装済み
 
-**現状**: `/inv` Slash Command として実装済み
-
-**Skill化のメリット**:
-- 「調査して」「デバッグして」「ログを確認して」で自動検出
-- 明示的なコマンド呼び出しが不要に
+**場所**: `.claude/skills/investigation-mode/`
 
 ```
 .claude/skills/investigation-mode/
-├── SKILL.md
-├── LOGS.md              # ログファイル位置
-├── TROUBLESHOOTING.md   # トラブルシューティング手順
-└── scripts/
-    └── collect-logs.sh  # ログ収集スクリプト
+├── SKILL.md              # Skill定義 + クイックリファレンス
+├── LOGS.md               # 詳細なログファイル位置
+└── TROUBLESHOOTING.md    # トラブルシューティング手順
 ```
 
-**SKILL.md 例**:
+**SKILL.md**:
 ```yaml
 ---
 name: investigation-mode
@@ -843,205 +796,114 @@ description: >
 user-invocable: true
 allowed-tools: Read, Grep, Glob, Bash
 ---
-
-# Investigation Mode
-
-システム調査時に自動的に以下をガイドします。
-
-## 調査の優先順位
-
-1. **ログ確認を最優先** - 推測ではなく事実に基づく
-2. サービス状態の確認
-3. 設定・環境変数の確認
-4. コード調査
-
-## ログファイル位置
-詳細: [LOGS.md](LOGS.md)
-
-## トラブルシューティング手順
-詳細: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 ```
 
-### B.2 sdd-project-context Skill
-
-**現状**: `/kiro:project-ask` Slash Command として実装
-
-**Skill化のメリット**:
-- 「このプロジェクトの技術スタックは？」で自動検出
-- Steering情報が自然にロードされる
-
-```yaml
----
-name: sdd-project-context
-description: >
-  SDDプロジェクトのコンテキストを自動提供。
-  「このプロジェクトについて」「技術スタックは？」「アーキテクチャは？」
-  「プロジェクト構造は？」などの質問時に自動検出。
-user-invocable: false
----
-
-# Project Context
-
-このSkillはプロジェクトのSteering情報を自動的にロードします。
-
-## 参照ファイル
-- `.kiro/steering/product.md` - 製品概要
-- `.kiro/steering/tech.md` - 技術スタック
-- `.kiro/steering/structure.md` - プロジェクト構造
-- `.kiro/steering/design-principles.md` - 設計原則
-```
-
-### B.3 sdd-knowledge Skill
-
-**目的**: SDD知識（EARSフォーマット、設計原則、TDD）の自動提供
-
-```
-.claude/skills/sdd-knowledge/
-├── SKILL.md
-├── EARS-FORMAT.md
-├── DESIGN-PRINCIPLES.md
-└── TDD-GUIDE.md
-```
-
-```yaml
----
-name: sdd-knowledge
-description: >
-  SDD (Spec-Driven Development) の知識ベース。
-  「EARSフォーマットで書いて」「設計原則に従って」「TDDで実装」
-  「要件を書いて」「設計書を作成」などのキーワードで自動検出。
-user-invocable: false
----
-
-# SDD Knowledge Base
-
-## EARS Format
-要件はEARS (Easy Approach to Requirements Syntax) 形式で記述します。
-詳細: [EARS-FORMAT.md](EARS-FORMAT.md)
-
-## Design Principles
-設計はDRY, SSOT, KISS, YAGNIの原則に従います。
-詳細: [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md)
-
-## TDD Methodology
-実装はTest-Driven Developmentで行います。
-詳細: [TDD-GUIDE.md](TDD-GUIDE.md)
-```
-
-### B.4 sdd-quickstart Skill
-
-**目的**: 初心者向けワークフローガイド
-
-```yaml
----
-name: sdd-quickstart
-description: >
-  SDDワークフローのクイックスタートガイド。
-  「新しい機能を作りたい」「SDDで開発を始めたい」「機能開発の手順は？」
-  などの質問時に自動検出。
-user-invocable: true
----
-
-# SDD Quick Start Guide
-
-## ワークフロー概要
-
-```
-Planning → Requirements → Design → Tasks → Implementation
-```
-
-## 1. 対話的プランニング（推奨）
-
-```
-/kiro:spec-plan "機能の説明"
-```
-
-対話を通じて要件を明確化し、requirements.md まで生成。
-
-## 2. 設計フェーズ
-
-```
-/kiro:spec-design <feature-name>
-```
-
-要件をレビュー後、技術設計を生成。
-
-## 3. タスク生成
-
-```
-/kiro:spec-tasks <feature-name>
-```
-
-設計をレビュー後、実装タスクを生成。
-
-## 4. 実装
-
-```
-/kiro:spec-impl <feature-name>
-```
-
-TDDで実装を実行。
-```
+**効果**:
+- 「この問題を調査して」で自動検出
+- `/investigation-mode` で明示的呼び出しも可能
+- ログ位置、トラブルシューティング手順を自動提供
 
 ---
 
-## 付録C: Steering ファイルの Skill 化検討
+## 付録C: 却下されたSkill案
 
-### 現状の Steering ファイル
+### C.1 sdd-project-context ❌ 却下
 
-| ファイル | 内容 | Skill化 |
-|----------|------|---------|
-| `product.md` | 製品概要 | → `sdd-project-context` |
-| `tech.md` | 技術スタック | → `sdd-project-context` |
-| `structure.md` | プロジェクト構造 | → `sdd-project-context` |
-| `design-principles.md` | 設計原則 | → `sdd-knowledge` |
-| `debugging.md` | デバッグ情報 | → `investigation-mode` |
-| `operations.md` | MCP操作手順 | → `investigation-mode` |
-| `logging.md` | ログ設定 | → `investigation-mode` |
-| `e2e-testing.md` | E2Eテスト | → 新規 `e2e-testing` Skill |
-| `symbol-semantic-map.md` | 用語定義 | → `sdd-project-context` |
-| `skill-reference.md` | プロファイル仕様 | 維持（内部参照用） |
+**却下理由**: Skillはファイルを読みに行けない
 
-### Steering vs Skill の使い分け
+Skillは発動時に「知識をコンテキストに注入する」だけであり、**能動的にRead toolでファイルを読む処理は実行されない**。
 
-| 用途 | 推奨 | 理由 |
-|------|------|------|
-| **常時適用ルール** | CLAUDE.md | 毎回ロード |
-| **プロジェクト知識** | Steering | 明示的参照時のみ |
-| **自動検出したい知識** | Skill | 文脈から自動ロード |
-| **Task tool 委譲が必要** | Slash Command | Skill では不可 |
+| 期待 | 実際 |
+|------|------|
+| 「技術スタックは？」→ tech.mdの内容を回答 | 「tech.mdを参照してください」と案内するだけ |
+
+**代替案**: CLAUDE.md の Steering Configuration セクションを維持
+
+### C.2 sdd-spec-context ❌ 却下
+
+**却下理由**: sdd-project-context と同様
+
+### C.3 sdd-knowledge ⚠️ 保留
+
+**保留理由**:
+- 知識は既にSubagentのpromptに埋め込み済み
+- description常時ロードによるトークン増加
+- コスト対効果が不明確
+
+### C.4 sdd-quickstart ⚠️ 保留
+
+**保留理由**:
+- CLAUDE.md の Minimal Workflow セクションと重複
+- 新規ユーザーが増えた場合に再検討
 
 ---
 
-## 付録D: 実装ロードマップ
+## 付録D: Steering vs Skill の役割分担（確定版）
 
-### Phase 1: 知識層のSkill化（低リスク）
+### ファイル別の配置
 
-| Skill | 移行元 | 工数 | 効果 |
-|-------|--------|------|------|
-| `investigation-mode` | `/inv` + `debugging.md` | 低 | 調査・デバッグの自動ガイド |
-| `sdd-project-context` | `/kiro:project-ask` | 低 | Steering自動ロード |
-| `sdd-knowledge` | 新規 | 中 | ルール・テンプレート自動提供 |
+| ファイル | 配置場所 | 理由 |
+|----------|----------|------|
+| `product.md` | Steering維持 | プロジェクト固有、Skill化不可 |
+| `tech.md` | Steering維持 | プロジェクト固有、Skill化不可 |
+| `structure.md` | Steering維持 | プロジェクト固有、Skill化不可 |
+| `design-principles.md` | Steering維持 | CLAUDE.mdで参照指示 |
+| `debugging.md` | Steering維持 | `investigation-mode`が参照 |
+| `operations.md` | Steering維持 | `investigation-mode`が参照 |
+| `logging.md` | Steering維持 | `investigation-mode`が参照 |
+| `e2e-testing.md` | Steering維持 | 将来的にSkill化検討 |
+| `symbol-semantic-map.md` | Steering維持 | プロジェクト固有 |
+| `skill-reference.md` | Steering維持 | 内部参照用 |
 
-### Phase 2: ガイドSkill追加（オプション）
+### 役割分担の原則
 
-| Skill | 目的 | 工数 |
-|-------|------|------|
-| `sdd-quickstart` | 初心者向けガイド | 低 |
-| `sdd-spec-context` | Spec情報自動ロード | 低 |
-| `e2e-testing` | E2Eテスト知識 | 中 |
+| 用途 | 配置先 | 理由 |
+|------|--------|------|
+| **常時適用ルール** | CLAUDE.md | 毎ターンロード |
+| **プロジェクト固有知識** | Steering | プロジェクトごとに異なる |
+| **汎用デバッグ知識** | Skill | 自動検出が有効 |
+| **ワークフロー実行** | Slash Command | Task tool委譲が必須 |
 
-### Phase 3: Subagentへの知識継承（中リスク）
-
-Subagentに `skills:` フィールドを追加し、知識を継承。
-
-```yaml
-# .claude/agents/kiro/spec-design.md
 ---
-name: spec-design-agent
-skills: sdd-knowledge, sdd-project-context
----
+
+## 付録E: CLAUDE.md 圧縮案
+
+### 現状の問題
+
+CLAUDE.md に詳細情報が多く、トークン消費が大きい。
+
+### 圧縮案
+
+**Before (Steering Configuration)**:
+```markdown
+## Steering Configuration
+
+- Load entire `.kiro/steering/` as project memory
+- Default files: `product.md`, `tech.md`, `structure.md`
+- **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表
+- **`debugging.md`**: ログ保存場所、トラブルシューティング情報
+- **`operations.md`**: MCP経由のElectronアプリ操作手順
+- **`skill-reference.md`**: プロファイル別の動作仕様書
+- Custom files are supported
 ```
+
+**After (圧縮版)**:
+```markdown
+## Steering Configuration
+
+プロジェクトコンテキスト: `.kiro/steering/*.md`
+詳細: `/kiro:project-ask` で質問可能
+```
+
+### 圧縮の効果
+
+| セクション | Before | After | 削減 |
+|------------|--------|-------|------|
+| Steering Configuration | 7行 | 2行 | -70% |
+| Development Commands | 15行 | 参照のみ | -80% |
+| プロファイル一覧 | 8行 | 参照のみ | -75% |
+
+**注意**: 圧縮はCLAUDE.mdのセマンティックマージに影響するため、慎重に検討が必要
 
 ---
 

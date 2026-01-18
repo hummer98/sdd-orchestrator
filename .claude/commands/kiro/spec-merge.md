@@ -42,41 +42,19 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
 ### Step 1.5: Prepare Worktree for Merge (worktree-spec-symlink)
 Before merging, prepare the worktree to avoid conflicts with spec files.
 
-#### 1.5.1: Resolve Worktree Path
-First, resolve the worktree absolute path from the relative path in spec.json:
+#### 1.5.1: Resolve Worktree Path and Restore Spec Directory
+Resolve the worktree path and restore spec directory from git in a single operation:
 ```bash
-# Get project root
-PROJECT_ROOT=$(pwd)
-# Resolve relative path to absolute
-WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+WORKTREE_ABSOLUTE_PATH=$(cd "{worktree.path}" && pwd) && rm -f "${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1" && cd "${WORKTREE_ABSOLUTE_PATH}" && git reset ".kiro/specs/$1" && git checkout ".kiro/specs/$1"
 ```
 
-#### 1.5.2: Delete Spec Directory Symlink
-Remove the spec directory symlink in worktree:
-```bash
-# Remove the symlink (not the actual files in main repo)
-rm -f "${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1"
-```
-- If it's a symlink, this removes just the link
-- If removal fails, log warning but continue
+This command:
+1. Resolves the worktree absolute path from spec.json's relative path
+2. Removes the spec symlink (if exists) - `rm -f` safely ignores non-symlinks
+3. Unstages any spec directory changes (`git reset`)
+4. Restores spec directory to HEAD state (`git checkout`)
 
-#### 1.5.3: Execute Git Reset on Spec Directory
-Unstage any changes in the spec directory:
-```bash
-cd "${WORKTREE_ABSOLUTE_PATH}" && git reset ".kiro/specs/$1"
-```
-- Execute unconditionally (per design decision DD-003)
-- This command succeeds even if there are no staged changes
-
-#### 1.5.4: Execute Git Checkout on Spec Directory
-Restore the spec directory to HEAD state:
-```bash
-cd "${WORKTREE_ABSOLUTE_PATH}" && git checkout ".kiro/specs/$1"
-```
-- After this, the worktree has no spec file changes
-- The spec files in worktree now match the committed state in the feature branch
-
-**Note**: This step ensures the worktree's spec directory is restored from git, avoiding merge conflicts since spec changes are in main repo only (via symlink during implementation).
+After execution, the worktree's spec directory matches the committed state in the feature branch, avoiding merge conflicts (spec changes exist only in main repo via symlink during implementation).
 
 ### Step 1.6: Commit Pending Changes in Worktree
 Before merging, ensure all implementation changes in worktree are committed.

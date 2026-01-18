@@ -123,17 +123,10 @@ export interface DocumentReviewOptions {
 // and in DEFAULT_SPEC_AUTO_EXECUTION_STATE (types/index.ts)
 
 // ============================================================
-// worktree-execution-ui Task 2.1: Worktree Mode Selection
-// Requirements: 3.1, 3.2, 3.3, 3.4
+// worktree-mode-spec-scoped: WorktreeModeSelection type REMOVED
+// Requirements: 4.4 (worktree-mode-spec-scoped)
+// worktreeModeSelection has been moved to spec.json.worktree.enabled
 // ============================================================
-
-/**
- * Worktree mode selection state
- * - 'undecided': User has not yet selected a mode (default)
- * - 'normal': User selected to work on current branch
- * - 'worktree': User selected to work in a worktree
- */
-export type WorktreeModeSelection = 'undecided' | 'normal' | 'worktree';
 
 // ============================================================
 // Task 1.1: Auto Execution Status Types (DEPRECATED)
@@ -202,11 +195,10 @@ interface WorkflowState {
   inspectionAutoExecutionFlag: InspectionAutoExecutionFlag;
 
   // ============================================================
-  // worktree-execution-ui Task 2.1: Worktree Mode Selection State
-  // Requirements: 3.1, 3.2, 3.3, 3.4
+  // worktree-mode-spec-scoped: worktreeModeSelection REMOVED
+  // Requirements: 4.1 (worktree-mode-spec-scoped)
+  // worktreeModeSelection has been moved to spec.json.worktree.enabled
   // ============================================================
-  /** Worktreeモード選択状態（runtime、非永続化） */
-  worktreeModeSelection: WorktreeModeSelection;
 }
 
 interface WorkflowActions {
@@ -271,13 +263,10 @@ interface WorkflowActions {
   setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => void;
 
   // ============================================================
-  // worktree-execution-ui Task 2.1: Worktree Mode Selection Actions
-  // Requirements: 3.2, 3.3, 3.4
+  // worktree-mode-spec-scoped: Worktree mode actions REMOVED
+  // Requirements: 4.2, 4.3 (worktree-mode-spec-scoped)
+  // setWorktreeModeSelection, resetWorktreeModeSelection removed
   // ============================================================
-  /** Worktreeモード選択を設定 */
-  setWorktreeModeSelection: (selection: WorktreeModeSelection) => void;
-  /** Worktreeモード選択をリセット（undecidedに戻す） */
-  resetWorktreeModeSelection: () => void;
 }
 
 type WorkflowStore = WorkflowState & WorkflowActions;
@@ -316,9 +305,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // Default to 'pause' - consistent with documentReviewOptions.autoExecutionFlag
       inspectionAutoExecutionFlag: 'pause' as InspectionAutoExecutionFlag,
 
-      // worktree-execution-ui Task 2.1: Worktree Mode Selection - initial state
-      // Requirement 3.1: Default to 'undecided'
-      worktreeModeSelection: 'undecided' as WorktreeModeSelection,
+      // worktree-mode-spec-scoped: worktreeModeSelection initial state REMOVED
+      // worktreeModeSelection has been moved to spec.json.worktree.enabled
 
       // Task 2.1: Auto Execution Permissions
       // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
@@ -461,16 +449,11 @@ export const useWorkflowStore = create<WorkflowStore>()(
       },
 
       // ============================================================
-      // worktree-execution-ui Task 2.1: Worktree Mode Selection Actions
-      // Requirements: 3.2, 3.3, 3.4
+      // worktree-mode-spec-scoped: Worktree mode actions REMOVED
+      // Requirements: 4.2, 4.3 (worktree-mode-spec-scoped)
+      // setWorktreeModeSelection, resetWorktreeModeSelection removed
+      // worktreeModeSelection has been moved to spec.json.worktree.enabled
       // ============================================================
-      setWorktreeModeSelection: (selection: WorktreeModeSelection) => {
-        set({ worktreeModeSelection: selection });
-      },
-
-      resetWorktreeModeSelection: () => {
-        set({ worktreeModeSelection: 'undecided' });
-      },
     }),
     {
       name: 'sdd-manager-workflow-settings',

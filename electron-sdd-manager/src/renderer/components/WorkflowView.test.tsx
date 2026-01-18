@@ -586,6 +586,101 @@ describe('WorkflowView', () => {
   });
 
   // ============================================================
+  // worktree-mode-spec-scoped Task 3.1, 4.2: Worktree mode checkbox state
+  // Requirements: 3.1, 3.2, 3.3 (worktree-mode-spec-scoped)
+  // ============================================================
+  describe('worktree-mode-spec-scoped: Worktree mode checkbox state', () => {
+    it('should show worktree mode selected when spec.json.worktree.enabled is true', () => {
+      const specWithEnabledWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: {
+            enabled: true,
+          },
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithEnabledWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // ImplFlowFrame should show worktree mode as selected
+      const checkbox = screen.getByRole('checkbox', { name: /worktree/i });
+      expect(checkbox).toBeChecked();
+    });
+
+    it('should show normal mode when spec.json.worktree.enabled is false', () => {
+      const specWithDisabledWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: {
+            enabled: false,
+          },
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithDisabledWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // ImplFlowFrame should show worktree mode as NOT selected
+      const checkbox = screen.getByRole('checkbox', { name: /worktree/i });
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('should show normal mode when spec.json.worktree is undefined', () => {
+      const specWithoutWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: undefined,
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithoutWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // ImplFlowFrame should show worktree mode as NOT selected
+      const checkbox = screen.getByRole('checkbox', { name: /worktree/i });
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('should force worktree mode when hasWorktreePath is true (existing worktree)', () => {
+      const specWithExistingWorktree = {
+        ...mockSpecDetail,
+        specJson: {
+          ...mockSpecDetail.specJson,
+          worktree: {
+            path: '../worktrees/test-feature',
+            branch: 'feature/test-feature',
+            created_at: '2024-01-01T00:00:00Z',
+            enabled: false, // Even if enabled is false, should still be worktree mode
+          },
+        },
+      };
+      mockSpecStoreStateForSelector = {
+        ...mockSpecStoreState,
+        specDetail: specWithExistingWorktree,
+      };
+
+      render(<WorkflowView />);
+
+      // Should show worktree mode because path exists
+      const checkbox = screen.getByRole('checkbox', { name: /worktree/i });
+      expect(checkbox).toBeChecked();
+    });
+  });
+
+  // ============================================================
   // Task 6.1: Deploy button conditional branching (git-worktree-support)
   // Requirements: 5.1, 5.2
   // ============================================================

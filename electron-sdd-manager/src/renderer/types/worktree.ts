@@ -12,17 +12,25 @@
  * Worktree configuration stored in spec.json
  * Requirements: 2.1 - worktree field structure
  * worktree-execution-ui Requirement 1.1: path is now optional for normal mode support
+ * worktree-mode-spec-scoped Requirement 1.1: enabled field for mode selection persistence
  *
- * When worktree mode: { path, branch, created_at }
+ * When worktree mode: { path, branch, created_at, enabled: true }
  * When normal mode:   { branch, created_at } (no path)
+ * When mode selected but impl not started: { enabled: true/false }
  */
 export interface WorktreeConfig {
   /** Relative path from main project root to worktree directory (optional) */
   path?: string;
   /** Branch name (feature/{feature-name} or current branch) */
-  branch: string;
+  branch?: string;
   /** Creation timestamp (ISO-8601) */
-  created_at: string;
+  created_at?: string;
+  /**
+   * worktree-mode-spec-scoped: Worktree mode selection state
+   * - true: worktree mode is selected
+   * - false/undefined: normal mode is selected
+   */
+  enabled?: boolean;
 }
 
 /**

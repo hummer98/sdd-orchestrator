@@ -353,3 +353,81 @@ describe('isImplStarted (worktree-execution-ui)', () => {
     expect(isImplStarted(specJson)).toBe(false);
   });
 });
+
+// =============================================================================
+// worktree-mode-spec-scoped: Task 1, 4.1 - WorktreeConfig.enabled field tests
+// Requirements: 1.1, 1.2, 1.3 (worktree-mode-spec-scoped)
+// =============================================================================
+
+describe('WorktreeConfig enabled field (worktree-mode-spec-scoped)', () => {
+  describe('isWorktreeConfig with enabled field', () => {
+    // Requirement 1.1: enabled?: boolean is optional
+    it('should return true for config with enabled: true', () => {
+      const config = {
+        branch: 'feature/my-feature',
+        created_at: '2026-01-18T12:00:00Z',
+        enabled: true,
+      };
+      expect(isWorktreeConfig(config)).toBe(true);
+    });
+
+    it('should return true for config with enabled: false', () => {
+      const config = {
+        branch: 'feature/my-feature',
+        created_at: '2026-01-18T12:00:00Z',
+        enabled: false,
+      };
+      expect(isWorktreeConfig(config)).toBe(true);
+    });
+
+    // Requirement 1.2: Backward compatibility - enabled is optional
+    it('should return true for config without enabled field (backward compatibility)', () => {
+      const config = {
+        branch: 'feature/my-feature',
+        created_at: '2026-01-18T12:00:00Z',
+      };
+      expect(isWorktreeConfig(config)).toBe(true);
+    });
+
+    // Requirement 1.3: isWorktreeConfig only checks branch and created_at
+    it('should return true regardless of enabled value (type guard checks branch + created_at only)', () => {
+      // enabled: true
+      expect(isWorktreeConfig({
+        branch: 'test',
+        created_at: '2026-01-18T12:00:00Z',
+        enabled: true,
+      })).toBe(true);
+
+      // enabled: false
+      expect(isWorktreeConfig({
+        branch: 'test',
+        created_at: '2026-01-18T12:00:00Z',
+        enabled: false,
+      })).toBe(true);
+
+      // enabled: undefined (not present)
+      expect(isWorktreeConfig({
+        branch: 'test',
+        created_at: '2026-01-18T12:00:00Z',
+      })).toBe(true);
+    });
+  });
+
+  describe('enabled field with only { enabled: true } (spec selection state)', () => {
+    // When user selects worktree mode before impl starts, only enabled: true is set
+    // This should NOT pass isWorktreeConfig because branch and created_at are missing
+    it('should return false for { enabled: true } only (no branch/created_at)', () => {
+      const config = {
+        enabled: true,
+      };
+      expect(isWorktreeConfig(config)).toBe(false);
+    });
+
+    it('should return false for { enabled: false } only (no branch/created_at)', () => {
+      const config = {
+        enabled: false,
+      };
+      expect(isWorktreeConfig(config)).toBe(false);
+    });
+  });
+});

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.1] - 2026-01-19
+
+### Added
+- **worktree**: `--add-dir` オプションでworktreeモード時のsymlinkアクセスをサポート
+- **e2e**: Electron動的ポートのPlaywright連携を実装
+- **e2e**: Remote UIのフェーズ実行・ワークフロー統合テストを追加
+- **e2e**: Remote UI自動実行機能のE2Eテストを追加
+- **e2e**: Smartphone版Remote UIのSpec管理テストを追加
+- **e2e**: Remote UI Bug管理機能のE2Eテストを追加
+
+### Fixed
+- **agent**: resumeAgentでworktree cwdが引き継がれない問題を修正
+- **worktree**: specディレクトリをファイル単位symlinkに変更
+- **remote-ui**: WebSocket経由のSpec詳細取得を修正
+- **remote-ui**: WebSocketApiClientの自動実行メッセージタイプを修正
+
+### Documentation
+- 技術検討・調査メモを追加（debatex統合、Gemini CLI検討、デッドコード分析等）
+- E2Eテストカバレッジ分析ドキュメントを更新
+- Web E2Eテストガイドにモバイルテストパターンを追加
+
+### Changed
+- **kiro**: spec-requirementsにRemote UI影響確認ステップを追加
+- **kiro**: steering/verification.mdとspec-inspection検証コマンド定義を追加
+- **kiro**: tasksテンプレートを簡素化（Method/Verifyフィールド削除）
+
 ## [0.33.0] - 2026-01-18
 
 ### Added

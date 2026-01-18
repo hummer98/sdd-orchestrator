@@ -12,7 +12,7 @@ import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Me
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
-import { AskAgentDialog } from './AskAgentDialog';
+import { AskAgentDialog } from '@shared/components/project';
 
 type AgentStatus = AgentInfo['status'];
 

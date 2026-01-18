@@ -8,8 +8,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { InspectionPanel, type InspectionPanelProps } from './InspectionPanel';
-import type { InspectionState } from '../types/inspection';
+import { InspectionPanel, type InspectionPanelProps } from '@shared/components/review';
+import type { InspectionState } from '@shared/types';
 
 describe('InspectionPanel', () => {
   const defaultProps: InspectionPanelProps = {

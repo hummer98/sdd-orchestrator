@@ -6,9 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AutoExecutionStatusDisplay } from './AutoExecutionStatusDisplay';
-import type { AutoExecutionStatus } from '../stores/workflowStore';
-import type { WorkflowPhase } from '../types/workflow';
+import { AutoExecutionStatusDisplay } from '@shared/components/execution';
+import type { AutoExecutionStatus, WorkflowPhase } from '@shared/types';
 
 describe('AutoExecutionStatusDisplay', () => {
   const defaultProps = {

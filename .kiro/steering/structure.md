@@ -58,6 +58,30 @@ electron-sdd-manager/src/
 **Examples**: `editorStore` (スクロール位置), `modalStore` (ダイアログ開閉)
 **Rule**: ドメインデータを含めてはならない。ドメインデータが必要な場合は `shared` ストアを参照するか、Selectorを使用する。
 
+## Component Organization Rules (Strict)
+
+### 1. Shared Components (SSOT)
+**Location**: `src/shared/components/`
+**Content**: Electron版とRemote UI版で共有するUIコンポーネント
+**Subdirectories**: `ui/`, `spec/`, `bug/`, `workflow/`, `review/`, `execution/`, `project/`, `agent/`
+**Rule**: **重複禁止**。両環境で使用するコンポーネントは必ずここに配置する。
+
+### 2. Platform-Specific Components
+**Location**: `src/renderer/components/` (Electron), `src/remote-ui/` (Web)
+**Content**: 各プラットフォーム専用のコンポーネント
+**Examples**: `SSHConnectDialog` (Electron専用), `AuthPage` (Web専用)
+**Rule**: 共通コンポーネントの重複コピーを配置してはならない。
+
+### 3. Re-export Pattern
+**Purpose**: 後方互換性とインポートパスの簡略化
+**Method**: `renderer/components/index.ts` から shared コンポーネントを再exportする
+```typescript
+// renderer/components/index.ts
+// 共通コンポーネントはsharedから再export
+export { PhaseItem, type PhaseItemProps } from '@shared/components/workflow';
+export { BugListItem, type BugListItemProps } from '@shared/components/bug';
+```
+
 ## Naming Conventions
 
 - **Components**: PascalCase (`SpecListPanel.tsx`, `ApprovalPanel.tsx`)
@@ -123,4 +147,4 @@ main/ipc/
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
-_updated_at: 2025-01-16_
+_updated_at: 2025-01-18_

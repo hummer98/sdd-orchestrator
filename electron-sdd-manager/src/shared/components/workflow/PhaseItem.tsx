@@ -48,6 +48,8 @@ export interface PhaseItemProps {
   onApproveAndExecute: () => void;
   /** Auto execution permission toggle handler */
   onToggleAutoPermission: () => void;
+  /** Handler for showing agent log when progress icon is clicked (generated status only) */
+  onShowAgentLog?: () => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -89,11 +91,19 @@ export function PhaseItem({
   onApprove,
   onApproveAndExecute,
   onToggleAutoPermission,
+  onShowAgentLog,
   className,
 }: PhaseItemProps): React.ReactElement {
   // Show approve and execute button condition
   const showApproveAndExecute =
     previousStatus === 'generated' && status === 'pending' && !isExecuting && canExecute;
+
+  // Progress icon click handler (only for generated status)
+  const handleProgressIconClick = () => {
+    if (status === 'generated' && onShowAgentLog) {
+      onShowAgentLog();
+    }
+  };
 
   // Progress icon rendering
   const renderProgressIcon = () => {
@@ -143,7 +153,17 @@ export function PhaseItem({
     >
       {/* Left side: Progress icon + phase name */}
       <div data-testid="phase-left-side" className="flex items-center gap-2">
-        <span className="p-1">{renderProgressIcon()}</span>
+        <button
+          onClick={handleProgressIconClick}
+          className={clsx(
+            'p-1 rounded',
+            status === 'generated' && 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600',
+            status !== 'generated' && 'cursor-default'
+          )}
+          title={status === 'generated' ? 'Agentログを表示' : undefined}
+        >
+          {renderProgressIcon()}
+        </button>
         <span className="font-medium text-gray-700 dark:text-gray-300">
           {label}
         </span>

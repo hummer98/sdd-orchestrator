@@ -5,8 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { BugListItem } from './BugListItem';
-import type { BugMetadata } from '../types';
+import { BugListItem } from '@shared/components/bug';
+import type { BugMetadata } from '@shared/api/types';
 
 describe('BugListItem', () => {
   const mockBug: BugMetadata = {

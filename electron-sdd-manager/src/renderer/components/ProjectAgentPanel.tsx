@@ -10,7 +10,7 @@ import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
 import { useState, useEffect } from 'react';
-import { AskAgentDialog } from './AskAgentDialog';
+import { AskAgentDialog } from '@shared/components/project';
 
 /**
  * Format duration in milliseconds to "Xm Ys" or "Xs"

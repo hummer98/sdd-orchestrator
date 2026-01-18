@@ -6,8 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DocumentReviewPanel } from './DocumentReviewPanel';
-import type { DocumentReviewState } from '../types/documentReview';
+import { DocumentReviewPanel } from '@shared/components/review';
+import type { DocumentReviewState } from '@shared/types';
 
 // Mock the stores
 vi.mock('../stores/agentStore', () => ({

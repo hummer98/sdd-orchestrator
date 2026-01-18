@@ -20,7 +20,8 @@ export { AgentLogPanel } from './AgentLogPanel';
 export { AgentInputPanel } from './AgentInputPanel';
 // SDD Hybrid Workflow Components
 export { WorkflowView } from './WorkflowView';
-export { PhaseItem } from './PhaseItem';
+// PhaseItem is now exported from @shared/components/workflow
+export { PhaseItem, type PhaseItemProps, type WorkflowPhase, type PhaseStatus } from '@shared/components/workflow';
 export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
 // CLI Install
@@ -40,7 +41,8 @@ export { RemoteAccessPanel } from './RemoteAccessPanel';
 export { RemoteAccessDialog } from './RemoteAccessDialog';
 // Bug Workflow UI Components
 export { BugProgressIndicator, BugPhaseLabel } from './BugProgressIndicator';
-export { BugListItem } from './BugListItem';
+// BugListItem is now exported from @shared/components/bug
+export { BugListItem, type BugListItemProps } from '@shared/components/bug';
 export { BugActionButtons, getNextActionLabel } from './BugActionButtons';
 export { BugList } from './BugList';
 export { CreateBugDialog } from './CreateBugDialog';

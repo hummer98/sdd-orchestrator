@@ -18,10 +18,10 @@ import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
 // agent-launch-optimistic-ui: Optimistic UI hook
 import { useLaunchingState } from '@shared/hooks';
-import { PhaseItem } from './PhaseItem';
+import { PhaseItem } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
-import { DocumentReviewPanel } from './DocumentReviewPanel';
-import { InspectionPanel } from './InspectionPanel';
+import { DocumentReviewPanel } from '@shared/components/review';
+import { InspectionPanel } from '@shared/components/review';
 import { ImplFlowFrame, ImplPhasePanel } from '@shared/components/workflow';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';

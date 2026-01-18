@@ -127,6 +127,8 @@ export function BugListItem({
         onClick={onSelect}
         onKeyDown={handleKeyDown}
         data-testid={`bug-item-${bug.name}`}
+        data-selected={isSelected ? 'true' : 'false'}
+        data-running-count={runningAgentCount ?? 0}
         className={clsx(
           'w-full px-4 py-2.5 text-left',
           'flex flex-col gap-1',

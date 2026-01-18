@@ -8,7 +8,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Loader2, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
+import { Bot, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   InspectionState,
@@ -70,9 +70,9 @@ function renderProgressIndicator(state: InspectionProgressIndicatorState): React
       );
     case 'executing':
       return (
-        <Loader2
+        <Bot
           data-testid="inspection-progress-indicator-executing"
-          className="w-4 h-4 text-blue-500 animate-spin"
+          className="w-4 h-4 text-blue-500 animate-pulse"
         />
       );
   }

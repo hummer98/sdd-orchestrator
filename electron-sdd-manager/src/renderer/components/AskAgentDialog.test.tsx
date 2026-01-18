@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AskAgentDialog } from './AskAgentDialog';
+import { AskAgentDialog } from '@shared/components/project';
 
 describe('AskAgentDialog', () => {
   const mockOnExecute = vi.fn();

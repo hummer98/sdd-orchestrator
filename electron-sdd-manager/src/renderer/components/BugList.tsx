@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useBugStore } from '../stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
-import { BugListItem } from './BugListItem';
+import { BugListItem } from '@shared/components/bug';
 import type { BugPhase } from '../types';
 
 const PHASE_LABELS: Record<BugPhase | 'all', string> = {

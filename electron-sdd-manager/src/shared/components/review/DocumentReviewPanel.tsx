@@ -46,6 +46,9 @@ export interface DocumentReviewPanelProps {
   scheme?: ReviewerScheme;
   /** Handler for scheme change */
   onSchemeChange?: (scheme: ReviewerScheme) => void;
+  // agent-launch-optimistic-ui: Optimistic UI launching state
+  /** Whether an operation is being launched (Optimistic UI) */
+  launching?: boolean;
 }
 
 // =============================================================================
@@ -147,13 +150,16 @@ export function DocumentReviewPanel({
   // gemini-document-review Task 7.1, 7.2
   scheme,
   onSchemeChange,
+  // agent-launch-optimistic-ui: Optimistic UI launching state
+  launching = false,
 }: DocumentReviewPanelProps) {
   const rounds = reviewState?.roundDetails?.length ?? 0;
   // Review start button is enabled when:
+  // - Not currently launching (Optimistic UI)
   // - Not currently executing (document review agent running)
   // - Not in auto execution mode (global workflow auto execution)
   // - tasks.md exists
-  const canStartReview = !isExecuting && !isAutoExecuting && hasTasks;
+  const canStartReview = !launching && !isExecuting && !isAutoExecuting && hasTasks;
 
   // Get the latest round (last element in the array)
   const latestRound = reviewState?.roundDetails?.at(-1) ?? null;

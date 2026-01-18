@@ -43,6 +43,9 @@ export interface InspectionPanelProps {
   onExecuteFix?: (roundNumber: number) => void;
   /** Handler for auto execution flag change */
   onAutoExecutionFlagChange?: (flag: InspectionAutoExecutionFlag) => void;
+  // agent-launch-optimistic-ui: Optimistic UI launching state
+  /** Whether an operation is being launched (Optimistic UI) */
+  launching?: boolean;
 }
 
 // =============================================================================
@@ -150,12 +153,14 @@ export function InspectionPanel({
   onStartInspection,
   onExecuteFix,
   onAutoExecutionFlagChange,
+  // agent-launch-optimistic-ui: Optimistic UI launching state
+  launching = false,
 }: InspectionPanelProps) {
   // Get round count from new structure
   const roundCount = getRoundCount(inspectionState);
 
-  // Buttons are disabled when executing, auto-executing, or inspection not allowed
-  const canExecute = !isExecuting && !isAutoExecuting && canExecuteInspection;
+  // Buttons are disabled when launching, executing, auto-executing, or inspection not allowed
+  const canExecute = !launching && !isExecuting && !isAutoExecuting && canExecuteInspection;
 
   // Get latest round to determine GO/NOGO status and action buttons
   const latestRound = getLatestRound(inspectionState);

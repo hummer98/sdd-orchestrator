@@ -7,3 +7,10 @@
 
 export { useDeviceType } from './useDeviceType';
 export type { DeviceType, DeviceTypeInfo } from './useDeviceType';
+
+// agent-launch-optimistic-ui: Optimistic UI state management hook
+export { useLaunchingState } from './useLaunchingState';
+export type {
+  UseLaunchingStateOptions,
+  UseLaunchingStateReturn,
+} from './useLaunchingState';

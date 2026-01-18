@@ -16,6 +16,8 @@ import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { notify } from '../stores';
+// agent-launch-optimistic-ui: Optimistic UI hook
+import { useLaunchingState } from '@shared/hooks';
 import { PhaseItem } from './PhaseItem';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { DocumentReviewPanel } from './DocumentReviewPanel';
@@ -55,6 +57,10 @@ export function WorkflowView() {
 
   // Auto Execution Hook (Main Process IPC)
   const autoExecution = useAutoExecution();
+
+  // agent-launch-optimistic-ui: Optimistic UI state management
+  // Provides immediate visual feedback when buttons are clicked
+  const { launching, wrapExecution } = useLaunchingState();
 
   // Spec毎の自動実行runtime状態を取得
   const specId = specDetail?.metadata.name ?? '';
@@ -167,10 +173,11 @@ export function WorkflowView() {
   };
 
   // Handlers
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleExecutePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       // Task 6.1 (git-worktree-support): Deploy button conditional branching
       // When spec has worktree path: execute spec-merge
       // When spec has no worktree path (normal mode or no impl): execute /commit via normal phase execution
@@ -196,10 +203,8 @@ export function WorkflowView() {
         featureName: specDetail.metadata.name,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
-    }
-  }, [specDetail, specJson?.worktree, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, specJson?.worktree, workflowStore.commandPrefix, wrapExecution]);
 
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
@@ -276,10 +281,11 @@ export function WorkflowView() {
   }, [runningPhases]);
 
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleStartDocumentReview = useCallback(async () => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
       await window.electronAPI.execute({
         type: 'document-review',
@@ -290,17 +296,16 @@ export function WorkflowView() {
       // Note: Manual document-review agent tracking was removed as part of
       // deprecated-auto-execution-service-cleanup. Main Process AutoExecutionCoordinator
       // now handles document-review workflow orchestration.
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'ドキュメントレビューの実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // Handler for executing document-review-reply manually
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
       await window.electronAPI.execute({
         type: 'document-review-reply',
@@ -309,17 +314,16 @@ export function WorkflowView() {
         reviewNumber: roundNumber,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'レビュー内容判定の実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // Handler for applying fixes from document-review-reply (--fix option)
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleApplyDocumentReviewFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
       await window.electronAPI.execute({
         type: 'document-review-fix',
@@ -328,10 +332,8 @@ export function WorkflowView() {
         reviewNumber: roundNumber,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'replyの適用に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // ============================================================
   // Task 4: Inspection handlers (inspection-workflow-ui feature)
@@ -345,27 +347,27 @@ export function WorkflowView() {
 
   // Handler for starting inspection
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleStartInspection = useCallback(async () => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       await window.electronAPI.execute({
         type: 'inspection',
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Inspectionの実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // Handler for executing inspection fix
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleExecuteInspectionFix = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       await window.electronAPI.execute({
         type: 'inspection-fix',
         specId: specDetail.metadata.name,
@@ -373,10 +375,8 @@ export function WorkflowView() {
         roundNumber,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Inspection Fixの実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // Bug fix: inspection-auto-execution-toggle
   // Removed handleInspectionAutoExecutionFlagChange
@@ -390,10 +390,11 @@ export function WorkflowView() {
   // 2. Redundant full reloads when single files changed
 
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleExecuteTask = useCallback(async (taskId: string) => {
     if (!specDetail) return;
 
-    try {
+    await wrapExecution(async () => {
       // サービス層でコマンドを構築（commandPrefixをストアから取得）
       // File as SSOT: addAgent/selectAgentはファイル監視経由で自動実行される
       await window.electronAPI.execute({
@@ -403,10 +404,8 @@ export function WorkflowView() {
         taskId,
         commandPrefix: workflowStore.commandPrefix,
       });
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'タスク実装の実行に失敗しました');
-    }
-  }, [specDetail, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // ============================================================
   // Task 14.2, 14.3: Impl start button handlers (git-worktree-support)
@@ -462,6 +461,7 @@ export function WorkflowView() {
 
   // FIX-2: Handler for impl execution based on worktree mode
   // execute-method-unification: Task 5.3 - Use unified execute API
+  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
   const handleImplExecute = useCallback(async () => {
     if (!specDetail) return;
 
@@ -470,7 +470,7 @@ export function WorkflowView() {
     const projectPath = specPath.replace(/\/.kiro\/specs\/[^/]+$/, '');
     const featureName = specDetail.metadata.name;
 
-    try {
+    await wrapExecution(async () => {
       if (isWorktreeModeSelected) {
         // Worktree mode: Check if worktree already exists
         if (hasExistingWorktree) {
@@ -487,15 +487,13 @@ export function WorkflowView() {
           // Check if on main branch first
           const checkResult = await window.electronAPI.worktreeCheckMain(projectPath);
           if (!checkResult.ok) {
-            notify.error(`ブランチ確認エラー: ${checkResult.error.message || checkResult.error.type}`);
-            return;
+            throw new Error(`ブランチ確認エラー: ${checkResult.error.message || checkResult.error.type}`);
           }
 
           if (!checkResult.value.isMain) {
-            notify.error(
+            throw new Error(
               `Worktreeモードはmainブランチでのみ使用できます。現在のブランチ: ${checkResult.value.currentBranch}`
             );
-            return;
           }
 
           // Create worktree and update spec.json
@@ -515,8 +513,7 @@ export function WorkflowView() {
             } else if (error.message) {
               message = error.message;
             }
-            notify.error(message);
-            return;
+            throw new Error(message);
           }
 
           notify.success(`Worktree作成完了: ${implStartResult.value.worktreeConfig.branch}`);
@@ -538,8 +535,7 @@ export function WorkflowView() {
         );
 
         if (!normalResult.ok) {
-          notify.error(normalResult.error.message || '通常モード実装開始に失敗しました');
-          return;
+          throw new Error(normalResult.error.message || '通常モード実装開始に失敗しました');
         }
 
         // Execute impl phase
@@ -551,10 +547,8 @@ export function WorkflowView() {
           commandPrefix: workflowStore.commandPrefix,
         });
       }
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : '実装の開始に失敗しました');
-    }
-  }, [specDetail, isWorktreeModeSelected, hasExistingWorktree, workflowStore.commandPrefix]);
+    });
+  }, [specDetail, isWorktreeModeSelected, hasExistingWorktree, workflowStore.commandPrefix, wrapExecution]);
 
   // Handle empty and loading states (after all hooks)
   if (!selectedSpec) {
@@ -632,6 +626,7 @@ export function WorkflowView() {
             onExecuteReply={handleExecuteDocumentReviewReply}
             onApplyFix={handleApplyDocumentReviewFix}
             onAutoExecutionFlagChange={workflowStore.setDocumentReviewAutoExecutionFlag}
+            launching={launching}
           />
         </div>
 
@@ -691,6 +686,7 @@ export function WorkflowView() {
                 onStartInspection={handleStartInspection}
                 onExecuteFix={handleExecuteInspectionFix}
                 onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
+                launching={launching}
               />
             </div>
 

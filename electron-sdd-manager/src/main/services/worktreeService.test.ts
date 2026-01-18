@@ -645,32 +645,31 @@ describe('WorktreeService', () => {
 
   // ============================================================
   // worktree-spec-symlink Task 2: createSymlinksForWorktree modification
-  // Requirements: 2.1, 2.2, 2.3, 2.4, 4.1 (worktree-spec-symlink)
   // Note: Filesystem tests with fs mocking
+  //
+  // Implementation changed to use FILE symlinks for spec directory contents
+  // because Claude Code's Glob cannot traverse symlinked directories (GitHub issue #764)
+  //
+  // The method creates:
+  // - Directory symlinks: .kiro/logs/, .kiro/runtime/
+  // - File symlinks: Each file/dir in .kiro/specs/{feature}/ individually
   // ============================================================
-  describe('createSymlinksForWorktree (worktree-spec-symlink)', () => {
+  describe('createSymlinksForWorktree (file-based spec symlinks)', () => {
     // These tests verify the symlink configuration, not actual filesystem operations
-    // The method creates symlinks for:
-    // - .kiro/logs/ (preserved - Requirement 2.3)
-    // - .kiro/runtime/ (preserved - Requirement 2.3)
-    // - .kiro/specs/{feature}/ (new - Requirement 2.1)
-    // - .kiro/specs/{feature}/logs/ (removed - Requirement 2.4)
+    // The method creates:
+    // - .kiro/logs/ -> directory symlink (preserved)
+    // - .kiro/runtime/ -> directory symlink (preserved)
+    // - .kiro/specs/{feature}/ -> real directory with file symlinks for each entry
 
-    it('should configure symlinks for .kiro/logs/, .kiro/runtime/, and .kiro/specs/{feature}/', async () => {
+    it('should configure directory symlinks for .kiro/logs/ and .kiro/runtime/', async () => {
       // This test documents the expected symlink structure
       // Actual filesystem operations are tested in integration tests
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
       const worktreeAbsolutePath = '/Users/test/my-project/.kiro/worktrees/specs/my-feature';
-      const featureName = 'my-feature';
 
-      // The service should configure these symlinks (Requirements 2.1, 2.3):
-      // 1. {worktree}/.kiro/logs/ -> {main}/.kiro/logs/ (preserved)
-      // 2. {worktree}/.kiro/runtime/ -> {main}/.kiro/runtime/ (preserved)
-      // 3. {worktree}/.kiro/specs/{feature}/ -> {main}/.kiro/specs/{feature}/ (new)
-
-      // Expected symlink structure (for documentation):
-      const expectedSymlinks = [
+      // Expected directory symlinks:
+      const expectedDirectorySymlinks = [
         {
           link: path.join(worktreeAbsolutePath, '.kiro', 'logs'),
           target: path.join(projectPath, '.kiro', 'logs'),
@@ -679,40 +678,37 @@ describe('WorktreeService', () => {
           link: path.join(worktreeAbsolutePath, '.kiro', 'runtime'),
           target: path.join(projectPath, '.kiro', 'runtime'),
         },
-        {
-          link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName),
-          target: path.join(projectPath, '.kiro', 'specs', featureName),
-        },
       ];
 
       // Verify expected structure
-      expect(expectedSymlinks).toHaveLength(3);
-      expect(expectedSymlinks[2].link).toContain('.kiro/specs/my-feature');
-      expect(expectedSymlinks[2].target).toBe(path.join(projectPath, '.kiro', 'specs', 'my-feature'));
+      expect(expectedDirectorySymlinks).toHaveLength(2);
+      expect(expectedDirectorySymlinks[0].link).toContain('.kiro/logs');
+      expect(expectedDirectorySymlinks[1].link).toContain('.kiro/runtime');
     });
 
-    it('should NOT create symlink for .kiro/specs/{feature}/logs/ (Requirement 2.4)', () => {
-      // The old implementation created a symlink for .kiro/specs/{feature}/logs/
-      // The new implementation should NOT create this symlink as the entire spec directory is symlinked
+    it('should create real directory for spec with file symlinks (not directory symlink)', () => {
+      // The spec directory is now a real directory containing file symlinks
+      // This allows Claude Code's Glob to traverse the directory
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
       const worktreeAbsolutePath = '/Users/test/my-project/.kiro/worktrees/specs/my-feature';
       const featureName = 'my-feature';
 
-      // Document that .kiro/specs/{feature}/logs/ should NOT be a separate symlink
-      const oldUnwantedSymlink = {
-        link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName, 'logs'),
-        target: path.join(projectPath, '.kiro', 'specs', featureName, 'logs'),
-      };
+      // Expected structure:
+      // {worktree}/.kiro/specs/{feature}/          <- real directory (mkdir)
+      //   ├── spec.json      -> {main}/.../spec.json      (file symlink)
+      //   ├── requirements.md -> {main}/.../requirements.md (file symlink)
+      //   ├── design.md      -> {main}/.../design.md      (file symlink)
+      //   ├── tasks.md       -> {main}/.../tasks.md       (file symlink)
+      //   └── logs/          -> {main}/.../logs/          (file/dir symlink)
 
-      // The new symlink for entire spec directory covers this:
-      const newSpecSymlink = {
-        link: path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName),
-        target: path.join(projectPath, '.kiro', 'specs', featureName),
-      };
+      const worktreeSpecDir = path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName);
+      const mainSpecDir = path.join(projectPath, '.kiro', 'specs', featureName);
 
-      // logs/ is inside the spec directory, so it's automatically included
-      expect(newSpecSymlink.target).toBe(path.dirname(oldUnwantedSymlink.target));
+      // The spec directory should be a real directory, not a symlink
+      expect(worktreeSpecDir).toContain('.kiro/specs/my-feature');
+      // Each file inside should be a symlink pointing to main
+      expect(mainSpecDir).toBe(path.join(projectPath, '.kiro', 'specs', 'my-feature'));
     });
   });
 

@@ -8,7 +8,6 @@ import React from 'react';
 import { clsx } from 'clsx';
 import {
   Check,
-  Ban,
   PlayCircle,
   Loader2,
   Pause,
@@ -180,7 +179,7 @@ export function PhaseItem({
             'hover:bg-gray-200 dark:hover:bg-gray-600',
             'transition-colors'
           )}
-          title={autoExecutionPermitted ? '自動実行: 許可' : '自動実行: 禁止'}
+          title={autoExecutionPermitted ? '自動実行: 許可' : '自動実行: 一時停止'}
         >
           {autoExecutionPermitted ? (
             <PlayCircle
@@ -188,9 +187,9 @@ export function PhaseItem({
               className="w-4 h-4 text-green-500"
             />
           ) : (
-            <Ban
+            <Pause
               data-testid="auto-forbidden-icon"
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-yellow-500"
             />
           )}
         </button>

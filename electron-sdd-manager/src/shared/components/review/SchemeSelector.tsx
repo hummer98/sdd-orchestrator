@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getReviewEngine, getAvailableEngines, DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
 import type { ReviewerScheme } from '@shared/registry';
@@ -151,28 +151,36 @@ export function SchemeSelector({
             'rounded-md shadow-lg'
           )}
         >
-          {availableEngines.map((eng) => (
-            <button
-              key={eng.scheme}
-              type="button"
-              onClick={() => handleSelect(eng.scheme)}
-              className={clsx(
-                'w-full px-3 py-1.5 text-left text-sm',
-                'hover:bg-gray-100 dark:hover:bg-gray-700',
-                'transition-colors',
-                eng.scheme === currentScheme && 'bg-gray-50 dark:bg-gray-750'
-              )}
-            >
-              <span
+          {availableEngines.map((eng) => {
+            const isSelected = eng.scheme === currentScheme;
+            return (
+              <button
+                key={eng.scheme}
+                type="button"
+                onClick={() => handleSelect(eng.scheme)}
                 className={clsx(
-                  'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                  eng.colorClass
+                  'w-full px-3 py-1.5 text-left text-sm flex items-center gap-2',
+                  'hover:bg-gray-100 dark:hover:bg-gray-700',
+                  'transition-colors'
                 )}
               >
-                {eng.label}
-              </span>
-            </button>
-          ))}
+                {/* Check mark for selected item */}
+                <span className="w-4 shrink-0">
+                  {isSelected && (
+                    <Check className="w-4 h-4 text-green-500" data-testid="scheme-check-icon" />
+                  )}
+                </span>
+                <span
+                  className={clsx(
+                    'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                    eng.colorClass
+                  )}
+                >
+                  {eng.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

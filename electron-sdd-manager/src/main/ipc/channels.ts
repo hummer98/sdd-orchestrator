@@ -149,6 +149,11 @@ export const IPC_CHANNELS = {
   LOAD_SKIP_PERMISSIONS: 'ipc:load-skip-permissions',
   SAVE_SKIP_PERMISSIONS: 'ipc:save-skip-permissions',
 
+  // Project Defaults Config (debatex-document-review Task 3.3)
+  // Requirements: 4.1
+  LOAD_PROJECT_DEFAULTS: 'ipc:load-project-defaults',
+  SAVE_PROJECT_DEFAULTS: 'ipc:save-project-defaults',
+
   // Menu Events - Layout Reset
   MENU_RESET_LAYOUT: 'menu:reset-layout',
 

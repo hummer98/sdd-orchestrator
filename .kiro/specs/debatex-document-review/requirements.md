@@ -138,6 +138,17 @@
 
 6.4 debatex 実行中にユーザーがキャンセルした場合、プロセスを適切に終了すること
 
+## Remote UI 対応
+
+**Remote UI 対応: 不要**
+
+本機能は Desktop UI 専用として実装する。
+
+**理由**:
+- ProjectSettingsDialog はプロジェクト設定変更を行うため、Desktop UI のみでの操作を想定
+- debatex 実行自体は既存の Remote UI 対応済みワークフロー（scheme 選択 → 実行）で動作
+- Remote UI からのプロジェクト設定変更は tech.md の Remote UI 機能範囲（「設定変更は制限あり」）に準拠
+
 ## Out of Scope
 
 - debatex のインストール・セットアップ支援

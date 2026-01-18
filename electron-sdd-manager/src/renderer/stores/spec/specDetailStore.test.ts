@@ -5,9 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSpecDetailStore } from './specDetailStore';
+import { useSpecDetailStore, getResolvedScheme } from './specDetailStore';
 import { useEditorStore } from '../editorStore';
 import type { SpecMetadata, SpecDetail, ArtifactInfo } from '../../types';
+import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
 
 const mockSpec: SpecMetadata = {
   name: 'feature-a',
@@ -392,6 +393,222 @@ describe('useSpecDetailStore', () => {
 
       const state = useSpecDetailStore.getState();
       expect(state.specDetail?.taskProgress).toEqual({ total: 5, completed: 3, percentage: 60 });
+    });
+  });
+
+  // ============================================================
+  // debatex-document-review Task 6.4: getResolvedScheme unit tests
+  // Requirements: 3.2.1, 3.2.2, 3.2.3, 3.2.4
+  // ============================================================
+
+  describe('getResolvedScheme', () => {
+    beforeEach(() => {
+      // Reset store state
+      useSpecDetailStore.setState({
+        selectedSpec: null,
+        specDetail: null,
+        projectDefaultScheme: undefined,
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    it('should return DEFAULT_REVIEWER_SCHEME when no specDetail and no projectDefault (Req 3.2.4)', () => {
+      // Given: No specDetail, no projectDefaultScheme
+      useSpecDetailStore.setState({
+        specDetail: null,
+        projectDefaultScheme: undefined,
+      });
+
+      // When: getResolvedScheme is called
+      const result = getResolvedScheme(useSpecDetailStore.getState());
+
+      // Then: Should return the default scheme
+      expect(result).toBe(DEFAULT_REVIEWER_SCHEME);
+    });
+
+    it('should return projectDefaultScheme when set and no specJson scheme (Req 3.2.3)', () => {
+      // Given: specDetail without scheme, projectDefaultScheme = 'gemini-cli'
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: {
+          ...mockSpecJson,
+          // No documentReview.scheme
+        },
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+      };
+      useSpecDetailStore.setState({
+        specDetail: mockDetail,
+        projectDefaultScheme: 'gemini-cli',
+      });
+
+      // When: getResolvedScheme is called
+      const result = getResolvedScheme(useSpecDetailStore.getState());
+
+      // Then: Should return projectDefaultScheme
+      expect(result).toBe('gemini-cli');
+    });
+
+    it('should return specJson scheme when set (highest priority) (Req 3.2.1, 3.2.2)', () => {
+      // Given: specDetail with documentReview.scheme = 'debatex', projectDefaultScheme = 'gemini-cli'
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: {
+          ...mockSpecJson,
+          documentReview: {
+            scheme: 'debatex',
+          },
+        },
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+      };
+      useSpecDetailStore.setState({
+        specDetail: mockDetail,
+        projectDefaultScheme: 'gemini-cli',
+      });
+
+      // When: getResolvedScheme is called
+      const result = getResolvedScheme(useSpecDetailStore.getState());
+
+      // Then: specJson scheme takes priority
+      expect(result).toBe('debatex');
+    });
+
+    it('should fall back to DEFAULT when specJson has documentReview but no scheme (Req 3.2.4)', () => {
+      // Given: specDetail with documentReview but no scheme, no projectDefault
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: {
+          ...mockSpecJson,
+          documentReview: {
+            // no scheme field
+          },
+        },
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+      };
+      useSpecDetailStore.setState({
+        specDetail: mockDetail,
+        projectDefaultScheme: undefined,
+      });
+
+      // When: getResolvedScheme is called
+      const result = getResolvedScheme(useSpecDetailStore.getState());
+
+      // Then: Should return the default scheme
+      expect(result).toBe(DEFAULT_REVIEWER_SCHEME);
+    });
+
+    it('should use DEFAULT_REVIEWER_SCHEME when projectDefaultScheme is undefined and no specJson scheme', () => {
+      // Given: specDetail without scheme, projectDefaultScheme = undefined
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: mockSpecJson,
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+      };
+      useSpecDetailStore.setState({
+        specDetail: mockDetail,
+        projectDefaultScheme: undefined,
+      });
+
+      // When: getResolvedScheme is called
+      const result = getResolvedScheme(useSpecDetailStore.getState());
+
+      // Then: Should return the default scheme
+      expect(result).toBe(DEFAULT_REVIEWER_SCHEME);
+    });
+  });
+
+  // ============================================================
+  // worktree field preservation tests
+  // Verify that worktree field is properly loaded and preserved
+  // ============================================================
+
+  describe('worktree field loading', () => {
+    it('should load specJson with worktree field when present', async () => {
+      const specJsonWithWorktree = {
+        ...mockSpecJson,
+        worktree: {
+          branch: 'feature/test-feature',
+          created_at: '2024-01-15T10:00:00Z',
+        },
+      };
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithWorktree);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.specJson.worktree).toEqual({
+        branch: 'feature/test-feature',
+        created_at: '2024-01-15T10:00:00Z',
+      });
+    });
+
+    it('should preserve worktree field after setSpecJson', () => {
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: {
+          ...mockSpecJson,
+          worktree: {
+            branch: 'feature/original',
+            created_at: '2024-01-01T00:00:00Z',
+          },
+        },
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+      };
+      useSpecDetailStore.setState({ specDetail: mockDetail });
+
+      // Update specJson with worktree
+      const updatedSpecJson = {
+        ...mockSpecJson,
+        worktree: {
+          branch: 'feature/updated',
+          created_at: '2024-01-15T10:00:00Z',
+        },
+      };
+      useSpecDetailStore.getState().setSpecJson(updatedSpecJson);
+
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.specJson.worktree).toEqual({
+        branch: 'feature/updated',
+        created_at: '2024-01-15T10:00:00Z',
+      });
     });
   });
 });

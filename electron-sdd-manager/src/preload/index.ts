@@ -945,6 +945,27 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.SAVE_SKIP_PERMISSIONS, projectPath, skipPermissions),
 
   // ============================================================
+  // Project Defaults (debatex-document-review Task 3.3)
+  // Requirements: 4.1
+  // ============================================================
+
+  /**
+   * Load project defaults from project config (sdd-orchestrator.json)
+   * @param projectPath Project root path
+   * @returns ProjectDefaults or undefined if not set
+   */
+  loadProjectDefaults: (projectPath: string): Promise<{ documentReview?: { scheme?: string } } | undefined> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_PROJECT_DEFAULTS, projectPath),
+
+  /**
+   * Save project defaults to project config
+   * @param projectPath Project root path
+   * @param defaults ProjectDefaults to save
+   */
+  saveProjectDefaults: (projectPath: string, defaults: { documentReview?: { scheme?: string } }): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_PROJECT_DEFAULTS, projectPath, defaults),
+
+  // ============================================================
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   // ============================================================

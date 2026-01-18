@@ -7,6 +7,7 @@
  * - DISPLAY_PHASES loop for requirements/design/tasks
  * - ImplFlowFrame contains: ImplPhasePanel, TaskProgressView, InspectionPanel, deploy PhaseItem
  * - Deploy label dynamic change (worktree mode: "マージ", normal: "コミット")
+ * debatex-document-review Inspection Fix 7.1: Use getResolvedScheme for SSOT compliance
  */
 
 import { useCallback, useMemo } from 'react';
@@ -28,6 +29,8 @@ import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
 import { useAutoExecution } from '../hooks/useAutoExecution';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
+// debatex-document-review Inspection Fix 7.1: Import getResolvedScheme for SSOT
+import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
 import {
   ALL_WORKFLOW_PHASES,
   DISPLAY_PHASES,
@@ -85,10 +88,11 @@ export function WorkflowView() {
     return reviewData || null;
   }, [specJson]);
 
-  // gemini-document-review: Get scheme from spec.json documentReview
-  // Requirements: 4.1, 5.1
-  const documentReviewScheme = useMemo((): ReviewerScheme | undefined => {
-    return (specJson as ExtendedSpecJson & { documentReview?: { scheme?: ReviewerScheme } })?.documentReview?.scheme;
+  // debatex-document-review Inspection Fix 7.1: Use getResolvedScheme for SSOT compliance
+  // Requirements: 4.2, 4.3, 4.4 - scheme priority: spec.json > sdd-orchestrator.json > 'claude-code'
+  // Previous implementation directly read specJson.documentReview.scheme, bypassing projectDefaultScheme
+  const documentReviewScheme = useMemo((): ReviewerScheme => {
+    return getResolvedScheme(useSpecDetailStore.getState());
   }, [specJson]);
 
   // Get inspection state from spec.json (supports both new and legacy format)

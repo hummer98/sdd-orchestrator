@@ -78,12 +78,34 @@ export const ProjectSettingsSchema = z.object({
 export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
 
 /**
+ * Document Review のデフォルト設定スキーマ
+ * debatex-document-review Task 3.1: Requirements 4.1
+ */
+export const DocumentReviewDefaultsSchema = z.object({
+  scheme: z.enum(['claude-code', 'gemini-cli', 'debatex']).optional(),
+});
+
+export type DocumentReviewDefaults = z.infer<typeof DocumentReviewDefaultsSchema>;
+
+/**
+ * プロジェクトデフォルト設定のスキーマ
+ * debatex-document-review Task 3.1: Requirements 4.1
+ */
+export const ProjectDefaultsSchema = z.object({
+  documentReview: DocumentReviewDefaultsSchema.optional(),
+});
+
+export type ProjectDefaults = z.infer<typeof ProjectDefaultsSchema>;
+
+/**
  * 統合設定ファイルのスキーマ（version 3）
  * profile: コマンドセットのインストール状態
  * layout: UIレイアウト設定
  * commandsets: コマンドセットバージョン情報
  * settings: プロジェクト設定（skipPermissions等）
+ * defaults: プロジェクトデフォルト設定（documentReview.scheme等）
  * Requirements (commandset-version-detection): 6.1, 6.2, 6.4
+ * debatex-document-review Task 3.1: Requirements 4.1
  */
 export const ProjectConfigSchemaV3 = z.object({
   version: z.literal(3),
@@ -94,6 +116,7 @@ export const ProjectConfigSchemaV3 = z.object({
     CommandsetVersionRecordSchema
   ).optional(),
   settings: ProjectSettingsSchema.optional(),
+  defaults: ProjectDefaultsSchema.optional(),
 });
 
 export type ProjectConfigV3 = z.infer<typeof ProjectConfigSchemaV3>;
@@ -406,6 +429,41 @@ export const projectConfigService = {
       settings: {
         ...(existing?.settings ?? {}),
         skipPermissions,
+      },
+      defaults: existing?.defaults,
+    };
+    await saveProjectConfigV3(projectPath, config);
+  },
+
+  /**
+   * プロジェクトデフォルト設定を読み込む
+   * debatex-document-review Task 3.1: Requirements 4.1
+   * @param projectPath プロジェクトルートパス
+   * @returns プロジェクトデフォルト設定（存在しない場合はundefined）
+   */
+  async loadProjectDefaults(projectPath: string): Promise<ProjectDefaults | undefined> {
+    const config = await loadProjectConfigV3(projectPath);
+    return config?.defaults;
+  },
+
+  /**
+   * プロジェクトデフォルト設定を保存
+   * 既存のprofile/layout/commandsets/settingsは維持、defaultsを更新
+   * debatex-document-review Task 3.1: Requirements 4.1
+   * @param projectPath プロジェクトルートパス
+   * @param defaults デフォルト設定
+   */
+  async saveProjectDefaults(projectPath: string, defaults: ProjectDefaults): Promise<void> {
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
+      profile: existing?.profile,
+      layout: existing?.layout,
+      commandsets: existing?.commandsets,
+      settings: existing?.settings,
+      defaults: {
+        ...(existing?.defaults ?? {}),
+        ...defaults,
       },
     };
     await saveProjectConfigV3(projectPath, config);

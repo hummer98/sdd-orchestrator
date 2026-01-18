@@ -2,6 +2,7 @@
  * SpecDetailStore
  * Manages selected Spec detail state
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8
+ * debatex-document-review: 3.2 - Scheme resolution logic
  */
 
 import { create } from 'zustand';
@@ -10,8 +11,51 @@ import { getLatestInspectionReportFile, normalizeInspectionState } from '../../t
 import type { SpecDetailState, SpecDetailActions, ArtifactType } from './types';
 import { DEFAULT_SPEC_DETAIL_STATE } from './types';
 import { useEditorStore } from '../editorStore';
+import { DEFAULT_REVIEWER_SCHEME, type ReviewerScheme } from '@shared/registry';
 
 type SpecDetailStore = SpecDetailState & SpecDetailActions;
+
+// ============================================================
+// debatex-document-review Task 3.2: Scheme Resolution Selector
+// Requirements: 3.2.1, 3.2.2, 3.2.3, 3.2.4
+// ============================================================
+
+/**
+ * Extended specJson type for accessing documentReview.scheme
+ */
+interface ExtendedSpecJson {
+  documentReview?: {
+    scheme?: ReviewerScheme;
+  };
+}
+
+/**
+ * Get resolved reviewer scheme with priority order:
+ * 1. specJson.documentReview.scheme (highest priority)
+ * 2. projectDefaultScheme (from projectDefaults.json)
+ * 3. DEFAULT_REVIEWER_SCHEME (fallback)
+ *
+ * @param state - SpecDetailState
+ * @returns Resolved ReviewerScheme
+ */
+export function getResolvedScheme(state: SpecDetailState): ReviewerScheme {
+  // Priority 1: specJson.documentReview.scheme
+  const specDetail = state.specDetail;
+  if (specDetail?.specJson) {
+    const extendedSpecJson = specDetail.specJson as ExtendedSpecJson;
+    if (extendedSpecJson.documentReview?.scheme) {
+      return extendedSpecJson.documentReview.scheme;
+    }
+  }
+
+  // Priority 2: projectDefaultScheme
+  if (state.projectDefaultScheme) {
+    return state.projectDefaultScheme;
+  }
+
+  // Priority 3: DEFAULT_REVIEWER_SCHEME
+  return DEFAULT_REVIEWER_SCHEME;
+}
 
 export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
   // Initial state
@@ -291,5 +335,13 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         taskProgress: progress,
       },
     });
+  },
+
+  /**
+   * debatex-document-review Task 3.2: Set project default scheme
+   * Called when project is selected and projectDefaults.json is loaded
+   */
+  setProjectDefaultScheme: (scheme: ReviewerScheme | undefined) => {
+    set({ projectDefaultScheme: scheme });
   },
 }));

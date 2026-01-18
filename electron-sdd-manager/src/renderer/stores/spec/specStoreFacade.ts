@@ -264,6 +264,14 @@ export const useSpecStoreFacade = create<SpecStoreFacade>()(
       set(getAggregatedState());
     },
 
+    /**
+     * debatex-document-review Task 3.2: Set project default scheme
+     */
+    setProjectDefaultScheme: (scheme: import('@shared/registry').ReviewerScheme | undefined) => {
+      useSpecDetailStore.getState().setProjectDefaultScheme(scheme);
+      set(getAggregatedState());
+    },
+
     // Note: refreshSpecs removed - File Watcher handles spec updates automatically
 
     // ============================================================

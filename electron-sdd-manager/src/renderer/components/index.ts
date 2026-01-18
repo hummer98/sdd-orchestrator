@@ -69,3 +69,5 @@ export { BugPane } from './BugPane';
 export { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
 export { InstallCloudflaredDialog } from './InstallCloudflaredDialog';
 export type { InstallInstructions } from './InstallCloudflaredDialog';
+// debatex-document-review Task 4.1: Project Settings Dialog
+export { ProjectSettingsDialog } from './ProjectSettingsDialog';

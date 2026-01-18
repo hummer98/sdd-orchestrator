@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Settings } from 'lucide-react';
 import {
   NotificationProvider,
   UnsavedChangesDialog,
@@ -32,6 +33,8 @@ import {
   // Bug fix: bugs-tab-agent-list-missing - タブベースのペイン切り替え
   SpecPane,
   BugPane,
+  // debatex-document-review Task 4.1: Project Settings Dialog
+  ProjectSettingsDialog,
 } from './components';
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
@@ -106,6 +109,8 @@ export function App() {
   const [isSSHConnecting, setIsSSHConnecting] = useState(false);
   // Bug fix: bugs-tab-agent-list-missing - タブ状態をApp.tsxで管理
   const [activeTab, setActiveTab] = useState<DocsTab>('specs');
+  // debatex-document-review Task 4.2: Project Settings Dialog
+  const [isProjectSettingsDialogOpen, setIsProjectSettingsDialogOpen] = useState(false);
 
   // ペインサイズの状態（pane-layout-persistence feature）
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LAYOUT.leftPaneWidth);
@@ -495,6 +500,17 @@ export function App() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* debatex-document-review Task 4.2: Project Settings Button */}
+            {currentProject && (
+              <button
+                onClick={() => setIsProjectSettingsDialogOpen(true)}
+                className="titlebar-no-drag p-1.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                title="プロジェクト設定"
+                aria-label="プロジェクト設定"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
             {/* VSCode Open Button */}
             {currentProject && (
               <button
@@ -702,6 +718,12 @@ export function App() {
             onCancel={cancelProjectSwitch}
           />
         )}
+
+        {/* debatex-document-review Task 4.2: Project Settings Dialog */}
+        <ProjectSettingsDialog
+          isOpen={isProjectSettingsDialogOpen}
+          onClose={() => setIsProjectSettingsDialogOpen(false)}
+        />
           </div>
         </NotificationProvider>
       </PlatformProvider>

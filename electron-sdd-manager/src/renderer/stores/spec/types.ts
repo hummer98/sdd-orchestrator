@@ -14,6 +14,7 @@ import type {
   AutoExecutionStatus,
 } from '../../types';
 import type { WorkflowPhase } from '../../types/workflow';
+import type { ReviewerScheme } from '@shared/registry';
 
 // ============================================================
 // spec-metadata-ssot-refactor: Extended type for display with phase info
@@ -85,6 +86,12 @@ export interface SpecDetailState {
   readonly specDetail: SpecDetail | null;
   readonly isLoading: boolean;
   readonly error: string | null;
+  /**
+   * debatex-document-review Task 3.2: Project default reviewer scheme
+   * Loaded from projectDefaults.json
+   * Used when spec.json doesn't have a documentReview.scheme
+   */
+  readonly projectDefaultScheme?: ReviewerScheme;
 }
 
 /** SpecDetailStore actions interface */
@@ -97,6 +104,11 @@ export interface SpecDetailActions {
   setSpecJson(specJson: SpecDetail['specJson']): void;
   setArtifact(type: ArtifactType, info: ArtifactInfo | null): void;
   setTaskProgress(progress: TaskProgress | null): void;
+  /**
+   * debatex-document-review Task 3.2: Set project default scheme
+   * Called when project is selected and projectDefaults.json is loaded
+   */
+  setProjectDefaultScheme(scheme: ReviewerScheme | undefined): void;
 }
 
 /** Default SpecDetailState values */
@@ -105,6 +117,7 @@ export const DEFAULT_SPEC_DETAIL_STATE: SpecDetailState = {
   specDetail: null,
   isLoading: false,
   error: null,
+  projectDefaultScheme: undefined,
 };
 
 // ============================================================

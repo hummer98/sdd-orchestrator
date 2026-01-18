@@ -19,6 +19,7 @@ import {
   type LayoutValues,
   type ProfileConfig,
   type CommandsetVersionRecord,
+  type ProjectDefaults,
 } from './layoutConfigService';
 
 // Mock fs/promises
@@ -941,6 +942,100 @@ describe('projectConfigService', () => {
         JSON.stringify(expectedConfig, null, 2),
         'utf-8'
       );
+    });
+  });
+
+  // ============================================================
+  // debatex-document-review Task 3.1, 6.3: Project Defaults
+  // Requirements: 4.1
+  // ============================================================
+  describe('loadProjectDefaults / saveProjectDefaults (Task 3.1, 6.3)', () => {
+    it('デフォルト設定がない場合は undefined を返す', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' },
+        layout: DEFAULT_LAYOUT,
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+
+      const result = await projectConfigService.loadProjectDefaults(testProjectPath);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('defaults.documentReview.scheme を読み込む', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' },
+        layout: DEFAULT_LAYOUT,
+        defaults: {
+          documentReview: {
+            scheme: 'gemini-cli',
+          },
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+
+      const result = await projectConfigService.loadProjectDefaults(testProjectPath);
+
+      expect(result?.documentReview?.scheme).toBe('gemini-cli');
+    });
+
+    it('defaults.documentReview.scheme を保存する', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' },
+        layout: DEFAULT_LAYOUT,
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await projectConfigService.saveProjectDefaults(testProjectPath, {
+        documentReview: { scheme: 'debatex' },
+      });
+
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        configFilePath,
+        expect.stringContaining('"scheme": "debatex"'),
+        'utf-8'
+      );
+    });
+
+    it('既存の profile/layout/commandsets/settings を保持しつつ defaults を更新', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' },
+        layout: DEFAULT_LAYOUT,
+        commandsets: {
+          'cc-sdd': { version: '1.0.0', installedAt: '2024-01-01T00:00:00Z' },
+        },
+        settings: { skipPermissions: true },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await projectConfigService.saveProjectDefaults(testProjectPath, {
+        documentReview: { scheme: 'debatex' },
+      });
+
+      const writtenContent = mockFs.writeFile.mock.calls[0][1] as string;
+      const writtenConfig = JSON.parse(writtenContent);
+
+      expect(writtenConfig.profile.name).toBe('cc-sdd');
+      expect(writtenConfig.layout.leftPaneWidth).toBe(DEFAULT_LAYOUT.leftPaneWidth);
+      expect(writtenConfig.commandsets['cc-sdd'].version).toBe('1.0.0');
+      expect(writtenConfig.settings.skipPermissions).toBe(true);
+      expect(writtenConfig.defaults.documentReview.scheme).toBe('debatex');
+    });
+
+    it('設定ファイルが存在しない場合は undefined を返す', async () => {
+      const error = new Error('ENOENT') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      mockFs.readFile.mockRejectedValue(error);
+
+      const result = await projectConfigService.loadProjectDefaults(testProjectPath);
+
+      expect(result).toBeUndefined();
     });
   });
 });

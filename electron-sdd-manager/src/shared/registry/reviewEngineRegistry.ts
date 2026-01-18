@@ -5,6 +5,62 @@
  */
 
 // ============================================================
+// Error Definitions
+// debatex-document-review Task 2.2: Error messages for debatex
+// Requirements: 6.1, 6.2, 6.3
+// ============================================================
+
+/**
+ * Debatex-specific error types and user-friendly messages
+ */
+export const DEBATEX_ERRORS = {
+  NOT_INSTALLED: {
+    code: 'DEBATEX_NOT_INSTALLED',
+    message: 'debatex がインストールされていません',
+    hint: 'npm install -g debatex でインストールしてください',
+  },
+  TIMEOUT: {
+    code: 'DEBATEX_TIMEOUT',
+    message: 'debatex の実行がタイムアウトしました',
+    hint: 'ネットワーク接続を確認するか、後で再試行してください',
+  },
+  EXECUTION_FAILED: {
+    code: 'DEBATEX_EXECUTION_FAILED',
+    message: 'debatex の実行に失敗しました',
+    hint: 'ログを確認してエラーの詳細を確認してください',
+  },
+} as const;
+
+/**
+ * Check if an error is a debatex not installed error (ENOENT from spawn)
+ * @param error - The error object
+ * @returns true if the error indicates debatex is not installed
+ */
+export function isDebatexNotInstalledError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    // ENOENT from spawn indicates command not found
+    return message.includes('enoent') || message.includes('spawn npx enoent');
+  }
+  return false;
+}
+
+/**
+ * Get user-friendly error info for debatex errors
+ * @param error - The error object
+ * @returns Error info with code, message, and hint, or null if not a known debatex error
+ */
+export function getDebatexErrorInfo(error: unknown): typeof DEBATEX_ERRORS[keyof typeof DEBATEX_ERRORS] | null {
+  if (isDebatexNotInstalledError(error)) {
+    return DEBATEX_ERRORS.NOT_INSTALLED;
+  }
+  if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
+    return DEBATEX_ERRORS.TIMEOUT;
+  }
+  return null;
+}
+
+// ============================================================
 // Types
 // ============================================================
 
@@ -22,7 +78,18 @@ export type ReviewerScheme = 'claude-code' | 'gemini-cli' | 'debatex';
 export const DEFAULT_REVIEWER_SCHEME: ReviewerScheme = 'claude-code';
 
 /**
+ * Extended build args context for engines that need additional information
+ * debatex-document-review Requirements: 1.1, 1.3
+ */
+export interface BuildArgsContext {
+  featureName: string;
+  specPath?: string;
+  roundNumber?: number;
+}
+
+/**
  * Review engine configuration
+ * debatex-document-review: buildArgs signature extended to accept string | BuildArgsContext
  */
 export interface ReviewEngineConfig {
   /** Display label */
@@ -31,8 +98,12 @@ export interface ReviewEngineConfig {
   colorClass: string;
   /** Command (string or array) */
   command: string | string[];
-  /** Arguments builder function */
-  buildArgs: (featureName: string) => string[];
+  /**
+   * Arguments builder function
+   * @param context - Feature name (string) or full context object
+   * debatex-document-review Requirements: 1.1, 1.3
+   */
+  buildArgs: (context: string | BuildArgsContext) => string[];
   /** Output format */
   outputFormat: 'jsonl' | 'text';
 }
@@ -71,7 +142,25 @@ export const REVIEW_ENGINES: Record<ReviewerScheme, ReviewEngineConfig> = {
     label: 'Debatex',
     colorClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     command: ['npx', 'debatex'],
-    buildArgs: (featureName) => ['sdd-document-review', featureName],
+    // debatex-document-review Requirements: 1.2, 1.3
+    // Accepts string | BuildArgsContext for backward compatibility and output path support
+    buildArgs: (context) => {
+      // Normalize to BuildArgsContext
+      const ctx: BuildArgsContext = typeof context === 'string'
+        ? { featureName: context }
+        : context;
+
+      const args: string[] = ['sdd-document-review', ctx.featureName];
+
+      // Add --output flag only when both specPath and roundNumber are provided
+      // debatex-document-review Requirement: 1.3
+      if (ctx.specPath && ctx.roundNumber !== undefined) {
+        const outputPath = `${ctx.specPath}/document-review-${ctx.roundNumber}.md`;
+        args.push('--output', outputPath);
+      }
+
+      return args;
+    },
     outputFormat: 'text',
   },
 };

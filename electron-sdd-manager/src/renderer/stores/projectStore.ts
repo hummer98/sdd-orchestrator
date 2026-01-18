@@ -2,6 +2,7 @@
  * Project Store
  * Manages current project and recent projects state
  * Requirements: 1.1-1.5, 4.1-4.6
+ * debatex-document-review Inspection Fix 7.2: Load projectDefaultScheme on project selection
  */
 
 import { create } from 'zustand';
@@ -266,6 +267,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         console.error('[projectStore] Failed to check steering files:', error);
         // Don't fail project selection if steering check fails
         set({ steeringCheck: null });
+      }
+
+      // ============================================================
+      // debatex-document-review Inspection Fix 7.2: Load project default scheme
+      // Requirements: 4.2 - spec.json未設定時のプロジェクトデフォルト適用
+      // Load projectDefaultScheme from sdd-orchestrator.json and cache in specDetailStore
+      // ============================================================
+      try {
+        const projectDefaults = await window.electronAPI.loadProjectDefaults(path);
+        const defaultScheme = projectDefaults?.documentReview?.scheme;
+        // Import dynamically to avoid circular dependency
+        const { useSpecDetailStore } = await import('./spec/specDetailStore');
+        useSpecDetailStore.getState().setProjectDefaultScheme(
+          defaultScheme as import('@shared/registry').ReviewerScheme | undefined
+        );
+        console.log('[projectStore] Loaded projectDefaultScheme:', defaultScheme);
+      } catch (error) {
+        console.error('[projectStore] Failed to load project defaults:', error);
+        // Don't fail project selection if defaults load fails
+        // specDetailStore.projectDefaultScheme will remain undefined, falling back to DEFAULT_REVIEWER_SCHEME
       }
     } catch (error) {
       set({

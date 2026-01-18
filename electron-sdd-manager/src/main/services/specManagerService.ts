@@ -654,6 +654,7 @@ export class SpecManagerService {
       logger.info('[SpecManagerService] Agent process created', { agentId, pid: process.pid });
 
       // Create agent info
+      // Bug fix: agent-resume-cwd-mismatch - Include cwd for consistency
       const agentInfo: AgentInfo = {
         agentId,
         specId,
@@ -664,6 +665,7 @@ export class SpecManagerService {
         startedAt: now,
         lastActivityAt: now,
         command: `${command} ${effectiveArgs.join(' ')}`,
+        cwd: effectiveCwd,
       };
 
       // agent-state-file-ssot: Store process handle for stdin/kill operations
@@ -703,6 +705,7 @@ export class SpecManagerService {
       });
 
       // agent-state-file-ssot: Write agent record to file (SSOT)
+      // Bug fix: agent-resume-cwd-mismatch - Save cwd for resume operations
       await this.recordService.writeRecord({
         agentId,
         specId,
@@ -713,6 +716,7 @@ export class SpecManagerService {
         startedAt: now,
         lastActivityAt: now,
         command: `${command} ${effectiveArgs.join(' ')}`,
+        cwd: effectiveCwd,
       });
 
       // Mark file as written and process any pending events
@@ -1011,8 +1015,11 @@ export class SpecManagerService {
     const command = getClaudeCommand();
     const now = new Date().toISOString();
 
-    // git-worktree-support: Use worktreeCwd if provided, fallback to projectPath
-    const effectiveCwd = worktreeCwd || this.projectPath;
+    // Bug fix: agent-resume-cwd-mismatch
+    // Priority: 1. worktreeCwd argument (explicit override)
+    //           2. agent.cwd (stored from original start)
+    //           3. projectPath (fallback for legacy records without cwd)
+    const effectiveCwd = worktreeCwd || agent.cwd || this.projectPath;
 
     try {
       logger.info('[SpecManagerService] Resuming agent', {

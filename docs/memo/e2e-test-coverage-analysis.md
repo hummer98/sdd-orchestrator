@@ -4,7 +4,7 @@
 
 | 項目 | Electron版 | Remote UI版 |
 |------|-----------|-------------|
-| テストファイル数 | 31 | 4 |
+| テストファイル数 | 31 | 6 |
 | フレームワーク | WebdriverIO + wdio-electron-service | Playwright |
 | 対象環境 | Desktop (macOS/Windows/Linux) | Desktop/Smartphone (Browser) |
 
@@ -28,13 +28,13 @@
 | | Spec選択・詳細表示 | ✅ | ✅ | ✅ |
 | | フェーズ実行 | ✅ | ✅ | ✅ |
 | | ワークフロー統合 | ✅ | ✅ | ✅ |
-| **自動実行** | 基本動作 | ✅ | ❌ | ❌ |
-| | パーミッション制御 | ✅ | ❌ | ❌ |
-| | フェーズシーケンス | ✅ | ❌ | ❌ |
-| | 再開機能 | ✅ | ❌ | ❌ |
-| | 中間成果物検証 | ✅ | ❌ | ❌ |
-| | implフェーズ | ✅ | ❌ | ❌ |
-| | ドキュメントレビュー連携 | ✅ | ❌ | ❌ |
+| **自動実行** | 基本動作 | ✅ | ✅ | ✅ |
+| | パーミッション制御 | ✅ | ✅ | ✅ |
+| | フェーズシーケンス | ✅ | ✅ | ✅ |
+| | 再開機能 | ✅ | ✅ | ✅ |
+| | 中間成果物検証 | ✅ | ✅ | ✅ |
+| | implフェーズ | ✅ | ✅ | ✅ |
+| | ドキュメントレビュー連携 | ✅ | ✅ | ✅ |
 | **Bug管理** | Bug一覧表示 | ✅ | ✅ | ✅ |
 | | Bug作成 | ✅ | ❌ | ❌ |
 | | 3ペイン連動 | ✅ | ❌ | ❌ |
@@ -178,6 +178,42 @@
 | Tab Navigation | Specs/Bugsタブ切り替え、タブ切り替え時選択リセット |
 | Workflow UI Elements | 自動実行パーミッションアイコン表示 |
 
+### 3.5 Playwright auto-execution.spec.ts (Desktop)
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [auto-execution.spec.ts](../../electron-sdd-manager/e2e-playwright/auto-execution.spec.ts) | 自動実行機能のE2Eテスト（Desktop） |
+
+**テスト内容（16件）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Basic Auto Execution | Auto Execute Allボタン表示、有効状態、クリック動作 |
+| Permission Control | 各フェーズのパーミッショントグル表示、クリック可能 |
+| Phase Sequence | フェーズ順序表示、generatedアイコン表示、次フェーズボタン無効化 |
+| Resume Functionality | 承認ボタン表示・有効状態 |
+| Intermediate Artifacts | フェーズタグ表示、生成済みアイコン表示 |
+| Impl Phase | implフェーズアイテム表示、パーミッショントグル表示 |
+| Document Review Integration | inspectionフェーズ表示、deployフェーズ表示 |
+
+### 3.6 Playwright smartphone-auto-execution.spec.ts (Smartphone)
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [smartphone-auto-execution.spec.ts](../../electron-sdd-manager/e2e-playwright/smartphone-auto-execution.spec.ts) | 自動実行機能のE2Eテスト（Smartphone） |
+
+**テスト内容（16件）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Basic Auto Execution | Auto Execute Allボタン表示、有効状態、クリック動作 |
+| Permission Control | 各フェーズのパーミッショントグル表示、クリック可能 |
+| Phase Sequence | フェーズ順序表示、generatedアイコン表示、次フェーズボタン無効化 |
+| Resume Functionality | 承認ボタン表示・有効状態 |
+| Intermediate Artifacts | フェーズタグ表示、生成済みアイコン表示 |
+| Impl Phase | implフェーズアイテム表示、パーミッショントグル表示 |
+| Document Review Integration | inspectionフェーズ表示、deployフェーズ表示 |
+
 ---
 
 ## 4. カバレッジギャップ分析
@@ -188,7 +224,7 @@
 |--------|------|------|
 | ✅ 完了 | Spec/Bugフェーズ実行 | phase-execution.spec.ts で検証 |
 | ✅ 完了 | ワークフロー統合 | workflow-integration.spec.ts で検証 |
-| 🔴 高 | 自動実行 | Remote UIからの自動実行トリガーが未検証 |
+| ✅ 完了 | 自動実行 | auto-execution.spec.ts で検証 |
 | 🟡 中 | ドキュメントレビュー | レビューUIの操作が未検証 |
 | 🟡 中 | エディタ表示・検索 | ArtifactEditorのRemote UI表示が未検証 |
 | 🟢 低 | WebSocket再接続 | remote-webserver.e2e.spec.tsでElectron側から間接検証 |
@@ -235,7 +271,7 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                 E2E Tests (4 files)                        │
+│                 E2E Tests (6 files)                        │
 ├────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────┐      │
 │  │              smoke.spec.ts (Desktop)              │      │
@@ -268,8 +304,29 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 │  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
+│  │          auto-execution.spec.ts (Desktop)        │      │
+│  │  - 基本動作（ボタン表示・クリック）                     │      │
+│  │  - パーミッション制御                                │      │
+│  │  - フェーズシーケンス                                │      │
+│  │  - 再開機能                                        │      │
+│  │  - 中間成果物検証                                   │      │
+│  │  - implフェーズ                                    │      │
+│  │  - ドキュメントレビュー連携                           │      │
+│  └──────────────────────────────────────────────────┘      │
+│                                                            │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │   smartphone-auto-execution.spec.ts (Smartphone)  │      │
+│  │  - 基本動作（ボタン表示・クリック）                     │      │
+│  │  - パーミッション制御                                │      │
+│  │  - フェーズシーケンス                                │      │
+│  │  - 再開機能                                        │      │
+│  │  - 中間成果物検証                                   │      │
+│  │  - implフェーズ                                    │      │
+│  │  - ドキュメントレビュー連携                           │      │
+│  └──────────────────────────────────────────────────┘      │
+│                                                            │
+│  ┌──────────────────────────────────────────────────┐      │
 │  │           ❌ 未カバー領域                           │      │
-│  │  - 自動実行                                        │      │
 │  │  - ドキュメントレビュー                               │      │
 │  │  - エディタ操作                                     │      │
 │  └──────────────────────────────────────────────────┘      │
@@ -287,9 +344,10 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
    - ~~Bug選択→フェーズ実行→完了確認~~
    - phase-execution.spec.ts, workflow-integration.spec.ts で実装済み
 
-2. **Remote UI版自動実行テスト追加**
-   - 自動実行ボタン操作
-   - 停止・再開操作
+2. ~~**Remote UI版自動実行テスト追加**~~ ✅ 完了
+   - ~~自動実行ボタン操作~~
+   - ~~停止・再開操作~~
+   - auto-execution.spec.ts で実装済み（16テスト）
 
 ### 中期（優先度中）
 
@@ -330,6 +388,8 @@ electron-sdd-manager/
     ├── smartphone-spec.spec.ts  # Smartphoneテスト (15テスト)
     ├── phase-execution.spec.ts  # フェーズ実行テスト (10テスト)
     ├── workflow-integration.spec.ts # ワークフロー統合テスト (7テスト)
+    ├── auto-execution.spec.ts   # 自動実行テスト Desktop (16テスト)
+    ├── smartphone-auto-execution.spec.ts # 自動実行テスト Smartphone (16テスト)
     ├── global-setup.ts          # Electron起動
     ├── global-teardown.ts       # Electron終了
     └── playwright.config.ts     # Playwright設定
@@ -350,3 +410,5 @@ cd electron-sdd-manager && npx playwright test
 *作成日: 2025-01-18*
 *更新日: 2026-01-18* - smartphone-spec.spec.ts追加
 *更新日: 2026-01-18* - phase-execution.spec.ts, workflow-integration.spec.ts追加
+*更新日: 2026-01-18* - auto-execution.spec.ts追加（Remote UI自動実行機能のE2Eテスト）
+*更新日: 2026-01-18* - smartphone-auto-execution.spec.ts追加（Smartphone版自動実行E2Eテスト）

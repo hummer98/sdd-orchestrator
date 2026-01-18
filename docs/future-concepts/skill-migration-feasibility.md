@@ -1,8 +1,66 @@
-# cc-sdd-agent Skill化検討
+# Claude Code Skills 移行検討ガイド
 
 ## 概要
 
 現在の cc-sdd-agent プリセット（Slash Commands + Subagents）を Claude Code Skills に移行する可能性について検討。
+
+**最終更新**: 2026-01-18
+**参照ドキュメント**: [Claude Code Skills公式ドキュメント](https://code.claude.com/docs/en/skills)
+
+---
+
+## Claude Code Skills とは
+
+Claude Code Skills は、Claudeにタスク固有の知識を教える拡張機能。
+
+### 基本概念
+
+| 項目 | 説明 |
+|------|------|
+| **定義** | Markdownファイル（SKILL.md）+ 関連リソースを含むディレクトリ |
+| **起動方法** | Claude が自然言語から自動検出（Model-invoked） |
+| **設計思想** | 「知識を提供する」コンポーネント |
+| **トークン効率** | 起動時は名前と説明のみロード（Progressive Disclosure） |
+
+### SKILL.md の構造
+
+```yaml
+---
+name: my-skill-name            # 必須: kebab-case, 最大64文字
+description: Brief description  # 必須: いつ使うか, 最大1024文字
+allowed-tools: Read, Grep       # オプション: 許可ツール
+model: claude-sonnet-4          # オプション: 使用モデル
+context: fork                   # オプション: 独立コンテキスト
+user-invocable: true            # オプション: /skill-name で呼び出し可
+---
+
+# Skill Content
+
+Instructions and guidance...
+```
+
+### ディレクトリ構造例
+
+```
+my-skill/
+├── SKILL.md              # 必須: 500行以下推奨
+├── reference.md          # 詳細ドキュメント
+├── examples.md           # 使用例
+└── scripts/
+    └── helper.py         # 実行可能スクリプト
+```
+
+### Skills vs Slash Commands vs Subagents
+
+| 項目 | Skills | Slash Commands | Subagents |
+|------|--------|----------------|-----------|
+| **起動方法** | 自動検出 | ユーザーが `/cmd` と入力 | Task tool から呼び出し |
+| **引数** | `$ARGUMENTS` のみ | `$1`, `$2`, `$ARGUMENTS` | prompt パラメータ |
+| **Task tool 呼び出し** | ❌ 不可 | ✅ 可能 | ✅ 可能 |
+| **ユースケース** | 知識提供、自動ガイド | ワークフロー実行 | 独立した複雑タスク |
+| **コンテキスト** | メイン会話に注入 | メイン会話 | 独立（fork可） |
+
+---
 
 ## 現状のアーキテクチャ
 
@@ -733,13 +791,14 @@ Skill化により:
 
 ### 参考ドキュメント
 
-- [Claude Code Skills公式ドキュメント](https://code.claude.com/docs/en/skills.md)
-- [Claude Code Slash Commands公式ドキュメント](https://code.claude.com/docs/en/slash-commands.md)
-- [Claude Code Subagents公式ドキュメント](https://code.claude.com/docs/en/sub-agents.md)
+- [Claude Code Skills公式ドキュメント](https://code.claude.com/docs/en/skills)
+- [Claude Code Slash Commands公式ドキュメント](https://code.claude.com/docs/en/slash-commands)
+- [Agent Skills Deep Dive](https://leehanchung.github.io/blogs/2025/10/26/claude-skills-deep-dive/)
+- [Simon Willison: Claude Skills are awesome](https://simonwillison.net/2025/Oct/16/claude-skills/)
 
 ---
 
-## 付録: Slash Commands vs Skills 比較表
+## 付録A: Slash Commands vs Skills 比較表
 
 | 観点 | Slash Commands | Skills |
 |------|----------------|--------|
@@ -751,3 +810,246 @@ Skill化により:
 | **複数ファイル構成** | ❌ | ✅ |
 | **コンテキスト効率** | 呼び出し時のみロード | 説明は常時ロード |
 | **ユースケース** | コマンド実行、ワークフロー | 知識提供、自動ガイド |
+
+---
+
+## 付録B: 具体的なSkill実装案
+
+### B.1 investigation-mode Skill（最優先推奨）
+
+**現状**: `/inv` Slash Command として実装済み
+
+**Skill化のメリット**:
+- 「調査して」「デバッグして」「ログを確認して」で自動検出
+- 明示的なコマンド呼び出しが不要に
+
+```
+.claude/skills/investigation-mode/
+├── SKILL.md
+├── LOGS.md              # ログファイル位置
+├── TROUBLESHOOTING.md   # トラブルシューティング手順
+└── scripts/
+    └── collect-logs.sh  # ログ収集スクリプト
+```
+
+**SKILL.md 例**:
+```yaml
+---
+name: investigation-mode
+description: >
+  システム調査・デバッグ支援モード。
+  「調査して」「問題を特定して」「ログを確認して」「デバッグして」
+  「エラーの原因は？」「なぜ動かない？」などのキーワードで自動検出。
+user-invocable: true
+allowed-tools: Read, Grep, Glob, Bash
+---
+
+# Investigation Mode
+
+システム調査時に自動的に以下をガイドします。
+
+## 調査の優先順位
+
+1. **ログ確認を最優先** - 推測ではなく事実に基づく
+2. サービス状態の確認
+3. 設定・環境変数の確認
+4. コード調査
+
+## ログファイル位置
+詳細: [LOGS.md](LOGS.md)
+
+## トラブルシューティング手順
+詳細: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+```
+
+### B.2 sdd-project-context Skill
+
+**現状**: `/kiro:project-ask` Slash Command として実装
+
+**Skill化のメリット**:
+- 「このプロジェクトの技術スタックは？」で自動検出
+- Steering情報が自然にロードされる
+
+```yaml
+---
+name: sdd-project-context
+description: >
+  SDDプロジェクトのコンテキストを自動提供。
+  「このプロジェクトについて」「技術スタックは？」「アーキテクチャは？」
+  「プロジェクト構造は？」などの質問時に自動検出。
+user-invocable: false
+---
+
+# Project Context
+
+このSkillはプロジェクトのSteering情報を自動的にロードします。
+
+## 参照ファイル
+- `.kiro/steering/product.md` - 製品概要
+- `.kiro/steering/tech.md` - 技術スタック
+- `.kiro/steering/structure.md` - プロジェクト構造
+- `.kiro/steering/design-principles.md` - 設計原則
+```
+
+### B.3 sdd-knowledge Skill
+
+**目的**: SDD知識（EARSフォーマット、設計原則、TDD）の自動提供
+
+```
+.claude/skills/sdd-knowledge/
+├── SKILL.md
+├── EARS-FORMAT.md
+├── DESIGN-PRINCIPLES.md
+└── TDD-GUIDE.md
+```
+
+```yaml
+---
+name: sdd-knowledge
+description: >
+  SDD (Spec-Driven Development) の知識ベース。
+  「EARSフォーマットで書いて」「設計原則に従って」「TDDで実装」
+  「要件を書いて」「設計書を作成」などのキーワードで自動検出。
+user-invocable: false
+---
+
+# SDD Knowledge Base
+
+## EARS Format
+要件はEARS (Easy Approach to Requirements Syntax) 形式で記述します。
+詳細: [EARS-FORMAT.md](EARS-FORMAT.md)
+
+## Design Principles
+設計はDRY, SSOT, KISS, YAGNIの原則に従います。
+詳細: [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md)
+
+## TDD Methodology
+実装はTest-Driven Developmentで行います。
+詳細: [TDD-GUIDE.md](TDD-GUIDE.md)
+```
+
+### B.4 sdd-quickstart Skill
+
+**目的**: 初心者向けワークフローガイド
+
+```yaml
+---
+name: sdd-quickstart
+description: >
+  SDDワークフローのクイックスタートガイド。
+  「新しい機能を作りたい」「SDDで開発を始めたい」「機能開発の手順は？」
+  などの質問時に自動検出。
+user-invocable: true
+---
+
+# SDD Quick Start Guide
+
+## ワークフロー概要
+
+```
+Planning → Requirements → Design → Tasks → Implementation
+```
+
+## 1. 対話的プランニング（推奨）
+
+```
+/kiro:spec-plan "機能の説明"
+```
+
+対話を通じて要件を明確化し、requirements.md まで生成。
+
+## 2. 設計フェーズ
+
+```
+/kiro:spec-design <feature-name>
+```
+
+要件をレビュー後、技術設計を生成。
+
+## 3. タスク生成
+
+```
+/kiro:spec-tasks <feature-name>
+```
+
+設計をレビュー後、実装タスクを生成。
+
+## 4. 実装
+
+```
+/kiro:spec-impl <feature-name>
+```
+
+TDDで実装を実行。
+```
+
+---
+
+## 付録C: Steering ファイルの Skill 化検討
+
+### 現状の Steering ファイル
+
+| ファイル | 内容 | Skill化 |
+|----------|------|---------|
+| `product.md` | 製品概要 | → `sdd-project-context` |
+| `tech.md` | 技術スタック | → `sdd-project-context` |
+| `structure.md` | プロジェクト構造 | → `sdd-project-context` |
+| `design-principles.md` | 設計原則 | → `sdd-knowledge` |
+| `debugging.md` | デバッグ情報 | → `investigation-mode` |
+| `operations.md` | MCP操作手順 | → `investigation-mode` |
+| `logging.md` | ログ設定 | → `investigation-mode` |
+| `e2e-testing.md` | E2Eテスト | → 新規 `e2e-testing` Skill |
+| `symbol-semantic-map.md` | 用語定義 | → `sdd-project-context` |
+| `skill-reference.md` | プロファイル仕様 | 維持（内部参照用） |
+
+### Steering vs Skill の使い分け
+
+| 用途 | 推奨 | 理由 |
+|------|------|------|
+| **常時適用ルール** | CLAUDE.md | 毎回ロード |
+| **プロジェクト知識** | Steering | 明示的参照時のみ |
+| **自動検出したい知識** | Skill | 文脈から自動ロード |
+| **Task tool 委譲が必要** | Slash Command | Skill では不可 |
+
+---
+
+## 付録D: 実装ロードマップ
+
+### Phase 1: 知識層のSkill化（低リスク）
+
+| Skill | 移行元 | 工数 | 効果 |
+|-------|--------|------|------|
+| `investigation-mode` | `/inv` + `debugging.md` | 低 | 調査・デバッグの自動ガイド |
+| `sdd-project-context` | `/kiro:project-ask` | 低 | Steering自動ロード |
+| `sdd-knowledge` | 新規 | 中 | ルール・テンプレート自動提供 |
+
+### Phase 2: ガイドSkill追加（オプション）
+
+| Skill | 目的 | 工数 |
+|-------|------|------|
+| `sdd-quickstart` | 初心者向けガイド | 低 |
+| `sdd-spec-context` | Spec情報自動ロード | 低 |
+| `e2e-testing` | E2Eテスト知識 | 中 |
+
+### Phase 3: Subagentへの知識継承（中リスク）
+
+Subagentに `skills:` フィールドを追加し、知識を継承。
+
+```yaml
+# .claude/agents/kiro/spec-design.md
+---
+name: spec-design-agent
+skills: sdd-knowledge, sdd-project-context
+---
+```
+
+---
+
+## Sources
+
+- [Agent Skills - Claude Code Docs](https://code.claude.com/docs/en/skills)
+- [Agent Skills Overview - Claude Platform Docs](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
+- [Claude Code Customization Guide](https://alexop.dev/posts/claude-code-customization-guide-claudemd-skills-subagents/)
+- [Inside Claude Code Skills: Structure, prompts, invocation](https://mikhail.io/2025/10/claude-code-skills/)
+- [Claude Agent Skills: A First Principles Deep Dive](https://leehanchung.github.io/blogs/2025/10/26/claude-skills-deep-dive/)
+- [Simon Willison: Claude Skills are awesome, maybe a bigger deal than MCP](https://simonwillison.net/2025/Oct/16/claude-skills/)

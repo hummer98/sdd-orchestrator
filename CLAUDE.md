@@ -130,38 +130,3 @@ Electronアプリの操作には`task`コマンドを使用する。
 | spec-manager   | Electron UI統合用コマンド          | SDD Orchestrator UIと連携する環境  |
 
 **詳細**: 各プロファイルの動作仕様は `.kiro/steering/skill-reference.md` を参照。
-
-### インストールオプション
-
-- **Force**: 既存ファイルを強制上書き
-- **Dry Run**: シミュレーション実行
-
-## Experimental Tools (実験的ツール)
-
-「ツール」メニュー → 「実験的ツール」からインストール。
-
-| メニュー項目      | インストール先               | 用途                   |
-| ----------------- | ---------------------------- | ---------------------- |
-| Debugエージェント | `.claude/agents/debug.md`    | トラブルシューティング |
-| Commitコマンド    | `.claude/commands/commit.md` | コミットメッセージ生成 |
-
-## Debugging
-
-デバッグ・動作確認には専用の `debug` agent を使用。
-
-### 自動起動トリガー
-
-以下の状況では `debug` agent の使用を検討：
-
-| トリガー                                   | 用途                                                    |
-| ------------------------------------------ | ------------------------------------------------------- |
-| `task electron:*` 実行後にエラー発生       | 環境問題の診断                                          |
-| MCP electronツール使用時                   | UI操作手順は `operations.md`、エラー時は `debugging.md` |
-| E2Eテスト失敗時                            | テスト失敗の原因調査                                    |
-| 「ログを確認」「デバッグ」等のユーザー指示 | 各種デバッグ作業                                        |
-| Electronアプリが期待通り動作しない         | 動作確認・トラブルシューティング                        |
-
-### 詳細情報
-
-- 操作手順: `.kiro/steering/operations.md`
-- トラブルシューティング: `.kiro/steering/debugging.md`

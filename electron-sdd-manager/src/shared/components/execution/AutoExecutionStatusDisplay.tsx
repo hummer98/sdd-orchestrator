@@ -57,6 +57,8 @@ export function AutoExecutionStatusDisplay({
 
   return (
     <div
+      data-testid="auto-execution-status"
+      data-status={status}
       className={clsx(
         'mt-4 p-3 rounded-lg border',
         'transition-colors',

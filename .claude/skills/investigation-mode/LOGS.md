@@ -4,12 +4,14 @@
 
 | ログ種別 | 開発環境 | 本番環境 (macOS) |
 |----------|----------|------------------|
-| グローバルログ | `electron-sdd-manager/logs/main.log` | `~/Library/Logs/sdd-orchestrator/main.log` |
-| E2Eテストログ | `electron-sdd-manager/logs/main-e2e.log` | `~/Library/Logs/sdd-orchestrator/main-e2e.log` |
-| プロジェクトログ | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
+| グローバルログ | `{開いているプロジェクト}/logs/main.log` ※ | `~/Library/Logs/sdd-orchestrator/main.log` |
+| E2Eテストログ | `{開いているプロジェクト}/logs/main-e2e.log` ※ | `~/Library/Logs/sdd-orchestrator/main-e2e.log` |
+| **プロジェクトログ（推奨）** | `{projectPath}/.kiro/logs/main.log` | 同左（プロジェクト内） |
 | アプリ設定 | electron-store デフォルト | `~/Library/Application Support/sdd-orchestrator/config.json` |
 | エージェント実行ログ | `.kiro/specs/{specId}/logs/{agentId}.log` | 同左（プロジェクト内） |
 | SSH接続ログ | メモリ内バッファ（最大1000エントリ） | 同左 |
+
+※ **開発環境での注意**: Viteバンドル後の`__dirname`解決により、グローバルログは`electron-sdd-manager/logs/`ではなく、**開いているプロジェクトのルートの`logs/`ディレクトリ**に出力される。開発時はプロジェクトログ（`.kiro/logs/main.log`）を参照するのが確実。
 
 ## ログフォーマット
 

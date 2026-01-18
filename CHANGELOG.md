@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-01-18
+
+### Added
+- **worktree-mode-spec-scoped**: WorktreeConfigにenabledフィールドを追加し、workflowStoreからworktreeモード状態を削除
+- **investigation-mode Skill整備**: investigation-mode Skillの正式整備
+
+### Fixed
+- **gemini-document-review SchemeSelector配置**: SchemeSelector配置を要件通りDocumentReviewPanel内に修正
+
+### Changed
+- **SchemeSelector選択状態表示**: 選択中項目をチェックマークで表示するUIに改善
+- **自動実行指示アイコン統一**: 自動実行指示アイコンをPauseに統一
+
+### Documentation
+- Skill移行検討ドキュメントを議論結論に基づき更新
+- CLAUDE.mdのSkill化整理
+
 ## [0.31.2] - 2026-01-18
 
 ### Added

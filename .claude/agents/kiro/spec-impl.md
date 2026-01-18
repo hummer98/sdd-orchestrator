@@ -64,8 +64,21 @@ Execute implementation tasks for feature using Test-Driven Development.
 
 For each selected task, follow Kent Beck's TDD cycle:
 
+**0. TASK ANALYSIS (Pre-TDD)**:
+   - Read the full task description including implementation hints
+   - Extract any explicit implementation requirements:
+     - From task description: keywords like "を使用", "use", "via", "call"
+     - From `_Method:` field: function/class/pattern names that MUST be used
+     - From `_Verify:` field: Grep pattern to confirm implementation
+   - These requirements become **test constraints** alongside functional requirements
+   - **Example**:
+     - Task: "executeProjectAgentを使用してエージェント起動"
+     - Extracted constraint: Must use `executeProjectAgent` function
+     - Test should verify: `executeProjectAgent` was called with correct parameters
+
 1. **RED - Write Failing Test**:
    - Write test for the next small piece of functionality
+   - **Include tests for method constraints** extracted in step 0
    - Test should fail (code doesn't exist yet)
    - Use descriptive test names
 

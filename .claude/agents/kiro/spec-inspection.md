@@ -74,8 +74,21 @@ For each component/interface in design.md:
 For each task in tasks.md:
 - Verify checkbox is `[x]` (completed)
 - Verify implementation exists for task deliverables
+- **Verify implementation method matches task description**:
+  - Extract explicit method requirements from task description and `_Method:` field
+  - Keywords to look for: "を使用", "use", "via", "call", function/class names
+  - Use Grep to search codebase for evidence of specified method/function/pattern
+  - If `_Verify:` field exists, execute the specified verification command/pattern
+  - Flag method mismatch as Critical (task says "use X" but code doesn't use X)
 - Verify tests exist and pass (if applicable)
 - Flag incomplete tasks as Critical
+
+**Example Method Verification**:
+- Task: "6.2 GENERATE_VERIFICATION_MDハンドラ実装 - executeProjectAgentを使用"
+- Method field: `_Method: executeProjectAgent, startAgent_`
+- Verify field: `_Verify: Grep "startAgent|executeProjectAgent" in handlers.ts_`
+- Required evidence: Code must contain call to specified functions
+- Action: Grep for pattern in relevant files, flag Critical if not found
 
 #### 2.4 Steering Consistency (SteeringChecker)
 Compare implementation against steering documents:

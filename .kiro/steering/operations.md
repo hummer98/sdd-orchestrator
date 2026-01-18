@@ -5,7 +5,56 @@ MCP経由でElectronアプリを操作するための手順書。
 
 ---
 
-## ⚠️ MCP eval での Promise 操作（重要）
+## ⚠️ MCP eval の制限と代替手段（重要）
+
+**MCPの`eval`コマンドはCSPにより失敗することが多い。** Zustandストアへのアクセスには`__STORES__`グローバルオブジェクトを使用する。
+
+### 推奨: `__STORES__` 経由でのZustandステート操作
+
+`eval`コマンドが失敗する場合でも、`window.__STORES__`経由で同期的にストアにアクセスできる。
+
+```javascript
+// ステート取得（推奨）
+command: "eval"
+args: { "code": "window.__STORES__.spec.getState()" }
+
+// 特定フィールドの取得
+command: "eval"
+args: { "code": "window.__STORES__.spec.getState().selectedSpecId" }
+
+// ステート更新
+command: "eval"
+args: { "code": "window.__STORES__.spec.setState({ selectedSpecId: 'feature-auth' })" }
+
+// 複数ストアの確認
+command: "eval"
+args: { "code": "({ project: window.__STORES__.project.getState().projectPath, spec: window.__STORES__.spec.getState().selectedSpecId })" }
+```
+
+#### 利用可能なストア
+
+| ストア名 | 主要なステート |
+|----------|---------------|
+| `project` | `projectPath`, `kiroValidation` |
+| `spec` | `specs`, `selectedSpecId`, `selectedSpec` |
+| `bug` | `bugs`, `selectedBugId` |
+| `agent` | `agents`, `logs` |
+| `workflow` | `autoExecutionPermissions`, `commandPrefix` |
+| `editor` | `openFiles`, `activeFile` |
+| `notification` | `notifications` |
+| `connection` | `connectionStatus`, `connectionInfo` |
+| `remoteAccess` | `isServerRunning`, `serverUrl` |
+| `versionStatus` | `installedVersion`, `hasUpdate` |
+
+#### evalが失敗する場合の対処
+
+1. **まず`__STORES__`を試す** - CSPに影響されにくい
+2. **`get_page_structure`でUI状態を確認** - DOM経由での確認
+3. **`click_by_selector`でUI操作** - 直接的なDOM操作
+
+---
+
+## MCP eval での Promise 操作
 
 **MCPの`eval`コマンドは同期的な戻り値のみを正しく返す。** Promiseを返すAPIは特別な対応が必要。
 

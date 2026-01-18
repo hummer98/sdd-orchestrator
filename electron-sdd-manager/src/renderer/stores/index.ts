@@ -38,18 +38,66 @@ export type { ConnectionStatus, ProjectType, ConnectionInfo, RecentRemoteProject
 export { useVersionStatusStore } from './versionStatusStore';
 
 /**
- * Expose stores to window for E2E testing and debugging
+ * Expose stores to window for E2E testing and debugging via MCP
  * Always available - no security risk as users can access via DevTools anyway
+ *
+ * Usage from MCP (eval is blocked by CSP, use these helpers instead):
+ *   window.__STORES__.project.getState()        // Get current state
+ *   window.__STORES__.project.setState({...})   // Update state
+ *   window.__STORES__.spec.getState().specs     // Access specific field
+ *
+ * Available stores: project, spec, editor, notification, agent, workflow, remoteAccess, bug, connection, versionStatus
  */
 (window as any).__STORES__ = {
-  projectStore: useProjectStore,
-  specStore: useSpecStore,
-  editorStore: useEditorStore,
-  notificationStore: useNotificationStore,
-  agentStore: useAgentStore,
-  workflowStore: useWorkflowStore,
-  remoteAccessStore: useRemoteAccessStore,
-  bugStore: useBugStore,
-  connectionStore: useConnectionStore,
-  versionStatusStore: useVersionStatusStore,
+  // Each store exposes getState() and setState() for MCP compatibility
+  project: {
+    getState: () => useProjectStore.getState(),
+    setState: (state: Parameters<typeof useProjectStore.setState>[0]) => useProjectStore.setState(state),
+    subscribe: useProjectStore.subscribe,
+  },
+  spec: {
+    getState: () => useSpecStore.getState(),
+    setState: (state: Parameters<typeof useSpecStore.setState>[0]) => useSpecStore.setState(state),
+    subscribe: useSpecStore.subscribe,
+  },
+  editor: {
+    getState: () => useEditorStore.getState(),
+    setState: (state: Parameters<typeof useEditorStore.setState>[0]) => useEditorStore.setState(state),
+    subscribe: useEditorStore.subscribe,
+  },
+  notification: {
+    getState: () => useNotificationStore.getState(),
+    setState: (state: Parameters<typeof useNotificationStore.setState>[0]) => useNotificationStore.setState(state),
+    subscribe: useNotificationStore.subscribe,
+  },
+  agent: {
+    getState: () => useAgentStore.getState(),
+    setState: (state: Parameters<typeof useAgentStore.setState>[0]) => useAgentStore.setState(state),
+    subscribe: useAgentStore.subscribe,
+  },
+  workflow: {
+    getState: () => useWorkflowStore.getState(),
+    setState: (state: Parameters<typeof useWorkflowStore.setState>[0]) => useWorkflowStore.setState(state),
+    subscribe: useWorkflowStore.subscribe,
+  },
+  remoteAccess: {
+    getState: () => useRemoteAccessStore.getState(),
+    setState: (state: Parameters<typeof useRemoteAccessStore.setState>[0]) => useRemoteAccessStore.setState(state),
+    subscribe: useRemoteAccessStore.subscribe,
+  },
+  bug: {
+    getState: () => useBugStore.getState(),
+    setState: (state: Parameters<typeof useBugStore.setState>[0]) => useBugStore.setState(state),
+    subscribe: useBugStore.subscribe,
+  },
+  connection: {
+    getState: () => useConnectionStore.getState(),
+    setState: (state: Parameters<typeof useConnectionStore.setState>[0]) => useConnectionStore.setState(state),
+    subscribe: useConnectionStore.subscribe,
+  },
+  versionStatus: {
+    getState: () => useVersionStatusStore.getState(),
+    setState: (state: Parameters<typeof useVersionStatusStore.setState>[0]) => useVersionStatusStore.setState(state),
+    subscribe: useVersionStatusStore.subscribe,
+  },
 };

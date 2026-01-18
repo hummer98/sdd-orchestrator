@@ -592,6 +592,78 @@ import {
 
 ---
 
+## MCP/デバッグ用Zustandストアアクセス
+
+### `window.__STORES__` グローバルオブジェクト
+
+Zustandストアは `window.__STORES__` 経由でグローバルに公開されており、MCP（Electron MCP Server）やDevToolsからアクセス可能。
+
+**重要**: MCP の `eval` コマンドはCSPにより失敗することが多い。`__STORES__` 経由のアクセスを優先して試すこと。
+
+### 利用可能なストア
+
+| ストア名 | 主要なステート |
+|----------|---------------|
+| `project` | `projectPath`, `kiroValidation` |
+| `spec` | `specs`, `selectedSpecId`, `selectedSpec` |
+| `bug` | `bugs`, `selectedBugId` |
+| `agent` | `agents`, `logs` |
+| `workflow` | `autoExecutionPermissions`, `commandPrefix` |
+| `editor` | `openFiles`, `activeFile` |
+| `notification` | `notifications` |
+| `connection` | `connectionStatus`, `connectionInfo` |
+| `remoteAccess` | `isServerRunning`, `serverUrl` |
+| `versionStatus` | `installedVersion`, `hasUpdate` |
+
+### MCP経由でのアクセス例
+
+```javascript
+// ステート取得（推奨 - evalより先に試す）
+command: "eval"
+args: { "code": "window.__STORES__.spec.getState()" }
+
+// 特定フィールドの取得
+command: "eval"
+args: { "code": "window.__STORES__.spec.getState().selectedSpecId" }
+
+// ステート更新
+command: "eval"
+args: { "code": "window.__STORES__.spec.setState({ selectedSpecId: 'feature-auth' })" }
+
+// 複数ストアの状態を一括確認
+command: "eval"
+args: { "code": "({ project: window.__STORES__.project.getState().projectPath, spec: window.__STORES__.spec.getState().selectedSpecId })" }
+```
+
+### WebdriverIO E2Eテストでのアクセス例
+
+```typescript
+// browser.execute経由でストアにアクセス
+const specState = await browser.execute(() => {
+  return window.__STORES__.spec.getState();
+});
+
+// 特定のフィールドを取得
+const selectedSpecId = await browser.execute(() => {
+  return window.__STORES__.spec.getState().selectedSpecId;
+});
+
+// ストアを更新
+await browser.execute((specId) => {
+  window.__STORES__.spec.setState({ selectedSpecId: specId });
+}, 'feature-auth');
+```
+
+### evalが失敗する場合の対処
+
+1. **まず`__STORES__`を試す** - CSPに影響されにくい
+2. **`get_page_structure`でUI状態を確認** - DOM経由での確認
+3. **`click_by_selector`でUI操作** - 直接的なDOM操作
+
+詳細は `.kiro/steering/operations.md` を参照。
+
+---
+
 ## 共通テストパターン
 
 ### 要素選択

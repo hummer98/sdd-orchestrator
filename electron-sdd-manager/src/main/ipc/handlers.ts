@@ -2023,6 +2023,46 @@ export function registerIpcHandlers(): void {
   logger.info('[handlers] Steering Verification handlers registered');
 
   // ============================================================
+  // impl-start-unification: Unified impl start IPC
+  // Task 2.2: IPC handler for startImpl
+  // Requirements: 4.2, 4.4
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.START_IMPL,
+    async (event, specPath: string, featureName: string, commandPrefix: string) => {
+      logger.info('[handlers] START_IMPL called', { specPath, featureName, commandPrefix });
+
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Import startImplPhase function
+      const { startImplPhase } = await import('./startImplPhase');
+
+      // Validate and cast commandPrefix
+      const validPrefix = (commandPrefix === 'kiro' || commandPrefix === 'spec-manager')
+        ? commandPrefix as CommandPrefix
+        : 'kiro';
+
+      // Call unified startImplPhase function
+      const result = await startImplPhase({
+        specPath,
+        featureName,
+        commandPrefix: validPrefix,
+        specManagerService: service,
+      });
+
+      logger.info('[handlers] START_IMPL result', { specPath, ok: result.ok });
+      return result;
+    }
+  );
+  logger.info('[handlers] impl-start-unification handlers registered');
+
+  // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService
   // When coordinator emits 'execute-next-phase', execute the phase via specManagerService
   // ============================================================
@@ -2041,7 +2081,51 @@ export function registerIpcHandlers(): void {
       // Set current phase in coordinator before execution
       coordinator.setCurrentPhase(specPath, phase);
 
-      // Execute the phase (execute-method-unification: using unified execute)
+      // ============================================================
+      // impl-start-unification Task 3.1: Use startImplPhase for impl phase
+      // Requirements: 3.1, 3.2, 3.3
+      // ============================================================
+      if (phase === 'impl') {
+        // Import startImplPhase function
+        const { startImplPhase } = await import('./startImplPhase');
+
+        // Call unified startImplPhase function
+        // NOTE: Auto Execution always uses 'kiro' prefix
+        const result = await startImplPhase({
+          specPath,
+          featureName: context.featureName,
+          commandPrefix: 'kiro',
+          specManagerService: service,
+        });
+
+        if (result.ok) {
+          const agentId = result.value.agentId;
+          logger.info('[handlers] execute-next-phase: impl started successfully via startImplPhase', { specPath, agentId });
+
+          // Update coordinator with agent ID (Requirement 3.3)
+          coordinator.setCurrentPhase(specPath, 'impl', agentId);
+
+          // Listen for this agent's completion
+          const handleStatusChange = async (changedAgentId: string, status: string) => {
+            if (changedAgentId === agentId) {
+              if (status === 'completed' || status === 'failed' || status === 'stopped') {
+                logger.info('[handlers] execute-next-phase: impl agent completed', { agentId, status });
+                const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
+                coordinator.handleAgentCompleted(agentId, specPath, finalStatus as 'completed' | 'failed' | 'interrupted');
+                service.offStatusChange(handleStatusChange);
+              }
+            }
+          };
+          service.onStatusChange(handleStatusChange);
+        } else {
+          // Error handling (Requirement 3.2): Call handleAgentCompleted with failed status
+          logger.error('[handlers] execute-next-phase: impl start failed via startImplPhase', { specPath, error: result.error });
+          coordinator.handleAgentCompleted('', specPath, 'failed');
+        }
+        return; // Early return for impl phase
+      }
+
+      // Execute other phases (non-impl) using unified execute
       const result = await service.execute({
         type: phase,
         specId: context.specId,

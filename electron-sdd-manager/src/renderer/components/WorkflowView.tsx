@@ -502,96 +502,42 @@ export function WorkflowView() {
     }
   }, [specDetail, specJson?.worktree]);
 
-  // FIX-2: Handler for impl execution based on worktree mode
-  // execute-method-unification: Task 5.3 - Use unified execute API
-  // agent-launch-optimistic-ui: Wrapped with wrapExecution for Optimistic UI
+  // ============================================================
+  // impl-start-unification Task 4.1: Simplified handleImplExecute
+  // Requirements: 4.1, 4.3, 5.1, 5.2
+  // All Worktree/normal mode logic moved to Main Process (startImplPhase)
+  // ============================================================
   const handleImplExecute = useCallback(async () => {
     if (!specDetail) return;
 
-    // Get project path from the spec path
     const specPath = specDetail.metadata.path;
-    const projectPath = specPath.replace(/\/.kiro\/specs\/[^/]+$/, '');
     const featureName = specDetail.metadata.name;
 
     await wrapExecution(async () => {
-      if (isWorktreeModeSelected) {
-        // Worktree mode: Check if worktree already exists
-        if (hasExistingWorktree) {
-          // Continue impl in existing worktree
-          // Execute all pending tasks (no taskId specified)
-          await window.electronAPI.execute({
-            type: 'impl',
-            specId: specDetail.metadata.name,
-            featureName: specDetail.metadata.name,
-            commandPrefix: workflowStore.commandPrefix,
-          });
-        } else {
-          // Create new worktree and start impl
-          // Check if on main branch first
-          const checkResult = await window.electronAPI.worktreeCheckMain(projectPath);
-          if (!checkResult.ok) {
-            throw new Error(`ブランチ確認エラー: ${checkResult.error.message || checkResult.error.type}`);
-          }
+      // Call unified startImpl IPC (handles both Worktree and normal mode)
+      const result = await window.electronAPI.startImpl(
+        specPath,
+        featureName,
+        workflowStore.commandPrefix
+      );
 
-          if (!checkResult.value.isMain) {
-            throw new Error(
-              `Worktreeモードはmainブランチでのみ使用できます。現在のブランチ: ${checkResult.value.currentBranch}`
-            );
-          }
-
-          // Create worktree and update spec.json
-          const implStartResult = await window.electronAPI.worktreeImplStart(
-            projectPath,
-            specPath,
-            featureName
-          );
-
-          if (!implStartResult.ok) {
-            const error = implStartResult.error;
-            let message = 'Worktree作成に失敗しました';
-            if (error.type === 'NOT_ON_MAIN_BRANCH') {
-              message = `mainブランチではありません。現在: ${error.currentBranch}`;
-            } else if (error.type === 'WORKTREE_EXISTS') {
-              message = `Worktreeが既に存在します: ${error.path}`;
-            } else if (error.message) {
-              message = error.message;
-            }
-            throw new Error(message);
-          }
-
-          notify.success(`Worktree作成完了: ${implStartResult.value.worktreeConfig.branch}`);
-
-          // Now start impl in the worktree
-          // Execute all pending tasks (no taskId specified)
-          await window.electronAPI.execute({
-            type: 'impl',
-            specId: specDetail.metadata.name,
-            featureName: specDetail.metadata.name,
-            commandPrefix: workflowStore.commandPrefix,
-          });
+      if (!result.ok) {
+        // Error handling (Requirement 4.3)
+        let message = 'impl 開始に失敗しました';
+        if (result.error.type === 'NOT_ON_MAIN_BRANCH') {
+          message = `Worktreeモードはmainブランチでのみ使用できます。現在: ${result.error.currentBranch}`;
+        } else if (result.error.type === 'WORKTREE_CREATE_FAILED') {
+          message = result.error.message || 'Worktree作成に失敗しました';
+        } else if (result.error.message) {
+          message = result.error.message;
         }
-      } else {
-        // Normal mode: Save branch info and execute impl
-        const normalResult = await window.electronAPI.normalModeImplStart(
-          projectPath,
-          specPath
-        );
-
-        if (!normalResult.ok) {
-          throw new Error(normalResult.error.message || '通常モード実装開始に失敗しました');
-        }
-
-        // Execute impl phase
-        // Execute all pending tasks (no taskId specified)
-        await window.electronAPI.execute({
-          type: 'impl',
-          specId: specDetail.metadata.name,
-          featureName: specDetail.metadata.name,
-          commandPrefix: workflowStore.commandPrefix,
-        });
+        notify.error(message);
+        return;
       }
+
+      // Success: Agent is started (log display handled by existing mechanisms)
     });
-  }, [specDetail, isWorktreeModeSelected, hasExistingWorktree, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // Handle empty and loading states (after all hooks)
   if (!selectedSpec) {

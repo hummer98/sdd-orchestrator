@@ -1138,6 +1138,36 @@ export interface ElectronAPI {
    * Main Processが次のフェーズを実行するようRendererに通知
    */
   onBugAutoExecutionExecutePhase(callback: (data: { bugPath: string; phase: string; bugName: string }) => void): () => void;
+
+  // ============================================================
+  // impl-start-unification: Unified impl start IPC
+  // Requirements: 4.2, 4.4
+  // ============================================================
+
+  /**
+   * Start impl phase using unified Main Process logic
+   * Handles Worktree mode (main branch check, worktree creation) and
+   * normal mode (branch/created_at saving) automatically.
+   * @param specPath Spec directory path
+   * @param featureName Feature name
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns ImplStartResult with agentId on success, or error
+   */
+  startImpl(
+    specPath: string,
+    featureName: string,
+    commandPrefix: string
+  ): Promise<{
+    ok: true;
+    value: { agentId: string };
+  } | {
+    ok: false;
+    error: {
+      type: 'NOT_ON_MAIN_BRANCH' | 'WORKTREE_CREATE_FAILED' | 'SPEC_JSON_ERROR' | 'EXECUTE_FAILED';
+      message?: string;
+      currentBranch?: string;
+    };
+  }>;
 }
 
 declare global {

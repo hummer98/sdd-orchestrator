@@ -1854,6 +1854,37 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.BUG_AUTO_EXECUTION_EXECUTE_PHASE, handler);
     };
   },
+
+  // ============================================================
+  // impl-start-unification: Unified impl start IPC
+  // Requirements: 4.2, 4.4
+  // ============================================================
+
+  /**
+   * Start impl phase using unified Main Process logic
+   * Handles Worktree mode (main branch check, worktree creation) and
+   * normal mode (branch/created_at saving) automatically.
+   * @param specPath Spec directory path
+   * @param featureName Feature name
+   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @returns ImplStartResult with agentId on success, or error
+   */
+  startImpl: (
+    specPath: string,
+    featureName: string,
+    commandPrefix: string
+  ): Promise<{
+    ok: true;
+    value: { agentId: string };
+  } | {
+    ok: false;
+    error: {
+      type: 'NOT_ON_MAIN_BRANCH' | 'WORKTREE_CREATE_FAILED' | 'SPEC_JSON_ERROR' | 'EXECUTE_FAILED';
+      message?: string;
+      currentBranch?: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.START_IMPL, specPath, featureName, commandPrefix),
 };
 
 // Expose API to renderer

@@ -292,6 +292,10 @@ export const IPC_CHANNELS = {
   BUG_AUTO_EXECUTION_ERROR: 'bug-auto-execution:error',
   BUG_AUTO_EXECUTION_COMPLETED: 'bug-auto-execution:completed',
   BUG_AUTO_EXECUTION_EXECUTE_PHASE: 'bug-auto-execution:execute-phase',
+
+  // impl-start-unification: Unified impl start
+  // Requirements: 4.2, 4.4
+  START_IMPL: 'ipc:start-impl',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

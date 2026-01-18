@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.2] - 2026-01-18
+
+### Added
+- **agent-launch-optimistic-ui**: worktreeからの実装マージ機能
+
+### Fixed
+- **spec-merge phase更新**: マージ完了時にphaseをdeploy-completeに更新する手順を追加
+- **.kiro/logsをgitignore**: ログファイルを追跡対象から除外
+
+### Changed
+- **renderer/shared統合**: renderer/shared間の重複コンポーネントを統合
+- **spec-merge投機的更新**: spec.jsonをマージ前に投機的更新する方式に変更
+- **worktree準備処理統合**: spec-merge worktree準備処理を1ライナーに統合
+
 ## [0.31.1] - 2026-01-17
 
 ### Added

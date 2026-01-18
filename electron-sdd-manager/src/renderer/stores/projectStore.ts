@@ -576,8 +576,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   /**
-   * Generate verification.md file
-   * Requirements: 3.3, 3.4
+   * Generate verification.md file by launching steering-verification agent
+   * Task 6.2: executeProjectAgent を使用してエージェント起動
+   * Requirements: 3.3, 3.4 (ボタンクリックでエージェント起動)
    */
   generateVerificationMd: async () => {
     const { currentProject } = get();
@@ -586,10 +587,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ steeringGenerateLoading: true });
 
     try {
-      await window.electronAPI.generateVerificationMd(currentProject);
+      // Launch steering-verification agent and get AgentInfo
+      const agentInfo = await window.electronAPI.generateVerificationMd(currentProject);
 
-      // Refresh check result
-      await get().checkSteeringFiles(currentProject);
+      // Add agent to Project Agents panel (specId='' means project agent)
+      useAgentStore.getState().addAgent('', agentInfo);
+      // Select Project Agents tab and the new agent
+      useAgentStore.getState().selectForProjectAgents();
+      useAgentStore.getState().selectAgent(agentInfo.agentId);
+
+      // Note: steeringCheck will be refreshed when the agent completes
+      // and the file watcher detects the new verification.md file
       set({ steeringGenerateLoading: false });
     } catch (error) {
       console.error('[projectStore] Failed to generate verification.md:', error);

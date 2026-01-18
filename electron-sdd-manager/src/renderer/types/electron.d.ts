@@ -601,11 +601,13 @@ export interface ElectronAPI {
   checkSteeringFiles(projectPath: string): Promise<{ verificationMdExists: boolean }>;
 
   /**
-   * Generate verification.md file
-   * Uses template from settings and project analysis
+   * Generate verification.md file by launching steering-verification agent
+   * Task 6.2: Returns AgentInfo for the launched agent
+   * Requirements: 3.4 (ボタンクリックでエージェント起動)
    * @param projectPath Project root path
+   * @returns AgentInfo of the launched steering-verification agent
    */
-  generateVerificationMd(projectPath: string): Promise<void>;
+  generateVerificationMd(projectPath: string): Promise<AgentInfo>;
 
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview(specPath: string): Promise<boolean>;
@@ -696,6 +698,11 @@ export interface ElectronAPI {
   // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
   loadSkipPermissions(projectPath: string): Promise<boolean>;
   saveSkipPermissions(projectPath: string, skipPermissions: boolean): Promise<void>;
+
+  // Project Defaults Config (debatex-document-review Task 3.3)
+  // Requirements: 4.1
+  loadProjectDefaults(projectPath: string): Promise<{ documentReview?: { scheme?: string } } | undefined>;
+  saveProjectDefaults(projectPath: string, defaults: { documentReview?: { scheme?: string } }): Promise<void>;
 
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3

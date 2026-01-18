@@ -1648,6 +1648,27 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
+  // Project Defaults Config (debatex-document-review Task 3.3)
+  // Requirements: 4.1
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_PROJECT_DEFAULTS,
+    async (_event, projectPath: string): Promise<import('../services/layoutConfigService').ProjectDefaults | undefined> => {
+      logger.debug('[handlers] LOAD_PROJECT_DEFAULTS called', { projectPath });
+      return layoutConfigService.loadProjectDefaults(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_PROJECT_DEFAULTS,
+    async (_event, projectPath: string, defaults: import('../services/layoutConfigService').ProjectDefaults): Promise<void> => {
+      logger.debug('[handlers] SAVE_PROJECT_DEFAULTS called', { projectPath, defaults });
+      return layoutConfigService.saveProjectDefaults(projectPath, defaults);
+    }
+  );
+
+  // ============================================================
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   // ============================================================
@@ -1963,52 +1984,40 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // GENERATE_VERIFICATION_MD: Launch steering-verification agent
+  // Task 6.2: executeProjectAgent を使用してエージェント起動
+  // Requirements: 3.4 (ボタンクリックでエージェント起動)
   ipcMain.handle(
     IPC_CHANNELS.GENERATE_VERIFICATION_MD,
-    async (_event, projectPath: string) => {
-      try {
-        // Read template
-        const templatePath = path.join(getTemplateDir(), 'steering', 'verification.md');
-        const { readFile, writeFile } = await import('fs/promises');
-        const { mkdir } = await import('fs/promises');
+    async (event, projectPath: string) => {
+      logger.info('[handlers] GENERATE_VERIFICATION_MD called', { projectPath });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
 
-        let template: string;
-        try {
-          template = await readFile(templatePath, 'utf-8');
-        } catch {
-          // Fallback to minimal template if not found
-          template = `# Verification Commands
-
-spec-inspection 実行時に自動実行される検証コマンドを定義します。
-
-## Commands
-
-| Type | Command | Workdir | Description |
-|------|---------|---------|-------------|
-| build | npm run build | . | プロダクションビルド |
-| typecheck | npm run typecheck | . | TypeScript 型チェック |
-| test | npm run test | . | テスト実行 |
-| lint | npm run lint | . | Lint 検証 |
-
-## Notes
-
-カスタマイズが必要な場合は、プロジェクトの設定に合わせてコマンドを変更してください。
-`;
-        }
-
-        // Ensure steering directory exists
-        const steeringDir = path.join(projectPath, '.kiro', 'steering');
-        await mkdir(steeringDir, { recursive: true });
-
-        // Write verification.md
-        const verificationMdPath = path.join(steeringDir, 'verification.md');
-        await writeFile(verificationMdPath, template, 'utf-8');
-
-        logger.info('[handlers] Generated verification.md', { projectPath });
-      } catch (error) {
-        logger.error('[handlers] Failed to generate verification.md', { projectPath, error });
-        throw error;
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
       }
+
+      // Start agent with specId='' (project agent)
+      // Uses /kiro:steering-verification command
+      const slashCommand = '/kiro:steering-verification';
+      const result = await service.startAgent({
+        specId: '', // Empty specId for project agent
+        phase: 'steering-verification',
+        command: 'claude',
+        args: [slashCommand],
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] generateVerificationMd failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] generateVerificationMd succeeded', { agentId: result.value.agentId });
+      return result.value;
     }
   );
   logger.info('[handlers] Steering Verification handlers registered');

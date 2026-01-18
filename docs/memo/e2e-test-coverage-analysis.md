@@ -4,7 +4,7 @@
 
 | 項目 | Electron版 | Remote UI版 |
 |------|-----------|-------------|
-| テストファイル数 | 31 | 2 |
+| テストファイル数 | 31 | 4 |
 | フレームワーク | WebdriverIO + wdio-electron-service | Playwright |
 | 対象環境 | Desktop (macOS/Windows/Linux) | Desktop/Smartphone (Browser) |
 
@@ -26,8 +26,8 @@
 | **Spec管理** | Spec一覧表示 | ✅ | ✅ | ✅ |
 | | Spec作成 | ✅ | ❌ | ❌ |
 | | Spec選択・詳細表示 | ✅ | ✅ | ✅ |
-| | フェーズ実行 | ✅ | ❌ | ❌ |
-| | ワークフロー統合 | ✅ | ❌ | ❌ |
+| | フェーズ実行 | ✅ | ✅ | ✅ |
+| | ワークフロー統合 | ✅ | ✅ | ✅ |
 | **自動実行** | 基本動作 | ✅ | ❌ | ❌ |
 | | パーミッション制御 | ✅ | ❌ | ❌ |
 | | フェーズシーケンス | ✅ | ❌ | ❌ |
@@ -133,7 +133,7 @@
 |---------|-----------|
 | [smoke.spec.ts](../../electron-sdd-manager/e2e-playwright/smoke.spec.ts) | Remote UIブラウザアクセス、Spec一覧表示、Spec選択→詳細パネル、Bugsタブ切り替え、WebSocket接続状態 |
 
-### 3.2 Playwright smartphone-spec.spec.ts (NEW)
+### 3.2 Playwright smartphone-spec.spec.ts
 
 | ファイル | テスト項目 |
 |---------|-----------|
@@ -148,6 +148,36 @@
 | Spec Selection and Detail View | Spec選択→詳細表示、Spec名表示、Phaseタグ表示、Auto Executeボタン表示、戻るボタン動作 |
 | Tab Navigation | Bugsタブ切り替え、Specsタブ戻り、タブ切り替え時選択保持 |
 
+### 3.3 Playwright phase-execution.spec.ts (NEW)
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [phase-execution.spec.ts](../../electron-sdd-manager/e2e-playwright/phase-execution.spec.ts) | フェーズ実行機能のE2Eテスト |
+
+**テスト内容（10件）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Phase Item Display | フェーズアイテム表示、requirements generatedアイコン、design実行ボタンdisabled |
+| Phase Approval Flow | 承認ボタン表示、実行ボタンdisabled、自動実行パーミッショントグル |
+| Auto Execution Button | Auto Execute Allボタン表示・有効状態 |
+| Phase Tag Display | 現在フェーズタグ表示 |
+
+### 3.4 Playwright workflow-integration.spec.ts (NEW)
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [workflow-integration.spec.ts](../../electron-sdd-manager/e2e-playwright/workflow-integration.spec.ts) | ワークフロー統合テスト |
+
+**テスト内容（7件）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Spec Selection to Detail Flow | Spec一覧→詳細表示遷移、フェーズ順序表示 |
+| Workflow State Display | フェーズ状態表示（generated/pending）、承認ボタン表示 |
+| Tab Navigation | Specs/Bugsタブ切り替え、タブ切り替え時選択リセット |
+| Workflow UI Elements | 自動実行パーミッションアイコン表示 |
+
 ---
 
 ## 4. カバレッジギャップ分析
@@ -156,7 +186,8 @@
 
 | 優先度 | 機能 | 理由 |
 |--------|------|------|
-| 🔴 高 | Spec/Bugフェーズ実行 | コア機能。Remote UIでの操作が未検証 |
+| ✅ 完了 | Spec/Bugフェーズ実行 | phase-execution.spec.ts で検証 |
+| ✅ 完了 | ワークフロー統合 | workflow-integration.spec.ts で検証 |
 | 🔴 高 | 自動実行 | Remote UIからの自動実行トリガーが未検証 |
 | 🟡 中 | ドキュメントレビュー | レビューUIの操作が未検証 |
 | 🟡 中 | エディタ表示・検索 | ArtifactEditorのRemote UI表示が未検証 |
@@ -204,7 +235,7 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                 E2E Tests (2 files)                        │
+│                 E2E Tests (4 files)                        │
 ├────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────┐      │
 │  │              smoke.spec.ts (Desktop)              │      │
@@ -221,10 +252,23 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 │  │  - タブナビゲーション                                 │      │
 │  │  - 検索フィルタリング                                 │      │
 │  └──────────────────────────────────────────────────┘      │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │         phase-execution.spec.ts (Desktop)         │      │
+│  │  - フェーズアイテム表示                               │      │
+│  │  - フェーズ承認フロー                                 │      │
+│  │  - Auto Execute Allボタン                          │      │
+│  │  - フェーズタグ表示                                  │      │
+│  └──────────────────────────────────────────────────┘      │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │      workflow-integration.spec.ts (Desktop)       │      │
+│  │  - Spec選択→詳細フロー                              │      │
+│  │  - ワークフロー状態表示                               │      │
+│  │  - タブナビゲーション                                 │      │
+│  │  - ワークフローUI要素                                │      │
+│  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
 │  │           ❌ 未カバー領域                           │      │
-│  │  - フェーズ実行                                     │      │
 │  │  - 自動実行                                        │      │
 │  │  - ドキュメントレビュー                               │      │
 │  │  - エディタ操作                                     │      │
@@ -238,9 +282,10 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 
 ### 短期（優先度高）
 
-1. **Remote UI版フェーズ実行テスト追加**
-   - Spec選択→フェーズ実行→完了確認
-   - Bug選択→フェーズ実行→完了確認
+1. ~~**Remote UI版フェーズ実行テスト追加**~~ ✅ 完了
+   - ~~Spec選択→フェーズ実行→完了確認~~
+   - ~~Bug選択→フェーズ実行→完了確認~~
+   - phase-execution.spec.ts, workflow-integration.spec.ts で実装済み
 
 2. **Remote UI版自動実行テスト追加**
    - 自動実行ボタン操作
@@ -281,11 +326,13 @@ electron-sdd-manager/
     ├── helpers/                 # ヘルパー関数
     │   ├── electron-launcher.ts # Electronプロセス管理・ポート検出
     │   └── remote-ui.helpers.ts # Remote UI操作ヘルパー
-    ├── smoke.spec.ts           # Desktopスモークテスト (4テスト)
-    ├── smartphone-spec.spec.ts # Smartphoneテスト (15テスト)
-    ├── global-setup.ts         # Electron起動
-    ├── global-teardown.ts      # Electron終了
-    └── playwright.config.ts    # Playwright設定
+    ├── smoke.spec.ts            # Desktopスモークテスト (4テスト)
+    ├── smartphone-spec.spec.ts  # Smartphoneテスト (15テスト)
+    ├── phase-execution.spec.ts  # フェーズ実行テスト (10テスト)
+    ├── workflow-integration.spec.ts # ワークフロー統合テスト (7テスト)
+    ├── global-setup.ts          # Electron起動
+    ├── global-teardown.ts       # Electron終了
+    └── playwright.config.ts     # Playwright設定
 ```
 
 ### 実行コマンド
@@ -302,3 +349,4 @@ cd electron-sdd-manager && npx playwright test
 
 *作成日: 2025-01-18*
 *更新日: 2026-01-18* - smartphone-spec.spec.ts追加
+*更新日: 2026-01-18* - phase-execution.spec.ts, workflow-integration.spec.ts追加

@@ -84,20 +84,44 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 cd "$PROJECT_ROOT"
 ```
 
+### Step 1.7: Update spec.json Before Merge (Optimistic Update)
+Update spec.json to deploy-complete state before merging, so the merge commit includes the final state.
+
+#### 1.7.1: Read and Update spec.json
+Read `.kiro/specs/$1/spec.json` and apply the following changes:
+- Remove the `worktree` property
+- Set `phase` to `"deploy-complete"`
+- Update `updated_at` to current UTC timestamp (ISO 8601 format)
+- Keep all other fields intact
+
+#### 1.7.2: Save Original Values for Rollback
+Before writing, save these values in case rollback is needed:
+- `ORIGINAL_PHASE`: the current phase value
+- `ORIGINAL_WORKTREE`: the current worktree object (as JSON string)
+
+#### 1.7.3: Write Updated spec.json
+Write the modified JSON back to `.kiro/specs/$1/spec.json`.
+
+**Note**: If merge fails later, rollback by restoring `phase` and `worktree` to their original values.
+
 ### Step 2: Perform Merge
 1. Ensure working directory is clean:
    - Run `git status --porcelain`
-   - If there are uncommitted changes, warn but continue (per requirements)
+   - If there are uncommitted changes (spec.json update is expected), continue
 2. Merge the feature branch with squash:
    ```bash
    git merge --squash {worktree.branch}
    ```
-3. If merge succeeds without conflicts:
+3. Stage the updated spec.json (ensure it's included in merge commit):
+   ```bash
+   git add .kiro/specs/$1/spec.json
+   ```
+4. If merge succeeds without conflicts:
    - Create merge commit:
      ```bash
      git commit -m "feat($1): merge implementation from worktree"
      ```
-4. If merge has conflicts:
+5. If merge has conflicts:
    - Attempt AI-powered conflict resolution (see Step 3)
 
 ### Step 3: Conflict Resolution (if needed)
@@ -155,12 +179,21 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 - Proceed to Step 4
 
 **ELSE IF** `attempt_count >= max_attempts`:
+- **ROLLBACK spec.json**: Restore original values saved in Step 1.7.2
+  1. Set `phase` back to `ORIGINAL_PHASE`
+  2. Restore `worktree` field with `ORIGINAL_WORKTREE` value
+  3. Write the restored spec.json
+- **Abort merge**:
+  ```bash
+  git merge --abort
+  ```
 - **STOP EXECUTION** - Do not proceed to cleanup
 - Report failure to user:
   ```
   ## Conflict Resolution Failed
 
   Unable to automatically resolve merge conflicts after 7 attempts.
+  spec.json has been rolled back to its original state.
   Manual intervention is required.
 
   ### Remaining Conflicted Files:
@@ -211,48 +244,7 @@ git branch -d {worktree.branch}
   ```
 - If this fails, log warning but continue to next step
 
-### Step 5: Update spec.json
-Remove the worktree field and update phase to `deploy-complete`.
-
-#### 5.1: Read Current spec.json
-Read `.kiro/specs/$1/spec.json` to get current content.
-
-#### 5.2: Update spec.json
-Parse the JSON and apply the following changes:
-- Remove the `worktree` property
-- Set `phase` to `"deploy-complete"`
-- Update `updated_at` to current UTC timestamp (ISO 8601 format)
-- Keep all other fields intact
-- Ensure valid JSON formatting with proper indentation (2 spaces)
-
-#### 5.3: Write Updated spec.json
-Write the modified JSON back to `.kiro/specs/$1/spec.json`.
-
-Example transformation:
-```json
-// Before
-{
-  "feature_name": "my-feature",
-  "phase": "inspection-complete",
-  "updated_at": "2024-01-15T10:00:00Z",
-  "worktree": {
-    "path": "../project-worktrees/my-feature",
-    "branch": "feature/my-feature",
-    "created_at": "2024-01-15T10:00:00Z"
-  },
-  "approvals": { ... }
-}
-
-// After
-{
-  "feature_name": "my-feature",
-  "phase": "deploy-complete",
-  "updated_at": "2024-01-16T12:00:00Z",
-  "approvals": { ... }
-}
-```
-
-### Step 6: Report Success
+### Step 5: Report Success
 Display completion message with the following format:
 
 ```markdown

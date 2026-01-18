@@ -212,13 +212,16 @@ git branch -d {worktree.branch}
 - If this fails, log warning but continue to next step
 
 ### Step 5: Update spec.json
-Remove the worktree field from spec.json.
+Remove the worktree field and update phase to `deploy-complete`.
 
 #### 5.1: Read Current spec.json
 Read `.kiro/specs/$1/spec.json` to get current content.
 
-#### 5.2: Remove worktree Field
-Parse the JSON and remove the `worktree` property:
+#### 5.2: Update spec.json
+Parse the JSON and apply the following changes:
+- Remove the `worktree` property
+- Set `phase` to `"deploy-complete"`
+- Update `updated_at` to current UTC timestamp (ISO 8601 format)
 - Keep all other fields intact
 - Ensure valid JSON formatting with proper indentation (2 spaces)
 
@@ -230,7 +233,8 @@ Example transformation:
 // Before
 {
   "feature_name": "my-feature",
-  "phase": "implementation-complete",
+  "phase": "inspection-complete",
+  "updated_at": "2024-01-15T10:00:00Z",
   "worktree": {
     "path": "../project-worktrees/my-feature",
     "branch": "feature/my-feature",
@@ -242,7 +246,8 @@ Example transformation:
 // After
 {
   "feature_name": "my-feature",
-  "phase": "implementation-complete",
+  "phase": "deploy-complete",
+  "updated_at": "2024-01-16T12:00:00Z",
   "approvals": { ... }
 }
 ```

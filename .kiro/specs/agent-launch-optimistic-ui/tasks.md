@@ -6,8 +6,8 @@ Agent実行ボタンのOptimistic UIを実装し、クリック時の即時フ�
 
 ---
 
-- [ ] 1. useLaunchingStateフックの実装
-- [ ] 1.1 (P) フック本体の実装
+- [x] 1. useLaunchingStateフックの実装
+- [x] 1.1 (P) フック本体の実装
   - launching状態（useState<boolean>）とwrapExecution関数を返すカスタムフックを作成
   - wrapExecution関数は非同期関数を受け取り、実行前にlaunching=true、完了後にlaunching=falseを設定
   - オプションパラメータでタイムアウト時間を設定可能にする（デフォルト: 10000ms）
@@ -16,58 +16,58 @@ Agent実行ボタンのOptimistic UIを実装し、クリック時の即時フ�
   - `src/shared/hooks/index.ts` にバレルエクスポートを追加: `export { useLaunchingState } from './useLaunchingState'`
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 1.2 (P) タイムアウト処理の実装
+- [x] 1.2 (P) タイムアウト処理の実装
   - wrapExecution実行時に10秒タイムアウトタイマーを開始（setTimeout）
   - タイムアウト発生時にlaunching状態をfalseに戻し、notify.errorでタイムアウトエラー通知を表示
   - IPC呼び出し正常完了時にタイムアウトタイマーをクリア（clearTimeout）
   - コンポーネントアンマウント時にuseEffectのcleanup関数でタイマーをクリア（メモリリーク防止）
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 1.3 エラーハンドリングの実装
+- [x] 1.3 エラーハンドリングの実装
   - IPCエラー発生時にlaunching状態をfalseに戻し、notify.errorでエラー通知を表示
   - catch節でのエラーハンドリングとfinally節でのタイマークリアを実装
   - 1.1, 1.2のフック実装が前提
   - _Requirements: 1.2, 1.4_
 
-- [ ] 2. WorkflowViewへのOptimistic UI適用
-- [ ] 2.1 フェーズ実行ハンドラのラップ
+- [x] 2. WorkflowViewへのOptimistic UI適用
+- [x] 2.1 フェーズ実行ハンドラのラップ
   - handleExecutePhase（requirements, design, tasks, impl, deploy）をwrapExecutionでラップ
   - handleStartDocumentReview、handleExecuteDocumentReviewReply、handleApplyDocumentReviewFixをラップ
   - handleStartInspection、handleExecuteInspectionFixをラップ
   - フェーズ/機能ごとにuseLaunchingStateインスタンスを分離するか、グルーピングを検討
   - _Requirements: 4.1_
 
-- [ ] 2.2 disabled判定の更新
+- [x] 2.2 disabled判定の更新
   - 各実行ボタンのdisabled判定を`launching || isXxxExecuting`に変更
   - runningPhases.has(phase)とlaunchingの両方を参照する形式に更新
   - ローディング表示（スピナー等）もlaunching状態を反映するよう更新
   - _Requirements: 1.1, 1.3, 4.2_
 
-- [ ] 3. 子コンポーネントへのlaunching状態伝播
-- [ ] 3.1 (P) DocumentReviewPanelの更新
+- [x] 3. 子コンポーネントへのlaunching状態伝播
+- [x] 3.1 (P) DocumentReviewPanelの更新
   - 親コンポーネント（WorkflowView）からlaunching状態をprops経由で受け取る
   - レビュー開始・リプライ・Fix適用ボタンのdisabled判定にlaunching状態を反映
   - _Requirements: 4.1, 4.2_
 
-- [ ] 3.2 (P) InspectionPanelの更新
+- [x] 3.2 (P) InspectionPanelの更新
   - 親コンポーネント（WorkflowView）からlaunching状態をprops経由で受け取る
   - Inspection開始・Fix実行ボタンのdisabled判定にlaunching状態を反映
   - _Requirements: 4.1, 4.2_
 
-- [ ] 4. 統合テストと動作確認
-- [ ] 4.1 Optimistic UI動作確認
+- [x] 4. 統合テストと動作確認
+- [x] 4.1 Optimistic UI動作確認
   - ボタンクリック時に即座にdisabled+ローディング表示になることを確認
   - IPC完了後にlaunching状態がリセットされることを確認
   - fileWatcher経由のAgent状態更新後も引き続きdisabledが維持されることを確認
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 4.2 タイムアウト動作確認
+- [x] 4.2 タイムアウト動作確認
   - 10秒タイムアウト後にlaunching状態がリセットされることを確認
   - タイムアウト時にエラー通知が表示されることを確認
   - 正常完了時にタイムアウトタイマーがクリアされることを確認
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 4.3 既存動作との互換性確認
+- [x] 4.3 既存動作との互換性確認
   - fileWatcher経由のAgent状態更新フローが変更されていないことを確認
   - IPC呼び出しの戻り値の扱いが変更されていないことを確認
   - agentStoreの構造が変更されていないことを確認

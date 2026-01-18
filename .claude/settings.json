@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/yamamoto/git/sdd-orchestrator/.claude/agents/kiro"
+    ]
+  }
+}

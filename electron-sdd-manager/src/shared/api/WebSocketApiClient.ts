@@ -457,21 +457,32 @@ export class WebSocketApiClient implements ApiClient {
     specId: string,
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, ApiError>> {
-    return this.wrapRequest<AutoExecutionState>('START_AUTO_EXECUTION', {
+    // Message type matches WebSocketHandler.handleAutoExecuteStart
+    const response = await this.wrapRequest<{ state: AutoExecutionState }>('AUTO_EXECUTE_START', {
       specPath,
       specId,
       options,
     });
+    if (response.ok) {
+      return { ok: true, value: response.value.state };
+    }
+    return response;
   }
 
   async stopAutoExecution(specPath: string): Promise<Result<void, ApiError>> {
-    return this.wrapRequest<void>('STOP_AUTO_EXECUTION', { specPath });
+    // Message type matches WebSocketHandler.handleAutoExecuteStop
+    return this.wrapRequest<void>('AUTO_EXECUTE_STOP', { specPath });
   }
 
   async getAutoExecutionStatus(
     specPath: string
   ): Promise<Result<AutoExecutionState | null, ApiError>> {
-    return this.wrapRequest<AutoExecutionState | null>('GET_AUTO_EXECUTION_STATUS', { specPath });
+    // Message type matches WebSocketHandler.handleAutoExecuteStatus
+    const response = await this.wrapRequest<{ specPath: string; state: AutoExecutionState | null }>('AUTO_EXECUTE_STATUS', { specPath });
+    if (response.ok) {
+      return { ok: true, value: response.value.state };
+    }
+    return response;
   }
 
   // ===========================================================================

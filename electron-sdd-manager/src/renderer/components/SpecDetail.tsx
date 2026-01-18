@@ -402,25 +402,29 @@ function WorktreeSection({ worktree }: WorktreeSectionProps) {
           </div>
         </div>
         {/* Branch */}
-        <div className="flex items-start gap-2 text-sm">
-          <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
-            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
-              {worktree.branch}
-            </span>
+        {worktree.branch && (
+          <div className="flex items-start gap-2 text-sm">
+            <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
+                {worktree.branch}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
         {/* Created At */}
-        <div className="flex items-start gap-2 text-sm">
-          <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
-            <span className="ml-2 text-gray-700 dark:text-gray-300">
-              {formatDate(worktree.created_at)}
-            </span>
+        {worktree.created_at && (
+          <div className="flex items-start gap-2 text-sm">
+            <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300">
+                {formatDate(worktree.created_at)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

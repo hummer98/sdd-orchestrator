@@ -231,6 +231,81 @@ pkill -f '\-\-playwright-test'
 pkill -f '\-\-e2e-test'
 ```
 
+### spec詳細が表示されない / undefinedエラー
+
+```
+Cannot read properties of undefined (reading 'name')
+```
+
+**原因**: `SpecDetailProvider`がWebSocketハンドラに設定されていない。
+
+**解決策**:
+1. `remoteAccessHandlers.ts`で`setupSpecDetailProvider(projectPath)`が呼ばれているか確認
+2. `handlers.ts`のproject setup箇所で呼び出しを追加
+
+```typescript
+// handlers.ts
+import { setupSpecDetailProvider } from './remoteAccessHandlers';
+
+// プロジェクト設定時に呼び出す
+setupSpecDetailProvider(projectPath);
+```
+
+### Strict Mode Violation（複数要素にマッチ）
+
+```
+locator resolved to 2 elements
+```
+
+**原因**: Desktop LayoutとMobile Layoutの両方に同じ`data-testid`を持つ要素が存在。
+
+**解決策**: 親要素でスコープを絞る
+
+```typescript
+// ❌ 悪い例: 全体から検索
+const bugsTab = page.locator('[data-testid="remote-tab-bugs"]');
+
+// ✅ 良い例: Mobile専用の親要素でスコープ
+const bottomTabBar = page.locator('[data-testid="mobile-bottom-tabs"]');
+const bugsTab = bottomTabBar.locator('[data-testid="remote-tab-bugs"]');
+```
+
+---
+
+## モバイルテストのパターン
+
+### ビューポート設定
+
+```typescript
+const SMARTPHONE_VIEWPORT = { width: 375, height: 667 };
+
+test.describe('Smartphone Tests', () => {
+  test.use({ viewport: SMARTPHONE_VIEWPORT });
+  // ...
+});
+```
+
+### Mobile Layout固有のセレクタ
+
+| 要素 | data-testid | 備考 |
+|------|-------------|------|
+| 底部タブバー | `mobile-bottom-tabs` | モバイルのみ表示 |
+| Specタブ（底部） | `remote-tab-specs` | スコープで絞る |
+| Bugsタブ（底部） | `remote-tab-bugs` | スコープで絞る |
+| Spec詳細ビュー | `remote-spec-detail` | 共通 |
+
+### 動作仕様の注意点
+
+- **タブ切り替え時の選択状態**: Remote UIはタブ切り替え時にSpec選択状態を**保持する**
+- Spec一覧に戻るには「Spec一覧に戻る」ボタンをクリックする必要がある
+
+```typescript
+// タブ切り替え後も詳細ビューが残る
+await bugsTab.click();
+await specsTab.click();
+await expect(detailView).toBeVisible(); // 選択状態は保持される
+```
+
 ---
 
 ## ディレクトリ構造
@@ -244,7 +319,8 @@ electron-sdd-manager/
 │   ├── helpers/                  # ヘルパー関数
 │   │   ├── electron-launcher.ts  # Electron起動ヘルパー
 │   │   └── remote-ui.helpers.ts  # Remote UI操作ヘルパー
-│   └── smoke.spec.ts             # Smoke Test
+│   ├── smoke.spec.ts             # Smoke Test（基本接続確認）
+│   └── smartphone-spec.spec.ts   # スマートフォンUI Specテスト
 ├── e2e-wdio/                     # 既存WebdriverIOテスト
 │   └── fixtures/                 # 共有テストフィクスチャ
 ├── playwright-report/            # テストレポート出力
@@ -253,4 +329,4 @@ electron-sdd-manager/
 
 ---
 
-_updated_at: 2026-01-13_
+_updated_at: 2026-01-18_

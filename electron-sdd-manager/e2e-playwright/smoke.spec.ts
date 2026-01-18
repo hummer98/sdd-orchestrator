@@ -13,6 +13,7 @@
 
 import { test, expect } from '@playwright/test';
 import {
+  navigateToRemoteUI,
   waitForConnection,
   waitForSpecList,
   selectSpec,
@@ -21,8 +22,8 @@ import {
 
 test.describe('Remote UI Smoke Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to Remote UI (baseURL is configured in playwright.config.ts)
-    await page.goto('/');
+    // Navigate to Remote UI using the actual port from the port file
+    await navigateToRemoteUI(page);
     // Wait for WebSocket connection to be established
     await waitForConnection(page);
   });

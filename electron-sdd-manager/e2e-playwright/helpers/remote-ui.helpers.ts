@@ -10,6 +10,32 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { getRemoteUIUrl } from './electron-launcher';
+
+/**
+ * Get the Remote UI full URL (with token) from the port file
+ * @returns The full URL for the Remote UI including auth token
+ */
+export function getRemoteUIBaseURL(): string {
+  return getRemoteUIUrl();
+}
+
+/**
+ * Navigate to Remote UI with the correct port and token
+ * @param page Playwright Page instance
+ * @param path Optional path to append to the base URL (default: '/')
+ */
+export async function navigateToRemoteUI(page: Page, path = '/'): Promise<void> {
+  const baseURL = getRemoteUIUrl();
+  // Parse the URL to properly append path while preserving query params
+  const urlObj = new URL(baseURL);
+  if (path !== '/') {
+    urlObj.pathname = path;
+  }
+  const url = urlObj.toString();
+  console.log(`[remote-ui-helpers] Navigating to ${url}`);
+  await page.goto(url);
+}
 
 /**
  * WebSocket接続が確立されるまで待機
@@ -29,10 +55,12 @@ export async function waitForConnection(page: Page, timeout = 10000): Promise<vo
 /**
  * Spec一覧が表示されるまで待機
  * @param page Playwright Page instance
- * @param timeout Timeout in milliseconds (default: 10000)
+ * @param timeout Timeout in milliseconds (default: 30000 - longer for WebSocket data fetch)
  */
-export async function waitForSpecList(page: Page, timeout = 10000): Promise<void> {
+export async function waitForSpecList(page: Page, timeout = 30000): Promise<void> {
+  // Wait for the spec list container first
   await page.waitForSelector('[data-testid="remote-spec-list"]', { timeout });
+  // Then wait for at least one spec item to be visible
   const specItems = page.locator('[data-testid^="remote-spec-item-"]');
   await expect(specItems.first()).toBeVisible({ timeout });
 }

@@ -307,6 +307,48 @@ export interface SpecDetailProvider {
 }
 
 /**
+ * Bug artifact info for detail result
+ * Requirements: Bug management E2E test support
+ */
+export interface BugArtifactInfo {
+  readonly exists: boolean;
+  readonly path: string;
+  readonly updatedAt: string | null;
+  readonly content?: string;
+}
+
+/**
+ * Bug detail result type - matches BugDetail in @renderer/types/bug
+ * Requirements: Bug management E2E test support
+ */
+export interface BugDetailResult {
+  readonly metadata: {
+    readonly name: string;
+    readonly path: string;
+    readonly phase: BugPhase;
+    readonly reportedAt: string;
+    readonly updatedAt: string;
+  };
+  readonly artifacts: {
+    readonly report: BugArtifactInfo | null;
+    readonly analysis: BugArtifactInfo | null;
+    readonly fix: BugArtifactInfo | null;
+    readonly verification: BugArtifactInfo | null;
+  };
+}
+
+/**
+ * Bug detail provider interface for retrieving bug details
+ * Requirements: Bug management E2E test support
+ */
+export interface BugDetailProvider {
+  /** Get detailed information for a bug */
+  getBugDetail(
+    bugPath: string
+  ): Promise<{ ok: true; value: BugDetailResult } | { ok: false; error: { type: string; message?: string } }>;
+}
+
+/**
  * Configuration options for WebSocketHandler
  */
 export interface WebSocketHandlerConfig {
@@ -357,6 +399,7 @@ export class WebSocketHandler {
   private agentLogsProvider: AgentLogsProvider | null = null;
   private fileService: FileServiceInterface | null = null;
   private specDetailProvider: SpecDetailProvider | null = null;
+  private bugDetailProvider: BugDetailProvider | null = null;
 
   constructor(config: WebSocketHandlerConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -408,6 +451,16 @@ export class WebSocketHandler {
    */
   setSpecDetailProvider(provider: SpecDetailProvider): void {
     this.specDetailProvider = provider;
+  }
+
+  /**
+   * Set the bug detail provider for retrieving bug details
+   * Requirements: Bug management E2E test support
+   *
+   * @param provider Bug detail provider implementation
+   */
+  setBugDetailProvider(provider: BugDetailProvider): void {
+    this.bugDetailProvider = provider;
   }
 
   /**
@@ -662,6 +715,10 @@ export class WebSocketHandler {
       // Spec detail handlers (remote-ui-react-migration Task 6.3)
       case 'GET_SPEC_DETAIL':
         await this.handleGetSpecDetail(client, message);
+        break;
+      // Bug detail handlers (Bug management E2E test support)
+      case 'GET_BUG_DETAIL':
+        await this.handleGetBugDetail(client, message);
         break;
       // Profile handlers (header-profile-badge feature)
       case 'GET_PROFILE':
@@ -2291,6 +2348,62 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Failed to get spec detail',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Bug Detail Handlers (Bug management E2E test support)
+  // ============================================================
+
+  /**
+   * Handle GET_BUG_DETAIL message
+   * Requirements: Bug management E2E test support
+   * Retrieves detailed bug information
+   */
+  private async handleGetBugDetail(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.bugDetailProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'Bug detail provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const bugPath = payload.bugPath as string;
+
+    if (!bugPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.bugDetailProvider.getBugDetail(bugPath);
+
+    if (result.ok) {
+      // Client expects BugDetail directly as payload
+      this.send(client.id, {
+        type: 'BUG_DETAIL',
+        payload: result.value as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Failed to get bug detail',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

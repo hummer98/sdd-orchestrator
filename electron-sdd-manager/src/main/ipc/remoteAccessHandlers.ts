@@ -10,7 +10,7 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider, BugDetailResult } from '../services/webSocketHandler';
 import { FileService } from '../services/fileService';
 import { getDefaultLogFileService } from '../services/logFileService';
 import { projectConfigService } from '../services/layoutConfigService';
@@ -473,6 +473,66 @@ export function setupSpecDetailProvider(projectPath: string): void {
     const specDetailProvider = createSpecDetailProvider(projectPath);
     wsHandler.setSpecDetailProvider(specDetailProvider);
     logger.info('[remoteAccessHandlers] SpecDetailProvider set up successfully', { projectPath });
+  }
+}
+
+/**
+ * Create a BugDetailProvider for WebSocketHandler
+ * Requirements: Bug management E2E test support
+ *
+ * @param projectPath - Current project path
+ */
+export function createBugDetailProvider(_projectPath: string): BugDetailProvider {
+  const bugService = new BugService();
+
+  return {
+    getBugDetail: async (bugPath: string) => {
+      try {
+        const result = await bugService.readBugDetail(bugPath);
+
+        if (!result.ok) {
+          return {
+            ok: false as const,
+            error: { type: result.error.type, message: `Bug not found: ${result.error.path}` },
+          };
+        }
+
+        // BugService returns BugDetail which already has the correct structure
+        // Just return it directly - it has metadata and artifacts fields
+        const bugDetailResult: BugDetailResult = {
+          metadata: result.value.metadata,
+          artifacts: result.value.artifacts,
+        };
+
+        return {
+          ok: true as const,
+          value: bugDetailResult,
+        };
+      } catch (error) {
+        logger.error('[remoteAccessHandlers] Failed to get bug detail', { bugPath, error });
+        return {
+          ok: false as const,
+          error: { type: 'ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        };
+      }
+    },
+  };
+}
+
+/**
+ * Set up BugDetailProvider on the WebSocketHandler
+ * Requirements: Bug management E2E test support
+ *
+ * @param projectPath - Current project path
+ */
+export function setupBugDetailProvider(projectPath: string): void {
+  const server = getRemoteAccessServer();
+  const wsHandler = server.getWebSocketHandler();
+
+  if (wsHandler) {
+    const bugDetailProvider = createBugDetailProvider(projectPath);
+    wsHandler.setBugDetailProvider(bugDetailProvider);
+    logger.info('[remoteAccessHandlers] BugDetailProvider set up successfully', { projectPath });
   }
 }
 

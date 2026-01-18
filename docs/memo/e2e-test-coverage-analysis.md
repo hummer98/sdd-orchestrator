@@ -4,7 +4,7 @@
 
 | 項目 | Electron版 | Remote UI版 |
 |------|-----------|-------------|
-| テストファイル数 | 31 | 6 |
+| テストファイル数 | 31 | 7 |
 | フレームワーク | WebdriverIO + wdio-electron-service | Playwright |
 | 対象環境 | Desktop (macOS/Windows/Linux) | Desktop/Smartphone (Browser) |
 
@@ -36,8 +36,10 @@
 | | implフェーズ | ✅ | ✅ | ✅ |
 | | ドキュメントレビュー連携 | ✅ | ✅ | ✅ |
 | **Bug管理** | Bug一覧表示 | ✅ | ✅ | ✅ |
+| | Bug選択・詳細表示 | ✅ | ✅ | ✅ |
 | | Bug作成 | ✅ | ❌ | ❌ |
-| | 3ペイン連動 | ✅ | ❌ | ❌ |
+| | 3ペイン連動 | ✅ | ✅ | ✅ |
+| | フェーズ実行ボタン | ✅ | ✅ | ✅ |
 | | ファイル監視 | ✅ | ❌ | ❌ |
 | | Worktree対応 | ✅ | ❌ | ❌ |
 | | Bug自動実行 | ✅ | ❌ | ❌ |
@@ -214,6 +216,22 @@
 | Impl Phase | implフェーズアイテム表示、パーミッショントグル表示 |
 | Document Review Integration | inspectionフェーズ表示、deployフェーズ表示 |
 
+### 3.7 Playwright bug-management.spec.ts (Desktop/Smartphone)
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [bug-management.spec.ts](../../electron-sdd-manager/e2e-playwright/bug-management.spec.ts) | Bug管理機能のE2Eテスト（Desktop/Smartphone） |
+
+**テスト内容（18件、うち1件fixme）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Bug List Display (Desktop) | Bugsタブ表示、タブ切り替え、Bug一覧表示、検索入力、検索フィルタリング |
+| Bug Selection and Detail View (Desktop) | Bug選択→詳細表示、フェーズタグ表示、ワークフローフェーズ表示、戻るボタン |
+| Three Pane Integration (Desktop) | タブ切り替え時の選択状態維持、タブ切り替え時の選択リセット |
+| Phase Execution Buttons (Desktop) | 実行ボタン表示、次フェーズボタン有効/無効制御 |
+| Smartphone | 底部タブバー表示、Bugsタブ切り替え、Bug詳細表示、ワークフローフェーズ表示 |
+
 ---
 
 ## 4. カバレッジギャップ分析
@@ -326,9 +344,19 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 │  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
+│  │      bug-management.spec.ts (Desktop/Smartphone)  │      │
+│  │  - Bug一覧表示・検索                                │      │
+│  │  - Bug選択→詳細表示                                │      │
+│  │  - 3ペイン連動（タブ切り替え）                        │      │
+│  │  - フェーズ実行ボタン                               │      │
+│  │  - Smartphone版Bug操作                            │      │
+│  └──────────────────────────────────────────────────┘      │
+│                                                            │
+│  ┌──────────────────────────────────────────────────┐      │
 │  │           ❌ 未カバー領域                           │      │
 │  │  - ドキュメントレビュー                               │      │
 │  │  - エディタ操作                                     │      │
+│  │  - Bug作成ダイアログ                                │      │
 │  └──────────────────────────────────────────────────┘      │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -390,6 +418,7 @@ electron-sdd-manager/
     ├── workflow-integration.spec.ts # ワークフロー統合テスト (7テスト)
     ├── auto-execution.spec.ts   # 自動実行テスト Desktop (16テスト)
     ├── smartphone-auto-execution.spec.ts # 自動実行テスト Smartphone (16テスト)
+    ├── bug-management.spec.ts   # Bug管理テスト Desktop/Smartphone (18テスト)
     ├── global-setup.ts          # Electron起動
     ├── global-teardown.ts       # Electron終了
     └── playwright.config.ts     # Playwright設定
@@ -412,3 +441,4 @@ cd electron-sdd-manager && npx playwright test
 *更新日: 2026-01-18* - phase-execution.spec.ts, workflow-integration.spec.ts追加
 *更新日: 2026-01-18* - auto-execution.spec.ts追加（Remote UI自動実行機能のE2Eテスト）
 *更新日: 2026-01-18* - smartphone-auto-execution.spec.ts追加（Smartphone版自動実行E2Eテスト）
+*更新日: 2026-01-19* - bug-management.spec.ts追加（Bug管理Remote UI E2Eテスト、Desktop/Smartphone対応）

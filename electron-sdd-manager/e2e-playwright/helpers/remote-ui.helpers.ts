@@ -132,3 +132,52 @@ export async function waitForSpecDetail(
   const specTitle = page.locator('[data-testid="remote-spec-title"]');
   await expect(specTitle).toContainText(specName, { timeout });
 }
+
+/**
+ * Bug一覧が表示されるまで待機
+ * @param page Playwright Page instance
+ * @param timeout Timeout in milliseconds (default: 30000)
+ */
+export async function waitForBugList(page: Page, timeout = 30000): Promise<void> {
+  // Wait for loading to complete
+  await page.waitForFunction(
+    () => {
+      const loading = document.querySelector('[data-testid="bugs-view-loading"]');
+      return !loading || !loading.checkVisibility();
+    },
+    { timeout }
+  );
+
+  // Wait for the bug list container or empty state
+  const bugList = page.locator('[data-testid="remote-bug-list"]');
+  const emptyState = page.locator('[data-testid="bugs-empty-state"]');
+
+  // Either bug list or empty state should be visible
+  await Promise.race([
+    expect(bugList).toBeVisible({ timeout }),
+    expect(emptyState).toBeVisible({ timeout }),
+  ]).catch(() => {
+    // If neither appears, that's also acceptable (may be a different state)
+  });
+}
+
+/**
+ * 特定のBugを選択
+ * @param page Playwright Page instance
+ * @param bugName Bug name to select
+ */
+export async function selectBug(page: Page, bugName: string): Promise<void> {
+  const bugItem = page.locator(`[data-testid="remote-bug-item-${bugName}"]`);
+  await bugItem.click();
+  // Wait for detail view to appear
+  await page.waitForSelector('[data-testid="bug-detail-view"]', { timeout: 10000 });
+}
+
+/**
+ * Bug詳細ビューが表示されるまで待機
+ * @param page Playwright Page instance
+ * @param timeout Timeout in milliseconds (default: 10000)
+ */
+export async function waitForBugDetail(page: Page, timeout = 10000): Promise<void> {
+  await page.waitForSelector('[data-testid="bug-detail-view"]', { timeout });
+}

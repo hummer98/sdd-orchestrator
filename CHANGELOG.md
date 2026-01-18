@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-01-18
+
+### Added
+- **impl-start-unification**: impl開始ロジックをMain Processに統合
+- **debatex-document-review**: debatex統合とプロジェクトデフォルトscheme設定の実装
+- **spec-prompts**: タスク実装方法の検証機能を追加
+- **debug**: MCP互換のZustandストアデバッグAPIを追加
+- **steering-verification**: verification.md生成とspec-inspection統合
+
+### Fixed
+- **steering-verification**: verification.md生成ボタンでProject Agentを起動
+- **SpecDetail**: worktree情報のオプショナルフィールドを条件表示
+
+### Changed
+- コマンドセットテンプレートにタスク実装方法検証機能を反映
+
+### Style
+- 実行中インジケーターのサイズをボタンと統一
+
+### Documentation
+- 開発環境でのログパス記述を修正
+
 ## [0.32.0] - 2026-01-18
 
 ### Added

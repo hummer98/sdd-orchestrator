@@ -10,7 +10,8 @@ import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
 import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
-import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig } from '../services/webSocketHandler';
+import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider } from '../services/webSocketHandler';
+import { FileService } from '../services/fileService';
 import { getDefaultLogFileService } from '../services/logFileService';
 import { projectConfigService } from '../services/layoutConfigService';
 import type { SpecManagerService } from '../services/specManagerService';
@@ -394,6 +395,84 @@ export function setupAgentLogsProvider(): void {
     const agentLogsProvider = createAgentLogsProvider();
     wsHandler.setAgentLogsProvider(agentLogsProvider);
     logger.info('[remoteAccessHandlers] AgentLogsProvider set up successfully');
+  }
+}
+
+/**
+ * Create a SpecDetailProvider for WebSocketHandler
+ * Requirements: remote-ui-react-migration Task 6.3
+ *
+ * @param projectPath - Current project path
+ */
+export function createSpecDetailProvider(projectPath: string): SpecDetailProvider {
+  const fileService = new FileService();
+
+  return {
+    getSpecDetail: async (specId: string) => {
+      try {
+        const specPath = join(projectPath, '.kiro', 'specs', specId);
+        const result = await fileService.readSpecJson(specPath);
+
+        if (!result.ok) {
+          return {
+            ok: false,
+            error: { type: 'NOT_FOUND', message: `Spec not found: ${specId}` },
+          };
+        }
+
+        const specJson = result.value;
+
+        // Build SpecDetail in the format expected by Remote UI
+        return {
+          ok: true,
+          value: {
+            name: specId,
+            path: specPath,
+            phase: specJson.phase || 'initialized',
+            specJson: specJson as unknown as Record<string, unknown>,
+            // Metadata in the format expected by SpecDetailView
+            metadata: {
+              name: specId,
+              path: specPath,
+              phase: specJson.phase || 'initialized',
+              updatedAt: specJson.updated_at,
+              approvals: specJson.approvals,
+            },
+            artifacts: {
+              requirements: { exists: false },
+              design: { exists: false },
+              tasks: { exists: false },
+              research: { exists: false },
+              inspection: { exists: false },
+            },
+            taskProgress: null,
+          },
+        };
+      } catch (error) {
+        logger.error('[remoteAccessHandlers] Failed to get spec detail', { specId, error });
+        return {
+          ok: false,
+          error: { type: 'ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        };
+      }
+    },
+  };
+}
+
+/**
+ * Set up SpecDetailProvider on the WebSocketHandler
+ * Requirements: remote-ui-react-migration Task 6.3
+ *
+ * @param projectPath - Current project path
+ */
+export function setupSpecDetailProvider(projectPath: string): void {
+  const server = getRemoteAccessServer();
+  const wsHandler = server.getWebSocketHandler();
+
+  if (wsHandler) {
+    const specDetailProvider = createSpecDetailProvider(projectPath);
+    wsHandler.setSpecDetailProvider(specDetailProvider);
+    logger.info('[remoteAccessHandlers] SpecDetailProvider set up successfully', { projectPath });
   }
 }
 

@@ -160,6 +160,8 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
         {(['specs', 'bugs', 'agent', 'project'] as MobileTab[]).map((tab) => (
           <button
             key={tab}
+            data-testid={`remote-tab-${tab}`}
+            aria-selected={activeTab === tab}
             onClick={() => handleTabChange(tab)}
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab

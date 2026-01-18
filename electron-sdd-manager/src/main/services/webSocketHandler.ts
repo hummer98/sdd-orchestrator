@@ -683,13 +683,18 @@ export class WebSocketHandler {
 
   /**
    * Validate message structure
+   * Note: timestamp is optional for client-sent messages (clients may omit it)
    */
   private isValidMessage(message: unknown): message is WebSocketMessage {
     if (typeof message !== 'object' || message === null) {
       return false;
     }
     const msg = message as Record<string, unknown>;
-    return typeof msg.type === 'string' && typeof msg.timestamp === 'number';
+    // Type is required, timestamp is optional for incoming messages
+    return (
+      typeof msg.type === 'string' &&
+      (msg.timestamp === undefined || typeof msg.timestamp === 'number')
+    );
   }
 
   /**
@@ -2273,12 +2278,10 @@ export class WebSocketHandler {
     const result = await this.specDetailProvider.getSpecDetail(specId);
 
     if (result.ok) {
+      // Client expects SpecDetail directly as payload
       this.send(client.id, {
         type: 'SPEC_DETAIL',
-        payload: {
-          specId,
-          detail: result.value,
-        },
+        payload: result.value,
         requestId: message.requestId,
         timestamp: Date.now(),
       });

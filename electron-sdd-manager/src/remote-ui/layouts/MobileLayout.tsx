@@ -205,7 +205,7 @@ function MobileTabBar({
   onTabChange,
 }: MobileTabBarProps): React.ReactElement {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch">
+    <nav data-testid="mobile-bottom-tabs" className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch">
       {TAB_CONFIG.map((tab) => (
         <button
           key={tab.id}

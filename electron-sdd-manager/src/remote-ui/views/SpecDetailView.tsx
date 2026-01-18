@@ -310,7 +310,7 @@ export function SpecDetailView({
   const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
 
   return (
-    <div data-testid="spec-detail-view" className="flex flex-col h-full overflow-y-auto">
+    <div data-testid="remote-spec-detail" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">

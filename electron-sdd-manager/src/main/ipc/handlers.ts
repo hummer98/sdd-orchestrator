@@ -33,7 +33,7 @@ import {
   UnifiedInstallResult,
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
-import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, getRemoteAccessServer } from './remoteAccessHandlers';
+import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
@@ -529,7 +529,8 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   setupStateProvider(projectPath, getSpecsForRemote, getBugsForRemote, getAgentsForRemote);
   setupWorkflowController(specManagerService);
   setupAgentLogsProvider();
-  logger.info('[handlers] Remote Access StateProvider, WorkflowController, and AgentLogsProvider set up');
+  setupSpecDetailProvider(projectPath);
+  logger.info('[handlers] Remote Access StateProvider, WorkflowController, AgentLogsProvider, and SpecDetailProvider set up');
 }
 
 /**

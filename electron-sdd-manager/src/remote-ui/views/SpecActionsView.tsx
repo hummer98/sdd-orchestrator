@@ -12,7 +12,8 @@
 import React, { useState, useCallback } from 'react';
 import { DocumentReviewPanel } from '@shared/components/review/DocumentReviewPanel';
 import { InspectionPanel } from '@shared/components/review/InspectionPanel';
-import type { ApiClient, SpecDetail, AgentInfo } from '@shared/api/types';
+import type { ReviewerScheme } from '@shared/components/review/SchemeSelector';
+import type { ApiClient, SpecDetail, AgentInfo, SpecJson } from '@shared/api/types';
 import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
@@ -80,6 +81,13 @@ export function SpecActionsView({
 
   // Check if tasks are approved (required for some actions)
   const tasksApproved = specDetail.specJson?.approvals?.tasks?.approved ?? false;
+
+  // gemini-document-review: Get scheme from spec.json
+  const documentReviewScheme = documentReviewRaw?.scheme as ReviewerScheme | undefined;
+
+  // gemini-document-review: State for optimistic scheme update
+  const [optimisticScheme, setOptimisticScheme] = useState<ReviewerScheme | undefined>(documentReviewScheme);
+  const [isSavingScheme, setIsSavingScheme] = useState(false);
 
   // Handle document review start
   const handleStartReview = useCallback(async () => {
@@ -156,12 +164,55 @@ export function SpecActionsView({
     []
   );
 
+  // gemini-document-review: Handle scheme change
+  // Requirements: 7.2, 7.3, 7.4
+  const handleSchemeChange = useCallback(
+    async (newScheme: ReviewerScheme) => {
+      const previousScheme = optimisticScheme;
+
+      // Optimistic update
+      setOptimisticScheme(newScheme);
+      setIsSavingScheme(true);
+
+      try {
+        // Build spec.json path from spec metadata
+        const specJsonPath = `${specDetail.metadata.path}/spec.json`;
+
+        // Create updated spec.json content
+        const updatedSpecJson: SpecJson = {
+          ...specDetail.specJson,
+          documentReview: {
+            ...specDetail.specJson.documentReview,
+            status: specDetail.specJson.documentReview?.status ?? 'pending',
+            scheme: newScheme,
+          },
+        };
+
+        // Save via API
+        const result = await apiClient.saveFile(specJsonPath, JSON.stringify(updatedSpecJson, null, 2));
+
+        if (!result.ok) {
+          // Rollback on error
+          setOptimisticScheme(previousScheme);
+          console.error('Failed to save scheme:', result.error);
+        }
+      } catch (err) {
+        // Rollback on error
+        setOptimisticScheme(previousScheme);
+        console.error('Error saving scheme:', err);
+      } finally {
+        setIsSavingScheme(false);
+      }
+    },
+    [apiClient, specDetail.metadata.path, specDetail.specJson, optimisticScheme]
+  );
+
   return (
     <div className="space-y-4 p-4" data-testid="spec-actions-view">
       {/* Document Review Panel */}
       <DocumentReviewPanel
         reviewState={documentReviewState}
-        isExecuting={executingAction === 'document-review' || executingAction === 'document-review-reply' || executingAction === 'document-review-fix'}
+        isExecuting={isSavingScheme || executingAction === 'document-review' || executingAction === 'document-review-reply' || executingAction === 'document-review-fix'}
         isAutoExecuting={isExecuting}
         hasTasks={tasksApproved}
         autoExecutionFlag={documentReviewFlag}
@@ -169,6 +220,8 @@ export function SpecActionsView({
         onExecuteReply={handleExecuteReply}
         onApplyFix={handleApplyFix}
         onAutoExecutionFlagChange={handleDocumentReviewFlagChange}
+        scheme={optimisticScheme}
+        onSchemeChange={handleSchemeChange}
       />
 
       {/* Inspection Panel */}

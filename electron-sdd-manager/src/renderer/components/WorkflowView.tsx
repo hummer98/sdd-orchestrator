@@ -15,13 +15,13 @@ import { ArrowDown, Play, Square } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
+import type { WorktreeConfig } from '../types/worktree';
 import { notify } from '../stores';
 // agent-launch-optimistic-ui: Optimistic UI hook
 import { useLaunchingState } from '@shared/hooks';
 import { PhaseItem } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
-import { DocumentReviewPanel } from '@shared/components/review';
-import { InspectionPanel } from '@shared/components/review';
+import { DocumentReviewPanel, InspectionPanel, type ReviewerScheme } from '@shared/components/review';
 import { ImplFlowFrame, ImplPhasePanel } from '@shared/components/workflow';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
@@ -83,6 +83,12 @@ export function WorkflowView() {
   const documentReviewState = useMemo((): DocumentReviewState | null => {
     const reviewData = (specJson as ExtendedSpecJson & { documentReview?: DocumentReviewState })?.documentReview;
     return reviewData || null;
+  }, [specJson]);
+
+  // gemini-document-review: Get scheme from spec.json documentReview
+  // Requirements: 4.1, 5.1
+  const documentReviewScheme = useMemo((): ReviewerScheme | undefined => {
+    return (specJson as ExtendedSpecJson & { documentReview?: { scheme?: ReviewerScheme } })?.documentReview?.scheme;
   }, [specJson]);
 
   // Get inspection state from spec.json (supports both new and legacy format)
@@ -335,6 +341,26 @@ export function WorkflowView() {
     });
   }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
+  // gemini-document-review: Handle scheme change
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+  const handleSchemeChange = useCallback(async (newScheme: ReviewerScheme) => {
+    if (!specDetail) return;
+
+    try {
+      // Update spec.json via IPC
+      await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
+        documentReview: {
+          ...specDetail.specJson.documentReview,
+          scheme: newScheme,
+        },
+      });
+      // Note: File watcher will automatically trigger UI update
+    } catch (error) {
+      console.error('Failed to update scheme:', error);
+      notify.error('schemeの更新に失敗しました');
+    }
+  }, [specDetail]);
+
   // ============================================================
   // Task 4: Inspection handlers (inspection-workflow-ui feature)
   // Requirements: 3.1, 3.2, 3.3, 4.2, 4.3
@@ -424,24 +450,24 @@ export function WorkflowView() {
   }, [phaseStatuses.tasks, runningPhases.size]);
 
   // ============================================================
-  // worktree-execution-ui FIX-1: ImplFlowFrame integration
-  // Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.4, 8.1, 8.2, 8.3
+  // worktree-mode-spec-scoped: ImplFlowFrame integration
+  // Requirements: 3.1, 3.2, 3.3 (worktree-mode-spec-scoped)
+  // worktree-execution-ui FIX-1: Original implementation
   // ============================================================
 
-  // Get worktree mode selection from workflowStore
-  const worktreeModeSelection = workflowStore.worktreeModeSelection;
-
+  // worktree-mode-spec-scoped Task 3.1: Read worktree mode from spec.json.worktree.enabled
   // Determine if worktree mode is selected
-  // - If 'worktree' explicitly selected, use worktree mode
   // - If existing worktree (path exists), auto-select worktree mode
+  // - Otherwise, use spec.json.worktree.enabled value
   const isWorktreeModeSelected = useMemo(() => {
     // If actual worktree exists (with path), always consider it worktree mode
     if (hasWorktreePath({ worktree: specJson?.worktree })) {
       return true;
     }
-    // Otherwise, use the user's selection
-    return worktreeModeSelection === 'worktree';
-  }, [specJson?.worktree, worktreeModeSelection]);
+    // worktree-mode-spec-scoped: Use spec.json.worktree.enabled instead of workflowStore
+    const worktree = specJson?.worktree as WorktreeConfig | undefined;
+    return worktree?.enabled === true;
+  }, [specJson?.worktree]);
 
   // Check if impl has started (for checkbox locking)
   const hasImplStarted = useMemo(() => {
@@ -454,10 +480,23 @@ export function WorkflowView() {
   }, [specJson?.worktree]);
 
   // Handler for worktree mode checkbox change
-  // FIX-1: Connect checkbox to workflowStore.worktreeModeSelection
-  const handleWorktreeModeChange = useCallback((enabled: boolean) => {
-    workflowStore.setWorktreeModeSelection(enabled ? 'worktree' : 'normal');
-  }, [workflowStore]);
+  // worktree-mode-spec-scoped Task 3.2: Persist to spec.json.worktree.enabled via updateSpecJson
+  const handleWorktreeModeChange = useCallback(async (enabled: boolean) => {
+    if (!specDetail) return;
+
+    try {
+      await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
+        worktree: {
+          // Preserve existing worktree fields if any, update enabled
+          ...(specJson?.worktree || {}),
+          enabled,
+        },
+      });
+    } catch (error) {
+      console.error('[WorkflowView] Failed to update worktree.enabled:', error);
+      notify.error('Worktreeモード設定の保存に失敗しました');
+    }
+  }, [specDetail, specJson?.worktree]);
 
   // FIX-2: Handler for impl execution based on worktree mode
   // execute-method-unification: Task 5.3 - Use unified execute API
@@ -626,6 +665,8 @@ export function WorkflowView() {
             onExecuteReply={handleExecuteDocumentReviewReply}
             onApplyFix={handleApplyDocumentReviewFix}
             onAutoExecutionFlagChange={workflowStore.setDocumentReviewAutoExecutionFlag}
+            scheme={documentReviewScheme}
+            onSchemeChange={handleSchemeChange}
             launching={launching}
           />
         </div>

@@ -17,7 +17,6 @@ import { clsx } from 'clsx';
 import { PhaseItem } from '@shared/components/workflow/PhaseItem';
 import { AutoExecutionStatusDisplay } from '@shared/components/execution/AutoExecutionStatusDisplay';
 import { Spinner } from '@shared/components/ui/Spinner';
-import { SchemeSelector, type ReviewerScheme } from '@shared/components/review/SchemeSelector';
 import type {
   ApiClient,
   SpecMetadata,
@@ -26,7 +25,6 @@ import type {
   AgentInfo,
   Phase,
   AutoExecutionOptions,
-  SpecJson,
 } from '@shared/api/types';
 import type { AutoExecutionStatus } from '@shared/types';
 import { hasWorktreePath } from '@renderer/types/worktree';
@@ -140,9 +138,6 @@ export function SpecDetailView({
   const [autoExecutionRetryCount, setAutoExecutionRetryCount] = useState(0);
   // Note: autoExecutionFailedPhase tracked for error recovery scenarios
   const [autoExecutionFailedPhase] = useState<WorkflowPhase | null>(null);
-  // gemini-document-review: Optimistic scheme state for immediate UI feedback
-  const [optimisticScheme, setOptimisticScheme] = useState<ReviewerScheme | undefined>(undefined);
-  const [isSavingScheme, setIsSavingScheme] = useState(false);
 
   // Load spec detail on mount or spec change
   useEffect(() => {
@@ -154,8 +149,6 @@ export function SpecDetailView({
 
       if (result.ok) {
         setSpecDetail(result.value);
-        // Initialize optimistic scheme from loaded data
-        setOptimisticScheme(result.value.specJson?.documentReview?.scheme);
       } else {
         setError(result.error.message);
       }
@@ -276,58 +269,6 @@ export function SpecDetailView({
     await handleStartAutoExecution();
   }, [handleStartAutoExecution]);
 
-  // gemini-document-review Task 10.2: Handle scheme change
-  // Requirements: 7.2, 7.3, 7.4
-  const handleSchemeChange = useCallback(
-    async (newScheme: ReviewerScheme) => {
-      if (!specDetail) return;
-
-      const previousScheme = optimisticScheme;
-
-      // Optimistic update
-      setOptimisticScheme(newScheme);
-      setIsSavingScheme(true);
-
-      try {
-        // Build spec.json path from spec.path
-        const specJsonPath = `${spec.path}/spec.json`;
-
-        // Create updated spec.json content
-        const updatedSpecJson: SpecJson = {
-          ...specDetail.specJson,
-          documentReview: {
-            ...specDetail.specJson.documentReview,
-            status: specDetail.specJson.documentReview?.status ?? 'pending',
-            scheme: newScheme,
-          },
-        };
-
-        // Save via API
-        const result = await apiClient.saveFile(specJsonPath, JSON.stringify(updatedSpecJson, null, 2));
-
-        if (!result.ok) {
-          // Rollback on error
-          setOptimisticScheme(previousScheme);
-          console.error('Failed to save scheme:', result.error);
-        } else {
-          // Reload spec detail to sync with server state
-          const detailResult = await apiClient.getSpecDetail(spec.name);
-          if (detailResult.ok) {
-            setSpecDetail(detailResult.value);
-            setOptimisticScheme(detailResult.value.specJson?.documentReview?.scheme);
-          }
-        }
-      } catch (err) {
-        // Rollback on error
-        setOptimisticScheme(previousScheme);
-        console.error('Error saving scheme:', err);
-      } finally {
-        setIsSavingScheme(false);
-      }
-    },
-    [apiClient, spec.path, spec.name, specDetail, optimisticScheme]
-  );
-
   // Render loading state
   if (isLoading) {
     return (
@@ -385,14 +326,6 @@ export function SpecDetailView({
             >
               {specDetail.specJson?.phase || 'initialized'}
             </span>
-            {/* gemini-document-review Task 10.1: Scheme Selector */}
-            {/* Requirements: 7.1, 7.2, 7.3, 7.4 */}
-            <SchemeSelector
-              scheme={optimisticScheme}
-              onChange={handleSchemeChange}
-              disabled={isSavingScheme || autoExecutionStatus === 'running'}
-              className="ml-2"
-            />
           </div>
           {/* remote-ui-vanilla-removal: Next action button for E2E */}
           {/* Note: Keep auto-execution-button for existing unit tests, add remote-spec-next-action for E2E */}
@@ -477,11 +410,13 @@ export default SpecDetailView;
 // =============================================================================
 
 // worktree-execution-ui: path is now optional for normal mode support
+// worktree-mode-spec-scoped: branch and created_at are now optional
 interface WorktreeSectionProps {
   worktree: {
     path?: string;
-    branch: string;
-    created_at: string;
+    branch?: string;
+    created_at?: string;
+    enabled?: boolean;
   };
 }
 
@@ -521,25 +456,29 @@ function WorktreeSection({ worktree }: WorktreeSectionProps) {
           </div>
         </div>
         {/* Branch */}
-        <div className="flex items-start gap-2 text-sm">
-          <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
-            <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
-              {worktree.branch}
-            </span>
+        {worktree.branch && (
+          <div className="flex items-start gap-2 text-sm">
+            <GitBranch className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">ブランチ:</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300 font-mono">
+                {worktree.branch}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
         {/* Created At */}
-        <div className="flex items-start gap-2 text-sm">
-          <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
-            <span className="ml-2 text-gray-700 dark:text-gray-300">
-              {formatDate(worktree.created_at)}
-            </span>
+        {worktree.created_at && (
+          <div className="flex items-start gap-2 text-sm">
+            <Calendar className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">作成日時:</span>
+              <span className="ml-2 text-gray-700 dark:text-gray-300">
+                {formatDate(worktree.created_at)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 # Kiro runtime and logs
 .kiro/runtime
+.kiro/logs
 .kiro/specs/*/logs
 # worktree-internal-path: worktreeディレクトリ除外（git管理対象外）
 .kiro/worktrees/

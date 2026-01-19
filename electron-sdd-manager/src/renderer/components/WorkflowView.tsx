@@ -27,6 +27,7 @@ import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
 import { useAutoExecution } from '../hooks/useAutoExecution';
+import { useConvertToWorktree } from '../hooks/useConvertToWorktree';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 // debatex-document-review Inspection Fix 7.1: Import getResolvedScheme for SSOT
 import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
@@ -59,6 +60,9 @@ export function WorkflowView() {
 
   // Auto Execution Hook (Main Process IPC)
   const autoExecution = useAutoExecution();
+
+  // convert-spec-to-worktree: Task 3.3 - Convert to Worktree Hook
+  const { isOnMain, isConverting, handleConvert: handleConvertToWorktree } = useConvertToWorktree();
 
   // agent-launch-optimistic-ui: Optimistic UI state management
   // Provides immediate visual feedback when buttons are clicked
@@ -685,10 +689,15 @@ export function WorkflowView() {
 
       {/* Specワークフローフッター */}
       {/* Task 5.1: Use isAutoExecuting from specStore */}
+      {/* convert-spec-to-worktree: Task 3.3 - Pass convert to worktree props */}
       <SpecWorkflowFooter
         isAutoExecuting={isAutoExecuting}
         hasRunningAgents={runningPhases.size > 0}
         onAutoExecution={handleAutoExecution}
+        isOnMain={isOnMain}
+        specJson={specJson}
+        onConvertToWorktree={handleConvertToWorktree}
+        isConverting={isConverting}
       />
     </div>
   );

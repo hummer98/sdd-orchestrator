@@ -1170,6 +1170,62 @@ export interface ElectronAPI {
   onBugAutoExecutionExecutePhase(callback: (data: { bugPath: string; phase: string; bugName: string }) => void): () => void;
 
   // ============================================================
+  // Convert Spec to Worktree (convert-spec-to-worktree feature)
+  // Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3
+  // ============================================================
+
+  /**
+   * Check if a spec can be converted to worktree mode
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @returns Result with true if convertible, error otherwise
+   */
+  convertCheck(
+    projectPath: string,
+    specPath: string
+  ): Promise<{
+    ok: true;
+    value: boolean;
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      currentBranch?: string;
+      specPath?: string;
+      message?: string;
+    };
+  }>;
+
+  /**
+   * Convert a normal spec to worktree mode
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @param featureName Feature name for branch naming
+   * @returns Result with WorktreeInfo on success
+   */
+  convertToWorktree(
+    projectPath: string,
+    specPath: string,
+    featureName: string
+  ): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      currentBranch?: string;
+      specPath?: string;
+      message?: string;
+    };
+  }>;
+
+  // ============================================================
   // impl-start-unification: Unified impl start IPC
   // Requirements: 4.2, 4.4
   // ============================================================

@@ -1,0 +1,55 @@
+{
+  "feature_name": "convert-spec-to-worktree",
+  "created_at": "2026-01-19T13:17:42Z",
+  "updated_at": "2026-01-19T17:25:16Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": false,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": true,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "inspectionFlag": "run"
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-19T17:18:55Z"
+      }
+    ]
+  }
+}

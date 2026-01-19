@@ -301,6 +301,11 @@ export const IPC_CHANNELS = {
   // impl-start-unification: Unified impl start
   // Requirements: 4.2, 4.4
   START_IMPL: 'ipc:start-impl',
+
+  // Convert Spec to Worktree (convert-spec-to-worktree feature)
+  // Requirements: 3.1, 3.2, 3.3
+  CONVERT_CHECK: 'convert-worktree:check',
+  CONVERT_TO_WORKTREE: 'convert-worktree:execute',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

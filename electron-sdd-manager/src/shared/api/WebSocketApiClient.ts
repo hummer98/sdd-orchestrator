@@ -572,4 +572,58 @@ export class WebSocketApiClient implements ApiClient {
       callback(data as AutoExecutionStatusEvent);
     });
   }
+
+  // ===========================================================================
+  // Worktree Operations (convert-spec-to-worktree feature)
+  // Requirements: 4.1, 4.2, 4.3
+  // ===========================================================================
+
+  async convertToWorktree(specId: string, featureName: string): Promise<Result<{
+    path: string;
+    absolutePath: string;
+    branch: string;
+    created_at: string;
+  }, ApiError>> {
+    interface ConvertResponse {
+      type: string;
+      payload?: {
+        code?: string;
+        message?: string;
+        worktreeInfo?: {
+          path: string;
+          absolutePath: string;
+          branch: string;
+          created_at: string;
+        };
+      };
+    }
+
+    const response = await this.sendRequest<ConvertResponse>('CONVERT_TO_WORKTREE', {
+      specId,
+      featureName,
+    });
+
+    if (response.type === 'ERROR') {
+      const error = response.payload as { code: string; message: string };
+      return {
+        ok: false,
+        error: {
+          type: error.code || 'CONVERT_ERROR',
+          message: error.message || 'Failed to convert to worktree',
+        },
+      };
+    }
+
+    const worktreeInfo = response.payload?.worktreeInfo;
+    if (!worktreeInfo) {
+      return {
+        ok: false,
+        error: {
+          type: 'INVALID_RESPONSE',
+          message: 'Invalid response from server',
+        },
+      };
+    }
+    return { ok: true, value: worktreeInfo };
+  }
 }

@@ -4,6 +4,7 @@
  * Task 13.2: Spec詳細・Phase実行UIを実装する
  * git-worktree-support: Task 13.2 - worktree information display (Requirements: 4.1, 4.2)
  * gemini-document-review: Task 10.1, 10.2 - scheme tag and selector (Requirements: 7.1, 7.2, 7.3, 7.4)
+ * convert-spec-to-worktree: Task 4.3 - Remote UI Worktree conversion button (Requirements: 4.1, 4.2, 4.3)
  *
  * Spec詳細表示とPhase実行UI。PhaseItemを使用したワークフロー表示。
  * Phase実行ボタン、自動実行ボタンを提供。
@@ -27,7 +28,7 @@ import type {
   AutoExecutionOptions,
 } from '@shared/api/types';
 import type { AutoExecutionStatus } from '@shared/types';
-import { hasWorktreePath } from '@renderer/types/worktree';
+import { hasWorktreePath, isImplStarted } from '@renderer/types/worktree';
 
 // =============================================================================
 // Types
@@ -110,6 +111,39 @@ function canExecutePhase(specDetail: SpecDetail, phase: WorkflowPhase): boolean 
   return previousStatus === 'approved';
 }
 
+/**
+ * Check if "Convert to Worktree" button should be shown
+ * convert-spec-to-worktree: Task 4.3 - Remote UI display condition
+ * Requirements: 4.1
+ *
+ * Shows button when:
+ * - Implementation not started (no worktree.branch)
+ * - Not in worktree mode (no worktree.path)
+ *
+ * Note: Unlike Electron version, Remote UI doesn't check isOnMain
+ * because main branch check is done server-side during conversion
+ *
+ * @param specDetail - SpecDetail to check worktree state
+ * @returns true if button should be shown
+ */
+function canShowConvertButton(specDetail: SpecDetail | null): boolean {
+  if (!specDetail?.specJson) {
+    return false;
+  }
+
+  // Check if already in worktree mode (has path)
+  if (hasWorktreePath(specDetail.specJson)) {
+    return false;
+  }
+
+  // Check if impl already started (has branch)
+  if (isImplStarted(specDetail.specJson)) {
+    return false;
+  }
+
+  return true;
+}
+
 function getAutoExecutionPermitted(specDetail: SpecDetail, phase: WorkflowPhase): boolean {
   const permissions = specDetail.specJson?.autoExecution?.permissions;
   if (!permissions) return false;
@@ -138,6 +172,11 @@ export function SpecDetailView({
   const [autoExecutionRetryCount, setAutoExecutionRetryCount] = useState(0);
   // Note: autoExecutionFailedPhase tracked for error recovery scenarios
   const [autoExecutionFailedPhase] = useState<WorkflowPhase | null>(null);
+
+  // convert-spec-to-worktree: Task 4.3 - conversion state
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
+  const [convertSuccess, setConvertSuccess] = useState(false);
 
   // Load spec detail on mount or spec change
   useEffect(() => {
@@ -269,6 +308,38 @@ export function SpecDetailView({
     await handleStartAutoExecution();
   }, [handleStartAutoExecution]);
 
+  // convert-spec-to-worktree: Task 4.3 - Handle conversion to worktree
+  const handleConvertToWorktree = useCallback(async () => {
+    if (!specDetail) return;
+
+    // Check if apiClient supports convertToWorktree
+    if (!apiClient.convertToWorktree) {
+      setConvertError('変換機能はこのバージョンではサポートされていません');
+      return;
+    }
+
+    setIsConverting(true);
+    setConvertError(null);
+    setConvertSuccess(false);
+
+    const result = await apiClient.convertToWorktree(spec.name, specDetail.metadata.name);
+
+    setIsConverting(false);
+
+    if (result.ok) {
+      setConvertSuccess(true);
+      // Reload spec detail to get updated state
+      const detailResult = await apiClient.getSpecDetail(spec.name);
+      if (detailResult.ok) {
+        setSpecDetail(detailResult.value);
+      }
+      // Clear success message after 3 seconds
+      setTimeout(() => setConvertSuccess(false), 3000);
+    } else {
+      setConvertError(result.error.message);
+    }
+  }, [apiClient, spec.name, specDetail]);
+
   // Render loading state
   if (isLoading) {
     return (
@@ -329,22 +400,66 @@ export function SpecDetailView({
           </div>
           {/* remote-ui-vanilla-removal: Next action button for E2E */}
           {/* Note: Keep auto-execution-button for existing unit tests, add remote-spec-next-action for E2E */}
-          <button
-            data-testid="auto-execution-button"
-            onClick={handleStartAutoExecution}
-            disabled={autoExecutionStatus === 'running' || autoExecutionStatus === 'paused'}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-              'bg-blue-500 text-white hover:bg-blue-600',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-              'transition-colors'
+          <div className="flex items-center gap-2">
+            {/* convert-spec-to-worktree: Task 4.3 - Convert button */}
+            {canShowConvertButton(specDetail) && (
+              <button
+                data-testid="convert-to-worktree-button"
+                onClick={handleConvertToWorktree}
+                disabled={isConverting || autoExecutionStatus !== 'idle' || executingPhase !== null}
+                className={clsx(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+                  'bg-emerald-500 text-white hover:bg-emerald-600',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'transition-colors'
+                )}
+                title="通常モードからWorktreeモードに変換"
+              >
+                <GitBranch className="w-4 h-4" />
+                {isConverting ? '変換中...' : 'Worktreeに変更'}
+              </button>
             )}
-          >
-            <Play className="w-4 h-4" />
-            Auto Execute All
-          </button>
+            <button
+              data-testid="auto-execution-button"
+              onClick={handleStartAutoExecution}
+              disabled={autoExecutionStatus === 'running' || autoExecutionStatus === 'paused'}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+                'bg-blue-500 text-white hover:bg-blue-600',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'transition-colors'
+              )}
+            >
+              <Play className="w-4 h-4" />
+              Auto Execute All
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* convert-spec-to-worktree: Task 4.3 - Success/Error messages */}
+      {convertSuccess && (
+        <div className="flex-shrink-0 mx-4 mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+          <p className="text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+            <GitBranch className="w-4 h-4" />
+            Worktreeモードへの変換が完了しました
+          </p>
+        </div>
+      )}
+      {convertError && (
+        <div className="flex-shrink-0 mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {convertError}
+          </p>
+          <button
+            onClick={() => setConvertError(null)}
+            className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
 
       {/* Auto Execution Status */}
       {autoExecutionStatus !== 'idle' && (

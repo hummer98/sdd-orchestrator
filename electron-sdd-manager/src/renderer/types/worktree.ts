@@ -36,6 +36,9 @@ export interface WorktreeConfig {
 /**
  * Worktree error types for WorktreeService operations
  * Requirements: 1.6 (error handling for worktree creation)
+ * convert-spec-to-worktree: Added SPEC_NOT_FOUND, ALREADY_WORKTREE_MODE, IMPL_ALREADY_STARTED,
+ *                           WORKTREE_CREATE_FAILED, FILE_MOVE_FAILED, SYMLINK_CREATE_FAILED,
+ *                           SPEC_JSON_UPDATE_FAILED (Requirements: 5.1-5.6)
  */
 export type WorktreeError =
   | { type: 'NOT_ON_MAIN_BRANCH'; currentBranch: string }
@@ -44,7 +47,15 @@ export type WorktreeError =
   | { type: 'GIT_ERROR'; message: string }
   | { type: 'PATH_NOT_FOUND'; path: string }
   | { type: 'PATH_VALIDATION_ERROR'; path: string; reason: string }
-  | { type: 'INVALID_FEATURE_NAME'; featureName: string; reason: string };
+  | { type: 'INVALID_FEATURE_NAME'; featureName: string; reason: string }
+  // convert-spec-to-worktree: Additional error types for spec conversion
+  | { type: 'SPEC_NOT_FOUND'; specPath: string }
+  | { type: 'ALREADY_WORKTREE_MODE'; specPath: string }
+  | { type: 'IMPL_ALREADY_STARTED'; specPath: string }
+  | { type: 'WORKTREE_CREATE_FAILED'; message: string }
+  | { type: 'FILE_MOVE_FAILED'; message: string }
+  | { type: 'SYMLINK_CREATE_FAILED'; message: string }
+  | { type: 'SPEC_JSON_UPDATE_FAILED'; message: string };
 
 /**
  * Worktree info returned from WorktreeService.createWorktree

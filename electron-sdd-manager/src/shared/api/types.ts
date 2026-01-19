@@ -402,6 +402,25 @@ export interface ApiClient {
    * @returns ProfileConfig or null if not installed
    */
   getProfile?(): Promise<Result<{ name: string; installedAt: string } | null, ApiError>>;
+
+  // ===========================================================================
+  // Worktree Operations (convert-spec-to-worktree feature)
+  // Requirements: 4.1, 4.2, 4.3
+  // ===========================================================================
+
+  /**
+   * Convert a normal spec to worktree mode
+   * Optional: Only implemented for Remote UI (WebSocket client)
+   * @param specId - Spec identifier (feature name)
+   * @param featureName - Feature name for branch naming
+   * @returns WorktreeInfo with path, branch, and creation timestamp
+   */
+  convertToWorktree?(specId: string, featureName: string): Promise<Result<{
+    path: string;
+    absolutePath: string;
+    branch: string;
+    created_at: string;
+  }, ApiError>>;
 }
 
 // =============================================================================

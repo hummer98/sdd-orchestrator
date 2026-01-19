@@ -742,6 +742,10 @@ export class WebSocketHandler {
       case 'GENERATE_RELEASE_MD':
         await this.handleGenerateReleaseMd(client, message);
         break;
+      // Convert to Worktree handler (convert-spec-to-worktree feature)
+      case 'CONVERT_TO_WORKTREE':
+        await this.handleConvertToWorktree(client, message);
+        break;
       default:
         this.send(client.id, {
           type: 'ERROR',
@@ -2629,5 +2633,89 @@ export class WebSocketHandler {
       requestId: message.requestId,
       timestamp: Date.now(),
     });
+  }
+
+  /**
+   * Handle CONVERT_TO_WORKTREE message
+   * Converts a normal spec to worktree mode
+   * Requirements: 4.1-4.3 (convert-spec-to-worktree)
+   */
+  private async handleConvertToWorktree(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { specId?: string; specPath?: string; featureName?: string } | undefined;
+    const specId = payload?.specId;
+    const specPath = payload?.specPath;
+    const featureName = payload?.featureName;
+
+    if (!specId || !featureName) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'specId and featureName are required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const projectPath = this.stateProvider?.getProjectPath();
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project path set' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const resolvedSpecPath = specPath || `${projectPath}/.kiro/specs/${specId}`;
+
+    try {
+      // Use the ConvertWorktreeService via WorktreeService
+      const { WorktreeService } = await import('./worktreeService');
+      const { FileService } = await import('./fileService');
+      const { ConvertWorktreeService, getConvertErrorMessage } = await import('./convertWorktreeService');
+
+      const worktreeService = new WorktreeService(projectPath);
+      const fileService = new FileService();
+      const convertService = new ConvertWorktreeService(worktreeService, fileService);
+
+      const result = await convertService.convertToWorktree(projectPath, resolvedSpecPath, featureName);
+
+      if (!result.ok) {
+        // Use getConvertErrorMessage to get a human-readable error message
+        const errorMessage = getConvertErrorMessage(result.error);
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: {
+            code: 'CONVERT_FAILED',
+            message: errorMessage,
+          },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
+      this.send(client.id, {
+        type: 'CONVERT_TO_WORKTREE_RESULT',
+        payload: { worktreeInfo: result.value },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+
+      // Broadcast spec updated to refresh the spec detail on clients
+      this.broadcastSpecUpdated(specId, { worktree: result.value });
+    } catch (error) {
+      console.error('[WebSocketHandler] Convert to worktree failed', {
+        specId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'CONVERT_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
   }
 }

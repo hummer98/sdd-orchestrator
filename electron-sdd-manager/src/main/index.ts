@@ -12,6 +12,7 @@ import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccess
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
 import { registerBugWorktreeHandlers } from './ipc/bugWorktreeHandlers';
+import { registerConvertWorktreeHandlers } from './ipc/convertWorktreeHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
@@ -198,6 +199,9 @@ app.whenReady().then(async () => {
 
   // Register Bug Worktree handlers (bugs-worktree-support feature)
   registerBugWorktreeHandlers();
+
+  // Register Convert Worktree handlers (convert-spec-to-worktree feature)
+  registerConvertWorktreeHandlers();
 
   // Create application menu
   createMenu();

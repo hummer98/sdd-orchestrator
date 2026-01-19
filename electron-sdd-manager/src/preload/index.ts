@@ -1602,6 +1602,64 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.NORMAL_MODE_IMPL_START, projectPath, specPath),
 
   // ============================================================
+  // Convert Spec to Worktree (convert-spec-to-worktree feature)
+  // Requirements: 3.1, 3.2, 3.3
+  // ============================================================
+
+  /**
+   * Check if a spec can be converted to worktree mode
+   * Validates: on main branch, spec exists, impl not started, not already worktree mode
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @returns Result with true if convertible, error otherwise
+   */
+  convertCheck: (
+    projectPath: string,
+    specPath: string
+  ): Promise<{
+    ok: true;
+    value: boolean;
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      currentBranch?: string;
+      specPath?: string;
+      message?: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CONVERT_CHECK, projectPath, specPath),
+
+  /**
+   * Convert a normal spec to worktree mode
+   * Creates worktree, moves spec files, creates symlinks, updates spec.json
+   * @param projectPath Project root path
+   * @param specPath Spec directory path
+   * @param featureName Feature name
+   * @returns Result with WorktreeInfo on success
+   */
+  convertToWorktree: (
+    projectPath: string,
+    specPath: string,
+    featureName: string
+  ): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error: {
+      type: string;
+      message?: string;
+    };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CONVERT_TO_WORKTREE, projectPath, specPath, featureName),
+
+  // ============================================================
   // Bug Worktree Support (bugs-worktree-support feature)
   // Requirements: 3.1, 3.3, 4.6, 8.5, 12.1-12.4
   // ============================================================

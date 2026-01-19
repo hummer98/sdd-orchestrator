@@ -15,6 +15,11 @@ export interface SpecWatcherServiceDeps {
   syncService: SpecSyncService;
   getSelectedSpec: () => SpecMetadata | null;
   updateSpecMetadata: (specId: string) => Promise<void>;
+  /**
+   * spec-worktree-early-creation: Callback to reload spec list
+   * Called on addDir/unlinkDir events (new spec added or spec deleted)
+   */
+  reloadSpecs: () => Promise<void>;
 }
 
 /**
@@ -92,6 +97,7 @@ export class SpecWatcherService {
   /**
    * Handle specs changed event
    * Routes to appropriate sync method based on file type
+   * spec-worktree-early-creation: Also handles addDir/unlinkDir for spec list updates
    */
   private handleSpecsChanged(event: SpecsChangeEvent): void {
     if (!this.deps) {
@@ -99,6 +105,17 @@ export class SpecWatcherService {
     }
 
     console.log('[specWatcherService] Specs changed:', event);
+
+    // spec-worktree-early-creation: Handle spec directory add/remove events
+    // These events indicate a new spec was created or an existing spec was deleted
+    // Reload the entire spec list to reflect the change
+    if (event.type === 'addDir' || event.type === 'unlinkDir') {
+      console.log('[specWatcherService] Spec directory added/removed, reloading specs:', event.type, event.specId);
+      this.deps.reloadSpecs().catch((error) => {
+        console.error('[specWatcherService] Failed to reload specs:', error);
+      });
+      return;
+    }
 
     // Ignore events without specId
     if (!event.specId) {

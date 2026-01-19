@@ -106,40 +106,76 @@ export class FileService {
    * Read all specs from a project
    * spec-metadata-ssot-refactor: Returns only name and path (SSOT principle)
    * phase, updatedAt, approvals should be obtained from specJson
+   * spec-worktree-early-creation: Also reads specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
    */
   async readSpecs(projectPath: string): Promise<Result<SpecMetadata[], FileError>> {
     try {
       const specsPath = join(projectPath, '.kiro', 'specs');
+      const specs: SpecMetadata[] = [];
+      const seenSpecNames = new Set<string>();
 
-      // Check if specs directory exists
+      // 1. Read main specs from .kiro/specs/
       try {
         await access(specsPath);
+        const entries = await readdir(specsPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          const specPath = join(specsPath, entry.name);
+          const specJsonPath = join(specPath, 'spec.json');
+
+          try {
+            // Only check if spec.json exists (no need to read content for metadata)
+            await access(specJsonPath);
+
+            // spec-metadata-ssot-refactor: Return only name and path
+            specs.push({
+              name: entry.name,
+              path: specPath,
+            });
+            seenSpecNames.add(entry.name);
+          } catch {
+            // Skip specs without valid spec.json
+            continue;
+          }
+        }
       } catch {
-        return { ok: true, value: [] };
+        // Main specs directory doesn't exist, continue to check worktrees
       }
 
-      const entries = await readdir(specsPath, { withFileTypes: true });
-      const specs: SpecMetadata[] = [];
+      // 2. spec-worktree-early-creation: Read worktree specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
+      const worktreeSpecsBasePath = join(projectPath, '.kiro', 'worktrees', 'specs');
+      try {
+        await access(worktreeSpecsBasePath);
+        const worktreeDirs = await readdir(worktreeSpecsBasePath, { withFileTypes: true });
 
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
+        for (const worktreeDir of worktreeDirs) {
+          if (!worktreeDir.isDirectory()) continue;
 
-        const specPath = join(specsPath, entry.name);
-        const specJsonPath = join(specPath, 'spec.json');
+          const specId = worktreeDir.name;
+          // Skip if already found in main specs (main spec takes priority)
+          if (seenSpecNames.has(specId)) continue;
 
-        try {
-          // Only check if spec.json exists (no need to read content for metadata)
-          await access(specJsonPath);
+          // Worktree spec path: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
+          const worktreeSpecPath = join(worktreeSpecsBasePath, specId, '.kiro', 'specs', specId);
+          const worktreeSpecJsonPath = join(worktreeSpecPath, 'spec.json');
 
-          // spec-metadata-ssot-refactor: Return only name and path
-          specs.push({
-            name: entry.name,
-            path: specPath,
-          });
-        } catch {
-          // Skip specs without valid spec.json
-          continue;
+          try {
+            await access(worktreeSpecJsonPath);
+
+            specs.push({
+              name: specId,
+              path: worktreeSpecPath,
+            });
+            seenSpecNames.add(specId);
+          } catch {
+            // Skip worktrees without valid spec.json in the expected location
+            continue;
+          }
         }
+      } catch {
+        // Worktree specs directory doesn't exist, that's OK
       }
 
       return { ok: true, value: specs };

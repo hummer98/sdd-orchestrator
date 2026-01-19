@@ -187,6 +187,40 @@ export function initSpecStoreFacade(): void {
         await useSpecListStore.getState().updateSpecMetadata(specId, projectPath);
       }
     },
+    // spec-worktree-early-creation: Reload spec list when directory is added/removed
+    reloadSpecs: async () => {
+      // Dynamic import to avoid circular dependency
+      const { useProjectStore } = await import('../projectStore');
+      const projectPath = useProjectStore.getState().currentProject;
+      if (!projectPath) {
+        console.warn('[specStoreFacade] reloadSpecs: No project path');
+        return;
+      }
+
+      try {
+        // Fetch updated specs list from main process
+        const specs = await window.electronAPI.readSpecs(projectPath);
+        useSpecListStore.getState().setSpecs(specs);
+
+        // Also update specJsonMap for each spec
+        const specJsonMap: Record<string, SpecJson> = {};
+        for (const spec of specs) {
+          try {
+            const specJson = await window.electronAPI.readSpecJson(spec.path);
+            if (specJson) {
+              specJsonMap[spec.name] = specJson;
+            }
+          } catch {
+            // Skip specs with invalid specJson
+          }
+        }
+        useSpecListStore.getState().setSpecJsonMap(specJsonMap);
+
+        console.log('[specStoreFacade] reloadSpecs: Reloaded', specs.length, 'specs');
+      } catch (error) {
+        console.error('[specStoreFacade] reloadSpecs failed:', error);
+      }
+    },
   });
 
   isInitialized = true;

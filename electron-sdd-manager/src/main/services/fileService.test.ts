@@ -368,3 +368,155 @@ describe('FileService - updateSpecJsonFromPhase', () => {
     });
   });
 });
+
+// spec-worktree-early-creation: Tests for readSpecs with worktree support
+describe('FileService - readSpecs (worktree support)', () => {
+  let fileService: FileService;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'readspecs-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * Helper to create a spec
+   */
+  async function createSpec(specPath: string): Promise<void> {
+    await fs.mkdir(specPath, { recursive: true });
+    await fs.writeFile(
+      path.join(specPath, 'spec.json'),
+      JSON.stringify({ feature_name: path.basename(specPath), phase: 'initialized' }, null, 2),
+      'utf-8'
+    );
+  }
+
+  it('should read specs from main .kiro/specs directory', async () => {
+    const mainSpecPath = path.join(tempDir, '.kiro', 'specs', 'main-feature');
+    await createSpec(mainSpecPath);
+
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe('main-feature');
+      expect(result.value[0].path).toBe(mainSpecPath);
+    }
+  });
+
+  it('should read specs from worktree directory', async () => {
+    const worktreeSpecPath = path.join(
+      tempDir,
+      '.kiro',
+      'worktrees',
+      'specs',
+      'worktree-feature',
+      '.kiro',
+      'specs',
+      'worktree-feature'
+    );
+    await createSpec(worktreeSpecPath);
+
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe('worktree-feature');
+      expect(result.value[0].path).toBe(worktreeSpecPath);
+    }
+  });
+
+  it('should read both main and worktree specs', async () => {
+    // Create main spec
+    const mainSpecPath = path.join(tempDir, '.kiro', 'specs', 'main-feature');
+    await createSpec(mainSpecPath);
+
+    // Create worktree spec
+    const worktreeSpecPath = path.join(
+      tempDir,
+      '.kiro',
+      'worktrees',
+      'specs',
+      'worktree-feature',
+      '.kiro',
+      'specs',
+      'worktree-feature'
+    );
+    await createSpec(worktreeSpecPath);
+
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(2);
+      const names = result.value.map((s) => s.name);
+      expect(names).toContain('main-feature');
+      expect(names).toContain('worktree-feature');
+    }
+  });
+
+  it('should prioritize main spec over worktree spec with same name', async () => {
+    const specName = 'duplicate-feature';
+
+    // Create main spec
+    const mainSpecPath = path.join(tempDir, '.kiro', 'specs', specName);
+    await createSpec(mainSpecPath);
+
+    // Create worktree spec with same name
+    const worktreeSpecPath = path.join(
+      tempDir,
+      '.kiro',
+      'worktrees',
+      'specs',
+      specName,
+      '.kiro',
+      'specs',
+      specName
+    );
+    await createSpec(worktreeSpecPath);
+
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Should only have one spec (main takes priority)
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe(specName);
+      // Path should be the main spec path, not worktree
+      expect(result.value[0].path).toBe(mainSpecPath);
+    }
+  });
+
+  it('should return empty array when no specs directory exists', async () => {
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(0);
+    }
+  });
+
+  it('should skip specs without spec.json', async () => {
+    // Create directory without spec.json
+    const invalidSpecPath = path.join(tempDir, '.kiro', 'specs', 'invalid-feature');
+    await fs.mkdir(invalidSpecPath, { recursive: true });
+
+    // Create valid spec
+    const validSpecPath = path.join(tempDir, '.kiro', 'specs', 'valid-feature');
+    await createSpec(validSpecPath);
+
+    const result = await fileService.readSpecs(tempDir);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe('valid-feature');
+    }
+  });
+});

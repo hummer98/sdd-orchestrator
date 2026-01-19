@@ -31,7 +31,8 @@ describe('SpecWatcherService', () => {
   };
   let mockGetSelectedSpec: ReturnType<typeof vi.fn>;
   let mockUpdateSpecMetadata: ReturnType<typeof vi.fn>;
-  let onSpecsChangedCallback: ((event: { specId: string; path: string }) => void) | null = null;
+  let mockReloadSpecs: ReturnType<typeof vi.fn>;
+  let onSpecsChangedCallback: ((event: { specId: string; path: string; type?: string }) => void) | null = null;
   let cleanupFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -44,6 +45,7 @@ describe('SpecWatcherService', () => {
     };
     mockGetSelectedSpec = vi.fn().mockReturnValue(mockSpec);
     mockUpdateSpecMetadata = vi.fn().mockResolvedValue(undefined);
+    mockReloadSpecs = vi.fn().mockResolvedValue(undefined);
     cleanupFn = vi.fn();
     onSpecsChangedCallback = null;
 
@@ -63,6 +65,7 @@ describe('SpecWatcherService', () => {
         syncService: mockSyncService as unknown as SpecSyncService,
         getSelectedSpec: mockGetSelectedSpec,
         updateSpecMetadata: mockUpdateSpecMetadata,
+        reloadSpecs: mockReloadSpecs,
       });
 
       expect(true).toBe(true);
@@ -81,6 +84,7 @@ describe('SpecWatcherService', () => {
         syncService: mockSyncService as unknown as SpecSyncService,
         getSelectedSpec: mockGetSelectedSpec,
         updateSpecMetadata: mockUpdateSpecMetadata,
+        reloadSpecs: mockReloadSpecs,
       });
     });
 
@@ -109,6 +113,7 @@ describe('SpecWatcherService', () => {
         syncService: mockSyncService as unknown as SpecSyncService,
         getSelectedSpec: mockGetSelectedSpec,
         updateSpecMetadata: mockUpdateSpecMetadata,
+        reloadSpecs: mockReloadSpecs,
       });
     });
 
@@ -135,6 +140,7 @@ describe('SpecWatcherService', () => {
         syncService: mockSyncService as unknown as SpecSyncService,
         getSelectedSpec: mockGetSelectedSpec,
         updateSpecMetadata: mockUpdateSpecMetadata,
+        reloadSpecs: mockReloadSpecs,
       });
       await service.startWatching();
     });
@@ -285,6 +291,49 @@ describe('SpecWatcherService', () => {
 
         expect(mockUpdateSpecMetadata).toHaveBeenCalledWith('feature-a');
         expect(mockSyncService.updateSpecJson).not.toHaveBeenCalled();
+      });
+    });
+
+    // spec-worktree-early-creation: Tests for addDir/unlinkDir events
+    describe('directory add/remove events', () => {
+      it('should call reloadSpecs on addDir event', async () => {
+        onSpecsChangedCallback?.({
+          specId: 'new-feature',
+          path: '/project/.kiro/specs/new-feature',
+          type: 'addDir',
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(mockReloadSpecs).toHaveBeenCalled();
+        expect(mockSyncService.updateSpecJson).not.toHaveBeenCalled();
+        expect(mockUpdateSpecMetadata).not.toHaveBeenCalled();
+      });
+
+      it('should call reloadSpecs on unlinkDir event', async () => {
+        onSpecsChangedCallback?.({
+          specId: 'deleted-feature',
+          path: '/project/.kiro/specs/deleted-feature',
+          type: 'unlinkDir',
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(mockReloadSpecs).toHaveBeenCalled();
+        expect(mockSyncService.updateSpecJson).not.toHaveBeenCalled();
+        expect(mockUpdateSpecMetadata).not.toHaveBeenCalled();
+      });
+
+      it('should not call reloadSpecs for other event types', async () => {
+        onSpecsChangedCallback?.({
+          specId: 'feature-a',
+          path: '/project/.kiro/specs/feature-a/spec.json',
+          type: 'change',
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(mockReloadSpecs).not.toHaveBeenCalled();
       });
     });
   });

@@ -186,12 +186,6 @@ At the **END** of tasks.md, generate a coverage matrix to ensure no criterion is
 | 7.1 | Specsタブ機能 | 13.1, 13.2 | Feature |
 | 7.2 | Bugsタブ機能 | 13.5, 13.6 | Feature |
 | 7.3 | Project Agentタブ | 13.7 | Feature |
-
-### Coverage Validation Checklist
-- [ ] Every criterion ID from requirements.md appears above
-- [ ] Tasks are leaf tasks (e.g., 13.1), not container tasks (e.g., 13)
-- [ ] User-facing criteria have at least one Feature task
-- [ ] No criterion is covered only by Infrastructure tasks
 ```
 
 ### Validation Rules for Coverage Matrix

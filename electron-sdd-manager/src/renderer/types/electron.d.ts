@@ -424,17 +424,18 @@ export interface ElectronAPI {
 
   // Agent Management (Task 27.1)
   // Requirements: 5.1-5.8
+  // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
   startAgent(
     specId: string,
     phase: string,
     command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string,
-    skipPermissions?: boolean
+    sessionId?: string
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
-  resumeAgent(agentId: string, prompt?: string, skipPermissions?: boolean): Promise<AgentInfo>;
+  // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+  resumeAgent(agentId: string, prompt?: string): Promise<AgentInfo>;
   deleteAgent(specId: string, agentId: string): Promise<void>;
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;

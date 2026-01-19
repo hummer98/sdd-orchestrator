@@ -14,6 +14,7 @@ import { BugsWatcherService } from './bugsWatcherService';
 import { FileService } from './fileService';
 import { getConfigStore } from './configStore';
 import { logger } from './logger';
+import { layoutConfigService } from './layoutConfigService';
 import type { WindowBounds } from '../../renderer/types';
 
 /**
@@ -414,7 +415,8 @@ export class WindowManager {
     // Create new services
     const fileService = new FileService();
     const services: PerWindowServices = {
-      specManagerService: new SpecManagerService(projectPath),
+      // skip-permissions-main-process: Inject layoutConfigService for skipPermissions auto-fetch
+      specManagerService: new SpecManagerService(projectPath, { layoutConfigService }),
       specsWatcherService: new SpecsWatcherService(projectPath, fileService),
       agentRecordWatcherService: new AgentRecordWatcherService(projectPath),
       bugsWatcherService: new BugsWatcherService(projectPath),

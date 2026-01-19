@@ -227,39 +227,20 @@ describe('useAgentStore', () => {
 
         await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
 
+        // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
         expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
           'spec-1',
           'requirements',
           'claude',
           ['-p'],
           undefined,
-          undefined,
-          false // skipPermissions default
+          undefined
         );
 
         const state = useAgentStore.getState();
         const specAgents = state.agents.get('spec-1');
         expect(specAgents).toHaveLength(1);
         expect(specAgents?.[0].agentId).toBe('agent-1');
-      });
-
-      it('should pass skipPermissions=true when enabled', async () => {
-        window.electronAPI.startAgent = vi.fn().mockResolvedValue(mockAgentInfo);
-
-        // Enable skipPermissions
-        useAgentStore.getState().setSkipPermissions(true);
-
-        await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
-
-        expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
-          'spec-1',
-          'requirements',
-          'claude',
-          ['-p'],
-          undefined,
-          undefined,
-          true // skipPermissions enabled
-        );
       });
 
       it('should add agent to existing spec agents', async () => {
@@ -312,7 +293,7 @@ describe('useAgentStore', () => {
       it('should call API and update agent in state', async () => {
         const agents = new Map<string, AgentInfo[]>();
         agents.set('spec-1', [{ ...mockAgentInfo, status: 'interrupted' as AgentStatus }]);
-        useAgentStore.setState({ agents, skipPermissions: false });
+        useAgentStore.setState({ agents });
 
         const resumedAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -323,8 +304,8 @@ describe('useAgentStore', () => {
 
         await useAgentStore.getState().resumeAgent('agent-1');
 
-        // skipPermissions defaults to false in initial state
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined, false);
+        // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined);
 
         const state = useAgentStore.getState();
         const agent = state.agents.get('spec-1')?.find((a) => a.agentId === 'agent-1');
@@ -347,7 +328,7 @@ describe('useAgentStore', () => {
         const agents = new Map<string, AgentInfo[]>([
           ['spec-1', [mockAgentInfo]],
         ]);
-        useAgentStore.setState({ agents, logs: new Map(), skipPermissions: false });
+        useAgentStore.setState({ agents, logs: new Map() });
 
         const resumedAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -365,8 +346,8 @@ describe('useAgentStore', () => {
         expect(logs?.[0].stream).toBe('stdin');
         expect(logs?.[0].data).toBe('カスタムプロンプト');
 
-        // Check that API was called with prompt (skipPermissions defaults to false)
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト', false);
+        // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');
       });
     });
 

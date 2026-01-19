@@ -88,22 +88,23 @@ const electronAPI = {
 
   // Agent Management (Task 27.1, 28.1)
   // Requirements: 5.1-5.8
+  // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
   startAgent: (
     specId: string,
     phase: string,
     command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string,
-    skipPermissions?: boolean
+    sessionId?: string
   ): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, command, args, group, sessionId, skipPermissions),
+    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, command, args, group, sessionId),
 
   stopAgent: (agentId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.STOP_AGENT, agentId),
 
-  resumeAgent: (agentId: string, prompt?: string, skipPermissions?: boolean): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.RESUME_AGENT, agentId, prompt, skipPermissions),
+  // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+  resumeAgent: (agentId: string, prompt?: string): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESUME_AGENT, agentId, prompt),
 
   deleteAgent: (specId: string, agentId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.DELETE_AGENT, specId, agentId),

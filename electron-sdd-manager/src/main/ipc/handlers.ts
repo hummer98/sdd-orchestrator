@@ -378,7 +378,10 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Requirements: 1.1, 1.2 (project-log-separation)
   projectLogger.setCurrentProject(projectPath);
 
-  specManagerService = new SpecManagerService(projectPath);
+  // skip-permissions-main-process: Inject layoutConfigService for skipPermissions auto-fetch
+  specManagerService = new SpecManagerService(projectPath, {
+    layoutConfigService,
+  });
   eventCallbacksRegistered = false; // Reset when service is recreated
 
   // Update menu state to enable project-dependent menu items
@@ -742,11 +745,11 @@ export function registerIpcHandlers(): void {
       args: string[],
       group?: ExecutionGroup,
       sessionId?: string,
-      skipPermissions?: boolean
+      _skipPermissions?: boolean // skip-permissions-main-process: Deprecated, now auto-fetched from layoutConfigService
     ) => {
       // Replace 'claude' command with mock CLI command if configured (for E2E testing)
       const resolvedCommand = command === 'claude' ? getClaudeCommand() : command;
-      logger.info('[handlers] START_AGENT called', { specId, phase, command: resolvedCommand, args, group, sessionId, skipPermissions });
+      logger.info('[handlers] START_AGENT called', { specId, phase, command: resolvedCommand, args, group, sessionId });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -799,6 +802,7 @@ export function registerIpcHandlers(): void {
       }
 
       logger.info('[handlers] Calling service.startAgent');
+      // skip-permissions-main-process: skipPermissions is now auto-fetched from layoutConfigService
       const result = await service.startAgent({
         specId,
         phase,
@@ -806,7 +810,6 @@ export function registerIpcHandlers(): void {
         args,
         group,
         sessionId,
-        skipPermissions,
       });
 
       if (!result.ok) {
@@ -833,7 +836,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.RESUME_AGENT,
-    async (event, agentId: string, prompt?: string, skipPermissions?: boolean) => {
+    async (event, agentId: string, prompt?: string, _skipPermissions?: boolean) => {
+      // skip-permissions-main-process: skipPermissions is now auto-fetched from layoutConfigService
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -842,7 +846,7 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      const result = await service.resumeAgent(agentId, prompt, skipPermissions);
+      const result = await service.resumeAgent(agentId, prompt);
 
       if (!result.ok) {
         throw new Error(`Failed to resume agent: ${result.error.type}`);

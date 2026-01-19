@@ -259,16 +259,14 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     sessionId?: string
   ): Promise<string | null> => {
     try {
-      // Get skipPermissions from current state
-      const { skipPermissions } = get();
+      // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
       const newAgent = await window.electronAPI.startAgent(
         specId,
         phase,
         command,
         args,
         group,
-        sessionId,
-        skipPermissions
+        sessionId
       );
 
       const agentId = (newAgent as AgentInfo).agentId;
@@ -313,9 +311,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         get().appendLog(agentId, inputLogEntry);
       }
 
-      // Get skipPermissions from current state (same as startAgent)
-      const { skipPermissions } = get();
-      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt, skipPermissions);
+      // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt);
 
       set((state) => {
         const newAgents = new Map(state.agents);

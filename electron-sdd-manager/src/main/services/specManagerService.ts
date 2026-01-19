@@ -341,6 +341,21 @@ export type Result<T, E> =
   | { ok: false; error: E };
 
 /**
+ * Interface for layoutConfigService dependency (DI)
+ * skip-permissions-main-process: Required methods for skipPermissions management
+ */
+export interface LayoutConfigServiceDependency {
+  loadSkipPermissions(projectPath: string): Promise<boolean>;
+}
+
+/**
+ * Options for SpecManagerService constructor (DI container)
+ */
+export interface SpecManagerServiceOptions {
+  layoutConfigService?: LayoutConfigServiceDependency;
+}
+
+/**
  * Service for managing Spec Managers and their SDD Agents
  * Now supports both local and SSH providers for transparent remote execution
  */
@@ -367,7 +382,10 @@ export class SpecManagerService {
   // Buffer for sessionId parsing across chunked stdout data
   private sessionIdParseBuffers: Map<string, string> = new Map();
 
-  constructor(projectPath: string) {
+  // skip-permissions-main-process: DI for layoutConfigService
+  private layoutConfigService: LayoutConfigServiceDependency | null = null;
+
+  constructor(projectPath: string, options?: SpecManagerServiceOptions) {
     this.projectPath = projectPath;
     // Determine provider type from project path
     this.providerType = getProviderTypeFromPath(projectPath);
@@ -380,6 +398,9 @@ export class SpecManagerService {
       path.join(projectPath, '.kiro', 'specs')
     );
     this.logParserService = new LogParserService();
+
+    // skip-permissions-main-process: Accept layoutConfigService via DI
+    this.layoutConfigService = options?.layoutConfigService ?? null;
 
     // execution-store-consolidation: ImplCompletionAnalyzer initialization REMOVED (Req 6.2)
     // Task completion state is now managed via TaskProgress from tasks.md
@@ -537,7 +558,7 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions, worktreeCwd } = options;
+    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd } = options;
     const effectiveProviderType = providerType ?? this.providerType;
 
     // execute-method-unification: Task 3.1 - worktreeCwd auto-resolution
@@ -561,10 +582,24 @@ export class SpecManagerService {
     // Check if this is a Claude CLI command
     const isClaudeCommand = command === 'claude' || command === getClaudeCommand();
 
+    // skip-permissions-main-process: Auto-fetch skipPermissions from layoutConfigService
+    // Only fetch for Claude commands to avoid unnecessary IO for non-Claude processes
+    let effectiveSkipPermissions = false;
+    if (isClaudeCommand && this.layoutConfigService) {
+      try {
+        effectiveSkipPermissions = await this.layoutConfigService.loadSkipPermissions(this.projectPath);
+        logger.debug('[SpecManagerService] skipPermissions loaded from layoutConfigService', {
+          skipPermissions: effectiveSkipPermissions,
+        });
+      } catch (error) {
+        logger.warn('[SpecManagerService] Failed to load skipPermissions, defaulting to false', { error });
+      }
+    }
+
     // Normalize args only for Claude CLI commands
     // This prevents breaking non-Claude commands (like 'sleep' in tests)
     let effectiveArgs = isClaudeCommand
-      ? this.normalizeClaudeArgs(args, skipPermissions)
+      ? this.normalizeClaudeArgs(args, effectiveSkipPermissions)
       : args;
 
     // worktree-symlink-permission: Add --add-dir for worktree mode
@@ -579,7 +614,7 @@ export class SpecManagerService {
     }
 
     logger.info('[SpecManagerService] startAgent called', {
-      specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions,
+      specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions: effectiveSkipPermissions,
     });
 
     // Check if phase is already running
@@ -976,7 +1011,6 @@ export class SpecManagerService {
   async resumeAgent(
     agentId: string,
     prompt?: string,
-    skipPermissions?: boolean,
     worktreeCwd?: string
   ): Promise<Result<AgentInfo, AgentError>> {
     // agent-state-file-ssot: Find agent by ID from files
@@ -1003,6 +1037,19 @@ export class SpecManagerService {
       };
     }
 
+    // skip-permissions-main-process: Auto-fetch skipPermissions from layoutConfigService
+    let effectiveSkipPermissions = false;
+    if (this.layoutConfigService) {
+      try {
+        effectiveSkipPermissions = await this.layoutConfigService.loadSkipPermissions(this.projectPath);
+        logger.debug('[SpecManagerService] skipPermissions loaded for resumeAgent', {
+          skipPermissions: effectiveSkipPermissions,
+        });
+      } catch (error) {
+        logger.warn('[SpecManagerService] Failed to load skipPermissions for resume, defaulting to false', { error });
+      }
+    }
+
     const resumePrompt = prompt || '続けて';
     // フェーズに対応するallowed-toolsを取得してresume時にも適用
     const allowedTools = getAllowedToolsForPhase(agent.phase);
@@ -1010,7 +1057,7 @@ export class SpecManagerService {
       resumeSessionId: agent.sessionId,
       resumePrompt,
       allowedTools,
-      skipPermissions,
+      skipPermissions: effectiveSkipPermissions,
     });
     const command = getClaudeCommand();
     const now = new Date().toISOString();
@@ -1028,7 +1075,7 @@ export class SpecManagerService {
         prompt: resumePrompt,
         phase: agent.phase,
         allowedTools,
-        skipPermissions,
+        skipPermissions: effectiveSkipPermissions,
         cwd: effectiveCwd,
       });
 

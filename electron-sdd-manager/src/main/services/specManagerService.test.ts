@@ -1894,4 +1894,107 @@ describe('executeDocumentReview - multi-engine support', () => {
       }
     });
   });
+
+  // ============================================================
+  // skip-permissions-main-process: DI and auto-fetch skipPermissions
+  // Main Process should own skipPermissions instead of receiving from Renderer
+  // ============================================================
+  describe('startAgent - skipPermissions from layoutConfigService', () => {
+    it('should auto-fetch skipPermissions from layoutConfigService when skipPermissions=true', async () => {
+      // Create mock layoutConfigService that returns skipPermissions=true
+      const mockLayoutConfigService = {
+        loadSkipPermissions: vi.fn().mockResolvedValue(true),
+      };
+
+      // Create service with mocked layoutConfigService
+      const serviceWithMock = new SpecManagerService(testDir, {
+        layoutConfigService: mockLayoutConfigService,
+      });
+
+      const result = await serviceWithMock.startAgent({
+        specId: 'skip-perm-test',
+        phase: 'impl-1.1',
+        command: 'claude',
+        args: ['/kiro:spec-impl skip-perm-test'],
+        group: 'impl',
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // The command string should contain --dangerously-skip-permissions
+        expect(result.value.command).toContain('--dangerously-skip-permissions');
+      }
+
+      // Verify layoutConfigService was called with projectPath
+      expect(mockLayoutConfigService.loadSkipPermissions).toHaveBeenCalledWith(testDir);
+
+      await serviceWithMock.stopAllAgents();
+    });
+
+    it('should NOT add --dangerously-skip-permissions when skipPermissions=false', async () => {
+      // Create mock layoutConfigService that returns skipPermissions=false
+      const mockLayoutConfigService = {
+        loadSkipPermissions: vi.fn().mockResolvedValue(false),
+      };
+
+      // Create service with mocked layoutConfigService
+      const serviceWithMock = new SpecManagerService(testDir, {
+        layoutConfigService: mockLayoutConfigService,
+      });
+
+      const result = await serviceWithMock.startAgent({
+        specId: 'no-skip-perm-test',
+        phase: 'impl-1.1',
+        command: 'claude',
+        args: ['/kiro:spec-impl no-skip-perm-test'],
+        group: 'impl',
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // The command string should NOT contain --dangerously-skip-permissions
+        expect(result.value.command).not.toContain('--dangerously-skip-permissions');
+      }
+
+      await serviceWithMock.stopAllAgents();
+    });
+
+    it('should use default layoutConfigService when not provided via DI', async () => {
+      // When no layoutConfigService is provided, should use real one
+      // This test verifies the service works without explicit DI
+      const result = await service.startAgent({
+        specId: 'default-config-test',
+        phase: 'requirements',
+        command: 'echo',
+        args: ['test'],
+        group: 'doc',
+      });
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should fetch skipPermissions only for claude commands', async () => {
+      const mockLayoutConfigService = {
+        loadSkipPermissions: vi.fn().mockResolvedValue(true),
+      };
+
+      const serviceWithMock = new SpecManagerService(testDir, {
+        layoutConfigService: mockLayoutConfigService,
+      });
+
+      // Non-claude command (echo)
+      const result = await serviceWithMock.startAgent({
+        specId: 'non-claude-test',
+        phase: 'test',
+        command: 'echo',
+        args: ['test'],
+      });
+
+      expect(result.ok).toBe(true);
+      // loadSkipPermissions should NOT be called for non-claude commands
+      expect(mockLayoutConfigService.loadSkipPermissions).not.toHaveBeenCalled();
+
+      await serviceWithMock.stopAllAgents();
+    });
+  });
 });

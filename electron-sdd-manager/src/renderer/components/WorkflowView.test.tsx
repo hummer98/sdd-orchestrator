@@ -494,30 +494,18 @@ describe('WorkflowView', () => {
   });
 
   // ============================================================
-  // NOTE: Task 14.1, 14.4 tests (Impl start buttons) removed
-  // These tests were for the deprecated ImplStartButtons component.
-  // ImplFlowFrame now handles these features. See ImplFlowFrame.test.tsx for coverage.
+  // Workflow structure tests
   // ============================================================
-
-  // ============================================================
-  // impl-flow-hierarchy-fix Task 5.3: Hierarchy structure tests
-  // Requirements: 3.1, 3.2, 4.1, 4.2
-  // ============================================================
-  describe('impl-flow-hierarchy-fix: Hierarchy structure', () => {
-    it('should render ImplFlowFrame containing impl flow components', () => {
+  describe('Workflow structure', () => {
+    it('should render ImplPhasePanel', () => {
       render(<WorkflowView />);
 
-      // ImplFlowFrame should be rendered
-      expect(screen.getByTestId('impl-flow-frame')).toBeInTheDocument();
-
-      // ImplPhasePanel should be inside ImplFlowFrame
       expect(screen.getByTestId('impl-phase-panel')).toBeInTheDocument();
     });
 
-    it('should render deploy PhaseItem inside ImplFlowFrame', () => {
+    it('should render deploy PhaseItem', () => {
       render(<WorkflowView />);
 
-      // Deploy PhaseItem should be rendered with test id
       const deployButton = screen.getByTestId('phase-button-deploy');
       expect(deployButton).toBeInTheDocument();
     });
@@ -564,11 +552,9 @@ describe('WorkflowView', () => {
       expect(screen.getByText('マージ')).toBeInTheDocument();
     });
 
-    it('should render DocumentReviewPanel outside ImplFlowFrame', () => {
+    it('should render DocumentReviewPanel', () => {
       render(<WorkflowView />);
 
-      // DocumentReviewPanel should be rendered
-      // (It exists somewhere in the document, not inside ImplFlowFrame)
       expect(screen.getByRole('heading', { name: 'ドキュメントレビュー' })).toBeInTheDocument();
     });
 

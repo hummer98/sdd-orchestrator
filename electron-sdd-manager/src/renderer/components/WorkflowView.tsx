@@ -20,10 +20,9 @@ import type { WorktreeConfig } from '../types/worktree';
 import { notify } from '../stores';
 // agent-launch-optimistic-ui: Optimistic UI hook
 import { useLaunchingState } from '@shared/hooks';
-import { PhaseItem } from '@shared/components/workflow';
+import { PhaseItem, ImplPhasePanel } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { DocumentReviewPanel, InspectionPanel, type ReviewerScheme } from '@shared/components/review';
-import { ImplFlowFrame, ImplPhasePanel } from '@shared/components/workflow';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
@@ -605,87 +604,78 @@ export function WorkflowView() {
           />
         </div>
 
-        {/* Arrow from DocumentReviewPanel to ImplFlowFrame */}
+        {/* Arrow from DocumentReviewPanel to impl phase */}
         <div className="flex justify-center py-1">
           <ArrowDown className="w-4 h-4 text-gray-400" />
         </div>
 
-        {/* impl-flow-hierarchy-fix Task 3.2: ImplFlowFrame with all impl flow components */}
-        {/* spec-worktree-early-creation: WorktreeModeCheckbox removed, worktree mode is read-only */}
-        <div className="my-2">
-          <ImplFlowFrame
-            worktreeModeSelected={isWorktreeModeSelected}
-          >
-            {/* ImplPhasePanel - replaces impl PhaseItem with worktree-aware button */}
-            {/* spec-worktree-early-creation: hasExistingWorktree removed */}
-            <ImplPhasePanel
-              worktreeModeSelected={isWorktreeModeSelected}
-              isImplStarted={hasImplStarted}
-              status={phaseStatuses.impl}
-              autoExecutionPermitted={workflowStore.autoExecutionPermissions.impl}
-              isExecuting={isImplExecuting}
-              canExecute={canStartImpl}
-              isAutoPhase={isAutoExecuting && currentAutoPhase === 'impl'}
-              onExecute={handleImplExecute}
-              onToggleAutoPermission={() => workflowStore.toggleAutoPermission('impl')}
+        {/* ImplPhasePanel - worktree-aware implementation phase */}
+        <ImplPhasePanel
+          worktreeModeSelected={isWorktreeModeSelected}
+          isImplStarted={hasImplStarted}
+          status={phaseStatuses.impl}
+          autoExecutionPermitted={workflowStore.autoExecutionPermissions.impl}
+          isExecuting={isImplExecuting}
+          canExecute={canStartImpl}
+          isAutoPhase={isAutoExecuting && currentAutoPhase === 'impl'}
+          onExecute={handleImplExecute}
+          onToggleAutoPermission={() => workflowStore.toggleAutoPermission('impl')}
+        />
+
+        {/* Task Progress (for impl phase) */}
+        {specDetail.taskProgress && (
+          <div className="mt-2">
+            <TaskProgressView
+              tasks={parsedTasks}
+              progress={specDetail.taskProgress}
+              onExecuteTask={handleExecuteTask}
+              canExecute={runningPhases.size === 0}
             />
+          </div>
+        )}
 
-            {/* Task Progress (for impl phase) */}
-            {specDetail.taskProgress && (
-              <div className="mt-2">
-                <TaskProgressView
-                  tasks={parsedTasks}
-                  progress={specDetail.taskProgress}
-                  onExecuteTask={handleExecuteTask}
-                  canExecute={runningPhases.size === 0}
-                />
-              </div>
-            )}
-
-            {/* Arrow to InspectionPanel */}
-            <div className="flex justify-center py-1">
-              <ArrowDown className="w-4 h-4 text-gray-400" />
-            </div>
-
-            {/* InspectionPanel (after impl, before deploy) */}
-            <div className="my-3">
-              <InspectionPanel
-                inspectionState={inspectionState}
-                isExecuting={isInspectionExecuting}
-                isAutoExecuting={isAutoExecuting}
-                autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
-                canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
-                onStartInspection={handleStartInspection}
-                onExecuteFix={handleExecuteInspectionFix}
-                onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
-                launching={launching}
-              />
-            </div>
-
-            {/* Arrow to deploy PhaseItem */}
-            <div className="flex justify-center py-1">
-              <ArrowDown className="w-4 h-4 text-gray-400" />
-            </div>
-
-            {/* Deploy PhaseItem inside ImplFlowFrame */}
-            {/* Requirement 4.1, 4.2: Dynamic label (マージ/コミット) */}
-            <PhaseItem
-              phase="deploy"
-              label={deployLabel}
-              status={phaseStatuses.deploy}
-              previousStatus={phaseStatuses.inspection}
-              autoExecutionPermitted={workflowStore.autoExecutionPermissions.deploy}
-              isExecuting={runningPhases.has('deploy')}
-              canExecute={canExecutePhase('deploy')}
-              isAutoPhase={isAutoExecuting && currentAutoPhase === 'deploy'}
-              onExecute={() => handleExecutePhase('deploy')}
-              onApprove={() => handleApprovePhase('deploy')}
-              onApproveAndExecute={() => handleApproveAndExecutePhase('deploy')}
-              onToggleAutoPermission={() => workflowStore.toggleAutoPermission('deploy')}
-              onShowAgentLog={() => handleShowAgentLog('deploy')}
-            />
-          </ImplFlowFrame>
+        {/* Arrow to InspectionPanel */}
+        <div className="flex justify-center py-1">
+          <ArrowDown className="w-4 h-4 text-gray-400" />
         </div>
+
+        {/* InspectionPanel (after impl, before deploy) */}
+        <div className="my-3">
+          <InspectionPanel
+            inspectionState={inspectionState}
+            isExecuting={isInspectionExecuting}
+            isAutoExecuting={isAutoExecuting}
+            autoExecutionFlag={workflowStore.inspectionAutoExecutionFlag}
+            canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
+            onStartInspection={handleStartInspection}
+            onExecuteFix={handleExecuteInspectionFix}
+            onAutoExecutionFlagChange={workflowStore.setInspectionAutoExecutionFlag}
+            launching={launching}
+          />
+        </div>
+
+        {/* Arrow to deploy PhaseItem */}
+        <div className="flex justify-center py-1">
+          <ArrowDown className="w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* Deploy PhaseItem */}
+        {/* Dynamic label: worktree mode = "マージ", normal mode = "コミット" */}
+        <PhaseItem
+          phase="deploy"
+          label={deployLabel}
+          status={phaseStatuses.deploy}
+          previousStatus={phaseStatuses.inspection}
+          autoExecutionPermitted={workflowStore.autoExecutionPermissions.deploy}
+          isExecuting={runningPhases.has('deploy')}
+          canExecute={canExecutePhase('deploy')}
+          isAutoPhase={isAutoExecuting && currentAutoPhase === 'deploy'}
+          onExecute={() => handleExecutePhase('deploy')}
+          onApprove={() => handleApprovePhase('deploy')}
+          onApproveAndExecute={() => handleApproveAndExecutePhase('deploy')}
+          onToggleAutoPermission={() => workflowStore.toggleAutoPermission('deploy')}
+          onShowAgentLog={() => handleShowAgentLog('deploy')}
+        />
 
         {/* SpecManagerStatusDisplay REMOVED
             Agent execution state is now displayed via AgentListPanel

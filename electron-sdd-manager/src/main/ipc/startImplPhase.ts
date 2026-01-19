@@ -4,7 +4,9 @@
  * Auto Execution (execute-next-phase) into a single Main Process function.
  *
  * impl-start-unification: Task 1.1, 1.2, 1.3
- * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3
+ * spec-worktree-early-creation: Task 7.3 - worktree作成ロジック削除
+ * - Worktreeはspec作成時に既に作成されている
+ * - 本関数ではworktree作成を行わない（既存worktreeを使用）
  */
 
 import * as fs from 'fs/promises';
@@ -32,21 +34,21 @@ export interface StartImplParams {
 /**
  * Error types for impl start failures
  * Requirements: 1.3
+ * spec-worktree-early-creation: NOT_ON_MAIN_BRANCH, WORKTREE_CREATE_FAILED removed
+ * (worktree is created at spec creation time, not impl start time)
  */
 export type ImplStartErrorType =
-  | 'NOT_ON_MAIN_BRANCH'
-  | 'WORKTREE_CREATE_FAILED'
   | 'SPEC_JSON_ERROR'
   | 'EXECUTE_FAILED';
 
 /**
  * Error details for impl start failures
  * Requirements: 1.3
+ * spec-worktree-early-creation: currentBranch field removed (NOT_ON_MAIN_BRANCH no longer used)
  */
 export interface ImplStartError {
   type: ImplStartErrorType;
   message?: string;
-  currentBranch?: string; // Set when type is NOT_ON_MAIN_BRANCH
 }
 
 /**
@@ -72,21 +74,10 @@ interface SpecJsonWithWorktree {
 }
 
 /**
- * Check if worktree mode is enabled (needs worktree creation)
- * Returns true only when enabled=true AND path is not set
+ * Check if worktree mode is enabled (has path set in spec.json)
+ * spec-worktree-early-creation: Simplified - worktree is already created at spec creation time
  */
-function isWorktreeModeEnabledAndNeedsCreation(worktree?: WorktreeConfig & { enabled?: boolean }): boolean {
-  if (!worktree) return false;
-  if (worktree.enabled !== true) return false;
-  // If path is already set, worktree exists - no need to create
-  if (worktree.path) return false;
-  return true;
-}
-
-/**
- * Check if worktree already exists (has path set)
- */
-function hasExistingWorktree(worktree?: WorktreeConfig & { enabled?: boolean }): boolean {
+function hasWorktreePath(worktree?: WorktreeConfig & { enabled?: boolean }): boolean {
   return !!worktree?.path;
 }
 
@@ -100,20 +91,17 @@ function isNormalModeInitialized(worktree?: WorktreeConfig & { enabled?: boolean
 }
 
 // =============================================================
-// Main Function (Task 1.1, 1.2, 1.3)
-// Requirements: 1.1, 2.1, 2.2, 2.3
+// Main Function (Task 1.1, 1.3)
+// spec-worktree-early-creation: Task 7.3 - worktree作成ロジック削除
 // =============================================================
 
 /**
  * Unified impl start function
- * Consolidates Worktree mode logic (main branch check, worktree creation)
- * and normal mode logic (branch/created_at saving) into a single entry point.
- *
- * Requirements:
- * - 1.1: Branch based on worktree.enabled
- * - 2.1: Return NOT_ON_MAIN_BRANCH when worktree mode + not on main
- * - 2.2: Create worktree when worktree mode + on main
- * - 2.3: Skip branch check in normal mode
+ * spec-worktree-early-creation: Simplified
+ * - Worktreeはspec作成時に既に作成されている
+ * - 本関数ではworktree作成を行わない
+ * - Worktreeモードの場合はspec.json.worktree.pathを使用
+ * - 通常モードの場合はbranch/created_at情報を保存
  *
  * @param params StartImplParams
  * @returns ImplStartResult
@@ -148,111 +136,24 @@ export async function startImplPhase(params: StartImplParams): Promise<ImplStart
   const worktreeService = new WorktreeService(projectPath);
 
   // =============================================================
-  // Task 1.2: Worktree Mode Processing (Requirements 2.1, 2.2)
+  // spec-worktree-early-creation: Worktree作成ロジック削除
+  // Worktreeはspec作成時に既に作成されているため、
+  // 本関数ではworktree存在確認のみを行い、作成は行わない
   // =============================================================
 
-  if (isWorktreeModeEnabledAndNeedsCreation(specJson.worktree)) {
-    logger.info('[startImplPhase] Worktree mode enabled, checking main branch');
-
-    // Check if on main branch (Requirement 2.1)
-    const isMainResult = await worktreeService.isOnMainBranch();
-    if (!isMainResult.ok) {
-      logger.error('[startImplPhase] Failed to check main branch', { error: isMainResult.error });
-      return {
-        ok: false,
-        error: {
-          type: 'SPEC_JSON_ERROR',
-          message: 'Failed to check current branch',
-        },
-      };
-    }
-
-    if (!isMainResult.value) {
-      // Not on main branch - return error
-      const branchResult = await worktreeService.getCurrentBranch();
-      const currentBranch = branchResult.ok ? branchResult.value : 'unknown';
-      logger.warn('[startImplPhase] Not on main branch', { currentBranch });
-      return {
-        ok: false,
-        error: {
-          type: 'NOT_ON_MAIN_BRANCH',
-          currentBranch,
-          message: `Worktreeモードはmainブランチでのみ使用できます。現在: ${currentBranch}`,
-        },
-      };
-    }
-
-    // On main branch - create worktree (Requirement 2.2)
-    logger.info('[startImplPhase] On main branch, creating worktree', { featureName });
-    const createResult = await worktreeService.createWorktree(featureName);
-    if (!createResult.ok) {
-      logger.error('[startImplPhase] Failed to create worktree', { error: createResult.error });
-      // Get error message based on error type
-      let errorMessage = 'Worktree creation failed';
-      if (createResult.error.type === 'GIT_ERROR') {
-        errorMessage = createResult.error.message;
-      } else if (createResult.error.type === 'BRANCH_EXISTS') {
-        errorMessage = `Branch already exists: ${createResult.error.branch}`;
-      } else if (createResult.error.type === 'WORKTREE_EXISTS') {
-        errorMessage = `Worktree already exists: ${createResult.error.path}`;
-      }
-      return {
-        ok: false,
-        error: {
-          type: 'WORKTREE_CREATE_FAILED',
-          message: errorMessage,
-        },
-      };
-    }
-
-    const worktreeInfo = createResult.value;
-
-    // Create symlinks for logs preservation
-    const symlinkResult = await worktreeService.createSymlinksForWorktree(
-      worktreeInfo.absolutePath,
-      featureName
-    );
-    if (!symlinkResult.ok) {
-      logger.warn('[startImplPhase] Failed to create symlinks, continuing', {
-        error: symlinkResult.error,
-      });
-    }
-
-    // Update spec.json with worktree config
-    try {
-      const worktreeConfig: WorktreeConfig = {
-        enabled: true,
-        path: worktreeInfo.path,
-        branch: worktreeInfo.branch,
-        created_at: worktreeInfo.created_at,
-      };
-      specJson.worktree = worktreeConfig;
-      await fs.writeFile(
-        path.join(specPath, 'spec.json'),
-        JSON.stringify(specJson, null, 2)
-      );
-      logger.info('[startImplPhase] spec.json updated with worktree config', { worktreeConfig });
-    } catch (error) {
-      // Rollback worktree on spec.json update failure
-      logger.error('[startImplPhase] Failed to update spec.json, rolling back', { error });
-      await worktreeService.removeWorktree(featureName).catch((e) => {
-        logger.error('[startImplPhase] Rollback failed', { error: e });
-      });
-      return {
-        ok: false,
-        error: {
-          type: 'SPEC_JSON_ERROR',
-          message: 'Failed to update spec.json with worktree config',
-        },
-      };
-    }
+  if (hasWorktreePath(specJson.worktree)) {
+    // Worktree mode: worktree is already created at spec creation time
+    logger.info('[startImplPhase] Worktree mode detected, using existing worktree', {
+      path: specJson.worktree?.path,
+      branch: specJson.worktree?.branch,
+    });
   }
 
   // =============================================================
-  // Task 1.3: Normal Mode Processing (Requirement 2.3)
+  // Normal Mode Processing: Save branch info if not initialized
   // =============================================================
 
-  else if (!hasExistingWorktree(specJson.worktree) && !isNormalModeInitialized(specJson.worktree)) {
+  else if (!isNormalModeInitialized(specJson.worktree)) {
     // Normal mode: Need to save branch and created_at
     logger.info('[startImplPhase] Normal mode, saving branch info');
 
@@ -293,9 +194,8 @@ export async function startImplPhase(params: StartImplParams): Promise<ImplStart
       };
     }
   } else {
-    // Either existing worktree or already initialized normal mode
+    // Already initialized normal mode
     logger.info('[startImplPhase] Using existing configuration', {
-      hasWorktree: hasExistingWorktree(specJson.worktree),
       isInitialized: isNormalModeInitialized(specJson.worktree),
     });
   }

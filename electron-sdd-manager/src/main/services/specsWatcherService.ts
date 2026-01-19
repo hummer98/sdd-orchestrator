@@ -2,11 +2,12 @@
  * SpecsWatcherService
  * Watches .kiro/specs directory for changes and notifies renderer
  * Also monitors tasks.md for completion and updates spec.json phase
+ * spec-worktree-early-creation: Task 5.1, 5.2 - watches .kiro/worktrees/specs/ as well
  */
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, access, constants } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
 import { normalizeInspectionState, hasPassed } from '../../renderer/types/inspection';
@@ -38,9 +39,12 @@ export class SpecsWatcherService {
 
   /**
    * Extract spec ID from file path
-   * e.g., /project/.kiro/specs/my-feature/spec.json -> my-feature
+   * spec-worktree-early-creation: Task 5.2 - supports both paths:
+   * - /project/.kiro/specs/my-feature/spec.json -> my-feature
+   * - /project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature/spec.json -> my-feature
    */
   private extractSpecId(filePath: string): string | undefined {
+    // Try standard specs path first
     const specsDir = path.join(this.projectPath, '.kiro', 'specs');
     const relativePath = path.relative(specsDir, filePath);
     const parts = relativePath.split(path.sep);
@@ -49,25 +53,92 @@ export class SpecsWatcherService {
     if (parts.length > 0 && parts[0] !== '..' && parts[0] !== '.') {
       return parts[0];
     }
+
+    // spec-worktree-early-creation: Try worktrees/specs path
+    // Pattern: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/...
+    // We need to extract the specId from the inner .kiro/specs/{specId} path
+    const worktreeSpecsBaseDir = path.join(this.projectPath, '.kiro', 'worktrees', 'specs');
+    const worktreeRelativePath = path.relative(worktreeSpecsBaseDir, filePath);
+    const worktreeParts = worktreeRelativePath.split(path.sep);
+
+    // Expected structure: {worktreeId}/.kiro/specs/{specId}/...
+    // worktreeParts[0] = worktreeId (same as specId)
+    // worktreeParts[1] = .kiro
+    // worktreeParts[2] = specs
+    // worktreeParts[3] = specId
+    if (worktreeParts.length >= 4 &&
+        worktreeParts[0] !== '..' &&
+        worktreeParts[1] === '.kiro' &&
+        worktreeParts[2] === 'specs') {
+      return worktreeParts[3];
+    }
+
     return undefined;
   }
 
   /**
    * Start watching the specs directory
+   * spec-worktree-early-creation: Task 5.1 - also watches worktree spec files
+   *
+   * Main specs: .kiro/specs/{specId}/**
+   * Worktree specs: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/**
+   *
+   * Note: Each worktree contains a full copy of .kiro/specs/, but we only watch
+   * the spec that matches the worktree name to avoid duplicate monitoring.
    */
-  start(): void {
+  async start(): Promise<void> {
     if (this.watcher) {
       logger.warn('[SpecsWatcherService] Watcher already running');
       return;
     }
 
     const specsDir = path.join(this.projectPath, '.kiro', 'specs');
-    logger.info('[SpecsWatcherService] Starting watcher', { specsDir });
+    const worktreeSpecsBaseDir = path.join(this.projectPath, '.kiro', 'worktrees', 'specs');
 
-    this.watcher = chokidar.watch(specsDir, {
+    // spec-worktree-early-creation: Build watch paths array
+    // Watch main specs directory
+    const watchPaths: string[] = [specsDir];
+
+    // Check if worktree specs base directory exists
+    // If exists, dynamically add paths for each worktree's own spec only
+    // Pattern: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/** (same specId)
+    try {
+      await access(worktreeSpecsBaseDir, constants.F_OK);
+
+      // Read worktree directories and add specific paths
+      const { readdir } = await import('fs/promises');
+      const worktreeDirs = await readdir(worktreeSpecsBaseDir, { withFileTypes: true });
+
+      for (const dir of worktreeDirs) {
+        if (dir.isDirectory()) {
+          const specId = dir.name;
+          // Only watch the spec that matches the worktree name
+          const worktreeSpecPath = path.join(worktreeSpecsBaseDir, specId, '.kiro', 'specs', specId);
+          try {
+            await access(worktreeSpecPath, constants.F_OK);
+            watchPaths.push(worktreeSpecPath);
+            logger.debug('[SpecsWatcherService] Adding worktree spec path', { specId, worktreeSpecPath });
+          } catch {
+            // Spec directory doesn't exist yet in worktree, skip
+            logger.debug('[SpecsWatcherService] Worktree spec path not found, skipping', { specId, worktreeSpecPath });
+          }
+        }
+      }
+
+      logger.info('[SpecsWatcherService] Worktree specs directory found', {
+        worktreeSpecsBaseDir,
+        worktreeCount: worktreeDirs.filter(d => d.isDirectory()).length,
+      });
+    } catch {
+      logger.debug('[SpecsWatcherService] Worktree specs directory not found, skipping', { worktreeSpecsBaseDir });
+    }
+
+    logger.info('[SpecsWatcherService] Starting watcher', { watchPaths });
+
+    this.watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
       persistent: true,
-      depth: 2, // Watch spec folders and their immediate contents
+      depth: 2, // Sufficient for {specId}/*.{md,json}
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,

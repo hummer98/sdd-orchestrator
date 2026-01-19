@@ -483,24 +483,8 @@ export function WorkflowView() {
     return hasWorktreePath({ worktree: specJson?.worktree });
   }, [specJson?.worktree]);
 
-  // Handler for worktree mode checkbox change
-  // worktree-mode-spec-scoped Task 3.2: Persist to spec.json.worktree.enabled via updateSpecJson
-  const handleWorktreeModeChange = useCallback(async (enabled: boolean) => {
-    if (!specDetail) return;
-
-    try {
-      await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
-        worktree: {
-          // Preserve existing worktree fields if any, update enabled
-          ...(specJson?.worktree || {}),
-          enabled,
-        },
-      });
-    } catch (error) {
-      console.error('[WorkflowView] Failed to update worktree.enabled:', error);
-      notify.error('Worktreeモード設定の保存に失敗しました');
-    }
-  }, [specDetail, specJson?.worktree]);
+  // spec-worktree-early-creation: handleWorktreeModeChange REMOVED
+  // Worktree mode is now set at spec creation time via CreateSpecDialog
 
   // ============================================================
   // impl-start-unification Task 4.1: Simplified handleImplExecute
@@ -627,19 +611,16 @@ export function WorkflowView() {
         </div>
 
         {/* impl-flow-hierarchy-fix Task 3.2: ImplFlowFrame with all impl flow components */}
-        {/* Requirement 3.1: Contains ImplPhasePanel, TaskProgressView, InspectionPanel, deploy PhaseItem */}
+        {/* spec-worktree-early-creation: WorktreeModeCheckbox removed, worktree mode is read-only */}
         <div className="my-2">
           <ImplFlowFrame
             worktreeModeSelected={isWorktreeModeSelected}
-            onWorktreeModeChange={handleWorktreeModeChange}
-            isImplStarted={hasImplStarted}
-            hasExistingWorktree={hasExistingWorktree}
           >
             {/* ImplPhasePanel - replaces impl PhaseItem with worktree-aware button */}
+            {/* spec-worktree-early-creation: hasExistingWorktree removed */}
             <ImplPhasePanel
               worktreeModeSelected={isWorktreeModeSelected}
               isImplStarted={hasImplStarted}
-              hasExistingWorktree={hasExistingWorktree}
               status={phaseStatuses.impl}
               autoExecutionPermitted={workflowStore.autoExecutionPermissions.impl}
               isExecuting={isImplExecuting}

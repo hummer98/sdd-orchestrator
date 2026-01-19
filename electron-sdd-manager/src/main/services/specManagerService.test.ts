@@ -1786,14 +1786,32 @@ describe('executeDocumentReview - multi-engine support', () => {
       expect(result.ok).toBe(true);
     });
 
-    it('should skip worktreeCwd resolution for doc group', async () => {
+    // spec-worktree-early-creation: Task 9.1 - cwd auto-resolution for all phases
+    // worktreeCwd is now auto-resolved for both impl and doc groups when specId is provided
+    it('should auto-resolve worktreeCwd for doc group when specId is provided', async () => {
+      // Setup: Create spec.json with worktree configuration
+      const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+      await fs.mkdir(specDir, { recursive: true });
+      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
+        feature_name: 'test-spec',
+        worktree: {
+          path: '.kiro/worktrees/specs/test-spec',
+          branch: 'feature/test',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      }));
+
+      // Create worktree directory
+      const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'specs', 'test-spec');
+      await fs.mkdir(worktreeDir, { recursive: true });
+
       const result = await service.startAgent({
         specId: 'test-spec',
         phase: 'requirements',
         command: 'echo',
         args: ['test'],
         group: 'doc',
-        // No worktreeCwd provided - should not auto-resolve for doc group
+        // No worktreeCwd provided - should auto-resolve for doc group too (spec-worktree-early-creation)
       });
 
       expect(result.ok).toBe(true);

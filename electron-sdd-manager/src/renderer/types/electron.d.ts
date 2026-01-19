@@ -461,7 +461,13 @@ export interface ElectronAPI {
   // Launch spec-init agent with description only
   // Returns AgentInfo immediately without waiting for completion
   // commandPrefix determines the slash command: /kiro:spec-init or /spec-manager:init
-  executeSpecInit(projectPath: string, description: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
+  // spec-worktree-early-creation: worktreeMode parameter added
+  executeSpecInit(
+    projectPath: string,
+    description: string,
+    commandPrefix?: 'kiro' | 'spec-manager',
+    worktreeMode?: boolean
+  ): Promise<AgentInfo>;
 
   // ============================================================
   // Spec Plan (spec-plan-ui-integration feature)
@@ -470,15 +476,18 @@ export interface ElectronAPI {
   /**
    * Execute spec-plan agent for interactive requirements generation
    * Launches interactive dialogue to generate requirements.md with Decision Log
+   * spec-worktree-early-creation: worktreeMode parameter added
    * @param projectPath Project root path
    * @param description Initial idea/description for planning dialogue
    * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @param worktreeMode Whether to create worktree at spec creation time
    * @returns AgentInfo on success
    */
   executeSpecPlan(
     projectPath: string,
     description: string,
-    commandPrefix?: 'kiro' | 'spec-manager'
+    commandPrefix?: 'kiro' | 'spec-manager',
+    worktreeMode?: boolean
   ): Promise<AgentInfo>;
 
   // Bug Create: Launch bug-create agent with description only

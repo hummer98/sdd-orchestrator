@@ -139,14 +139,21 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE, options),
 
   // Task 5.2.2 (sidebar-refactor): spec-init連携
+  // spec-worktree-early-creation: Task 4.2 - worktreeModeパラメータ追加
   // Launch spec-init agent with description only (specId='')
   // Returns the agentId immediately without waiting for completion
   // commandPrefix determines the slash command: /kiro:spec-init or /spec-manager:init
-  executeSpecInit: (projectPath: string, description: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_INIT, projectPath, description, commandPrefix),
+  executeSpecInit: (
+    projectPath: string,
+    description: string,
+    commandPrefix?: 'kiro' | 'spec-manager',
+    worktreeMode?: boolean
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_INIT, projectPath, description, commandPrefix, worktreeMode),
 
   // ============================================================
   // Spec Plan (spec-plan-ui-integration feature)
+  // spec-worktree-early-creation: Task 4.2 - worktreeModeパラメータ追加
   // ============================================================
 
   /**
@@ -155,10 +162,16 @@ const electronAPI = {
    * @param projectPath Project root path
    * @param description Initial idea/description for planning dialogue
    * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
+   * @param worktreeMode Whether to create worktree at spec creation time
    * @returns AgentInfo on success
    */
-  executeSpecPlan: (projectPath: string, description: string, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_PLAN, projectPath, description, commandPrefix),
+  executeSpecPlan: (
+    projectPath: string,
+    description: string,
+    commandPrefix?: 'kiro' | 'spec-manager',
+    worktreeMode?: boolean
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_SPEC_PLAN, projectPath, description, commandPrefix, worktreeMode),
 
   // Bug Create: Launch bug-create agent with description only (specId='')
   // Returns the agentId immediately without waiting for completion

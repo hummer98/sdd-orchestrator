@@ -644,32 +644,24 @@ describe('WorktreeService', () => {
   });
 
   // ============================================================
-  // worktree-spec-symlink Task 2: createSymlinksForWorktree modification
-  // Note: Filesystem tests with fs mocking
-  //
-  // Implementation uses DIRECTORY symlink for spec directory because:
-  // 1. --add-dir is passed to Claude Code, granting access to main repository
-  // 2. Glob can then find real files through the symlinked directory
-  // Related: GitHub issue #764 (symlink traversal)
-  //
-  // The method creates:
-  // - Directory symlinks: .kiro/logs/, .kiro/runtime/, .kiro/specs/{feature}/
+  // spec-worktree-early-creation: createSymlinksForWorktree
+  // Creates symlinks for logs and runtime directories only (spec symlink removed)
   // ============================================================
-  describe('createSymlinksForWorktree (directory-based spec symlink)', () => {
-    // These tests verify the symlink configuration, not actual filesystem operations
+  describe('createSymlinksForWorktree (logs/runtime only)', () => {
+    // These tests verify the symlink configuration
     // The method creates:
     // - .kiro/logs/ -> directory symlink
     // - .kiro/runtime/ -> directory symlink
-    // - .kiro/specs/{feature}/ -> directory symlink to main spec directory
+    // NOTE: Spec directory symlink REMOVED in spec-worktree-early-creation
 
-    it('should configure directory symlinks for .kiro/logs/ and .kiro/runtime/', async () => {
+    it('should configure directory symlinks for .kiro/logs/ and .kiro/runtime/ only', async () => {
       // This test documents the expected symlink structure
       // Actual filesystem operations are tested in integration tests
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
       const worktreeAbsolutePath = '/Users/test/my-project/.kiro/worktrees/specs/my-feature';
 
-      // Expected directory symlinks:
+      // Expected directory symlinks (no spec symlink):
       const expectedDirectorySymlinks = [
         {
           link: path.join(worktreeAbsolutePath, '.kiro', 'logs'),
@@ -681,113 +673,14 @@ describe('WorktreeService', () => {
         },
       ];
 
-      // Verify expected structure
+      // Verify expected structure (2 symlinks, not 3)
       expect(expectedDirectorySymlinks).toHaveLength(2);
       expect(expectedDirectorySymlinks[0].link).toContain('.kiro/logs');
       expect(expectedDirectorySymlinks[1].link).toContain('.kiro/runtime');
     });
-
-    it('should create directory symlink for spec directory (not file-level symlinks)', () => {
-      // The spec directory is a directory symlink pointing to main repository
-      // Combined with --add-dir, Glob can find real files through the symlink
-      const mockExec = createMockExec([]);
-      const service = new WorktreeService(projectPath, mockExec);
-      const worktreeAbsolutePath = '/Users/test/my-project/.kiro/worktrees/specs/my-feature';
-      const featureName = 'my-feature';
-
-      // Expected structure:
-      // {worktree}/.kiro/specs/{feature}/ -> {main}/.kiro/specs/{feature}/ (directory symlink)
-      //
-      // This works because:
-      // 1. --add-dir grants Claude Code access to main repository
-      // 2. Glob traverses the symlink and finds real files in main
-
-      const worktreeSpecDir = path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName);
-      const mainSpecDir = path.join(projectPath, '.kiro', 'specs', featureName);
-
-      // The spec directory should be a symlink pointing to main
-      expect(worktreeSpecDir).toContain('.kiro/specs/my-feature');
-      expect(mainSpecDir).toBe(path.join(projectPath, '.kiro', 'specs', 'my-feature'));
-    });
   });
 
-  // ============================================================
-  // worktree-spec-symlink Task 3: prepareWorktreeForMerge
-  // Requirements: 3.2, 3.3, 3.4, 4.2 (worktree-spec-symlink)
-  // ============================================================
-  describe('prepareWorktreeForMerge', () => {
-    it('should delete spec symlink and execute git reset and checkout (Requirements 3.2, 3.3, 3.4)', async () => {
-      // Track which git commands were executed
-      const executedCommands: string[] = [];
-      const mockExec = (
-        command: string,
-        _options: { cwd: string },
-        callback: (error: Error | null, stdout: string, stderr: string) => void
-      ) => {
-        executedCommands.push(command);
-        callback(null, '', '');
-        return { kill: () => {} };
-      };
-      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
-      const featureName = 'my-feature';
-
-      const result = await service.prepareWorktreeForMerge(featureName);
-
-      expect(result.ok).toBe(true);
-      // Should execute git reset on spec directory (Requirement 3.3)
-      expect(executedCommands.some(cmd => cmd.includes('git reset') && cmd.includes('.kiro/specs/my-feature'))).toBe(true);
-      // Should execute git checkout on spec directory (Requirement 3.4)
-      expect(executedCommands.some(cmd => cmd.includes('git checkout') && cmd.includes('.kiro/specs/my-feature'))).toBe(true);
-    });
-
-    it('should return error when git reset fails', async () => {
-      const mockExec = createMockExec([
-        { pattern: /git reset/, error: new Error('reset failed') },
-      ]);
-      const service = new WorktreeService(projectPath, mockExec);
-
-      const result = await service.prepareWorktreeForMerge('my-feature');
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('GIT_ERROR');
-      }
-    });
-
-    it('should return error when git checkout fails', async () => {
-      const mockExec = createMockExec([
-        { pattern: /git reset/, stdout: '' },
-        { pattern: /git checkout/, error: new Error('checkout failed') },
-      ]);
-      const service = new WorktreeService(projectPath, mockExec);
-
-      const result = await service.prepareWorktreeForMerge('my-feature');
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('GIT_ERROR');
-      }
-    });
-
-    it('should execute commands in worktree directory', async () => {
-      let capturedCwd = '';
-      const mockExec = (
-        command: string,
-        options: { cwd: string },
-        callback: (error: Error | null, stdout: string, stderr: string) => void
-      ) => {
-        capturedCwd = options.cwd;
-        callback(null, '', '');
-        return { kill: () => {} };
-      };
-      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
-
-      await service.prepareWorktreeForMerge('my-feature');
-
-      // Commands should be executed in worktree directory, not main project
-      // Note: The service uses this.projectPath as cwd, but prepareWorktreeForMerge
-      // should execute commands in the worktree directory
-      expect(capturedCwd).toContain('.kiro/worktrees/specs/my-feature');
-    });
-  });
+  // spec-worktree-early-creation: prepareWorktreeForMerge tests REMOVED
+  // - Spec files are now real files in worktree (not symlinks)
+  // - No special preparation needed for merge
 });

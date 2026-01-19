@@ -1,13 +1,12 @@
 /**
  * ImplPhasePanel Component
  * impl-flow-hierarchy-fix: Task 2.1, 2.2, 2.3, 2.4
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10
+ * spec-worktree-early-creation: Task 7.1 - Simplified props
  *
  * Specialized component for the impl phase:
- * - Displays worktree-aware labels and buttons
- * - Handles worktree/normal mode execution
  * - Shows status (pending/executing/approved)
- * - Applies purple accent color in worktree mode
+ * - Applies purple accent color in worktree mode (read from spec.json)
+ * - Worktree mode is determined at spec creation, not impl time
  */
 
 import React from 'react';
@@ -27,12 +26,10 @@ import { AgentIcon, AgentBranchIcon } from '../ui/AgentIcon';
 // =============================================================================
 
 export interface ImplPhasePanelProps {
-  /** Whether worktree mode is selected */
+  /** Whether worktree mode is enabled (read from spec.json.worktree) */
   worktreeModeSelected: boolean;
-  /** Whether implementation has started */
+  /** Whether implementation has started (for button label: 開始/継続) */
   isImplStarted: boolean;
-  /** Whether an actual worktree exists */
-  hasExistingWorktree: boolean;
   /** Current phase status */
   status: PhaseStatus;
   /** Auto execution permission flag */
@@ -57,22 +54,15 @@ export interface ImplPhasePanelProps {
 
 /**
  * Determines the button label based on mode and state
- * Requirements: 2.3, 2.4, 2.5, 2.6
+ * spec-worktree-early-creation: Simplified - no hasExistingWorktree needed
  */
 function getButtonLabel(
   worktreeModeSelected: boolean,
-  isImplStarted: boolean,
-  hasExistingWorktree: boolean
+  isImplStarted: boolean
 ): string {
   if (worktreeModeSelected) {
-    // Requirement 2.3: Worktree mode + not created
-    // Requirement 2.4: Worktree mode + created
-    return hasExistingWorktree || isImplStarted
-      ? 'Worktreeで実装継続'
-      : 'Worktreeで実装開始';
+    return isImplStarted ? 'Worktreeで実装継続' : 'Worktreeで実装開始';
   }
-  // Requirement 2.5: Normal mode + not started
-  // Requirement 2.6: Normal mode + started
   return isImplStarted ? '実装継続' : '実装開始';
 }
 
@@ -83,17 +73,13 @@ function getButtonLabel(
 /**
  * ImplPhasePanel - Specialized panel for the impl phase with worktree support
  *
- * Requirement 2.1: Component creation
- * Requirement 2.2: Receives worktreeModeSelected and branches execution logic
- * Requirement 2.7: Execute button triggers appropriate action
- * Requirement 2.8: Main branch check error display (handled by parent)
- * Requirement 2.9: Status display (pending/executing/approved)
- * Requirement 2.10: Purple accent color in worktree mode
+ * spec-worktree-early-creation: Simplified
+ * - Worktree mode is determined at spec creation, not impl time
+ * - Purple accent color when worktree mode is enabled
  */
 export function ImplPhasePanel({
   worktreeModeSelected,
   isImplStarted,
-  hasExistingWorktree,
   status,
   autoExecutionPermitted,
   isExecuting,
@@ -104,7 +90,7 @@ export function ImplPhasePanel({
   className,
 }: ImplPhasePanelProps): React.ReactElement {
   // Get button label based on current state
-  const buttonLabel = getButtonLabel(worktreeModeSelected, isImplStarted, hasExistingWorktree);
+  const buttonLabel = getButtonLabel(worktreeModeSelected, isImplStarted);
 
   // Button disabled state
   const isButtonDisabled = !canExecute || isExecuting;

@@ -9,6 +9,18 @@ vi.mock('chokidar', () => ({
   })),
 }));
 
+// Mock fs/promises for directory existence check
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>();
+  return {
+    ...actual,
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    access: vi.fn().mockRejectedValue(new Error('ENOENT')), // Default: directory does not exist
+    readdir: vi.fn().mockResolvedValue([]), // Default: empty directory
+  };
+});
+
 // Mock logger
 vi.mock('./logger', () => ({
   logger: {
@@ -112,6 +124,27 @@ describe('SpecsWatcherService', () => {
         expect.objectContaining({
           specId: 'my-feature',
           path: '/project/.kiro/specs/my-feature/tasks.md',
+        })
+      );
+    });
+
+    // spec-worktree-early-creation Task 5.2: extractSpecId for worktree paths
+    it('should extract correct specId from worktree specs path', async () => {
+      const service = new SpecsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Worktree spec path pattern: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/...
+      handleEvent('change', '/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature/tasks.md');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'my-feature',
+          path: '/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature/tasks.md',
         })
       );
     });
@@ -230,7 +263,7 @@ describe('SpecsWatcherService', () => {
       (chokidar.watch as any).mockReturnValue(mockWatcher);
 
       const service = new SpecsWatcherService('/project');
-      service.start();
+      await service.start(); // spec-worktree-early-creation: start() is now async
 
       // Reset watch path to new location
       await service.resetWatchPath('my-feature', '/new/watch/path');

@@ -2,7 +2,7 @@
  * startImplPhase Unit Tests
  * TDD: Testing unified impl start logic in Main Process
  * impl-start-unification: Task 5.1
- * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3
+ * spec-worktree-early-creation: Task 7.3 - worktree作成ロジック削除
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -152,72 +152,14 @@ describe('startImplPhase', () => {
   });
 
   // =============================================================
-  // Task 1.2: Worktree mode implementation
-  // Requirements: 2.1, 2.2
+  // spec-worktree-early-creation: Worktree mode (worktree creation removed)
+  // Worktreeはspec作成時に既に作成されているため、
+  // startImplPhaseではworktree作成を行わない
   // =============================================================
 
-  describe('Worktree mode (Req 2.1, 2.2)', () => {
-    it('should return NOT_ON_MAIN_BRANCH error when worktree.enabled=true and not on main branch', async () => {
-      // Arrange: Worktree mode enabled, no existing worktree path
-      const specJson = {
-        feature_name: 'my-feature',
-        phase: 'tasks-generated',
-        worktree: { enabled: true },
-      };
-      mockReadFile.mockResolvedValue(JSON.stringify(specJson));
-      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: false });
-      mockWorktreeService.getCurrentBranch.mockResolvedValue({ ok: true, value: 'feature/other' });
-
-      // Act
-      const result = await startImplPhase(defaultParams);
-
-      // Assert
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('NOT_ON_MAIN_BRANCH');
-        expect(result.error.currentBranch).toBe('feature/other');
-      }
-    });
-
-    it('should create worktree and execute impl when on main branch', async () => {
-      // Arrange: Worktree mode enabled, on main branch
-      const specJson = {
-        feature_name: 'my-feature',
-        phase: 'tasks-generated',
-        worktree: { enabled: true },
-      };
-      const worktreeInfo = {
-        path: '../my-project-worktrees/my-feature',
-        absolutePath: '/Users/test/my-project-worktrees/my-feature',
-        branch: 'feature/my-feature',
-        created_at: '2026-01-18T00:00:00.000Z',
-      };
-      mockReadFile.mockResolvedValue(JSON.stringify(specJson));
-      mockWriteFile.mockResolvedValue(undefined);
-      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
-      mockWorktreeService.createWorktree.mockResolvedValue({ ok: true, value: worktreeInfo });
-      mockWorktreeService.createSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
-      mockSpecManagerService.execute.mockResolvedValue({
-        ok: true,
-        value: { agentId: 'agent-789' },
-      });
-
-      // Act
-      const result = await startImplPhase(defaultParams);
-
-      // Assert
-      expect(result.ok).toBe(true);
-      expect(mockWorktreeService.isOnMainBranch).toHaveBeenCalled();
-      expect(mockWorktreeService.createWorktree).toHaveBeenCalledWith(featureName);
-      expect(mockSpecManagerService.execute).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'impl',
-        })
-      );
-    });
-
-    it('should use existing worktree when worktree.path is already set', async () => {
-      // Arrange: Worktree already exists (has path)
+  describe('Worktree mode (spec-worktree-early-creation)', () => {
+    it('should use existing worktree when worktree.path is set (worktree created at spec init)', async () => {
+      // Arrange: Worktree already exists (created at spec init time)
       const specJson = {
         feature_name: 'my-feature',
         phase: 'tasks-generated',
@@ -241,31 +183,36 @@ describe('startImplPhase', () => {
       expect(result.ok).toBe(true);
       expect(mockWorktreeService.isOnMainBranch).not.toHaveBeenCalled();
       expect(mockWorktreeService.createWorktree).not.toHaveBeenCalled();
+      expect(mockWriteFile).not.toHaveBeenCalled(); // Should not update spec.json
       expect(mockSpecManagerService.execute).toHaveBeenCalled();
     });
 
-    it('should return WORKTREE_CREATE_FAILED when worktree creation fails', async () => {
-      // Arrange
+    it('should NOT create worktree even when worktree.enabled=true but path is missing', async () => {
+      // Arrange: worktree.enabled=true but no path (legacy case - should fail gracefully)
+      // spec-worktree-early-creation: This case should not happen normally
+      // because worktree is created at spec init time, but we handle it gracefully
       const specJson = {
         feature_name: 'my-feature',
         phase: 'tasks-generated',
-        worktree: { enabled: true },
+        worktree: { enabled: true }, // No path - legacy or error case
       };
       mockReadFile.mockResolvedValue(JSON.stringify(specJson));
-      mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
-      mockWorktreeService.createWorktree.mockResolvedValue({
-        ok: false,
-        error: { type: 'GIT_ERROR', message: 'Branch already exists' },
+      mockWriteFile.mockResolvedValue(undefined);
+      mockWorktreeService.getCurrentBranch.mockResolvedValue({ ok: true, value: 'main' });
+      mockSpecManagerService.execute.mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-fallback' },
       });
 
       // Act
       const result = await startImplPhase(defaultParams);
 
-      // Assert
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('WORKTREE_CREATE_FAILED');
-      }
+      // Assert: Should NOT create worktree, treat as normal mode
+      expect(result.ok).toBe(true);
+      expect(mockWorktreeService.createWorktree).not.toHaveBeenCalled();
+      expect(mockWorktreeService.isOnMainBranch).not.toHaveBeenCalled();
+      // Should save branch info as normal mode
+      expect(mockWriteFile).toHaveBeenCalled();
     });
   });
 

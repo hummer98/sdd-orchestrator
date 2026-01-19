@@ -562,20 +562,22 @@ export class SpecManagerService {
     const effectiveProviderType = providerType ?? this.providerType;
 
     // execute-method-unification: Task 3.1 - worktreeCwd auto-resolution
-    // Requirements: 3.1, 3.2, 3.3, 3.4
+    // spec-worktree-early-creation: Task 9.1 - cwd auto-resolution for all phases (impl and doc)
+    // Requirements: 3.1, 3.2, 3.3, 3.4, 8.2, 8.4
     let effectiveCwd: string;
     if (worktreeCwd) {
       // 3.2: Explicit worktreeCwd takes priority
       effectiveCwd = worktreeCwd;
-    } else if (group === 'impl' && specId) {
-      // 3.1: Auto-resolve for impl group when worktreeCwd not provided
+    } else if (specId) {
+      // spec-worktree-early-creation: Auto-resolve for any group when specId is provided
+      // This enables worktree mode for requirements/design/tasks phases as well as impl
       effectiveCwd = await this.getSpecWorktreeCwd(specId);
       if (effectiveCwd !== this.projectPath) {
         // 3.4: Log when worktreeCwd is auto-resolved
-        logger.info('[SpecManagerService] worktreeCwd auto-resolved for impl group', { specId, worktreeCwd: effectiveCwd });
+        logger.info('[SpecManagerService] worktreeCwd auto-resolved', { specId, group, worktreeCwd: effectiveCwd });
       }
     } else {
-      // 3.3: Skip resolution for doc group, use projectPath
+      // 3.3: No specId, use projectPath (e.g., spec-init, spec-plan)
       effectiveCwd = this.projectPath;
     }
 

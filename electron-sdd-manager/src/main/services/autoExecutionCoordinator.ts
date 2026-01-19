@@ -752,11 +752,38 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
   /**
    * 保存されたオプションを取得
+   * spec.json から最新の permissions と documentReviewFlag を読み直す
+   * (Bug fix: auto-execution-settings-not-realtime)
    * @param specPath specのパス
    * @returns オプション or undefined
    */
   getOptions(specPath: string): AutoExecutionOptions | undefined {
-    return this.executionOptions.get(specPath);
+    const cached = this.executionOptions.get(specPath);
+    if (!cached) {
+      return undefined;
+    }
+
+    // spec.json から最新の設定を読み直す
+    try {
+      const specJsonPath = require('path').join(specPath, 'spec.json');
+      const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      if (specJson.autoExecution) {
+        return {
+          permissions: specJson.autoExecution.permissions ?? cached.permissions,
+          documentReviewFlag: specJson.autoExecution.documentReviewFlag ?? cached.documentReviewFlag,
+          timeoutMs: cached.timeoutMs,
+          commandPrefix: cached.commandPrefix,
+          approvals: specJson.approvals ?? cached.approvals,
+        };
+      }
+    } catch (err) {
+      logger.warn('[AutoExecutionCoordinator] Failed to read spec.json, using cached options', { specPath, error: err });
+    }
+
+    // フォールバック: キャッシュを返す
+    return cached;
   }
 
   /**

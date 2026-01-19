@@ -2,6 +2,7 @@
  * CreateSpecDialog Component Tests
  * TDD: Testing simplified create spec dialog with spec-manager:init integration
  * Task 5.1, 5.2, 5.3 (sidebar-refactor)
+ * spec-worktree-early-creation: Task 4.1 - worktreeモードスイッチテスト追加
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
@@ -96,7 +97,8 @@ describe('CreateSpecDialog', () => {
         expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
           '/test/project',
           'これは新しい機能の説明です',
-          'kiro' // default commandPrefix
+          'kiro', // default commandPrefix
+          false // default worktreeMode
         );
       });
     });
@@ -119,7 +121,8 @@ describe('CreateSpecDialog', () => {
         expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
           '/test/project',
           'これは新しい機能の説明です',
-          'spec-manager'
+          'spec-manager',
+          false // default worktreeMode
         );
       });
     });
@@ -381,7 +384,8 @@ describe('CreateSpecDialog', () => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
           'プランニングしたい機能の説明',
-          'kiro'
+          'kiro',
+          false // default worktreeMode
         );
       });
     });
@@ -403,7 +407,8 @@ describe('CreateSpecDialog', () => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
           'プランニングしたい機能の説明',
-          'spec-manager'
+          'spec-manager',
+          false // default worktreeMode
         );
       });
     });
@@ -489,6 +494,144 @@ describe('CreateSpecDialog', () => {
 
       // Should NOT call executeSpecInit
       expect(window.electronAPI.executeSpecInit).not.toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // spec-worktree-early-creation: Task 4.1 - Worktreeモードスイッチ
+  // Requirements: 3.1, 3.3, 3.4
+  // ============================================================
+  describe('spec-worktree-early-creation: Worktree mode switch', () => {
+    it('should render worktree mode switch', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      expect(screen.getByTestId('worktree-mode-switch')).toBeInTheDocument();
+    });
+
+    it('should render worktree mode label', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      expect(screen.getByText('Worktreeモードで作成')).toBeInTheDocument();
+    });
+
+    it('should have worktree mode switch off by default', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      expect(switchButton.getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('should toggle worktree mode when switch is clicked', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+
+      // Initially off
+      expect(switchButton.getAttribute('aria-checked')).toBe('false');
+
+      // Click to turn on
+      fireEvent.click(switchButton);
+      expect(switchButton.getAttribute('aria-checked')).toBe('true');
+
+      // Click to turn off
+      fireEvent.click(switchButton);
+      expect(switchButton.getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('should show description when worktree mode is on', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+
+      // Initially no description
+      expect(screen.queryByText(/ブランチとWorktreeを作成/)).not.toBeInTheDocument();
+
+      // Turn on worktree mode
+      fireEvent.click(switchButton);
+
+      // Description should appear
+      expect(screen.getByText(/ブランチとWorktreeを作成/)).toBeInTheDocument();
+    });
+
+    it('should reset worktree mode when dialog is closed', () => {
+      const { rerender } = render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+
+      // Turn on worktree mode
+      fireEvent.click(switchButton);
+      expect(switchButton.getAttribute('aria-checked')).toBe('true');
+
+      // Close dialog
+      const cancelButton = screen.getByRole('button', { name: /キャンセル/i });
+      fireEvent.click(cancelButton);
+
+      // Reopen dialog
+      rerender(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Should be reset to off
+      const switchButtonAfterReopen = screen.getByTestId('worktree-mode-switch');
+      expect(switchButtonAfterReopen.getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('should disable worktree mode switch when creating', async () => {
+      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
+      );
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      // Switch should be disabled during creation
+      await waitFor(() => {
+        const switchButton = screen.getByTestId('worktree-mode-switch');
+        expect(switchButton).toBeDisabled();
+      });
+    });
+
+    it('should pass worktreeMode=true to executeSpecInit when worktree mode is on', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Turn on worktree mode
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'Worktreeモードで作成する機能' } });
+
+      const createButton = screen.getByRole('button', { name: /作成$/i });
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
+          '/test/project',
+          'Worktreeモードで作成する機能',
+          'kiro',
+          true // worktreeMode enabled
+        );
+      });
+    });
+
+    it('should pass worktreeMode=true to executeSpecPlan when worktree mode is on', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Turn on worktree mode
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'Worktreeモードでプランニング' } });
+
+      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
+      fireEvent.click(planButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          'Worktreeモードでプランニング',
+          'kiro',
+          true // worktreeMode enabled
+        );
+      });
     });
   });
 });

@@ -1,13 +1,12 @@
 /**
  * ImplPhasePanel Component Tests
  * impl-flow-hierarchy-fix: Task 2.1, 2.2, 2.3, 2.4, 5.2
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10
+ * spec-worktree-early-creation: Task 7.2 - hasExistingWorktree removed
  *
  * ImplPhasePanel is a specialized component for the impl phase:
  * - Displays worktree-aware labels and buttons
- * - Handles worktree/normal mode execution
  * - Shows status (pending/executing/approved)
- * - Applies purple accent color in worktree mode
+ * - Applies purple accent color in worktree mode (read from spec.json)
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -18,10 +17,10 @@ import type { PhaseStatus } from './PhaseItem';
 
 describe('ImplPhasePanel', () => {
   // Basic props for testing
+  // spec-worktree-early-creation: hasExistingWorktree removed
   const defaultProps = {
     worktreeModeSelected: false,
     isImplStarted: false,
-    hasExistingWorktree: false,
     status: 'pending' as PhaseStatus,
     autoExecutionPermitted: false,
     isExecuting: false,
@@ -32,35 +31,32 @@ describe('ImplPhasePanel', () => {
   };
 
   // ==========================================================================
-  // Task 2.1: Props and basic structure
-  // Requirements: 2.1, 2.2, 2.9
+  // Basic structure
   // ==========================================================================
-  describe('basic structure (Task 2.1)', () => {
-    // Requirement 2.1: Component renders
+  describe('basic structure', () => {
     it('should render the component', () => {
       render(<ImplPhasePanel {...defaultProps} />);
       expect(screen.getByTestId('impl-phase-panel')).toBeInTheDocument();
     });
 
-    // Requirement 2.2: Receives worktreeModeSelected prop
     it('should accept worktreeModeSelected prop', () => {
       render(<ImplPhasePanel {...defaultProps} worktreeModeSelected={true} />);
       expect(screen.getByTestId('impl-phase-panel')).toBeInTheDocument();
     });
 
-    // Requirement 2.9: Status display (pending)
+    // Status display (pending)
     it('should show pending status icon when status is pending', () => {
       render(<ImplPhasePanel {...defaultProps} status="pending" />);
       expect(screen.getByTestId('status-icon-pending')).toBeInTheDocument();
     });
 
-    // Requirement 2.9: Status display (executing)
+    // Status display (executing)
     it('should show executing status icon when isExecuting is true', () => {
       render(<ImplPhasePanel {...defaultProps} isExecuting={true} />);
       expect(screen.getByTestId('status-icon-executing')).toBeInTheDocument();
     });
 
-    // Requirement 2.9: Status display (approved)
+    // Status display (approved)
     it('should show approved status icon when status is approved', () => {
       render(<ImplPhasePanel {...defaultProps} status="approved" />);
       expect(screen.getByTestId('status-icon-approved')).toBeInTheDocument();
@@ -68,37 +64,35 @@ describe('ImplPhasePanel', () => {
   });
 
   // ==========================================================================
-  // Task 2.2: Label switching logic
-  // Requirements: 2.3, 2.4, 2.5, 2.6
+  // Label switching logic
+  // spec-worktree-early-creation: Simplified - no hasExistingWorktree
   // ==========================================================================
-  describe('label switching (Task 2.2)', () => {
-    // Requirement 2.3: Worktree mode + not created = "Worktreeで実装開始"
+  describe('label switching', () => {
+    // Worktree mode + not started = "Worktreeで実装開始"
     it('should show "Worktreeで実装開始" when worktree mode and not started', () => {
       render(
         <ImplPhasePanel
           {...defaultProps}
           worktreeModeSelected={true}
-          hasExistingWorktree={false}
           isImplStarted={false}
         />
       );
       expect(screen.getByText('Worktreeで実装開始')).toBeInTheDocument();
     });
 
-    // Requirement 2.4: Worktree mode + created = "Worktreeで実装継続"
-    it('should show "Worktreeで実装継続" when worktree mode and worktree exists', () => {
+    // Worktree mode + started = "Worktreeで実装継続"
+    it('should show "Worktreeで実装継続" when worktree mode and impl started', () => {
       render(
         <ImplPhasePanel
           {...defaultProps}
           worktreeModeSelected={true}
-          hasExistingWorktree={true}
           isImplStarted={true}
         />
       );
       expect(screen.getByText('Worktreeで実装継続')).toBeInTheDocument();
     });
 
-    // Requirement 2.5: Normal mode + not started = "実装開始"
+    // Normal mode + not started = "実装開始"
     it('should show "実装開始" when normal mode and not started', () => {
       render(
         <ImplPhasePanel
@@ -110,7 +104,7 @@ describe('ImplPhasePanel', () => {
       expect(screen.getByText('実装開始')).toBeInTheDocument();
     });
 
-    // Requirement 2.6: Normal mode + started = "実装継続"
+    // Normal mode + started = "実装継続"
     it('should show "実装継続" when normal mode and started', () => {
       render(
         <ImplPhasePanel
@@ -124,11 +118,9 @@ describe('ImplPhasePanel', () => {
   });
 
   // ==========================================================================
-  // Task 2.3: Execution handler
-  // Requirements: 2.7, 2.8
+  // Execution handler
   // ==========================================================================
-  describe('execution handler (Task 2.3)', () => {
-    // Requirement 2.7: Execute button calls onExecute
+  describe('execution handler', () => {
     it('should call onExecute when button is clicked', () => {
       const onExecute = vi.fn();
       render(<ImplPhasePanel {...defaultProps} onExecute={onExecute} canExecute={true} />);
@@ -166,11 +158,10 @@ describe('ImplPhasePanel', () => {
   });
 
   // ==========================================================================
-  // Task 2.4: Worktree mode styling
-  // Requirements: 2.10
+  // Worktree mode styling
   // ==========================================================================
-  describe('worktree mode styling (Task 2.4)', () => {
-    // Requirement 2.10: Purple accent color in worktree mode
+  describe('worktree mode styling', () => {
+    // Purple accent color in worktree mode
     it('should apply purple/violet styling when worktree mode is selected', () => {
       render(<ImplPhasePanel {...defaultProps} worktreeModeSelected={true} />);
 

@@ -2,11 +2,12 @@
  * CreateSpecDialog Component
  * Dialog for creating new specifications via spec-manager:init
  * Task 5.1, 5.2, 5.3 (sidebar-refactor)
+ * spec-worktree-early-creation: Task 4.1 - worktreeモードスイッチ追加
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
 import { useState } from 'react';
-import { X, Plus, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
+import { X, Plus, Loader2, AlertCircle, MessageCircle, GitBranch } from 'lucide-react';
 import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../stores';
 import { clsx } from 'clsx';
 
@@ -23,6 +24,8 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // spec-worktree-early-creation: Task 4.1 - worktreeモード状態管理
+  const [worktreeMode, setWorktreeMode] = useState(false);
 
   const handleDescriptionChange = (value: string) => {
     setDescription(value);
@@ -44,8 +47,9 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
 
     try {
       // Call spec-init via IPC (uses /kiro:spec-init or /spec-manager:init based on commandPrefix)
+      // spec-worktree-early-creation: Pass worktreeMode to IPC
       // Don't wait for completion - just start the agent and close dialog
-      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed, commandPrefix);
+      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed, commandPrefix, worktreeMode);
 
       // Task 5.2.4: エージェントをストアに追加し、プロジェクトエージェントパネルに遷移
       addAgent('', agentInfo);
@@ -80,8 +84,9 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
 
     try {
       // Call spec-plan via IPC (uses /kiro:spec-plan based on commandPrefix)
+      // spec-worktree-early-creation: Pass worktreeMode to IPC
       // Don't wait for completion - just start the agent and close dialog
-      const agentInfo = await window.electronAPI.executeSpecPlan(currentProject, trimmed, commandPrefix);
+      const agentInfo = await window.electronAPI.executeSpecPlan(currentProject, trimmed, commandPrefix, worktreeMode);
 
       // Add agent to store and navigate to project agents panel
       addAgent('', agentInfo);
@@ -101,6 +106,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
     setDescription('');
     setError(null);
     setIsCreating(false);
+    setWorktreeMode(false); // spec-worktree-early-creation: reset worktree mode
     onClose();
   };
 
@@ -168,6 +174,49 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
               )}
             />
           </div>
+
+          {/* spec-worktree-early-creation: Task 4.1 - Worktreeモードスイッチ */}
+          <div className="flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2">
+              <GitBranch className={clsx(
+                'w-4 h-4',
+                worktreeMode ? 'text-violet-500' : 'text-gray-400'
+              )} />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Worktreeモードで作成
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={worktreeMode}
+              data-testid="worktree-mode-switch"
+              onClick={() => setWorktreeMode(!worktreeMode)}
+              disabled={isCreating}
+              className={clsx(
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full',
+                'border-2 border-transparent transition-colors duration-200 ease-in-out',
+                'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                worktreeMode ? 'bg-violet-500' : 'bg-gray-200 dark:bg-gray-600'
+              )}
+            >
+              <span
+                className={clsx(
+                  'pointer-events-none inline-block h-5 w-5 rounded-full',
+                  'bg-white shadow transform ring-0 transition duration-200 ease-in-out',
+                  worktreeMode ? 'translate-x-5' : 'translate-x-0'
+                )}
+              />
+            </button>
+          </div>
+
+          {/* Worktreeモードの説明 */}
+          {worktreeMode && (
+            <p className="text-xs text-violet-600 dark:text-violet-400">
+              ブランチとWorktreeを作成し、分離された環境で開発を行います。mainブランチで実行する必要があります。
+            </p>
+          )}
 
           {/* Error message */}
           {error && (

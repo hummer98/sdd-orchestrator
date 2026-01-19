@@ -691,7 +691,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.START_SPECS_WATCHER, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
-      startSpecsWatcher(window);
+      await startSpecsWatcher(window);
       // Also start agent record watcher
       startAgentRecordWatcher(window);
     }
@@ -967,13 +967,20 @@ export function registerIpcHandlers(): void {
   );
 
   // Task 5.2.3 (sidebar-refactor): spec-init連携
+  // spec-worktree-early-creation: Task 4.2 - worktreeModeパラメータ追加
   // Launch spec-init agent with description only
   // specId='' for global agent, command: claude -p /kiro:spec-init "{description}" or /spec-manager:init "{description}"
   // Returns agentId immediately without waiting for completion
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_SPEC_INIT,
-    async (event, projectPath: string, description: string, commandPrefix: CommandPrefix = 'kiro') => {
-      logger.info('[handlers] EXECUTE_SPEC_INIT called', { projectPath, description, commandPrefix });
+    async (
+      event,
+      projectPath: string,
+      description: string,
+      commandPrefix: CommandPrefix = 'kiro',
+      worktreeMode: boolean = false
+    ) => {
+      logger.info('[handlers] EXECUTE_SPEC_INIT called', { projectPath, description, commandPrefix, worktreeMode });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -981,6 +988,9 @@ export function registerIpcHandlers(): void {
       if (window && !eventCallbacksRegistered) {
         registerEventCallbacks(service, window);
       }
+
+      // spec-worktree-early-creation: --worktreeフラグをコマンドに追加
+      const worktreeFlag = worktreeMode ? ' --worktree' : '';
 
       // Get the appropriate slash command based on commandPrefix
       const slashCommand = SPEC_INIT_COMMANDS[commandPrefix];
@@ -991,7 +1001,7 @@ export function registerIpcHandlers(): void {
         specId: '', // Empty specId for global agent
         phase: 'spec-init',
         command: 'claude',
-        args: [`${slashCommand} "${description}"`], // Base flags added by service
+        args: [`${slashCommand} "${description}"${worktreeFlag}`], // Base flags added by service
         group: 'doc',
       });
 
@@ -1001,7 +1011,7 @@ export function registerIpcHandlers(): void {
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeSpecInit succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] executeSpecInit succeeded', { agentId: result.value.agentId, worktreeMode });
       return result.value;
     }
   );
@@ -1009,11 +1019,18 @@ export function registerIpcHandlers(): void {
   // ============================================================
   // Spec Plan - Launch spec-plan agent for interactive requirements generation
   // spec-plan-ui-integration feature
+  // spec-worktree-early-creation: Task 4.2 - worktreeModeパラメータ追加
   // ============================================================
   ipcMain.handle(
     IPC_CHANNELS.EXECUTE_SPEC_PLAN,
-    async (event, projectPath: string, description: string, commandPrefix: CommandPrefix = 'kiro') => {
-      logger.info('[handlers] EXECUTE_SPEC_PLAN called', { projectPath, description, commandPrefix });
+    async (
+      event,
+      projectPath: string,
+      description: string,
+      commandPrefix: CommandPrefix = 'kiro',
+      worktreeMode: boolean = false
+    ) => {
+      logger.info('[handlers] EXECUTE_SPEC_PLAN called', { projectPath, description, commandPrefix, worktreeMode });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1021,6 +1038,9 @@ export function registerIpcHandlers(): void {
       if (window && !eventCallbacksRegistered) {
         registerEventCallbacks(service, window);
       }
+
+      // spec-worktree-early-creation: --worktreeフラグをコマンドに追加
+      const worktreeFlag = worktreeMode ? ' --worktree' : '';
 
       // Get the appropriate slash command based on commandPrefix
       // DD-002: spec-manager:plan is not yet implemented
@@ -1035,7 +1055,7 @@ export function registerIpcHandlers(): void {
         specId: '', // Empty specId for global agent
         phase: 'spec-plan',
         command: 'claude',
-        args: [`${slashCommand} "${description}"`], // Base flags added by service
+        args: [`${slashCommand} "${description}"${worktreeFlag}`], // Base flags added by service
         group: 'doc',
       });
 
@@ -1045,7 +1065,7 @@ export function registerIpcHandlers(): void {
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeSpecPlan succeeded', { agentId: result.value.agentId });
+      logger.info('[handlers] executeSpecPlan succeeded', { agentId: result.value.agentId, worktreeMode });
       return result.value;
     }
   );
@@ -1763,7 +1783,7 @@ export function registerIpcHandlers(): void {
       if (result.success) {
         const window = BrowserWindow.fromWebContents(event.sender);
         if (window) {
-          startSpecsWatcher(window);
+          await startSpecsWatcher(window);
           startAgentRecordWatcher(window);
           startBugsWatcher(window);
           logger.info('[handlers] File watchers started for project', { projectPath });
@@ -2510,8 +2530,9 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
 
 /**
  * Start or restart specs watcher for the current project
+ * spec-worktree-early-creation: start() is now async
  */
-export function startSpecsWatcher(window: BrowserWindow): void {
+export async function startSpecsWatcher(window: BrowserWindow): Promise<void> {
   if (!currentProjectPath) {
     logger.warn('[handlers] Cannot start specs watcher: no project path set');
     return;
@@ -2519,7 +2540,7 @@ export function startSpecsWatcher(window: BrowserWindow): void {
 
   // Stop existing watcher if any
   if (specsWatcherService) {
-    specsWatcherService.stop();
+    await specsWatcherService.stop();
   }
 
   specsWatcherService = new SpecsWatcherService(currentProjectPath, fileService);
@@ -2531,7 +2552,7 @@ export function startSpecsWatcher(window: BrowserWindow): void {
     }
   });
 
-  specsWatcherService.start();
+  await specsWatcherService.start();
   logger.info('[handlers] Specs watcher started', { projectPath: currentProjectPath });
 }
 

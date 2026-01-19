@@ -9,7 +9,6 @@ argument-hint: <feature-name>
 <background_information>
 - **Mission**: Merge the worktree branch to main branch and cleanup the worktree
 - **Success Criteria**:
-  - Spec symlink removed and git reset/checkout executed (worktree-spec-symlink)
   - Feature branch successfully merged to main (squash merge)
   - Worktree directory removed
   - spec.json worktree field removed
@@ -39,32 +38,24 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
    - Run `git branch --show-current`
    - If not main/master, error: "spec-merge must be run from the main branch"
 
-### Step 1.5: Prepare Worktree for Merge (worktree-spec-symlink)
-Before merging, prepare the worktree to avoid conflicts with spec files.
-
-#### 1.5.1: Resolve Worktree Path and Restore Spec Directory
-Resolve the worktree path and restore spec directory from git in a single operation:
-```bash
-WORKTREE_ABSOLUTE_PATH=$(cd "{worktree.path}" && pwd) && rm -f "${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1" && cd "${WORKTREE_ABSOLUTE_PATH}" && git reset ".kiro/specs/$1" && git checkout ".kiro/specs/$1"
-```
-
-This command:
-1. Resolves the worktree absolute path from spec.json's relative path
-2. Removes the spec symlink (if exists) - `rm -f` safely ignores non-symlinks
-3. Unstages any spec directory changes (`git reset`)
-4. Restores spec directory to HEAD state (`git checkout`)
-
-After execution, the worktree's spec directory matches the committed state in the feature branch, avoiding merge conflicts (spec changes exist only in main repo via symlink during implementation).
-
-### Step 1.6: Commit Pending Changes in Worktree
+### Step 2: Commit Pending Changes in Worktree
 Before merging, ensure all implementation changes in worktree are committed.
 
-#### 1.6.1: Check for Uncommitted Changes
+#### 2.1: Resolve Worktree Path
+Convert the relative path from spec.json to absolute path:
+```bash
+# Get project root
+PROJECT_ROOT=$(pwd)
+# Resolve relative path to absolute
+WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+```
+
+#### 2.2: Check for Uncommitted Changes
 ```bash
 cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 ```
 
-#### 1.6.2: Commit All Changes (if any)
+#### 2.3: Commit All Changes (if any)
 **IF** output is not empty (uncommitted changes exist):
 1. Stage all changes:
    ```bash
@@ -79,32 +70,32 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 **ELSE** (no uncommitted changes):
 - Log: "Worktree内に未コミット変更はありません"
 
-#### 1.6.3: Return to Main Project
+#### 2.4: Return to Main Project
 ```bash
 cd "$PROJECT_ROOT"
 ```
 
-### Step 1.7: Update spec.json Before Merge (Optimistic Update)
+### Step 3: Update spec.json Before Merge (Optimistic Update)
 Update spec.json to deploy-complete state before merging, so the merge commit includes the final state.
 
-#### 1.7.1: Read and Update spec.json
+#### 3.1: Read and Update spec.json
 Read `.kiro/specs/$1/spec.json` and apply the following changes:
 - Remove the `worktree` property
 - Set `phase` to `"deploy-complete"`
 - Update `updated_at` to current UTC timestamp (ISO 8601 format)
 - Keep all other fields intact
 
-#### 1.7.2: Save Original Values for Rollback
+#### 3.2: Save Original Values for Rollback
 Before writing, save these values in case rollback is needed:
 - `ORIGINAL_PHASE`: the current phase value
 - `ORIGINAL_WORKTREE`: the current worktree object (as JSON string)
 
-#### 1.7.3: Write Updated spec.json
+#### 3.3: Write Updated spec.json
 Write the modified JSON back to `.kiro/specs/$1/spec.json`.
 
 **Note**: If merge fails later, rollback by restoring `phase` and `worktree` to their original values.
 
-### Step 2: Perform Merge
+### Step 4: Perform Merge
 1. Ensure working directory is clean:
    - Run `git status --porcelain`
    - If there are uncommitted changes (spec.json update is expected), continue
@@ -122,12 +113,12 @@ Write the modified JSON back to `.kiro/specs/$1/spec.json`.
      git commit -m "feat($1): merge implementation from worktree"
      ```
 5. If merge has conflicts:
-   - Attempt AI-powered conflict resolution (see Step 3)
+   - Attempt AI-powered conflict resolution (see Step 5)
 
-### Step 3: Conflict Resolution (if needed)
+### Step 5: Conflict Resolution (if needed)
 **Maximum 7 attempts** - Track attempt count and exit after 7 failures.
 
-#### 3.1: Detect Conflicted Files
+#### 5.1: Detect Conflicted Files
 Run the following command to get list of conflicted files:
 ```bash
 git diff --name-only --diff-filter=U
@@ -135,7 +126,7 @@ git diff --name-only --diff-filter=U
 - If output is empty, no conflicts exist - proceed to commit
 - Parse output to get list of file paths (one per line)
 
-#### 3.2: Resolution Loop
+#### 5.2: Resolution Loop
 Initialize: `attempt_count = 0`, `max_attempts = 7`
 
 **WHILE** conflicted files exist **AND** `attempt_count < max_attempts`:
@@ -170,16 +161,16 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 
 **END WHILE**
 
-#### 3.3: Post-Resolution
+#### 5.3: Post-Resolution
 **IF** all conflicts resolved (no conflicted files remain):
 - Create merge commit:
   ```bash
   git commit -m "feat($1): merge implementation from worktree (conflicts resolved)"
   ```
-- Proceed to Step 4
+- Proceed to Step 6
 
 **ELSE IF** `attempt_count >= max_attempts`:
-- **ROLLBACK spec.json**: Restore original values saved in Step 1.7.2
+- **ROLLBACK spec.json**: Restore original values saved in Step 3.2
   1. Set `phase` back to `ORIGINAL_PHASE`
   2. Restore `worktree` field with `ORIGINAL_WORKTREE` value
   3. Write the restored spec.json
@@ -208,32 +199,21 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   6. Run: `git commit -m "feat($1): merge implementation from worktree"`
   7. Re-run this command to complete cleanup: `/kiro:spec-merge $1`
   ```
-- **EXIT** (do not continue to Step 4)
+- **EXIT** (do not continue to Step 6)
 
-### Step 4: Cleanup Worktree
-Only proceed if merge was successful (Step 2 or Step 3 completed).
+### Step 6: Cleanup Worktree
+Only proceed if merge was successful (Step 4 or Step 5 completed).
 
-#### 4.1: Resolve Worktree Path
-Convert the relative path from spec.json to absolute path:
-```bash
-# Get project root
-PROJECT_ROOT=$(pwd)
-# Resolve relative path to absolute
-WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
-```
-Alternative using path manipulation:
-- If `worktree.path` is `../project-worktrees/feature-name`
-- And `PROJECT_ROOT` is `/path/to/project`
-- Then absolute path is `/path/to/project-worktrees/feature-name`
+Use `WORKTREE_ABSOLUTE_PATH` resolved in Step 2.1.
 
-#### 4.2: Remove Worktree Directory
+#### 6.1: Remove Worktree Directory
 ```bash
 git worktree remove "{WORKTREE_ABSOLUTE_PATH}" --force
 ```
 - The `--force` flag is needed to remove even if there are untracked files
 - If this fails, log warning but continue to next step
 
-#### 4.3: Delete Feature Branch
+#### 6.2: Delete Feature Branch
 ```bash
 git branch -d {worktree.branch}
 ```
@@ -244,7 +224,7 @@ git branch -d {worktree.branch}
   ```
 - If this fails, log warning but continue to next step
 
-### Step 5: Report Success
+### Step 7: Report Success
 Display completion message with the following format:
 
 ```markdown

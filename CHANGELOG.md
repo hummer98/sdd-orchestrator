@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-01-19
+
+### Added
+- **e2e**: Remote UI Bug高度な機能のPlaywrightテストを追加
+
+### Fixed
+- **electron**: Remote UI bugs broadcast & worktree symlink改善
+- **settings**: skipPermissionsがRecentProjectsから選択時に読み込まれない問題を修正
+- **agent**: recordToAgentInfoでcwdフィールドがマッピングされていない問題を修正
+
 ## [0.33.1] - 2026-01-19
 
 ### Added

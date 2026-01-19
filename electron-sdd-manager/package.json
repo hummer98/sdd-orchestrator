@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.33.1",
+  "version": "0.34.0",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {

@@ -12,7 +12,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
-import { ArrowDown, Play, Square } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
@@ -22,6 +22,7 @@ import { notify } from '../stores';
 import { useLaunchingState } from '@shared/hooks';
 import { PhaseItem, ImplPhasePanel } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
+import { SpecWorkflowFooter } from './SpecWorkflowFooter';
 import { DocumentReviewPanel, InspectionPanel, type ReviewerScheme } from '@shared/components/review';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
@@ -683,36 +684,13 @@ export function WorkflowView() {
 
       </div>
 
-      {/* Footer Buttons */}
+      {/* Specワークフローフッター */}
       {/* Task 5.1: Use isAutoExecuting from specStore */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-        <button
-          data-testid="auto-execute-button"
-          onClick={handleAutoExecution}
-          disabled={!isAutoExecuting && runningPhases.size > 0}
-          className={clsx(
-            'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded',
-            'font-medium transition-colors',
-            isAutoExecuting
-              ? 'bg-red-500 text-white hover:bg-red-600'
-              : runningPhases.size > 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-          )}
-        >
-          {isAutoExecuting ? (
-            <>
-              <Square className="w-4 h-4" />
-              停止
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4" />
-              自動実行
-            </>
-          )}
-        </button>
-      </div>
+      <SpecWorkflowFooter
+        isAutoExecuting={isAutoExecuting}
+        hasRunningAgents={runningPhases.size > 0}
+        onAutoExecution={handleAutoExecution}
+      />
     </div>
   );
 }

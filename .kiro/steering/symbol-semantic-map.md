@@ -109,6 +109,7 @@
 | Bugアクション | analyze/fix/verify実行 | `BugActionButtons` |
 | Bugワークフロー | Bug修正の5フェーズ表示・操作 | `BugWorkflowView`, `BugPhaseItem` |
 | Bugドキュメント | Bugアーティファクトのタブ表示 | `BugArtifactEditor` |
+| Specワークフローフッター | 自動実行ボタン等のワークフロー全体操作 | `SpecWorkflowFooter` |
 
 ### 状態表示コンポーネント
 

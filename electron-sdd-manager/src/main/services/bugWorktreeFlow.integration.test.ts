@@ -1,28 +1,36 @@
 /**
  * Bug Worktree Flow Integration Tests
  * bugs-worktree-support Tasks 17.1, 17.2, 17.3
+ * bugs-worktree-directory-mode: Updated to test directory mode flow
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.3, 4.6, 4.7, 4.8, 9.2, 9.3
  *
  * NOTE: These tests use mocked git commands but real file system operations
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, writeFile, readFile } from 'fs/promises';
+import { mkdir, rm, writeFile, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { BugJson } from '../../renderer/types/bugJson';
 
-// Mock WorktreeService with configurable responses
-const mockCreateBugWorktree = vi.fn();
-const mockRemoveBugWorktree = vi.fn();
+// Mock WorktreeService with directory mode methods
+const mockCreateEntityWorktree = vi.fn();
+const mockRemoveEntityWorktree = vi.fn();
 const mockIsOnMainBranch = vi.fn();
 
-// worktree-internal-path: 新パス形式に更新
 vi.mock('./worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation(() => ({
-    createBugWorktree: mockCreateBugWorktree,
-    removeBugWorktree: mockRemoveBugWorktree,
+    // Directory mode methods
+    createEntityWorktree: mockCreateEntityWorktree,
+    removeEntityWorktree: mockRemoveEntityWorktree,
     isOnMainBranch: mockIsOnMainBranch,
+    getEntityWorktreePath: vi.fn().mockImplementation((_type: string, name: string) => ({
+      relative: `.kiro/worktrees/bugs/${name}`,
+      absolute: `/tmp/test-project/.kiro/worktrees/bugs/${name}`,
+    })),
+    // Legacy methods (kept for backward compatibility)
+    createBugWorktree: mockCreateEntityWorktree, // Alias
+    removeBugWorktree: mockRemoveEntityWorktree, // Alias
     getBugWorktreePath: vi.fn().mockReturnValue({
       relative: '.kiro/worktrees/bugs/test-bug',
       absolute: '/tmp/test-project/.kiro/worktrees/bugs/test-bug',
@@ -40,10 +48,13 @@ import { getConfigStore } from './configStore';
 describe('Bug Worktree Flow Integration Tests', () => {
   let testDir: string;
   let bugPath: string;
+  let worktreeBugPath: string;
 
   beforeEach(async () => {
     testDir = join(tmpdir(), `bug-worktree-flow-test-${Date.now()}`);
     bugPath = join(testDir, '.kiro', 'bugs', 'test-bug');
+    // Directory mode: worktree bug path
+    worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', 'test-bug', '.kiro', 'bugs', 'test-bug');
     await mkdir(bugPath, { recursive: true });
 
     // Reset mocks
@@ -51,17 +62,16 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
     // Default mock implementations
     mockIsOnMainBranch.mockResolvedValue({ ok: true, value: true });
-    // worktree-internal-path: 新パス形式に更新
-    mockCreateBugWorktree.mockResolvedValue({
+    mockCreateEntityWorktree.mockResolvedValue({
       ok: true,
       value: {
         path: '.kiro/worktrees/bugs/test-bug',
-        absolutePath: '/tmp/test-project/.kiro/worktrees/bugs/test-bug',
+        absolutePath: `${testDir}/.kiro/worktrees/bugs/test-bug`,
         branch: 'bugfix/test-bug',
         created_at: new Date().toISOString(),
       },
     });
-    mockRemoveBugWorktree.mockResolvedValue({ ok: true, value: undefined });
+    mockRemoveEntityWorktree.mockResolvedValue({ ok: true, value: undefined });
   });
 
   afterEach(async () => {
@@ -75,6 +85,7 @@ describe('Bug Worktree Flow Integration Tests', () => {
   // ============================================================
   // Task 17.1: bug-fix start to worktree creation flow test
   // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // bugs-worktree-directory-mode: Updated to test directory mode
   // ============================================================
   describe('Task 17.1: bug-fix start flow', () => {
     it('should verify main branch before worktree creation', async () => {
@@ -89,9 +100,8 @@ describe('Bug Worktree Flow Integration Tests', () => {
       // Execute worktree creation
       await handleBugWorktreeCreate(testDir, bugPath, 'test-bug');
 
-      // isOnMainBranch check is done inside WorktreeService.createBugWorktree
-      // We verify that createBugWorktree was called
-      expect(mockCreateBugWorktree).toHaveBeenCalledWith('test-bug');
+      // Directory mode: createEntityWorktree is called with 'bugs' type
+      expect(mockCreateEntityWorktree).toHaveBeenCalledWith('bugs', 'test-bug');
     });
 
     it('should create worktree with bugfix branch naming', async () => {
@@ -111,7 +121,7 @@ describe('Bug Worktree Flow Integration Tests', () => {
       }
     });
 
-    it('should update bug.json with worktree field after creation', async () => {
+    it('should update bug.json with worktree field in worktree (not main)', async () => {
       const initialBugJson: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
@@ -121,19 +131,23 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
       await handleBugWorktreeCreate(testDir, bugPath, 'test-bug');
 
-      // Verify bug.json was updated
-      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
-      const parsed: BugJson = JSON.parse(content);
+      // Directory mode: bug.json is updated in worktree, not main
+      const worktreeContent = await readFile(join(worktreeBugPath, 'bug.json'), 'utf-8');
+      const worktreeParsed: BugJson = JSON.parse(worktreeContent);
 
-      expect(parsed.worktree).toBeDefined();
-      expect(parsed.worktree?.branch).toBe('bugfix/test-bug');
-      expect(parsed.worktree?.path).toContain('worktrees/bugs/test-bug');
-      expect(parsed.worktree?.created_at).toBeDefined();
+      expect(worktreeParsed.worktree).toBeDefined();
+      expect(worktreeParsed.worktree?.branch).toBe('bugfix/test-bug');
+      expect(worktreeParsed.worktree?.path).toBe('.kiro/worktrees/bugs/test-bug');
+
+      // Directory mode: main bug.json is NOT modified
+      const mainContent = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const mainParsed: BugJson = JSON.parse(mainContent);
+      expect(mainParsed.worktree).toBeUndefined();
     });
 
     it('should return error when not on main branch', async () => {
       // Mock: not on main branch
-      mockCreateBugWorktree.mockResolvedValue({
+      mockCreateEntityWorktree.mockResolvedValue({
         ok: false,
         error: {
           type: 'NOT_ON_MAIN_BRANCH' as const,
@@ -157,32 +171,32 @@ describe('Bug Worktree Flow Integration Tests', () => {
       }
     });
 
-    it('should preserve relative path format in bug.json', async () => {
+    it('should copy bug files to worktree directory', async () => {
       const initialBugJson: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
       await writeFile(join(bugPath, 'bug.json'), JSON.stringify(initialBugJson));
+      await writeFile(join(bugPath, 'report.md'), '# Test Bug Report');
 
       await handleBugWorktreeCreate(testDir, bugPath, 'test-bug');
 
-      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
-      const parsed: BugJson = JSON.parse(content);
-
-      // worktree-internal-path: 新パス形式（.kiro/worktrees/）を検証
-      expect(parsed.worktree?.path).toMatch(/^\.kiro\/worktrees\/bugs\//);
+      // Directory mode: bug files are copied to worktree
+      await expect(access(join(worktreeBugPath, 'bug.json'))).resolves.toBeUndefined();
+      await expect(access(join(worktreeBugPath, 'report.md'))).resolves.toBeUndefined();
     });
   });
 
   // ============================================================
   // Task 17.2: bug-merge to worktree deletion flow test
   // Requirements: 4.3, 4.6, 4.7, 4.8
+  // bugs-worktree-directory-mode: Updated to test directory mode
   // ============================================================
   describe('Task 17.2: bug-merge flow', () => {
     it('should remove worktree on successful merge', async () => {
-      // Setup: bug.json with worktree field
-      // worktree-internal-path: 新パス形式に更新
+      // Setup: Create worktree directory structure
+      await mkdir(worktreeBugPath, { recursive: true });
       const bugJsonWithWorktree: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
@@ -193,16 +207,26 @@ describe('Bug Worktree Flow Integration Tests', () => {
           created_at: '2025-01-15T00:00:00Z',
         },
       };
-      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJsonWithWorktree));
+      await writeFile(join(worktreeBugPath, 'bug.json'), JSON.stringify(bugJsonWithWorktree));
+
+      // Also create main bug.json (without worktree field in directory mode)
+      const mainBugJson: BugJson = {
+        bug_name: 'test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(mainBugJson));
 
       const result = await handleBugWorktreeRemove(testDir, bugPath, 'test-bug');
 
       expect(result.ok).toBe(true);
-      expect(mockRemoveBugWorktree).toHaveBeenCalledWith('test-bug');
+      // Directory mode: removeEntityWorktree is called
+      expect(mockRemoveEntityWorktree).toHaveBeenCalledWith('bugs', 'test-bug');
     });
 
-    it('should remove worktree field from bug.json after deletion', async () => {
-      // worktree-internal-path: 新パス形式に更新
+    it('should NOT modify main bug.json after deletion (directory mode)', async () => {
+      // Setup: Create worktree directory structure
+      await mkdir(worktreeBugPath, { recursive: true });
       const bugJsonWithWorktree: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
@@ -213,44 +237,29 @@ describe('Bug Worktree Flow Integration Tests', () => {
           created_at: '2025-01-15T00:00:00Z',
         },
       };
-      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJsonWithWorktree));
+      await writeFile(join(worktreeBugPath, 'bug.json'), JSON.stringify(bugJsonWithWorktree));
+
+      // Main bug.json without worktree field
+      const mainBugJson: BugJson = {
+        bug_name: 'test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(mainBugJson));
 
       await handleBugWorktreeRemove(testDir, bugPath, 'test-bug');
 
-      // Verify worktree field was removed
+      // Directory mode: main bug.json is NOT modified
       const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
       const parsed: BugJson = JSON.parse(content);
 
+      // No worktree field should exist (and was never added in directory mode)
       expect(parsed.worktree).toBeUndefined();
       // Other fields should be preserved
       expect(parsed.bug_name).toBe('test-bug');
       expect(parsed.created_at).toBe('2025-01-15T00:00:00Z');
-    });
-
-    it('should update updated_at timestamp on worktree removal', async () => {
-      const oldTimestamp = '2025-01-15T00:00:00Z';
-      // worktree-internal-path: 新パス形式に更新
-      const bugJsonWithWorktree: BugJson = {
-        bug_name: 'test-bug',
-        created_at: oldTimestamp,
-        updated_at: oldTimestamp,
-        worktree: {
-          path: '.kiro/worktrees/bugs/test-bug',
-          branch: 'bugfix/test-bug',
-          created_at: oldTimestamp,
-        },
-      };
-      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJsonWithWorktree));
-
-      await handleBugWorktreeRemove(testDir, bugPath, 'test-bug');
-
-      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
-      const parsed: BugJson = JSON.parse(content);
-
-      // updated_at should be more recent than old timestamp
-      expect(new Date(parsed.updated_at).getTime()).toBeGreaterThan(
-        new Date(oldTimestamp).getTime()
-      );
+      // updated_at should NOT be changed
+      expect(parsed.updated_at).toBe('2025-01-15T00:00:00Z');
     });
   });
 

@@ -45,11 +45,24 @@ vi.mock('../services/configStore', () => ({
   }),
 }));
 
+// Mock worktreeHelpers for directory mode path calculation
+vi.mock('../services/worktreeHelpers', () => ({
+  getWorktreeEntityPath: vi.fn().mockImplementation((projectPath: string, _entityType: string, entityName: string) => ({
+    relative: `.kiro/worktrees/bugs/${entityName}/.kiro/bugs/${entityName}`,
+    absolute: `${projectPath}/.kiro/worktrees/bugs/${entityName}/.kiro/bugs/${entityName}`,
+  })),
+  getWorktreeBasePath: vi.fn().mockImplementation((projectPath: string, _entityType: string, entityName: string) => ({
+    relative: `.kiro/worktrees/bugs/${entityName}`,
+    absolute: `${projectPath}/.kiro/worktrees/bugs/${entityName}`,
+  })),
+}));
+
 // Mock BugService
 vi.mock('../services/bugService', () => ({
   BugService: vi.fn().mockImplementation(() => ({
     addWorktreeField: vi.fn().mockResolvedValue({ ok: true }),
     removeWorktreeField: vi.fn().mockResolvedValue({ ok: true }),
+    copyBugToWorktree: vi.fn().mockResolvedValue({ ok: true }),
   })),
 }));
 
@@ -60,9 +73,24 @@ vi.mock('../services/bugWorkflowService', () => ({
   })),
 }));
 
-// Mock WorktreeService
+// Mock WorktreeService with directory mode methods
 vi.mock('../services/worktreeService', () => ({
-  WorktreeService: vi.fn().mockImplementation(() => ({
+  WorktreeService: vi.fn().mockImplementation((projectPath: string) => ({
+    // Directory mode methods (bugs-worktree-directory-mode)
+    createEntityWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        path: `.kiro/worktrees/bugs/test-bug`,
+        absolutePath: `${projectPath}/.kiro/worktrees/bugs/test-bug`,
+        branch: 'bugfix/test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+      },
+    }),
+    removeEntityWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: undefined,
+    }),
+    // Legacy methods (kept for backward compatibility)
     createBugWorktree: vi.fn().mockResolvedValue({
       ok: true,
       value: {

@@ -148,6 +148,24 @@ describe('BugListItem', () => {
       render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
       expect(screen.getByText('worktree')).toBeInTheDocument();
     });
+
+    // bugs-worktree-directory-mode: Support worktreeBasePath for directory mode
+    it('should display worktree badge when bug has worktreeBasePath (directory mode)', () => {
+      const bug = createMockBug({
+        worktreeBasePath: '.kiro/worktrees/bugs/test-bug',
+      });
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      expect(screen.getByTestId('worktree-badge')).toBeInTheDocument();
+    });
+
+    it('should display worktree badge with correct tooltip for directory mode', () => {
+      const bug = createMockBug({
+        worktreeBasePath: '.kiro/worktrees/bugs/test-bug',
+      });
+      render(<BugListItem bug={bug} isSelected={false} onSelect={() => {}} />);
+      const badge = screen.getByTestId('worktree-badge');
+      expect(badge).toHaveAttribute('title', 'Worktree: .kiro/worktrees/bugs/test-bug');
+    });
   });
 
   describe('Running agent count', () => {

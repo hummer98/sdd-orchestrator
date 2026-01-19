@@ -31,6 +31,13 @@ export interface BugMetadata {
   readonly reportedAt: string;     // 報告日時
   /** Worktree configuration (optional) - mapped from bug.json for UI display */
   readonly worktree?: BugWorktreeConfig;
+  /**
+   * Worktree base path (directory mode)
+   * Set when bug is located in .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
+   * Value: ".kiro/worktrees/bugs/{bugName}" (relative to project root)
+   * Requirements: 3.2 (bugs-worktree-directory-mode)
+   */
+  readonly worktreeBasePath?: string;
 }
 
 /**

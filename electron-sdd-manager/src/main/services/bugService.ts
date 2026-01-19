@@ -5,7 +5,7 @@
  * Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5, 11.1, 11.2 (bugs-worktree-support)
  */
 
-import { readdir, readFile, writeFile, stat, access } from 'fs/promises';
+import { readdir, readFile, writeFile, stat, access, mkdir, cp } from 'fs/promises';
 import { join, resolve } from 'path';
 import type {
   BugMetadata,
@@ -18,6 +18,7 @@ import type {
   BugWorktreeConfig,
 } from '../../renderer/types';
 import { isBugWorktreeConfig } from '../../renderer/types/bugJson';
+import { scanWorktreeEntities } from './worktreeHelpers';
 
 /**
  * Determine bug phase from existing files
@@ -35,81 +36,46 @@ function determineBugPhaseFromFiles(artifacts: BugDetail['artifacts']): BugPhase
  */
 export class BugService {
   /**
-   * Read all bugs from a project
+   * Read all bugs from a project (including worktree bugs)
    * Requirements: 6.1, 6.3
+   * Requirements: 3.1, 3.2, 3.3 (bugs-worktree-directory-mode)
    */
   async readBugs(projectPath: string): Promise<Result<BugMetadata[], FileError>> {
     try {
-      const bugsPath = join(projectPath, '.kiro', 'bugs');
+      const bugs: BugMetadata[] = [];
+      const seenNames = new Set<string>();
 
-      // Check if bugs directory exists
+      // Step 1: Read bugs from main project (.kiro/bugs/)
+      const bugsPath = join(projectPath, '.kiro', 'bugs');
       try {
         await access(bugsPath);
+        const entries = await readdir(bugsPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          const bugPath = join(bugsPath, entry.name);
+          const metadata = await this.readSingleBug(bugPath, entry.name);
+          if (metadata) {
+            bugs.push(metadata);
+            seenNames.add(entry.name); // Track name for deduplication
+          }
+        }
       } catch {
-        return { ok: true, value: [] };
+        // Main bugs directory doesn't exist, continue to worktrees
       }
 
-      const entries = await readdir(bugsPath, { withFileTypes: true });
-      const bugs: BugMetadata[] = [];
+      // Step 2: Read bugs from worktree directories (.kiro/worktrees/bugs/)
+      // Requirements: 3.1, 3.2, 3.3 (bugs-worktree-directory-mode)
+      const worktreeBugs = await scanWorktreeEntities(projectPath, 'bugs');
+      for (const wtBug of worktreeBugs) {
+        // Skip if already found in main project (main takes priority)
+        if (seenNames.has(wtBug.name)) continue;
 
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-
-        const bugPath = join(bugsPath, entry.name);
-
-        try {
-          // Get artifact information to determine phase
-          const artifacts = await this.getBugArtifacts(bugPath);
-          const phase = determineBugPhaseFromFiles(artifacts);
-
-          // Get the latest update time from all artifact files
-          const updateTimes: Date[] = [];
-          for (const artifact of Object.values(artifacts)) {
-            if (artifact?.exists && artifact.updatedAt) {
-              updateTimes.push(new Date(artifact.updatedAt));
-            }
-          }
-
-          // Use bug.json if available, otherwise use directory creation time
-          let reportedAt = new Date().toISOString();
-          let updatedAt = new Date().toISOString();
-          // bugs-worktree-support: Read worktree field from bug.json
-          let worktree: BugWorktreeConfig | undefined;
-
-          try {
-            const bugJsonPath = join(bugPath, 'bug.json');
-            const bugJsonContent = await readFile(bugJsonPath, 'utf-8');
-            const bugJson = JSON.parse(bugJsonContent);
-            reportedAt = bugJson.created_at || bugJson.reportedAt || reportedAt;
-            updatedAt = bugJson.updated_at || updatedAt;
-            // bugs-worktree-support: Map worktree field to BugMetadata
-            if (isBugWorktreeConfig(bugJson.worktree)) {
-              worktree = bugJson.worktree;
-            }
-          } catch {
-            // No bug.json, use file stats
-            const dirStats = await stat(bugPath);
-            reportedAt = dirStats.birthtime.toISOString();
-          }
-
-          // Use the latest artifact update time if available
-          if (updateTimes.length > 0) {
-            updateTimes.sort((a, b) => b.getTime() - a.getTime());
-            updatedAt = updateTimes[0].toISOString();
-          }
-
-          bugs.push({
-            name: entry.name,
-            path: bugPath,
-            phase,
-            updatedAt,
-            reportedAt,
-            // bugs-worktree-support: Include worktree in BugMetadata
-            ...(worktree && { worktree }),
-          });
-        } catch {
-          // Skip bugs that can't be read
-          continue;
+        const metadata = await this.readSingleBug(wtBug.path, wtBug.name, wtBug.worktreeBasePath);
+        if (metadata) {
+          bugs.push(metadata);
+          seenNames.add(wtBug.name);
         }
       }
 
@@ -125,6 +91,77 @@ export class BugService {
           path: projectPath,
         },
       };
+    }
+  }
+
+  /**
+   * Read a single bug's metadata
+   * Internal helper to avoid code duplication
+   * @param bugPath - Full path to bug directory
+   * @param bugName - Bug name (directory name)
+   * @param worktreeBasePath - Optional worktree base path for directory mode bugs
+   * @returns BugMetadata or null if unreadable
+   */
+  private async readSingleBug(
+    bugPath: string,
+    bugName: string,
+    worktreeBasePath?: string
+  ): Promise<BugMetadata | null> {
+    try {
+      // Get artifact information to determine phase
+      const artifacts = await this.getBugArtifacts(bugPath);
+      const phase = determineBugPhaseFromFiles(artifacts);
+
+      // Get the latest update time from all artifact files
+      const updateTimes: Date[] = [];
+      for (const artifact of Object.values(artifacts)) {
+        if (artifact?.exists && artifact.updatedAt) {
+          updateTimes.push(new Date(artifact.updatedAt));
+        }
+      }
+
+      // Use bug.json if available, otherwise use directory creation time
+      let reportedAt = new Date().toISOString();
+      let updatedAt = new Date().toISOString();
+      // bugs-worktree-support: Read worktree field from bug.json
+      let worktree: BugWorktreeConfig | undefined;
+
+      try {
+        const bugJsonPath = join(bugPath, 'bug.json');
+        const bugJsonContent = await readFile(bugJsonPath, 'utf-8');
+        const bugJson = JSON.parse(bugJsonContent);
+        reportedAt = bugJson.created_at || bugJson.reportedAt || reportedAt;
+        updatedAt = bugJson.updated_at || updatedAt;
+        // bugs-worktree-support: Map worktree field to BugMetadata
+        if (isBugWorktreeConfig(bugJson.worktree)) {
+          worktree = bugJson.worktree;
+        }
+      } catch {
+        // No bug.json, use file stats
+        const dirStats = await stat(bugPath);
+        reportedAt = dirStats.birthtime.toISOString();
+      }
+
+      // Use the latest artifact update time if available
+      if (updateTimes.length > 0) {
+        updateTimes.sort((a, b) => b.getTime() - a.getTime());
+        updatedAt = updateTimes[0].toISOString();
+      }
+
+      return {
+        name: bugName,
+        path: bugPath,
+        phase,
+        updatedAt,
+        reportedAt,
+        // bugs-worktree-support: Include worktree in BugMetadata
+        ...(worktree && { worktree }),
+        // bugs-worktree-directory-mode: Include worktreeBasePath for directory mode bugs
+        ...(worktreeBasePath && { worktreeBasePath }),
+      };
+    } catch {
+      // Bug is unreadable
+      return null;
     }
   }
 
@@ -480,5 +517,57 @@ export class BugService {
 
     // No worktree - use project path
     return projectPath;
+  }
+
+  // ============================================================
+  // bugs-worktree-directory-mode Task 5.2-5.3: Copy bug to worktree
+  // Requirements: 6.2, 6.3
+  // ============================================================
+
+  /**
+   * Copy bug files from main directory to worktree
+   * Requirements: 6.2, 6.3
+   *
+   * @param mainBugPath - Path to bug directory in main project
+   * @param worktreeBugPath - Path to bug directory in worktree
+   * @param bugName - Bug name
+   * @returns void on success
+   */
+  async copyBugToWorktree(
+    mainBugPath: string,
+    worktreeBugPath: string,
+    _bugName: string
+  ): Promise<Result<void, FileError>> {
+    try {
+      // Check if source exists
+      try {
+        await access(mainBugPath);
+      } catch {
+        return {
+          ok: false,
+          error: {
+            type: 'NOT_FOUND',
+            path: mainBugPath,
+          },
+        };
+      }
+
+      // Ensure destination directory exists
+      await mkdir(worktreeBugPath, { recursive: true });
+
+      // Copy all files from source to destination
+      await cp(mainBugPath, worktreeBugPath, { recursive: true });
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: worktreeBugPath,
+          message: String(error),
+        },
+      };
+    }
   }
 }

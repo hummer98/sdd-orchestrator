@@ -222,4 +222,96 @@ describe('BugsWatcherService', () => {
       expect(callback).toHaveBeenCalledTimes(2);
     });
   });
+
+  // ============================================================
+  // bugs-worktree-directory-mode Task 4.1-4.3: Worktree bugs directory monitoring
+  // Requirements: 4.1, 4.2, 4.3
+  // ============================================================
+  describe('worktree bugs directory path handling', () => {
+    it('should recognize worktree bugs path as valid bugs directory', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Event in worktree bugs directory should be processed
+      // Path: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/report.md
+      handleEvent('add', '/project/.kiro/worktrees/bugs/my-worktree-bug/.kiro/bugs/my-worktree-bug/report.md');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'add',
+          bugName: 'my-worktree-bug',
+        })
+      );
+    });
+
+    it('should extract correct bugName from worktree bugs path', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      handleEvent('change', '/project/.kiro/worktrees/bugs/worktree-bug-123/.kiro/bugs/worktree-bug-123/analysis.md');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bugName: 'worktree-bug-123',
+          path: '/project/.kiro/worktrees/bugs/worktree-bug-123/.kiro/bugs/worktree-bug-123/analysis.md',
+        })
+      );
+    });
+
+    it('should detect worktree bug directory creation via addDir event', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Worktree bugs directory creation should trigger event
+      handleEvent('addDir', '/project/.kiro/worktrees/bugs/new-worktree-bug/.kiro/bugs/new-worktree-bug');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'addDir',
+          bugName: 'new-worktree-bug',
+        })
+      );
+    });
+
+    it('should handle both main and worktree bugs directories', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Events from both main and worktree bugs directories
+      handleEvent('add', '/project/.kiro/bugs/main-bug/report.md');
+      handleEvent('add', '/project/.kiro/worktrees/bugs/worktree-bug/.kiro/bugs/worktree-bug/report.md');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledTimes(2);
+      // First call should be main bug
+      expect(callback).toHaveBeenNthCalledWith(1,
+        expect.objectContaining({ bugName: 'main-bug' })
+      );
+      // Second call should be worktree bug
+      expect(callback).toHaveBeenNthCalledWith(2,
+        expect.objectContaining({ bugName: 'worktree-bug' })
+      );
+    });
+  });
 });

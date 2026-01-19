@@ -559,4 +559,181 @@ describe('BugService', () => {
       }
     });
   });
+
+  // ============================================================
+  // bugs-worktree-directory-mode Task 3.1-3.3: Worktree bugs scanning
+  // Requirements: 3.1, 3.2, 3.3 (directory mode)
+  // ============================================================
+  describe('readBugs with worktree directories', () => {
+    it('should include bugs from worktree directories', async () => {
+      // Create main project bug
+      const mainBugPath = join(testDir, '.kiro', 'bugs', 'main-bug');
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Main Bug Report');
+      const mainBugJson: BugJson = {
+        bug_name: 'main-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+      };
+      await writeFile(join(mainBugPath, 'bug.json'), JSON.stringify(mainBugJson));
+
+      // Create worktree bug: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
+      const worktreeBugName = 'worktree-bug';
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', worktreeBugName, '.kiro', 'bugs', worktreeBugName);
+      await mkdir(worktreeBugPath, { recursive: true });
+      await writeFile(join(worktreeBugPath, 'report.md'), '# Worktree Bug Report');
+      await writeFile(join(worktreeBugPath, 'analysis.md'), '# Analysis');
+      const worktreeBugJson: BugJson = {
+        bug_name: worktreeBugName,
+        created_at: '2025-01-16T00:00:00Z',
+        updated_at: '2025-01-16T12:00:00Z',
+      };
+      await writeFile(join(worktreeBugPath, 'bug.json'), JSON.stringify(worktreeBugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        // Should find both main and worktree bugs
+        const bugNames = result.value.map(b => b.name);
+        expect(bugNames).toContain('main-bug');
+        expect(bugNames).toContain('worktree-bug');
+
+        // Worktree bug should have correct phase
+        const worktreeBug = result.value.find(b => b.name === 'worktree-bug');
+        expect(worktreeBug?.phase).toBe('analyzed');
+      }
+    });
+
+    it('should give priority to main project bugs over worktree bugs with same name', async () => {
+      // Create main project bug
+      const bugName = 'duplicate-bug';
+      const mainBugPath = join(testDir, '.kiro', 'bugs', bugName);
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Main Bug');
+      const mainBugJson: BugJson = {
+        bug_name: bugName,
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+      };
+      await writeFile(join(mainBugPath, 'bug.json'), JSON.stringify(mainBugJson));
+
+      // Create worktree bug with same name (should be ignored)
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', bugName, '.kiro', 'bugs', bugName);
+      await mkdir(worktreeBugPath, { recursive: true });
+      await writeFile(join(worktreeBugPath, 'report.md'), '# Worktree Bug');
+      const worktreeBugJson: BugJson = {
+        bug_name: bugName,
+        created_at: '2025-01-16T00:00:00Z',
+        updated_at: '2025-01-16T12:00:00Z',
+      };
+      await writeFile(join(worktreeBugPath, 'bug.json'), JSON.stringify(worktreeBugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Should only have 1 bug (main takes priority)
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].name).toBe(bugName);
+        // Path should be from main, not worktree
+        expect(result.value[0].path).toBe(mainBugPath);
+      }
+    });
+
+    it('should skip worktree directories without valid bug path structure', async () => {
+      // Create worktree directory without proper bug structure
+      const invalidWorktreePath = join(testDir, '.kiro', 'worktrees', 'bugs', 'invalid-worktree');
+      await mkdir(invalidWorktreePath, { recursive: true });
+      // No .kiro/bugs/{bugName}/ directory inside
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(0);
+      }
+    });
+
+    it('should work when no worktree bugs directory exists', async () => {
+      // Only main bugs, no worktrees/bugs/ directory
+      const mainBugPath = join(testDir, '.kiro', 'bugs', 'solo-bug');
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Solo Bug');
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].name).toBe('solo-bug');
+      }
+    });
+
+    it('should set worktreeBasePath for worktree bugs', async () => {
+      // Create worktree bug
+      const worktreeBugName = 'worktree-path-bug';
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', worktreeBugName, '.kiro', 'bugs', worktreeBugName);
+      await mkdir(worktreeBugPath, { recursive: true });
+      await writeFile(join(worktreeBugPath, 'report.md'), '# Bug Report');
+      const bugJson: BugJson = {
+        bug_name: worktreeBugName,
+        created_at: '2025-01-16T00:00:00Z',
+        updated_at: '2025-01-16T12:00:00Z',
+      };
+      await writeFile(join(worktreeBugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].worktreeBasePath).toBe(`.kiro/worktrees/bugs/${worktreeBugName}`);
+      }
+    });
+  });
+
+  // ============================================================
+  // bugs-worktree-directory-mode Task 5.2-5.3: Copy bug files to worktree
+  // Requirements: 6.2, 6.3
+  // ============================================================
+  describe('copyBugToWorktree', () => {
+    it('should copy bug files from main to worktree', async () => {
+      // Create source bug in main
+      const bugName = 'copy-test-bug';
+      const mainBugPath = join(testDir, '.kiro', 'bugs', bugName);
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Bug Report\n\nTest content');
+      await writeFile(join(mainBugPath, 'analysis.md'), '# Analysis\n\nTest analysis');
+      const bugJson: BugJson = {
+        bug_name: bugName,
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T12:00:00Z',
+      };
+      await writeFile(join(mainBugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      // Create worktree directory (simulating worktree creation)
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', bugName, '.kiro', 'bugs', bugName);
+      await mkdir(join(testDir, '.kiro', 'worktrees', 'bugs', bugName, '.kiro', 'bugs'), { recursive: true });
+
+      // Copy bug files
+      const result = await service.copyBugToWorktree(mainBugPath, worktreeBugPath, bugName);
+      expect(result.ok).toBe(true);
+
+      // Verify files were copied
+      const copiedReport = await readFile(join(worktreeBugPath, 'report.md'), 'utf-8');
+      expect(copiedReport).toBe('# Bug Report\n\nTest content');
+
+      const copiedAnalysis = await readFile(join(worktreeBugPath, 'analysis.md'), 'utf-8');
+      expect(copiedAnalysis).toBe('# Analysis\n\nTest analysis');
+
+      // Verify bug.json was copied and has worktree field added
+      const copiedBugJson = JSON.parse(await readFile(join(worktreeBugPath, 'bug.json'), 'utf-8'));
+      expect(copiedBugJson.bug_name).toBe(bugName);
+    });
+
+    it('should handle missing source directory', async () => {
+      const nonExistentPath = join(testDir, '.kiro', 'bugs', 'non-existent');
+      const worktreePath = join(testDir, '.kiro', 'worktrees', 'bugs', 'test', '.kiro', 'bugs', 'test');
+
+      const result = await service.copyBugToWorktree(nonExistentPath, worktreePath, 'test');
+      expect(result.ok).toBe(false);
+    });
+  });
 });

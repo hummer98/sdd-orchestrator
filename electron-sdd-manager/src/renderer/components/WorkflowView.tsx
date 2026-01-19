@@ -11,7 +11,6 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { clsx } from 'clsx';
 import { ArrowDown } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';

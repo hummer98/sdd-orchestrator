@@ -2,6 +2,7 @@
  * File Service
  * Handles file system operations with security validation
  * Requirements: 1.1, 1.2, 2.1, 4.5, 7.4-7.6, 13.4, 13.5, 3.3-3.5
+ * Requirements: 8.2 (bugs-worktree-directory-mode) - Use common scanWorktreeEntities helper
  */
 
 import { readdir, readFile, writeFile, mkdir, stat, access } from 'fs/promises';
@@ -16,6 +17,7 @@ import type {
   Result,
   ArtifactInfo,
 } from '../../renderer/types';
+import { scanWorktreeEntities } from './worktreeHelpers';
 
 /**
  * Check if a path is safe (within base directory, no traversal)
@@ -107,6 +109,7 @@ export class FileService {
    * spec-metadata-ssot-refactor: Returns only name and path (SSOT principle)
    * phase, updatedAt, approvals should be obtained from specJson
    * spec-worktree-early-creation: Also reads specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
+   * bugs-worktree-directory-mode (8.2): Uses scanWorktreeEntities for worktree scanning
    */
   async readSpecs(projectPath: string): Promise<Result<SpecMetadata[], FileError>> {
     try {
@@ -144,38 +147,27 @@ export class FileService {
         // Main specs directory doesn't exist, continue to check worktrees
       }
 
-      // 2. spec-worktree-early-creation: Read worktree specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
-      const worktreeSpecsBasePath = join(projectPath, '.kiro', 'worktrees', 'specs');
-      try {
-        await access(worktreeSpecsBasePath);
-        const worktreeDirs = await readdir(worktreeSpecsBasePath, { withFileTypes: true });
+      // 2. bugs-worktree-directory-mode (8.2): Use shared scanWorktreeEntities helper
+      // Read worktree specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
+      const worktreeSpecs = await scanWorktreeEntities(projectPath, 'specs');
+      for (const wtSpec of worktreeSpecs) {
+        // Skip if already found in main specs (main spec takes priority)
+        if (seenSpecNames.has(wtSpec.name)) continue;
 
-        for (const worktreeDir of worktreeDirs) {
-          if (!worktreeDir.isDirectory()) continue;
+        // Verify spec.json exists in the worktree entity path
+        const worktreeSpecJsonPath = join(wtSpec.path, 'spec.json');
+        try {
+          await access(worktreeSpecJsonPath);
 
-          const specId = worktreeDir.name;
-          // Skip if already found in main specs (main spec takes priority)
-          if (seenSpecNames.has(specId)) continue;
-
-          // Worktree spec path: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
-          const worktreeSpecPath = join(worktreeSpecsBasePath, specId, '.kiro', 'specs', specId);
-          const worktreeSpecJsonPath = join(worktreeSpecPath, 'spec.json');
-
-          try {
-            await access(worktreeSpecJsonPath);
-
-            specs.push({
-              name: specId,
-              path: worktreeSpecPath,
-            });
-            seenSpecNames.add(specId);
-          } catch {
-            // Skip worktrees without valid spec.json in the expected location
-            continue;
-          }
+          specs.push({
+            name: wtSpec.name,
+            path: wtSpec.path,
+          });
+          seenSpecNames.add(wtSpec.name);
+        } catch {
+          // Skip worktrees without valid spec.json in the expected location
+          continue;
         }
-      } catch {
-        // Worktree specs directory doesn't exist, that's OK
       }
 
       return { ok: true, value: specs };

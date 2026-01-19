@@ -177,11 +177,14 @@ export function BugListItem({
 
           {/* bugs-worktree-support Task 13.1: worktreeインジケーター */}
           {/* Requirements: 10.1, 10.2, 10.3 */}
-          {bug.worktree && (
+          {/* bugs-worktree-directory-mode: Support both worktree field and worktreeBasePath */}
+          {(bug.worktree || bug.worktreeBasePath) && (
             <span
               data-testid="worktree-badge"
               className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
-              title={`Path: ${bug.worktree.path}\nBranch: ${bug.worktree.branch}`}
+              title={bug.worktree
+                ? `Path: ${bug.worktree.path}\nBranch: ${bug.worktree.branch}`
+                : `Worktree: ${bug.worktreeBasePath}`}
             >
               <GitBranch className="w-3 h-3" />
               worktree

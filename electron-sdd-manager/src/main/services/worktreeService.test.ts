@@ -683,4 +683,130 @@ describe('WorktreeService', () => {
   // spec-worktree-early-creation: prepareWorktreeForMerge tests REMOVED
   // - Spec files are now real files in worktree (not symlinks)
   // - No special preparation needed for merge
+
+  // ============================================================
+  // bugs-worktree-directory-mode: Task 2.1-2.4 - 汎用Entity API
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+  // ============================================================
+  describe('getEntityWorktreePath', () => {
+    it('should generate correct path for specs type', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = service.getEntityWorktreePath('specs', 'my-feature');
+
+      expect(result.relative).toBe('.kiro/worktrees/specs/my-feature');
+      expect(result.absolute).toBe('/Users/test/my-project/.kiro/worktrees/specs/my-feature');
+    });
+
+    it('should generate correct path for bugs type', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = service.getEntityWorktreePath('bugs', 'my-bug');
+
+      expect(result.relative).toBe('.kiro/worktrees/bugs/my-bug');
+      expect(result.absolute).toBe('/Users/test/my-project/.kiro/worktrees/bugs/my-bug');
+    });
+  });
+
+  describe('createEntityWorktree', () => {
+    it('should create worktree with feature/ branch prefix for specs type', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'main\n' },
+        { pattern: /branch feature\//, stdout: '' },
+        { pattern: /worktree add/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createEntityWorktree('specs', 'my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.branch).toBe('feature/my-feature');
+        expect(result.value.path).toBe('.kiro/worktrees/specs/my-feature');
+      }
+    });
+
+    it('should create worktree with bugfix/ branch prefix for bugs type', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'main\n' },
+        { pattern: /branch bugfix\//, stdout: '' },
+        { pattern: /worktree add/, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createEntityWorktree('bugs', 'my-bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.branch).toBe('bugfix/my-bug');
+        expect(result.value.path).toBe('.kiro/worktrees/bugs/my-bug');
+      }
+    });
+
+    it('should return NOT_ON_MAIN_BRANCH error when not on main/master', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'feature/other\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createEntityWorktree('bugs', 'my-bug');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('NOT_ON_MAIN_BRANCH');
+      }
+    });
+  });
+
+  describe('removeEntityWorktree', () => {
+    it('should remove specs worktree and feature/ branch', async () => {
+      const mockExec = createMockExec([
+        { pattern: /worktree remove/, stdout: '' },
+        { pattern: /branch -d feature\//, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.removeEntityWorktree('specs', 'my-feature');
+
+      expect(result.ok).toBe(true);
+    });
+
+    it('should remove bugs worktree and bugfix/ branch', async () => {
+      const mockExec = createMockExec([
+        { pattern: /worktree remove/, stdout: '' },
+        { pattern: /branch -d bugfix\//, stdout: '' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.removeEntityWorktree('bugs', 'my-bug');
+
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('backward compatible aliases', () => {
+    it('getWorktreePath should delegate to getEntityWorktreePath for specs', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const entityResult = service.getEntityWorktreePath('specs', 'test-feature');
+      const aliasResult = service.getWorktreePath('test-feature');
+
+      expect(aliasResult.relative).toBe(entityResult.relative);
+      expect(aliasResult.absolute).toBe(entityResult.absolute);
+    });
+
+    it('getBugWorktreePath should delegate to getEntityWorktreePath for bugs', () => {
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const entityResult = service.getEntityWorktreePath('bugs', 'test-bug');
+      const aliasResult = service.getBugWorktreePath('test-bug');
+
+      expect(aliasResult.relative).toBe(entityResult.relative);
+      expect(aliasResult.absolute).toBe(entityResult.absolute);
+    });
+  });
 });

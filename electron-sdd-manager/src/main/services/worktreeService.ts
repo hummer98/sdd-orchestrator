@@ -16,6 +16,8 @@ import type {
   WorktreeInfo,
   WorktreeServiceResult,
 } from '../../renderer/types/worktree';
+import type { EntityType } from './worktreeHelpers';
+import { getWorktreeBasePath as getWorktreeBasePathHelper } from './worktreeHelpers';
 
 /**
  * Type for exec function for dependency injection
@@ -360,6 +362,136 @@ export class WorktreeService {
       return this.resolveWorktreePath(worktreeConfig.path);
     }
     return this.projectPath;
+  }
+
+  // ============================================================
+  // bugs-worktree-directory-mode Task 2.1-2.4: 汎用Entity API
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+  // ============================================================
+
+  /**
+   * Get worktree path for an entity (specs or bugs)
+   * Requirements: 2.1
+   *
+   * @param type - Entity type ('specs' | 'bugs')
+   * @param name - Entity name
+   * @returns Object with relative and absolute paths
+   */
+  getEntityWorktreePath(type: EntityType, name: string): { relative: string; absolute: string } {
+    return getWorktreeBasePathHelper(this.projectPath, type, name);
+  }
+
+  /**
+   * Create a worktree for an entity (specs or bugs)
+   * Requirements: 2.2, 2.5, 2.6
+   *
+   * @param type - Entity type ('specs' | 'bugs')
+   * @param name - Entity name
+   * @returns WorktreeInfo on success
+   */
+  async createEntityWorktree(type: EntityType, name: string): Promise<WorktreeServiceResult<WorktreeInfo>> {
+    // Validate name
+    const validation = validateFeatureName(name);
+    if (!validation.ok) {
+      return validation;
+    }
+
+    // Check if on main branch
+    const branchResult = await this.getCurrentBranch();
+    if (!branchResult.ok) {
+      return branchResult;
+    }
+
+    const currentBranch = branchResult.value;
+    if (currentBranch !== 'main' && currentBranch !== 'master') {
+      return {
+        ok: false,
+        error: { type: 'NOT_ON_MAIN_BRANCH', currentBranch },
+      };
+    }
+
+    // Branch prefix depends on type
+    const branchPrefix = type === 'specs' ? 'feature' : 'bugfix';
+    const branchName = `${branchPrefix}/${name}`;
+    const { relative: relativePath, absolute: absolutePath } = this.getEntityWorktreePath(type, name);
+
+    // Create the branch
+    const createBranchResult = await this.execGit(`git branch ${branchName}`);
+    if (!createBranchResult.ok) {
+      if (createBranchResult.error.type === 'GIT_ERROR' &&
+          createBranchResult.error.message.includes('already exists')) {
+        return {
+          ok: false,
+          error: { type: 'BRANCH_EXISTS', branch: branchName },
+        };
+      }
+      return createBranchResult;
+    }
+
+    // Create the worktree
+    const createWorktreeResult = await this.execGit(`git worktree add "${absolutePath}" ${branchName}`);
+    if (!createWorktreeResult.ok) {
+      // Rollback: delete the branch we just created
+      await this.execGit(`git branch -d ${branchName}`).catch(() => {
+        logger.warn('[WorktreeService] Failed to rollback branch creation', { branchName });
+      });
+
+      if (createWorktreeResult.error.type === 'GIT_ERROR' &&
+          createWorktreeResult.error.message.includes('already exists')) {
+        return {
+          ok: false,
+          error: { type: 'WORKTREE_EXISTS', path: absolutePath },
+        };
+      }
+      return createWorktreeResult;
+    }
+
+    // Wait for checkout to complete
+    await this.waitForWorktreeReady(name);
+
+    const worktreeInfo: WorktreeInfo = {
+      path: relativePath,
+      absolutePath,
+      branch: branchName,
+      created_at: new Date().toISOString(),
+    };
+
+    logger.info('[WorktreeService] Entity worktree created', { type, ...worktreeInfo });
+    return { ok: true, value: worktreeInfo };
+  }
+
+  /**
+   * Remove an entity worktree and its branch
+   * Requirements: 2.3
+   *
+   * @param type - Entity type ('specs' | 'bugs')
+   * @param name - Entity name
+   * @returns void on success
+   */
+  async removeEntityWorktree(type: EntityType, name: string): Promise<WorktreeServiceResult<void>> {
+    const branchPrefix = type === 'specs' ? 'feature' : 'bugfix';
+    const branchName = `${branchPrefix}/${name}`;
+    const { absolute: absolutePath } = this.getEntityWorktreePath(type, name);
+
+    // Remove worktree (force to handle uncommitted changes)
+    const removeResult = await this.execGit(`git worktree remove "${absolutePath}" --force`);
+    if (!removeResult.ok) {
+      return removeResult;
+    }
+
+    // Delete the branch
+    const deleteBranchResult = await this.execGit(`git branch -d ${branchName}`);
+    if (!deleteBranchResult.ok) {
+      // Try force delete if normal delete fails
+      const forceDeleteResult = await this.execGit(`git branch -D ${branchName}`);
+      if (!forceDeleteResult.ok) {
+        logger.warn('[WorktreeService] Failed to delete branch', { branchName, error: forceDeleteResult.error });
+        // Don't return error - worktree was removed successfully
+      }
+    }
+
+    logger.info('[WorktreeService] Entity worktree removed', { type, name, absolutePath, branchName });
+    return { ok: true, value: undefined };
   }
 
   // ============================================================

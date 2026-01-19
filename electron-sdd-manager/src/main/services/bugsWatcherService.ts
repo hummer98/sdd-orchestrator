@@ -31,22 +31,66 @@ export class BugsWatcherService {
   }
 
   /**
-   * Check if a path is within the bugs directory
-   * e.g., /project/.kiro/bugs/my-bug/report.md -> true
-   * e.g., /project/.kiro/specs/my-spec/spec.json -> false
+   * Check if a path is within bugs directory (main or worktree)
+   * Supports:
+   * - Main: .kiro/bugs/{bugName}/...
+   * - Worktree: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/...
+   *
+   * Requirements: 4.1 (bugs-worktree-directory-mode)
    */
   private isWithinBugsDir(filePath: string): boolean {
-    const bugsDir = path.join(this.projectPath, '.kiro', 'bugs');
-    const relativePath = path.relative(bugsDir, filePath);
-    // If the relative path starts with '..' it means filePath is outside bugsDir
-    return !relativePath.startsWith('..');
+    // Check main bugs directory: .kiro/bugs/
+    const mainBugsDir = path.join(this.projectPath, '.kiro', 'bugs');
+    const mainRelative = path.relative(mainBugsDir, filePath);
+    if (!mainRelative.startsWith('..')) {
+      return true;
+    }
+
+    // Check worktree bugs directory: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
+    const worktreeMatch = this.matchWorktreeBugsPath(filePath);
+    return worktreeMatch !== null;
+  }
+
+  /**
+   * Match worktree bugs path pattern
+   * Pattern: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/...
+   *
+   * @returns bugName if matched, null otherwise
+   */
+  private matchWorktreeBugsPath(filePath: string): string | null {
+    const kiroDir = path.join(this.projectPath, '.kiro');
+    const relativePath = path.relative(kiroDir, filePath);
+
+    // Pattern: worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/...
+    const parts = relativePath.split(path.sep);
+    // Minimum: worktrees/bugs/{bugName}/.kiro/bugs/{bugName} = 6 parts
+    if (parts.length >= 6 &&
+        parts[0] === 'worktrees' &&
+        parts[1] === 'bugs' &&
+        parts[3] === '.kiro' &&
+        parts[4] === 'bugs' &&
+        parts[2] === parts[5]) {
+      return parts[2]; // bugName
+    }
+    return null;
   }
 
   /**
    * Extract bug name from file path
-   * e.g., /project/.kiro/bugs/my-bug/report.md -> my-bug
+   * Supports:
+   * - Main: .kiro/bugs/{bugName}/... -> bugName
+   * - Worktree: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/... -> bugName
+   *
+   * Requirements: 4.2 (bugs-worktree-directory-mode)
    */
   private extractBugName(filePath: string): string | undefined {
+    // First, try worktree path pattern
+    const worktreeBugName = this.matchWorktreeBugsPath(filePath);
+    if (worktreeBugName) {
+      return worktreeBugName;
+    }
+
+    // Fall back to main bugs directory
     const bugsDir = path.join(this.projectPath, '.kiro', 'bugs');
     const relativePath = path.relative(bugsDir, filePath);
     const parts = relativePath.split(path.sep);

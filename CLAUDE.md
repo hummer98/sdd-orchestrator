@@ -89,13 +89,29 @@ Report → Analyze → Fix → Verify
 
 ## Steering Configuration
 
-- Load entire `.kiro/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`
-- **`symbol-semantic-map.md`**: コードシンボルとドメイン概念の対応表（用語定義、UIコンポーネントマッピング）
-- **`debugging.md`**: ログ保存場所、トラブルシューティング情報
-- **`operations.md`**: MCP経由のElectronアプリ操作手順（プロジェクト選択、UI操作、Remote UI）
-- **`skill-reference.md`**: **プロファイル別の動作仕様書**。プロファイル（cc-sdd/cc-sdd-agent/spec-manager）ごとのコマンド動作、生成ファイル、spec.json状態遷移、書き換え主体を定義。プロファイルの違いを理解する際は必ず参照
-- Custom files are supported (managed via `/kiro:steering-custom`)
+### Core Steering（常時参照）
+
+| ファイル | 内容 |
+|----------|------|
+| `product.md` | プロダクト概要 |
+| `tech.md` | 技術スタック、ビルド・検証コマンド |
+| `design-principles.md` | 設計原則（DRY, KISS, YAGNI等） |
+| `structure.md` | ディレクトリ構造、State管理ルール |
+
+### Extended Steering（タスク内容に応じて読み込み）
+
+| 状況 | 読み込むファイル |
+|------|-----------------|
+| 動作確認・MCP操作 | `operations.md`, `debugging.md` |
+| デバッグ・ログ調査 | `debugging.md` |
+| E2Eテスト作成 | `e2e-testing.md` |
+| Web E2Eテスト | `web-e2e-testing.md` |
+| 用語・ドメイン確認 | `symbol-semantic-map.md` |
+| プロファイル仕様確認 | `skill-reference.md` |
+| ログ実装 | `logging.md` |
+| 検証コマンド確認 | `verification.md` |
+
+Custom files are supported (managed via `/kiro:steering-custom`)
 
 ## Development Commands
 

@@ -30,10 +30,32 @@ You will receive task prompts containing:
 
 ### Step 0: Expand File Patterns (Subagent-specific)
 
-Use Glob tool to expand file patterns, then read all files:
-- Glob(`.kiro/steering/*.md`) to get all steering files
-- Read each file from glob results
-- Read other specified file patterns
+Use Glob tool to expand file patterns for spec files:
+- Glob(`.kiro/specs/{feature}/*.md`) to get spec files
+- Read spec files from glob results
+
+### Step 0.5: Load Steering (JIT - Just-In-Time)
+
+**Core Steering（常時読み込み）**:
+- `.kiro/steering/product.md`
+- `.kiro/steering/tech.md`
+- `.kiro/steering/design-principles.md` (if exists)
+- `.kiro/steering/structure.md`
+
+**Extended Steering（タスク内容に応じて読み込み）**:
+
+1. Read tasks.md to understand task descriptions
+2. Match keywords in task descriptions and load relevant files:
+
+| キーワード | 読み込むファイル |
+|-----------|-----------------|
+| 動作確認, UI確認, MCP, スクリーンショット | `operations.md`, `debugging.md` |
+| E2Eテスト, wdio, WebdriverIO, e2e | `e2e-testing.md` |
+| Playwright, Remote UI, web-e2e | `web-e2e-testing.md` |
+| デバッグ, ログ調査, エラー, debug | `debugging.md` |
+| 用語, シンボル, ドメイン, symbol | `symbol-semantic-map.md` |
+
+3. If no keywords match extended steering: Use core steering only
 
 ### Step 1-3: Core Task (from original instructions)
 
@@ -46,7 +68,7 @@ Execute implementation tasks for feature using Test-Driven Development.
 
 **Read all necessary context**:
 - `.kiro/specs/{feature}/spec.json`, `requirements.md`, `design.md`, `tasks.md`
-- **Entire `.kiro/steering/` directory** for complete project memory
+- Core + Extended steering files (loaded in Step 0.5)
 
 **Validate approvals**:
 - Verify tasks are approved in spec.json (stop if not, see Safety & Fallback)

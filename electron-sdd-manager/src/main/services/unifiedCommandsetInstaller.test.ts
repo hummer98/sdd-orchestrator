@@ -140,6 +140,7 @@ describe('UnifiedCommandsetInstaller', () => {
       'templates/steering/product.md',
       'templates/steering/structure.md',
       'templates/steering/tech.md',
+      'templates/steering/design-principles.md',
       'templates/steering/logging.md',
       'templates/steering/debugging.md',
       // Steering-custom templates

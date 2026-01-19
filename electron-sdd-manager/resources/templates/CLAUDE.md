@@ -76,8 +76,21 @@ Follow these principles during design and implementation:
 - Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
 
 ## Steering Configuration
-- Load entire `{{KIRO_DIR}}/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`
-- **`logging.md`**: ロギング設計/実装の観点・ガイドライン
-- **`debugging.md`**: デバッグ手順、ログ保存場所、トラブルシューティング情報
-- Custom files are supported (managed via `/kiro:steering-custom`)
+
+### Core Steering（常時参照）
+
+| ファイル | 内容 |
+|----------|------|
+| `product.md` | プロダクト概要 |
+| `tech.md` | 技術スタック、ビルド・検証コマンド |
+| `design-principles.md` | AI設計判断の原則 |
+| `structure.md` | ディレクトリ構造、State管理ルール |
+
+### Extended Steering（タスク内容に応じて読み込み）
+
+| 状況 | 読み込むファイル |
+|------|-----------------|
+| デバッグ・ログ調査 | `debugging.md` |
+| ログ実装 | `logging.md` |
+
+Custom files are supported (managed via `/kiro:steering-custom`)

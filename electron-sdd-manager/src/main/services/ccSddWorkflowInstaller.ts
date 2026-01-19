@@ -59,9 +59,10 @@ export const CC_SDD_AGENTS = [
   'spec-impl',
   'spec-requirements',
   'spec-tasks',
-  // Steering Agents (2)
+  // Steering Agents (3)
   'steering',
   'steering-custom',
+  'steering-verification',
   // Validation Agents (3)
   'validate-design',
   'validate-gap',

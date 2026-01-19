@@ -2,7 +2,7 @@
   "feature_name": "worktree-spec",
   "name": "worktree-spec",
   "description": "E2Eテスト用：Worktree内のSpec",
-  "phase": "implementation",
+  "phase": "implementation-complete",
   "language": "ja",
   "approvals": {
     "requirements": {

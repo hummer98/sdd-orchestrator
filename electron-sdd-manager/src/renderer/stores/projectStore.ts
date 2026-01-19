@@ -58,6 +58,11 @@ export interface SteeringCheckResult {
   readonly verificationMdExists: boolean;
 }
 
+/** Release check result (steering-release-integration feature) */
+export interface ReleaseCheckResult {
+  readonly releaseMdExists: boolean;
+}
+
 interface ProjectState {
   currentProject: string | null;
   recentProjects: string[];
@@ -86,6 +91,10 @@ interface ProjectState {
   // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
   steeringCheck: SteeringCheckResult | null;
   steeringGenerateLoading: boolean;
+  // steering-release-integration feature
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  releaseCheck: ReleaseCheckResult | null;
+  releaseGenerateLoading: boolean;
 }
 
 /** シェル許可追加結果 */
@@ -114,6 +123,9 @@ interface ProjectActions {
   // steering-verification-integration feature
   checkSteeringFiles: (projectPath: string) => Promise<void>;
   generateVerificationMd: () => Promise<void>;
+  // steering-release-integration feature
+  checkReleaseFiles: (projectPath: string) => Promise<void>;
+  generateReleaseMd: () => Promise<void>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -139,6 +151,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // steering-verification-integration feature
   steeringCheck: null,
   steeringGenerateLoading: false,
+  // steering-release-integration feature
+  releaseCheck: null,
+  releaseGenerateLoading: false,
 
   // Actions
   // ============================================================
@@ -160,6 +175,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       lastSelectResult: null,
       // steering-verification-integration feature
       steeringCheck: null,
+      // steering-release-integration feature
+      releaseCheck: null,
     });
 
     try {
@@ -269,6 +286,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         set({ steeringCheck: null });
       }
 
+      // steering-release-integration feature: Check release files
+      // Requirements: 3.2
+      try {
+        await get().checkReleaseFiles(path);
+      } catch (error) {
+        console.error('[projectStore] Failed to check release files:', error);
+        // Don't fail project selection if release check fails
+        set({ releaseCheck: null });
+      }
+
       // Bug fix: skip-permissions-not-loaded
       // Load skipPermissions as part of selectProject to ensure it's loaded
       // regardless of which code path triggers project selection (menu, RecentProjects, etc.)
@@ -340,6 +367,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // steering-verification-integration feature
       steeringCheck: null,
       steeringGenerateLoading: false,
+      // steering-release-integration feature
+      releaseCheck: null,
+      releaseGenerateLoading: false,
     });
   },
 
@@ -628,6 +658,54 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       console.error('[projectStore] Failed to generate verification.md:', error);
       set({ steeringGenerateLoading: false });
+    }
+  },
+
+  // ============================================================
+  // Release Files Check (steering-release-integration feature)
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Check release files (release.md)
+   * Requirements: 3.2
+   */
+  checkReleaseFiles: async (projectPath: string) => {
+    try {
+      const result = await window.electronAPI.checkReleaseMd(projectPath);
+      set({ releaseCheck: result });
+    } catch (error) {
+      console.error('[projectStore] Failed to check release files:', error);
+      set({ releaseCheck: null });
+    }
+  },
+
+  /**
+   * Generate release.md file by launching steering-release agent
+   * Requirements: 3.4 (ボタンクリックでエージェント起動)
+   */
+  generateReleaseMd: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    set({ releaseGenerateLoading: true });
+
+    try {
+      // Launch steering-release agent and get AgentInfo
+      const agentInfo = await window.electronAPI.generateReleaseMd(currentProject);
+
+      // Add agent to Project Agents panel (specId='' means project agent)
+      useAgentStore.getState().addAgent('', agentInfo);
+      // Select Project Agents tab and the new agent
+      useAgentStore.getState().selectForProjectAgents();
+      useAgentStore.getState().selectAgent(agentInfo.agentId);
+
+      // Note: releaseCheck will be refreshed when the agent completes
+      // and the file watcher detects the new release.md file
+      set({ releaseGenerateLoading: false });
+    } catch (error) {
+      console.error('[projectStore] Failed to generate release.md:', error);
+      set({ releaseGenerateLoading: false });
     }
   },
 }));

@@ -2029,6 +2029,61 @@ export function registerIpcHandlers(): void {
   logger.info('[handlers] Steering Verification handlers registered');
 
   // ============================================================
+  // Release Handlers (steering-release-integration feature)
+  // Requirements: 3.2, 3.4
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_RELEASE_MD,
+    async (_event, projectPath: string) => {
+      try {
+        const releaseMdPath = path.join(projectPath, '.claude', 'commands', 'release.md');
+        const exists = await stat(releaseMdPath).then(() => true).catch(() => false);
+        return { releaseMdExists: exists };
+      } catch (error) {
+        logger.error('[handlers] Failed to check release.md', { projectPath, error });
+        return { releaseMdExists: false };
+      }
+    }
+  );
+
+  // GENERATE_RELEASE_MD: Launch steering-release agent
+  // Requirements: 3.4 (ボタンクリックでエージェント起動)
+  ipcMain.handle(
+    IPC_CHANNELS.GENERATE_RELEASE_MD,
+    async (event, projectPath: string) => {
+      logger.info('[handlers] GENERATE_RELEASE_MD called', { projectPath });
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Start agent with specId='' (project agent)
+      // Uses /kiro:steering-release command
+      const slashCommand = '/kiro:steering-release';
+      const result = await service.startAgent({
+        specId: '', // Empty specId for project agent
+        phase: 'steering-release',
+        command: 'claude',
+        args: [slashCommand],
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] generateReleaseMd failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      logger.info('[handlers] generateReleaseMd succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
+  logger.info('[handlers] Release handlers registered');
+
+  // ============================================================
   // impl-start-unification: Unified impl start IPC
   // Task 2.2: IPC handler for startImpl
   // Requirements: 4.2, 4.4

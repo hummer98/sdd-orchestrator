@@ -518,4 +518,84 @@ describe('useProjectStore', () => {
       expect(state.installedProfile).toBeNull();
     });
   });
+
+  // ============================================================
+  // Release Files Check (steering-release-integration feature)
+  // Requirements: 3.2, 3.4
+  // ============================================================
+
+  describe('release management', () => {
+    it('should have null releaseCheck initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.releaseCheck).toBeNull();
+    });
+
+    it('should have releaseGenerateLoading false initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.releaseGenerateLoading).toBe(false);
+    });
+
+    it('should check release files and update state', async () => {
+      const mockReleaseCheck = { releaseMdExists: true };
+      window.electronAPI.checkReleaseMd = vi.fn().mockResolvedValue(mockReleaseCheck);
+
+      await useProjectStore.getState().checkReleaseFiles('/test/project');
+
+      expect(window.electronAPI.checkReleaseMd).toHaveBeenCalledWith('/test/project');
+      expect(useProjectStore.getState().releaseCheck).toEqual(mockReleaseCheck);
+    });
+
+    it('should set releaseCheck to null on error', async () => {
+      window.electronAPI.checkReleaseMd = vi.fn().mockRejectedValue(new Error('Check failed'));
+
+      await useProjectStore.getState().checkReleaseFiles('/test/project');
+
+      expect(useProjectStore.getState().releaseCheck).toBeNull();
+    });
+
+    it('should generate release.md and add agent to store', async () => {
+      const { useAgentStore } = await import('./agentStore');
+      const mockAgentInfo = {
+        agentId: 'agent-123',
+        specId: '',
+        phase: 'steering-release',
+        status: 'running',
+      };
+
+      // Setup project state
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      window.electronAPI.generateReleaseMd = vi.fn().mockResolvedValue(mockAgentInfo);
+      const addAgentSpy = vi.spyOn(useAgentStore.getState(), 'addAgent');
+      const selectForProjectAgentsSpy = vi.spyOn(useAgentStore.getState(), 'selectForProjectAgents');
+      const selectAgentSpy = vi.spyOn(useAgentStore.getState(), 'selectAgent');
+
+      await useProjectStore.getState().generateReleaseMd();
+
+      expect(window.electronAPI.generateReleaseMd).toHaveBeenCalledWith('/test/project');
+      expect(addAgentSpy).toHaveBeenCalledWith('', mockAgentInfo);
+      expect(selectForProjectAgentsSpy).toHaveBeenCalled();
+      expect(selectAgentSpy).toHaveBeenCalledWith('agent-123');
+      expect(useProjectStore.getState().releaseGenerateLoading).toBe(false);
+    });
+
+    it('should not generate release.md when no project selected', async () => {
+      useProjectStore.setState({ currentProject: null });
+      window.electronAPI.generateReleaseMd = vi.fn();
+
+      await useProjectStore.getState().generateReleaseMd();
+
+      expect(window.electronAPI.generateReleaseMd).not.toHaveBeenCalled();
+    });
+
+    it('should handle generateReleaseMd error gracefully', async () => {
+      useProjectStore.setState({ currentProject: '/test/project' });
+      window.electronAPI.generateReleaseMd = vi.fn().mockRejectedValue(new Error('Generate failed'));
+
+      await useProjectStore.getState().generateReleaseMd();
+
+      // Should set loading to false even on error
+      expect(useProjectStore.getState().releaseGenerateLoading).toBe(false);
+    });
+  });
 });

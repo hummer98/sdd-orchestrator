@@ -10,3 +10,7 @@ export type { AskAgentDialogProps } from './AskAgentDialog';
 // steering-verification-integration feature
 export { SteeringSection } from './SteeringSection';
 export type { SteeringSectionProps, SteeringCheckResult } from './SteeringSection';
+
+// steering-release-integration feature
+export { ReleaseSection } from './ReleaseSection';
+export type { ReleaseSectionProps, ReleaseCheckResult } from './ReleaseSection';

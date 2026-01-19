@@ -260,6 +260,13 @@ export interface WorkflowController {
   createSpec?(description: string): Promise<WorkflowResult<AgentInfo>>;
   /** Create a new bug with bug-create */
   createBug?(name: string, description: string): Promise<WorkflowResult<AgentInfo>>;
+
+  // Release methods (steering-release-integration feature)
+  // Requirements: 3.4, 3.5
+  /** Check if release.md exists */
+  checkReleaseMd?(): Promise<{ releaseMdExists: boolean }>;
+  /** Generate release.md by launching steering-release agent */
+  generateReleaseMd?(): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -727,6 +734,13 @@ export class WebSocketHandler {
       // Bug auto execution handlers (bug-auto-execution-per-bug-state Task 6.2)
       case 'GET_BUG_AUTO_EXECUTION_STATUS':
         await this.handleGetBugAutoExecutionStatus(client, message);
+        break;
+      // Release handlers (steering-release-integration feature)
+      case 'CHECK_RELEASE_MD':
+        await this.handleCheckReleaseMd(client, message);
+        break;
+      case 'GENERATE_RELEASE_MD':
+        await this.handleGenerateReleaseMd(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2546,6 +2560,73 @@ export class WebSocketHandler {
     this.broadcast({
       type: 'BUG_AUTO_EXECUTION_ERROR',
       payload: { bugPath, error },
+      timestamp: Date.now(),
+    });
+  }
+
+  // ============================================================
+  // Release Handlers (steering-release-integration feature)
+  // Requirements: 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Handle CHECK_RELEASE_MD message
+   * Requirements: 3.4 (steering-release-integration)
+   * Checks if release.md exists in the project
+   */
+  private async handleCheckReleaseMd(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController?.checkReleaseMd) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Release check not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.checkReleaseMd();
+
+    this.send(client.id, {
+      type: 'RELEASE_CHECK_RESULT',
+      payload: { releaseCheck: result },
+      requestId: message.requestId,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Handle GENERATE_RELEASE_MD message
+   * Requirements: 3.4 (steering-release-integration)
+   * Launches steering-release agent to generate release.md
+   */
+  private async handleGenerateReleaseMd(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController?.generateReleaseMd) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Release generation not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.generateReleaseMd();
+
+    if (!result.ok) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'GENERATE_FAILED', message: result.error?.message || 'Failed to generate release.md' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    this.send(client.id, {
+      type: 'GENERATE_RELEASE_MD_RESULT',
+      payload: { agentInfo: result.value },
+      requestId: message.requestId,
       timestamp: Date.now(),
     });
   }

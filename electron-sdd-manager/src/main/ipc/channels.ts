@@ -277,6 +277,11 @@ export const IPC_CHANNELS = {
   CHECK_STEERING_FILES: 'ipc:check-steering-files',
   GENERATE_VERIFICATION_MD: 'ipc:generate-verification-md',
 
+  // Release (steering-release-integration feature)
+  // Requirements: 3.2, 3.4
+  CHECK_RELEASE_MD: 'ipc:check-release-md',
+  GENERATE_RELEASE_MD: 'ipc:generate-release-md',
+
   // Bug Auto Execution (bug fix: auto-execution-ui-state-dependency)
   // Main Process側でBug自動実行の状態を管理
   BUG_AUTO_EXECUTION_START: 'bug-auto-execution:start',

@@ -348,6 +348,52 @@ export function createWorkflowController(
         },
       };
     },
+
+    // Release methods (steering-release-integration feature)
+    // Requirements: 3.4, 3.5
+    checkReleaseMd: async (): Promise<{ releaseMdExists: boolean }> => {
+      const projectPath = specManagerService.getProjectPath();
+      if (!projectPath) {
+        return { releaseMdExists: false };
+      }
+
+      const releaseMdPath = join(projectPath, '.claude', 'commands', 'release.md');
+      try {
+        const { stat } = await import('fs/promises');
+        await stat(releaseMdPath);
+        return { releaseMdExists: true };
+      } catch {
+        return { releaseMdExists: false };
+      }
+    },
+
+    generateReleaseMd: async (): Promise<WorkflowResult<AgentInfo>> => {
+      const slashCommand = '/kiro:steering-release';
+      const result = await specManagerService.startAgent({
+        specId: '', // Empty specId for project agent
+        phase: 'steering-release',
+        command: 'claude',
+        args: [slashCommand],
+        group: 'doc',
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
   };
 }
 

@@ -370,6 +370,26 @@ const electronAPI = {
   generateVerificationMd: (projectPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.GENERATE_VERIFICATION_MD, projectPath),
 
+  // ============================================================
+  // Release (steering-release-integration feature)
+  // Requirements: 3.2, 3.4
+  // ============================================================
+
+  /**
+   * Check release.md existence
+   * @param projectPath Project root path
+   * @returns ReleaseCheckResult with releaseMdExists
+   */
+  checkReleaseMd: (projectPath: string): Promise<{ releaseMdExists: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_RELEASE_MD, projectPath),
+
+  /**
+   * Generate release.md file by launching steering-release agent
+   * @param projectPath Project root path
+   */
+  generateReleaseMd: (projectPath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GENERATE_RELEASE_MD, projectPath),
+
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview: (specPath: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYNC_DOCUMENT_REVIEW, specPath),

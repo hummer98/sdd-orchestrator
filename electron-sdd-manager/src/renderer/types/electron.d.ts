@@ -610,6 +610,26 @@ export interface ElectronAPI {
    */
   generateVerificationMd(projectPath: string): Promise<AgentInfo>;
 
+  // ============================================================
+  // Release (steering-release-integration feature)
+  // Requirements: 3.2, 3.4
+  // ============================================================
+
+  /**
+   * Check release.md existence
+   * @param projectPath Project root path
+   * @returns ReleaseCheckResult with releaseMdExists
+   */
+  checkReleaseMd(projectPath: string): Promise<{ releaseMdExists: boolean }>;
+
+  /**
+   * Generate release.md file by launching steering-release agent
+   * Requirements: 3.4 (ボタンクリックでエージェント起動)
+   * @param projectPath Project root path
+   * @returns AgentInfo of the launched steering-release agent
+   */
+  generateReleaseMd(projectPath: string): Promise<AgentInfo>;
+
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
   syncDocumentReview(specPath: string): Promise<boolean>;
 

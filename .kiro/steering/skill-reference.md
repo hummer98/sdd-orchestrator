@@ -36,6 +36,7 @@
 | steering | `product.md`, `tech.md`, `structure.md` | 既存steering | - | - | - | - (spec.json無関係) |
 | steering-custom | `{name}.md` | - | ドメイン指定 | - | - | - (spec.json無関係) |
 | steering-verification | `verification.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
+| steering-release | `release.md` | - | プロジェクトルート存在 | - | - | - (spec.json無関係) |
 
 **ツール**: Bash, Glob, Grep, Read, Write, Edit, MultiEdit, WebSearch, WebFetch
 
@@ -74,6 +75,7 @@ Slash Command経由でkiroサブエージェントに委譲。Task ツールで�
 | steering | `product.md`, `tech.md`, `structure.md` | 既存steering | - | - | - | - (spec.json無関係) |
 | steering-custom | `{name}.md` | - | ドメイン指定 | - | - | - (spec.json無関係) |
 | steering-verification | `verification.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
+| steering-release | `release.md` | - | プロジェクトルート存在 | - | - | - (spec.json無関係) |
 
 **ツール**: Read, Task（kiroサブエージェントに委譲）
 
@@ -92,6 +94,7 @@ Slash Command経由でkiroサブエージェントに委譲。Task ツールで�
 | steering-agent | steering |
 | steering-custom-agent | steering-custom |
 | steering-verification-agent | steering-verification |
+| steering-release-agent | steering-release |
 
 **kiroサブエージェントのツール**: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 

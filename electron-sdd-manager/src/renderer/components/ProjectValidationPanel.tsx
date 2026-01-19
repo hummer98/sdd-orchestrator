@@ -8,7 +8,7 @@ import { CheckCircle, AlertCircle, FolderPlus, Download, Loader2, FileWarning } 
 import { useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { InstallError } from '../stores/projectStore';
-import { SteeringSection } from '@shared/components/project';
+import { SteeringSection, ReleaseSection } from '@shared/components/project';
 
 export function ProjectValidationPanel() {
   const {
@@ -29,6 +29,10 @@ export function ProjectValidationPanel() {
     steeringCheck,
     steeringGenerateLoading,
     generateVerificationMd,
+    // steering-release-integration feature
+    releaseCheck,
+    releaseGenerateLoading,
+    generateReleaseMd,
   } = useProjectStore();
 
   // Check if there's anything to display
@@ -37,9 +41,11 @@ export function ProjectValidationPanel() {
   const hasPermissionIssues = permissionsCheck && !permissionsCheck.allPresent;
   // steering-verification-integration feature
   const hasSteeringIssues = steeringCheck && !steeringCheck.verificationMdExists;
+  // steering-release-integration feature
+  const hasReleaseIssues = releaseCheck && !releaseCheck.releaseMdExists;
 
   // If nothing to display, render nothing
-  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues && !hasSteeringIssues) {
+  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues && !hasSteeringIssues && !hasReleaseIssues) {
     return null;
   }
 
@@ -101,6 +107,13 @@ export function ProjectValidationPanel() {
         steeringCheck={steeringCheck}
         steeringGenerateLoading={steeringGenerateLoading}
         onGenerateVerificationMd={generateVerificationMd}
+      />
+
+      {/* Release Check (steering-release-integration feature) */}
+      <ReleaseSection
+        releaseCheck={releaseCheck}
+        releaseGenerateLoading={releaseGenerateLoading}
+        onGenerateReleaseMd={generateReleaseMd}
       />
     </div>
   );

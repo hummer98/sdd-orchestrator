@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.2] - 2026-01-19
+
+### Added
+- **worktree**: Spec作成時のworktree早期作成機能を実装
+- **steering**: steering-release-integration merge実装（worktreeからの統合）
+
+### Documentation
+- **steering**: Electron Process Boundary Rulesを追加
+- **bug**: 自動実行設定のリアルタイム反映バグの調査・修正ドキュメントを追加
+
 ## [0.34.1] - 2026-01-19
 
 ### Changed

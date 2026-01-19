@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-01-19
+
+### Added
+- **steering**: JIT読み込み方式でコンテキスト最適化を実装
+- **convert-spec-to-worktree**: 通常SpecからWorktreeへの変換機能を実装
+- **bugs-worktree-directory-mode**: Bug Worktreeのディレクトリ方式を実装
+- **e2e**: worktree spec同期テスト用fixtureとE2Eテストを追加
+
+### Fixed
+- **spec-impl**: cc-sdd-agent版をサブエージェント委譲型に復元
+- **tasks-checklist-false-positive**: Coverage Validation Checklistを再削除
+- **agent**: CC_SDD_AGENTSにsteering-verificationを追加
+- **worktree**: readSpecsでworktree内のspecも読み取るように修正
+- **e2e**: fixtureのspec.jsonのphase名を正しい値に修正
+
+### Changed
+- **refactor**: SpecWorkflowFooterコンポーネントを独立化
+- **refactor**: CreateBugDialogのWorktreeチェックボックスをスライドスイッチに統一
+- **refactor**: ImplFlowFrameコンポーネントを削除
+
+### Chores
+- **e2e**: fixtureプロジェクトに.claudeと.kiro/settingsシンボリックリンクを追加
+
 ## [0.34.2] - 2026-01-19
 
 ### Added

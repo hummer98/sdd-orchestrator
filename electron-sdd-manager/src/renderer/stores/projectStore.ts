@@ -269,6 +269,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         set({ steeringCheck: null });
       }
 
+      // Bug fix: skip-permissions-not-loaded
+      // Load skipPermissions as part of selectProject to ensure it's loaded
+      // regardless of which code path triggers project selection (menu, RecentProjects, etc.)
+      await useAgentStore.getState().loadSkipPermissions(path);
+
       // ============================================================
       // debatex-document-review Inspection Fix 7.2: Load project default scheme
       // Requirements: 4.2 - spec.json未設定時のプロジェクトデフォルト適用

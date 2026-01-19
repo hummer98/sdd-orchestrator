@@ -78,7 +78,7 @@ export function App() {
   const { isDirty } = useEditorStore();
   // Task 5: bugs-pane-integration - Bug選択状態の参照
   const { selectedBug } = useBugStore();
-  const { setupEventListeners, loadSkipPermissions } = useAgentStore();
+  const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
   const { addNotification } = useNotificationStore();
@@ -165,7 +165,7 @@ export function App() {
 
   // レイアウト復元関数（pane-layout-persistence feature）
   // プロジェクトの設定ファイルからペインサイズを読み込む
-  // Bug fix: persist-skip-permission-per-project - skipPermissions設定も復帰
+  // Note: skipPermissions is now loaded in projectStore.selectProject (Bug fix: skip-permissions-not-loaded)
   const loadLayout = useCallback(async (projectPath: string) => {
     try {
       const config = await window.electronAPI.loadLayoutConfig(projectPath);
@@ -195,11 +195,7 @@ export function App() {
       setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
       setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
     }
-
-    // Bug fix: persist-skip-permission-per-project
-    // Load skipPermissions setting from project config
-    await loadSkipPermissions(projectPath);
-  }, [loadSkipPermissions]);
+  }, []);
 
   // レイアウトリセット関数（pane-layout-persistence feature）
   // すべてのペインをデフォルト値に戻し、設定ファイルに保存

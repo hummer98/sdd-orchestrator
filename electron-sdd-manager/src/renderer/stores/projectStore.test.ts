@@ -190,6 +190,57 @@ describe('useProjectStore', () => {
       expect(specState.selectedSpec).toBeNull();
       expect(specState.specDetail).toBeNull();
     });
+
+    it('should load skipPermissions setting from project config (Bug fix: skip-permissions-not-loaded)', async () => {
+      // This test ensures skipPermissions is loaded as part of selectProject,
+      // not as a separate call in App.tsx. This prevents the bug where
+      // selecting a project from RecentProjects does not load skipPermissions.
+      const { useAgentStore } = await import('./agentStore');
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      // Additional mocks required by selectProject
+      window.electronAPI.getRunningAgentCounts = vi.fn().mockResolvedValue({});
+      window.electronAPI.onSpecsChanged = vi.fn().mockReturnValue(() => {});
+      window.electronAPI.onBugsChanged = vi.fn().mockReturnValue(() => {});
+      window.electronAPI.loadProfile = vi.fn().mockResolvedValue(null);
+      window.electronAPI.checkSteeringFiles = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      // Mock loadSkipPermissions to return true for this project
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(true);
+
+      // Ensure initial state is false
+      useAgentStore.setState({ skipPermissions: false });
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      // Verify loadSkipPermissions was called with the project path
+      expect(window.electronAPI.loadSkipPermissions).toHaveBeenCalledWith('/test/project');
+
+      // Verify skipPermissions was set in agentStore
+      expect(useAgentStore.getState().skipPermissions).toBe(true);
+    });
   });
 
   describe('loadRecentProjects', () => {

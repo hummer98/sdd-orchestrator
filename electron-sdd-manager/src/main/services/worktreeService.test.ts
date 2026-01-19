@@ -647,19 +647,20 @@ describe('WorktreeService', () => {
   // worktree-spec-symlink Task 2: createSymlinksForWorktree modification
   // Note: Filesystem tests with fs mocking
   //
-  // Implementation changed to use FILE symlinks for spec directory contents
-  // because Claude Code's Glob cannot traverse symlinked directories (GitHub issue #764)
+  // Implementation uses DIRECTORY symlink for spec directory because:
+  // 1. --add-dir is passed to Claude Code, granting access to main repository
+  // 2. Glob can then find real files through the symlinked directory
+  // Related: GitHub issue #764 (symlink traversal)
   //
   // The method creates:
-  // - Directory symlinks: .kiro/logs/, .kiro/runtime/
-  // - File symlinks: Each file/dir in .kiro/specs/{feature}/ individually
+  // - Directory symlinks: .kiro/logs/, .kiro/runtime/, .kiro/specs/{feature}/
   // ============================================================
-  describe('createSymlinksForWorktree (file-based spec symlinks)', () => {
+  describe('createSymlinksForWorktree (directory-based spec symlink)', () => {
     // These tests verify the symlink configuration, not actual filesystem operations
     // The method creates:
-    // - .kiro/logs/ -> directory symlink (preserved)
-    // - .kiro/runtime/ -> directory symlink (preserved)
-    // - .kiro/specs/{feature}/ -> real directory with file symlinks for each entry
+    // - .kiro/logs/ -> directory symlink
+    // - .kiro/runtime/ -> directory symlink
+    // - .kiro/specs/{feature}/ -> directory symlink to main spec directory
 
     it('should configure directory symlinks for .kiro/logs/ and .kiro/runtime/', async () => {
       // This test documents the expected symlink structure
@@ -686,28 +687,26 @@ describe('WorktreeService', () => {
       expect(expectedDirectorySymlinks[1].link).toContain('.kiro/runtime');
     });
 
-    it('should create real directory for spec with file symlinks (not directory symlink)', () => {
-      // The spec directory is now a real directory containing file symlinks
-      // This allows Claude Code's Glob to traverse the directory
+    it('should create directory symlink for spec directory (not file-level symlinks)', () => {
+      // The spec directory is a directory symlink pointing to main repository
+      // Combined with --add-dir, Glob can find real files through the symlink
       const mockExec = createMockExec([]);
       const service = new WorktreeService(projectPath, mockExec);
       const worktreeAbsolutePath = '/Users/test/my-project/.kiro/worktrees/specs/my-feature';
       const featureName = 'my-feature';
 
       // Expected structure:
-      // {worktree}/.kiro/specs/{feature}/          <- real directory (mkdir)
-      //   ├── spec.json      -> {main}/.../spec.json      (file symlink)
-      //   ├── requirements.md -> {main}/.../requirements.md (file symlink)
-      //   ├── design.md      -> {main}/.../design.md      (file symlink)
-      //   ├── tasks.md       -> {main}/.../tasks.md       (file symlink)
-      //   └── logs/          -> {main}/.../logs/          (file/dir symlink)
+      // {worktree}/.kiro/specs/{feature}/ -> {main}/.kiro/specs/{feature}/ (directory symlink)
+      //
+      // This works because:
+      // 1. --add-dir grants Claude Code access to main repository
+      // 2. Glob traverses the symlink and finds real files in main
 
       const worktreeSpecDir = path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName);
       const mainSpecDir = path.join(projectPath, '.kiro', 'specs', featureName);
 
-      // The spec directory should be a real directory, not a symlink
+      // The spec directory should be a symlink pointing to main
       expect(worktreeSpecDir).toContain('.kiro/specs/my-feature');
-      // Each file inside should be a symlink pointing to main
       expect(mainSpecDir).toBe(path.join(projectPath, '.kiro', 'specs', 'my-feature'));
     });
   });

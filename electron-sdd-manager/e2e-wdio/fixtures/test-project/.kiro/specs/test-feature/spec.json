@@ -1,12 +1,12 @@
 {
   "feature_name": "test-feature",
   "name": "test-feature",
-  "description": "E2E\u30c6\u30b9\u30c8\u7528\u306e\u30c6\u30b9\u30c8\u6a5f\u80fd",
-  "phase": "requirements-generated",
+  "description": "E2Eテスト用のテスト機能",
+  "phase": "initialized",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": true,
+      "generated": false,
       "approved": false
     },
     "design": {
@@ -19,6 +19,5 @@
     }
   },
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "updatedAt": "2024-01-01T00:00:00.000Z",
-  "updated_at": "2026-01-10T11:57:56.799318Z"
+  "updatedAt": "2024-01-01T00:00:00.000Z"
 }

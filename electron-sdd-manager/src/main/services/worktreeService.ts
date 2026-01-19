@@ -639,13 +639,18 @@ export class WorktreeService {
       }
     }
 
-    // Create file symlinks for spec directory contents
-    // Using file symlinks instead of directory symlink because Claude Code's Glob
-    // cannot traverse symlinked directories (GitHub issue #764)
+    // Create directory symlink for spec directory
+    // Using directory symlink (not file-level symlinks) because:
+    // 1. --add-dir is passed to Claude Code, granting access to main repository
+    // 2. Glob can then find real files through the symlinked directory
+    // Related: GitHub issue #764 (symlink traversal)
     const mainSpecDir = path.join(this.projectPath, '.kiro', 'specs', featureName);
     const worktreeSpecDir = path.join(worktreeAbsolutePath, '.kiro', 'specs', featureName);
 
     try {
+      // Ensure parent directory exists
+      await fsPromises.mkdir(path.dirname(worktreeSpecDir), { recursive: true });
+
       // Remove existing spec directory/symlink in worktree
       try {
         const stat = await fsPromises.lstat(worktreeSpecDir);
@@ -660,26 +665,15 @@ export class WorktreeService {
         // Directory doesn't exist, which is fine
       }
 
-      // Create spec directory in worktree (as real directory, not symlink)
-      await fsPromises.mkdir(worktreeSpecDir, { recursive: true });
+      // Create directory symlink pointing to main spec directory
+      await fsPromises.symlink(mainSpecDir, worktreeSpecDir);
 
-      // Read all entries in main spec directory and create symlinks for each
-      const entries = await fsPromises.readdir(mainSpecDir, { withFileTypes: true });
-      for (const entry of entries) {
-        const targetPath = path.join(mainSpecDir, entry.name);
-        const linkPath = path.join(worktreeSpecDir, entry.name);
-
-        await fsPromises.symlink(targetPath, linkPath);
-        logger.debug('[WorktreeService] File symlink created', { target: targetPath, link: linkPath });
-      }
-
-      logger.info('[WorktreeService] Spec file symlinks created', {
-        mainSpecDir,
-        worktreeSpecDir,
-        fileCount: entries.length,
+      logger.info('[WorktreeService] Spec directory symlink created', {
+        target: mainSpecDir,
+        link: worktreeSpecDir,
       });
     } catch (error) {
-      logger.error('[WorktreeService] Failed to create spec file symlinks', {
+      logger.error('[WorktreeService] Failed to create spec directory symlink', {
         mainSpecDir,
         worktreeSpecDir,
         error: error instanceof Error ? error.message : String(error),
@@ -688,7 +682,7 @@ export class WorktreeService {
         ok: false,
         error: {
           type: 'GIT_ERROR',
-          message: `Failed to create spec file symlinks: ${error instanceof Error ? error.message : String(error)}`,
+          message: `Failed to create spec directory symlink: ${error instanceof Error ? error.message : String(error)}`,
         },
       };
     }

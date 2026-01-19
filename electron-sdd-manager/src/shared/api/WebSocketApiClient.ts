@@ -541,7 +541,14 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   onBugsUpdated(callback: (bugs: BugMetadata[]) => void): () => void {
-    return this.on('bugsUpdated', (data) => callback(data as BugMetadata[]));
+    return this.on('bugsUpdated', (data) => {
+      // Handle both array format (INIT) and object format (BUGS_UPDATED broadcast)
+      if (Array.isArray(data)) {
+        callback(data as BugMetadata[]);
+      } else if (data && typeof data === 'object' && 'bugs' in data) {
+        callback((data as { bugs: BugMetadata[] }).bugs);
+      }
+    });
   }
 
   onAgentOutput(

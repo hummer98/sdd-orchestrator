@@ -2550,10 +2550,33 @@ export function startBugsWatcher(window: BrowserWindow): void {
 
   bugsWatcherService = new BugsWatcherService(currentProjectPath);
 
-  bugsWatcherService.onChange((event) => {
+  bugsWatcherService.onChange(async (event) => {
     logger.info('[handlers] Bugs changed', { event });
     if (!window.isDestroyed()) {
       window.webContents.send(IPC_CHANNELS.BUGS_CHANGED, event);
+    }
+
+    // Broadcast to Remote UI via WebSocket
+    // Requirements: Bug management file watcher - Remote UI integration
+    try {
+      const remoteServer = getRemoteAccessServer();
+      const wsHandler = remoteServer.getWebSocketHandler();
+      if (wsHandler && currentProjectPath) {
+        const bugsResult = await bugService.readBugs(currentProjectPath);
+        if (bugsResult.ok) {
+          const bugs = bugsResult.value.map(bug => ({
+            name: bug.name,
+            path: bug.path,
+            phase: bug.phase,
+            updatedAt: bug.updatedAt,
+            reportedAt: bug.reportedAt,
+          }));
+          wsHandler.broadcastBugsUpdated(bugs);
+          logger.debug('[handlers] Bugs change broadcasted to Remote UI', { bugsCount: bugs.length });
+        }
+      }
+    } catch (error) {
+      logger.warn('[handlers] Failed to broadcast bugs change to Remote UI', { error });
     }
   });
 

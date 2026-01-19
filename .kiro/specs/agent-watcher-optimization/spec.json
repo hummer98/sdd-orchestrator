@@ -37,7 +37,7 @@
       {
         "roundNumber": 1,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 2,

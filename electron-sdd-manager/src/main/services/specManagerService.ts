@@ -1240,6 +1240,8 @@ export class SpecManagerService {
       startedAt: record.startedAt,
       lastActivityAt: record.lastActivityAt,
       command: record.command,
+      // Bug fix: agent-resume-cwd-mismatch - Preserve cwd for resume operations
+      cwd: record.cwd,
     };
   }
 

@@ -337,6 +337,39 @@ describe('SpecManagerService', () => {
         expect(result.value.status).toBe('running');
       }
     });
+
+    // Bug fix: agent-resume-cwd-mismatch
+    it('should preserve cwd from agent record when resuming', async () => {
+      // Create an interrupted agent with sessionId AND cwd (worktree path)
+      const specDir = path.join(pidDir, 'spec-worktree');
+      await fs.mkdir(specDir, { recursive: true });
+
+      const worktreeCwd = '/path/to/worktree';
+      const pidFile = {
+        agentId: 'agent-worktree-001',
+        specId: 'spec-worktree',
+        phase: 'impl',
+        pid: 999999999,
+        sessionId: 'session-worktree-123',
+        status: 'interrupted',
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        command: 'test command',
+        cwd: worktreeCwd,
+      };
+
+      await fs.writeFile(
+        path.join(specDir, 'agent-worktree-001.json'),
+        JSON.stringify(pidFile)
+      );
+
+      await service.restoreAgents();
+
+      // Get agent info and verify cwd is preserved
+      const agentInfo = await service.getAgentById('agent-worktree-001');
+      expect(agentInfo).toBeDefined();
+      expect(agentInfo?.cwd).toBe(worktreeCwd);
+    });
   });
 
   // Task 24.5: stdin転送機能

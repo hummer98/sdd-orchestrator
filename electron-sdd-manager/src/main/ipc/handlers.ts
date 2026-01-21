@@ -57,6 +57,8 @@ import {
   type Result as ExperimentalResult,
 } from '../services/experimentalToolsInstallerService';
 import { CommandsetVersionService } from '../services/commandsetVersionService';
+// spec-event-log: Event log service import
+import { getDefaultEventLogService } from '../services/eventLogService';
 
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
@@ -2248,6 +2250,34 @@ export function registerIpcHandlers(): void {
     }
   );
   logger.info('[handlers] impl-start-unification handlers registered');
+
+  // ============================================================
+  // Event Log Handler (spec-event-log feature)
+  // Requirements: 5.4
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.EVENT_LOG_GET,
+    async (_event, specId: string) => {
+      logger.debug('[handlers] EVENT_LOG_GET called', { specId });
+
+      if (!currentProjectPath) {
+        logger.error('[handlers] EVENT_LOG_GET: No project path set');
+        return { ok: false, error: { type: 'NOT_FOUND', specId } };
+      }
+
+      const eventLogService = getDefaultEventLogService();
+      const result = await eventLogService.readEvents(currentProjectPath, specId);
+
+      if (result.ok) {
+        logger.debug('[handlers] EVENT_LOG_GET result', { specId, count: result.value.length });
+      } else {
+        logger.error('[handlers] EVENT_LOG_GET failed', { specId, error: result.error });
+      }
+
+      return result;
+    }
+  );
+  logger.info('[handlers] Event Log handlers registered');
 
   // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService

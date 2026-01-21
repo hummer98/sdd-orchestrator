@@ -10,6 +10,8 @@ import { isPrivateIP } from '../utils/ipValidator';
 import { RateLimiter, defaultRateLimiter } from '../utils/rateLimiter';
 import { LogBuffer, defaultLogBuffer } from './logBuffer';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
+// spec-event-log: Event log service import
+import { getDefaultEventLogService } from './eventLogService';
 
 /**
  * WebSocket message structure for communication
@@ -745,6 +747,11 @@ export class WebSocketHandler {
       // Convert to Worktree handler (convert-spec-to-worktree feature)
       case 'CONVERT_TO_WORKTREE':
         await this.handleConvertToWorktree(client, message);
+        break;
+      // Event Log handler (spec-event-log feature)
+      // Requirements: 5.3
+      case 'GET_EVENT_LOG':
+        await this.handleGetEventLog(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2713,6 +2720,83 @@ export class WebSocketHandler {
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'CONVERT_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Event Log Handler (spec-event-log feature)
+  // Requirements: 5.3
+  // ============================================================
+
+  /**
+   * Handle GET_EVENT_LOG request
+   * Returns event log entries for a spec
+   */
+  private async handleGetEventLog(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { specId?: string } | undefined;
+    const specId = payload?.specId;
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_SPEC_ID', message: 'specId is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.stateProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project loaded' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const projectPath = this.stateProvider.getProjectPath();
+      if (!projectPath) {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'NO_PROJECT', message: 'No project loaded' },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
+      const eventLogService = getDefaultEventLogService();
+      const result = await eventLogService.readEvents(projectPath, specId);
+
+      if (result.ok) {
+        this.send(client.id, {
+          type: 'EVENT_LOG',
+          payload: { events: result.value },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: result.error.type, message: JSON.stringify(result.error) },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error('[WebSocketHandler] Get event log failed', {
+        specId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'IO_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });

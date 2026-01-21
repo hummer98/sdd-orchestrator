@@ -26,6 +26,9 @@ import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
 // debatex-document-review Task 2.1: BuildArgsContext support
 import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
 import { DocumentReviewService } from './documentReviewService';
+// spec-event-log: Event logging for agent activities
+import { getDefaultEventLogService } from './eventLogService';
+import type { EventLogInput } from '../../shared/types';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -405,6 +408,25 @@ export class SpecManagerService {
 
     // execution-store-consolidation: ImplCompletionAnalyzer initialization REMOVED (Req 6.2)
     // Task completion state is now managed via TaskProgress from tasks.md
+  }
+
+  // ============================================================
+  // spec-event-log: Event Logging Helper
+  // ============================================================
+
+  /**
+   * Log an agent event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.1, 1.2, 1.3 (spec-event-log)
+   */
+  private logAgentEvent(specId: string, event: EventLogInput): void {
+    getDefaultEventLogService().logEvent(
+      this.projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
   }
 
   /**
@@ -791,6 +813,15 @@ export class SpecManagerService {
         }
       }
 
+      // spec-event-log: Log agent:start event (Requirement 1.1)
+      this.logAgentEvent(specId, {
+        type: 'agent:start',
+        message: `Agent started: ${phase} phase`,
+        agentId,
+        phase,
+        command: `${command} ${effectiveArgs.join(' ')}`,
+      });
+
       return { ok: true, value: agentInfo };
     } catch (error) {
       return {
@@ -878,6 +909,27 @@ export class SpecManagerService {
       this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
       this.processes.delete(agentId);
 
+      // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
+      const phase = currentRecord?.phase || 'unknown';
+      if (newStatus === 'completed') {
+        this.logAgentEvent(specId, {
+          type: 'agent:complete',
+          message: `Agent completed: ${phase} phase`,
+          agentId,
+          phase,
+          exitCode: code,
+        });
+      } else {
+        this.logAgentEvent(specId, {
+          type: 'agent:fail',
+          message: `Agent failed: ${phase} phase (exit code: ${code})`,
+          agentId,
+          phase,
+          exitCode: code,
+          errorMessage: `Process exited with code ${code}`,
+        });
+      }
+
       // agent-state-file-ssot: Update agent record (SSOT)
       return this.recordService.updateRecord(specId, agentId, {
         status: newStatus,
@@ -896,6 +948,15 @@ export class SpecManagerService {
     this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
     this.processes.delete(agentId);
     this.sessionIdParseBuffers.delete(agentId);
+
+    // spec-event-log: Log agent:fail event (Requirement 1.3)
+    this.logAgentEvent(specId, {
+      type: 'agent:fail',
+      message: `Agent failed: process error`,
+      agentId,
+      phase: 'unknown',
+      errorMessage: 'Process error occurred',
+    });
 
     // agent-state-file-ssot: Update agent record on error (SSOT)
     this.recordService.updateRecord(specId, agentId, {
@@ -1490,6 +1551,13 @@ export class SpecManagerService {
     const worktreeCwd = await this.getSpecWorktreeCwd(specId);
 
     logger.info('[SpecManagerService] executeInspection called', { specId, featureName, slashCommand, commandPrefix, worktreeCwd });
+
+    // spec-event-log: Log inspection:start event (Requirement 1.9)
+    this.logAgentEvent(specId, {
+      type: 'inspection:start',
+      message: 'Inspection started',
+      roundNumber: 1, // Initial inspection
+    });
 
     return this.startAgent({
       specId,

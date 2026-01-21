@@ -2,12 +2,15 @@
  * SpecWorkflowFooter Component
  * Specワークフローフッター - 自動実行ボタン等のワークフロー全体操作
  * convert-spec-to-worktree: Task 3.1-3.3 - 「Worktreeに変更」ボタン追加
+ * spec-event-log: Task 6.1 - イベントログボタン追加
  */
 
 import { clsx } from 'clsx';
 import { Play, Square, GitBranch } from 'lucide-react';
 import type { SpecJson } from '../types';
 import { hasWorktreePath, isImplStarted } from '../types/worktree';
+// spec-event-log: Event log button import
+import { EventLogButton } from '../../shared/components/eventLog';
 
 /**
  * Check if "Convert to Worktree" button should be shown
@@ -65,6 +68,8 @@ export interface SpecWorkflowFooterProps {
   onConvertToWorktree?: () => void;
   /** 変換処理中かどうか */
   isConverting?: boolean;
+  /** spec-event-log: イベントログボタンクリック時のハンドラ */
+  onShowEventLog?: () => void;
 }
 
 export function SpecWorkflowFooter({
@@ -75,11 +80,17 @@ export function SpecWorkflowFooter({
   specJson,
   onConvertToWorktree,
   isConverting = false,
+  onShowEventLog,
 }: SpecWorkflowFooterProps) {
   const showConvertButton = canShowConvertButton(isOnMain, specJson);
 
   return (
     <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+      {/* spec-event-log: Event Log Button (Task 6.1) */}
+      {onShowEventLog && (
+        <EventLogButton onClick={onShowEventLog} />
+      )}
+
       <button
         data-testid="auto-execute-button"
         onClick={onAutoExecution}

@@ -20,6 +20,9 @@ import {
   isDocumentReviewState,
 } from '../../renderer/types/documentReview';
 import { logger } from './logger';
+// spec-event-log: Event logging for document review
+import { getDefaultEventLogService } from './eventLogService';
+import type { EventLogInput } from '../../shared/types';
 
 /** Extended SpecJson with documentReview field */
 interface SpecJsonWithReview extends SpecJson {
@@ -42,9 +45,32 @@ export interface UpdateReviewStateOptions {
  * Service for managing document review workflow
  */
 export class DocumentReviewService {
-  // Note: projectPath is kept for potential future use
-  constructor(_projectPath: string) {
-    // projectPath may be needed for future operations
+  private projectPath: string;
+
+  constructor(projectPath: string) {
+    this.projectPath = projectPath;
+  }
+
+  // ============================================================
+  // spec-event-log: Event Logging Helper
+  // ============================================================
+
+  /**
+   * Log a review event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.8 (spec-event-log)
+   */
+  private logReviewEvent(specPath: string, event: EventLogInput): void {
+    // Extract specId from specPath
+    const specId = specPath.split('/').pop() || 'unknown';
+
+    getDefaultEventLogService().logEvent(
+      this.projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
   }
 
   // ============================================================
@@ -438,6 +464,14 @@ export class DocumentReviewService {
     }
 
     logger.info('[DocumentReviewService] Started review round', { specPath, roundNumber });
+
+    // spec-event-log: Log review:start event (Requirement 1.8)
+    this.logReviewEvent(specPath, {
+      type: 'review:start',
+      message: `Document review started: round ${roundNumber}`,
+      roundNumber,
+    });
+
     return { ok: true, value: roundNumber };
   }
 
@@ -460,7 +494,7 @@ export class DocumentReviewService {
    * Requirements: 4.1
    */
   async completeRound(specPath: string, roundNumber: number): Promise<Result<void, ReviewError>> {
-    return this.updateReviewState(specPath, {
+    const result = await this.updateReviewState(specPath, {
       status: 'pending',
       currentRound: undefined,
       roundDetail: {
@@ -469,6 +503,17 @@ export class DocumentReviewService {
         replyCompletedAt: new Date().toISOString(),
       },
     });
+
+    if (result.ok) {
+      // spec-event-log: Log review:complete event (Requirement 1.8)
+      this.logReviewEvent(specPath, {
+        type: 'review:complete',
+        message: `Document review completed: round ${roundNumber}`,
+        roundNumber,
+      });
+    }
+
+    return result;
   }
 
   /**

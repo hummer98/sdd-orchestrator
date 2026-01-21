@@ -10,7 +10,7 @@
  * debatex-document-review Inspection Fix 7.1: Use getResolvedScheme for SSOT compliance
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
@@ -23,6 +23,9 @@ import { PhaseItem, ImplPhasePanel } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { SpecWorkflowFooter } from './SpecWorkflowFooter';
 import { DocumentReviewPanel, InspectionPanel, type ReviewerScheme } from '@shared/components/review';
+// spec-event-log: Task 8.1 - Event Log Modal import
+import { EventLogViewerModal } from '@shared/components/eventLog';
+import type { EventLogEntry, EventLogError } from '@shared/types';
 import type { DocumentReviewState } from '../types/documentReview';
 import type { InspectionState } from '../types/inspection';
 import { normalizeInspectionState } from '../types/inspection';
@@ -81,6 +84,14 @@ export function WorkflowView() {
   // Bug fix: auto-execution-loading-redundant - autoExecutionStatus removed (unused after AutoExecutionStatusDisplay removal)
   const { isAutoExecuting, currentAutoPhase } = autoExecutionRuntime;
 
+  // ============================================================
+  // spec-event-log: Task 8.1 - Event Log Modal State Management
+  // Requirements: 3.1, 3.3, 5.1, 5.2
+  // ============================================================
+  const [isEventLogModalOpen, setIsEventLogModalOpen] = useState(false);
+  const [eventLogEntries, setEventLogEntries] = useState<EventLogEntry[]>([]);
+  const [eventLogLoading, setEventLogLoading] = useState(false);
+  const [eventLogError, setEventLogError] = useState<EventLogError | null>(null);
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
@@ -285,6 +296,38 @@ export function WorkflowView() {
   const handleShowAgentLog = useCallback((phase: WorkflowPhase) => {
     // TODO: Show agent log for this phase
     console.log('Show agent log for phase:', phase);
+  }, []);
+
+  // ============================================================
+  // spec-event-log: Task 8.1 - Event Log Handler
+  // Requirements: 3.1, 3.3, 5.1, 5.2
+  // ============================================================
+  const handleShowEventLog = useCallback(async () => {
+    if (!specDetail) return;
+
+    setIsEventLogModalOpen(true);
+    setEventLogLoading(true);
+    setEventLogError(null);
+
+    try {
+      const result = await window.electronAPI.getEventLog(specDetail.metadata.name);
+      if (result.ok) {
+        setEventLogEntries(result.value);
+      } else {
+        setEventLogError(result.error);
+      }
+    } catch (error) {
+      setEventLogError({
+        type: 'IO_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setEventLogLoading(false);
+    }
+  }, [specDetail]);
+
+  const handleCloseEventLog = useCallback(() => {
+    setIsEventLogModalOpen(false);
   }, []);
 
   // ============================================================
@@ -694,6 +737,7 @@ export function WorkflowView() {
       {/* Specワークフローフッター */}
       {/* Task 5.1: Use isAutoExecuting from specStore */}
       {/* convert-spec-to-worktree: Task 3.3 - Pass convert to worktree props */}
+      {/* spec-event-log: Task 8.1 - Pass event log handler */}
       <SpecWorkflowFooter
         isAutoExecuting={isAutoExecuting}
         hasRunningAgents={runningPhases.size > 0}
@@ -702,6 +746,16 @@ export function WorkflowView() {
         specJson={specJson}
         onConvertToWorktree={handleConvertToWorktree}
         isConverting={isConverting}
+        onShowEventLog={handleShowEventLog}
+      />
+
+      {/* spec-event-log: Task 8.1 - Event Log Viewer Modal */}
+      <EventLogViewerModal
+        isOpen={isEventLogModalOpen}
+        onClose={handleCloseEventLog}
+        events={eventLogEntries}
+        isLoading={eventLogLoading}
+        error={eventLogError}
       />
     </div>
   );

@@ -1,0 +1,61 @@
+{
+  "feature_name": "spec-event-log",
+  "created_at": "2026-01-18T13:59:03Z",
+  "updated_at": "2026-01-21T10:42:38.217Z",
+  "language": "ja",
+  "phase": "inspection-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": false,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "inspectionFlag": "pause"
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-21T09:23:19Z",
+        "fixedAt": "2026-01-21T09:46:09Z"
+      },
+      {
+        "number": 2,
+        "result": "go",
+        "inspectedAt": "2026-01-21T09:55:29Z"
+      }
+    ]
+  }
+}

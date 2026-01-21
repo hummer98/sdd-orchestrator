@@ -675,4 +675,26 @@ describe('WorkflowView', () => {
       expect(deployButton).toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // Task 8.1: Event Log Integration (spec-event-log Inspection Fix)
+  // Requirements: 3.1, 3.3, 5.1, 5.2
+  // ============================================================
+  describe('Task 8.1: Event Log Integration', () => {
+    it('should pass onShowEventLog handler to SpecWorkflowFooter', () => {
+      render(<WorkflowView />);
+
+      // The EventLogButton should be rendered in the footer
+      // when onShowEventLog is passed to SpecWorkflowFooter
+      const eventLogButton = screen.getByTestId('event-log-button');
+      expect(eventLogButton).toBeInTheDocument();
+    });
+
+    it('should not render EventLogViewerModal when modal is closed', () => {
+      render(<WorkflowView />);
+
+      // Modal should not be visible initially
+      expect(screen.queryByTestId('event-log-modal')).not.toBeInTheDocument();
+    });
+  });
 });

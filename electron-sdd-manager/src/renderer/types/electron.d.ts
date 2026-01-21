@@ -1262,6 +1262,24 @@ export interface ElectronAPI {
       currentBranch?: string;
     };
   }>;
+
+  // ============================================================
+  // Event Log (spec-event-log feature)
+  // Requirements: 5.4
+  // ============================================================
+
+  /**
+   * Get event log entries for a spec
+   * @param specId Spec identifier
+   * @returns Event log entries sorted by timestamp (newest first)
+   */
+  getEventLog(specId: string): Promise<{
+    ok: true;
+    value: import('../../shared/types').EventLogEntry[];
+  } | {
+    ok: false;
+    error: import('../../shared/types').EventLogError;
+  }>;
 }
 
 declare global {

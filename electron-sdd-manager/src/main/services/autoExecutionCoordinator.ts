@@ -13,6 +13,9 @@ import { EventEmitter } from 'events';
 import { logger } from './logger';
 import type { WorkflowPhase } from './specManagerService';
 import { FileService } from './fileService';
+// spec-event-log: Event logging for auto-execution activities
+import { getDefaultEventLogService } from './eventLogService';
+import type { EventLogInput } from '../../shared/types';
 
 // ============================================================
 // Constants
@@ -192,6 +195,29 @@ export class AutoExecutionCoordinator extends EventEmitter {
   constructor() {
     super();
     logger.info('[AutoExecutionCoordinator] Initialized');
+  }
+
+  // ============================================================
+  // spec-event-log: Event Logging Helper
+  // ============================================================
+
+  /**
+   * Log an auto-execution event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.4, 1.5 (spec-event-log)
+   */
+  private logAutoExecutionEvent(specPath: string, specId: string, event: EventLogInput): void {
+    // Extract project path from specPath (specPath is like /project/.kiro/specs/specId)
+    const pathParts = specPath.split('.kiro/specs/');
+    const projectPath = pathParts[0] ? pathParts[0].replace(/\/$/, '') : specPath;
+
+    getDefaultEventLogService().logEvent(
+      projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
   }
 
   // ============================================================
@@ -389,6 +415,17 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     logger.info('[AutoExecutionCoordinator] Auto-execution started', { specPath, specId });
 
+    // spec-event-log: Log auto-execution:start event (Requirement 1.4)
+    this.logAutoExecutionEvent(specPath, specId, {
+      type: 'auto-execution:start',
+      message: 'Auto-execution started',
+      status: 'started',
+      startPhase: options.permissions.requirements ? 'requirements' :
+                 options.permissions.design ? 'design' :
+                 options.permissions.tasks ? 'tasks' :
+                 options.permissions.impl ? 'impl' : undefined,
+    });
+
     // 初期フェーズを決定して実行イベントを発火
     // Bug Fix: approvals がある場合は既に完了しているフェーズをスキップ
     // approvals が渡されない場合は Main Process で直接 spec.json を読み取る
@@ -504,6 +541,14 @@ export class AutoExecutionCoordinator extends EventEmitter {
     });
 
     logger.info('[AutoExecutionCoordinator] Auto-execution stopped', { specPath });
+
+    // spec-event-log: Log auto-execution:stop event (Requirement 1.5)
+    this.logAutoExecutionEvent(specPath, state.specId, {
+      type: 'auto-execution:stop',
+      message: 'Auto-execution stopped by user',
+      status: 'stopped',
+      endPhase: state.currentPhase ?? undefined,
+    });
 
     return { ok: true, value: undefined };
   }
@@ -1052,6 +1097,15 @@ export class AutoExecutionCoordinator extends EventEmitter {
       phase: currentPhase,
     };
     this.emit('execution-error', specPath, error);
+
+    // spec-event-log: Log auto-execution:fail event (Requirement 1.5)
+    this.logAutoExecutionEvent(specPath, state.specId, {
+      type: 'auto-execution:fail',
+      message: `Auto-execution failed: Agent crashed (exit code: ${exitCode})`,
+      status: 'failed',
+      endPhase: currentPhase ?? undefined,
+      errorMessage,
+    });
   }
 
   // ============================================================
@@ -1167,6 +1221,15 @@ export class AutoExecutionCoordinator extends EventEmitter {
       phase: state.currentPhase,
     };
     this.emit('execution-error', specPath, error);
+
+    // spec-event-log: Log auto-execution:fail event (Requirement 1.5)
+    this.logAutoExecutionEvent(specPath, state.specId, {
+      type: 'auto-execution:fail',
+      message: `Auto-execution failed: Timeout at phase ${state.currentPhase ?? 'unknown'}`,
+      status: 'failed',
+      endPhase: state.currentPhase ?? undefined,
+      errorMessage: `Timeout at phase: ${state.currentPhase ?? 'unknown'}`,
+    });
   }
 
   // ============================================================
@@ -1510,6 +1573,17 @@ export class AutoExecutionCoordinator extends EventEmitter {
     logger.info('[AutoExecutionCoordinator] Execution completed', {
       specPath,
       executedPhases: state.executedPhases,
+    });
+
+    // spec-event-log: Log auto-execution:complete event (Requirement 1.5)
+    const lastPhase = state.executedPhases.length > 0
+      ? state.executedPhases[state.executedPhases.length - 1]
+      : undefined;
+    this.logAutoExecutionEvent(specPath, state.specId, {
+      type: 'auto-execution:complete',
+      message: `Auto-execution completed (${state.executedPhases.length} phases executed)`,
+      status: 'completed',
+      endPhase: lastPhase,
     });
   }
 

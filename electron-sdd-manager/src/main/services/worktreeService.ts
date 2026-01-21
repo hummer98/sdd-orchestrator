@@ -18,6 +18,9 @@ import type {
 } from '../../renderer/types/worktree';
 import type { EntityType } from './worktreeHelpers';
 import { getWorktreeBasePath as getWorktreeBasePathHelper } from './worktreeHelpers';
+// spec-event-log: Event logging for worktree operations
+import { getDefaultEventLogService } from './eventLogService';
+import type { EventLogInput } from '../../shared/types';
 
 /**
  * Type for exec function for dependency injection
@@ -104,6 +107,25 @@ export class WorktreeService {
     this.projectPath = projectPath;
     // Use injected exec or default to node's exec
     this.execFn = execFn || (nodeExec as unknown as ExecFunction);
+  }
+
+  // ============================================================
+  // spec-event-log: Event Logging Helper
+  // ============================================================
+
+  /**
+   * Log a worktree event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.6, 1.7 (spec-event-log)
+   */
+  private logWorktreeEvent(specId: string, event: EventLogInput): void {
+    getDefaultEventLogService().logEvent(
+      this.projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
   }
 
   /**
@@ -265,6 +287,15 @@ export class WorktreeService {
     };
 
     logger.info('[WorktreeService] Worktree created', worktreeInfo);
+
+    // spec-event-log: Log worktree:create event (Requirement 1.6)
+    this.logWorktreeEvent(featureName, {
+      type: 'worktree:create',
+      message: `Worktree created: ${branchName}`,
+      worktreePath: relativePath,
+      branch: branchName,
+    });
+
     return { ok: true, value: worktreeInfo };
   }
 
@@ -296,6 +327,15 @@ export class WorktreeService {
     }
 
     logger.info('[WorktreeService] Worktree removed', { featureName, absolutePath, branchName });
+
+    // spec-event-log: Log worktree:delete event (Requirement 1.7)
+    this.logWorktreeEvent(featureName, {
+      type: 'worktree:delete',
+      message: `Worktree deleted: ${branchName}`,
+      worktreePath: this.getWorktreePath(featureName).relative,
+      branch: branchName,
+    });
+
     return { ok: true, value: undefined };
   }
 

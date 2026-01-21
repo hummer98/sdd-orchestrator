@@ -18,6 +18,9 @@ import type {
   ArtifactInfo,
 } from '../../renderer/types';
 import { scanWorktreeEntities } from './worktreeHelpers';
+// spec-event-log: Event logging for approval and phase transitions
+import { getDefaultEventLogService } from './eventLogService';
+import type { EventLogInput } from '../../shared/types';
 
 /**
  * Check if a path is safe (within base directory, no traversal)
@@ -55,6 +58,48 @@ export function validatePath(
  * File Service class for file operations
  */
 export class FileService {
+  // ============================================================
+  // spec-event-log: Event Logging Helpers
+  // ============================================================
+
+  /**
+   * Log an approval event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.10 (spec-event-log)
+   */
+  private logApprovalEvent(specPath: string, event: EventLogInput): void {
+    // Extract project path and specId from specPath
+    const specId = specPath.split('/').pop() || 'unknown';
+    const projectPath = specPath.split('.kiro/specs/')[0]?.replace(/\/$/, '') || specPath;
+
+    getDefaultEventLogService().logEvent(
+      projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
+  }
+
+  /**
+   * Log a phase transition event using EventLogService
+   * Fire-and-forget pattern: errors are logged but not propagated
+   * Requirements: 1.11 (spec-event-log)
+   */
+  private logPhaseTransitionEvent(specPath: string, event: EventLogInput): void {
+    // Extract project path and specId from specPath
+    const specId = specPath.split('/').pop() || 'unknown';
+    const projectPath = specPath.split('.kiro/specs/')[0]?.replace(/\/$/, '') || specPath;
+
+    getDefaultEventLogService().logEvent(
+      projectPath,
+      specId,
+      event
+    ).catch(() => {
+      // Errors are logged internally by EventLogService
+    });
+  }
+
   /**
    * Validate spec name format
    * Only lowercase letters, numbers, and hyphens allowed
@@ -464,6 +509,15 @@ ${description}
       }
 
       await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+
+      // spec-event-log: Log approval:update event (Requirement 1.10)
+      this.logApprovalEvent(specPath, {
+        type: 'approval:update',
+        message: `${phase} ${approved ? 'approved' : 'unapproved'}`,
+        phase,
+        approved,
+      });
+
       return { ok: true, value: undefined };
     } catch (error) {
       return {
@@ -537,6 +591,9 @@ ${description}
       const content = await readFile(specJsonPath, 'utf-8');
       const specJson: SpecJson = JSON.parse(content);
 
+      // Track old phase for event logging
+      const oldPhase = specJson.phase;
+
       // Update based on completed phase
       switch (completedPhase) {
         case 'requirements':
@@ -575,6 +632,17 @@ ${description}
       }
 
       await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
+
+      // spec-event-log: Log phase:transition event if phase changed (Requirement 1.11)
+      if (oldPhase !== specJson.phase) {
+        this.logPhaseTransitionEvent(specPath, {
+          type: 'phase:transition',
+          message: `Phase transitioned: ${oldPhase} -> ${specJson.phase}`,
+          oldPhase,
+          newPhase: specJson.phase,
+        });
+      }
+
       return { ok: true, value: undefined };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

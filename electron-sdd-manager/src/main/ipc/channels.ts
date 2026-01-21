@@ -306,6 +306,10 @@ export const IPC_CHANNELS = {
   // Requirements: 3.1, 3.2, 3.3
   CONVERT_CHECK: 'convert-worktree:check',
   CONVERT_TO_WORKTREE: 'convert-worktree:execute',
+
+  // Event Log (spec-event-log feature)
+  // Requirements: 5.4
+  EVENT_LOG_GET: 'ipc:event-log:get',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

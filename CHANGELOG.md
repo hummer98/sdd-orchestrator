@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.5] - 2026-01-21
+
+### Added
+- **spec-event-log**: イベントログ機能の実装をworktreeからマージ
+
+### Fixed
+- **spec-merge**: 関係ないファイルのステージングを防止
+
+### Changed
+- **spec-merge**: spec.json更新処理をworktree側に移動
+
 ## [0.35.4] - 2026-01-21
 
 ### Added

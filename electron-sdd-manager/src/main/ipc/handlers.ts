@@ -2193,11 +2193,31 @@ export function registerIpcHandlers(): void {
   // impl-start-unification: Unified impl start IPC
   // Task 2.2: IPC handler for startImpl
   // Requirements: 4.2, 4.4
+  // Bug fix: start-impl-path-resolution-missing
+  // spec-path-ssot-refactor: Resolve path from name
   // ============================================================
   ipcMain.handle(
     IPC_CHANNELS.START_IMPL,
-    async (event, specPath: string, featureName: string, commandPrefix: string) => {
-      logger.info('[handlers] START_IMPL called', { specPath, featureName, commandPrefix });
+    async (event, specName: string, featureName: string, commandPrefix: string) => {
+      logger.info('[handlers] START_IMPL called', { specName, featureName, commandPrefix });
+
+      if (!currentProjectPath) {
+        return {
+          ok: false,
+          error: { type: 'SPEC_JSON_ERROR', message: 'Project not selected' },
+        };
+      }
+
+      // spec-path-ssot-refactor: Resolve path from name
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        logger.error('[handlers] START_IMPL: spec not found', { specName });
+        return {
+          ok: false,
+          error: { type: 'SPEC_JSON_ERROR', message: `Spec not found: ${specName}` },
+        };
+      }
+      const specPath = specPathResult.value;
 
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
@@ -2223,7 +2243,7 @@ export function registerIpcHandlers(): void {
         specManagerService: service,
       });
 
-      logger.info('[handlers] START_IMPL result', { specPath, ok: result.ok });
+      logger.info('[handlers] START_IMPL result', { specName, specPath, ok: result.ok });
       return result;
     }
   );

@@ -27,6 +27,22 @@ vi.mock('electron', () => ({
   },
 }));
 
+// Bug fix: start-impl-path-resolution-missing
+// Mock handlers.ts for getCurrentProjectPath
+vi.mock('./handlers', () => ({
+  getCurrentProjectPath: vi.fn(() => '/test/project'),
+}));
+
+// Mock FileService for resolveSpecPath
+vi.mock('../services/fileService', () => ({
+  FileService: vi.fn().mockImplementation(() => ({
+    resolveSpecPath: vi.fn().mockImplementation((_projectPath: string, specName: string) => {
+      // Return the specName as-is for test purposes (assuming it's already a full path in tests)
+      return Promise.resolve({ ok: true, value: specName });
+    }),
+  })),
+}));
+
 describe('autoExecutionHandlers', () => {
   let coordinator: AutoExecutionCoordinator;
   let mockHandlers: Map<string, Function>;

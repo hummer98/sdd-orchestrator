@@ -2,6 +2,7 @@
  * AutoExecutionHandlers
  * IPC handlers for auto-execution functionality
  * Requirements: 4.1, 4.2, 4.3
+ * Bug fix: start-impl-path-resolution-missing
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
@@ -9,6 +10,8 @@ import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { IPC_CHANNELS } from './channels';
 import { logger } from '../services/logger';
+import { FileService } from '../services/fileService';
+import { getCurrentProjectPath } from './handlers';
 import type {
   AutoExecutionCoordinator,
   AutoExecutionOptions,
@@ -134,11 +137,34 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   logger.info('[autoExecutionHandlers] Registering IPC handlers');
 
   // AUTO_EXECUTION_START
+  // Bug fix: start-impl-path-resolution-missing
+  // spec-path-ssot-refactor: Resolve path from name
+  const fileService = new FileService();
   ipcMain.handle(
     IPC_CHANNELS.AUTO_EXECUTION_START,
     async (_event, params: StartParams): Promise<Result<SerializableAutoExecutionState, AutoExecutionError>> => {
-      logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_START', { specPath: params.specPath });
-      const result = await coordinator.start(params.specPath, params.specId, params.options);
+      logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_START', { specName: params.specPath });
+
+      const projectPath = getCurrentProjectPath();
+      if (!projectPath) {
+        return {
+          ok: false,
+          error: { type: 'PRECONDITION_FAILED', message: 'Project not selected' },
+        };
+      }
+
+      // spec-path-ssot-refactor: Resolve path from name
+      const specPathResult = await fileService.resolveSpecPath(projectPath, params.specPath);
+      if (!specPathResult.ok) {
+        logger.error('[autoExecutionHandlers] AUTO_EXECUTION_START: spec not found', { specName: params.specPath });
+        return {
+          ok: false,
+          error: { type: 'SPEC_NOT_FOUND', specPath: params.specPath },
+        };
+      }
+      const resolvedSpecPath = specPathResult.value;
+
+      const result = await coordinator.start(resolvedSpecPath, params.specId, params.options);
       return toSerializableResult(result);
     }
   );

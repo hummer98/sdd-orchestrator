@@ -4,7 +4,7 @@
 
 | 項目 | Electron版 | Remote UI版 |
 |------|-----------|-------------|
-| テストファイル数 | 31 | 7 |
+| テストファイル数 | 31 | 8 |
 | フレームワーク | WebdriverIO + wdio-electron-service | Playwright |
 | 対象環境 | Desktop (macOS/Windows/Linux) | Desktop/Smartphone (Browser) |
 
@@ -37,12 +37,12 @@
 | | ドキュメントレビュー連携 | ✅ | ✅ | ✅ |
 | **Bug管理** | Bug一覧表示 | ✅ | ✅ | ✅ |
 | | Bug選択・詳細表示 | ✅ | ✅ | ✅ |
-| | Bug作成 | ✅ | ❌ | ❌ |
+| | Bug作成 | ✅ | ⚠️ | ⚠️ |
 | | 3ペイン連動 | ✅ | ✅ | ✅ |
 | | フェーズ実行ボタン | ✅ | ✅ | ✅ |
-| | ファイル監視 | ✅ | ❌ | ❌ |
-| | Worktree対応 | ✅ | ❌ | ❌ |
-| | Bug自動実行 | ✅ | ❌ | ❌ |
+| | ファイル監視 | ✅ | ✅ | ✅ |
+| | Worktree対応 | ✅ | ⚠️ | ⚠️ |
+| | Bug自動実行 | ✅ | ⚠️ | ⚠️ |
 | **ドキュメント** | ドキュメントレビュー | ✅ | ❌ | ❌ |
 | | ArtifactEditor検索 | ✅ | ❌ | ❌ |
 | | ファイル変更監視→UI更新 | ✅ | ❌ | ❌ |
@@ -232,6 +232,24 @@
 | Phase Execution Buttons (Desktop) | 実行ボタン表示、次フェーズボタン有効/無効制御 |
 | Smartphone | 底部タブバー表示、Bugsタブ切り替え、Bug詳細表示、ワークフローフェーズ表示 |
 
+### 3.8 Playwright bug-advanced.spec.ts (Desktop/Smartphone) **NEW**
+
+| ファイル | テスト項目 |
+|---------|-----------|
+| [bug-advanced.spec.ts](../../electron-sdd-manager/e2e-playwright/bug-advanced.spec.ts) | Bug管理の高度な機能テスト（ファイル監視、自動実行、Worktree） |
+
+**テスト内容（13件、うち5件skip）:**
+
+| カテゴリ | テスト |
+|---------|-------|
+| Bug Creation (Desktop) | Create Bugボタン表示確認（未実装のため失敗を期待） |
+| File Watcher (Desktop) | フォルダ作成時のBug自動検出、フォルダ削除時のBug自動削除 |
+| Bug Auto Execution (Desktop) | 自動実行ボタン表示確認（未実装のため失敗を期待） |
+| Worktree Support (Desktop) | Worktreeチェックボックス表示確認（未実装のため失敗を期待）、Worktreeバッジ表示 |
+| Smartphone | ファイル監視UI更新、Bug詳細表示（自動実行なし確認） |
+
+**注意:** Bug作成、自動実行、Worktree対応のUIはRemote UIに未実装のため、一部テストはskipまたは「未実装を確認」するテストとなっている。
+
 ---
 
 ## 4. カバレッジギャップ分析
@@ -289,7 +307,7 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                 E2E Tests (6 files)                        │
+│                 E2E Tests (8 files)                        │
 ├────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────┐      │
 │  │              smoke.spec.ts (Desktop)              │      │
@@ -353,10 +371,21 @@ smartphone-spec.spec.ts により、スマートフォンビューポート（37
 │  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
+│  │      bug-advanced.spec.ts (Desktop/Smartphone)    │      │
+│  │  - ファイル監視（自動検出/削除）                       │      │
+│  │  - Bug作成ボタン（未実装確認）                        │      │
+│  │  - Bug自動実行ボタン（未実装確認）                     │      │
+│  │  - Worktreeチェックボックス（未実装確認）              │      │
+│  │  - Smartphone版ファイル監視                        │      │
+│  └──────────────────────────────────────────────────┘      │
+│                                                            │
+│  ┌──────────────────────────────────────────────────┐      │
 │  │           ❌ 未カバー領域                           │      │
 │  │  - ドキュメントレビュー                               │      │
 │  │  - エディタ操作                                     │      │
-│  │  - Bug作成ダイアログ                                │      │
+│  │  - Bug作成ダイアログ（未実装）                        │      │
+│  │  - Bug自動実行（未実装）                             │      │
+│  │  - Worktree対応（未実装）                           │      │
 │  └──────────────────────────────────────────────────┘      │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -419,6 +448,7 @@ electron-sdd-manager/
     ├── auto-execution.spec.ts   # 自動実行テスト Desktop (16テスト)
     ├── smartphone-auto-execution.spec.ts # 自動実行テスト Smartphone (16テスト)
     ├── bug-management.spec.ts   # Bug管理テスト Desktop/Smartphone (18テスト)
+    ├── bug-advanced.spec.ts     # Bug高度機能テスト (13テスト、5 skip)
     ├── global-setup.ts          # Electron起動
     ├── global-teardown.ts       # Electron終了
     └── playwright.config.ts     # Playwright設定
@@ -442,3 +472,4 @@ cd electron-sdd-manager && npx playwright test
 *更新日: 2026-01-18* - auto-execution.spec.ts追加（Remote UI自動実行機能のE2Eテスト）
 *更新日: 2026-01-18* - smartphone-auto-execution.spec.ts追加（Smartphone版自動実行E2Eテスト）
 *更新日: 2026-01-19* - bug-management.spec.ts追加（Bug管理Remote UI E2Eテスト、Desktop/Smartphone対応）
+*更新日: 2026-01-19* - bug-advanced.spec.ts追加（Bug高度機能：ファイル監視、自動実行、Worktree確認テスト）、WebSocketブロードキャスト修正

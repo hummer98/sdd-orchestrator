@@ -48,7 +48,8 @@ interface EditorActions {
   setMode: (mode: EditorState['mode']) => void;
   save: () => Promise<void>;
   discardChanges: () => void;
-  loadArtifact: (specPath: string, artifact: ArtifactType) => Promise<void>;
+  // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
+  loadArtifact: (name: string, artifact: ArtifactType, entityType?: 'spec' | 'bug') => Promise<void>;
   clearEditor: () => void;
   // Search actions
   setSearchVisible: (visible: boolean) => void;
@@ -130,10 +131,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   // spec-path-ssot-refactor: Changed from specPath to specName
-  loadArtifact: async (specName: string, artifact: ArtifactType) => {
+  // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
+  loadArtifact: async (name: string, artifact: ArtifactType, entityType: 'spec' | 'bug' = 'spec') => {
     // Handle both base artifacts and dynamic document review files
-    // For currentPath tracking, we now use specName:artifact format
-    const artifactKey = `${specName}:${artifact}`;
+    // For currentPath tracking, we now use name:artifact format
+    const artifactKey = `${name}:${artifact}`;
 
     // Check if switching to a different file (not initial load or same file)
     const { currentPath } = get();
@@ -165,8 +167,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }
 
     try {
-      // spec-path-ssot-refactor: Use (specName, filename) instead of full path
-      const content = await window.electronAPI.readArtifact(specName, `${artifact}.md`);
+      // spec-path-ssot-refactor: Use (name, filename) instead of full path
+      // bug-artifact-content-not-displayed: Pass entityType to use correct path resolver
+      const content = await window.electronAPI.readArtifact(name, `${artifact}.md`, entityType);
       set({
         content,
         originalContent: content,

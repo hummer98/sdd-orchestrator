@@ -69,12 +69,14 @@ export function BugPane({
       {/* Center - Bug Document Editor */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* spec-path-ssot-refactor: Changed basePath to baseName */}
+        {/* bug-artifact-content-not-displayed: Add entityType="bug" for correct path resolution */}
         <ArtifactEditor
           tabs={BUG_TABS}
           baseName={selectedBug.name}
           placeholder="バグを選択してエディターを開始"
           artifacts={artifacts}
           testId="bug-artifact-editor"
+          entityType="bug"
         />
       </div>
 

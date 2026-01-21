@@ -72,8 +72,9 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.READ_SPEC_JSON, specName),
 
   // spec-path-ssot-refactor: Change from artifactPath to (specName, filename)
-  readArtifact: (specName: string, filename: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.READ_ARTIFACT, specName, filename),
+  // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
+  readArtifact: (name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_ARTIFACT, name, filename, entityType),
 
   createSpec: (projectPath: string, specName: string, description: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CREATE_SPEC, projectPath, specName, description),

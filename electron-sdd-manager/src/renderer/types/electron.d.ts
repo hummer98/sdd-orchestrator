@@ -416,7 +416,8 @@ export interface ElectronAPI {
   // spec-path-ssot-refactor: Changed from specPath to specName
   readSpecJson(specName: string): Promise<SpecJson>;
   // spec-path-ssot-refactor: Changed from artifactPath to (specName, filename)
-  readArtifact(specName: string, filename: string): Promise<string>;
+  // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
+  readArtifact(name: string, filename: string, entityType?: 'spec' | 'bug'): Promise<string>;
   createSpec(projectPath: string, specName: string, description: string): Promise<void>;
   writeFile(filePath: string, content: string): Promise<void>;
   // spec-path-ssot-refactor: Changed from specPath to specName

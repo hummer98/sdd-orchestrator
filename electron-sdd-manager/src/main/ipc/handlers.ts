@@ -628,18 +628,22 @@ export function registerIpcHandlers(): void {
   );
 
   // spec-path-ssot-refactor: Change from artifactPath to (specName, filename)
-  // Main process resolves the full path using resolveSpecPath
+  // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
+  // Main process resolves the full path using resolveSpecPath or resolveBugPath
   ipcMain.handle(
     IPC_CHANNELS.READ_ARTIFACT,
-    async (_event, specName: string, filename: string) => {
+    async (_event, name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') => {
       if (!currentProjectPath) {
         throw new Error('Project not selected');
       }
-      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
-      if (!specPathResult.ok) {
-        throw new Error(`Spec not found: ${specName}`);
+      // Use appropriate path resolver based on entityType
+      const pathResult = entityType === 'bug'
+        ? await fileService.resolveBugPath(currentProjectPath, name)
+        : await fileService.resolveSpecPath(currentProjectPath, name);
+      if (!pathResult.ok) {
+        throw new Error(`${entityType === 'bug' ? 'Bug' : 'Spec'} not found: ${name}`);
       }
-      const artifactPath = path.join(specPathResult.value, filename);
+      const artifactPath = path.join(pathResult.value, filename);
       const result = await fileService.readArtifact(artifactPath);
       if (!result.ok) {
         throw new Error(`Failed to read artifact: ${result.error.type}`);

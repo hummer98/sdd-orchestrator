@@ -42,9 +42,12 @@ export interface ArtifactEditorProps {
   artifacts?: Record<string, ArtifactInfo | null>;
   /** Test ID for testing */
   testId?: string;
+  /** Entity type for path resolution - bug-artifact-content-not-displayed */
+  entityType?: 'spec' | 'bug';
 }
 
 // spec-path-ssot-refactor: Changed baseName to baseName
+// bug-artifact-content-not-displayed: Add entityType prop
 export function ArtifactEditor({
   tabs,
   baseName,
@@ -52,6 +55,7 @@ export function ArtifactEditor({
   dynamicTabs = [],
   artifacts,
   testId,
+  entityType = 'spec',
 }: ArtifactEditorProps) {
   const {
     activeTab,
@@ -104,13 +108,14 @@ export function ArtifactEditor({
   });
 
   // Load artifact when baseName or tab changes
+  // bug-artifact-content-not-displayed: Pass entityType to use correct path resolver
   useEffect(() => {
     if (baseName) {
-      loadArtifact(baseName, activeTab);
+      loadArtifact(baseName, activeTab, entityType);
     } else {
       clearEditor();
     }
-  }, [baseName, activeTab, loadArtifact, clearEditor]);
+  }, [baseName, activeTab, entityType, loadArtifact, clearEditor]);
 
   // Filter base tabs to only show existing artifacts, then add dynamic tabs
   const availableTabs = useMemo((): TabInfo[] => {

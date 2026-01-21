@@ -2,7 +2,7 @@
   "feature_name": "main-spec",
   "name": "main-spec",
   "description": "E2Eテスト用：メインブランチにあるSpec",
-  "phase": "tasks-generated",
+  "phase": "tasks",
   "language": "ja",
   "approvals": {
     "requirements": {

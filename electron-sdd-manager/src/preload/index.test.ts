@@ -97,6 +97,7 @@ describe('Preload API - Task 28.1: Agent管理API公開', () => {
         'session-123'
       );
 
+      // skip-permissions-main-process: skipPermissions removed from preload API
       expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
         'ipc:start-agent',
         'spec-1',
@@ -104,8 +105,7 @@ describe('Preload API - Task 28.1: Agent管理API公開', () => {
         'claude',
         ['-p', 'command'],
         'doc',
-        'session-123',
-        undefined  // skipPermissions
+        'session-123'
       );
       expect(result).toEqual(mockAgentInfo);
     });
@@ -148,11 +148,11 @@ describe('Preload API - Task 28.1: Agent管理API公開', () => {
 
       const result = await (exposedAPI.resumeAgent as Function)('agent-123');
 
+      // skip-permissions-main-process: skipPermissions removed from preload API
       expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
         'ipc:resume-agent',
         'agent-123',
-        undefined,
-        undefined
+        undefined  // prompt
       );
       expect(result).toEqual(mockAgentInfo);
     });

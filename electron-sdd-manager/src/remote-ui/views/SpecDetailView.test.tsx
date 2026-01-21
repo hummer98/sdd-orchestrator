@@ -11,13 +11,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SpecDetailView } from './SpecDetailView';
-import type { SpecMetadata, SpecDetail, ApiClient, AgentInfo } from '@shared/api/types';
+// spec-path-ssot-refactor: Use SpecMetadataWithPath for Remote UI tests
+import type { SpecMetadataWithPath, SpecDetail, ApiClient, AgentInfo } from '@shared/api/types';
 
 // =============================================================================
 // Mock Data
 // =============================================================================
 
-const mockSpec: SpecMetadata = {
+// spec-path-ssot-refactor: Remote UI uses SpecMetadataWithPath (includes path)
+const mockSpec: SpecMetadataWithPath = {
   name: 'user-authentication',
   path: '/project/.kiro/specs/user-authentication',
 };
@@ -138,7 +140,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // Should display spec name
@@ -178,7 +180,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // Requirements and design should be approved (green check)
@@ -195,7 +197,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // impl phase should be disabled because tasks is not yet approved
@@ -209,7 +211,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // Tasks phase should show approve button (generated but not approved)
@@ -222,7 +224,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // Find the approve button in tasks phase
@@ -271,7 +273,7 @@ describe('SpecDetailView', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       // Click approve button for tasks phase
@@ -301,7 +303,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={apiClientWithWorktree} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('worktree-section')).toBeInTheDocument();
@@ -311,7 +313,7 @@ describe('SpecDetailView', () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spec-detail-view')).toBeInTheDocument();
+        expect(screen.getByTestId('remote-spec-detail')).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('worktree-section')).not.toBeInTheDocument();

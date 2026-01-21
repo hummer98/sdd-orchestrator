@@ -110,7 +110,7 @@ describe('UnifiedCommandsetInstaller', () => {
     }
 
     // Agents
-    const agents = ['spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks', 'steering', 'steering-custom', 'validate-design', 'validate-gap', 'validate-impl', 'spec-inspection'];
+    const agents = ['spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks', 'steering', 'steering-custom', 'steering-verification', 'validate-design', 'validate-gap', 'validate-impl', 'spec-inspection'];
     for (const agent of agents) {
       const filePath = path.join(templateDir, 'agents', 'kiro', `${agent}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });

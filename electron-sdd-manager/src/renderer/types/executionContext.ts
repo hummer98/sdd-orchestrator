@@ -12,14 +12,15 @@ import type { AutoExecutionStatus } from './index';
  * ExecutionContext - Spec毎の自動実行コンテキスト
  * 各Specの実行状態を完全にカプセル化し、並行実行時の状態分離を実現
  * Requirements: 1.1, 1.5, 1.6, 3.6
+ * spec-path-ssot-refactor: Changed specPath to specName
  */
 export interface ExecutionContext {
   /** 対象SpecのID */
   readonly specId: string;
   /** specDetailのスナップショット（作成時点） */
   readonly specDetailSnapshot: Readonly<SpecDetail>;
-  /** specのパス（IPC操作用） */
-  readonly specPath: string;
+  /** specの名前（IPC操作用） spec-path-ssot-refactor: Changed from specPath */
+  readonly specName: string;
   /** 現在実行中のフェーズ */
   currentPhase: WorkflowPhase | null;
   /** 実行状態 */
@@ -61,10 +62,11 @@ export function createExecutionContext(options: CreateExecutionContextOptions): 
     artifacts: { ...specDetail.artifacts },
   };
 
+  // spec-path-ssot-refactor: Changed specPath to specName
   return {
     specId,
     specDetailSnapshot,
-    specPath: specDetail.metadata.path,
+    specName: specDetail.metadata.name,
     currentPhase: null,
     executionStatus: 'running',
     trackedAgentIds: new Set<string>(),

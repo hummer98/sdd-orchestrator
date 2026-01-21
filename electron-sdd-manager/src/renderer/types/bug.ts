@@ -22,10 +22,10 @@ export type BugAction = 'analyze' | 'fix' | 'verify';
  * Bug metadata interface
  * Requirements: 6.1
  * Requirements: 1.1 (bugs-worktree-support) - worktree field for UI display
+ * spec-path-ssot-refactor: Removed path field - path resolution is Main process responsibility
  */
 export interface BugMetadata {
   readonly name: string;           // バグ名（ディレクトリ名）
-  readonly path: string;           // フルパス
   readonly phase: BugPhase;        // 現在のフェーズ
   readonly updatedAt: string;      // 最終更新日時
   readonly reportedAt: string;     // 報告日時

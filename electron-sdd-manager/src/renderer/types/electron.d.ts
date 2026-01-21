@@ -413,14 +413,18 @@ export interface ElectronAPI {
    */
   selectProject(projectPath: string): Promise<SelectProjectResult>;
   readSpecs(projectPath: string): Promise<SpecMetadata[]>;
-  readSpecJson(specPath: string): Promise<SpecJson>;
-  readArtifact(artifactPath: string): Promise<string>;
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  readSpecJson(specName: string): Promise<SpecJson>;
+  // spec-path-ssot-refactor: Changed from artifactPath to (specName, filename)
+  readArtifact(specName: string, filename: string): Promise<string>;
   createSpec(projectPath: string, specName: string, description: string): Promise<void>;
   writeFile(filePath: string, content: string): Promise<void>;
-  updateApproval(specPath: string, phase: Phase, approved: boolean): Promise<void>;
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  updateApproval(specName: string, phase: Phase, approved: boolean): Promise<void>;
 
   // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
-  updateSpecJson(specPath: string, updates: Record<string, unknown>): Promise<void>;
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  updateSpecJson(specName: string, updates: Record<string, unknown>): Promise<void>;
 
   // Agent Management (Task 27.1)
   // Requirements: 5.1-5.8
@@ -596,7 +600,8 @@ export interface ElectronAPI {
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
   // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
-  syncSpecPhase(specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void>;
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  syncSpecPhase(specName: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void>;
 
   // ============================================================
   // Steering Verification (steering-verification-integration feature)
@@ -640,7 +645,8 @@ export interface ElectronAPI {
   generateReleaseMd(projectPath: string): Promise<AgentInfo>;
 
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
-  syncDocumentReview(specPath: string): Promise<boolean>;
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  syncDocumentReview(specName: string): Promise<boolean>;
 
   // Permissions - Add shell permissions to project
   addShellPermissions(projectPath: string): Promise<AddPermissionsResult>;
@@ -687,7 +693,8 @@ export interface ElectronAPI {
   // Bug Management
   // Requirements: 3.1, 6.1, 6.3
   readBugs(projectPath: string): Promise<BugMetadata[]>;
-  readBugDetail(bugPath: string): Promise<BugDetail>;
+  // spec-path-ssot-refactor: Changed from bugPath to bugName
+  readBugDetail(bugName: string): Promise<BugDetail>;
 
   // Bug Watcher
   // Requirements: 6.5

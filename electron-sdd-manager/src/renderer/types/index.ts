@@ -69,11 +69,11 @@ export interface SpecJson {
 /**
  * SpecMetadata - Spec identification information only (lightweight)
  * spec-metadata-ssot-refactor: Removed phase, updatedAt, approvals fields
+ * spec-path-ssot-refactor: Removed path field - path resolution is Main process responsibility
  * These fields should be obtained from SpecJson (SSOT principle)
  */
 export interface SpecMetadata {
   readonly name: string;
-  readonly path: string;
 }
 
 export interface SpecDetail {

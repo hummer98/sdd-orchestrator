@@ -27,6 +27,43 @@ import type {
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
 
 // =============================================================================
+// spec-path-ssot-refactor: Remote UI specific types with path
+// Remote UI uses WebSocket which still provides paths
+// =============================================================================
+
+/**
+ * SpecMetadata with path for Remote UI use
+ * WebSocket API still returns path, so Remote UI needs this extended type
+ */
+export interface SpecMetadataWithPath extends SpecMetadata {
+  readonly path: string;
+}
+
+/**
+ * BugMetadata with path for Remote UI use
+ * WebSocket API still returns path, so Remote UI needs this extended type
+ */
+export interface BugMetadataWithPath extends BugMetadata {
+  readonly path: string;
+}
+
+/**
+ * SpecDetail with path for Remote UI use
+ * Extends SpecDetail but uses SpecMetadataWithPath
+ */
+export interface SpecDetailWithPath extends Omit<SpecDetail, 'metadata'> {
+  metadata: SpecMetadataWithPath;
+}
+
+/**
+ * BugDetail with path for Remote UI use
+ * Extends BugDetail but uses BugMetadataWithPath
+ */
+export interface BugDetailWithPath extends Omit<BugDetail, 'metadata'> {
+  metadata: BugMetadataWithPath;
+}
+
+// =============================================================================
 // Result Type
 // =============================================================================
 

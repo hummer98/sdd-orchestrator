@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.4] - 2026-01-21
+
+### Added
+- **skill**: test-fixコマンドを追加（テスト実行と失敗時の自動解析・修正）
+
+### Fixed
+- **bug**: agentStoreの動的importを静的importに変更（Promise遅延によるレースコンディションを回避）
+- **bug**: convertWorktreeHandlersにresolveSpecPathを追加
+- **bug**: 自動実行フローにinspection/spec-mergeハンドラを追加
+- **test**: specStoreFacade循環参照問題を解決
+- **test**: e2eフィクスチャのフェーズ名を新命名規則に更新
+
+### Removed
+- **skill**: 非推奨のspec-managerコマンドを削除
+
+### Documentation
+- 調査・レビュードキュメントを追加
+
 ## [0.35.3] - 2026-01-21
 
 ### Fixed

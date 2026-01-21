@@ -311,13 +311,15 @@ export const projectConfigService = {
    * @param profile プロファイル設定
    */
   async saveProfile(projectPath: string, profile: ProfileConfig): Promise<void> {
-    // Use v3 loading to preserve commandsets field
+    // Use v3 loading to preserve all existing fields
     const existing = await loadProjectConfigV3(projectPath);
     const config: ProjectConfigV3 = {
       version: 3,
       profile,
       layout: existing?.layout,
       commandsets: existing?.commandsets,
+      settings: existing?.settings,
+      defaults: existing?.defaults,
     };
     await saveProjectConfigV3(projectPath, config);
   },
@@ -339,13 +341,15 @@ export const projectConfigService = {
    * @param layout レイアウト値
    */
   async saveLayoutConfig(projectPath: string, layout: LayoutValues): Promise<void> {
-    // Use v3 loading to preserve commandsets field
+    // Use v3 loading to preserve all existing fields
     const existing = await loadProjectConfigV3(projectPath);
     const config: ProjectConfigV3 = {
       version: 3,
       profile: existing?.profile,
       layout,
       commandsets: existing?.commandsets,
+      settings: existing?.settings,
+      defaults: existing?.defaults,
     };
     await saveProjectConfigV3(projectPath, config);
   },

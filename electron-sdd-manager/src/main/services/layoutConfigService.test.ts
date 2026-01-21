@@ -371,6 +371,48 @@ describe('projectConfigService', () => {
         'utf-8'
       );
     });
+
+    // Bug fix: saveProfile was not preserving settings field
+    it('既存のsettingsを保持しながらプロファイルを保存する', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: {
+          name: 'cc-sdd',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 300,
+          rightPaneWidth: 350,
+          bottomPaneHeight: 200,
+          agentListHeight: 150,
+        },
+        settings: {
+          skipPermissions: true,
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const newProfile: ProfileConfig = {
+        name: 'cc-sdd-agent',
+        installedAt: '2024-02-01T00:00:00.000Z',
+      };
+
+      await projectConfigService.saveProfile(testProjectPath, newProfile);
+
+      const expectedConfig = {
+        version: 3,
+        profile: newProfile,
+        layout: existingConfig.layout,
+        commandsets: undefined,
+        settings: existingConfig.settings, // settings must be preserved!
+      };
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        configFilePath,
+        JSON.stringify(expectedConfig, null, 2),
+        'utf-8'
+      );
+    });
   });
 
   describe('loadLayoutConfig (Task 1.2)', () => {
@@ -521,6 +563,50 @@ describe('projectConfigService', () => {
         projectConfigService.saveLayoutConfig(testProjectPath, layout)
       ).resolves.not.toThrow();
       expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    // Bug fix: saveLayoutConfig was not preserving settings field
+    it('既存のsettingsを保持しながらレイアウトを保存する', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: {
+          name: 'cc-sdd-agent',
+          installedAt: '2024-01-01T00:00:00.000Z',
+        },
+        layout: {
+          leftPaneWidth: 300,
+          rightPaneWidth: 350,
+          bottomPaneHeight: 200,
+          agentListHeight: 150,
+        },
+        settings: {
+          skipPermissions: true,
+        },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const newLayout: LayoutValues = {
+        leftPaneWidth: 400,
+        rightPaneWidth: 450,
+        bottomPaneHeight: 300,
+        agentListHeight: 200,
+      };
+
+      await projectConfigService.saveLayoutConfig(testProjectPath, newLayout);
+
+      const expectedConfig = {
+        version: 3,
+        profile: existingConfig.profile,
+        layout: newLayout,
+        commandsets: undefined,
+        settings: existingConfig.settings, // settings must be preserved!
+      };
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        configFilePath,
+        JSON.stringify(expectedConfig, null, 2),
+        'utf-8'
+      );
     });
   });
 

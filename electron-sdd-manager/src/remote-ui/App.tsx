@@ -17,7 +17,7 @@ import { useState, useCallback } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
 import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
-import type { SpecMetadata, SpecDetail, BugMetadata } from '../shared/api/types';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath } from '../shared/api/types';
 
 /**
  * MainContent props
@@ -34,12 +34,13 @@ interface MainContentProps {
  */
 function MainContent({ activeTab, onTabChange }: MainContentProps) {
   const apiClient = useApi();
-  const [selectedSpec, setSelectedSpec] = useState<SpecMetadata | null>(null);
+  const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
   const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
-  const [selectedBug, setSelectedBug] = useState<BugMetadata | null>(null);
+  const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
 
   // Handle spec selection
-  const handleSelectSpec = useCallback(async (spec: SpecMetadata) => {
+  // spec-path-ssot-refactor: Remote UI receives SpecMetadataWithPath from WebSocket
+  const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
     setSelectedSpec(spec);
     // Load spec detail
     const result = await apiClient.getSpecDetail(spec.name);
@@ -49,7 +50,8 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
   }, [apiClient]);
 
   // Handle bug selection
-  const handleSelectBug = useCallback((bug: BugMetadata) => {
+  // spec-path-ssot-refactor: Remote UI receives BugMetadataWithPath from WebSocket
+  const handleSelectBug = useCallback((bug: BugMetadataWithPath) => {
     setSelectedBug(bug);
   }, []);
 

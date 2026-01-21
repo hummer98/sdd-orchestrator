@@ -13,15 +13,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bug, Play, Check, AlertCircle, FileText, Wrench, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, BugMetadata, BugDetail, BugAction, AgentInfo } from '@shared/api/types';
+import type { ApiClient, BugMetadataWithPath, BugDetail, BugAction, AgentInfo } from '@shared/api/types';
 
 // =============================================================================
 // Types
 // =============================================================================
 
+// spec-path-ssot-refactor: Remote UI uses BugMetadataWithPath which includes path
 export interface BugDetailViewProps {
-  /** Bug metadata */
-  bug: BugMetadata;
+  /** Bug metadata with path (from WebSocket API) */
+  bug: BugMetadataWithPath;
   /** API client instance */
   apiClient: ApiClient;
   /** Called after phase execution starts */

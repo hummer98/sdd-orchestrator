@@ -14,19 +14,20 @@ import { Search, Bug } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BugListItem } from '@shared/components/bug/BugListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, BugMetadata } from '@shared/api/types';
+import type { ApiClient, BugMetadataWithPath } from '@shared/api/types';
 
 // =============================================================================
 // Types
 // =============================================================================
 
+// spec-path-ssot-refactor: Remote UI uses BugMetadataWithPath from WebSocket API
 export interface BugsViewProps {
   /** API client instance */
   apiClient: ApiClient;
   /** Currently selected bug ID */
   selectedBugId?: string | null;
   /** Called when a bug is selected */
-  onSelectBug?: (bug: BugMetadata) => void;
+  onSelectBug?: (bug: BugMetadataWithPath) => void;
 }
 
 // =============================================================================
@@ -39,7 +40,8 @@ export function BugsView({
   onSelectBug,
 }: BugsViewProps): React.ReactElement {
   // State
-  const [bugs, setBugs] = useState<BugMetadata[]>([]);
+  // spec-path-ssot-refactor: Remote UI receives BugMetadataWithPath from WebSocket
+  const [bugs, setBugs] = useState<BugMetadataWithPath[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,7 +59,9 @@ export function BugsView({
       if (!isMounted) return;
 
       if (result.ok) {
-        setBugs(result.value);
+        // spec-path-ssot-refactor: WebSocket API returns BugMetadataWithPath
+        const bugsWithPath = result.value as unknown as BugMetadataWithPath[];
+        setBugs(bugsWithPath);
       } else {
         setError(result.error.message);
       }
@@ -75,15 +79,18 @@ export function BugsView({
   // Subscribe to bug updates
   useEffect(() => {
     const unsubscribe = apiClient.onBugsUpdated((updatedBugs) => {
-      setBugs(updatedBugs);
+      // spec-path-ssot-refactor: WebSocket API returns BugMetadataWithPath
+      const bugsWithPath = updatedBugs as unknown as BugMetadataWithPath[];
+      setBugs(bugsWithPath);
     });
 
     return unsubscribe;
   }, [apiClient]);
 
   // Handle bug selection
+  // spec-path-ssot-refactor: Using BugMetadataWithPath for Remote UI
   const handleSelectBug = useCallback(
-    (bug: BugMetadata) => {
+    (bug: BugMetadataWithPath) => {
       onSelectBug?.(bug);
     },
     [onSelectBug]

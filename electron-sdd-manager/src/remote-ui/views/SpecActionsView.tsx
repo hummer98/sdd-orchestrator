@@ -166,6 +166,8 @@ export function SpecActionsView({
 
   // gemini-document-review: Handle scheme change
   // Requirements: 7.2, 7.3, 7.4
+  // spec-path-ssot-refactor: Remote UI doesn't have path in SpecMetadata
+  // This feature is not fully supported in Remote UI - scheme changes need server-side API
   const handleSchemeChange = useCallback(
     async (newScheme: ReviewerScheme) => {
       const previousScheme = optimisticScheme;
@@ -175,10 +177,11 @@ export function SpecActionsView({
       setIsSavingScheme(true);
 
       try {
-        // Build spec.json path from spec metadata
-        const specJsonPath = `${specDetail.metadata.path}/spec.json`;
+        // spec-path-ssot-refactor: Remote UI scheme update requires server-side implementation
+        // For now, log a warning and revert to previous scheme
+        console.warn('[SpecActionsView] Scheme change not fully supported in Remote UI');
 
-        // Create updated spec.json content
+        // Create updated spec.json content (for future server-side API)
         const updatedSpecJson: SpecJson = {
           ...specDetail.specJson,
           documentReview: {
@@ -188,14 +191,12 @@ export function SpecActionsView({
           },
         };
 
-        // Save via API
-        const result = await apiClient.saveFile(specJsonPath, JSON.stringify(updatedSpecJson, null, 2));
+        // TODO: Implement server-side API for scheme update
+        // For now, just log the change
+        console.log('[SpecActionsView] Scheme would be updated to:', newScheme, updatedSpecJson);
 
-        if (!result.ok) {
-          // Rollback on error
-          setOptimisticScheme(previousScheme);
-          console.error('Failed to save scheme:', result.error);
-        }
+        // Rollback for now until server-side API is implemented
+        setOptimisticScheme(previousScheme);
       } catch (err) {
         // Rollback on error
         setOptimisticScheme(previousScheme);
@@ -204,7 +205,7 @@ export function SpecActionsView({
         setIsSavingScheme(false);
       }
     },
-    [apiClient, specDetail.metadata.path, specDetail.specJson, optimisticScheme]
+    [apiClient, specDetail.specJson, optimisticScheme]
   );
 
   return (

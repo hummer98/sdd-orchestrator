@@ -20,7 +20,7 @@ import { AutoExecutionStatusDisplay } from '@shared/components/execution/AutoExe
 import { Spinner } from '@shared/components/ui/Spinner';
 import type {
   ApiClient,
-  SpecMetadata,
+  SpecMetadataWithPath,
   SpecDetail,
   WorkflowPhase,
   AgentInfo,
@@ -34,9 +34,10 @@ import { hasWorktreePath, isImplStarted } from '@renderer/types/worktree';
 // Types
 // =============================================================================
 
+// spec-path-ssot-refactor: Use SpecMetadataWithPath for Remote UI
 export interface SpecDetailViewProps {
-  /** Spec metadata */
-  spec: SpecMetadata;
+  /** Spec metadata with path (Remote UI gets path from WebSocket) */
+  spec: SpecMetadataWithPath;
   /** API client instance */
   apiClient: ApiClient;
   /** Called after phase execution starts */

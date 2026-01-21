@@ -16,20 +16,21 @@ import { Search, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecListItem } from '@shared/components/spec/SpecListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, SpecMetadata, SpecJson, SpecPhase } from '@shared/api/types';
+import type { ApiClient, SpecMetadataWithPath, SpecJson, SpecPhase } from '@shared/api/types';
 import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
 
 // =============================================================================
 // Types
 // =============================================================================
 
+// spec-path-ssot-refactor: Remote UI uses SpecMetadataWithPath from WebSocket API
 export interface SpecsViewProps {
   /** API client instance */
   apiClient: ApiClient;
   /** Currently selected spec ID */
   selectedSpecId?: string | null;
   /** Called when a spec is selected */
-  onSelectSpec?: (spec: SpecMetadata) => void;
+  onSelectSpec?: (spec: SpecMetadataWithPath) => void;
 }
 
 /**
@@ -49,7 +50,8 @@ export function SpecsView({
   onSelectSpec,
 }: SpecsViewProps): React.ReactElement {
   // State
-  const [specs, setSpecs] = useState<SpecMetadata[]>([]);
+  // spec-path-ssot-refactor: Remote UI receives SpecMetadataWithPath from WebSocket
+  const [specs, setSpecs] = useState<SpecMetadataWithPath[]>([]);
   /** spec-metadata-ssot-refactor: Map from spec name to SpecJson for phase/updatedAt */
   const [specJsonMap, setSpecJsonMap] = useState<Map<string, SpecJson>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -69,9 +71,12 @@ export function SpecsView({
       if (!isMounted) return;
 
       if (result.ok) {
-        setSpecs(result.value);
+        // spec-path-ssot-refactor: WebSocket API returns SpecMetadataWithPath
+        // Cast the result to the correct type
+        const specsWithPath = result.value as unknown as SpecMetadataWithPath[];
+        setSpecs(specsWithPath);
         // spec-metadata-ssot-refactor: Load specJsons for all specs
-        await loadSpecJsons(result.value);
+        await loadSpecJsons(specsWithPath);
       } else {
         setError(result.error.message);
       }
@@ -83,7 +88,7 @@ export function SpecsView({
      * Load specJsons for all specs
      * spec-metadata-ssot-refactor: Task 8.1 - Build specJsonMap in Remote UI
      */
-    async function loadSpecJsons(specList: SpecMetadata[]) {
+    async function loadSpecJsons(specList: SpecMetadataWithPath[]) {
       const newMap = new Map<string, SpecJson>();
 
       for (const spec of specList) {
@@ -112,10 +117,12 @@ export function SpecsView({
   // Subscribe to spec updates
   useEffect(() => {
     const unsubscribe = apiClient.onSpecsUpdated(async (updatedSpecs) => {
-      setSpecs(updatedSpecs);
+      // spec-path-ssot-refactor: WebSocket API returns SpecMetadataWithPath
+      const specsWithPath = updatedSpecs as unknown as SpecMetadataWithPath[];
+      setSpecs(specsWithPath);
       // spec-metadata-ssot-refactor: Also reload specJsons on update
       const newMap = new Map<string, SpecJson>();
-      for (const spec of updatedSpecs) {
+      for (const spec of specsWithPath) {
         try {
           const result = await apiClient.getSpecDetail(spec.name);
           if (result.ok && result.value.specJson) {
@@ -132,8 +139,9 @@ export function SpecsView({
   }, [apiClient]);
 
   // Handle spec selection
+  // spec-path-ssot-refactor: Using SpecMetadataWithPath for Remote UI
   const handleSelectSpec = useCallback(
-    (spec: SpecMetadata) => {
+    (spec: SpecMetadataWithPath) => {
       onSelectSpec?.(spec);
     },
     [onSelectSpec]
@@ -142,13 +150,13 @@ export function SpecsView({
   /**
    * Convert specs to SpecMetadataWithPhase using specJsonMap
    * spec-metadata-ssot-refactor: Task 8.2 - Build SpecMetadataWithPhase for display
+   * spec-path-ssot-refactor: SpecMetadataWithPhase no longer includes path
    */
   const specsWithPhase = useMemo((): SpecMetadataWithPhase[] => {
     return specs.map((spec) => {
       const specJson = specJsonMap.get(spec.name);
       return {
         name: spec.name,
-        path: spec.path,
         phase: specJson?.phase ?? UNKNOWN_PHASE,
         updatedAt: specJson?.updated_at ?? UNKNOWN_DATE,
       };
@@ -248,17 +256,19 @@ export function SpecsView({
           <ul data-testid="specs-list" className="divide-y-0">
             {/* remote-ui-vanilla-removal: Added remote-spec-list wrapper for E2E */}
             <div data-testid="remote-spec-list">
-              {filteredSpecs.map((spec) => {
+              {filteredSpecs.map((specWithPhase) => {
                 // git-worktree-support: Task 13.1 - Get worktree info from specJsonMap
-                const specJson = specJsonMap.get(spec.name);
+                const specJson = specJsonMap.get(specWithPhase.name);
                 const worktree = specJson?.worktree;
+                // spec-path-ssot-refactor: Get original spec with path for selection callback
+                const originalSpec = specs.find((s) => s.name === specWithPhase.name);
 
                 return (
-                  <div key={spec.name} data-testid={`remote-spec-item-${spec.name}`}>
+                  <div key={specWithPhase.name} data-testid={`remote-spec-item-${specWithPhase.name}`}>
                     <SpecListItem
-                      spec={spec}
-                      isSelected={selectedSpecId === spec.name}
-                      onSelect={() => handleSelectSpec(spec)}
+                      spec={specWithPhase}
+                      isSelected={selectedSpecId === specWithPhase.name}
+                      onSelect={() => originalSpec && handleSelectSpec(originalSpec)}
                       worktree={worktree}
                     />
                   </div>

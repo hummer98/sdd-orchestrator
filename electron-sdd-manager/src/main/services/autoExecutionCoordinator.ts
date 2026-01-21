@@ -1474,7 +1474,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
    * 自動実行を完了状態にする
    * @param specPath specのパス
    */
-  protected completeExecution(specPath: string): void {
+  public completeExecution(specPath: string): void {
     const state = this.executionStates.get(specPath);
     if (!state) {
       logger.warn('[AutoExecutionCoordinator] completeExecution: state not found', { specPath });

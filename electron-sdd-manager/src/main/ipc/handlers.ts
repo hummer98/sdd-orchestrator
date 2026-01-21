@@ -2443,6 +2443,103 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  // ============================================================
+  // Inspection Auto-Execution: execute inspection workflow
+  // When coordinator emits 'execute-inspection', execute inspection via specManagerService
+  // git-worktree-support Task 9: Added inspection phase to auto-execution flow
+  // ============================================================
+  coordinator.on('execute-inspection', async (specPath: string, context: { specId: string }) => {
+    logger.info('[handlers] execute-inspection event received', { specPath, context });
+
+    try {
+      const service = getSpecManagerService();
+
+      // Execute inspection via unified execute method
+      const result = await service.execute({
+        type: 'inspection',
+        specId: context.specId,
+        featureName: context.specId,
+        commandPrefix: 'kiro',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] execute-inspection: inspection failed to start', { error: result.error });
+        coordinator.handleInspectionCompleted(specPath, 'failed');
+        return;
+      }
+
+      const agentId = result.value.agentId;
+      logger.info('[handlers] execute-inspection: inspection started', { agentId });
+
+      // Listen for inspection agent completion
+      const handleStatusChange = async (changedAgentId: string, status: string) => {
+        if (changedAgentId === agentId) {
+          if (status === 'completed' || status === 'failed' || status === 'stopped') {
+            logger.info('[handlers] execute-inspection: agent completed', { agentId, status });
+            service.offStatusChange(handleStatusChange);
+
+            // Inspection result is determined by the agent's output (GO/NOGO)
+            // For now, treat completed as passed, failed/stopped as failed
+            // TODO: Parse inspection result from spec.json or agent output
+            const inspectionStatus = status === 'completed' ? 'passed' : 'failed';
+            coordinator.handleInspectionCompleted(specPath, inspectionStatus);
+          }
+        }
+      };
+      service.onStatusChange(handleStatusChange);
+    } catch (error) {
+      logger.error('[handlers] execute-inspection: unexpected error', { specPath, error });
+      coordinator.handleInspectionCompleted(specPath, 'failed');
+    }
+  });
+
+  // ============================================================
+  // Spec Merge Auto-Execution: execute spec-merge workflow
+  // When coordinator emits 'execute-spec-merge', execute spec-merge via specManagerService
+  // git-worktree-support Task 9: Added spec-merge phase to auto-execution flow
+  // ============================================================
+  coordinator.on('execute-spec-merge', async (specPath: string, context: { specId: string }) => {
+    logger.info('[handlers] execute-spec-merge event received', { specPath, context });
+
+    try {
+      const service = getSpecManagerService();
+
+      // Execute spec-merge via unified execute method
+      const result = await service.execute({
+        type: 'spec-merge',
+        specId: context.specId,
+        featureName: context.specId,
+        commandPrefix: 'kiro',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] execute-spec-merge: spec-merge failed to start', { error: result.error });
+        coordinator.completeExecution(specPath);
+        return;
+      }
+
+      const agentId = result.value.agentId;
+      logger.info('[handlers] execute-spec-merge: spec-merge started', { agentId });
+
+      // Listen for spec-merge agent completion
+      const handleStatusChange = async (changedAgentId: string, status: string) => {
+        if (changedAgentId === agentId) {
+          if (status === 'completed' || status === 'failed' || status === 'stopped') {
+            logger.info('[handlers] execute-spec-merge: agent completed', { agentId, status });
+            service.offStatusChange(handleStatusChange);
+
+            // spec-merge completion marks the end of auto-execution
+            coordinator.completeExecution(specPath);
+          }
+        }
+      };
+      service.onStatusChange(handleStatusChange);
+    } catch (error) {
+      logger.error('[handlers] execute-spec-merge: unexpected error', { specPath, error });
+      coordinator.completeExecution(specPath);
+    }
+  });
+
   logger.info('[handlers] Multi-phase auto-execution connected');
 }
 

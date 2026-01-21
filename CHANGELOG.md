@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-01-21
+
+### Added
+- **agent-exit-robustness**: Agent終了処理の堅牢性向上
+
+### Fixed
+- **layoutConfigService**: saveLayoutConfig/saveProfileでsettingsフィールドを保持
+- **spec-merge**: worktree側のspec.jsonを読むように修正
+
 ## [0.35.5] - 2026-01-21
 
 ### Added

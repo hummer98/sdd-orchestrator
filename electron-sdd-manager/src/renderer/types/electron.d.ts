@@ -544,6 +544,17 @@ export interface ElectronAPI {
     callback: (agentId: string, status: AgentStatus) => void
   ): () => void;
 
+  /**
+   * agent-exit-robustness: Subscribe to agent exit error events
+   * Called when handleAgentExit encounters an error (e.g., readRecord failure)
+   * Requirements: 3.4
+   * @param callback Function called when agent exit error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentExitError(
+    callback: (data: { agentId: string; error: string }) => void
+  ): () => void;
+
   // Config
   getRecentProjects(): Promise<string[]>;
   addRecentProject(path: string): Promise<void>;

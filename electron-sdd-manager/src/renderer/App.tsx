@@ -247,11 +247,23 @@ export function App() {
     }
     eventListenersSetup.current = true;
     const cleanup = setupEventListeners();
+
+    // agent-exit-robustness: Register agent exit error listener
+    // Requirements: 3.4, 3.5 - Notify user when agent exit processing fails
+    const cleanupAgentExitError = window.electronAPI.onAgentExitError((data) => {
+      console.error('[App] Agent exit error:', data);
+      addNotification({
+        type: 'error',
+        message: `Agent終了処理でエラーが発生しました: ${data.agentId}`,
+      });
+    });
+
     return () => {
       eventListenersSetup.current = false;
       cleanup();
+      cleanupAgentExitError();
     };
-  }, [setupEventListeners]);
+  }, [setupEventListeners, addNotification]);
 
   // Initialize remote access store on mount
   const remoteAccessInitialized = useRef(false);

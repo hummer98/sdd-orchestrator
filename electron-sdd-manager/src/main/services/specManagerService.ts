@@ -126,6 +126,25 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
 
 export type ExecutionGroup = 'doc' | 'impl';
 
+/**
+ * agent-exit-robustness: Agent exit error callback type
+ * Called when handleAgentExit encounters an error (e.g., readRecord failure)
+ * Requirements: 3.1
+ */
+export type AgentExitErrorCallback = (agentId: string, error: Error) => void;
+
+/**
+ * Worktree lifecycle phases - phases that modify worktree existence
+ * These phases MUST run in projectPath (not worktreeCwd) because:
+ * - They delete/create the worktree directory itself
+ * - Running in worktreeCwd would cause the process to hang (cwd deleted)
+ *
+ * agent-exit-robustness: Requirements 1.1, 1.4
+ */
+export const WORKTREE_LIFECYCLE_PHASES = ['spec-merge'] as const;
+
+export type WorktreeLifecyclePhase = typeof WORKTREE_LIFECYCLE_PHASES[number];
+
 /** ワークフローフェーズ */
 export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
 
@@ -373,6 +392,13 @@ export class SpecManagerService {
   private outputCallbacks: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void)[] = [];
   private statusCallbacks: ((agentId: string, status: AgentStatus) => void)[] = [];
 
+  /**
+   * agent-exit-robustness: Agent exit error callbacks
+   * Called when handleAgentExit encounters an error (e.g., readRecord failure)
+   * Requirements: 3.1
+   */
+  private agentExitErrorCallbacks: AgentExitErrorCallback[] = [];
+
   // Provider type for local/SSH transparency (defaults to 'local')
   private providerType: ProviderType = 'local';
 
@@ -602,11 +628,26 @@ export class SpecManagerService {
 
     // execute-method-unification: Task 3.1 - worktreeCwd auto-resolution
     // spec-worktree-early-creation: Task 9.1 - cwd auto-resolution for all phases (impl and doc)
+    // agent-exit-robustness: Requirements 1.1, 1.2, 1.3, 1.5 - WORKTREE_LIFECYCLE_PHASES check
     // Requirements: 3.1, 3.2, 3.3, 3.4, 8.2, 8.4
     let effectiveCwd: string;
+
+    // agent-exit-robustness: Check if phase is in WORKTREE_LIFECYCLE_PHASES
+    // These phases MUST run in projectPath to avoid hanging when worktree is deleted
+    const isWorktreeLifecyclePhase = (WORKTREE_LIFECYCLE_PHASES as readonly string[]).includes(phase);
+
     if (worktreeCwd) {
       // 3.2: Explicit worktreeCwd takes priority
       effectiveCwd = worktreeCwd;
+    } else if (isWorktreeLifecyclePhase) {
+      // agent-exit-robustness: Worktree lifecycle phases use projectPath
+      // This prevents the process from hanging when it deletes its own cwd
+      effectiveCwd = this.projectPath;
+      logger.info('[SpecManagerService] Using projectPath for worktree lifecycle phase', {
+        specId,
+        phase,
+        projectPath: this.projectPath,
+      });
     } else if (specId) {
       // spec-worktree-early-creation: Auto-resolve for any group when specId is provided
       // This enables worktree mode for requirements/design/tasks phases as well as impl
@@ -886,28 +927,35 @@ export class SpecManagerService {
   /**
    * Handle agent exit event
    * agent-state-file-ssot: Extracted for reuse with pending events
+   * agent-exit-robustness: Added error handling with fallback and cleanup guarantee
+   * Requirements: 2.1, 2.2, 2.3, 2.4, 3.2
    */
   private handleAgentExit(agentId: string, specId: string, code: number): void {
     // Bug fix: agent-record-json-corruption - Clear throttle state on exit
     this.recordService.clearThrottleState(specId, agentId);
 
+    // agent-exit-robustness: Get isForcedSuccess early for fallback handling
+    const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+
     // agent-state-file-ssot: Check current status from file
-    // If already interrupted (by stopAgent), don't change
+    // agent-exit-robustness: Wrap in try-catch for robust error handling
     this.recordService.readRecord(specId, agentId).then((currentRecord) => {
+      // If already interrupted (by stopAgent), don't change status
       if (currentRecord?.status === 'interrupted') {
-        this.processes.delete(agentId);
-        this.forcedKillSuccess.delete(agentId);
-        this.sessionIdParseBuffers.delete(agentId);
+        // agent-exit-robustness: Cleanup in finally-like pattern
+        this.cleanupAgentResources(agentId);
         return;
       }
 
-      const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+      // agent-exit-robustness: Cleanup forcedKillSuccess before status determination
       this.forcedKillSuccess.delete(agentId);
-      this.sessionIdParseBuffers.delete(agentId);
 
       const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
       this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
+
+      // agent-exit-robustness: Cleanup remaining resources
       this.processes.delete(agentId);
+      this.sessionIdParseBuffers.delete(agentId);
 
       // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
       const phase = currentRecord?.phase || 'unknown';
@@ -935,9 +983,41 @@ export class SpecManagerService {
         status: newStatus,
         lastActivityAt: new Date().toISOString(),
       });
-    }).catch(() => {
-      // Ignore errors when updating agent record on exit
+    }).catch((error) => {
+      // agent-exit-robustness: Requirements 2.1, 2.2, 2.3
+      // Fallback handling when readRecord fails
+      logger.error('[SpecManagerService] handleAgentExit readRecord failed', {
+        agentId,
+        specId,
+        code,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // 2.2: Determine status based on exit code and forcedKillSuccess
+      const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
+
+      // 2.1: Call statusCallbacks even when readRecord fails
+      this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
+
+      // 3.2: Call agentExitErrorCallbacks
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      this.agentExitErrorCallbacks.forEach((cb) => cb(agentId, errorObj));
+
+      // 2.4: Cleanup resources in catch block as well
+      this.cleanupAgentResources(agentId);
     });
+  }
+
+  /**
+   * agent-exit-robustness: Cleanup agent resources
+   * Extracted helper to ensure consistent cleanup in all code paths
+   * Requirements: 2.4
+   */
+  private cleanupAgentResources(agentId: string): void {
+    this.processes.delete(agentId);
+    this.forcedKillSuccess.delete(agentId);
+    this.sessionIdParseBuffers.delete(agentId);
   }
 
   /**
@@ -1393,6 +1473,26 @@ export class SpecManagerService {
     const index = this.statusCallbacks.indexOf(callback);
     if (index !== -1) {
       this.statusCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * agent-exit-robustness: Register agent exit error callback
+   * Called when handleAgentExit encounters an error (e.g., readRecord failure)
+   * Requirements: 3.1
+   */
+  onAgentExitError(callback: AgentExitErrorCallback): void {
+    this.agentExitErrorCallbacks.push(callback);
+  }
+
+  /**
+   * agent-exit-robustness: Unregister agent exit error callback
+   * Requirements: 3.1
+   */
+  offAgentExitError(callback: AgentExitErrorCallback): void {
+    const index = this.agentExitErrorCallbacks.indexOf(callback);
+    if (index !== -1) {
+      this.agentExitErrorCallbacks.splice(index, 1);
     }
   }
 

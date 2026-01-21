@@ -260,6 +260,30 @@ const electronAPI = {
     };
   },
 
+  /**
+   * agent-exit-robustness: Subscribe to agent exit error events
+   * Called when handleAgentExit encounters an error (e.g., readRecord failure)
+   * Requirements: 3.4
+   * @param callback Function called when agent exit error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentExitError: (
+    callback: (data: { agentId: string; error: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { agentId: string; error: string }
+    ) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AGENT_EXIT_ERROR, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AGENT_EXIT_ERROR, handler);
+    };
+  },
+
   // Config
   getRecentProjects: () => ipcRenderer.invoke(IPC_CHANNELS.GET_RECENT_PROJECTS),
 

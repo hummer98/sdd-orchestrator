@@ -858,6 +858,19 @@ export function registerIpcHandlers(): void {
             } : undefined);
           }
         });
+
+        // agent-exit-robustness: Register callback for agent exit errors
+        // Requirements: 3.3 - Send IPC notification to renderer when agent exit processing fails
+        service.onAgentExitError((agentId, error) => {
+          logger.warn('[handlers] Agent exit error', { agentId, error: error.message });
+
+          // Send to all non-destroyed windows
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send(IPC_CHANNELS.AGENT_EXIT_ERROR, { agentId, error: error.message });
+            }
+          }
+        });
       } else {
         logger.debug('[handlers] Event callbacks already registered or no window', { hasWindow: !!window, eventCallbacksRegistered });
       }
@@ -2757,6 +2770,19 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
         startedAt: agentInfo.startedAt,
         lastActivityAt: agentInfo.lastActivityAt,
       } : undefined);
+    }
+  });
+
+  // agent-exit-robustness: Register callback for agent exit errors
+  // Requirements: 3.3 - Send IPC notification to renderer when agent exit processing fails
+  service.onAgentExitError((agentId, error) => {
+    logger.warn('[handlers] Agent exit error', { agentId, error: error.message });
+
+    // Send to all non-destroyed windows
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(IPC_CHANNELS.AGENT_EXIT_ERROR, { agentId, error: error.message });
+      }
     }
   });
 }

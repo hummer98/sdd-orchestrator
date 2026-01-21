@@ -16,7 +16,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { SpecManagerService, ExecutionGroup, buildClaudeArgs } from './specManagerService';
+import { SpecManagerService, ExecutionGroup, buildClaudeArgs, WORKTREE_LIFECYCLE_PHASES } from './specManagerService';
 
 describe('SpecManagerService', () => {
   let testDir: string;
@@ -2086,5 +2086,289 @@ describe('executeDocumentReview - multi-engine support', () => {
 
       await serviceWithMock.stopAllAgents();
     });
+  });
+});
+
+// ============================================================
+// agent-exit-robustness: Task 6.1 - WORKTREE_LIFECYCLE_PHASES Tests
+// Requirements: 1.1, 1.2, 1.3
+// ============================================================
+describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phases', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `worktree-lifecycle-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should use projectPath as cwd for spec-merge phase (WORKTREE_LIFECYCLE_PHASES)', async () => {
+    // Setup: Create spec.json with worktree configuration
+    const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+    await fs.mkdir(specDir, { recursive: true });
+
+    // Create worktree directory structure
+    const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'specs', 'test-spec');
+    await fs.mkdir(worktreeDir, { recursive: true });
+
+    await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
+      feature_name: 'test-spec',
+      worktree: {
+        path: '.kiro/worktrees/specs/test-spec',
+        branch: 'feature/test-spec',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    }));
+
+    // Start spec-merge agent - should use projectPath, not worktreeCwd
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'spec-merge',
+      command: 'echo',
+      args: ['test'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // spec-merge phase should use projectPath as cwd (not worktree path)
+      expect(result.value.cwd).toBe(testDir);
+    }
+  });
+
+  it('should use worktreeCwd for non-WORKTREE_LIFECYCLE_PHASES (e.g., impl)', async () => {
+    // Setup: Create spec.json with worktree configuration
+    const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+    await fs.mkdir(specDir, { recursive: true });
+
+    // Create worktree directory structure
+    const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'specs', 'test-spec');
+    await fs.mkdir(worktreeDir, { recursive: true });
+
+    await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
+      feature_name: 'test-spec',
+      worktree: {
+        path: '.kiro/worktrees/specs/test-spec',
+        branch: 'feature/test-spec',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    }));
+
+    // Start impl agent - should use worktreeCwd
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'impl',
+      command: 'echo',
+      args: ['test'],
+      group: 'impl',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // impl phase should use worktree path as cwd
+      expect(result.value.cwd).toBe(worktreeDir);
+    }
+  });
+
+  it('should use worktreeCwd for requirements phase (not in WORKTREE_LIFECYCLE_PHASES)', async () => {
+    // Setup: Create spec.json with worktree configuration
+    const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');
+    await fs.mkdir(specDir, { recursive: true });
+
+    // Create worktree directory structure
+    const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'specs', 'test-spec');
+    await fs.mkdir(worktreeDir, { recursive: true });
+
+    await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
+      feature_name: 'test-spec',
+      worktree: {
+        path: '.kiro/worktrees/specs/test-spec',
+        branch: 'feature/test-spec',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    }));
+
+    // Start requirements agent - should use worktreeCwd
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'requirements',
+      command: 'echo',
+      args: ['test'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // requirements phase should use worktree path as cwd
+      expect(result.value.cwd).toBe(worktreeDir);
+    }
+  });
+});
+
+// ============================================================
+// agent-exit-robustness: Task 6.2 - handleAgentExit error handling tests
+// Requirements: 2.1, 2.2, 2.3, 2.4
+// ============================================================
+describe('handleAgentExit - error handling', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `handle-exit-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should call statusCallbacks even when process completes normally', async () => {
+    const statusCallback = vi.fn();
+    service.onStatusChange(statusCallback);
+
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'requirements',
+      command: 'echo',
+      args: ['test'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Wait for process to complete and handleAgentExit to be called
+    await new Promise((r) => setTimeout(r, 300));
+
+    // statusCallback should have been called with 'completed' status
+    expect(statusCallback).toHaveBeenCalledWith(result.value.agentId, 'completed');
+  });
+
+  it('should call statusCallbacks with "failed" status when process exits with non-zero code', async () => {
+    const statusCallback = vi.fn();
+    service.onStatusChange(statusCallback);
+
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'requirements',
+      command: 'sh',
+      args: ['-c', 'exit 1'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Wait for process to complete and handleAgentExit to be called
+    await new Promise((r) => setTimeout(r, 300));
+
+    // statusCallback should have been called with 'failed' status
+    expect(statusCallback).toHaveBeenCalledWith(result.value.agentId, 'failed');
+  });
+
+  it('should cleanup processes map after agent exit', async () => {
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'requirements',
+      command: 'echo',
+      args: ['test'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Wait for process to complete
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Process should be removed from internal map
+    // We can't directly access processes map, but we can check via getAgentById
+    // which should still return agent info from file
+    const agentInfo = await service.getAgentById(result.value.agentId);
+    expect(agentInfo).toBeDefined();
+    expect(agentInfo?.status).toBe('completed');
+  });
+});
+
+// ============================================================
+// agent-exit-robustness: Task 6.3 - onAgentExitError callback tests
+// Requirements: 3.1, 3.2
+// ============================================================
+describe('onAgentExitError - callback management', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `exit-error-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should register onAgentExitError callback', () => {
+    const callback = vi.fn();
+    // This method should exist according to Task 3.1
+    expect(() => service.onAgentExitError(callback)).not.toThrow();
+  });
+
+  it('should unregister onAgentExitError callback', () => {
+    const callback = vi.fn();
+    service.onAgentExitError(callback);
+    // This method should exist according to Task 3.1
+    expect(() => service.offAgentExitError(callback)).not.toThrow();
+  });
+
+  it('should call multiple registered callbacks', () => {
+    const callback1 = vi.fn();
+    const callback2 = vi.fn();
+    service.onAgentExitError(callback1);
+    service.onAgentExitError(callback2);
+
+    // Both callbacks should be registered
+    // (actual calling will be tested with error scenario)
+    expect(callback1).not.toHaveBeenCalled();
+    expect(callback2).not.toHaveBeenCalled();
   });
 });

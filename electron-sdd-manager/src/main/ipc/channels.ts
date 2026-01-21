@@ -314,6 +314,10 @@ export const IPC_CHANNELS = {
   // Event Log (spec-event-log feature)
   // Requirements: 5.4
   EVENT_LOG_GET: 'ipc:event-log:get',
+
+  // Agent Exit Error (agent-exit-robustness feature)
+  // Requirements: 3.3 - Notify renderer when agent exit processing fails
+  AGENT_EXIT_ERROR: 'ipc:agent-exit-error',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useSpecStoreFacade, initSpecStoreFacade } from './specStoreFacade';
+import { useSpecStoreFacade, initSpecStoreFacade, setupAgentStoreSubscription } from './specStoreFacade';
 import { useSpecListStore } from './specListStore';
 import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
@@ -79,6 +79,8 @@ describe('useSpecStoreFacade', () => {
       error: null,
       skipPermissions: false,
     });
+    // Set up agentStore subscription for derived state tests
+    setupAgentStoreSubscription();
     vi.clearAllMocks();
   });
 

@@ -6,6 +6,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAgentStore, type AgentInfo, type AgentStatus, type LogEntry } from './agentStore';
+// Bug fix: agent-log-dynamic-import-issue - Import stores for state-based mocking
+import { useSpecDetailStore } from './spec/specDetailStore';
+import { useBugStore } from './bugStore';
 
 // Mock agent data
 const mockAgentInfo: AgentInfo = {
@@ -658,15 +661,11 @@ describe('useAgentStore', () => {
       });
 
       it('should auto-select agent when specId matches selected spec', async () => {
-        // Mock specStore with matching spec selected
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: { name: 'spec-1', path: '/path/spec-1' } }),
-          },
-        }));
-
-        // Clear dynamic import cache
-        vi.resetModules();
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        // Set specDetailStore state directly (specStore is a facade that delegates to specDetailStore)
+        useSpecDetailStore.setState({
+          selectedSpec: { name: 'spec-1', path: '/path/spec-1', phase: 'init', updatedAt: '', approvals: { requirements: { generated: false, approved: false }, design: { generated: false, approved: false }, tasks: { generated: false, approved: false } } },
+        });
 
         const matchingAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -684,7 +683,7 @@ describe('useAgentStore', () => {
         // Trigger add event with only event info (new architecture)
         recordChangedCallback?.('add', { agentId: 'matching-agent', specId: 'spec-1' });
 
-        // Wait for async dynamic import
+        // Wait for async operations
         await vi.waitFor(() => {
           const state = useAgentStore.getState();
           expect(state.selectedAgentId).toBe('matching-agent');
@@ -692,14 +691,10 @@ describe('useAgentStore', () => {
       });
 
       it('should NOT auto-select agent when specId does not match selected spec', async () => {
-        // Mock specStore with different spec selected
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: { name: 'spec-A', path: '/path/spec-A' } }),
-          },
-        }));
-
-        vi.resetModules();
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        useSpecDetailStore.setState({
+          selectedSpec: { name: 'spec-A', path: '/path/spec-A', phase: 'init', updatedAt: '', approvals: { requirements: { generated: false, approved: false }, design: { generated: false, approved: false }, tasks: { generated: false, approved: false } } },
+        });
 
         const nonMatchingAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -729,14 +724,8 @@ describe('useAgentStore', () => {
       });
 
       it('should NOT auto-select agent when no spec is selected', async () => {
-        // Mock specStore with no spec selected
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: null }),
-          },
-        }));
-
-        vi.resetModules();
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        useSpecDetailStore.setState({ selectedSpec: null });
 
         const agent: AgentInfo = {
           ...mockAgentInfo,
@@ -766,21 +755,14 @@ describe('useAgentStore', () => {
       });
 
       it('should auto-select Bug Agent when selected bug matches', async () => {
-        // Mock specStore (no spec selected)
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: null }),
-          },
-        }));
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        // Set specDetailStore state (no spec selected)
+        useSpecDetailStore.setState({ selectedSpec: null });
 
-        // Mock bugStore with matching bug selected
-        vi.doMock('./bugStore', () => ({
-          useBugStore: {
-            getState: () => ({ selectedBug: { name: 'my-bug', path: '/path/my-bug' } }),
-          },
-        }));
-
-        vi.resetModules();
+        // Set bugStore state with matching bug selected
+        useBugStore.setState({
+          selectedBug: { name: 'my-bug', bugPath: '/path/my-bug', status: 'reported', created_at: '', updated_at: '' },
+        });
 
         const bugAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -805,21 +787,11 @@ describe('useAgentStore', () => {
       });
 
       it('should NOT auto-select Bug Agent when selected bug does not match', async () => {
-        // Mock specStore (no spec selected)
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: null }),
-          },
-        }));
-
-        // Mock bugStore with different bug selected
-        vi.doMock('./bugStore', () => ({
-          useBugStore: {
-            getState: () => ({ selectedBug: { name: 'other-bug', path: '/path/other-bug' } }),
-          },
-        }));
-
-        vi.resetModules();
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        useSpecDetailStore.setState({ selectedSpec: null });
+        useBugStore.setState({
+          selectedBug: { name: 'other-bug', bugPath: '/path/other-bug', status: 'reported', created_at: '', updated_at: '' },
+        });
 
         const bugAgent: AgentInfo = {
           ...mockAgentInfo,
@@ -848,14 +820,8 @@ describe('useAgentStore', () => {
       });
 
       it('should still add agent to Map even when not auto-selected', async () => {
-        // Mock specStore with no spec selected
-        vi.doMock('./specStore', () => ({
-          useSpecStore: {
-            getState: () => ({ selectedSpec: null }),
-          },
-        }));
-
-        vi.resetModules();
+        // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
+        useSpecDetailStore.setState({ selectedSpec: null });
 
         const agent: AgentInfo = {
           ...mockAgentInfo,

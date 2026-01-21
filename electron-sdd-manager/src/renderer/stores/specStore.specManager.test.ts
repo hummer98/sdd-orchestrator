@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSpecStore } from './specStore';
 import { useAgentStore } from './agentStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
+import { setupAgentStoreSubscription } from './spec/specStoreFacade';
 
 describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)', () => {
   beforeEach(() => {
@@ -26,6 +27,8 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
       error: null,
       skipPermissions: false,
     });
+    // Set up agentStore subscription for derived state tests
+    setupAgentStoreSubscription();
     vi.clearAllMocks();
   });
 

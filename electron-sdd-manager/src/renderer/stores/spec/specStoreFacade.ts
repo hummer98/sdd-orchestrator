@@ -96,6 +96,8 @@ function getSpecManagerExecution(specId: string | null): SpecManagerExecutionSta
 
 /** Flag to track initialization status */
 let isInitialized = false;
+/** Flag to track subscription status (for testing) */
+let isAgentStoreSubscribed = false;
 
 /**
  * Get aggregated state from all child stores
@@ -139,6 +141,29 @@ function getAggregatedState(): SpecStoreState {
     // Watcher state
     isWatching: specWatcherService.isWatching,
   };
+}
+
+/**
+ * Set up agentStore subscription for specManagerExecution updates
+ * Separated from initSpecStoreFacade to allow lightweight testing
+ * without service initialization side effects
+ */
+export function setupAgentStoreSubscription(): void {
+  if (isAgentStoreSubscribed) {
+    return;
+  }
+  useAgentStore.subscribe(() => {
+    useSpecStoreFacade.setState(getAggregatedState());
+  });
+  isAgentStoreSubscribed = true;
+}
+
+/**
+ * Reset subscription flag (for testing only)
+ * @internal
+ */
+export function resetAgentStoreSubscription(): void {
+  isAgentStoreSubscribed = false;
 }
 
 /**
@@ -223,6 +248,9 @@ export function initSpecStoreFacade(): void {
       }
     },
   });
+
+  // Subscribe to agentStore changes for specManagerExecution updates
+  setupAgentStoreSubscription();
 
   isInitialized = true;
   console.log('[specStoreFacade] Initialized');
@@ -469,7 +497,5 @@ useAutoExecutionStore.subscribe(() => {
 
 // execution-store-consolidation: specManagerExecutionStore subscription REMOVED (Req 5.1)
 // specManagerExecution is now derived from agentStore
-// Subscribe to agentStore changes for specManagerExecution updates
-useAgentStore.subscribe(() => {
-  useSpecStoreFacade.setState(getAggregatedState());
-});
+// NOTE: useAgentStore subscription is set up in initSpecStoreFacade() to avoid circular dependency
+// (agentStore -> specStore -> specStoreFacade -> agentStore)

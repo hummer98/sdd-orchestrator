@@ -8,6 +8,9 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { registerConvertWorktreeHandlers } from './convertWorktreeHandlers';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./convertWorktreeHandlers');
+
 // Mock logger
 vi.mock('../services/logger', () => ({
   logger: {

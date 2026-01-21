@@ -38,6 +38,9 @@ vi.mock('./worktreeService', () => ({
   })),
 }));
 
+// Unmock bugWorktreeHandlers to test actual implementation
+vi.unmock('../ipc/bugWorktreeHandlers');
+
 // Import handlers after mock
 import {
   handleBugWorktreeCreate,

@@ -7,6 +7,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain } from 'electron';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./steeringVerificationHandlers');
+// Also unmock handlers module since this test uses registerIpcHandlers
+vi.unmock('./handlers');
+
 // Mock startAgent function
 const mockStartAgent = vi.fn();
 

@@ -14,6 +14,9 @@ import {
 } from './bugWorktreeHandlers';
 import type { BugJson } from '../../renderer/types/bugJson';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./bugWorktreeHandlers');
+
 // Mock WorktreeService with new directory mode methods
 vi.mock('../services/worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation((projectPath: string) => ({

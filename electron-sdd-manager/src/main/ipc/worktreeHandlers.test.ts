@@ -7,6 +7,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { IPC_CHANNELS } from './channels';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./worktreeHandlers');
+
 // Mock WorktreeService
 const mockWorktreeService = {
   isOnMainBranch: vi.fn(),

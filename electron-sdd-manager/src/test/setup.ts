@@ -1,6 +1,50 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mock main IPC handlers to prevent index.ts execution errors
+vi.mock('../main/ipc/handlers', () => ({
+  registerIpcHandlers: vi.fn(),
+  setProjectPath: vi.fn(),
+  setInitialProjectPath: vi.fn(),
+  getCurrentProjectPath: vi.fn(() => null),
+}));
+
+// Mock main remote access handlers
+vi.mock('../main/ipc/remoteAccessHandlers', () => ({
+  registerRemoteAccessHandlers: vi.fn(),
+  setupStatusNotifications: vi.fn(),
+  getRemoteAccessServer: vi.fn(),
+  setupStateProvider: vi.fn(),
+  setupWorkflowController: vi.fn(),
+  setupAgentLogsProvider: vi.fn(),
+  setupSpecDetailProvider: vi.fn(),
+  setupBugDetailProvider: vi.fn(),
+}));
+
+// Mock main SSH handlers
+vi.mock('../main/ipc/sshHandlers', () => ({
+  registerSSHHandlers: vi.fn(),
+  setupSSHStatusNotifications: vi.fn(),
+}));
+
+// Mock main worktree handlers
+vi.mock('../main/ipc/worktreeHandlers', () => ({
+  registerWorktreeHandlers: vi.fn(),
+}));
+
+// Mock main bug worktree handlers
+vi.mock('../main/ipc/bugWorktreeHandlers', () => ({
+  registerBugWorktreeHandlers: vi.fn(),
+}));
+
+// Mock main convert worktree handlers
+vi.mock('../main/ipc/convertWorktreeHandlers', () => ({
+  registerConvertWorktreeHandlers: vi.fn(),
+}));
+
+// Mock main menu - removed to avoid conflicts with menu.test.ts
+// Individual test files should mock menu functions if needed
+
 // Mock electron module for main process tests
 vi.mock('electron', () => ({
   app: {
@@ -141,6 +185,13 @@ const mockElectronAPI = {
   syncDocumentReview: vi.fn().mockResolvedValue(false),
   // Agent Watcher APIs (bugs-agent-list-not-updating bug fix)
   switchAgentWatchScope: vi.fn().mockResolvedValue(undefined),
+  // Missing APIs found during test
+  getRunningAgentCounts: vi.fn().mockResolvedValue({ projectCount: 0, specCount: 0, bugCount: 0 }),
+  onBugsChanged: vi.fn(() => vi.fn()),
+  startBugsWatcher: vi.fn().mockResolvedValue(undefined),
+  stopBugsWatcher: vi.fn().mockResolvedValue(undefined),
+  readBugs: vi.fn().mockResolvedValue([]),
+  readBugJson: vi.fn().mockResolvedValue({}),
 };
 
 Object.defineProperty(window, 'electronAPI', {

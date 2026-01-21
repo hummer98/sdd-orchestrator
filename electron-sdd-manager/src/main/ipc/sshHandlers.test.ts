@@ -10,6 +10,9 @@ import type { ConnectionStatus } from '../services/ssh/sshConnectionService';
 import type { RecentRemoteProject } from '../services/ssh/recentRemoteProjects';
 import { SSH_IPC_CHANNELS } from './sshChannels';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./sshHandlers');
+
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {

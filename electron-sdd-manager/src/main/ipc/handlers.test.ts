@@ -7,6 +7,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 
+// Unmock handlers module to test the actual implementation
+vi.unmock('./handlers');
+
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {

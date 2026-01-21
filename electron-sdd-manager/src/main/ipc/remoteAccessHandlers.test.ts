@@ -7,6 +7,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain, BrowserWindow } from 'electron';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./remoteAccessHandlers');
+
 // Mock electron with all required APIs
 vi.mock('electron', () => {
   const mockBrowserWindow = vi.fn().mockImplementation(() => ({

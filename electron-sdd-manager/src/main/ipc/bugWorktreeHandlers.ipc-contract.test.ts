@@ -15,6 +15,9 @@ import { ipcMain } from 'electron';
 import { registerBugWorktreeHandlers } from './bugWorktreeHandlers';
 import { IPC_CHANNELS } from './channels';
 
+// Unmock this module to test the actual implementation
+vi.unmock('./bugWorktreeHandlers');
+
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {

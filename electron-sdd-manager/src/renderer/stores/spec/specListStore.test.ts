@@ -10,20 +10,18 @@ import { useSpecListStore } from './specListStore';
 import type { SpecMetadata, SpecJson } from '../../types';
 
 /**
- * spec-metadata-ssot-refactor: SpecMetadata now only contains name and path
+ * spec-path-ssot-refactor: SpecMetadata now only contains name field
+ * (path field was removed - path resolution is Main process responsibility)
  */
 const mockSpecs: SpecMetadata[] = [
   {
     name: 'feature-a',
-    path: '/project/.kiro/specs/feature-a',
   },
   {
     name: 'feature-b',
-    path: '/project/.kiro/specs/feature-b',
   },
   {
     name: 'feature-c',
-    path: '/project/.kiro/specs/feature-c',
   },
 ];
 

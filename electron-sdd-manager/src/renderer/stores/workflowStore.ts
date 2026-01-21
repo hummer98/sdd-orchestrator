@@ -52,7 +52,8 @@ async function persistSettingsToSpec(): Promise<void> {
   };
 
   try {
-    await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
+    // spec-path-ssot-refactor: Use spec.name instead of spec.path
+    await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
       autoExecution: autoExecutionState,
     });
     console.log('[workflowStore] Settings persisted to spec.json');

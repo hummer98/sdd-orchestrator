@@ -9,16 +9,10 @@ import { SpecSyncService } from './specSyncService';
 import type { ArtifactInfo, TaskProgress, SpecDetail } from '../types';
 import type { SpecDetailState, ArtifactType } from '../stores/spec/types';
 
+// spec-path-ssot-refactor: SpecMetadata now only contains name field
+// phase, updatedAt, approvals should be obtained from SpecJson (SSOT)
 const mockSpec = {
   name: 'feature-a',
-  path: '/project/.kiro/specs/feature-a',
-  phase: 'design-generated' as const,
-  updatedAt: '2024-01-15T10:00:00Z',
-  approvals: {
-    requirements: { generated: true, approved: true },
-    design: { generated: true, approved: false },
-    tasks: { generated: false, approved: false },
-  },
 };
 
 const mockSpecJson = {
@@ -27,7 +21,11 @@ const mockSpecJson = {
   updated_at: '2024-01-15T10:00:00Z',
   language: 'ja' as const,
   phase: 'design-generated' as const,
-  approvals: mockSpec.approvals,
+  approvals: {
+    requirements: { generated: true, approved: true },
+    design: { generated: true, approved: false },
+    tasks: { generated: false, approved: false },
+  },
 };
 
 const mockSpecDetail: SpecDetail = {
@@ -123,7 +121,8 @@ describe('SpecSyncService', () => {
 
       await service.updateSpecJson();
 
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.path);
+      // spec-path-ssot-refactor: readSpecJson now takes specName instead of path
+      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.name);
       expect(mockSetSpecJson).toHaveBeenCalledWith(updatedSpecJson);
     });
 
@@ -199,8 +198,10 @@ describe('SpecSyncService', () => {
 
       await service.updateArtifact('requirements');
 
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) instead of full path
       expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
-        `${mockSpec.path}/requirements.md`
+        mockSpec.name,
+        'requirements.md'
       );
       expect(mockSetArtifact).toHaveBeenCalledWith('requirements', {
         exists: true,
@@ -277,8 +278,9 @@ describe('SpecSyncService', () => {
 
       await service.syncDocumentReviewState();
 
-      expect(window.electronAPI.syncDocumentReview).toHaveBeenCalledWith(mockSpec.path);
-      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.path);
+      // spec-path-ssot-refactor: syncDocumentReview and readSpecJson now take specName
+      expect(window.electronAPI.syncDocumentReview).toHaveBeenCalledWith(mockSpec.name);
+      expect(window.electronAPI.readSpecJson).toHaveBeenCalledWith(mockSpec.name);
       expect(mockSetSpecJson).toHaveBeenCalledWith(updatedSpecJson);
     });
 
@@ -438,8 +440,9 @@ describe('SpecSyncService', () => {
 
       await service.syncTaskProgress();
 
+      // spec-path-ssot-refactor: syncSpecPhase now takes specName instead of path
       expect(window.electronAPI.syncSpecPhase).toHaveBeenCalledWith(
-        mockSpec.path,
+        mockSpec.name,
         'impl-complete',
         { skipTimestamp: true }
       );
@@ -518,7 +521,8 @@ describe('SpecSyncService', () => {
 
       await service.updateArtifact('requirements');
 
-      expect(mockEditorSyncCallback).toHaveBeenCalledWith(mockSpec.path, 'requirements');
+      // spec-path-ssot-refactor: editorSyncCallback now takes specName instead of path
+      expect(mockEditorSyncCallback).toHaveBeenCalledWith(mockSpec.name, 'requirements');
     });
   });
 });

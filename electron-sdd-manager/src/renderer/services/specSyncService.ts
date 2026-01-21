@@ -52,8 +52,9 @@ export class SpecSyncService {
     }
 
     try {
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       console.log('[specSyncService] updateSpecJson:', selectedSpec.name);
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
 
       // Update spec.json in store
       this.callbacks.setSpecJson(specJson);
@@ -65,8 +66,8 @@ export class SpecSyncService {
       const reportFile = getLatestInspectionReportFile(normalizedInspection);
       if (reportFile) {
         try {
-          const artifactPath = `${selectedSpec.path}/${reportFile}`;
-          const content = await window.electronAPI.readArtifact(artifactPath);
+          // spec-path-ssot-refactor: Use (specName, filename) instead of full path
+          const content = await window.electronAPI.readArtifact(selectedSpec.name, reportFile);
           this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] updateSpecJson: Loaded inspection artifact', reportFile);
         } catch {
@@ -101,13 +102,14 @@ export class SpecSyncService {
     }
 
     try {
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       console.log('[specSyncService] updateArtifact:', { spec: selectedSpec.name, artifact });
 
-      const artifactPath = `${selectedSpec.path}/${artifact}.md`;
       let artifactInfo: ArtifactInfo | null = null;
 
       try {
-        const content = await window.electronAPI.readArtifact(artifactPath);
+        // spec-path-ssot-refactor: Use (specName, filename) instead of full path
+        const content = await window.electronAPI.readArtifact(selectedSpec.name, `${artifact}.md`);
         artifactInfo = { exists: true, updatedAt: null, content };
       } catch {
         artifactInfo = null;
@@ -124,7 +126,8 @@ export class SpecSyncService {
       }
 
       // Sync editor if callback is provided
-      await this.callbacks.editorSyncCallback(selectedSpec.path, artifact);
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
+      await this.callbacks.editorSyncCallback(selectedSpec.name, artifact);
 
       console.log('[specSyncService] updateArtifact completed:', { spec: selectedSpec.name, artifact });
     } catch (error) {
@@ -148,13 +151,14 @@ export class SpecSyncService {
     }
 
     try {
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       console.log('[specSyncService] syncDocumentReviewState:', selectedSpec.name);
 
       // Sync file system state to spec.json
-      await window.electronAPI.syncDocumentReview(selectedSpec.path);
+      await window.electronAPI.syncDocumentReview(selectedSpec.name);
 
       // Re-read spec.json to get updated state
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
 
       // Update specJson in store
       this.callbacks.setSpecJson(specJson);
@@ -181,10 +185,11 @@ export class SpecSyncService {
     }
 
     try {
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       console.log('[specSyncService] syncInspectionState:', selectedSpec.name);
 
       // Re-read spec.json to get current inspection field
-      const specJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+      const specJson = await window.electronAPI.readSpecJson(selectedSpec.name);
 
       // Update specJson in store
       this.callbacks.setSpecJson(specJson);
@@ -195,8 +200,8 @@ export class SpecSyncService {
       const reportFile = getLatestInspectionReportFile(normalizedInspection);
       if (reportFile) {
         try {
-          const artifactPath = `${selectedSpec.path}/${reportFile}`;
-          const content = await window.electronAPI.readArtifact(artifactPath);
+          // spec-path-ssot-refactor: Use (specName, filename) instead of full path
+          const content = await window.electronAPI.readArtifact(selectedSpec.name, reportFile);
           this.callbacks.setArtifact(`${reportFile.replace('.md', '')}` as ArtifactType, { exists: true, updatedAt: null, content });
           console.log('[specSyncService] Loaded inspection artifact:', reportFile);
         } catch {
@@ -241,6 +246,7 @@ export class SpecSyncService {
       this.callbacks.setTaskProgress(taskProgress);
 
       // Auto-fix phase if all tasks complete
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       if (taskProgress.total > 0) {
         const isAllComplete = taskProgress.completed === taskProgress.total;
         const currentPhase = specDetail.specJson.phase;
@@ -248,10 +254,10 @@ export class SpecSyncService {
         if (isAllComplete && currentPhase !== 'implementation-complete') {
           console.log('[specSyncService] Auto-fixing phase to implementation-complete');
           try {
-            await window.electronAPI.syncSpecPhase(selectedSpec.path, 'impl-complete', {
+            await window.electronAPI.syncSpecPhase(selectedSpec.name, 'impl-complete', {
               skipTimestamp: true,
             });
-            const updatedSpecJson = await window.electronAPI.readSpecJson(selectedSpec.path);
+            const updatedSpecJson = await window.electronAPI.readSpecJson(selectedSpec.name);
             this.callbacks.setSpecJson(updatedSpecJson);
           } catch (error) {
             console.error('[specSyncService] Failed to auto-fix phase:', error);

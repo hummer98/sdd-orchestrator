@@ -203,10 +203,11 @@ export function initSpecStoreFacade(): void {
         useSpecListStore.getState().setSpecs(specs);
 
         // Also update specJsonMap for each spec
+        // spec-path-ssot-refactor: Use spec.name instead of spec.path
         const specJsonMap: Record<string, SpecJson> = {};
         for (const spec of specs) {
           try {
-            const specJson = await window.electronAPI.readSpecJson(spec.path);
+            const specJson = await window.electronAPI.readSpecJson(spec.name);
             if (specJson) {
               specJsonMap[spec.name] = specJson;
             }

@@ -149,7 +149,8 @@ export const useBugStore = create<BugStore>((set, get) => ({
       useSharedAgentStore.getState().autoSelectAgentForSpec(`bug:${bug.name}`);
       console.log('[bugStore] Auto-selected agent for bug:', bug.name);
 
-      const bugDetail = await window.electronAPI.readBugDetail(bug.path);
+      // spec-path-ssot-refactor: Use bug.name instead of bug.path
+      const bugDetail = await window.electronAPI.readBugDetail(bug.name);
 
       if (silent) {
         set({ selectedBug: bug, bugDetail });
@@ -186,10 +187,11 @@ export const useBugStore = create<BugStore>((set, get) => ({
         // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
         // Requirements: 5.4
         // Also refresh selected bug detail if one is selected
+        // spec-path-ssot-refactor: Use bug.name instead of bug.path for matching
         const { selectedBug } = get();
         if (selectedBug) {
-          // Find updated metadata for the selected bug
-          const updatedBug = bugs.find((b) => b.path === selectedBug.path);
+          // Find updated metadata for the selected bug by name
+          const updatedBug = bugs.find((b) => b.name === selectedBug.name);
           if (updatedBug) {
             // Re-select to refresh detail pane (silent mode for smoother UX)
             await get().selectBug(updatedBug, { silent: true });
@@ -312,7 +314,8 @@ export const useBugStore = create<BugStore>((set, get) => ({
     }
 
     try {
-      const bugDetail = await window.electronAPI.readBugDetail(selectedBug.path);
+      // spec-path-ssot-refactor: Use bug.name instead of bug.path
+      const bugDetail = await window.electronAPI.readBugDetail(selectedBug.name);
       set({ bugDetail });
       console.log('[bugStore] Refreshed selected bug detail:', selectedBug.name);
     } catch (error) {

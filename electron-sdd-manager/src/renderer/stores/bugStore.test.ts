@@ -39,24 +39,22 @@ vi.mock('./projectStore', () => ({
   },
 }));
 
+// spec-path-ssot-refactor: Removed path field from BugMetadata - path resolution is Main process responsibility
 const mockBugs: BugMetadata[] = [
   {
     name: 'bug-1',
-    path: '/project/.kiro/bugs/bug-1',
     phase: 'reported',
     updatedAt: '2024-01-02T00:00:00Z',
     reportedAt: '2024-01-01T00:00:00Z',
   },
   {
     name: 'bug-2',
-    path: '/project/.kiro/bugs/bug-2',
     phase: 'analyzed',
     updatedAt: '2024-01-03T00:00:00Z',
     reportedAt: '2024-01-01T00:00:00Z',
   },
   {
     name: 'bug-3',
-    path: '/project/.kiro/bugs/bug-3',
     phase: 'verified',
     updatedAt: '2024-01-01T00:00:00Z',
     reportedAt: '2024-01-01T00:00:00Z',
@@ -66,6 +64,7 @@ const mockBugs: BugMetadata[] = [
 const mockBugDetail: BugDetail = {
   metadata: mockBugs[0],
   artifacts: {
+    // spec-path-ssot-refactor: BugArtifactInfo still has path for display purposes
     report: { exists: true, path: '/project/.kiro/bugs/bug-1/report.md', updatedAt: '2024-01-01T00:00:00Z' },
     analysis: null,
     fix: null,
@@ -130,7 +129,8 @@ describe('bugStore', () => {
 
       await useBugStore.getState().selectBug(mockBugs[0]);
 
-      expect(mockReadBugDetail).toHaveBeenCalledWith(mockBugs[0].path);
+      // spec-path-ssot-refactor: readBugDetail now takes bugName instead of path
+      expect(mockReadBugDetail).toHaveBeenCalledWith(mockBugs[0].name);
       expect(useBugStore.getState().selectedBug).toEqual(mockBugs[0]);
       expect(useBugStore.getState().bugDetail).toEqual(mockBugDetail);
     });
@@ -198,9 +198,9 @@ describe('bugStore', () => {
       await useBugStore.getState().refreshBugs();
 
       // Update mock to return updated data
+      // spec-path-ssot-refactor: Removed path field from BugMetadata
       const updatedBugs = [...mockBugs, {
         name: 'bug-4',
-        path: '/project/.kiro/bugs/bug-4',
         phase: 'fixed' as const,
         updatedAt: '2024-01-04T00:00:00Z',
         reportedAt: '2024-01-04T00:00:00Z',

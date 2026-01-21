@@ -95,15 +95,16 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       useSharedAgentStore.getState().autoSelectAgentForSpec(spec.name);
       console.log('[specDetailStore] Auto-selected agent for spec:', spec.name);
 
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       const t1 = performance.now();
-      const specJson = await window.electronAPI.readSpecJson(spec.path);
+      const specJson = await window.electronAPI.readSpecJson(spec.name);
       timings['readSpecJson'] = performance.now() - t1;
 
       // Get artifact info with content for tasks
+      // spec-path-ssot-refactor: Use (specName, filename) instead of full path
       const getArtifactInfo = async (name: string): Promise<ArtifactInfo | null> => {
         try {
-          const artifactPath = `${spec.path}/${name}.md`;
-          const content = await window.electronAPI.readArtifact(artifactPath);
+          const content = await window.electronAPI.readArtifact(spec.name, `${name}.md`);
           return { exists: true, updatedAt: null, content };
         } catch {
           return null;
@@ -112,6 +113,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
 
       // Helper to get inspection artifact from spec.json inspection field
       // Bug fix: inspection-state-data-model - normalize inspection state
+      // spec-path-ssot-refactor: Use (specName, filename) instead of full path
       const getInspectionArtifact = async (): Promise<ArtifactInfo | null> => {
         const normalizedInspection = normalizeInspectionState(specJson.inspection);
         const reportFile = getLatestInspectionReportFile(normalizedInspection);
@@ -120,8 +122,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         }
 
         try {
-          const artifactPath = `${spec.path}/${reportFile}`;
-          const content = await window.electronAPI.readArtifact(artifactPath);
+          const content = await window.electronAPI.readArtifact(spec.name, reportFile);
           return { exists: true, updatedAt: null, content };
         } catch {
           return null;
@@ -162,7 +163,8 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
           if (isAllComplete && !advancedPhases.includes(currentPhase)) {
             console.log('[specDetailStore] Auto-fixing phase to implementation-complete', { spec: spec.name, currentPhase });
             try {
-              await window.electronAPI.syncSpecPhase(spec.path, 'impl-complete', { skipTimestamp: true });
+              // spec-path-ssot-refactor: Use spec.name instead of spec.path
+              await window.electronAPI.syncSpecPhase(spec.name, 'impl-complete', { skipTimestamp: true });
               specJson.phase = 'implementation-complete';
             } catch (error) {
               console.error('[specDetailStore] Failed to auto-fix phase:', error);
@@ -172,13 +174,14 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       }
 
       // Auto-sync documentReview field with file system state
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path
       const t3 = performance.now();
       try {
-        const wasModified = await window.electronAPI.syncDocumentReview(spec.path);
+        const wasModified = await window.electronAPI.syncDocumentReview(spec.name);
         timings['syncDocumentReview'] = performance.now() - t3;
         if (wasModified) {
           console.log('[specDetailStore] Auto-synced documentReview state', { spec: spec.name });
-          const updatedSpecJson = await window.electronAPI.readSpecJson(spec.path);
+          const updatedSpecJson = await window.electronAPI.readSpecJson(spec.name);
           Object.assign(specJson, updatedSpecJson);
         }
       } catch (error) {

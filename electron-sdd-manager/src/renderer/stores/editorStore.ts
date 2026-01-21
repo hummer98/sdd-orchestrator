@@ -129,20 +129,22 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     });
   },
 
-  loadArtifact: async (specPath: string, artifact: ArtifactType) => {
+  // spec-path-ssot-refactor: Changed from specPath to specName
+  loadArtifact: async (specName: string, artifact: ArtifactType) => {
     // Handle both base artifacts and dynamic document review files
-    const artifactPath = `${specPath}/${artifact}.md`;
+    // For currentPath tracking, we now use specName:artifact format
+    const artifactKey = `${specName}:${artifact}`;
 
     // Check if switching to a different file (not initial load or same file)
     const { currentPath } = get();
-    const isNewFile = currentPath !== null && currentPath !== artifactPath;
+    const isNewFile = currentPath !== null && currentPath !== artifactKey;
 
     // Clear content and search state when switching to a different file
     // Bug fix: spec-item-flash-wrong-content - clear content immediately to prevent showing old data
     if (isNewFile) {
       set({
         activeTab: artifact,
-        currentPath: artifactPath,
+        currentPath: artifactKey,
         content: '',
         originalContent: '',
         isDirty: false,
@@ -157,13 +159,14 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     } else {
       set({
         activeTab: artifact,
-        currentPath: artifactPath,
+        currentPath: artifactKey,
         error: null,
       });
     }
 
     try {
-      const content = await window.electronAPI.readArtifact(artifactPath);
+      // spec-path-ssot-refactor: Use (specName, filename) instead of full path
+      const content = await window.electronAPI.readArtifact(specName, `${artifact}.md`);
       set({
         content,
         originalContent: content,

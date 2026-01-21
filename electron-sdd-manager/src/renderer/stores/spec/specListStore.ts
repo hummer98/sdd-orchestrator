@@ -78,11 +78,11 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
     const { specs, specJsonMap, sortBy, sortOrder, statusFilter } = get();
 
     // Convert to SpecMetadataWithPhase using specJsonMap
+    // spec-path-ssot-refactor: Removed path from SpecMetadataWithPhase
     const specsWithPhase: SpecMetadataWithPhase[] = specs.map((spec) => {
       const specJson = specJsonMap.get(spec.name);
       return {
         name: spec.name,
-        path: spec.path,
         phase: specJson?.phase ?? UNKNOWN_PHASE,
         updatedAt: specJson?.updated_at ?? UNKNOWN_DATE,
       };
@@ -128,10 +128,11 @@ export const useSpecListStore = create<SpecListStore>((set, get) => ({
       set({ specs });
 
       // Also update specJsonMap for the specific spec
+      // spec-path-ssot-refactor: Use spec.name instead of spec.path for readSpecJson
       const spec = specs.find((s) => s.name === specId);
       if (spec) {
         try {
-          const specJson = await window.electronAPI.readSpecJson(spec.path);
+          const specJson = await window.electronAPI.readSpecJson(spec.name);
           const { specJsonMap } = get();
           const newMap = new Map(specJsonMap);
           newMap.set(specId, specJson);

@@ -103,28 +103,29 @@ export function useConvertToWorktree(): UseConvertToWorktreeResult {
   }, [refreshMainBranchStatus]);
 
   // 変換処理
+  // spec-path-ssot-refactor: Use spec.name instead of spec.path
   const handleConvert = useCallback(async () => {
     if (!currentProject || !specDetail) {
       notify.error('プロジェクトまたは仕様が選択されていません');
       return;
     }
 
-    const specPath = specDetail.metadata.path;
+    const specName = specDetail.metadata.name;
     const featureName = specDetail.metadata.name;
 
     setIsConverting(true);
 
     try {
-      // 事前チェック
-      const checkResult = await window.electronAPI.convertCheck(currentProject, specPath);
+      // 事前チェック - spec-path-ssot-refactor: Use specName instead of specPath
+      const checkResult = await window.electronAPI.convertCheck(currentProject, specName);
       if (!checkResult.ok) {
         const errorMessage = getConvertErrorMessage(checkResult.error as ConvertErrorResult);
         notify.error(errorMessage);
         return;
       }
 
-      // 変換実行
-      const result = await window.electronAPI.convertToWorktree(currentProject, specPath, featureName);
+      // 変換実行 - spec-path-ssot-refactor: Use specName instead of specPath
+      const result = await window.electronAPI.convertToWorktree(currentProject, specName, featureName);
       if (!result.ok) {
         const errorMessage = getConvertErrorMessage(result.error as ConvertErrorResult);
         notify.error(`Worktree変換に失敗しました: ${errorMessage}`);

@@ -67,12 +67,14 @@ describe('useEditorStore', () => {
     });
   });
 
+  // spec-path-ssot-refactor: loadArtifact now takes specName (not path) and artifactType
   describe('loadArtifact', () => {
     it('should load artifact content', async () => {
       const mockContent = '# Test Content';
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue(mockContent);
 
-      await useEditorStore.getState().loadArtifact('/spec/path', 'requirements');
+      // spec-path-ssot-refactor: first param is specName, second is artifactType
+      await useEditorStore.getState().loadArtifact('spec-name', 'requirements');
 
       const state = useEditorStore.getState();
       expect(state.content).toBe(mockContent);
@@ -83,7 +85,7 @@ describe('useEditorStore', () => {
     it('should set activeTab when loading artifact', async () => {
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue('content');
 
-      await useEditorStore.getState().loadArtifact('/spec/path', 'design');
+      await useEditorStore.getState().loadArtifact('spec-name', 'design');
 
       const state = useEditorStore.getState();
       expect(state.activeTab).toBe('design');
@@ -92,7 +94,7 @@ describe('useEditorStore', () => {
     it('should handle load errors', async () => {
       window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('File not found'));
 
-      await useEditorStore.getState().loadArtifact('/spec/path', 'requirements');
+      await useEditorStore.getState().loadArtifact('spec-name', 'requirements');
 
       // Should handle error gracefully - content should be empty or error state set
       const state = useEditorStore.getState();
@@ -102,10 +104,11 @@ describe('useEditorStore', () => {
     it('should clear content immediately when switching to a different file (Bug fix: spec-item-flash-wrong-content)', async () => {
       // Setup: load initial artifact
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Initial Content');
-      await useEditorStore.getState().loadArtifact('/spec/path-a', 'requirements');
+      await useEditorStore.getState().loadArtifact('spec-a', 'requirements');
 
       expect(useEditorStore.getState().content).toBe('# Initial Content');
-      expect(useEditorStore.getState().currentPath).toBe('/spec/path-a/requirements.md');
+      // spec-path-ssot-refactor: currentPath now stores specName:artifact format
+      expect(useEditorStore.getState().currentPath).toBe('spec-a:requirements');
 
       // Simulate slow loading for new file
       let resolveNewContent: (value: string) => void;
@@ -115,12 +118,12 @@ describe('useEditorStore', () => {
       window.electronAPI.readArtifact = vi.fn().mockReturnValue(newContentPromise);
 
       // Start loading new artifact (don't await yet)
-      const loadPromise = useEditorStore.getState().loadArtifact('/spec/path-b', 'design');
+      const loadPromise = useEditorStore.getState().loadArtifact('spec-b', 'design');
 
       // Content should be cleared immediately before the new content loads
       expect(useEditorStore.getState().content).toBe('');
       expect(useEditorStore.getState().originalContent).toBe('');
-      expect(useEditorStore.getState().currentPath).toBe('/spec/path-b/design.md');
+      expect(useEditorStore.getState().currentPath).toBe('spec-b:design');
 
       // Complete the loading
       resolveNewContent!('# New Content');

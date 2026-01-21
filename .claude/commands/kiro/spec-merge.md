@@ -26,33 +26,46 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
 ## Execution Steps
 
 ### Step 1: Validate Prerequisites
-1. Read `.kiro/specs/$1/spec.json`
-2. Verify `worktree` field exists in spec.json
-   - If not found, error: "No worktree configured for this spec. This command is only for worktree mode."
-3. Extract worktree information:
-   - `worktree.path`: relative path to worktree
-   - `worktree.branch`: feature branch name (e.g., `feature/$1`)
-4. Verify current directory is the main project (not the worktree)
+
+#### 1.1: Verify Main Branch
+1. Verify current directory is the main project (not the worktree)
    - Run `git rev-parse --show-toplevel` and compare with pwd
-5. Verify current branch is main or master
+2. Verify current branch is main or master
    - Run `git branch --show-current`
    - If not main/master, error: "spec-merge must be run from the main branch"
+
+#### 1.2: Resolve Worktree Path and Read spec.json
+**spec-worktree-early-creation**: In early worktree creation mode, spec.json exists ONLY in the worktree, not in main.
+
+1. Derive worktree path from convention:
+   - Relative path: `.kiro/worktrees/specs/$1`
+   - Absolute path: `$(pwd)/.kiro/worktrees/specs/$1`
+2. Verify worktree directory exists:
+   ```bash
+   ls -d ".kiro/worktrees/specs/$1" 2>/dev/null
+   ```
+   - If not found, error: "Worktree not found at .kiro/worktrees/specs/$1. This command is only for worktree mode."
+3. Read spec.json from worktree:
+   - Path: `.kiro/worktrees/specs/$1/.kiro/specs/$1/spec.json`
+4. Verify `worktree` field exists in spec.json
+   - If not found, error: "No worktree configured for this spec. This command is only for worktree mode."
+5. Extract worktree information:
+   - `worktree.path`: relative path to worktree (should match convention)
+   - `worktree.branch`: feature branch name (e.g., `feature/$1`)
 
 ### Step 1.5: Validate Inspection Completion
 
 **remove-inspection-phase-auto-update**: This validation is REQUIRED before merge.
 spec-merge can only merge specs that have passed inspection (phase = inspection-complete).
 
-#### 1.5.1: Resolve Worktree Path (for validation)
+#### 1.5.1: Use Worktree Path from Step 1.2
 ```bash
-# Get project root
-PROJECT_ROOT=$(pwd)
-# Resolve relative path to absolute
-WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+# Already resolved in Step 1.2
+WORKTREE_ABSOLUTE_PATH=$(pwd)/.kiro/worktrees/specs/$1
 ```
 
-#### 1.5.2: Read spec.json from Worktree
-Read `${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1/spec.json`
+#### 1.5.2: Read spec.json from Worktree (already done in Step 1.2)
+Use the spec.json already read in Step 1.2: `.kiro/worktrees/specs/$1/.kiro/specs/$1/spec.json`
 
 #### 1.5.3: Validate Phase
 Check the `phase` field in spec.json:
@@ -112,13 +125,11 @@ Check the `inspection.rounds` array in spec.json:
 ### Step 2: Prepare Worktree for Merge
 Before merging, commit all changes including spec.json update in the worktree.
 
-#### 2.1: Resolve Worktree Path
-Convert the relative path from spec.json to absolute path:
+#### 2.1: Use Worktree Path from Step 1.2
 ```bash
-# Get project root
+# Already resolved in Step 1.2
 PROJECT_ROOT=$(pwd)
-# Resolve relative path to absolute
-WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/specs/$1"
 ```
 
 #### 2.2: Commit Pending Implementation Changes (if any)
@@ -137,7 +148,6 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 Update spec.json to deploy-complete state **in the worktree**, so it's included in the squash merge.
 
 1. Read `${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1/spec.json`
-   - Note: If spec.json is a symlink, read the target file
 2. Apply the following changes:
    - Remove the `worktree` property
    - Set `phase` to `"deploy-complete"`

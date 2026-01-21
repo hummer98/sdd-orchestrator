@@ -106,8 +106,9 @@ export class FileService {
 
   /**
    * Read all specs from a project
-   * spec-metadata-ssot-refactor: Returns only name and path (SSOT principle)
+   * spec-metadata-ssot-refactor: Returns only name (SSOT principle)
    * phase, updatedAt, approvals should be obtained from specJson
+   * spec-path-ssot-refactor: Removed path field - path resolution is done via resolveSpecPath
    * spec-worktree-early-creation: Also reads specs from .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/
    * bugs-worktree-directory-mode (8.2): Uses scanWorktreeEntities for worktree scanning
    */
@@ -132,10 +133,9 @@ export class FileService {
             // Only check if spec.json exists (no need to read content for metadata)
             await access(specJsonPath);
 
-            // spec-metadata-ssot-refactor: Return only name and path
+            // spec-path-ssot-refactor: Return only name
             specs.push({
               name: entry.name,
-              path: specPath,
             });
             seenSpecNames.add(entry.name);
           } catch {
@@ -159,9 +159,9 @@ export class FileService {
         try {
           await access(worktreeSpecJsonPath);
 
+          // spec-path-ssot-refactor: Return only name
           specs.push({
             name: wtSpec.name,
-            path: wtSpec.path,
           });
           seenSpecNames.add(wtSpec.name);
         } catch {
@@ -701,5 +701,111 @@ ${description}
         },
       };
     }
+  }
+
+  /**
+   * Resolve entity name to actual file system path
+   * spec-path-ssot-refactor: SSOT for entity path resolution
+   *
+   * Priority order:
+   * 1. Worktree path: .kiro/worktrees/{entityType}/{entityName}/.kiro/{entityType}/{entityName}/
+   * 2. Main path: .kiro/{entityType}/{entityName}/
+   * 3. NOT_FOUND error if neither exists
+   *
+   * Requirements: 1.1, 1.2, 1.4
+   *
+   * @param projectPath - Project root path
+   * @param entityType - 'specs' or 'bugs'
+   * @param entityName - Entity name (must be valid: lowercase letters, numbers, hyphens)
+   * @returns Result<string, FileError> - Resolved absolute path or error
+   */
+  async resolveEntityPath(
+    projectPath: string,
+    entityType: 'specs' | 'bugs',
+    entityName: string
+  ): Promise<Result<string, FileError>> {
+    // Validate entity name format
+    if (!this.isValidSpecName(entityName)) {
+      return {
+        ok: false,
+        error: {
+          type: 'INVALID_PATH',
+          path: entityName,
+          reason: 'Entity name must contain only lowercase letters, numbers, and hyphens',
+        },
+      };
+    }
+
+    // Priority 1: Check worktree path
+    // .kiro/worktrees/{entityType}/{entityName}/.kiro/{entityType}/{entityName}/
+    const worktreePath = join(
+      projectPath,
+      '.kiro',
+      'worktrees',
+      entityType,
+      entityName,
+      '.kiro',
+      entityType,
+      entityName
+    );
+
+    try {
+      await access(worktreePath);
+      return { ok: true, value: worktreePath };
+    } catch {
+      // Worktree doesn't exist, try main path
+    }
+
+    // Priority 2: Check main path
+    // .kiro/{entityType}/{entityName}/
+    const mainPath = join(projectPath, '.kiro', entityType, entityName);
+
+    try {
+      await access(mainPath);
+      return { ok: true, value: mainPath };
+    } catch {
+      // Main path doesn't exist either
+    }
+
+    // Priority 3: Neither exists
+    return {
+      ok: false,
+      error: {
+        type: 'NOT_FOUND',
+        path: `${entityType}/${entityName}`,
+      },
+    };
+  }
+
+  /**
+   * Convenience method for spec path resolution
+   * spec-path-ssot-refactor: Wrapper for resolveEntityPath with entityType='specs'
+   * Requirements: 1.3
+   *
+   * @param projectPath - Project root path
+   * @param specName - Spec name
+   * @returns Result<string, FileError> - Resolved absolute path or error
+   */
+  async resolveSpecPath(
+    projectPath: string,
+    specName: string
+  ): Promise<Result<string, FileError>> {
+    return this.resolveEntityPath(projectPath, 'specs', specName);
+  }
+
+  /**
+   * Convenience method for bug path resolution
+   * spec-path-ssot-refactor: Wrapper for resolveEntityPath with entityType='bugs'
+   * Requirements: 1.3
+   *
+   * @param projectPath - Project root path
+   * @param bugName - Bug name
+   * @returns Result<string, FileError> - Resolved absolute path or error
+   */
+  async resolveBugPath(
+    projectPath: string,
+    bugName: string
+  ): Promise<Result<string, FileError>> {
+    return this.resolveEntityPath(projectPath, 'bugs', bugName);
   }
 }

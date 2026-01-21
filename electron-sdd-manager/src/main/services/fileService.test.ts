@@ -405,7 +405,8 @@ describe('FileService - readSpecs (worktree support)', () => {
     if (result.ok) {
       expect(result.value).toHaveLength(1);
       expect(result.value[0].name).toBe('main-feature');
-      expect(result.value[0].path).toBe(mainSpecPath);
+      // spec-path-ssot-refactor: SpecMetadata no longer contains path
+      // Path resolution is now done via resolveSpecPath when needed
     }
   });
 
@@ -428,7 +429,8 @@ describe('FileService - readSpecs (worktree support)', () => {
     if (result.ok) {
       expect(result.value).toHaveLength(1);
       expect(result.value[0].name).toBe('worktree-feature');
-      expect(result.value[0].path).toBe(worktreeSpecPath);
+      // spec-path-ssot-refactor: SpecMetadata no longer contains path
+      // Path resolution is now done via resolveSpecPath when needed
     }
   });
 
@@ -488,8 +490,8 @@ describe('FileService - readSpecs (worktree support)', () => {
       // Should only have one spec (main takes priority)
       expect(result.value).toHaveLength(1);
       expect(result.value[0].name).toBe(specName);
-      // Path should be the main spec path, not worktree
-      expect(result.value[0].path).toBe(mainSpecPath);
+      // spec-path-ssot-refactor: Path field removed from SpecMetadata
+      // Use resolveSpecPath to verify which location takes priority if needed
     }
   });
 
@@ -518,5 +520,183 @@ describe('FileService - readSpecs (worktree support)', () => {
       expect(result.value).toHaveLength(1);
       expect(result.value[0].name).toBe('valid-feature');
     }
+  });
+});
+
+// ============================================================
+// spec-path-ssot-refactor Task 1.1, 1.2, 1.3: resolveEntityPath tests
+// Requirements: 1.1, 1.2, 1.3, 1.4
+// ============================================================
+describe('FileService - resolveEntityPath', () => {
+  let fileService: FileService;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'resolve-entity-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * Helper to create a main entity directory with spec.json/bug.json
+   */
+  async function createMainEntity(
+    entityType: 'specs' | 'bugs',
+    entityName: string
+  ): Promise<string> {
+    const entityPath = path.join(tempDir, '.kiro', entityType, entityName);
+    await fs.mkdir(entityPath, { recursive: true });
+    const jsonFile = entityType === 'specs' ? 'spec.json' : 'bug.json';
+    await fs.writeFile(
+      path.join(entityPath, jsonFile),
+      JSON.stringify({ feature_name: entityName }, null, 2),
+      'utf-8'
+    );
+    return entityPath;
+  }
+
+  /**
+   * Helper to create a worktree entity directory
+   */
+  async function createWorktreeEntity(
+    entityType: 'specs' | 'bugs',
+    entityName: string
+  ): Promise<string> {
+    // Worktree path: .kiro/worktrees/{entityType}/{entityName}/.kiro/{entityType}/{entityName}/
+    const entityPath = path.join(
+      tempDir,
+      '.kiro',
+      'worktrees',
+      entityType,
+      entityName,
+      '.kiro',
+      entityType,
+      entityName
+    );
+    await fs.mkdir(entityPath, { recursive: true });
+    const jsonFile = entityType === 'specs' ? 'spec.json' : 'bug.json';
+    await fs.writeFile(
+      path.join(entityPath, jsonFile),
+      JSON.stringify({ feature_name: entityName }, null, 2),
+      'utf-8'
+    );
+    return entityPath;
+  }
+
+  describe('resolveEntityPath', () => {
+    it('should resolve main spec path when only main exists', async () => {
+      const expectedPath = await createMainEntity('specs', 'my-feature');
+
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', 'my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
+
+    it('should resolve main bug path when only main exists', async () => {
+      const expectedPath = await createMainEntity('bugs', 'my-bug');
+
+      const result = await fileService.resolveEntityPath(tempDir, 'bugs', 'my-bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
+
+    it('should resolve worktree spec path when only worktree exists', async () => {
+      const expectedPath = await createWorktreeEntity('specs', 'worktree-feature');
+
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', 'worktree-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
+
+    it('should resolve worktree bug path when only worktree exists', async () => {
+      const expectedPath = await createWorktreeEntity('bugs', 'worktree-bug');
+
+      const result = await fileService.resolveEntityPath(tempDir, 'bugs', 'worktree-bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
+
+    it('should prioritize worktree over main when both exist (worktree > main)', async () => {
+      // Create both main and worktree
+      await createMainEntity('specs', 'dual-feature');
+      const worktreePath = await createWorktreeEntity('specs', 'dual-feature');
+
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', 'dual-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Should return worktree path (priority: worktree > main)
+        expect(result.value).toBe(worktreePath);
+      }
+    });
+
+    it('should return NOT_FOUND error when neither main nor worktree exists', async () => {
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', 'non-existent');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('NOT_FOUND');
+      }
+    });
+
+    it('should return INVALID_PATH error for invalid entity name', async () => {
+      // Invalid name with uppercase
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', 'InvalidName');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_PATH');
+      }
+    });
+
+    it('should return INVALID_PATH error for empty entity name', async () => {
+      const result = await fileService.resolveEntityPath(tempDir, 'specs', '');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_PATH');
+      }
+    });
+  });
+
+  describe('resolveSpecPath (convenience wrapper)', () => {
+    it('should resolve spec path using resolveEntityPath internally', async () => {
+      const expectedPath = await createMainEntity('specs', 'convenience-spec');
+
+      const result = await fileService.resolveSpecPath(tempDir, 'convenience-spec');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
+  });
+
+  describe('resolveBugPath (convenience wrapper)', () => {
+    it('should resolve bug path using resolveEntityPath internally', async () => {
+      const expectedPath = await createMainEntity('bugs', 'convenience-bug');
+
+      const result = await fileService.resolveBugPath(tempDir, 'convenience-bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(expectedPath);
+      }
+    });
   });
 });

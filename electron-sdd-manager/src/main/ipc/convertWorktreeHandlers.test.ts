@@ -42,6 +42,7 @@ vi.mock('../services/worktreeService', () => ({
 const mockFileService = {
   readSpecJson: vi.fn(),
   updateSpecJson: vi.fn(),
+  resolveSpecPath: vi.fn(),
 };
 vi.mock('../services/fileService', () => ({
   FileService: vi.fn(() => mockFileService),
@@ -103,10 +104,14 @@ describe('ConvertWorktreeHandlers', () => {
   });
 
   describe('CONVERT_CHECK handler', () => {
-    it('should check if spec can be converted', async () => {
+    it('should resolve specName to specPath and check if spec can be converted', async () => {
       // Arrange
       const projectPath = '/test/project';
-      const specPath = '/test/project/.kiro/specs/my-feature';
+      const specName = 'my-feature';  // spec-path-ssot-refactor: Use specName instead of specPath
+      const resolvedSpecPath = '/test/project/.kiro/specs/my-feature';
+
+      // Mock resolveSpecPath to return the full path
+      mockFileService.resolveSpecPath.mockResolvedValue({ ok: true, value: resolvedSpecPath });
 
       // Mock the service methods
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
@@ -118,23 +123,50 @@ describe('ConvertWorktreeHandlers', () => {
       // Act
       const handler = handlers.get(IPC_CHANNELS.CONVERT_CHECK);
       expect(handler).toBeDefined();
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specPath);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName);
 
       // Assert
+      expect(mockFileService.resolveSpecPath).toHaveBeenCalledWith(projectPath, specName);
       expect(result).toEqual({ ok: true, value: true });
+    });
+
+    it('should return SPEC_NOT_FOUND when resolveSpecPath fails', async () => {
+      // Arrange
+      const projectPath = '/test/project';
+      const specName = 'non-existent-feature';
+
+      // Mock resolveSpecPath to return failure
+      mockFileService.resolveSpecPath.mockResolvedValue({
+        ok: false,
+        error: { type: 'NOT_FOUND', path: specName },
+      });
+
+      // Act
+      const handler = handlers.get(IPC_CHANNELS.CONVERT_CHECK);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName);
+
+      // Assert
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
     });
 
     it('should return error when not on main branch', async () => {
       // Arrange
       const projectPath = '/test/project';
-      const specPath = '/test/project/.kiro/specs/my-feature';
+      const specName = 'my-feature';  // spec-path-ssot-refactor: Use specName instead of specPath
+      const resolvedSpecPath = '/test/project/.kiro/specs/my-feature';
+
+      // Mock resolveSpecPath
+      mockFileService.resolveSpecPath.mockResolvedValue({ ok: true, value: resolvedSpecPath });
 
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: false });
       mockWorktreeService.getCurrentBranch.mockResolvedValue({ ok: true, value: 'develop' });
 
       // Act
       const handler = handlers.get(IPC_CHANNELS.CONVERT_CHECK);
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specPath);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName);
 
       // Assert
       expect(result.ok).toBe(false);
@@ -145,11 +177,15 @@ describe('ConvertWorktreeHandlers', () => {
   });
 
   describe('CONVERT_TO_WORKTREE handler', () => {
-    it('should convert spec to worktree mode', async () => {
+    it('should resolve specName to specPath and convert spec to worktree mode', async () => {
       // Arrange
       const projectPath = '/test/project';
-      const specPath = '/test/project/.kiro/specs/my-feature';
+      const specName = 'my-feature';  // spec-path-ssot-refactor: Use specName instead of specPath
+      const resolvedSpecPath = '/test/project/.kiro/specs/my-feature';
       const featureName = 'my-feature';
+
+      // Mock resolveSpecPath
+      mockFileService.resolveSpecPath.mockResolvedValue({ ok: true, value: resolvedSpecPath });
 
       // Mock successful conversion
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
@@ -172,9 +208,10 @@ describe('ConvertWorktreeHandlers', () => {
       // Act
       const handler = handlers.get(IPC_CHANNELS.CONVERT_TO_WORKTREE);
       expect(handler).toBeDefined();
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specPath, featureName);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName, featureName);
 
       // Assert
+      expect(mockFileService.resolveSpecPath).toHaveBeenCalledWith(projectPath, specName);
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.path).toBe('.kiro/worktrees/specs/my-feature');
@@ -182,11 +219,38 @@ describe('ConvertWorktreeHandlers', () => {
       }
     });
 
+    it('should return SPEC_NOT_FOUND when resolveSpecPath fails', async () => {
+      // Arrange
+      const projectPath = '/test/project';
+      const specName = 'non-existent-feature';
+      const featureName = 'non-existent-feature';
+
+      // Mock resolveSpecPath to return failure
+      mockFileService.resolveSpecPath.mockResolvedValue({
+        ok: false,
+        error: { type: 'NOT_FOUND', path: specName },
+      });
+
+      // Act
+      const handler = handlers.get(IPC_CHANNELS.CONVERT_TO_WORKTREE);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName, featureName);
+
+      // Assert
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
+    });
+
     it('should return error when worktree creation fails', async () => {
       // Arrange
       const projectPath = '/test/project';
-      const specPath = '/test/project/.kiro/specs/my-feature';
+      const specName = 'my-feature';  // spec-path-ssot-refactor: Use specName instead of specPath
+      const resolvedSpecPath = '/test/project/.kiro/specs/my-feature';
       const featureName = 'my-feature';
+
+      // Mock resolveSpecPath
+      mockFileService.resolveSpecPath.mockResolvedValue({ ok: true, value: resolvedSpecPath });
 
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
       mockFileService.readSpecJson.mockResolvedValue({
@@ -200,7 +264,7 @@ describe('ConvertWorktreeHandlers', () => {
 
       // Act
       const handler = handlers.get(IPC_CHANNELS.CONVERT_TO_WORKTREE);
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specPath, featureName);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, projectPath, specName, featureName);
 
       // Assert
       expect(result.ok).toBe(false);

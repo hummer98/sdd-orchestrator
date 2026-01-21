@@ -33,10 +33,11 @@ export function registerConvertWorktreeHandlers(): void {
 
   // Handler: Check if spec can be converted
   // Requirements: 3.1
+  // spec-path-ssot-refactor: Changed from specPath to specName, resolve path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.CONVERT_CHECK,
-    async (_event, projectPath: string, specPath: string): Promise<ConvertResult<boolean>> => {
-      logger.debug('[ConvertWorktreeHandlers] CONVERT_CHECK called', { projectPath, specPath });
+    async (_event, projectPath: string, specName: string): Promise<ConvertResult<boolean>> => {
+      logger.debug('[ConvertWorktreeHandlers] CONVERT_CHECK called', { projectPath, specName });
 
       // Use provided projectPath or fall back to current
       const resolvedProjectPath = projectPath || getCurrentProjectPath();
@@ -44,28 +45,40 @@ export function registerConvertWorktreeHandlers(): void {
         logger.error('[ConvertWorktreeHandlers] No project path set');
         return {
           ok: false,
-          error: { type: 'SPEC_NOT_FOUND', specPath },
+          error: { type: 'SPEC_NOT_FOUND', specPath: specName },
+        };
+      }
+
+      // spec-path-ssot-refactor: Resolve specName to full path
+      const fileService = new FileService();
+      const specPathResult = await fileService.resolveSpecPath(resolvedProjectPath, specName);
+      if (!specPathResult.ok) {
+        logger.warn('[ConvertWorktreeHandlers] Spec not found', { specName });
+        return {
+          ok: false,
+          error: { type: 'SPEC_NOT_FOUND', specPath: specName },
         };
       }
 
       const convertService = createConvertService(resolvedProjectPath);
-      return await convertService.canConvert(resolvedProjectPath, specPath);
+      return await convertService.canConvert(resolvedProjectPath, specPathResult.value);
     }
   );
 
   // Handler: Execute conversion to worktree mode
   // Requirements: 3.2
+  // spec-path-ssot-refactor: Changed from specPath to specName, resolve path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.CONVERT_TO_WORKTREE,
     async (
       _event,
       projectPath: string,
-      specPath: string,
+      specName: string,
       featureName: string
     ): Promise<ConvertResult<WorktreeInfo>> => {
       logger.info('[ConvertWorktreeHandlers] CONVERT_TO_WORKTREE called', {
         projectPath,
-        specPath,
+        specName,
         featureName,
       });
 
@@ -75,12 +88,23 @@ export function registerConvertWorktreeHandlers(): void {
         logger.error('[ConvertWorktreeHandlers] No project path set');
         return {
           ok: false,
-          error: { type: 'SPEC_NOT_FOUND', specPath },
+          error: { type: 'SPEC_NOT_FOUND', specPath: specName },
+        };
+      }
+
+      // spec-path-ssot-refactor: Resolve specName to full path
+      const fileService = new FileService();
+      const specPathResult = await fileService.resolveSpecPath(resolvedProjectPath, specName);
+      if (!specPathResult.ok) {
+        logger.warn('[ConvertWorktreeHandlers] Spec not found', { specName });
+        return {
+          ok: false,
+          error: { type: 'SPEC_NOT_FOUND', specPath: specName },
         };
       }
 
       const convertService = createConvertService(resolvedProjectPath);
-      return await convertService.convertToWorktree(resolvedProjectPath, specPath, featureName);
+      return await convertService.convertToWorktree(resolvedProjectPath, specPathResult.value, featureName);
     }
   );
 

@@ -40,6 +40,21 @@ npx playwright install chromium
 npm run build
 ```
 
+### プロジェクト選択
+
+Web E2Eテストは、Electronアプリがバックグラウンドで起動した状態でブラウザからRemote UIにアクセスする。プロジェクト選択は以下のいずれかの方法で行う：
+
+1. **UI経由**: Electronアプリ起動後、ProjectSelectionViewから選択（推奨）
+2. **テストコード**: `global-setup.ts`でZustandストア経由でプロジェクトを選択
+
+```typescript
+// global-setup.ts での例
+const stores = (window as any).__STORES__;
+await stores.projectStore.getState().selectProject('/path/to/project');
+```
+
+**理由**: メニューバーやダイアログ経由のプロジェクト選択は不安定なため、Zustandストア経由でのプログラマティック選択を推奨。
+
 ---
 
 ## テスト実行コマンド

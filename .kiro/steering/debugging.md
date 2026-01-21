@@ -229,20 +229,28 @@ args: { "code": "window.electronAPI.deleteAgentFolder('/path/to/project')" }
 
 ## テスト時のプロジェクト指定
 
-E2Eテストや動作確認時は、以下のディレクトリを起動時引数で指定する：
+E2Eテストや動作確認時は、アプリ起動後にUI経由でプロジェクトを選択する：
 
 ```bash
-# 起動時にプロジェクトパスを指定（推奨）
-task electron:start PROJECT=/Users/yamamoto/git/sdd-orchestrator
-
-# フォアグラウンドで起動する場合
-task electron:dev PROJECT=/Users/yamamoto/git/sdd-orchestrator
-
-# または npm run dev で直接指定
-cd electron-sdd-manager && npm run dev -- /Users/yamamoto/git/sdd-orchestrator
+# アプリを起動
+task electron:start  # またはフォアグラウンドで task electron:dev
 ```
 
-これにより、アプリ起動時に自動的にプロジェクトが選択された状態になる。
+**プロジェクト選択方法**:
+1. アプリ起動後、プロジェクト未選択時のメインパネル（ProjectSelectionView）が表示される
+2. 以下のいずれかの方法でプロジェクトを選択：
+   - **フォルダ選択ボタン**: ダイアログを開いてフォルダを選択
+   - **パス入力**: テキストフィールドにパスを入力して「開く」ボタンをクリック
+   - **最近開いたプロジェクト**: リストからクリックで選択
+
+**E2Eテストコードでの選択**:
+```javascript
+// Zustandストア経由でのプログラマティック選択（テストコード用）
+const stores = (window as any).__STORES__;
+await stores.projectStore.getState().selectProject('/Users/yamamoto/git/sdd-orchestrator');
+```
+
+これにより、メニューバーやMCPの制約を回避し、安定したプロジェクト選択が可能になる。
 
 ## 正常系の操作手順
 

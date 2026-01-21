@@ -151,11 +151,16 @@ e2e-wdio/fixtures/test-project/
 ```typescript
 const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
 
-// IPC経由でプロジェクトを開く
-const result = await browser.execute(async (projectPath) => {
-  return await window.electronAPI.selectProject(projectPath);
-}, FIXTURE_PROJECT_PATH);
+// Zustandストア経由でプロジェクトを開く（推奨）
+const stores = (window as any).__STORES__;
+await stores.projectStore.getState().selectProject(FIXTURE_PROJECT_PATH);
+
+// または共通ヘルパー関数を使用
+import { selectProjectViaStore } from './helpers/auto-execution.helpers';
+await selectProjectViaStore(FIXTURE_PROJECT_PATH);
 ```
+
+**理由**: UIダイアログやメニューバー経由のプロジェクト選択は不安定なため、Zustandストア経由でのプログラマティック選択を推奨。
 
 ---
 
@@ -449,7 +454,7 @@ const result = await browser.execute(async (projectPath) => {
    - Fixtureプロジェクトの存在確認
 
 2. **Project Selection** (2テスト)
-   - IPC経由でのプロジェクト選択
+   - Zustandストア経由でのプロジェクト選択
    - SpecListへのSpec表示確認
 
 3. **UI Elements for Workflow** (6テスト)
@@ -565,7 +570,7 @@ import {
 
 | 関数 | 説明 |
 |-----|------|
-| `selectProjectViaStore(path)` | Zustand store経由でプロジェクトを選択 |
+| `selectProjectViaStore(path)` | Zustand store経由でプロジェクトを選択（推奨：UIダイアログやメニューバーは不安定） |
 | `selectSpecViaStore(specId)` | Zustand store経由でSpecを選択 |
 | `setAutoExecutionPermissions(permissions)` | 自動実行許可設定を更新 |
 | `getAutoExecutionStatus()` | 現在選択中のSpecの自動実行状態を取得 |

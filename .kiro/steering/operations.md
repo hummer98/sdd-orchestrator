@@ -102,25 +102,30 @@ args: { "code": "window.electronAPI.getRemoteServerStatus().then(r => JSON.strin
 
 ## プロジェクト選択
 
-### 方法1: 起動時引数（推奨）
+### 推奨方法: UI経由での選択
 
-```bash
-# バックグラウンド起動
-task electron:start PROJECT=/Users/yamamoto/git/sdd-orchestrator
+アプリ起動後、プロジェクト未選択時に表示されるメインパネル（ProjectSelectionView）から選択する。
 
-# フォアグラウンド起動
-task electron:dev PROJECT=/Users/yamamoto/git/sdd-orchestrator
-```
+**操作方法**:
+1. **フォルダ選択ボタンをクリック**: ファイルダイアログが開き、フォルダを選択
+2. **パス入力フィールド**: プロジェクトパスを直接入力して「開く」ボタンをクリック
+3. **最近開いたプロジェクトリスト**: 履歴からクリックで選択
 
-### 方法2: MCP経由でランタイム選択
+**UI要素**:
+- `[data-testid="project-selection-view"]`: メインビュー
+- フォルダ選択ボタン: ダイアログを開く
+- パス入力フィールド: 直接入力用
+- 最近開いたプロジェクトリスト: `RecentProjectList`コンポーネント
+
+### 代替方法: Zustandストア経由（テストコード用）
 
 ```javascript
-// MCP send_command_to_electron の eval コマンド
-command: "eval"
-args: { "code": "window.electronAPI.selectProject('/path/to/project').then(r => JSON.stringify(r))" }
+// E2Eテストでの使用例
+const stores = (window as any).__STORES__;
+await stores.projectStore.getState().selectProject('/path/to/project');
 ```
 
-**戻り値**:
+**戻り値** (selectProject関数):
 ```typescript
 {
   projectPath: string;

@@ -38,6 +38,77 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
    - Run `git branch --show-current`
    - If not main/master, error: "spec-merge must be run from the main branch"
 
+### Step 1.5: Validate Inspection Completion
+
+**remove-inspection-phase-auto-update**: This validation is REQUIRED before merge.
+spec-merge can only merge specs that have passed inspection (phase = inspection-complete).
+
+#### 1.5.1: Resolve Worktree Path (for validation)
+```bash
+# Get project root
+PROJECT_ROOT=$(pwd)
+# Resolve relative path to absolute
+WORKTREE_ABSOLUTE_PATH=$(cd "$PROJECT_ROOT" && cd "{worktree.path}" && pwd)
+```
+
+#### 1.5.2: Read spec.json from Worktree
+Read `${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1/spec.json`
+
+#### 1.5.3: Validate Phase
+Check the `phase` field in spec.json:
+
+**IF** `phase` is NOT `inspection-complete`:
+- **ABORT** with error message:
+  ```
+  ## Error: Inspection Not Complete
+
+  spec-mergeはinspection-complete状態のspecのみマージ可能です。
+  現在のphase: {phase}
+
+  ### Next Steps
+  1. Run `/kiro:spec-inspection $1` to inspect the implementation
+  2. Ensure inspection result is GO
+  3. Re-run `/kiro:spec-merge $1`
+  ```
+- **EXIT** (do not continue to Step 2)
+
+#### 1.5.4: Validate Inspection Result
+Check the `inspection.rounds` array in spec.json:
+
+1. If `inspection.rounds` does not exist or is empty:
+   - **ABORT** with error message:
+     ```
+     ## Error: No Inspection Record
+
+     Inspection結果が記録されていません。
+
+     ### Next Steps
+     1. Run `/kiro:spec-inspection $1` to inspect the implementation
+     2. Re-run `/kiro:spec-merge $1`
+     ```
+   - **EXIT**
+
+2. Get the latest round (last element in `inspection.rounds` array)
+3. Check if `result` is `"go"`:
+   - **IF** `result` is NOT `"go"`:
+     - **ABORT** with error message:
+       ```
+       ## Error: Inspection GO Required
+
+       Inspection GO判定が必要です。
+       最新のInspection結果: {result}
+
+       ### Next Steps
+       1. Run `/kiro:spec-inspection $1` to re-inspect
+       2. Or run `/kiro:spec-inspection $1 --fix` to fix issues
+       3. Re-run `/kiro:spec-merge $1`
+       ```
+     - **EXIT**
+
+**IF** both validations pass:
+- Log: "Inspection validation passed (phase: inspection-complete, result: go)"
+- Proceed to Step 2
+
 ### Step 2: Prepare Worktree for Merge
 Before merging, commit all changes including spec.json update in the worktree.
 
@@ -264,6 +335,16 @@ Provide output with the following structure:
 **No worktree field in spec.json**:
 - Error: "No worktree configured for this spec"
 - Suggested Action: "This command is for worktree mode only. Use `/commit` for normal mode."
+
+**Phase is not inspection-complete** (remove-inspection-phase-auto-update):
+- Error: "spec-mergeはinspection-complete状態のspecのみマージ可能です"
+- Suggested Action: "Run `/kiro:spec-inspection {feature}` to inspect the implementation first"
+- **Do not proceed with merge**
+
+**Inspection result is not GO** (remove-inspection-phase-auto-update):
+- Error: "Inspection GO判定が必要です"
+- Suggested Action: "Run `/kiro:spec-inspection {feature} --fix` to fix issues and re-inspect"
+- **Do not proceed with merge**
 
 **Not on main branch**:
 - Error: "spec-merge must be run from the main branch"

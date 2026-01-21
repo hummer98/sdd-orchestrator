@@ -151,13 +151,31 @@ describe('SpecsWatcherService', () => {
   });
 
   // ============================================================
-  // spec-phase-auto-update Task 5: 検査完了検出
-  // Requirements: 2.1, 5.1
+  // remove-inspection-phase-auto-update: inspection-complete自動更新削除
+  // Requirements: 6.1, 6.2, 6.3, 6.4
   // ============================================================
-  describe('Inspection completion detection', () => {
-    it('should check inspection completion when spec.json changes', async () => {
+  describe('Inspection completion - removed functionality', () => {
+    it('should NOT have checkInspectionCompletion method (removed per requirements)', async () => {
       const mockFileService = {
         updateSpecJsonFromPhase: vi.fn().mockResolvedValue({ ok: true }),
+        validatePhaseTransition: vi.fn().mockReturnValue({ ok: true }),
+      };
+
+      const service = new SpecsWatcherService('/project', mockFileService as any);
+
+      // Access checkInspectionCompletion via private method - should NOT exist
+      const checkInspectionCompletion = (service as unknown as {
+        checkInspectionCompletion: (filePath: string, specId: string) => Promise<void>
+      }).checkInspectionCompletion;
+
+      // Requirement 1.3, 6.1: checkInspectionCompletion method must be removed
+      expect(checkInspectionCompletion).toBeUndefined();
+    });
+
+    it('should NOT call updateSpecJsonFromPhase with inspection-complete when spec.json changes', async () => {
+      const mockUpdateSpecJsonFromPhase = vi.fn().mockResolvedValue({ ok: true });
+      const mockFileService = {
+        updateSpecJsonFromPhase: mockUpdateSpecJsonFromPhase,
         validatePhaseTransition: vi.fn().mockReturnValue({ ok: true }),
       };
 
@@ -165,14 +183,41 @@ describe('SpecsWatcherService', () => {
       const callback = vi.fn();
       service.onChange(callback);
 
-      // Access checkInspectionCompletion via private method
-      const checkInspectionCompletion = (service as unknown as {
-        checkInspectionCompletion: (filePath: string, specId: string) => Promise<void>
-      }).checkInspectionCompletion;
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
 
-      // This test verifies that the method exists and can be called
-      // The actual file system reading is mocked in integration tests
-      expect(checkInspectionCompletion).toBeDefined();
+      // Simulate spec.json change
+      handleEvent('change', '/project/.kiro/specs/my-feature/spec.json');
+
+      // Advance timers
+      vi.advanceTimersByTime(350);
+
+      // Requirement 1.1, 1.2: updateSpecJsonFromPhase should NOT be called with inspection-complete
+      // Note: It may be called for other reasons (checkDeployCompletion), but not for inspection-complete
+      const inspectionCompleteCalls = mockUpdateSpecJsonFromPhase.mock.calls.filter(
+        (call: unknown[]) => call[1] === 'inspection-complete'
+      );
+      expect(inspectionCompleteCalls.length).toBe(0);
+    });
+
+    it('should continue to emit file change events when spec.json is updated', async () => {
+      const service = new SpecsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Requirement 1.4, 5.3: File change events should still be emitted
+      handleEvent('change', '/project/.kiro/specs/my-feature/spec.json');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'change',
+          path: '/project/.kiro/specs/my-feature/spec.json',
+          specId: 'my-feature',
+        })
+      );
     });
   });
 

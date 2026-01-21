@@ -10,7 +10,9 @@ import * as path from 'path';
 import { readFile, writeFile, access, constants } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
-import { normalizeInspectionState, hasPassed } from '../../renderer/types/inspection';
+// remove-inspection-phase-auto-update: Removed inspection-related imports
+// normalizeInspectionState and hasPassed are no longer used here
+// inspection-complete phase update is now handled by spec-inspection agent
 import type { WorktreeConfig } from '../../renderer/types/worktree';
 import {
   detectWorktreeAddition,
@@ -218,11 +220,9 @@ export class SpecsWatcherService {
       });
     }
 
-    // spec-phase-auto-update: Check inspection and deploy completion when spec.json changes
+    // remove-inspection-phase-auto-update: Check deploy completion when spec.json changes
+    // Note: inspection-complete phase update is now handled by spec-inspection agent, not here
     if ((type === 'change' || type === 'add') && fileName === 'spec.json' && specId) {
-      this.checkInspectionCompletion(filePath, specId).catch((error) => {
-        logger.error('[SpecsWatcherService] Failed to check inspection completion', { error, specId });
-      });
       this.checkDeployCompletion(filePath, specId).catch((error) => {
         logger.error('[SpecsWatcherService] Failed to check deploy completion', { error, specId });
       });
@@ -430,59 +430,6 @@ export class SpecsWatcherService {
       }
     } catch (error) {
       logger.error('[SpecsWatcherService] Failed to read tasks.md', { specId, error });
-    }
-  }
-
-  /**
-   * spec-phase-auto-update Task 5: Check inspection completion and update phase
-   * Detects GO judgment from spec.json.inspection and updates phase to inspection-complete
-   * Requirements: 2.1, 5.1
-   */
-  private async checkInspectionCompletion(specJsonPath: string, specId: string): Promise<void> {
-    if (!this.fileService) {
-      logger.debug('[SpecsWatcherService] FileService not available, skipping inspection completion check');
-      return;
-    }
-
-    try {
-      const specJsonContent = await readFile(specJsonPath, 'utf-8');
-      const specJson = JSON.parse(specJsonContent);
-
-      // Skip if already at or past inspection-complete
-      if (specJson.phase === 'inspection-complete' || specJson.phase === 'deploy-complete') {
-        logger.debug('[SpecsWatcherService] Phase already at or past inspection-complete', { specId, phase: specJson.phase });
-        return;
-      }
-
-      // Check if phase is at implementation-complete (required to proceed)
-      if (specJson.phase !== 'implementation-complete') {
-        logger.debug('[SpecsWatcherService] Phase not at implementation-complete, skipping inspection check', { specId, phase: specJson.phase });
-        return;
-      }
-
-      // Check inspection state for GO judgment using normalized inspection state
-      // Supports all formats: new (rounds/result), legacy (roundDetails/passed), very old (status/report)
-      const normalizedState = normalizeInspectionState(specJson.inspection);
-      if (!normalizedState) {
-        logger.debug('[SpecsWatcherService] No inspection data found or invalid format', { specId });
-        return;
-      }
-
-      if (!hasPassed(normalizedState)) {
-        logger.debug('[SpecsWatcherService] Inspection not passed (no GO judgment)', { specId });
-        return;
-      }
-
-      // Update phase to inspection-complete
-      const specPath = path.dirname(specJsonPath);
-      logger.info('[SpecsWatcherService] Inspection passed (GO), updating phase to inspection-complete', { specId, previousPhase: specJson.phase });
-      const result = await this.fileService.updateSpecJsonFromPhase(specPath, 'inspection-complete', { skipTimestamp: true });
-
-      if (!result.ok) {
-        logger.error('[SpecsWatcherService] Failed to update spec.json phase to inspection-complete', { specId, error: result.error });
-      }
-    } catch (error) {
-      logger.error('[SpecsWatcherService] Failed to check inspection completion', { specId, error });
     }
   }
 

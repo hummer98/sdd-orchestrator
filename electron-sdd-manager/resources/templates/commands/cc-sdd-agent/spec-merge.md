@@ -56,79 +56,61 @@ This command:
 
 After execution, the worktree's spec directory matches the committed state in the feature branch, avoiding merge conflicts (spec changes exist only in main repo via symlink during implementation).
 
-### Step 1.6: Commit Pending Changes in Worktree
-Before merging, ensure all implementation changes in worktree are committed.
+### Step 1.6: Prepare Worktree for Merge
+Before merging, commit all changes including spec.json update in the worktree.
 
-#### 1.6.1: Check for Uncommitted Changes
+#### 1.6.1: Commit Pending Implementation Changes (if any)
 ```bash
 cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 ```
 
-#### 1.6.2: Commit All Changes (if any)
 **IF** output is not empty (uncommitted changes exist):
-1. Stage all changes:
+1. Stage and commit:
    ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && git add .
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add . && git commit -m "feat($1): implementation complete"
    ```
-2. Commit with message:
-   ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && git commit -m "feat($1): implementation complete"
-   ```
-3. Log: "Worktree内の未コミット変更をコミットしました"
+2. Log: "Worktree内の未コミット変更をコミットしました"
 
-**ELSE** (no uncommitted changes):
-- Log: "Worktree内に未コミット変更はありません"
+#### 1.6.2: Update spec.json in Worktree
+Update spec.json to deploy-complete state **in the worktree**, so it's included in the squash merge.
+
+1. Read `${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1/spec.json`
+2. Apply the following changes:
+   - Remove the `worktree` property
+   - Set `phase` to `"deploy-complete"`
+   - Update `updated_at` to current UTC timestamp (ISO 8601 format)
+   - Keep all other fields intact
+3. Write the updated spec.json back
+4. Stage and commit in worktree:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && git add .kiro/specs/$1/spec.json && git commit -m "chore($1): update spec.json for deploy-complete"
+   ```
 
 #### 1.6.3: Return to Main Project
 ```bash
 cd "$PROJECT_ROOT"
 ```
 
-### Step 1.7: Update spec.json Before Merge (Optimistic Update)
-Update spec.json to deploy-complete state before merging, so the merge commit includes the final state.
-
-#### 1.7.1: Read and Update spec.json
-Read `.kiro/specs/$1/spec.json` and apply the following changes:
-- Remove the `worktree` property
-- Set `phase` to `"deploy-complete"`
-- Update `updated_at` to current UTC timestamp (ISO 8601 format)
-- Keep all other fields intact
-
-#### 1.7.2: Save Original Values for Rollback
-Before writing, save these values in case rollback is needed:
-- `ORIGINAL_PHASE`: the current phase value
-- `ORIGINAL_WORKTREE`: the current worktree object (as JSON string)
-
-#### 1.7.3: Write Updated spec.json
-Write the modified JSON back to `.kiro/specs/$1/spec.json`.
-
-**Note**: If merge fails later, rollback by restoring `phase` and `worktree` to their original values.
-
 ### Step 2: Perform Merge
 
-> **⚠️ CRITICAL WARNING**:
-> - **NEVER use `git add .`** - this will stage unrelated files from main branch
-> - Squash merge automatically stages merged files - only `git commit` is needed
-> - Only add specific files (e.g., spec.json) if they need to be included
+> **Note**: All changes (implementation + spec.json update) are already committed in the worktree.
+> Squash merge will include everything - no `git add` needed on main branch.
 
-1. Ensure working directory is clean:
-   - Run `git status --porcelain`
-   - If there are uncommitted changes (spec.json update is expected), continue
+1. Verify main branch is clean:
+   ```bash
+   git status --porcelain
+   ```
+   - If there are uncommitted changes, warn and continue (they will NOT be included in merge)
 2. Merge the feature branch with squash:
    ```bash
    git merge --squash {worktree.branch}
    ```
-   - This automatically stages all merged changes (no `git add` needed for merged files)
-3. Stage ONLY the updated spec.json (for the spec.json changes made in Step 1.7):
-   ```bash
-   git add .kiro/specs/$1/spec.json
-   ```
-4. If merge succeeds without conflicts:
-   - Create merge commit (DO NOT use `git add .` before this):
+3. If merge succeeds without conflicts:
+   - Create merge commit:
      ```bash
      git commit -m "feat($1): merge implementation from worktree"
      ```
-5. If merge has conflicts:
+4. If merge has conflicts:
    - Attempt AI-powered conflict resolution (see Step 3)
 
 ### Step 3: Conflict Resolution (if needed)
@@ -186,10 +168,6 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 - Proceed to Step 4
 
 **ELSE IF** `attempt_count >= max_attempts`:
-- **ROLLBACK spec.json**: Restore original values saved in Step 1.7.2
-  1. Set `phase` back to `ORIGINAL_PHASE`
-  2. Restore `worktree` field with `ORIGINAL_WORKTREE` value
-  3. Write the restored spec.json
 - **Abort merge**:
   ```bash
   git merge --abort
@@ -200,7 +178,6 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   ## Conflict Resolution Failed
 
   Unable to automatically resolve merge conflicts after 7 attempts.
-  spec.json has been rolled back to its original state.
   Manual intervention is required.
 
   ### Remaining Conflicted Files:
@@ -212,7 +189,6 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   3. Resolve each conflict by keeping the desired changes
   4. Remove all conflict markers
   5. Stage only the resolved files: `git add <resolved-file-path>` (repeat for each file)
-     - ⚠️ Do NOT use `git add .` as it may stage unrelated files
   6. Run: `git commit -m "feat($1): merge implementation from worktree"`
   7. Re-run this command to complete cleanup: `/kiro:spec-merge $1`
   ```
@@ -316,15 +292,12 @@ Provide output with the following structure:
 - Error: "Unable to automatically resolve conflicts"
 - List conflicted files
 - Suggested Action: "Manually resolve conflicts, stage each file with `git add <file>`, then run `git commit`"
-- ⚠️ Do NOT use `git add .` as it may stage unrelated files from main branch
 - **Do not proceed with cleanup**
 
 **Worktree removal fails**:
 - Warning: "Failed to remove worktree"
-- Still proceed with spec.json update
 - Suggested Action: "Manually remove: `git worktree remove {path} --force`"
 
 **Branch deletion fails**:
 - Warning: "Failed to delete branch"
-- Still proceed with spec.json update
 - Suggested Action: "Manually delete: `git branch -D {branch}`"

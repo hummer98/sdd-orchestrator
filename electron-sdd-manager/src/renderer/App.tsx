@@ -35,6 +35,8 @@ import {
   BugPane,
   // debatex-document-review Task 4.1: Project Settings Dialog
   ProjectSettingsDialog,
+  // project-selection-view feature: プロジェクト選択画面
+  ProjectSelectionView,
 } from './components';
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
@@ -593,14 +595,15 @@ export function App() {
                 />
               )
             ) : (
-              /* 未選択時: プレースホルダー */
-              <div className="flex-1 flex items-center justify-center text-gray-400">
-                {currentProject ? (
-                  '.kiroディレクトリを初期化してください'
-                ) : (
-                  'プロジェクトを選択してください'
-                )}
-              </div>
+              /* 未選択時: プロジェクト選択画面 or .kiro初期化プロンプト */
+              currentProject ? (
+                <div className="flex-1 flex items-center justify-center text-gray-400">
+                  .kiroディレクトリを初期化してください
+                </div>
+              ) : (
+                /* project-selection-view feature: プロジェクト選択画面 */
+                <ProjectSelectionView />
+              )
             )}
           </main>
         </div>

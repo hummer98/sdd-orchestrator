@@ -3,7 +3,10 @@
  */
 
 export { ProjectValidationPanel } from './ProjectValidationPanel';
-export { RecentProjects } from './RecentProjects';
+// project-selection-view feature: プロジェクト選択画面
+// Note: RecentProjects.tsx は削除され、ProjectSelectionView と RecentProjectList に置き換えられました
+export { ProjectSelectionView } from './ProjectSelectionView';
+export { RecentProjectList } from './RecentProjectList';
 export { SpecList } from './SpecList';
 export { SpecDetail } from './SpecDetail';
 export { CreateSpecDialog } from './CreateSpecDialog';

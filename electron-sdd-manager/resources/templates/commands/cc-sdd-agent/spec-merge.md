@@ -105,6 +105,12 @@ Write the modified JSON back to `.kiro/specs/$1/spec.json`.
 **Note**: If merge fails later, rollback by restoring `phase` and `worktree` to their original values.
 
 ### Step 2: Perform Merge
+
+> **⚠️ CRITICAL WARNING**:
+> - **NEVER use `git add .`** - this will stage unrelated files from main branch
+> - Squash merge automatically stages merged files - only `git commit` is needed
+> - Only add specific files (e.g., spec.json) if they need to be included
+
 1. Ensure working directory is clean:
    - Run `git status --porcelain`
    - If there are uncommitted changes (spec.json update is expected), continue
@@ -112,12 +118,13 @@ Write the modified JSON back to `.kiro/specs/$1/spec.json`.
    ```bash
    git merge --squash {worktree.branch}
    ```
-3. Stage the updated spec.json (ensure it's included in merge commit):
+   - This automatically stages all merged changes (no `git add` needed for merged files)
+3. Stage ONLY the updated spec.json (for the spec.json changes made in Step 1.7):
    ```bash
    git add .kiro/specs/$1/spec.json
    ```
 4. If merge succeeds without conflicts:
-   - Create merge commit:
+   - Create merge commit (DO NOT use `git add .` before this):
      ```bash
      git commit -m "feat($1): merge implementation from worktree"
      ```
@@ -204,7 +211,8 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
   2. Search for conflict markers: `<<<<<<<`, `=======`, `>>>>>>>`
   3. Resolve each conflict by keeping the desired changes
   4. Remove all conflict markers
-  5. Run: `git add .`
+  5. Stage only the resolved files: `git add <resolved-file-path>` (repeat for each file)
+     - ⚠️ Do NOT use `git add .` as it may stage unrelated files
   6. Run: `git commit -m "feat($1): merge implementation from worktree"`
   7. Re-run this command to complete cleanup: `/kiro:spec-merge $1`
   ```
@@ -307,7 +315,8 @@ Provide output with the following structure:
 **Merge conflicts unresolvable (after 7 attempts)**:
 - Error: "Unable to automatically resolve conflicts"
 - List conflicted files
-- Suggested Action: "Manually resolve conflicts and run `git add . && git commit`"
+- Suggested Action: "Manually resolve conflicts, stage each file with `git add <file>`, then run `git commit`"
+- ⚠️ Do NOT use `git add .` as it may stage unrelated files from main branch
 - **Do not proceed with cleanup**
 
 **Worktree removal fails**:

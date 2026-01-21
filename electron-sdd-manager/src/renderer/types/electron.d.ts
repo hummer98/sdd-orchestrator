@@ -57,6 +57,40 @@ export interface ExperimentalCheckResult {
 }
 
 /**
+ * Common command decision for conflict resolution
+ * (common-commands-installer feature)
+ * Requirements: 3.4, 3.5
+ */
+export interface CommonCommandDecision {
+  readonly name: string;
+  readonly action: 'skip' | 'overwrite';
+}
+
+/**
+ * Common commands install result
+ * (common-commands-installer feature)
+ * Requirements: 3.4, 3.5
+ */
+export interface CommonCommandsInstallResult {
+  readonly totalInstalled: number;
+  readonly totalSkipped: number;
+  readonly totalFailed: number;
+  readonly installedCommands: readonly string[];
+  readonly skippedCommands: readonly string[];
+  readonly failedCommands: readonly string[];
+}
+
+/**
+ * Common command conflict info
+ * (common-commands-installer feature)
+ * Requirements: 3.1, 3.2
+ */
+export interface CommonCommandConflict {
+  readonly name: string;
+  readonly existingPath: string;
+}
+
+/**
  * Agent status type
  * Requirements: 5.2
  */
@@ -1329,6 +1363,29 @@ export interface ElectronAPI {
   } | {
     ok: false;
     error: import('../../shared/types').EventLogError;
+  }>;
+
+  // ============================================================
+  // Common Commands Install (common-commands-installer feature)
+  // Requirements: 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Confirm common commands installation with user decisions
+   * Called after profile installation when conflicts are detected
+   * @param projectPath Project root path
+   * @param decisions User decisions for each conflicting command (overwrite/skip)
+   * @returns Installation result with counts
+   */
+  confirmCommonCommands(
+    projectPath: string,
+    decisions: CommonCommandDecision[]
+  ): Promise<{
+    ok: true;
+    value: CommonCommandsInstallResult;
+  } | {
+    ok: false;
+    error: InstallError;
   }>;
 }
 

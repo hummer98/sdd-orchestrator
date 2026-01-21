@@ -322,6 +322,10 @@ export const IPC_CHANNELS = {
   // Agent Exit Error (agent-exit-robustness feature)
   // Requirements: 3.3 - Notify renderer when agent exit processing fails
   AGENT_EXIT_ERROR: 'ipc:agent-exit-error',
+
+  // Common Commands Install (common-commands-installer feature)
+  // Requirements: 3.4, 3.5
+  CONFIRM_COMMON_COMMANDS: 'ipc:confirm-common-commands',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

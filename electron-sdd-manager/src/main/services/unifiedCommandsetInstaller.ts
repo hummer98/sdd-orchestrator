@@ -2,6 +2,7 @@
  * UnifiedCommandsetInstaller
  * 統合コマンドセットインストーラー - 複数のコマンドセットを統一的なインターフェースで管理
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 12.1, 12.2, 12.3
+ * common-commands-installer: Extended with common commands integration (Tasks 3.1, 3.2)
  */
 
 import { mkdir } from 'fs/promises';
@@ -12,6 +13,13 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 import { projectConfigService, ProfileConfig, CommandsetVersionRecord } from './layoutConfigService';
 import { CommandsetDefinitionManager } from './commandsetDefinitionManager';
+import {
+  CommonCommandsInstallerService,
+  CommonCommandConflict,
+  CommonCommandDecision,
+  CommonCommandsInstallResult,
+  type InstallError as CommonCommandsInstallError,
+} from './experimentalToolsInstallerService';
 
 /**
  * Commandset names
@@ -55,6 +63,7 @@ export interface SettingsUpdateResult {
 
 /**
  * Unified install result
+ * common-commands-installer: Extended with commonCommands and commonCommandConflicts
  */
 export interface UnifiedInstallResult {
   readonly commandsets: ReadonlyMap<CommandsetName, InstallResult>;
@@ -66,6 +75,10 @@ export interface UnifiedInstallResult {
     readonly totalSkipped: number;
     readonly totalFailed: number;
   };
+  /** Common commands install result (Task 3.1) */
+  readonly commonCommands?: CommonCommandsInstallResult;
+  /** Common command conflicts for UI confirmation (Task 3.1) */
+  readonly commonCommandConflicts?: readonly CommonCommandConflict[];
 }
 
 /**
@@ -101,11 +114,13 @@ interface Profile {
 /**
  * Unified Commandset Installer
  * 複数のコマンドセットインストーラーを統一的に管理
+ * common-commands-installer: Extended with CommonCommandsInstallerService integration
  */
 export class UnifiedCommandsetInstaller {
   private ccSddInstaller: CcSddWorkflowInstaller;
   private bugInstaller: BugWorkflowInstaller;
   private definitionManager: CommandsetDefinitionManager;
+  private commonCommandsInstaller: CommonCommandsInstallerService;
 
   /**
    * Predefined profiles
@@ -137,11 +152,15 @@ export class UnifiedCommandsetInstaller {
   constructor(
     ccSddInstaller: CcSddWorkflowInstaller,
     bugInstaller: BugWorkflowInstaller,
-    _templateDir: string
+    templateDir: string
   ) {
     this.ccSddInstaller = ccSddInstaller;
     this.bugInstaller = bugInstaller;
     this.definitionManager = new CommandsetDefinitionManager();
+    // common-commands-installer: Initialize common commands installer
+    // Uses either provided template path or default path
+    const commonTemplateDir = path.join(templateDir, 'commands', 'common');
+    this.commonCommandsInstaller = new CommonCommandsInstallerService(commonTemplateDir);
   }
 
   /**
@@ -393,6 +412,37 @@ export class UnifiedCommandsetInstaller {
     // Ensure required project directories exist (.kiro/steering, .kiro/specs)
     await this.ensureProjectDirectories(projectPath);
 
+    // common-commands-installer Task 3.1: Check for common command conflicts
+    let commonCommands: CommonCommandsInstallResult | undefined;
+    let commonCommandConflicts: readonly CommonCommandConflict[] | undefined;
+
+    try {
+      const conflicts = await this.commonCommandsInstaller.checkConflicts(projectPath);
+
+      if (conflicts.length > 0) {
+        // Return conflicts for UI confirmation
+        commonCommandConflicts = conflicts;
+        console.log('[UnifiedCommandsetInstaller] Common command conflicts found', {
+          count: conflicts.length,
+          commands: conflicts.map(c => c.name),
+        });
+      } else {
+        // No conflicts - auto-install all common commands
+        const installResult = await this.commonCommandsInstaller.installAllCommands(projectPath, []);
+        if (installResult.ok) {
+          commonCommands = installResult.value;
+          commonCommandConflicts = [];
+          console.log('[UnifiedCommandsetInstaller] Common commands auto-installed', {
+            installed: installResult.value.totalInstalled,
+          });
+        }
+      }
+    } catch (error) {
+      // Log warning but don't fail profile installation
+      console.warn('[UnifiedCommandsetInstaller] Failed to process common commands', { error });
+      commonCommandConflicts = [];
+    }
+
     return {
       ok: true,
       value: {
@@ -404,7 +454,9 @@ export class UnifiedCommandsetInstaller {
           totalInstalled,
           totalSkipped,
           totalFailed
-        }
+        },
+        commonCommands,
+        commonCommandConflicts,
       }
     };
   }
@@ -562,5 +614,39 @@ export class UnifiedCommandsetInstaller {
       : 0;
 
     return ccSddCompleteness >= 80;
+  }
+
+  /**
+   * Install common commands with user decisions for conflicts
+   * common-commands-installer Task 3.2: User decision handling
+   * Requirements: 3.4, 3.5
+   * @param projectPath - Project root path
+   * @param decisions - User decisions for conflicting files
+   * @returns Install result
+   */
+  async installCommonCommandsWithDecisions(
+    projectPath: string,
+    decisions: CommonCommandDecision[]
+  ): Promise<Result<CommonCommandsInstallResult, CommonCommandsInstallError>> {
+    console.log('[UnifiedCommandsetInstaller] Installing common commands with decisions', {
+      projectPath,
+      decisionsCount: decisions.length,
+    });
+
+    const result = await this.commonCommandsInstaller.installAllCommands(projectPath, decisions);
+
+    if (result.ok) {
+      console.log('[UnifiedCommandsetInstaller] Common commands installed', {
+        installed: result.value.totalInstalled,
+        skipped: result.value.totalSkipped,
+        failed: result.value.totalFailed,
+      });
+    } else {
+      console.warn('[UnifiedCommandsetInstaller] Common commands installation failed', {
+        error: result.error,
+      });
+    }
+
+    return result;
   }
 }

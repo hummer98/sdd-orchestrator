@@ -2069,6 +2069,30 @@ const electronAPI = {
     error: import('../shared/types').EventLogError;
   }> =>
     ipcRenderer.invoke(IPC_CHANNELS.EVENT_LOG_GET, specId),
+
+  // ============================================================
+  // Common Commands Install (common-commands-installer feature)
+  // Requirements: 3.4, 3.5
+  // ============================================================
+
+  /**
+   * Confirm common commands installation with user decisions
+   * Called after profile installation when conflicts are detected
+   * @param projectPath Project root path
+   * @param decisions User decisions for each conflicting command (overwrite/skip)
+   * @returns Installation result with counts
+   */
+  confirmCommonCommands: (
+    projectPath: string,
+    decisions: import('../main/services/experimentalToolsInstallerService').CommonCommandDecision[]
+  ): Promise<{
+    ok: true;
+    value: import('../main/services/experimentalToolsInstallerService').CommonCommandsInstallResult;
+  } | {
+    ok: false;
+    error: import('../main/services/ccSddWorkflowInstaller').InstallError;
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CONFIRM_COMMON_COMMANDS, projectPath, decisions),
 };
 
 // Expose API to renderer

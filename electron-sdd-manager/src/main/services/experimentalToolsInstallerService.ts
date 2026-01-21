@@ -5,7 +5,7 @@
  * Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
  */
 
-import { readFile, writeFile, mkdir, access } from 'fs/promises';
+import { readFile, writeFile, mkdir, access, readdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
 import { getExperimentalTemplatesPath, getCommonCommandsTemplatesPath } from '../utils/resourcePaths';
@@ -544,7 +544,63 @@ export function getCommonCommandsTemplateDir(): string {
 export type CommonCommandType = 'commit';
 
 /**
- * Service for installing common commands (auto-installed on project selection)
+ * Common command info (Task 2.1)
+ * Requirements: 4.1, 4.2, 4.3
+ */
+export interface CommonCommandInfo {
+  /** Command name (filename without .md extension) */
+  readonly name: string;
+  /** Absolute path to template file */
+  readonly templatePath: string;
+  /** Target relative path in project (e.g., ".claude/commands/commit.md") */
+  readonly targetRelativePath: string;
+}
+
+/**
+ * Common command conflict info (Task 2.2)
+ * Requirements: 3.1, 3.2
+ */
+export interface CommonCommandConflict {
+  /** Command name */
+  readonly name: string;
+  /** Absolute path to existing file in project */
+  readonly existingPath: string;
+}
+
+/**
+ * User decision for common command conflict (Task 2.3)
+ * Requirements: 3.4, 3.5
+ */
+export interface CommonCommandDecision {
+  /** Command name */
+  readonly name: string;
+  /** User action: skip or overwrite */
+  readonly action: 'skip' | 'overwrite';
+}
+
+/**
+ * Result of installAllCommands (Task 2.3)
+ * Requirements: 3.4, 3.5
+ */
+export interface CommonCommandsInstallResult {
+  /** Number of successfully installed commands */
+  readonly totalInstalled: number;
+  /** Number of skipped commands */
+  readonly totalSkipped: number;
+  /** Number of failed commands */
+  readonly totalFailed: number;
+  /** List of installed command names */
+  readonly installedCommands: readonly string[];
+  /** List of skipped command names */
+  readonly skippedCommands: readonly string[];
+  /** List of failed command names */
+  readonly failedCommands: readonly string[];
+}
+
+/**
+ * Service for installing common commands
+ * common-commands-installer: Extended with listCommonCommands, checkConflicts, installAllCommands
+ * Requirements: 4.1, 4.2, 4.3, 3.1, 3.2, 3.4, 3.5
  */
 export class CommonCommandsInstallerService {
   private templateDir: string;
@@ -627,5 +683,118 @@ export class CommonCommandsInstallerService {
     const targetPath = join(projectPath, '.claude', 'commands', 'commit.md');
     const exists = await fileExists(targetPath);
     return { exists, path: targetPath };
+  }
+
+  /**
+   * List all available common commands from template directory
+   * Task 2.1: Requirements: 4.1, 4.2, 4.3
+   * @returns Array of CommonCommandInfo
+   */
+  async listCommonCommands(): Promise<CommonCommandInfo[]> {
+    try {
+      const files = await readdir(this.templateDir);
+      const commands: CommonCommandInfo[] = [];
+
+      for (const file of files) {
+        // Filter for .md files only, exclude README
+        if (file.endsWith('.md') && file.toUpperCase() !== 'README.MD') {
+          const name = file.replace(/\.md$/, '');
+          commands.push({
+            name,
+            templatePath: join(this.templateDir, file),
+            targetRelativePath: `.claude/commands/${file}`,
+          });
+        }
+      }
+
+      return commands;
+    } catch {
+      // Return empty array if directory doesn't exist or can't be read
+      return [];
+    }
+  }
+
+  /**
+   * Check for conflicts between template commands and existing project files
+   * Task 2.2: Requirements: 3.1, 3.2
+   * @param projectPath - Project root path
+   * @returns Array of CommonCommandConflict for existing files
+   */
+  async checkConflicts(projectPath: string): Promise<CommonCommandConflict[]> {
+    const commands = await this.listCommonCommands();
+    const conflicts: CommonCommandConflict[] = [];
+
+    for (const cmd of commands) {
+      const targetPath = join(projectPath, cmd.targetRelativePath);
+      if (await fileExists(targetPath)) {
+        conflicts.push({
+          name: cmd.name,
+          existingPath: targetPath,
+        });
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Install all common commands with user decisions for conflicts
+   * Task 2.3: Requirements: 3.4, 3.5
+   * @param projectPath - Project root path
+   * @param decisions - User decisions for conflicting files
+   * @returns Install result
+   */
+  async installAllCommands(
+    projectPath: string,
+    decisions: CommonCommandDecision[]
+  ): Promise<Result<CommonCommandsInstallResult, InstallError>> {
+    const commands = await this.listCommonCommands();
+    const decisionMap = new Map(decisions.map(d => [d.name, d.action]));
+
+    const installedCommands: string[] = [];
+    const skippedCommands: string[] = [];
+    const failedCommands: string[] = [];
+
+    for (const cmd of commands) {
+      const targetPath = join(projectPath, cmd.targetRelativePath);
+      const exists = await fileExists(targetPath);
+
+      // Determine action based on file existence and user decisions
+      if (exists) {
+        const action = decisionMap.get(cmd.name);
+        if (action === 'skip') {
+          skippedCommands.push(cmd.name);
+          continue;
+        }
+        // If action is 'overwrite' or not specified (default to overwrite for conflicts with decision)
+        // If exists but no decision, we should not install (treat as skip for safety)
+        if (!action) {
+          skippedCommands.push(cmd.name);
+          continue;
+        }
+      }
+
+      // Install the file
+      try {
+        const content = await readFile(cmd.templatePath, 'utf-8');
+        await mkdir(dirname(targetPath), { recursive: true });
+        await writeFile(targetPath, content, 'utf-8');
+        installedCommands.push(cmd.name);
+      } catch (error) {
+        failedCommands.push(cmd.name);
+      }
+    }
+
+    return {
+      ok: true,
+      value: {
+        totalInstalled: installedCommands.length,
+        totalSkipped: skippedCommands.length,
+        totalFailed: failedCommands.length,
+        installedCommands,
+        skippedCommands,
+        failedCommands,
+      },
+    };
   }
 }

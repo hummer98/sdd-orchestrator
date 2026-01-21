@@ -581,4 +581,118 @@ describe('UnifiedCommandsetInstaller', () => {
       expect(testFileExists).toBe(true);
     });
   });
+
+  // ============================================================
+  // common-commands-installer Task 3.1, 3.2, 6.2: Common Commands Integration
+  // Requirements: 2.1, 2.2, 2.3, 3.4, 3.5
+  // ============================================================
+
+  describe('common commands integration (Task 3.1, 3.2)', () => {
+    beforeEach(async () => {
+      // Create common commands templates
+      const commonDir = path.join(templateDir, 'commands', 'common');
+      await fs.mkdir(commonDir, { recursive: true });
+      await fs.writeFile(path.join(commonDir, 'commit.md'), '# Commit Command');
+      await fs.writeFile(path.join(commonDir, 'another-cmd.md'), '# Another Command');
+    });
+
+    it('should return commonCommandConflicts when conflicts exist', async () => {
+      // Create existing common command file
+      const targetDir = path.join(tempDir, '.claude', 'commands');
+      await fs.mkdir(targetDir, { recursive: true });
+      await fs.writeFile(path.join(targetDir, 'commit.md'), 'existing content');
+
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Should have common command conflicts
+        expect(result.value.commonCommandConflicts).toBeDefined();
+        expect(result.value.commonCommandConflicts?.length).toBeGreaterThan(0);
+        expect(result.value.commonCommandConflicts?.some(c => c.name === 'commit')).toBe(true);
+      }
+    });
+
+    it('should auto-install common commands when no conflicts exist', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Should have no conflicts
+        expect(result.value.commonCommandConflicts?.length ?? 0).toBe(0);
+        // Common commands should be installed
+        expect(result.value.commonCommands?.totalInstalled).toBeGreaterThan(0);
+      }
+    });
+
+    it('should include commonCommands result in UnifiedInstallResult', async () => {
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveProperty('commonCommands');
+        expect(result.value).toHaveProperty('commonCommandConflicts');
+      }
+    });
+
+    it('should continue profile installation even if common commands fail', async () => {
+      // Make common commands template directory unreadable/missing
+      await fs.rm(path.join(templateDir, 'commands', 'common'), { recursive: true, force: true });
+
+      const result = await installer.installByProfile(tempDir, 'cc-sdd');
+
+      // Profile installation should succeed even if common commands fail
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Summary should show profile was installed
+        expect(result.value.summary.totalInstalled).toBeGreaterThan(0);
+      }
+    });
+
+    describe('installCommonCommandsWithDecisions (Task 3.2)', () => {
+      it('should install common commands based on user decisions', async () => {
+        // Create existing file
+        const targetDir = path.join(tempDir, '.claude', 'commands');
+        await fs.mkdir(targetDir, { recursive: true });
+        await fs.writeFile(path.join(targetDir, 'commit.md'), 'existing content');
+
+        const decisions = [
+          { name: 'commit', action: 'overwrite' as const }
+        ];
+
+        const result = await installer.installCommonCommandsWithDecisions(tempDir, decisions);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.totalInstalled).toBeGreaterThan(0);
+        }
+
+        // Verify file was overwritten
+        const content = await fs.readFile(path.join(targetDir, 'commit.md'), 'utf-8');
+        expect(content).toContain('Commit Command');
+      });
+
+      it('should skip common commands based on user decisions', async () => {
+        // Create existing file
+        const targetDir = path.join(tempDir, '.claude', 'commands');
+        await fs.mkdir(targetDir, { recursive: true });
+        await fs.writeFile(path.join(targetDir, 'commit.md'), 'existing content');
+
+        const decisions = [
+          { name: 'commit', action: 'skip' as const }
+        ];
+
+        const result = await installer.installCommonCommandsWithDecisions(tempDir, decisions);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.totalSkipped).toBeGreaterThan(0);
+        }
+
+        // Verify file was NOT overwritten
+        const content = await fs.readFile(path.join(targetDir, 'commit.md'), 'utf-8');
+        expect(content).toBe('existing content');
+      });
+    });
+  });
 });

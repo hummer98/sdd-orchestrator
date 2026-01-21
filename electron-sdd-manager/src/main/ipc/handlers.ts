@@ -48,8 +48,8 @@ import { layoutConfigService, type LayoutValues } from '../services/layoutConfig
 import {
   ExperimentalToolsInstallerService,
   getExperimentalTemplateDir,
-  getCommonCommandsTemplateDir,
-  CommonCommandsInstallerService,
+  // common-commands-installer: Removed getCommonCommandsTemplateDir, CommonCommandsInstallerService
+  // They are now managed within UnifiedCommandsetInstaller
   type InstallOptions as ExperimentalInstallOptions,
   type InstallResult as ExperimentalInstallResult,
   type InstallError as ExperimentalInstallError,
@@ -63,7 +63,7 @@ import { getDefaultEventLogService } from '../services/eventLogService';
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
 const experimentalToolsInstaller = new ExperimentalToolsInstallerService(getExperimentalTemplateDir());
-const commonCommandsInstaller = new CommonCommandsInstallerService(getCommonCommandsTemplateDir());
+// common-commands-installer: commonCommandsInstaller is now managed within UnifiedCommandsetInstaller
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
@@ -405,22 +405,9 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   initDefaultLogFileService(path.join(projectPath, '.kiro', 'specs'));
   logger.info('[handlers] LogFileService initialized');
 
-  // Auto-install /commit command (required for deploy phase)
-  // commit.md is installed automatically since it's a core command for the workflow
-  try {
-    const commitResult = await commonCommandsInstaller.installCommitCommand(projectPath);
-    if (commitResult.ok) {
-      if (commitResult.value.installedFiles.length > 0) {
-        logger.info('[handlers] Commit command auto-installed', { files: commitResult.value.installedFiles });
-      } else if (commitResult.value.skippedFiles.length > 0) {
-        logger.debug('[handlers] Commit command already exists, skipped');
-      }
-    } else {
-      logger.warn('[handlers] Failed to auto-install commit command', { error: commitResult.error });
-    }
-  } catch (error) {
-    logger.warn('[handlers] Error during commit command auto-install', { error });
-  }
+  // common-commands-installer: Removed auto-install of commit.md
+  // Requirement 1.1, 1.2: No implicit installation on project selection
+  // Common commands are now installed explicitly via profile installation
 
   // Restore agents from PID files and cleanup stale ones
   try {
@@ -1657,6 +1644,59 @@ export function registerIpcHandlers(): void {
         totalInstalled: result.value.summary.totalInstalled,
         totalSkipped: result.value.summary.totalSkipped,
         totalFailed: result.value.summary.totalFailed
+      });
+
+      return result;
+    }
+  );
+
+  // ============================================================
+  // Common Commands Install Handler (common-commands-installer feature)
+  // Requirements: 3.4, 3.5
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIRM_COMMON_COMMANDS,
+    async (
+      _event,
+      projectPath: string,
+      decisions: { name: string; action: 'skip' | 'overwrite' }[]
+    ): Promise<{
+      ok: true;
+      value: {
+        totalInstalled: number;
+        totalSkipped: number;
+        totalFailed: number;
+        installedCommands: readonly string[];
+        skippedCommands: readonly string[];
+        failedCommands: readonly string[];
+      };
+    } | {
+      ok: false;
+      error: { type: string; path?: string; message?: string };
+    }> => {
+      logger.info('[handlers] CONFIRM_COMMON_COMMANDS called', {
+        projectPath,
+        decisionsCount: decisions.length,
+      });
+
+      const result = await unifiedCommandsetInstaller.installCommonCommandsWithDecisions(
+        projectPath,
+        decisions
+      );
+
+      if (!result.ok) {
+        logger.error('[handlers] CONFIRM_COMMON_COMMANDS failed', { error: result.error });
+        return {
+          ok: false,
+          error: result.error,
+        };
+      }
+
+      logger.info('[handlers] CONFIRM_COMMON_COMMANDS succeeded', {
+        totalInstalled: result.value.totalInstalled,
+        totalSkipped: result.value.totalSkipped,
+        totalFailed: result.value.totalFailed,
       });
 
       return result;

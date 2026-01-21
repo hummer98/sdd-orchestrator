@@ -2,11 +2,13 @@
  * CommandsetInstallDialog Component
  * Profile selection dialog for unified commandset installation
  * Requirements: 10.2, 10.3
+ * common-commands-installer: Extended with common command conflict confirmation (Tasks 5.1, 5.2, 5.3)
  */
 
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle, Trash2, FolderCheck } from 'lucide-react';
+import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle, Trash2, FolderCheck, FileText, RefreshCw, SkipForward } from 'lucide-react';
 import { clsx } from 'clsx';
+import type { CommonCommandConflict, CommonCommandDecision, CommonCommandsInstallResult } from '../types/electron.d';
 
 /**
  * Profile name type
@@ -24,11 +26,16 @@ export interface InstallProgress {
 
 /**
  * Install result summary
+ * common-commands-installer: Extended with commonCommands and commonCommandConflicts
  */
 export interface InstallResultSummary {
   totalInstalled: number;
   totalSkipped: number;
   totalFailed: number;
+  /** Common commands install result (Task 5.3) */
+  commonCommands?: CommonCommandsInstallResult;
+  /** Common command conflicts for UI confirmation (Task 5.1) */
+  commonCommandConflicts?: readonly CommonCommandConflict[];
 }
 
 /**
@@ -76,8 +83,9 @@ const PROFILES: Profile[] = [
 
 /**
  * Dialog state type
+ * common-commands-installer: Added 'common-command-confirm' state (Task 5.1)
  */
-type DialogState = 'selection' | 'agent-cleanup-confirm' | 'installing' | 'complete';
+type DialogState = 'selection' | 'agent-cleanup-confirm' | 'installing' | 'common-command-confirm' | 'complete';
 
 /**
  * Agent cleanup choice type
@@ -98,6 +106,11 @@ interface CommandsetInstallDialogProps {
   onInstall: (profileName: ProfileName, progressCallback?: ProgressCallback) => Promise<InstallResultSummary | void>;
   onCheckAgentFolderExists?: (projectPath: string) => Promise<boolean>;
   onDeleteAgentFolder?: (projectPath: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** common-commands-installer: Callback to confirm common commands with user decisions */
+  onConfirmCommonCommands?: (
+    projectPath: string,
+    decisions: CommonCommandDecision[]
+  ) => Promise<{ ok: true; value: CommonCommandsInstallResult } | { ok: false; error: unknown }>;
 }
 
 export function CommandsetInstallDialog({
@@ -107,6 +120,7 @@ export function CommandsetInstallDialog({
   onInstall,
   onCheckAgentFolderExists,
   onDeleteAgentFolder,
+  onConfirmCommonCommands,
 }: CommandsetInstallDialogProps) {
   const [selectedProfile, setSelectedProfile] = useState<ProfileName>('cc-sdd');
   const [dialogState, setDialogState] = useState<DialogState>('selection');
@@ -114,6 +128,9 @@ export function CommandsetInstallDialog({
   const [progress, setProgress] = useState<InstallProgress | null>(null);
   const [result, setResult] = useState<InstallResultSummary | null>(null);
   const [agentFolderExists, setAgentFolderExists] = useState<boolean>(false);
+  // common-commands-installer: State for conflict confirmation (Task 5.1)
+  const [commonCommandConflicts, setCommonCommandConflicts] = useState<readonly CommonCommandConflict[]>([]);
+  const [commonCommandDecisions, setCommonCommandDecisions] = useState<Map<string, 'skip' | 'overwrite'>>(new Map());
 
   // Check agent folder existence when dialog opens
   useEffect(() => {
@@ -187,10 +204,24 @@ export function CommandsetInstallDialog({
         setProgress(progressData);
       });
 
-      // If result is returned, show it; otherwise just close
+      // If result is returned, check for common command conflicts
       if (installResult) {
-        setResult(installResult);
-        setDialogState('complete');
+        // common-commands-installer: Check for conflicts (Task 5.1)
+        if (installResult.commonCommandConflicts && installResult.commonCommandConflicts.length > 0) {
+          // Show conflict confirmation dialog
+          setCommonCommandConflicts(installResult.commonCommandConflicts);
+          // Initialize decisions as 'overwrite' by default
+          const initialDecisions = new Map<string, 'skip' | 'overwrite'>();
+          for (const conflict of installResult.commonCommandConflicts) {
+            initialDecisions.set(conflict.name, 'overwrite');
+          }
+          setCommonCommandDecisions(initialDecisions);
+          setResult(installResult);
+          setDialogState('common-command-confirm');
+        } else {
+          setResult(installResult);
+          setDialogState('complete');
+        }
       } else {
         onClose();
       }
@@ -200,11 +231,83 @@ export function CommandsetInstallDialog({
     }
   };
 
+  /**
+   * common-commands-installer: Handle common command decision change (Task 5.2)
+   */
+  const handleCommonCommandDecision = (name: string, action: 'skip' | 'overwrite') => {
+    setCommonCommandDecisions(prev => {
+      const updated = new Map(prev);
+      updated.set(name, action);
+      return updated;
+    });
+  };
+
+  /**
+   * common-commands-installer: Handle common command confirm (Task 5.2)
+   */
+  const handleCommonCommandConfirm = async () => {
+    if (!onConfirmCommonCommands) {
+      // Callback not provided, just complete
+      setDialogState('complete');
+      return;
+    }
+
+    setDialogState('installing');
+    setError(null);
+
+    try {
+      const decisions: CommonCommandDecision[] = Array.from(commonCommandDecisions.entries()).map(
+        ([name, action]) => ({ name, action })
+      );
+
+      const confirmResult = await onConfirmCommonCommands(projectPath, decisions);
+
+      if (confirmResult.ok) {
+        // Update result with common commands info
+        setResult(prev => prev ? {
+          ...prev,
+          commonCommands: confirmResult.value,
+          commonCommandConflicts: undefined, // Clear conflicts
+        } : null);
+        setDialogState('complete');
+      } else {
+        setError('コマンドのインストールに失敗しました');
+        setDialogState('common-command-confirm');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setDialogState('common-command-confirm');
+    }
+  };
+
+  /**
+   * common-commands-installer: Skip all common commands (Task 5.2)
+   */
+  const handleSkipAllCommonCommands = () => {
+    // Update result to mark all as skipped and complete
+    setResult(prev => prev ? {
+      ...prev,
+      commonCommands: {
+        totalInstalled: 0,
+        totalSkipped: commonCommandConflicts.length,
+        totalFailed: 0,
+        installedCommands: [],
+        skippedCommands: commonCommandConflicts.map(c => c.name),
+        failedCommands: [],
+      },
+      commonCommandConflicts: undefined,
+    } : null);
+    setDialogState('complete');
+  };
+
   const handleClose = () => {
     setDialogState('selection');
     setProgress(null);
     setResult(null);
     setError(null);
+    // common-commands-installer: Clear conflict state
+    setCommonCommandConflicts([]);
+    setCommonCommandDecisions(new Map());
     onClose();
   };
 
@@ -218,6 +321,7 @@ export function CommandsetInstallDialog({
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             {dialogState === 'complete' ? 'インストール完了' :
              dialogState === 'agent-cleanup-confirm' ? 'エージェントフォルダの確認' :
+             dialogState === 'common-command-confirm' ? 'Commonコマンドの確認' :
              'コマンドセットをインストール'}
           </h2>
           <button
@@ -369,6 +473,65 @@ export function CommandsetInstallDialog({
             </div>
           )}
 
+          {/* common-commands-installer Task 5.2: Common Command Confirmation UI */}
+          {dialogState === 'common-command-confirm' && commonCommandConflicts.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-300">
+                    既存のCommonコマンドが検出されました
+                  </p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                    プロジェクトに以下のファイルが既に存在します。各ファイルについて上書きまたはスキップを選択してください。
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {commonCommandConflicts.map((conflict) => (
+                  <div
+                    key={conflict.name}
+                    className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {conflict.name}.md
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleCommonCommandDecision(conflict.name, 'overwrite')}
+                        className={clsx(
+                          'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+                          commonCommandDecisions.get(conflict.name) === 'overwrite'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        )}
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        上書き
+                      </button>
+                      <button
+                        onClick={() => handleCommonCommandDecision(conflict.name, 'skip')}
+                        className={clsx(
+                          'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+                          commonCommandDecisions.get(conflict.name) === 'skip'
+                            ? 'bg-gray-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        )}
+                      >
+                        <SkipForward className="w-3 h-3" />
+                        スキップ
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Progress Bar (shown during installation) */}
           {dialogState === 'installing' && (
             <div className="space-y-3">
@@ -427,6 +590,7 @@ export function CommandsetInstallDialog({
               </div>
 
               {/* Result details */}
+              {/* Profile install result */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md text-center">
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -452,6 +616,40 @@ export function CommandsetInstallDialog({
                   <p className="text-xs text-gray-500 dark:text-gray-400">失敗</p>
                 </div>
               </div>
+
+              {/* common-commands-installer Task 5.3: Common commands result */}
+              {result.commonCommands && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Commonコマンド
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-center">
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {result.commonCommands.totalInstalled}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">インストール</p>
+                    </div>
+                    <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-center">
+                      <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
+                        {result.commonCommands.totalSkipped}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">スキップ</p>
+                    </div>
+                    <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-center">
+                      <p className={clsx(
+                        'text-lg font-bold',
+                        result.commonCommands.totalFailed > 0
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      )}>
+                        {result.commonCommands.totalFailed}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">失敗</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -517,6 +715,31 @@ export function CommandsetInstallDialog({
               <Loader2 className="w-4 h-4 animate-spin" />
               インストール中...
             </button>
+          )}
+
+          {/* common-commands-installer Task 5.2: Confirm buttons */}
+          {dialogState === 'common-command-confirm' && (
+            <>
+              <button
+                onClick={handleSkipAllCommonCommands}
+                className={clsx(
+                  'px-4 py-2 rounded-md text-sm',
+                  'text-gray-700 dark:text-gray-300',
+                  'hover:bg-gray-100 dark:hover:bg-gray-700'
+                )}
+              >
+                すべてスキップ
+              </button>
+              <button
+                onClick={handleCommonCommandConfirm}
+                className={clsx(
+                  'px-4 py-2 rounded-md text-sm',
+                  'bg-blue-500 hover:bg-blue-600 text-white'
+                )}
+              >
+                続行
+              </button>
+            </>
           )}
 
           {dialogState === 'complete' && (

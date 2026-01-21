@@ -54,6 +54,8 @@ allowed-tools: Bash(git *), Read, Glob
 - `.kiro/specs/{feature}/tasks.md` を読み込み
 - タスクに関連するファイルパターンを抽出
 - 関連する実装ファイル、テストファイル、ドキュメントを対象に含める
+- **Specドキュメント自体も含める**: `.kiro/specs/{feature}/` ディレクトリ内の全ファイル（requirements.md, design.md, tasks.md, planning.md 等）
+- **コミット前にspec.jsonのphaseを更新**: `phase: 'deploy-complete'` に設定し、コミットに含める
 
 **Bug の場合**:
 - `.kiro/bugs/{bug-name}/` 内のファイル（report.md, analysis.md, fix.md, verification.md）
@@ -133,10 +135,26 @@ git diff
 
 必要に応じて本文を追加（詳細な説明、理由、影響範囲等）
 
-### 6. コミット実行
+### 6. Spec の場合: phase を deploy-complete に更新（コミット前）
+
+**Spec 引数が指定されていた場合のみ**:
+
+コミット前に `.kiro/specs/{feature}/spec.json` の `phase` を `deploy-complete` に更新する。
+
+```bash
+# spec.json を読み込み、phase を更新
+# jq がある場合:
+jq '.phase = "deploy-complete" | .updated_at = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+  .kiro/specs/{feature}/spec.json > tmp.json && mv tmp.json .kiro/specs/{feature}/spec.json
+
+# jq がない場合は、sed または手動で更新
+```
+
+### 7. コミット実行
 
 ```bash
 # 現在のセッションで変更したファイルのみをステージング
+# Spec の場合は spec.json も含める
 git add [current-session-files]
 
 # コミットメッセージと共にコミット
@@ -149,8 +167,9 @@ git commit -m "type: subject"
 - 現在のセッションで明示的に変更したファイルのみをステージングする
 - 他のセッションやバックグラウンドで変更されたファイルは含めない
 - ユーザーが現在のタスクで意図的に変更したファイルを優先する
+- **Spec の場合**: 更新した spec.json も忘れずにステージングする
 
-### 7. 結果の確認
+### 8. 結果の確認
 
 ```bash
 git log --oneline -n [コミット数]
@@ -212,11 +231,21 @@ feat: 新サービスの実装とテスト追加
 
 1. .kiro/specs/my-new-feature/tasks.md を読み込み
 2. タスクに記載されたファイルパスを抽出
-3. git status と照合してコミット対象を決定
-4. コミットメッセージに feature 名を含める
+3. .kiro/specs/my-new-feature/ 内のドキュメントも対象に含める
+4. spec.json の phase を deploy-complete に更新
+5. git status と照合してコミット対象を決定
+6. コミットメッセージに feature 名を含める
+
+変更内容:
+- .kiro/specs/my-new-feature/requirements.md
+- .kiro/specs/my-new-feature/design.md
+- .kiro/specs/my-new-feature/tasks.md
+- .kiro/specs/my-new-feature/spec.json (phase: deploy-complete)
+- src/features/myNewFeature.ts
+- src/features/myNewFeature.test.ts
 
 コミット:
-feat(my-new-feature): タスク1.1〜1.3の実装完了
+feat(my-new-feature): 機能実装と仕様ドキュメント追加
 ```
 
 ### Example 5: Bug-based Commit

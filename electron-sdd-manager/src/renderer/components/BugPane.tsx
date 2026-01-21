@@ -68,9 +68,10 @@ export function BugPane({
     <div className="flex-1 flex overflow-hidden">
       {/* Center - Bug Document Editor */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* spec-path-ssot-refactor: Changed basePath to baseName */}
         <ArtifactEditor
           tabs={BUG_TABS}
-          basePath={selectedBug.path}
+          baseName={selectedBug.name}
           placeholder="バグを選択してエディターを開始"
           artifacts={artifacts}
           testId="bug-artifact-editor"

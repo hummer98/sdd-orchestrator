@@ -77,11 +77,11 @@ export function BugWorkflowView() {
   const startAutoExecutionInStore = useBugAutoExecutionStore((state) => state.startAutoExecution);
   const stopAutoExecutionInStore = useBugAutoExecutionStore((state) => state.stopAutoExecution);
 
-  // Get bug path for store key
-  const bugPath = selectedBug?.path ?? null;
+  // Get bug name for store key - spec-path-ssot-refactor
+  const bugName = selectedBug?.name ?? null;
 
   // Get auto execution runtime state for current bug
-  const runtime = bugPath ? getBugAutoExecutionRuntime(bugPath) : null;
+  const runtime = bugName ? getBugAutoExecutionRuntime(bugName) : null;
   const autoExecutionStatus = runtime?.autoExecutionStatus ?? 'idle';
   const currentAutoPhase = runtime?.currentAutoPhase ?? null;
   const lastFailedPhase = runtime?.lastFailedPhase ?? null;
@@ -95,14 +95,14 @@ export function BugWorkflowView() {
   const lastFetchedBugPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (bugPath && bugPath !== lastFetchedBugPath.current) {
-      lastFetchedBugPath.current = bugPath;
+    if (bugName && bugName !== lastFetchedBugPath.current) {
+      lastFetchedBugPath.current = bugName;
       // Fetch state from Main Process when bug is selected
-      fetchBugAutoExecutionState(bugPath).catch((err) => {
+      fetchBugAutoExecutionState(bugName).catch((err) => {
         console.error('[BugWorkflowView] Failed to fetch bug auto-execution state:', err);
       });
     }
-  }, [bugPath, fetchBugAutoExecutionState]);
+  }, [bugName, fetchBugAutoExecutionState]);
 
   // Get running phases for the selected bug
   // Use bug:{name} format to match AgentListPanel filtering
@@ -207,18 +207,21 @@ export function BugWorkflowView() {
   }, [bugDetail]);
 
   const handleStartAutoExecution = useCallback(async () => {
-    if (!bugPath || !selectedBug) {
+    if (!bugName || !selectedBug) {
       notify.error('自動実行を開始できませんでした');
       return;
     }
 
     try {
       // Update store state first (optimistic update)
-      startAutoExecutionInStore(bugPath);
+      startAutoExecutionInStore(bugName);
 
       // Call Main Process to start auto-execution using existing IPC API
+      // spec-path-ssot-refactor: Bug auto-execution API still uses bugPath for backward compatibility
+      // The API expects bugPath to be the full path, but we only have name now
+      // Use bugName as the identifier (handlers will resolve the path)
       const result = await window.electronAPI.bugAutoExecutionStart({
-        bugPath,
+        bugPath: bugName,  // Using name as path identifier for now
         bugName: selectedBug.name,
         options: {
           permissions: bugAutoExecutionPermissions,
@@ -228,41 +231,43 @@ export function BugWorkflowView() {
 
       if (!result.ok) {
         // Revert optimistic update on failure
-        stopAutoExecutionInStore(bugPath);
+        stopAutoExecutionInStore(bugName);
         const errorMsg = 'message' in result.error ? result.error.message : result.error.type;
         notify.error(errorMsg || '自動実行を開始できませんでした');
       }
     } catch (error) {
       // Revert optimistic update on error
-      stopAutoExecutionInStore(bugPath);
+      stopAutoExecutionInStore(bugName);
       notify.error(error instanceof Error ? error.message : '自動実行を開始できませんでした');
     }
-  }, [bugPath, selectedBug, bugAutoExecutionPermissions, startAutoExecutionInStore, stopAutoExecutionInStore, getLastCompletedPhase]);
+  }, [bugName, selectedBug, bugAutoExecutionPermissions, startAutoExecutionInStore, stopAutoExecutionInStore, getLastCompletedPhase]);
 
   const handleStopAutoExecution = useCallback(async () => {
-    if (!bugPath) return;
+    if (!bugName) return;
 
     try {
       // Call Main Process to stop auto-execution using existing IPC API
-      await window.electronAPI.bugAutoExecutionStop({ bugPath });
+      // spec-path-ssot-refactor: API expects bugPath, using bugName as identifier
+      await window.electronAPI.bugAutoExecutionStop({ bugPath: bugName });
       // Store will be updated by IPC event
     } catch (error) {
       // Force stop in store if IPC fails
-      stopAutoExecutionInStore(bugPath);
+      stopAutoExecutionInStore(bugName);
       console.error('[BugWorkflowView] Failed to stop auto-execution:', error);
     }
-  }, [bugPath, stopAutoExecutionInStore]);
+  }, [bugName, stopAutoExecutionInStore]);
 
   const handleRetryAutoExecution = useCallback(async () => {
-    if (!bugPath || !lastFailedPhase) {
+    if (!bugName || !lastFailedPhase) {
       notify.error('リトライを開始できませんでした');
       return;
     }
 
     try {
       // Call Main Process to retry from failed phase using existing IPC API
+      // spec-path-ssot-refactor: API expects bugPath, using bugName as identifier
       const result = await window.electronAPI.bugAutoExecutionRetryFrom({
-        bugPath,
+        bugPath: bugName,
         phase: lastFailedPhase,
       });
 
@@ -273,7 +278,7 @@ export function BugWorkflowView() {
     } catch (error) {
       notify.error(error instanceof Error ? error.message : 'リトライを開始できませんでした');
     }
-  }, [bugPath, lastFailedPhase]);
+  }, [bugName, lastFailedPhase]);
 
   // If no bug is selected, show placeholder
   if (!selectedBug) {

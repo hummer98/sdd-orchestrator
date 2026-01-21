@@ -135,9 +135,10 @@ export function SpecPane({
     <div className="flex-1 flex overflow-hidden">
       {/* Center - Editor */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* spec-path-ssot-refactor: Changed basePath to baseName */}
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath={selectedSpec.path}
+          baseName={selectedSpec.name}
           placeholder="仕様を選択してエディターを開始"
           dynamicTabs={dynamicTabs}
           artifacts={artifacts}

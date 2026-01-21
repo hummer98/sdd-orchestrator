@@ -32,8 +32,8 @@ export interface ArtifactInfo {
 export interface ArtifactEditorProps {
   /** Base tabs configuration */
   tabs: TabInfo[];
-  /** Base path for artifacts (spec or bug directory path) */
-  basePath: string | null;
+  /** Base name for artifacts (spec or bug name) - spec-path-ssot-refactor */
+  baseName: string | null;
   /** Placeholder text when nothing is selected */
   placeholder: string;
   /** Dynamic tabs (e.g., document review, inspection) */
@@ -44,9 +44,10 @@ export interface ArtifactEditorProps {
   testId?: string;
 }
 
+// spec-path-ssot-refactor: Changed baseName to baseName
 export function ArtifactEditor({
   tabs,
-  basePath,
+  baseName,
   placeholder,
   dynamicTabs = [],
   artifacts,
@@ -94,7 +95,7 @@ export function ArtifactEditor({
 
   // Setup keyboard shortcuts for search
   useSearchKeyboard({
-    enabled: !!basePath,
+    enabled: !!baseName,
     searchVisible,
     onToggle: handleSearchToggle,
     onClose: handleSearchClose,
@@ -102,14 +103,14 @@ export function ArtifactEditor({
     onPrev: navigatePrev,
   });
 
-  // Load artifact when basePath or tab changes
+  // Load artifact when baseName or tab changes
   useEffect(() => {
-    if (basePath) {
-      loadArtifact(basePath, activeTab);
+    if (baseName) {
+      loadArtifact(baseName, activeTab);
     } else {
       clearEditor();
     }
-  }, [basePath, activeTab, loadArtifact, clearEditor]);
+  }, [baseName, activeTab, loadArtifact, clearEditor]);
 
   // Filter base tabs to only show existing artifacts, then add dynamic tabs
   const availableTabs = useMemo((): TabInfo[] => {
@@ -134,7 +135,7 @@ export function ArtifactEditor({
     }
   }, [availableTabs, activeTab, setActiveTab]);
 
-  if (!basePath) {
+  if (!baseName) {
     return (
       <div
         data-testid={testId}

@@ -29,12 +29,13 @@ export function ApprovalPanel() {
 
   const { approvals } = specDetail.specJson;
 
+  // spec-path-ssot-refactor: Use spec.name instead of spec.path
   const handleApprove = async (phase: Phase) => {
     if (!selectedSpec) return;
 
     setIsLoading(phase);
     try {
-      await window.electronAPI.updateApproval(selectedSpec.path, phase, true);
+      await window.electronAPI.updateApproval(selectedSpec.name, phase, true);
       // File Watcher will auto-update spec state
       notify.success(`${PHASE_LABELS[phase]}を承認しました`);
     } catch (error) {
@@ -50,6 +51,7 @@ export function ApprovalPanel() {
     setRejectDialogPhase(phase);
   };
 
+  // spec-path-ssot-refactor: Use spec.name instead of spec.path
   const handleRejectConfirm = async (reason: string) => {
     if (!rejectDialogPhase || !selectedSpec) return;
 
@@ -57,7 +59,7 @@ export function ApprovalPanel() {
     try {
       // In a real implementation, you might want to log the rejection reason
       console.log(`Rejected ${rejectDialogPhase}: ${reason}`);
-      await window.electronAPI.updateApproval(selectedSpec.path, rejectDialogPhase, false);
+      await window.electronAPI.updateApproval(selectedSpec.name, rejectDialogPhase, false);
       // File Watcher will auto-update spec state
       notify.warning(`${PHASE_LABELS[rejectDialogPhase]}を却下しました`);
     } catch (error) {

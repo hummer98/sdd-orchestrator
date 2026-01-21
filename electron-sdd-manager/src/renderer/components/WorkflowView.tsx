@@ -219,12 +219,13 @@ export function WorkflowView() {
     });
   }, [specDetail, specJson?.worktree, workflowStore.commandPrefix, wrapExecution]);
 
+  // spec-path-ssot-refactor: Use spec.name instead of spec.path
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
     // Update approval in spec.json via IPC
     try {
       await window.electronAPI.updateApproval(
-        specDetail.metadata.path,
+        specDetail.metadata.name,
         phase as 'requirements' | 'design' | 'tasks',
         true
       );
@@ -250,8 +251,9 @@ export function WorkflowView() {
   const handleAutoExecution = useCallback(async () => {
     if (!specDetail) return;
 
+    // spec-path-ssot-refactor: Use spec.name instead of spec.path
     if (isAutoExecuting) {
-      const result = await autoExecution.stopAutoExecution(specDetail.metadata.path);
+      const result = await autoExecution.stopAutoExecution(specDetail.metadata.name);
       if (!result.ok) {
         notify.error('自動実行の停止に失敗しました。');
         // Bug Fix: NOT_EXECUTING エラーの場合、Main Processに状態がないので
@@ -263,7 +265,7 @@ export function WorkflowView() {
     } else {
       // Bug Fix: approvals を渡して既に完了しているフェーズをスキップ
       const result = await autoExecution.startAutoExecution(
-        specDetail.metadata.path,
+        specDetail.metadata.name,
         specDetail.metadata.name,
         {
           permissions: workflowStore.autoExecutionPermissions,
@@ -350,12 +352,13 @@ export function WorkflowView() {
 
   // gemini-document-review: Handle scheme change
   // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+  // spec-path-ssot-refactor: Use spec.name instead of spec.path
   const handleSchemeChange = useCallback(async (newScheme: ReviewerScheme) => {
     if (!specDetail) return;
 
     try {
       // Update spec.json via IPC
-      await window.electronAPI.updateSpecJson(specDetail.metadata.path, {
+      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
         documentReview: {
           ...specDetail.specJson.documentReview,
           scheme: newScheme,
@@ -494,16 +497,17 @@ export function WorkflowView() {
   // Requirements: 4.1, 4.3, 5.1, 5.2
   // All Worktree/normal mode logic moved to Main Process (startImplPhase)
   // ============================================================
+  // spec-path-ssot-refactor: Use spec.name for startImpl
   const handleImplExecute = useCallback(async () => {
     if (!specDetail) return;
 
-    const specPath = specDetail.metadata.path;
+    const specName = specDetail.metadata.name;
     const featureName = specDetail.metadata.name;
 
     await wrapExecution(async () => {
       // Call unified startImpl IPC (handles both Worktree and normal mode)
       const result = await window.electronAPI.startImpl(
-        specPath,
+        specName,
         featureName,
         workflowStore.commandPrefix
       );

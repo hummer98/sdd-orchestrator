@@ -66,11 +66,11 @@ describe('ArtifactEditor', () => {
   });
 
   describe('Shared component behavior', () => {
-    it('should display placeholder when basePath is null', () => {
+    it('should display placeholder when baseName is null', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath={null}
+          baseName={null}
           placeholder="仕様を選択してエディターを開始"
         />
       );
@@ -78,11 +78,11 @@ describe('ArtifactEditor', () => {
       expect(screen.getByText('仕様を選択してエディターを開始')).toBeInTheDocument();
     });
 
-    it('should display bug placeholder when basePath is null', () => {
+    it('should display bug placeholder when baseName is null', () => {
       render(
         <ArtifactEditor
           tabs={BUG_TABS}
-          basePath={null}
+          baseName={null}
           placeholder="バグを選択してエディターを開始"
         />
       );
@@ -101,7 +101,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
         />
@@ -123,7 +123,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={BUG_TABS}
-          basePath="/project/.kiro/bugs/test-bug"
+          baseName="test-bug"
           placeholder="バグを選択してエディターを開始"
           artifacts={artifacts}
           testId="bug-artifact-editor"
@@ -151,7 +151,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
           dynamicTabs={dynamicTabs}
@@ -176,7 +176,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
           dynamicTabs={dynamicTabs}
@@ -197,7 +197,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
           dynamicTabs={[]}
@@ -228,7 +228,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
           dynamicTabs={dynamicTabs}
@@ -263,7 +263,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
           dynamicTabs={dynamicTabs}
@@ -295,7 +295,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
         />
@@ -319,7 +319,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
         />
@@ -341,7 +341,7 @@ describe('ArtifactEditor', () => {
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath="/project/.kiro/specs/test-feature"
+          baseName="test-feature"
           placeholder="仕様を選択してエディターを開始"
           artifacts={artifacts}
         />
@@ -350,13 +350,13 @@ describe('ArtifactEditor', () => {
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
     });
 
-    it('should not display search bar when basePath is null', () => {
+    it('should not display search bar when baseName is null', () => {
       useEditorStore.setState({ searchVisible: true });
 
       render(
         <ArtifactEditor
           tabs={SPEC_TABS}
-          basePath={null}
+          baseName={null}
           placeholder="仕様を選択してエディターを開始"
         />
       );
@@ -387,7 +387,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -416,7 +416,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -445,7 +445,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -476,7 +476,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -507,7 +507,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -538,7 +538,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -571,7 +571,7 @@ describe('ArtifactEditor', () => {
         const { rerender } = render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -587,7 +587,7 @@ describe('ArtifactEditor', () => {
         rerender(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />
@@ -625,7 +625,7 @@ describe('ArtifactEditor', () => {
         render(
           <ArtifactEditor
             tabs={SPEC_TABS}
-            basePath="/project/.kiro/specs/test-feature"
+            baseName="test-feature"
             placeholder="仕様を選択してエディターを開始"
             artifacts={artifacts}
           />

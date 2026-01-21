@@ -13,18 +13,17 @@ import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from './workflow
 // Main Process AutoExecutionCoordinator now handles auto-execution via IPC.
 import type { SpecMetadata, SpecJson } from '../types';
 
+// spec-path-ssot-refactor: SpecMetadata now only contains name field
+// path resolution is Main process responsibility
 const mockSpecs: SpecMetadata[] = [
   {
     name: 'feature-a',
-    path: '/project/.kiro/specs/feature-a',
   },
   {
     name: 'feature-b',
-    path: '/project/.kiro/specs/feature-b',
   },
   {
     name: 'feature-c',
-    path: '/project/.kiro/specs/feature-c',
   },
 ];
 
@@ -352,8 +351,9 @@ describe('useSpecStore', () => {
       const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: GO';
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
-        if (path.endsWith('inspection-1.md')) {
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
+      window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+        if (filename.endsWith('inspection-1.md')) {
           return Promise.resolve(mockInspectionContent);
         }
         return Promise.reject(new Error('Not found'));
@@ -469,8 +469,9 @@ describe('useSpecStore', () => {
       const mockInspectionContent = '# Inspection Report #1\n\n## Summary\n**Judgment**: NOGO';
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
-      window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
-        if (path.endsWith('inspection-1.md')) {
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
+      window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+        if (filename.endsWith('inspection-1.md')) {
           return Promise.resolve(mockInspectionContent);
         }
         return Promise.reject(new Error('Not found'));
@@ -719,8 +720,9 @@ describe('useSpecStore', () => {
           },
         };
         window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(specJsonWithInspection);
-        window.electronAPI.readArtifact = vi.fn().mockImplementation((path: string) => {
-          if (path.endsWith('inspection-1.md')) {
+        // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
+        window.electronAPI.readArtifact = vi.fn().mockImplementation((_specName: string, filename: string) => {
+          if (filename === 'inspection-1.md') {
             return Promise.resolve(mockInspectionContent);
           }
           return Promise.reject(new Error('Not found'));

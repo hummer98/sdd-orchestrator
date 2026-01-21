@@ -2090,8 +2090,9 @@ describe('WebSocketHandler - GET_SPEC_DETAIL Handler (remote-ui-react-migration 
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining('"type":"SPEC_DETAIL"')
       );
+      // spec-path-ssot-refactor: specId changed to name
       expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"specId":"test-feature"')
+        expect.stringContaining('"name":"test-feature"')
       );
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining('"requestId":"req-detail-1"')

@@ -10,16 +10,19 @@ import { useEditorStore } from '../editorStore';
 import type { SpecMetadata, SpecDetail, ArtifactInfo } from '../../types';
 import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
 
+// Mock shared agentStore to prevent dynamic import errors
+vi.mock('../../../shared/stores/agentStore', () => ({
+  useSharedAgentStore: {
+    getState: vi.fn(() => ({
+      autoSelectAgentForSpec: vi.fn(),
+    })),
+  },
+}));
+
+// spec-path-ssot-refactor: SpecMetadata now only contains name field
+// phase, updatedAt, approvals should be obtained from SpecJson (SSOT)
 const mockSpec: SpecMetadata = {
   name: 'feature-a',
-  path: '/project/.kiro/specs/feature-a',
-  phase: 'design-generated',
-  updatedAt: '2024-01-15T10:00:00Z',
-  approvals: {
-    requirements: { generated: true, approved: true },
-    design: { generated: true, approved: false },
-    tasks: { generated: false, approved: false },
-  },
 };
 
 const mockSpecJson = {
@@ -28,7 +31,11 @@ const mockSpecJson = {
   updated_at: '2024-01-15T10:00:00Z',
   language: 'ja' as const,
   phase: 'design-generated' as const,
-  approvals: mockSpec.approvals,
+  approvals: {
+    requirements: { generated: true, approved: true },
+    design: { generated: true, approved: false },
+    tasks: { generated: false, approved: false },
+  },
 };
 
 describe('useSpecDetailStore', () => {
@@ -56,6 +63,7 @@ describe('useSpecDetailStore', () => {
   describe('selectSpec (Req 2.3)', () => {
     it('should set selectedSpec and load specDetail', async () => {
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Requirements');
       window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
 
@@ -69,12 +77,13 @@ describe('useSpecDetailStore', () => {
 
     it('should load specJson and all artifacts (Req 2.5)', async () => {
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
       window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((path: string) => {
-          if (path.includes('requirements')) return Promise.resolve('# Requirements');
-          if (path.includes('design')) return Promise.resolve('# Design');
-          if (path.includes('tasks')) return Promise.resolve('# Tasks\n- [ ] Task 1');
-          if (path.includes('research')) return Promise.reject(new Error('Not found'));
+        .mockImplementation((_specName: string, filename: string) => {
+          if (filename.includes('requirements')) return Promise.resolve('# Requirements');
+          if (filename.includes('design')) return Promise.resolve('# Design');
+          if (filename.includes('tasks')) return Promise.resolve('# Tasks\n- [ ] Task 1');
+          if (filename.includes('research')) return Promise.reject(new Error('Not found'));
           return Promise.reject(new Error('Unknown'));
         });
       window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
@@ -96,9 +105,10 @@ describe('useSpecDetailStore', () => {
 - [ ] Task 4 pending`;
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      // spec-path-ssot-refactor: readArtifact now takes (specName, filename) as 2 args
       window.electronAPI.readArtifact = vi.fn()
-        .mockImplementation((path: string) => {
-          if (path.includes('tasks')) return Promise.resolve(tasksContent);
+        .mockImplementation((_specName: string, filename: string) => {
+          if (filename.includes('tasks')) return Promise.resolve(tasksContent);
           return Promise.reject(new Error('Not found'));
         });
       window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
@@ -166,28 +176,13 @@ describe('useSpecDetailStore', () => {
 
     it('should clear specDetail immediately when switching specs (Bug fix: spec-item-flash-wrong-content)', async () => {
       // Setup: First select spec-a and complete loading
+      // spec-path-ssot-refactor: SpecMetadata now only contains name field
       const specA: SpecMetadata = {
         name: 'spec-a',
-        path: '/project/.kiro/specs/spec-a',
-        phase: 'requirements-generated',
-        updatedAt: '2024-01-15T10:00:00Z',
-        approvals: {
-          requirements: { generated: true, approved: true },
-          design: { generated: false, approved: false },
-          tasks: { generated: false, approved: false },
-        },
       };
 
       const specB: SpecMetadata = {
         name: 'spec-b',
-        path: '/project/.kiro/specs/spec-b',
-        phase: 'design-generated',
-        updatedAt: '2024-01-16T10:00:00Z',
-        approvals: {
-          requirements: { generated: true, approved: true },
-          design: { generated: true, approved: true },
-          tasks: { generated: false, approved: false },
-        },
       };
 
       window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({

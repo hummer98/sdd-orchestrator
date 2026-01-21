@@ -635,8 +635,9 @@ describe('BugService', () => {
         // Should only have 1 bug (main takes priority)
         expect(result.value).toHaveLength(1);
         expect(result.value[0].name).toBe(bugName);
-        // Path should be from main, not worktree
-        expect(result.value[0].path).toBe(mainBugPath);
+        // spec-path-ssot-refactor: path field removed, check worktreeBasePath instead
+        // Main bugs have no worktreeBasePath
+        expect(result.value[0].worktreeBasePath).toBeUndefined();
       }
     });
 

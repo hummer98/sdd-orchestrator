@@ -30,7 +30,8 @@ describe('ExecutionContext', () => {
       // Check all fields exist
       expect(context.specId).toBe('test-spec');
       expect(context.specDetailSnapshot).toBeDefined();
-      expect(context.specPath).toBeDefined();
+      // spec-path-ssot-refactor: specPath changed to specName
+      expect(context.specName).toBeDefined();
       expect(context.currentPhase).toBeNull();
       expect(context.executionStatus).toBe('running');
       expect(context.trackedAgentIds).toBeInstanceOf(Set);
@@ -64,14 +65,15 @@ describe('ExecutionContext', () => {
       expect(context.specDetailSnapshot.metadata.name).toBe(mockSpecDetail.metadata.name);
     });
 
-    it('should have readonly specPath', () => {
+    // spec-path-ssot-refactor: specPath changed to specName
+    it('should have readonly specName', () => {
       const mockSpecDetail = createMockSpecDetail();
       const context = createExecutionContext({
         specId: 'test-spec',
         specDetail: mockSpecDetail,
       });
 
-      expect(context.specPath).toBe('/test/path');
+      expect(context.specName).toBe('test-spec');
     });
   });
 
@@ -100,7 +102,8 @@ describe('ExecutionContext', () => {
         specDetail: mockSpecDetail,
       });
 
-      expect(context.specPath).toBe(mockSpecDetail.metadata.path);
+      // spec-path-ssot-refactor: specPath changed to specName
+      expect(context.specName).toBe(mockSpecDetail.metadata.name);
     });
 
     it('should set initial executionStatus to running', () => {

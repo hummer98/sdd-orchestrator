@@ -7,6 +7,10 @@
 import { create } from 'zustand';
 import type { LogEntry } from '../types';
 import type { AgentStatus as AgentStatusType } from '../types/electron.d';
+// Bug fix: agent-log-dynamic-import-issue
+// 循環依存は存在しないため、通常のimportを使用（動的importによるPromise遅延を回避）
+import { useSpecStore } from './specStore';
+import { useBugStore } from './bugStore';
 
 // Re-export types for use in tests and components
 export type AgentStatus = AgentStatusType;
@@ -502,22 +506,18 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
                 get().selectAgent(agentId);
               } else {
                 // Spec/Bug Agentは選択中のspec/bugと一致する場合のみ自動選択
-                // Dynamic import to avoid circular dependency
-                import('./specStore').then(({ useSpecStore }) => {
-                  const { selectedSpec } = useSpecStore.getState();
-                  // Bug agents use 'bug:{bugName}' format
-                  if (specId.startsWith('bug:')) {
-                    import('./bugStore').then(({ useBugStore }) => {
-                      const { selectedBug } = useBugStore.getState();
-                      const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
-                      if (specId === expectedSpecId) {
-                        get().selectAgent(agentId);
-                      }
-                    });
-                  } else if (selectedSpec && specId === selectedSpec.name) {
+                // Bug fix: agent-log-dynamic-import-issue - 同期的に呼び出し
+                const { selectedSpec } = useSpecStore.getState();
+                // Bug agents use 'bug:{bugName}' format
+                if (specId.startsWith('bug:')) {
+                  const { selectedBug } = useBugStore.getState();
+                  const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
+                  if (specId === expectedSpecId) {
                     get().selectAgent(agentId);
                   }
-                });
+                } else if (selectedSpec && specId === selectedSpec.name) {
+                  get().selectAgent(agentId);
+                }
               }
             }
           });

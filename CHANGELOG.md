@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.1] - 2026-01-21
+
+### Changed
+- **spec-path-ssot**: IPC API nameベース移行（pathフィールドからname基準へ）
+- **spec-path-ssot**: SpecMetadata/BugMetadata型からpathフィールドを削除
+- **spec-path-ssot**: UIコンポーネント・stores・servicesからpath依存を削除
+- **spec-path-ssot**: Remote UI WebSocket APIをname基準に同期
+- **spec-path-ssot**: Specs/BugsWatcherServiceを2段階監視対応に改善
+
+### Tests
+- グローバルモック設定とhandlerテストのunmock追加
+- spec-path-ssotリファクタリングによる期待値・テストデータの修正
+- テスト全体の安定性向上
+
+### Documentation
+- spec-path-ssot仕様ドキュメント追加とphase完了
+
 ## [0.35.0] - 2026-01-19
 
 ### Added

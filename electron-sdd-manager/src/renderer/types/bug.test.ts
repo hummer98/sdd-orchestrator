@@ -94,7 +94,13 @@ describe('Bug Types', () => {
     });
 
     it('should return null for verified phase', () => {
+      // bug-deploy-phase: Requirements 8.4 - deploy is manual trigger
       expect(getNextAction('verified')).toBeNull();
+    });
+
+    // bug-deploy-phase: Requirements 8.4 - workflow complete
+    it('should return null for deployed phase', () => {
+      expect(getNextAction('deployed')).toBeNull();
     });
   });
 
@@ -133,6 +139,11 @@ describe('Bug Types', () => {
       expect(PHASE_LABELS.fixed).toBe('修正済');
       expect(PHASE_LABELS.verified).toBe('検証済');
     });
+
+    // bug-deploy-phase: Requirements 1.1, 3.1
+    it('should have label for deployed phase', () => {
+      expect(PHASE_LABELS.deployed).toBe('デプロイ完了');
+    });
   });
 
   describe('PHASE_COLORS', () => {
@@ -142,16 +153,23 @@ describe('Bug Types', () => {
       expect(PHASE_COLORS.fixed).toBeDefined();
       expect(PHASE_COLORS.verified).toBeDefined();
     });
+
+    // bug-deploy-phase: Requirements 1.1, 3.2
+    it('should have purple color for deployed phase', () => {
+      expect(PHASE_COLORS.deployed).toBe('bg-purple-100 text-purple-700');
+    });
   });
 
   describe('BUG_PHASES', () => {
-    it('should contain all phases in order', () => {
-      expect(BUG_PHASES).toEqual(['reported', 'analyzed', 'fixed', 'verified']);
+    it('should contain all phases in order including deployed', () => {
+      // bug-deploy-phase: Requirements 1.1, 1.2
+      expect(BUG_PHASES).toEqual(['reported', 'analyzed', 'fixed', 'verified', 'deployed']);
     });
 
     it('should be readonly', () => {
       // TypeScript compile-time check, runtime check for array length
-      expect(BUG_PHASES.length).toBe(4);
+      // bug-deploy-phase: 5 phases (added deployed)
+      expect(BUG_PHASES.length).toBe(5);
     });
   });
 

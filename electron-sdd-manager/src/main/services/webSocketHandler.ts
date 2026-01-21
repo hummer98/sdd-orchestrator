@@ -54,8 +54,9 @@ export interface SpecInfo {
 /**
  * Bug phase type for bug workflow
  * Requirements: 1.2 (Task 1.2 - BugInfo interface)
+ * bug-deploy-phase: Requirements 1.1 - added deployed phase
  */
-export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified';
+export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified' | 'deployed';
 
 /**
  * Bug information for state distribution

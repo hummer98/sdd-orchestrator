@@ -31,6 +31,7 @@ import { useBugAutoExecutionStore } from '../../shared/stores/bugAutoExecutionSt
 /**
  * Task 3.1: フェーズステータス算出ロジック
  * Requirements: 3.3
+ * bug-deploy-phase: Requirements 5.4, 8.3 - added deployed phase status
  */
 function calculatePhaseStatus(
   phase: BugWorkflowPhase,
@@ -55,8 +56,9 @@ function calculatePhaseStatus(
     case 'verify':
       return bugDetail.artifacts.verification?.exists ? 'completed' : 'pending';
     case 'deploy':
-      // Deploy is always pending or executing (no file to check)
-      return 'pending';
+      // bug-deploy-phase: Check if phase is 'deployed' in metadata
+      // Requirements 5.4, 8.3 - show completed if bug.json phase is 'deployed'
+      return bugDetail.metadata.phase === 'deployed' ? 'completed' : 'pending';
     default:
       return 'pending';
   }
@@ -147,12 +149,16 @@ export function BugWorkflowView() {
   // Requirements: 4.1-4.5, 6.4
   // bugs-worktree-support Task 12.2: bug-fix実行時のworktree作成判定
   // Requirements: 8.5, 3.2, 3.6
+  // bug-deploy-phase: Requirements 4.1, 5.1, 6.1 - optimistic phase update
   // Use startAgent directly with appropriate command formatting
   const handleExecutePhase = useCallback(async (phase: BugWorkflowPhase) => {
     if (!selectedBug) return;
 
     const commandTemplate = BUG_PHASE_COMMANDS[phase];
     if (!commandTemplate) return; // Report phase has no command
+
+    // bug-deploy-phase: Track previous phase for rollback on failure
+    const previousPhase = selectedBug.phase;
 
     try {
       // bugs-worktree-support Task 12.2: fixフェーズでworktree使用時はworktreeを作成
@@ -161,6 +167,17 @@ export function BugWorkflowView() {
         if (!result.ok) {
           notify.error(result.error?.message || 'worktreeの作成に失敗しました');
           return;
+        }
+      }
+
+      // bug-deploy-phase Task 3.1, 4.1: Optimistic phase update for deploy
+      // Requirements: 4.1, 5.1, 6.1
+      if (phase === 'deploy') {
+        try {
+          await window.electronAPI.updateBugPhase(selectedBug.name, 'deployed');
+        } catch (phaseError) {
+          console.error('[BugWorkflowView] Failed to update phase:', phaseError);
+          // Continue with deploy even if phase update fails
         }
       }
 
@@ -186,7 +203,20 @@ export function BugWorkflowView() {
         undefined
       );
     } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
+      // bug-deploy-phase Task 3.2, 4.2: Rollback phase on failure
+      // Requirements: 4.3, 5.3, 6.3
+      if (phase === 'deploy' && previousPhase !== 'deployed') {
+        try {
+          await window.electronAPI.updateBugPhase(selectedBug.name, previousPhase);
+          notify.error('デプロイ失敗：ロールバックしました');
+        } catch (rollbackError) {
+          console.error('[BugWorkflowView] Failed to rollback phase:', rollbackError);
+          notify.error(error instanceof Error ? error.message : 'デプロイに失敗しました（ロールバック失敗）');
+          return;
+        }
+      } else {
+        notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
+      }
     }
   }, [selectedBug, useWorktree]);
 

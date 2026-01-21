@@ -172,4 +172,39 @@ describe('BugJson Type Structure', () => {
     expect(bugJson.worktree?.branch).toBe('bugfix/memory-leak-fix');
     expect(bugJson.worktree?.created_at).toBe('2025-01-15T10:00:00Z');
   });
+
+  // bug-deploy-phase: Requirements 2.1 - phase field in BugJson
+  it('should support optional phase field', () => {
+    const bugJsonWithPhase: BugJson = {
+      bug_name: 'deploy-test-bug',
+      created_at: '2026-01-15T00:00:00Z',
+      updated_at: '2026-01-15T12:00:00Z',
+      phase: 'deployed',
+    };
+
+    expect(bugJsonWithPhase.phase).toBe('deployed');
+  });
+
+  it('should have phase field undefined when not set', () => {
+    const bugJsonWithoutPhase: BugJson = {
+      bug_name: 'no-phase-bug',
+      created_at: '2026-01-15T00:00:00Z',
+      updated_at: '2026-01-15T12:00:00Z',
+    };
+
+    expect(bugJsonWithoutPhase.phase).toBeUndefined();
+  });
+
+  it('should support all BugPhase values in phase field', () => {
+    const phases = ['reported', 'analyzed', 'fixed', 'verified', 'deployed'] as const;
+    for (const phase of phases) {
+      const bugJson: BugJson = {
+        bug_name: `phase-${phase}-bug`,
+        created_at: '2026-01-15T00:00:00Z',
+        updated_at: '2026-01-15T12:00:00Z',
+        phase,
+      };
+      expect(bugJson.phase).toBe(phase);
+    }
+  });
 });

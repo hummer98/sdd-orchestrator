@@ -1706,6 +1706,22 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.BUG_WORKTREE_REMOVE, bugName),
 
   /**
+   * Update bug.json phase field
+   * bug-deploy-phase: Requirements 2.4
+   * @param bugName Bug name
+   * @param phase New phase value
+   * @returns Result with void on success
+   */
+  updateBugPhase: (bugName: string, phase: string): Promise<{
+    ok: true;
+    value: void;
+  } | {
+    ok: false;
+    error?: { type: string; message?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BUG_PHASE_UPDATE, bugName, phase),
+
+  /**
    * Get bugs worktree default setting
    * Requirements: 12.1 (bugs-worktree-support)
    * @returns true if worktree should be used by default for bugs

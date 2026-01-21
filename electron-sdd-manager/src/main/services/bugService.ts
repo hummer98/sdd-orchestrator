@@ -97,6 +97,7 @@ export class BugService {
   /**
    * Read a single bug's metadata
    * Internal helper to avoid code duplication
+   * bug-deploy-phase: Requirements 2.2, 2.3 - phase field priority with artifact fallback
    * @param bugPath - Full path to bug directory
    * @param bugName - Bug name (directory name)
    * @param worktreeBasePath - Optional worktree base path for directory mode bugs
@@ -108,9 +109,9 @@ export class BugService {
     worktreeBasePath?: string
   ): Promise<BugMetadata | null> {
     try {
-      // Get artifact information to determine phase
+      // Get artifact information to determine phase (fallback)
       const artifacts = await this.getBugArtifacts(bugPath);
-      const phase = determineBugPhaseFromFiles(artifacts);
+      const artifactPhase = determineBugPhaseFromFiles(artifacts);
 
       // Get the latest update time from all artifact files
       const updateTimes: Date[] = [];
@@ -125,6 +126,8 @@ export class BugService {
       let updatedAt = new Date().toISOString();
       // bugs-worktree-support: Read worktree field from bug.json
       let worktree: BugWorktreeConfig | undefined;
+      // bug-deploy-phase: Read phase field from bug.json (priority over artifact detection)
+      let phase: BugPhase = artifactPhase;
 
       try {
         const bugJsonPath = join(bugPath, 'bug.json');
@@ -135,6 +138,10 @@ export class BugService {
         // bugs-worktree-support: Map worktree field to BugMetadata
         if (isBugWorktreeConfig(bugJson.worktree)) {
           worktree = bugJson.worktree;
+        }
+        // bug-deploy-phase: Requirements 2.2 - phase field takes priority
+        if (bugJson.phase) {
+          phase = bugJson.phase;
         }
       } catch {
         // No bug.json, use file stats
@@ -378,6 +385,55 @@ export class BugService {
     }
 
     const bugJson = readResult.value;
+    bugJson.updated_at = new Date().toISOString();
+
+    try {
+      const bugJsonPath = join(bugPath, 'bug.json');
+      await writeFile(bugJsonPath, JSON.stringify(bugJson, null, 2), 'utf-8');
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: bugPath,
+          message: String(error),
+        },
+      };
+    }
+  }
+
+  // ============================================================
+  // bug-deploy-phase Task 2.2: phase field update
+  // Requirements: 2.4
+  // ============================================================
+
+  /**
+   * Update bug.json phase field
+   * Requirements: 2.4 - phase update with updated_at timestamp
+   *
+   * @param bugPath - Path to bug directory
+   * @param phase - New phase value
+   * @returns void on success
+   */
+  async updateBugJsonPhase(bugPath: string, phase: BugPhase): Promise<Result<void, FileError>> {
+    const readResult = await this.readBugJson(bugPath);
+    if (!readResult.ok) {
+      return readResult;
+    }
+
+    if (readResult.value === null) {
+      return {
+        ok: false,
+        error: {
+          type: 'NOT_FOUND',
+          path: join(bugPath, 'bug.json'),
+        },
+      };
+    }
+
+    const bugJson = readResult.value;
+    bugJson.phase = phase;
     bugJson.updated_at = new Date().toISOString();
 
     try {

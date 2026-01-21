@@ -9,8 +9,9 @@ import type { BugWorktreeConfig } from './bugJson';
 /**
  * Bug phase type representing the current workflow state
  * Requirements: 3.1
+ * bug-deploy-phase: Requirements 1.1 - added 'deployed' phase
  */
-export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified';
+export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified' | 'deployed';
 
 /**
  * Bug action type for workflow commands
@@ -89,6 +90,7 @@ export function determineBugPhase(artifacts: BugDetail['artifacts']): BugPhase {
 /**
  * Get the next action available for a given phase
  * Requirements: 5.6
+ * bug-deploy-phase: Requirements 8.4 - verified returns null (deploy is manual), deployed returns null (workflow complete)
  * @param phase - Current bug phase
  * @returns Next available action or null if complete
  */
@@ -101,7 +103,9 @@ export function getNextAction(phase: BugPhase): BugAction | null {
     case 'fixed':
       return 'verify';
     case 'verified':
-      return null;
+      return null; // deploy is manual trigger
+    case 'deployed':
+      return null; // workflow complete
   }
 }
 
@@ -118,28 +122,33 @@ export function isActionAvailable(phase: BugPhase, action: BugAction): boolean {
 
 /**
  * Phase labels for display
+ * bug-deploy-phase: Requirements 1.1, 3.1 - added deployed label
  */
 export const PHASE_LABELS: Record<BugPhase, string> = {
   reported: '報告済',
   analyzed: '分析済',
   fixed: '修正済',
   verified: '検証済',
+  deployed: 'デプロイ完了',
 };
 
 /**
  * Phase colors for display (Tailwind CSS classes)
+ * bug-deploy-phase: Requirements 1.1, 3.2 - added deployed purple color
  */
 export const PHASE_COLORS: Record<BugPhase, string> = {
   reported: 'bg-red-100 text-red-700',
   analyzed: 'bg-yellow-100 text-yellow-700',
   fixed: 'bg-blue-100 text-blue-700',
   verified: 'bg-green-100 text-green-700',
+  deployed: 'bg-purple-100 text-purple-700',
 };
 
 /**
  * All phases in order
+ * bug-deploy-phase: Requirements 1.2 - added deployed as final phase
  */
-export const BUG_PHASES: readonly BugPhase[] = ['reported', 'analyzed', 'fixed', 'verified'] as const;
+export const BUG_PHASES: readonly BugPhase[] = ['reported', 'analyzed', 'fixed', 'verified', 'deployed'] as const;
 
 // ============================================================
 // Task 1.1: bugs-pane-integration - BugWorkflowPhase, BugPhaseStatus, BugDocumentTab型

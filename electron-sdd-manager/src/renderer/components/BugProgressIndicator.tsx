@@ -1,7 +1,8 @@
 /**
  * BugProgressIndicator Component
- * 4-phase bug workflow progress indicator
+ * 5-phase bug workflow progress indicator
  * Requirements: 3.2, 3.3, 3.4
+ * bug-deploy-phase: Requirements 8.2, 8.3 - added deploy phase
  */
 
 import React from 'react';
@@ -11,6 +12,7 @@ import {
   Wrench,
   CheckCircle2,
   Circle,
+  Rocket,
 } from 'lucide-react';
 import type { BugPhase } from '../types';
 import { BUG_PHASES } from '../types';
@@ -26,11 +28,16 @@ interface PhaseConfig {
   icon: typeof FileText;
 }
 
+/**
+ * Phase configuration for the progress indicator
+ * bug-deploy-phase: Requirements 8.2 - added deployed phase
+ */
 const PHASE_CONFIGS: PhaseConfig[] = [
   { key: 'reported', label: 'Report', icon: FileText },
   { key: 'analyzed', label: 'Analyze', icon: Search },
   { key: 'fixed', label: 'Fix', icon: Wrench },
   { key: 'verified', label: 'Verify', icon: CheckCircle2 },
+  { key: 'deployed', label: 'Deploy', icon: Rocket },
 ];
 
 function getPhaseIndex(phase: BugPhase): number {
@@ -39,10 +46,11 @@ function getPhaseIndex(phase: BugPhase): number {
 
 /**
  * BugProgressIndicator displays the current phase of a bug in the workflow
- * - Report → Analyze → Fix → Verify
+ * - Report -> Analyze -> Fix -> Verify -> Deploy
  * - Completed phases are shown with filled icons
  * - Current phase is highlighted
  * - Future phases are shown with outline icons
+ * bug-deploy-phase: Requirements 8.2, 8.3 - extended to 5 phases
  */
 export function BugProgressIndicator({ phase, compact = false }: BugProgressIndicatorProps): React.ReactElement {
   const currentIndex = getPhaseIndex(phase);
@@ -52,9 +60,9 @@ export function BugProgressIndicator({ phase, compact = false }: BugProgressIndi
       className={`flex items-center ${compact ? 'gap-0.5' : 'gap-1'}`}
       role="progressbar"
       aria-valuemin={0}
-      aria-valuemax={3}
+      aria-valuemax={4}
       aria-valuenow={currentIndex}
-      aria-valuetext={`${phase} (${currentIndex + 1}/4)`}
+      aria-valuetext={`${phase} (${currentIndex + 1}/5)`}
     >
       {PHASE_CONFIGS.map((config, index) => {
         const isCompleted = index < currentIndex;

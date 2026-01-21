@@ -268,6 +268,10 @@ export const IPC_CHANNELS = {
   // Requirements: 12.1, 12.2, 12.3, 12.4
   BUG_WORKTREE_AUTO_EXECUTION: 'bug-worktree:auto-execution',
 
+  // bug-deploy-phase: Phase update
+  // Requirements: 2.4
+  BUG_PHASE_UPDATE: 'bug-phase:update',
+
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   LOAD_PROFILE: 'ipc:load-profile',

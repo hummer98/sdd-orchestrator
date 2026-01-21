@@ -10,6 +10,7 @@ import { mkdir, writeFile, rm, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { BugJson, BugWorktreeConfig } from '../../renderer/types/bugJson';
+import type { BugPhase } from '../../renderer/types/bug';
 
 describe('BugService', () => {
   let service: BugService;
@@ -734,6 +735,140 @@ describe('BugService', () => {
       const worktreePath = join(testDir, '.kiro', 'worktrees', 'bugs', 'test', '.kiro', 'bugs', 'test');
 
       const result = await service.copyBugToWorktree(nonExistentPath, worktreePath, 'test');
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  // ============================================================
+  // bug-deploy-phase Task 2.1: phase field priority in readSingleBug
+  // Requirements: 1.3, 2.2, 2.3
+  // ============================================================
+  describe('readBugs with phase field', () => {
+    it('should use phase field from bug.json when present', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'phase-field-bug');
+      await mkdir(bugPath, { recursive: true });
+      await writeFile(join(bugPath, 'report.md'), '# Bug Report');
+      await writeFile(join(bugPath, 'analysis.md'), '# Analysis');
+      // Phase field says 'deployed' but artifacts suggest 'analyzed'
+      const bugJson: BugJson = {
+        bug_name: 'phase-field-bug',
+        created_at: '2026-01-15T00:00:00Z',
+        updated_at: '2026-01-15T12:00:00Z',
+        phase: 'deployed',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        // Phase field should take priority over artifact-based detection
+        expect(result.value[0].phase).toBe('deployed');
+      }
+    });
+
+    it('should fall back to artifact-based detection when phase field is absent', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-phase-field-bug');
+      await mkdir(bugPath, { recursive: true });
+      await writeFile(join(bugPath, 'report.md'), '# Bug Report');
+      await writeFile(join(bugPath, 'analysis.md'), '# Analysis');
+      await writeFile(join(bugPath, 'fix.md'), '# Fix');
+      // No phase field in bug.json
+      const bugJson: BugJson = {
+        bug_name: 'no-phase-field-bug',
+        created_at: '2026-01-15T00:00:00Z',
+        updated_at: '2026-01-15T12:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.readBugs(testDir);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        // Should fall back to artifact-based detection (fixed)
+        expect(result.value[0].phase).toBe('fixed');
+      }
+    });
+  });
+
+  // ============================================================
+  // bug-deploy-phase Task 2.2: updateBugJsonPhase method
+  // Requirements: 2.4
+  // ============================================================
+  describe('updateBugJsonPhase', () => {
+    it('should update phase and updated_at timestamp', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'update-phase-bug');
+      await mkdir(bugPath, { recursive: true });
+      const originalTime = '2026-01-01T00:00:00Z';
+      const bugJson: BugJson = {
+        bug_name: 'update-phase-bug',
+        created_at: originalTime,
+        updated_at: originalTime,
+        phase: 'verified',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.updateBugJsonPhase(bugPath, 'deployed');
+      expect(result.ok).toBe(true);
+
+      // Verify phase and timestamp were updated
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.phase).toBe('deployed');
+      expect(parsed.created_at).toBe(originalTime); // Should not change
+      expect(parsed.updated_at).not.toBe(originalTime); // Should be updated
+    });
+
+    it('should add phase field if it does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'add-phase-bug');
+      await mkdir(bugPath, { recursive: true });
+      // bug.json without phase field
+      const bugJson: BugJson = {
+        bug_name: 'add-phase-bug',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      const result = await service.updateBugJsonPhase(bugPath, 'deployed');
+      expect(result.ok).toBe(true);
+
+      // Verify phase was added
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.phase).toBe('deployed');
+    });
+
+    it('should preserve other fields when updating phase', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'preserve-fields-bug');
+      await mkdir(bugPath, { recursive: true });
+      const bugJson: BugJson = {
+        bug_name: 'preserve-fields-bug',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        phase: 'verified',
+        worktree: {
+          path: '../project-worktrees/bugs/preserve-fields-bug',
+          branch: 'bugfix/preserve-fields-bug',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      };
+      await writeFile(join(bugPath, 'bug.json'), JSON.stringify(bugJson));
+
+      await service.updateBugJsonPhase(bugPath, 'deployed');
+
+      const content = await readFile(join(bugPath, 'bug.json'), 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.phase).toBe('deployed');
+      expect(parsed.worktree).toBeDefined();
+      expect(parsed.worktree.path).toBe('../project-worktrees/bugs/preserve-fields-bug');
+    });
+
+    it('should return error if bug.json does not exist', async () => {
+      const bugPath = join(testDir, '.kiro', 'bugs', 'no-json-update-phase');
+      await mkdir(bugPath, { recursive: true });
+
+      const result = await service.updateBugJsonPhase(bugPath, 'deployed');
       expect(result.ok).toBe(false);
     });
   });

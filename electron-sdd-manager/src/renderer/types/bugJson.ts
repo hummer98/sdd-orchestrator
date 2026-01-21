@@ -1,10 +1,13 @@
 /**
  * BugJson Types for Bug Worktree Support
  * Requirements: 1.1, 1.2, 1.3, 1.4 (bugs-worktree-support)
+ * bug-deploy-phase: Requirements 2.1 - added phase field
  *
  * This module defines types for managing bug metadata and worktree state in bug.json.
  * The worktree field is optional - its presence indicates worktree mode.
  */
+
+import type { BugPhase } from './bug';
 
 /**
  * Worktree configuration for bugs
@@ -26,6 +29,7 @@ export interface BugWorktreeConfig {
 /**
  * Bug metadata stored in bug.json
  * Requirements: 1.1, 1.2 (bugs-worktree-support)
+ * bug-deploy-phase: Requirements 2.1 - added optional phase field
  *
  * This is the schema for .kiro/bugs/{bug-name}/bug.json file.
  * The worktree field is optional and added when bug-fix is started with worktree enabled.
@@ -39,6 +43,13 @@ export interface BugJson {
   updated_at: string;
   /** Worktree configuration (optional) - Requirements: 1.3 */
   worktree?: BugWorktreeConfig;
+  /**
+   * Bug phase (optional for backward compatibility)
+   * bug-deploy-phase: Requirements 2.1
+   * When present, this is the authoritative phase value.
+   * When absent, phase is determined from artifact files.
+   */
+  phase?: BugPhase;
 }
 
 /**

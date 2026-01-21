@@ -12,12 +12,17 @@ import { useAgentStore } from '../stores/agentStore';
 import { BugListItem } from '@shared/components/bug';
 import type { BugPhase } from '../types';
 
+/**
+ * Phase labels for filter dropdown
+ * bug-deploy-phase: Requirements 1.1, 3.1 - added deployed
+ */
 const PHASE_LABELS: Record<BugPhase | 'all', string> = {
   all: 'すべて',
   reported: '報告済',
   analyzed: '分析済',
   fixed: '修正済',
   verified: '検証済',
+  deployed: 'デプロイ完了',
 };
 
 /**

@@ -1,6 +1,7 @@
 /**
  * BugProgressIndicator Component Tests
  * Requirements: 3.2, 3.3, 3.4
+ * bug-deploy-phase: Requirements 8.2, 8.3 - updated for 5-phase workflow
  */
 
 import { describe, it, expect } from 'vitest';
@@ -22,6 +23,8 @@ describe('BugProgressIndicator', () => {
         expect(screen.getByTestId('phase-analyzed-pending')).toBeInTheDocument();
         expect(screen.getByTestId('phase-fixed-pending')).toBeInTheDocument();
         expect(screen.getByTestId('phase-verified-pending')).toBeInTheDocument();
+        // bug-deploy-phase: verify deployed phase also shown as pending
+        expect(screen.getByTestId('phase-deployed-pending')).toBeInTheDocument();
       });
 
       it('should have correct aria attributes', () => {
@@ -30,8 +33,9 @@ describe('BugProgressIndicator', () => {
         const progressbar = screen.getByRole('progressbar');
         expect(progressbar).toHaveAttribute('aria-valuenow', '0');
         expect(progressbar).toHaveAttribute('aria-valuemin', '0');
-        expect(progressbar).toHaveAttribute('aria-valuemax', '3');
-        expect(progressbar).toHaveAttribute('aria-valuetext', 'reported (1/4)');
+        // bug-deploy-phase: updated for 5 phases
+        expect(progressbar).toHaveAttribute('aria-valuemax', '4');
+        expect(progressbar).toHaveAttribute('aria-valuetext', 'reported (1/5)');
       });
     });
 
@@ -43,6 +47,8 @@ describe('BugProgressIndicator', () => {
         expect(screen.getByTestId('phase-analyzed-current')).toBeInTheDocument();
         expect(screen.getByTestId('phase-fixed-pending')).toBeInTheDocument();
         expect(screen.getByTestId('phase-verified-pending')).toBeInTheDocument();
+        // bug-deploy-phase: verify deployed phase also shown as pending
+        expect(screen.getByTestId('phase-deployed-pending')).toBeInTheDocument();
       });
 
       it('should have correct aria attributes', () => {
@@ -50,7 +56,8 @@ describe('BugProgressIndicator', () => {
 
         const progressbar = screen.getByRole('progressbar');
         expect(progressbar).toHaveAttribute('aria-valuenow', '1');
-        expect(progressbar).toHaveAttribute('aria-valuetext', 'analyzed (2/4)');
+        // bug-deploy-phase: updated for 5 phases
+        expect(progressbar).toHaveAttribute('aria-valuetext', 'analyzed (2/5)');
       });
     });
 
@@ -62,6 +69,8 @@ describe('BugProgressIndicator', () => {
         expect(screen.getByTestId('phase-analyzed-completed')).toBeInTheDocument();
         expect(screen.getByTestId('phase-fixed-current')).toBeInTheDocument();
         expect(screen.getByTestId('phase-verified-pending')).toBeInTheDocument();
+        // bug-deploy-phase: verify deployed phase also shown as pending
+        expect(screen.getByTestId('phase-deployed-pending')).toBeInTheDocument();
       });
 
       it('should have correct aria attributes', () => {
@@ -69,18 +78,21 @@ describe('BugProgressIndicator', () => {
 
         const progressbar = screen.getByRole('progressbar');
         expect(progressbar).toHaveAttribute('aria-valuenow', '2');
-        expect(progressbar).toHaveAttribute('aria-valuetext', 'fixed (3/4)');
+        // bug-deploy-phase: updated for 5 phases
+        expect(progressbar).toHaveAttribute('aria-valuetext', 'fixed (3/5)');
       });
     });
 
     describe('verified phase', () => {
-      it('should show all phases as completed', () => {
+      it('should show report, analyze, fix as completed and verify as current', () => {
         render(<BugProgressIndicator phase="verified" />);
 
         expect(screen.getByTestId('phase-reported-completed')).toBeInTheDocument();
         expect(screen.getByTestId('phase-analyzed-completed')).toBeInTheDocument();
         expect(screen.getByTestId('phase-fixed-completed')).toBeInTheDocument();
         expect(screen.getByTestId('phase-verified-current')).toBeInTheDocument();
+        // bug-deploy-phase: verify deployed phase shown as pending
+        expect(screen.getByTestId('phase-deployed-pending')).toBeInTheDocument();
       });
 
       it('should have correct aria attributes', () => {
@@ -88,7 +100,29 @@ describe('BugProgressIndicator', () => {
 
         const progressbar = screen.getByRole('progressbar');
         expect(progressbar).toHaveAttribute('aria-valuenow', '3');
-        expect(progressbar).toHaveAttribute('aria-valuetext', 'verified (4/4)');
+        // bug-deploy-phase: updated for 5 phases
+        expect(progressbar).toHaveAttribute('aria-valuetext', 'verified (4/5)');
+      });
+    });
+
+    // bug-deploy-phase: Requirements 8.2 - deployed phase tests
+    describe('deployed phase', () => {
+      it('should show all phases as completed', () => {
+        render(<BugProgressIndicator phase="deployed" />);
+
+        expect(screen.getByTestId('phase-reported-completed')).toBeInTheDocument();
+        expect(screen.getByTestId('phase-analyzed-completed')).toBeInTheDocument();
+        expect(screen.getByTestId('phase-fixed-completed')).toBeInTheDocument();
+        expect(screen.getByTestId('phase-verified-completed')).toBeInTheDocument();
+        expect(screen.getByTestId('phase-deployed-current')).toBeInTheDocument();
+      });
+
+      it('should have correct aria attributes', () => {
+        render(<BugProgressIndicator phase="deployed" />);
+
+        const progressbar = screen.getByRole('progressbar');
+        expect(progressbar).toHaveAttribute('aria-valuenow', '4');
+        expect(progressbar).toHaveAttribute('aria-valuetext', 'deployed (5/5)');
       });
     });
   });
@@ -138,15 +172,16 @@ describe('BugProgressIndicator', () => {
       const { container } = render(<BugProgressIndicator phase="reported" />);
 
       const pendingIcons = container.querySelectorAll('.text-gray-400');
-      expect(pendingIcons.length).toBeGreaterThanOrEqual(3); // analyzed, fixed, verified
+      // bug-deploy-phase: now 4 pending phases (analyzed, fixed, verified, deployed)
+      expect(pendingIcons.length).toBeGreaterThanOrEqual(4);
     });
 
     it('should show connector lines between phases', () => {
       const { container } = render(<BugProgressIndicator phase="analyzed" />);
 
-      // There should be 3 connector lines (between 4 phases)
+      // bug-deploy-phase: There should be 4 connector lines (between 5 phases)
       const connectors = container.querySelectorAll('.h-0\\.5');
-      expect(connectors).toHaveLength(3);
+      expect(connectors).toHaveLength(4);
     });
 
     it('should color connector green when leading to current or completed phase', () => {
@@ -171,11 +206,13 @@ describe('BugPhaseLabel', () => {
   // Label display tests
   // ============================================================
   describe('label display', () => {
+    // bug-deploy-phase: added deployed phase
     const phaseLabels: Record<BugPhase, string> = {
       reported: 'Report',
       analyzed: 'Analyze',
       fixed: 'Fix',
       verified: 'Verify',
+      deployed: 'Deploy',
     };
 
     Object.entries(phaseLabels).forEach(([phase, label]) => {
@@ -188,8 +225,9 @@ describe('BugPhaseLabel', () => {
   });
 
   describe('label styling', () => {
-    it('should use green color for verified phase', () => {
-      const { container } = render(<BugPhaseLabel phase="verified" />);
+    // bug-deploy-phase: deployed is now the final/completed phase
+    it('should use green color for deployed phase', () => {
+      const { container } = render(<BugPhaseLabel phase="deployed" />);
 
       const span = container.querySelector('span');
       expect(span?.className).toContain('text-green-600');
@@ -207,6 +245,14 @@ describe('BugPhaseLabel', () => {
 
       const span = container.querySelector('span');
       expect(span?.className).toContain('text-gray-600');
+    });
+
+    // bug-deploy-phase: verified is no longer the final phase
+    it('should use blue color for verified phase (intermediate)', () => {
+      const { container } = render(<BugPhaseLabel phase="verified" />);
+
+      const span = container.querySelector('span');
+      expect(span?.className).toContain('text-blue-600');
     });
   });
 });

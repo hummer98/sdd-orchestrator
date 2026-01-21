@@ -1850,6 +1850,58 @@ describe('executeDocumentReview - multi-engine support', () => {
 
       expect(result.ok).toBe(true);
     });
+
+    // spec-worktree-early-creation: Bug fix - getSpecWorktreeCwd should look for spec.json in worktree
+    // When spec is created with --worktree flag, spec.json exists ONLY in worktree, not in main project
+    it('should auto-resolve worktreeCwd when spec.json exists ONLY in worktree (not in main .kiro/specs/)', async () => {
+      const specId = 'worktree-only-spec';
+
+      // Setup: Create worktree directory structure with spec.json ONLY in worktree
+      // This simulates spec created with --worktree flag (spec-worktree-early-creation)
+      const worktreeSpecDir = path.join(
+        testDir,
+        '.kiro',
+        'worktrees',
+        'specs',
+        specId,
+        '.kiro',
+        'specs',
+        specId
+      );
+      await fs.mkdir(worktreeSpecDir, { recursive: true });
+
+      // Create spec.json in worktree (with worktree.path field)
+      await fs.writeFile(
+        path.join(worktreeSpecDir, 'spec.json'),
+        JSON.stringify({
+          feature_name: specId,
+          worktree: {
+            path: `.kiro/worktrees/specs/${specId}`,
+            branch: `feature/${specId}`,
+            created_at: '2026-01-01T00:00:00Z',
+            enabled: true,
+          },
+        })
+      );
+
+      // Do NOT create spec.json in main .kiro/specs/ - this is the key difference
+      // In spec-worktree-early-creation, spec.json only exists in worktree
+
+      const result = await service.startAgent({
+        specId,
+        phase: 'design',
+        command: 'echo',
+        args: ['test'],
+        group: 'doc',
+        // No worktreeCwd provided - should auto-resolve from worktree spec.json
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // The cwd should be the worktree path, not the main project path
+        expect(result.value.cwd).toBe(path.join(testDir, '.kiro', 'worktrees', 'specs', specId));
+      }
+    });
   });
 
   // ============================================================

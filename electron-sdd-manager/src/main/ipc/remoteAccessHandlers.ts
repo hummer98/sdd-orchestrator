@@ -456,7 +456,15 @@ export function createSpecDetailProvider(projectPath: string): SpecDetailProvide
   return {
     getSpecDetail: async (specId: string) => {
       try {
-        const specPath = join(projectPath, '.kiro', 'specs', specId);
+        // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT
+        const resolveResult = await fileService.resolveSpecPath(projectPath, specId);
+        if (!resolveResult.ok) {
+          return {
+            ok: false,
+            error: { type: 'NOT_FOUND', message: `Spec not found: ${specId}` },
+          };
+        }
+        const specPath = resolveResult.value;
         const result = await fileService.readSpecJson(specPath);
 
         if (!result.ok) {

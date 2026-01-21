@@ -15,6 +15,7 @@ import {
 } from './providerAgentProcess';
 import { AgentRecordService, AgentInfo, AgentStatus } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
+import { FileService } from './fileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 // execution-store-consolidation: ImplCompletionAnalyzer REMOVED (Req 6.2)
 // import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
@@ -453,13 +454,29 @@ export class SpecManagerService {
   /**
    * Get the worktree cwd for a spec by reading spec.json
    * git-worktree-support: Helper to resolve worktree path for agent execution
+   * spec-worktree-early-creation: Uses FileService.resolveSpecPath as SSOT for path resolution
    *
    * @param specId - The spec ID (directory name)
    * @returns Worktree cwd if in worktree mode, or projectPath as fallback
    */
   private async getSpecWorktreeCwd(specId: string): Promise<string> {
     try {
-      const specJsonPath = path.join(this.projectPath, '.kiro', 'specs', specId, 'spec.json');
+      // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT
+      // This handles both main spec path and worktree spec path (worktree takes priority)
+      const fileService = new FileService();
+      const resolveResult = await fileService.resolveSpecPath(this.projectPath, specId);
+
+      if (!resolveResult.ok) {
+        // Spec not found in either location
+        logger.warn('[SpecManagerService] getSpecWorktreeCwd: spec not found, using projectPath', {
+          specId,
+          error: resolveResult.error,
+        });
+        return this.projectPath;
+      }
+
+      // Read spec.json from the resolved path
+      const specJsonPath = path.join(resolveResult.value, 'spec.json');
       const content = await readFile(specJsonPath, 'utf-8');
       const specJson = JSON.parse(content);
       return getWorktreeCwd(this.projectPath, specJson);
@@ -1358,8 +1375,11 @@ export class SpecManagerService {
 
     // debatex-document-review Task 2.1: For debatex, use BuildArgsContext with specPath and roundNumber
     // Requirements: 2.1, 2.2, 2.3, 2.4
+    // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT
     if (scheme === 'debatex') {
-      const specPath = path.join(this.projectPath, '.kiro', 'specs', specId);
+      const fileService = new FileService();
+      const resolveResult = await fileService.resolveSpecPath(this.projectPath, specId);
+      const specPath = resolveResult.ok ? resolveResult.value : path.join(this.projectPath, '.kiro', 'specs', specId);
       const documentReviewService = new DocumentReviewService(this.projectPath);
       const roundNumber = await documentReviewService.getNextRoundNumber(specPath);
 
@@ -1670,8 +1690,11 @@ export class SpecManagerService {
         }
 
         // debatex-document-review Task 2.1: For debatex, use BuildArgsContext with specPath and roundNumber
+        // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT
         if (scheme === 'debatex') {
-          const specPath = path.join(this.projectPath, '.kiro', 'specs', specId);
+          const fileService = new FileService();
+          const resolveResult = await fileService.resolveSpecPath(this.projectPath, specId);
+          const specPath = resolveResult.ok ? resolveResult.value : path.join(this.projectPath, '.kiro', 'specs', specId);
           const documentReviewService = new DocumentReviewService(this.projectPath);
           const roundNumber = await documentReviewService.getNextRoundNumber(specPath);
 

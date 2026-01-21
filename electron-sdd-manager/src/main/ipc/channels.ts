@@ -272,6 +272,10 @@ export const IPC_CHANNELS = {
   // Requirements: 2.4
   BUG_PHASE_UPDATE: 'bug-phase:update',
 
+  // bugs-workflow-footer: Convert bug to worktree mode
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
+  BUG_CONVERT_TO_WORKTREE: 'bug-worktree:convert',
+
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   LOAD_PROFILE: 'ipc:load-profile',

@@ -9,13 +9,16 @@
  */
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
-import { ArrowDown, Play, Square, GitBranch } from 'lucide-react';
-import { clsx } from 'clsx';
+import { ArrowDown } from 'lucide-react';
+// bugs-workflow-footer Task 6.1, 6.2: Removed Play, Square, GitBranch - moved to footer
 import { useBugStore } from '../stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { BugPhaseItem } from './BugPhaseItem';
 import { BugAutoExecutionStatusDisplay } from './BugAutoExecutionStatusDisplay';
+// bugs-workflow-footer Task 6.4: Import footer component and hook
+import { BugWorkflowFooter } from './BugWorkflowFooter';
+import { useConvertBugToWorktree } from '../hooks/useConvertBugToWorktree';
 import {
   BUG_WORKFLOW_PHASES,
   BUG_WORKFLOW_PHASE_LABELS,
@@ -65,7 +68,8 @@ function calculatePhaseStatus(
 }
 
 export function BugWorkflowView() {
-  const { selectedBug, bugDetail, useWorktree, setUseWorktree } = useBugStore();
+  // bugs-workflow-footer Task 1.1: Removed useWorktree/setUseWorktree (SSOT: bug.json.worktree)
+  const { selectedBug, bugDetail } = useBugStore();
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
   const bugAutoExecutionPermissions = useWorkflowStore((state) => state.bugAutoExecutionPermissions);
@@ -91,6 +95,12 @@ export function BugWorkflowView() {
   const isAutoExecuting = runtime?.isAutoExecuting ?? false;
 
   // ============================================================
+  // bugs-workflow-footer Task 6.4: useConvertBugToWorktree hook
+  // Requirements: 6.3, 6.4
+  // ============================================================
+  const { isOnMain, isConverting, handleConvert, refreshMainBranchStatus } = useConvertBugToWorktree();
+
+  // ============================================================
   // bug-auto-execution-per-bug-state Task 7.2: Fetch state on bug selection
   // Requirements: 3.1
   // ============================================================
@@ -103,8 +113,12 @@ export function BugWorkflowView() {
       fetchBugAutoExecutionState(bugName).catch((err) => {
         console.error('[BugWorkflowView] Failed to fetch bug auto-execution state:', err);
       });
+      // bugs-workflow-footer: Refresh main branch status on bug selection
+      refreshMainBranchStatus().catch((err) => {
+        console.error('[BugWorkflowView] Failed to refresh main branch status:', err);
+      });
     }
-  }, [bugName, fetchBugAutoExecutionState]);
+  }, [bugName, fetchBugAutoExecutionState, refreshMainBranchStatus]);
 
   // Get running phases for the selected bug
   // Use bug:{name} format to match AgentListPanel filtering
@@ -147,8 +161,7 @@ export function BugWorkflowView() {
 
   // Task 3.3: フェーズ実行機能
   // Requirements: 4.1-4.5, 6.4
-  // bugs-worktree-support Task 12.2: bug-fix実行時のworktree作成判定
-  // Requirements: 8.5, 3.2, 3.6
+  // bugs-workflow-footer Task 6.3: Removed fix phase auto worktree creation
   // bug-deploy-phase: Requirements 4.1, 5.1, 6.1 - optimistic phase update
   // Use startAgent directly with appropriate command formatting
   const handleExecutePhase = useCallback(async (phase: BugWorkflowPhase) => {
@@ -161,14 +174,8 @@ export function BugWorkflowView() {
     const previousPhase = selectedBug.phase;
 
     try {
-      // bugs-worktree-support Task 12.2: fixフェーズでworktree使用時はworktreeを作成
-      if (phase === 'fix' && useWorktree) {
-        const result = await window.electronAPI.createBugWorktree(selectedBug.name);
-        if (!result.ok) {
-          notify.error(result.error?.message || 'worktreeの作成に失敗しました');
-          return;
-        }
-      }
+      // bugs-workflow-footer Task 6.3: Removed auto worktree creation for fix phase
+      // Worktree mode is now set via footer button (convertBugToWorktree)
 
       // bug-deploy-phase Task 3.1, 4.1: Optimistic phase update for deploy
       // Requirements: 4.1, 5.1, 6.1
@@ -184,8 +191,9 @@ export function BugWorkflowView() {
       // bugs-worktree-support Task 12.3: Deployボタンの条件分岐
       // Requirements: 4.1
       // worktreeフィールドが存在する場合は/kiro:bug-merge、そうでない場合は/commit
+      // bugs-workflow-footer: Check bugDetail.metadata.worktree (bug.json.worktree as SSOT)
       let command = commandTemplate;
-      if (phase === 'deploy' && selectedBug.worktree) {
+      if (phase === 'deploy' && bugDetail?.metadata.worktree) {
         command = '/kiro:bug-merge';
       }
 
@@ -218,7 +226,7 @@ export function BugWorkflowView() {
         notify.error(error instanceof Error ? error.message : 'フェーズの実行に失敗しました');
       }
     }
-  }, [selectedBug, useWorktree]);
+  }, [selectedBug, bugDetail]);
 
   // ============================================================
   // bug-auto-execution-per-bug-state Task 4.2, 4.3: Auto execution handlers
@@ -310,6 +318,28 @@ export function BugWorkflowView() {
     }
   }, [bugName, lastFailedPhase]);
 
+  // ============================================================
+  // bugs-workflow-footer Task 6.4: Auto execution toggle handler for footer
+  // Requirements: 6.3, 6.4
+  // ============================================================
+  const handleAutoExecutionToggle = useCallback(() => {
+    if (isAutoExecuting) {
+      handleStopAutoExecution();
+    } else {
+      handleStartAutoExecution();
+    }
+  }, [isAutoExecuting, handleStartAutoExecution, handleStopAutoExecution]);
+
+  // bugs-workflow-footer Task 6.4: Convert to worktree handler
+  const handleConvertToWorktree = useCallback(async () => {
+    if (!bugName) return;
+    const success = await handleConvert(bugName);
+    if (success) {
+      // Refresh bug detail to get updated worktree info
+      await useBugStore.getState().selectBug(selectedBug!);
+    }
+  }, [bugName, selectedBug, handleConvert]);
+
   // If no bug is selected, show placeholder
   if (!selectedBug) {
     return (
@@ -321,42 +351,13 @@ export function BugWorkflowView() {
 
   return (
     <div className="flex flex-col h-full" data-testid="bug-workflow-view">
-      {/* Task 4.1: Auto Execution Button Header */}
+      {/* bugs-workflow-footer Task 6.1: Removed auto-execution buttons from header */}
+      {/* bugs-workflow-footer Task 6.2: Removed worktree checkbox */}
+      {/* Auto execution controls moved to BugWorkflowFooter */}
       <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Bug Workflow
         </span>
-        {/* Auto Execution Button */}
-        {!isAutoExecuting ? (
-          <button
-            data-testid="bug-auto-execute-button"
-            onClick={handleStartAutoExecution}
-            disabled={runningPhases.size > 0}
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
-              'transition-colors',
-              runningPhases.size === 0
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
-            )}
-          >
-            <Play className="w-4 h-4" />
-            自動実行
-          </button>
-        ) : (
-          <button
-            data-testid="bug-auto-stop-button"
-            onClick={handleStopAutoExecution}
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 rounded text-sm',
-              'bg-red-500 text-white hover:bg-red-600',
-              'transition-colors'
-            )}
-          >
-            <Square className="w-4 h-4" />
-            停止
-          </button>
-        )}
       </div>
 
       {/* Task 4.2: Auto Execution Status Display */}
@@ -372,26 +373,6 @@ export function BugWorkflowView() {
           />
         </div>
       )}
-
-      {/* bugs-worktree-support Task 12.1: worktreeチェックボックス */}
-      {/* Requirements: 8.2 */}
-      <div className="px-4 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        <input
-          type="checkbox"
-          id="workflow-use-worktree"
-          checked={useWorktree}
-          onChange={(e) => setUseWorktree(e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          data-testid="workflow-use-worktree-checkbox"
-        />
-        <label
-          htmlFor="workflow-use-worktree"
-          className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
-        >
-          <GitBranch className="w-4 h-4" />
-          Worktreeを使用
-        </label>
-      </div>
 
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -421,6 +402,22 @@ export function BugWorkflowView() {
           </div>
         ))}
       </div>
+
+      {/* bugs-workflow-footer Task 6.4: Footer with auto-execution and worktree conversion */}
+      <BugWorkflowFooter
+        isAutoExecuting={isAutoExecuting}
+        hasRunningAgents={runningPhases.size > 0}
+        onAutoExecution={handleAutoExecutionToggle}
+        isOnMain={isOnMain}
+        bugJson={bugDetail?.metadata ? {
+          bug_name: bugDetail.metadata.name,
+          created_at: bugDetail.metadata.reportedAt,
+          updated_at: bugDetail.metadata.updatedAt,
+          worktree: bugDetail.metadata.worktree,
+        } : null}
+        onConvertToWorktree={handleConvertToWorktree}
+        isConverting={isConverting}
+      />
     </div>
   );
 }

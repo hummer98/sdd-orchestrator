@@ -1075,6 +1075,30 @@ export interface ElectronAPI {
   }>;
 
   /**
+   * Convert a bug to worktree mode
+   * bugs-workflow-footer: Requirements 12.1, 12.2
+   * Creates worktree at ../{project}-worktrees/bugs/{bugName} and updates bug.json
+   * @param bugName Bug name
+   * @returns Result with worktree info on success, error on failure
+   */
+  convertBugToWorktree(bugName: string): Promise<{
+    ok: true;
+    value: {
+      path: string;
+      absolutePath: string;
+      branch: string;
+      created_at: string;
+    };
+  } | {
+    ok: false;
+    error: {
+      type: 'NOT_ON_MAIN_BRANCH' | 'BUG_NOT_FOUND' | 'ALREADY_WORKTREE_MODE' | 'WORKTREE_CREATE_FAILED' | 'BUG_JSON_UPDATE_FAILED';
+      currentBranch?: string;
+      message?: string;
+    };
+  }>;
+
+  /**
    * Get bugs worktree default setting
    * Requirements: 12.1 (bugs-worktree-support)
    * @returns true if worktree should be used by default for bugs

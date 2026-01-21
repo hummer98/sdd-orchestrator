@@ -414,34 +414,26 @@ describe('bugStore', () => {
   });
 
   // ============================================================
-  // bugs-worktree-support Task 10.1: useWorktree state management
-  // Requirements: 8.4
+  // bugs-workflow-footer Task 1.1: useWorktree state removed
+  // Requirements: 9.1, 9.2, 9.3
+  // useWorktree state was removed from bugStore in favor of
+  // bug.json.worktree field as SSOT
   // ============================================================
-  describe('useWorktree state', () => {
-    it('should have initial useWorktree as false', () => {
-      expect(useBugStore.getState().useWorktree).toBe(false);
+  describe('useWorktree state removal', () => {
+    it('should not have useWorktree in store state', () => {
+      // Verify useWorktree is no longer part of the store
+      const state = useBugStore.getState();
+      expect('useWorktree' in state).toBe(false);
     });
 
-    it('should update useWorktree with setUseWorktree', () => {
-      useBugStore.getState().setUseWorktree(true);
-      expect(useBugStore.getState().useWorktree).toBe(true);
-
-      useBugStore.getState().setUseWorktree(false);
-      expect(useBugStore.getState().useWorktree).toBe(false);
+    it('should not have setUseWorktree action', () => {
+      const state = useBugStore.getState();
+      expect('setUseWorktree' in state).toBe(false);
     });
 
-    it('should initialize useWorktree from default value', () => {
-      // Reset store to initial state
-      useBugStore.setState({ useWorktree: false });
-
-      // Initialize with default value true
-      useBugStore.getState().initializeUseWorktree(true);
-      expect(useBugStore.getState().useWorktree).toBe(true);
-
-      // Reset and initialize with default value false
-      useBugStore.setState({ useWorktree: true });
-      useBugStore.getState().initializeUseWorktree(false);
-      expect(useBugStore.getState().useWorktree).toBe(false);
+    it('should not have initializeUseWorktree action', () => {
+      const state = useBugStore.getState();
+      expect('initializeUseWorktree' in state).toBe(false);
     });
   });
 
@@ -460,7 +452,7 @@ describe('bugStore', () => {
       expect(useBugStore.getState().selectedBug).toEqual(mockBugs[0]);
 
       // Simulate bug deletion by returning list without the selected bug
-      const bugsWithoutSelected = mockBugs.filter(b => b.path !== mockBugs[0].path);
+      const bugsWithoutSelected = mockBugs.filter(b => b.name !== mockBugs[0].name);
       mockReadBugs.mockResolvedValue(bugsWithoutSelected);
 
       // Refresh bugs
@@ -486,7 +478,7 @@ describe('bugStore', () => {
       await useBugStore.getState().refreshBugs();
 
       // Selected bug should still be selected (with refreshed detail)
-      expect(useBugStore.getState().selectedBug?.path).toBe(mockBugs[0].path);
+      expect(useBugStore.getState().selectedBug?.name).toBe(mockBugs[0].name);
     });
   });
 });

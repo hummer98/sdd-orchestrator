@@ -295,6 +295,26 @@ export class BugService {
   }
 
   // ============================================================
+  // bugs-workflow-footer Task 3.2: Check if bug exists
+  // Requirements: 5.2
+  // ============================================================
+
+  /**
+   * Check if a bug directory exists
+   * @param bugPath - Path to bug directory
+   * @returns true if bug directory exists
+   */
+  async bugExists(bugPath: string): Promise<Result<boolean, FileError>> {
+    try {
+      await access(bugPath);
+      const stats = await stat(bugPath);
+      return { ok: true, value: stats.isDirectory() };
+    } catch {
+      return { ok: true, value: false };
+    }
+  }
+
+  // ============================================================
   // bugs-worktree-support Task 2.1: bug.json CRUD operations
   // Requirements: 1.1, 2.1, 2.2, 2.4, 2.5
   // ============================================================

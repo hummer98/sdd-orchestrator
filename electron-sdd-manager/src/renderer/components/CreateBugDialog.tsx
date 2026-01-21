@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react';
-import { X, Plus, Loader2, AlertCircle, Bug, GitBranch } from 'lucide-react';
+import { X, Plus, Loader2, AlertCircle, Bug } from 'lucide-react';
+// bugs-workflow-footer Task 1.1: Removed GitBranch import (worktree switch removed)
 import { useProjectStore, useAgentStore, notify } from '../stores';
 import { useBugStore } from '../stores/bugStore';
 import { clsx } from 'clsx';
@@ -25,7 +26,8 @@ interface CreateBugDialogProps {
 export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): React.ReactElement | null {
   const { currentProject } = useProjectStore();
   const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
-  const { refreshBugs, useWorktree, setUseWorktree } = useBugStore();
+  // bugs-workflow-footer Task 1.1: Removed useWorktree/setUseWorktree (SSOT: bug.json.worktree)
+  const { refreshBugs } = useBugStore();
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -150,49 +152,8 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
             />
           </div>
 
-          {/* bugs-worktree-support Task 11.1: worktreeスライドスイッチ（Specと統一） */}
-          {/* Requirements: 8.1, 8.3, 8.4 */}
-          <div className="flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center gap-2">
-              <GitBranch className={clsx(
-                'w-4 h-4',
-                useWorktree ? 'text-violet-500' : 'text-gray-400'
-              )} />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Worktreeモードで作成
-              </span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={useWorktree}
-              data-testid="use-worktree-checkbox"
-              onClick={() => setUseWorktree(!useWorktree)}
-              disabled={isCreating}
-              className={clsx(
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full',
-                'border-2 border-transparent transition-colors duration-200 ease-in-out',
-                'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                useWorktree ? 'bg-violet-500' : 'bg-gray-200 dark:bg-gray-600'
-              )}
-            >
-              <span
-                className={clsx(
-                  'pointer-events-none inline-block h-5 w-5 rounded-full',
-                  'bg-white shadow transform ring-0 transition duration-200 ease-in-out',
-                  useWorktree ? 'translate-x-5' : 'translate-x-0'
-                )}
-              />
-            </button>
-          </div>
-
-          {/* Worktreeモードの説明 */}
-          {useWorktree && (
-            <p className="text-xs text-violet-600 dark:text-violet-400">
-              ブランチとWorktreeを作成し、分離された環境でバグ修正を行います。mainブランチで実行する必要があります。
-            </p>
-          )}
+          {/* bugs-workflow-footer Task 1.1: Removed worktree switch UI */}
+          {/* Worktree mode is now set via footer button after bug creation */}
 
           {/* Error message */}
           {error && (

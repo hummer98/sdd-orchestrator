@@ -236,6 +236,100 @@ export function registerBugWorktreeHandlers(): void {
     }
   );
 
+  // bugs-workflow-footer: bug-worktree:convert
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
+  ipcMain.handle(
+    IPC_CHANNELS.BUG_CONVERT_TO_WORKTREE,
+    async (_event, bugName: string) => {
+      logger.info('[bugWorktreeHandlers] bug-worktree:convert called', { bugName });
+
+      const projectPath = getCurrentProjectPath();
+      if (!projectPath) {
+        logger.error('[bugWorktreeHandlers] No project path set');
+        return {
+          ok: false as const,
+          error: { type: 'BUG_NOT_FOUND' as const, message: 'No project path set' },
+        };
+      }
+
+      const worktreeService = new WorktreeService(projectPath);
+      const bugService = new BugService();
+      const bugPath = `${projectPath}/.kiro/bugs/${bugName}`;
+
+      // Step 1: Check if on main branch (Requirements: 5.2, 5.3)
+      const isMainResult = await worktreeService.isOnMainBranch();
+      if (!isMainResult.ok) {
+        logger.error('[bugWorktreeHandlers] Failed to check main branch', { error: isMainResult.error });
+        return {
+          ok: false as const,
+          error: { type: 'NOT_ON_MAIN_BRANCH' as const, message: 'Failed to check branch status' },
+        };
+      }
+      if (!isMainResult.value) {
+        // Get current branch name for error message
+        const currentBranchResult = await worktreeService.getCurrentBranch();
+        const currentBranch = currentBranchResult.ok ? currentBranchResult.value : 'unknown';
+        logger.warn('[bugWorktreeHandlers] Not on main branch', { currentBranch });
+        return {
+          ok: false as const,
+          error: {
+            type: 'NOT_ON_MAIN_BRANCH' as const,
+            currentBranch,
+            message: `Cannot convert to worktree: not on main branch (current: ${currentBranch})`,
+          },
+        };
+      }
+
+      // Step 2: Check if bug exists (Requirements: 5.2 - BUG_NOT_FOUND)
+      const bugExistsResult = await bugService.bugExists(bugPath);
+      if (!bugExistsResult.ok || !bugExistsResult.value) {
+        logger.error('[bugWorktreeHandlers] Bug not found', { bugPath });
+        return {
+          ok: false as const,
+          error: { type: 'BUG_NOT_FOUND' as const, message: `Bug not found: ${bugName}` },
+        };
+      }
+
+      // Step 3: Check if already in worktree mode (ALREADY_WORKTREE_MODE)
+      const bugJsonResult = await bugService.readBugJson(bugPath);
+      if (bugJsonResult.ok && bugJsonResult.value?.worktree) {
+        logger.warn('[bugWorktreeHandlers] Bug already in worktree mode', { bugName });
+        return {
+          ok: false as const,
+          error: { type: 'ALREADY_WORKTREE_MODE' as const, message: `Bug ${bugName} is already in worktree mode` },
+        };
+      }
+
+      // Step 4: Create worktree (Requirements: 5.4, 5.5)
+      // This uses the existing directory mode flow in handleBugWorktreeCreate
+      const createResult = await handleBugWorktreeCreate(projectPath, bugPath, bugName);
+      if (!createResult.ok) {
+        logger.error('[bugWorktreeHandlers] Failed to create worktree', { error: createResult.error });
+        const errorMessage = createResult.error && 'message' in createResult.error
+          ? createResult.error.message
+          : 'Failed to create worktree';
+        return {
+          ok: false as const,
+          error: {
+            type: 'WORKTREE_CREATE_FAILED' as const,
+            message: errorMessage,
+          },
+        };
+      }
+
+      // Step 5: Return success (Requirements: 5.7)
+      logger.info('[bugWorktreeHandlers] Bug converted to worktree mode successfully', {
+        bugName,
+        worktreeInfo: createResult.value,
+      });
+
+      return {
+        ok: true as const,
+        value: createResult.value,
+      };
+    }
+  );
+
   // bug-deploy-phase: bug-phase:update
   // Requirements: 2.4
   ipcMain.handle(

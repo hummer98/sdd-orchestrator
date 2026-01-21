@@ -24,9 +24,8 @@ interface BugState {
   isLoading: boolean;
   error: string | null;
   isWatching: boolean;
-  // bugs-worktree-support Task 10.1: worktree使用フラグ (Requirements: 8.4)
-  // グローバルに1つ保持し、CreateBugDialog/BugWorkflowViewで共有
-  useWorktree: boolean;
+  // bugs-workflow-footer Task 1.1: useWorktree removed (Requirements: 9.1, 9.2, 9.3)
+  // Worktree mode is now determined by bug.json.worktree field (SSOT)
 }
 
 interface BugActions {
@@ -70,17 +69,8 @@ interface BugActions {
    * Returns Promise to ensure async operations complete before caller proceeds
    */
   handleBugsChanged: (event: BugsChangeEvent) => Promise<void>;
-  // bugs-worktree-support Task 10.1: worktree使用フラグ操作 (Requirements: 8.4)
-  /**
-   * Set worktree使用フラグ
-   * @param value - true: worktreeを使用, false: 使用しない
-   */
-  setUseWorktree: (value: boolean) => void;
-  /**
-   * Initialize useWorktree from project default setting
-   * @param defaultValue - プロジェクト設定のデフォルト値
-   */
-  initializeUseWorktree: (defaultValue: boolean) => void;
+  // bugs-workflow-footer Task 1.1: setUseWorktree/initializeUseWorktree removed
+  // Worktree mode is now determined by bug.json.worktree field (SSOT)
 }
 
 type BugStore = BugState & BugActions;
@@ -96,8 +86,7 @@ export const useBugStore = create<BugStore>((set, get) => ({
   isLoading: false,
   error: null,
   isWatching: false,
-  // bugs-worktree-support Task 10.1: worktree使用フラグ (Requirements: 8.4)
-  useWorktree: false,
+  // bugs-workflow-footer Task 1.1: useWorktree removed (Requirements: 9.1, 9.2, 9.3)
 
   // Actions
   loadBugs: async (projectPath: string) => {
@@ -386,18 +375,6 @@ export const useBugStore = create<BugStore>((set, get) => ({
     }
   },
 
-  // ============================================================
-  // bugs-worktree-support Task 10.1: worktree使用フラグ操作
-  // Requirements: 8.4
-  // ============================================================
-
-  setUseWorktree: (value: boolean) => {
-    set({ useWorktree: value });
-    console.log('[bugStore] setUseWorktree:', value);
-  },
-
-  initializeUseWorktree: (defaultValue: boolean) => {
-    set({ useWorktree: defaultValue });
-    console.log('[bugStore] initializeUseWorktree:', defaultValue);
-  },
+  // bugs-workflow-footer Task 1.1: setUseWorktree/initializeUseWorktree removed
+  // Worktree mode is now determined by bug.json.worktree field (SSOT)
 }));

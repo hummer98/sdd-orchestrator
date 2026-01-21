@@ -261,83 +261,10 @@ describe('CreateBugDialog', () => {
   });
 
   // ============================================================
-  // bugs-worktree-support Task 11.1: worktreeスライドスイッチ
-  // Requirements: 8.1, 8.3, 8.4
+  // bugs-workflow-footer Task 1.1: worktree switch removed
+  // Worktree mode is now set via footer button after bug creation
+  // Tests for worktree switch have been removed
   // ============================================================
-  describe('worktree switch', () => {
-    it('should display worktree switch', () => {
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      expect(screen.getByTestId('use-worktree-checkbox')).toBeInTheDocument();
-      expect(screen.getByText('Worktreeモードで作成')).toBeInTheDocument();
-    });
-
-    it('should initialize switch with store value (false)', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        refreshBugs: mockRefreshBugs,
-        useWorktree: false,
-        setUseWorktree: vi.fn(),
-      });
-
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      const switchButton = screen.getByTestId('use-worktree-checkbox');
-      expect(switchButton.getAttribute('aria-checked')).toBe('false');
-    });
-
-    it('should initialize switch with store value (true)', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        refreshBugs: mockRefreshBugs,
-        useWorktree: true,
-        setUseWorktree: vi.fn(),
-      });
-
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      const switchButton = screen.getByTestId('use-worktree-checkbox');
-      expect(switchButton.getAttribute('aria-checked')).toBe('true');
-    });
-
-    it('should call setUseWorktree when switch is clicked', () => {
-      const mockSetUseWorktree = vi.fn();
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        refreshBugs: mockRefreshBugs,
-        useWorktree: false,
-        setUseWorktree: mockSetUseWorktree,
-      });
-
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      const switchButton = screen.getByTestId('use-worktree-checkbox');
-      fireEvent.click(switchButton);
-
-      expect(mockSetUseWorktree).toHaveBeenCalledWith(true);
-    });
-
-    it('should show worktree mode description when enabled', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        refreshBugs: mockRefreshBugs,
-        useWorktree: true,
-        setUseWorktree: vi.fn(),
-      });
-
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      expect(screen.getByText(/ブランチとWorktreeを作成し、分離された環境でバグ修正を行います/)).toBeInTheDocument();
-    });
-
-    it('should not show worktree mode description when disabled', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        refreshBugs: mockRefreshBugs,
-        useWorktree: false,
-        setUseWorktree: vi.fn(),
-      });
-
-      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
-
-      expect(screen.queryByText(/ブランチとWorktreeを作成し、分離された環境でバグ修正を行います/)).not.toBeInTheDocument();
-    });
-  });
 
   // ============================================================
   // Error handling

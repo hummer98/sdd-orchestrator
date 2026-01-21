@@ -33,7 +33,12 @@ describe('SpecManagerService', () => {
 
   afterEach(async () => {
     // Stop all agents
-    await service.stopAllAgents();
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      // Ignore errors during cleanup - agent records may be in incomplete state
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
 
     // Clean up test directory
     try {
@@ -833,7 +838,12 @@ describe('executeDocumentReviewReply with autofix', () => {
 
   afterEach(async () => {
     // Stop all agents
-    await service.stopAllAgents();
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      // Ignore errors during cleanup - agent records may be in incomplete state
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
 
     // Clean up test directory
     try {
@@ -1124,7 +1134,12 @@ describe('executeSpecMerge', () => {
 
   afterEach(async () => {
     // Stop all agents
-    await service.stopAllAgents();
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      // Ignore errors during cleanup - agent records may be in incomplete state
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
 
     // Clean up test directory
     try {
@@ -1224,7 +1239,12 @@ describe('executeDocumentReview - multi-engine support', () => {
   });
 
   afterEach(async () => {
-    await service.stopAllAgents();
+    try {
+      await service.stopAllAgents();
+    } catch (error) {
+      // Ignore errors during cleanup - agent records may be in incomplete state
+      console.log('Ignoring stopAllAgents error during cleanup:', error);
+    }
     try {
       await fs.rm(testDir, { recursive: true, force: true });
     } catch {

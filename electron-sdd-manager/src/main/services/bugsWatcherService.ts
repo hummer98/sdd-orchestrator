@@ -10,9 +10,14 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
+import { access, constants } from 'fs/promises';
 import { logger } from './logger';
 import type { BugsChangeEvent } from '../../renderer/types';
 import type { BugWorktreeConfig } from '../../renderer/types/bugJson';
+import {
+  detectWorktreeAddition,
+  buildWorktreeEntityPath,
+} from './worktreeWatcherUtils';
 
 export type BugsChangeCallback = (event: BugsChangeEvent) => void;
 
@@ -25,9 +30,15 @@ export class BugsWatcherService {
   private callbacks: BugsChangeCallback[] = [];
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private debounceMs = 300;
+  /** spec-path-ssot-refactor: Base path for worktrees bugs directory */
+  private worktreeBugsBaseDir: string;
+  /** spec-path-ssot-refactor: Debounce timers for worktree additions (500ms) */
+  private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
+  private worktreeAdditionDebounceMs = 500;
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
+    this.worktreeBugsBaseDir = path.join(projectPath, '.kiro', 'worktrees', 'bugs');
   }
 
   /**
@@ -164,8 +175,30 @@ export class BugsWatcherService {
    *
    * Bug fix: bugs-tab-list-not-updating
    * Filter out events for paths outside .kiro/bugs/
+   * spec-path-ssot-refactor: Added 2-tier monitoring for worktree additions/removals
    */
   private handleEvent(type: BugsChangeEvent['type'], filePath: string): void {
+    // spec-path-ssot-refactor: 2-tier monitoring - detect worktree additions/removals
+    if (type === 'addDir') {
+      const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, filePath);
+      if (entityName) {
+        logger.info('[BugsWatcherService] Worktree addition detected', { entityName, dirPath: filePath });
+        this.handleWorktreeAddition(filePath).catch((error) => {
+          logger.error('[BugsWatcherService] Failed to handle worktree addition', { error, entityName });
+        });
+        // Don't propagate addDir event for worktree base directory
+        return;
+      }
+    } else if (type === 'unlinkDir') {
+      const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, filePath);
+      if (entityName) {
+        logger.info('[BugsWatcherService] Worktree removal detected', { entityName, dirPath: filePath });
+        this.handleWorktreeRemoval(filePath);
+        // Don't propagate unlinkDir event for worktree base directory
+        return;
+      }
+    }
+
     // Filter: only process events within .kiro/bugs/
     if (!this.isWithinBugsDir(filePath)) {
       logger.debug('[BugsWatcherService] Ignoring event outside bugs dir', { type, filePath });
@@ -189,6 +222,81 @@ export class BugsWatcherService {
     }, this.debounceMs);
 
     this.debounceTimers.set(filePath, timer);
+  }
+
+  /**
+   * spec-path-ssot-refactor Task 4.2: Handle worktree directory addition
+   * Dynamically adds inner bug path to monitoring after debounce wait
+   * Requirements: 3.2, 3.4
+   */
+  private async handleWorktreeAddition(dirPath: string): Promise<void> {
+    if (!this.watcher) {
+      logger.warn('[BugsWatcherService] Watcher not running, cannot add worktree path');
+      return;
+    }
+
+    const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, dirPath);
+    if (!entityName) {
+      logger.debug('[BugsWatcherService] Could not extract entity name from worktree path', { dirPath });
+      return;
+    }
+
+    // Clear existing timer for this worktree
+    const existingTimer = this.worktreeAdditionTimers.get(entityName);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Debounce to wait for directory structure creation (500ms)
+    const timer = setTimeout(async () => {
+      this.worktreeAdditionTimers.delete(entityName);
+
+      const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
+
+      // Check if inner bug path exists
+      try {
+        await access(innerBugPath, constants.F_OK);
+
+        // Add to watcher
+        this.watcher?.add(innerBugPath);
+        logger.info('[BugsWatcherService] Added worktree inner bug path to watcher', { entityName, innerBugPath });
+      } catch {
+        logger.debug('[BugsWatcherService] Worktree inner bug path not yet ready', { entityName, innerBugPath });
+      }
+    }, this.worktreeAdditionDebounceMs);
+
+    this.worktreeAdditionTimers.set(entityName, timer);
+  }
+
+  /**
+   * spec-path-ssot-refactor Task 4.3: Handle worktree directory removal
+   * Removes inner bug path from monitoring
+   * Requirements: 3.3
+   */
+  private handleWorktreeRemoval(dirPath: string): void {
+    if (!this.watcher) {
+      logger.warn('[BugsWatcherService] Watcher not running, cannot remove worktree path');
+      return;
+    }
+
+    const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, dirPath);
+    if (!entityName) {
+      logger.debug('[BugsWatcherService] Could not extract entity name from worktree path', { dirPath });
+      return;
+    }
+
+    // Clear any pending addition timer
+    const existingTimer = this.worktreeAdditionTimers.get(entityName);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.worktreeAdditionTimers.delete(entityName);
+    }
+
+    const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
+
+    // Remove from watcher
+    this.watcher.unwatch(innerBugPath);
+    logger.info('[BugsWatcherService] Removed worktree inner bug path from watcher', { entityName, innerBugPath });
   }
 
   /**
@@ -220,6 +328,12 @@ export class BugsWatcherService {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+
+    // spec-path-ssot-refactor: Clear worktree addition timers
+    for (const timer of this.worktreeAdditionTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.worktreeAdditionTimers.clear();
 
     this.callbacks = [];
   }

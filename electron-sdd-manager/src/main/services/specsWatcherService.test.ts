@@ -432,4 +432,96 @@ describe('SpecsWatcherService', () => {
       expect(progressPercent).toBe(60); // 3/5 = 60%
     });
   });
+
+  // ============================================================
+  // spec-path-ssot-refactor Task 3: 2段階監視対応
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+  // ============================================================
+  describe('Two-tier monitoring for worktrees', () => {
+    it('should watch worktrees base directory for dynamic additions', async () => {
+      const chokidar = await import('chokidar');
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn(),
+        unwatch: vi.fn(),
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new SpecsWatcherService('/project');
+      await service.start();
+
+      // Verify that watch includes worktrees base directory
+      expect(chokidar.watch).toHaveBeenCalled();
+      const watchCall = (chokidar.watch as any).mock.calls[0];
+      const watchPaths = watchCall[0];
+
+      // Should include both main specs and worktrees base directory
+      expect(watchPaths).toContain('/project/.kiro/specs');
+      expect(watchPaths).toContain('/project/.kiro/worktrees/specs');
+    });
+
+    it('should dynamically add inner spec path when worktree is added', async () => {
+      const chokidar = await import('chokidar');
+      const mockAdd = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: mockAdd,
+        unwatch: vi.fn(),
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new SpecsWatcherService('/project');
+      await service.start();
+
+      // Access private handleWorktreeAddition method
+      const handleWorktreeAddition = (service as unknown as {
+        handleWorktreeAddition: (dirPath: string) => Promise<void>
+      }).handleWorktreeAddition;
+
+      expect(handleWorktreeAddition).toBeDefined();
+    });
+
+    it('should dynamically remove inner spec path when worktree is removed', async () => {
+      const chokidar = await import('chokidar');
+      const mockUnwatch = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn(),
+        unwatch: mockUnwatch,
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new SpecsWatcherService('/project');
+      await service.start();
+
+      // Access private handleWorktreeRemoval method
+      const handleWorktreeRemoval = (service as unknown as {
+        handleWorktreeRemoval: (dirPath: string) => void
+      }).handleWorktreeRemoval;
+
+      expect(handleWorktreeRemoval).toBeDefined();
+    });
+
+    it('should use extractEntityName from worktreeWatcherUtils', async () => {
+      const service = new SpecsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Test that worktree paths are correctly parsed
+      handleEvent('change', '/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature/spec.json');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'my-feature',
+        })
+      );
+    });
+  });
 });

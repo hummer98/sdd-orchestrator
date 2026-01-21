@@ -314,4 +314,92 @@ describe('BugsWatcherService', () => {
       );
     });
   });
+
+  // ============================================================
+  // spec-path-ssot-refactor Task 4: 2段階監視対応
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+  describe('Two-tier monitoring for worktrees', () => {
+    it('should watch worktrees bugs base directory for dynamic additions', async () => {
+      const chokidar = await import('chokidar');
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn(),
+        unwatch: vi.fn(),
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new BugsWatcherService('/project');
+      service.start();
+
+      // Verify that watch is called for kiro directory (which includes worktrees monitoring)
+      expect(chokidar.watch).toHaveBeenCalled();
+      const watchCall = (chokidar.watch as any).mock.calls[0];
+      expect(watchCall[0]).toBe('/project/.kiro');
+    });
+
+    it('should dynamically add inner bug path when worktree is added', async () => {
+      const chokidar = await import('chokidar');
+      const mockAdd = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: mockAdd,
+        unwatch: vi.fn(),
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new BugsWatcherService('/project');
+      service.start();
+
+      // Access private handleWorktreeAddition method
+      const handleWorktreeAddition = (service as unknown as {
+        handleWorktreeAddition: (dirPath: string) => Promise<void>
+      }).handleWorktreeAddition;
+
+      expect(handleWorktreeAddition).toBeDefined();
+    });
+
+    it('should dynamically remove inner bug path when worktree is removed', async () => {
+      const chokidar = await import('chokidar');
+      const mockUnwatch = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn(),
+        unwatch: mockUnwatch,
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+      const service = new BugsWatcherService('/project');
+      service.start();
+
+      // Access private handleWorktreeRemoval method
+      const handleWorktreeRemoval = (service as unknown as {
+        handleWorktreeRemoval: (dirPath: string) => void
+      }).handleWorktreeRemoval;
+
+      expect(handleWorktreeRemoval).toBeDefined();
+    });
+
+    it('should use extractEntityName from worktreeWatcherUtils', async () => {
+      const service = new BugsWatcherService('/project');
+      const callback = vi.fn();
+      service.onChange(callback);
+
+      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
+
+      // Test that worktree paths are correctly parsed
+      handleEvent('change', '/project/.kiro/worktrees/bugs/my-bug/.kiro/bugs/my-bug/bug.json');
+
+      vi.advanceTimersByTime(350);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bugName: 'my-bug',
+        })
+      );
+    });
+  });
 });

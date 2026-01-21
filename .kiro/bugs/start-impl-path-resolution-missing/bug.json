@@ -1,5 +1,6 @@
 {
   "bug_name": "start-impl-path-resolution-missing",
   "created_at": "2026-01-21T07:45:50Z",
-  "updated_at": "2026-01-21T07:58:36Z"
+  "updated_at": "2026-01-21T08:37:10Z",
+  "status": "verified"
 }

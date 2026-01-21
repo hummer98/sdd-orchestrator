@@ -525,6 +525,7 @@ export function setupSpecDetailProvider(projectPath: string): void {
 /**
  * Create a BugDetailProvider for WebSocketHandler
  * Requirements: Bug management E2E test support
+ * spec-path-ssot-refactor: BugMetadata no longer has path, but WebSocket API still needs it
  *
  * @param projectPath - Current project path
  */
@@ -543,10 +544,17 @@ export function createBugDetailProvider(_projectPath: string): BugDetailProvider
           };
         }
 
-        // BugService returns BugDetail which already has the correct structure
-        // Just return it directly - it has metadata and artifacts fields
+        // BugService returns BugDetail which has BugMetadata (without path)
+        // WebSocket API needs path, so we add it from the input parameter
+        // spec-path-ssot-refactor: Reconstruct BugDetailResult with path for WebSocket API
         const bugDetailResult: BugDetailResult = {
-          metadata: result.value.metadata,
+          metadata: {
+            name: result.value.metadata.name,
+            path: bugPath,  // Use the input bugPath
+            phase: result.value.metadata.phase,
+            reportedAt: result.value.metadata.reportedAt,
+            updatedAt: result.value.metadata.updatedAt,
+          },
           artifacts: result.value.artifacts,
         };
 

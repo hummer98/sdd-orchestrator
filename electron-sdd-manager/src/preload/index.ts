@@ -67,11 +67,13 @@ const electronAPI = {
   readSpecs: (projectPath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.READ_SPECS, projectPath),
 
-  readSpecJson: (specPath: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.READ_SPEC_JSON, specPath),
+  // spec-path-ssot-refactor Task 5.1: Change from specPath to specName
+  readSpecJson: (specName: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_SPEC_JSON, specName),
 
-  readArtifact: (artifactPath: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.READ_ARTIFACT, artifactPath),
+  // spec-path-ssot-refactor: Change from artifactPath to (specName, filename)
+  readArtifact: (specName: string, filename: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_ARTIFACT, specName, filename),
 
   createSpec: (projectPath: string, specName: string, description: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CREATE_SPEC, projectPath, specName, description),
@@ -79,12 +81,14 @@ const electronAPI = {
   writeFile: (filePath: string, content: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.WRITE_FILE, filePath, content),
 
-  updateApproval: (specPath: string, phase: Phase, approved: boolean) =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_APPROVAL, specPath, phase, approved),
+  // spec-path-ssot-refactor Task 5.2: Change from specPath to specName
+  updateApproval: (specName: string, phase: Phase, approved: boolean) =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_APPROVAL, specName, phase, approved),
 
   // spec-scoped-auto-execution-state: Update spec.json with arbitrary fields
-  updateSpecJson: (specPath: string, updates: Record<string, unknown>): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_SPEC_JSON, specPath, updates),
+  // spec-path-ssot-refactor Task 5.3: Change from specPath to specName
+  updateSpecJson: (specName: string, updates: Record<string, unknown>): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATE_SPEC_JSON, specName, updates),
 
   // Agent Management (Task 27.1, 28.1)
   // Requirements: 5.1-5.8
@@ -359,8 +363,9 @@ const electronAPI = {
 
   // Phase Sync - Auto-fix spec.json phase based on task completion
   // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
-  syncSpecPhase: (specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specPath, completedPhase, options),
+  // spec-path-ssot-refactor Task 5.4: Change from specPath to specName
+  syncSpecPhase: (specName: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_SPEC_PHASE, specName, completedPhase, options),
 
   // ============================================================
   // Steering Verification (steering-verification-integration feature)
@@ -404,8 +409,9 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.GENERATE_RELEASE_MD, projectPath),
 
   // Document Review Sync - Auto-fix spec.json documentReview based on file system
-  syncDocumentReview: (specPath: string): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SYNC_DOCUMENT_REVIEW, specPath),
+  // spec-path-ssot-refactor: Change from specPath to specName
+  syncDocumentReview: (specName: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC_DOCUMENT_REVIEW, specName),
 
   // Permissions - Add shell permissions to project
   addShellPermissions: (projectPath: string): Promise<AddPermissionsResult> =>
@@ -753,9 +759,10 @@ const electronAPI = {
    * Read bug detail
    * @param bugPath Bug directory path
    * @returns Bug detail with artifacts
+   * spec-path-ssot-refactor Task 6.1: Change from bugPath to bugName
    */
-  readBugDetail: (bugPath: string): Promise<BugDetail> =>
-    ipcRenderer.invoke(IPC_CHANNELS.READ_BUG_DETAIL, bugPath),
+  readBugDetail: (bugName: string): Promise<BugDetail> =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_BUG_DETAIL, bugName),
 
   /**
    * Start bugs watcher

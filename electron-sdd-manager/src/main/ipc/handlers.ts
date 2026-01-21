@@ -309,10 +309,16 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
 
     // spec-metadata-ssot-refactor: Read specJsons for all specs to get phase/updatedAt
     // This avoids Renderer needing to make separate IPC calls for each spec
+    // spec-path-ssot-refactor: Use resolveSpecPath to get the full path
     const specJsonMap: Record<string, import('../../renderer/types').SpecJson> = {};
     for (const spec of specs) {
       try {
-        const specJsonResult = await fileService.readSpecJson(spec.path);
+        const specPathResult = await fileService.resolveSpecPath(projectPath, spec.name);
+        if (!specPathResult.ok) {
+          logger.warn('[handlers] Failed to resolve spec path', { specName: spec.name });
+          continue;
+        }
+        const specJsonResult = await fileService.readSpecJson(specPathResult.value);
         if (specJsonResult.ok) {
           specJsonMap[spec.name] = specJsonResult.value;
         }
@@ -439,6 +445,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Set up StateProvider and WorkflowController for Remote Access Server
   // This enables mobile remote access to see specs and control workflows
   // spec-metadata-ssot-refactor: Read specJson for phase/updatedAt since SpecMetadata no longer has them
+  // spec-path-ssot-refactor: Use resolveSpecPath to get the full path for SpecInfo (WebSocket API)
   const getSpecsForRemote = async (): Promise<SpecInfo[] | null> => {
     const result = await fileService.readSpecs(projectPath);
     if (!result.ok) {
@@ -453,14 +460,18 @@ export async function setProjectPath(projectPath: string): Promise<void> {
     const specInfos: SpecInfo[] = [];
     for (const spec of result.value) {
       try {
-        const specJsonResult = await fileService.readSpecJson(spec.path);
+        // spec-path-ssot-refactor: Resolve path from name
+        const specPathResult = await fileService.resolveSpecPath(projectPath, spec.name);
+        const specPath = specPathResult.ok ? specPathResult.value : '';
+
+        const specJsonResult = specPath ? await fileService.readSpecJson(specPath) : { ok: false as const, error: { type: 'NOT_FOUND' as const, path: '' } };
         if (specJsonResult.ok) {
           specInfos.push({
             id: spec.name,
             name: spec.name,
             feature_name: spec.name,
             phase: specJsonResult.value.phase,
-            path: spec.path,
+            path: specPath,
             updatedAt: specJsonResult.value.updated_at || '',
             approvals: specJsonResult.value.approvals,
           });
@@ -471,7 +482,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
             name: spec.name,
             feature_name: spec.name,
             phase: 'initialized',
-            path: spec.path,
+            path: specPath,
           });
         }
       } catch (error) {
@@ -481,7 +492,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
           name: spec.name,
           feature_name: spec.name,
           phase: 'initialized',
-          path: spec.path,
+          path: '',
         });
       }
     }
@@ -489,20 +500,27 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   };
 
   // Get bugs for remote access
+  // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
   const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
     const result = await bugService.readBugs(projectPath);
     if (!result.ok) {
       logger.error('[handlers] Failed to read bugs for remote access', { error: result.error });
       return null;
     }
-    // BugMetadata and BugInfo have compatible structures
-    return result.value.map(bug => ({
-      name: bug.name,
-      path: bug.path,
-      phase: bug.phase,
-      updatedAt: bug.updatedAt,
-      reportedAt: bug.reportedAt,
-    }));
+    // BugMetadata no longer has path field, need to resolve it
+    const bugInfos: BugInfo[] = [];
+    for (const bug of result.value) {
+      const bugPathResult = await fileService.resolveBugPath(projectPath, bug.name);
+      const bugPath = bugPathResult.ok ? bugPathResult.value : '';
+      bugInfos.push({
+        name: bug.name,
+        path: bugPath,
+        phase: bug.phase,
+        updatedAt: bug.updatedAt,
+        reportedAt: bug.reportedAt,
+      });
+    }
+    return bugInfos;
   };
 
   // Get agents for remote access
@@ -589,10 +607,19 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // spec-path-ssot-refactor Task 5.1: Change from specPath to specName
+  // Main process resolves path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.READ_SPEC_JSON,
-    async (_event, specPath: string) => {
-      const result = await fileService.readSpecJson(specPath);
+    async (_event, specName: string) => {
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
+      const result = await fileService.readSpecJson(specPathResult.value);
       if (!result.ok) {
         throw new Error(`Failed to read spec.json: ${result.error.type}`);
       }
@@ -600,9 +627,19 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // spec-path-ssot-refactor: Change from artifactPath to (specName, filename)
+  // Main process resolves the full path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.READ_ARTIFACT,
-    async (_event, artifactPath: string) => {
+    async (_event, specName: string, filename: string) => {
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
+      const artifactPath = path.join(specPathResult.value, filename);
       const result = await fileService.readArtifact(artifactPath);
       if (!result.ok) {
         throw new Error(`Failed to read artifact: ${result.error.type}`);
@@ -640,10 +677,19 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // spec-path-ssot-refactor Task 5.2: Change from specPath to specName
+  // Main process resolves path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.UPDATE_APPROVAL,
-    async (_event, specPath: string, phase: Phase, approved: boolean) => {
-      const result = await fileService.updateApproval(specPath, phase, approved);
+    async (_event, specName: string, phase: Phase, approved: boolean) => {
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
+      const result = await fileService.updateApproval(specPathResult.value, phase, approved);
       if (!result.ok) {
         throw new Error(`Failed to update approval: ${result.error.type}`);
       }
@@ -651,10 +697,19 @@ export function registerIpcHandlers(): void {
   );
 
   // spec-scoped-auto-execution-state: Update spec.json handler
+  // spec-path-ssot-refactor Task 5.3: Change from specPath to specName
+  // Main process resolves path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.UPDATE_SPEC_JSON,
-    async (_event, specPath: string, updates: Record<string, unknown>) => {
-      const result = await fileService.updateSpecJson(specPath, updates);
+    async (_event, specName: string, updates: Record<string, unknown>) => {
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
+      const result = await fileService.updateSpecJson(specPathResult.value, updates);
       if (!result.ok) {
         throw new Error(`Failed to update spec.json: ${result.error.type}`);
       }
@@ -1249,11 +1304,20 @@ export function registerIpcHandlers(): void {
   );
 
   // Phase Sync Handler - Auto-fix spec.json phase based on task completion
+  // spec-path-ssot-refactor Task 5.4: Change from specPath to specName
+  // Main process resolves path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.SYNC_SPEC_PHASE,
-    async (_event, specPath: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }) => {
-      logger.info('[handlers] SYNC_SPEC_PHASE called', { specPath, completedPhase, options });
-      const result = await fileService.updateSpecJsonFromPhase(specPath, completedPhase, options);
+    async (_event, specName: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }) => {
+      logger.info('[handlers] SYNC_SPEC_PHASE called', { specName, completedPhase, options });
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
+      const result = await fileService.updateSpecJsonFromPhase(specPathResult.value, completedPhase, options);
       if (!result.ok) {
         throw new Error(`Failed to sync spec phase: ${result.error.type}`);
       }
@@ -1312,13 +1376,22 @@ export function registerIpcHandlers(): void {
   );
 
   // Document Review Sync Handler - Auto-fix spec.json documentReview based on file system
+  // spec-path-ssot-refactor: Change from specPath to specName
+  // Main process resolves path using resolveSpecPath
   ipcMain.handle(
     IPC_CHANNELS.SYNC_DOCUMENT_REVIEW,
-    async (_event, specPath: string) => {
-      logger.info('[handlers] SYNC_DOCUMENT_REVIEW called', { specPath });
+    async (_event, specName: string) => {
+      logger.info('[handlers] SYNC_DOCUMENT_REVIEW called', { specName });
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+      if (!specPathResult.ok) {
+        throw new Error(`Spec not found: ${specName}`);
+      }
       const { DocumentReviewService } = await import('../services/documentReviewService');
-      const service = new DocumentReviewService(currentProjectPath || '');
-      return service.syncReviewState(specPath);
+      const service = new DocumentReviewService(currentProjectPath);
+      return service.syncReviewState(specPathResult.value);
     }
   );
 
@@ -1351,11 +1424,20 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // spec-path-ssot-refactor Task 6.1: Change from bugPath to bugName
+  // Main process resolves path using resolveBugPath
   ipcMain.handle(
     IPC_CHANNELS.READ_BUG_DETAIL,
-    async (_event, bugPath: string) => {
-      logger.info('[handlers] READ_BUG_DETAIL called', { bugPath });
-      const result = await bugService.readBugDetail(bugPath);
+    async (_event, bugName: string) => {
+      logger.info('[handlers] READ_BUG_DETAIL called', { bugName });
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      const bugPathResult = await fileService.resolveBugPath(currentProjectPath, bugName);
+      if (!bugPathResult.ok) {
+        throw new Error(`Bug not found: ${bugName}`);
+      }
+      const result = await bugService.readBugDetail(bugPathResult.value);
       if (!result.ok) {
         throw new Error(`Failed to read bug detail: ${result.error.type}`);
       }
@@ -2638,19 +2720,25 @@ export function startBugsWatcher(window: BrowserWindow): void {
 
     // Broadcast to Remote UI via WebSocket
     // Requirements: Bug management file watcher - Remote UI integration
+    // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
     try {
       const remoteServer = getRemoteAccessServer();
       const wsHandler = remoteServer.getWebSocketHandler();
       if (wsHandler && currentProjectPath) {
         const bugsResult = await bugService.readBugs(currentProjectPath);
         if (bugsResult.ok) {
-          const bugs = bugsResult.value.map(bug => ({
-            name: bug.name,
-            path: bug.path,
-            phase: bug.phase,
-            updatedAt: bug.updatedAt,
-            reportedAt: bug.reportedAt,
-          }));
+          const bugs: BugInfo[] = [];
+          for (const bug of bugsResult.value) {
+            const bugPathResult = await fileService.resolveBugPath(currentProjectPath, bug.name);
+            const bugPath = bugPathResult.ok ? bugPathResult.value : '';
+            bugs.push({
+              name: bug.name,
+              path: bugPath,
+              phase: bug.phase,
+              updatedAt: bug.updatedAt,
+              reportedAt: bug.reportedAt,
+            });
+          }
           wsHandler.broadcastBugsUpdated(bugs);
           logger.debug('[handlers] Bugs change broadcasted to Remote UI', { bugsCount: bugs.length });
         }

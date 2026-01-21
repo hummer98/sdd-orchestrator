@@ -148,9 +148,9 @@ export class BugService {
         updatedAt = updateTimes[0].toISOString();
       }
 
+      // spec-path-ssot-refactor: Removed path field - path resolution is done via resolveBugPath
       return {
         name: bugName,
-        path: bugPath,
         phase,
         updatedAt,
         reportedAt,
@@ -198,9 +198,9 @@ export class BugService {
         reportedAt = dirStats.birthtime.toISOString();
       }
 
+      // spec-path-ssot-refactor: Removed path field - path resolution is done via resolveBugPath
       const metadata: BugMetadata = {
         name: bugName,
-        path: bugPath,
         phase,
         updatedAt,
         reportedAt,

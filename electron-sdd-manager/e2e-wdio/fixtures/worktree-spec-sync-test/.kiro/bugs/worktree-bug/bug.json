@@ -1,0 +1,10 @@
+{
+  "bug_name": "worktree-bug",
+  "created_at": "2026-01-18T11:00:00Z",
+  "updated_at": "2026-01-18T11:45:00Z",
+  "worktree": {
+    "path": "../worktree-spec-sync-test-worktrees/bugs/worktree-bug",
+    "branch": "bugfix/worktree-bug",
+    "created_at": "2026-01-18T11:00:00Z"
+  }
+}

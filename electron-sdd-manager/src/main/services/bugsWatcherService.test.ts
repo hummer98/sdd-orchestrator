@@ -145,8 +145,8 @@ describe('BugsWatcherService', () => {
       const chokidar = await import('chokidar');
       const service = new BugsWatcherService('/project');
 
-      // Start the watcher first
-      service.start();
+      // Start the watcher first (now async)
+      await service.start();
 
       // Reset watch path
       const newPath = '/project-worktrees/bugs/test-bug/.kiro/bugs';
@@ -164,25 +164,9 @@ describe('BugsWatcherService', () => {
     });
   });
 
-  // Bug fix: bugs-tab-list-not-updating
-  describe('path filtering', () => {
-    it('should filter out events for paths outside .kiro/bugs/', async () => {
-      const service = new BugsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      // Event outside bugs directory should be filtered
-      handleEvent('change', '/project/.kiro/specs/my-spec/spec.json');
-      handleEvent('add', '/project/.kiro/steering/product.md');
-
-      vi.advanceTimersByTime(350);
-
-      // No callbacks should be called for paths outside bugs/
-      expect(callback).toHaveBeenCalledTimes(0);
-    });
-
+  // Aligned with SpecsWatcherService: watches specific directories directly
+  // Filtering is done by chokidar watch paths, not by handleEvent
+  describe('event processing', () => {
     it('should process events within .kiro/bugs/', async () => {
       const service = new BugsWatcherService('/project');
       const callback = vi.fn();
@@ -320,7 +304,7 @@ describe('BugsWatcherService', () => {
   // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
   // ============================================================
   describe('Two-tier monitoring for worktrees', () => {
-    it('should watch worktrees bugs base directory for dynamic additions', async () => {
+    it('should watch bugs and worktrees directories directly', async () => {
       const chokidar = await import('chokidar');
       const mockWatcher = {
         on: vi.fn().mockReturnThis(),
@@ -331,12 +315,15 @@ describe('BugsWatcherService', () => {
       (chokidar.watch as any).mockReturnValue(mockWatcher);
 
       const service = new BugsWatcherService('/project');
-      service.start();
+      await service.start();
 
-      // Verify that watch is called for kiro directory (which includes worktrees monitoring)
+      // Verify that watch is called with array of paths (bugs + worktrees base)
       expect(chokidar.watch).toHaveBeenCalled();
       const watchCall = (chokidar.watch as any).mock.calls[0];
-      expect(watchCall[0]).toBe('/project/.kiro');
+      const watchPaths = watchCall[0];
+      expect(Array.isArray(watchPaths)).toBe(true);
+      expect(watchPaths).toContain('/project/.kiro/bugs');
+      expect(watchPaths).toContain('/project/.kiro/worktrees/bugs');
     });
 
     it('should dynamically add inner bug path when worktree is added', async () => {
@@ -351,7 +338,7 @@ describe('BugsWatcherService', () => {
       (chokidar.watch as any).mockReturnValue(mockWatcher);
 
       const service = new BugsWatcherService('/project');
-      service.start();
+      await service.start();
 
       // Access private handleWorktreeAddition method
       const handleWorktreeAddition = (service as unknown as {
@@ -373,7 +360,7 @@ describe('BugsWatcherService', () => {
       (chokidar.watch as any).mockReturnValue(mockWatcher);
 
       const service = new BugsWatcherService('/project');
-      service.start();
+      await service.start();
 
       // Access private handleWorktreeRemoval method
       const handleWorktreeRemoval = (service as unknown as {

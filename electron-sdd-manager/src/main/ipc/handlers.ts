@@ -9,6 +9,7 @@ import { FileService } from '../services/fileService';
 import { getConfigStore } from '../services/configStore';
 import { updateMenu, setMenuProjectPath, updateWindowTitle } from '../menu';
 import type { Phase, SelectProjectResult, SelectProjectError } from '../../renderer/types';
+import type { BugWorkflowPhase } from '../../renderer/types/bug';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError, SPEC_INIT_COMMANDS, SPEC_PLAN_COMMANDS, CommandPrefix } from '../services/specManagerService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
@@ -1455,7 +1456,7 @@ export function registerIpcHandlers(): void {
     logger.info('[handlers] START_BUGS_WATCHER called');
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
-      startBugsWatcher(window);
+      await startBugsWatcher(window);
     }
   });
 
@@ -1926,7 +1927,7 @@ export function registerIpcHandlers(): void {
         if (window) {
           await startSpecsWatcher(window);
           startAgentRecordWatcher(window);
-          startBugsWatcher(window);
+          await startBugsWatcher(window);
           logger.info('[handlers] File watchers started for project', { projectPath });
         }
       }
@@ -2132,6 +2133,98 @@ export function registerIpcHandlers(): void {
   const bugCoordinator = getBugAutoExecutionCoordinator();
   registerBugAutoExecutionHandlers(bugCoordinator);
   logger.info('[handlers] Bug Auto Execution handlers registered');
+
+  // ============================================================
+  // Bug Auto-Execution: execute-next-phase handler
+  // Execute bug workflow phases in Main Process (similar to Spec auto-execution)
+  // Bug fix: worktree mode auto-execution uses correct cwd
+  // ============================================================
+  const BUG_PHASE_COMMANDS: Record<BugWorkflowPhase, string | null> = {
+    report: null,
+    analyze: '/kiro:bug-analyze',
+    fix: '/kiro:bug-fix',
+    verify: '/kiro:bug-verify',
+    deploy: '/commit', // Note: deploy uses /kiro:bug-merge if worktree mode (handled below)
+  };
+
+  bugCoordinator.on('execute-next-phase', async (bugPath: string, phase: BugWorkflowPhase, context: { bugName: string }) => {
+    logger.info('[handlers] Bug execute-next-phase event received', { bugPath, phase, bugName: context.bugName });
+
+    try {
+      const service = getSpecManagerService();
+      const window = BrowserWindow.getAllWindows()[0];
+
+      if (!window) {
+        logger.error('[handlers] No window available for bug execute-next-phase');
+        bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
+        return;
+      }
+
+      // Get command for this phase
+      let command = BUG_PHASE_COMMANDS[phase];
+      if (!command) {
+        logger.error('[handlers] No command for bug phase', { phase });
+        bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
+        return;
+      }
+
+      // Get worktree cwd using BugService
+      // bugPath format: bugName (not full path)
+      const bugDir = path.join(currentProjectPath!, '.kiro', 'bugs', context.bugName);
+      const worktreeCwd = await bugService.getAgentCwd(bugDir, currentProjectPath!);
+
+      // For deploy phase, use /kiro:bug-merge if in worktree mode
+      if (phase === 'deploy' && worktreeCwd !== currentProjectPath) {
+        command = '/kiro:bug-merge';
+      }
+
+      const fullCommand = `${command} ${context.bugName}`;
+      logger.info('[handlers] Bug auto-execution starting agent', {
+        bugName: context.bugName,
+        phase,
+        command: fullCommand,
+        worktreeCwd,
+        isWorktreeMode: worktreeCwd !== currentProjectPath,
+      });
+
+      // Start agent with worktreeCwd
+      const result = await service.startAgent({
+        specId: `bug:${context.bugName}`,
+        phase,
+        command: 'claude',
+        args: [fullCommand],
+        worktreeCwd,
+      });
+
+      if (result.ok) {
+        const agentId = result.value.agentId;
+        logger.info('[handlers] Bug execute-next-phase: agent started successfully', { bugPath, phase, agentId });
+
+        // Update coordinator with agent ID
+        bugCoordinator.setCurrentPhase(bugPath, phase, agentId);
+
+        // Listen for this agent's completion
+        const handleStatusChange = async (changedAgentId: string, status: string) => {
+          if (changedAgentId === agentId) {
+            if (status === 'completed' || status === 'failed' || status === 'stopped') {
+              logger.info('[handlers] Bug execute-next-phase: agent completed', { agentId, status });
+              const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
+              bugCoordinator.handleAgentCompleted(agentId, bugPath, finalStatus as 'completed' | 'failed' | 'interrupted');
+              service.offStatusChange(handleStatusChange);
+            }
+          }
+        };
+        service.onStatusChange(handleStatusChange);
+      } else {
+        logger.error('[handlers] Bug execute-next-phase: agent start failed', { bugPath, phase, error: result.error });
+        bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
+      }
+    } catch (error) {
+      logger.error('[handlers] Bug execute-next-phase: unexpected error', { bugPath, phase, error });
+      bugCoordinator.handleAgentCompleted('', bugPath, 'failed');
+    }
+  });
+  logger.info('[handlers] Bug Auto-Execution execute-next-phase handler registered');
 
   // ============================================================
   // Steering Verification Handlers (steering-verification-integration feature)
@@ -2916,7 +3009,7 @@ export async function stopAgentRecordWatcher(): Promise<void> {
  * Start or restart bugs watcher for the current project
  * Requirements: 6.5
  */
-export function startBugsWatcher(window: BrowserWindow): void {
+export async function startBugsWatcher(window: BrowserWindow): Promise<void> {
   if (!currentProjectPath) {
     logger.warn('[handlers] Cannot start bugs watcher: no project path set');
     return;
@@ -2924,7 +3017,7 @@ export function startBugsWatcher(window: BrowserWindow): void {
 
   // Stop existing watcher if any
   if (bugsWatcherService) {
-    bugsWatcherService.stop();
+    await bugsWatcherService.stop();
   }
 
   bugsWatcherService = new BugsWatcherService(currentProjectPath);
@@ -2965,7 +3058,7 @@ export function startBugsWatcher(window: BrowserWindow): void {
     }
   });
 
-  bugsWatcherService.start();
+  await bugsWatcherService.start();
   logger.info('[handlers] Bugs watcher started', { projectPath: currentProjectPath });
 }
 

@@ -349,7 +349,7 @@ If NOGO judgment AND --autofix option:
 - The UI enables the Deploy phase button when the latest round has `result: "go"`
 - The UI shows Fix button when the latest round has `result: "nogo"` and no `fixedAt`
 
-### 6.5. Update Phase to inspection-complete (GO judgment only)
+### 7. Update Phase to inspection-complete (GO judgment only)
 
 **remove-inspection-phase-auto-update**: This step is CRITICAL for phase progression.
 The specsWatcherService no longer auto-updates phase to `inspection-complete`.

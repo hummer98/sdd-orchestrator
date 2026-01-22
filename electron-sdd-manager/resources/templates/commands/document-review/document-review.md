@@ -99,6 +99,22 @@ This check ensures every acceptance criterion has concrete implementation tasks,
 - **Infrastructure**: "Create structure", "Extract to shared/", "Define types", "Set up config"
 - **Feature**: "Implement view displaying...", "Add panel with...", "Create UI with..."
 
+**Refactoring Integrity Check (CRITICAL)**:
+
+When design.md indicates replacement or deprecation:
+
+| Check | Validation | Report if Missing |
+|-------|------------|-------------------|
+| Deletion Tasks | Tasks exist to physically DELETE old files | CRITICAL: "Facade refactoring" - old files will remain |
+| Consumer Updates | Tasks exist to update all import paths in consumer files | CRITICAL: Integration incomplete - old imports persist |
+| No Parallel Implementation | Tasks replace (not add alongside) existing files | CRITICAL: Zombie code - new facade without old file removal |
+
+**Anti-Patterns to Flag as CRITICAL**:
+- Design says "replace X" but tasks only create new Y without deleting X
+- Design says "unify stores" but tasks create facade without updating consumers
+- Tasks mention "新規作成" for refactoring without corresponding "削除" tasks
+- Multiple files will exist for same responsibility after implementation
+
 **Cross-Document Contradiction Detection**:
 
 - Terminology inconsistencies

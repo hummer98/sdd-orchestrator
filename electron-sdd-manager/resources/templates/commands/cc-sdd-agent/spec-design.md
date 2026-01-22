@@ -44,6 +44,12 @@ Mode: {generate or merge based on design.md existence}
 Language: respect spec.json language for design.md/research.md outputs
 
 CRITICAL: Generate "Design Decisions" section documenting WHY each major architectural choice was made, including alternatives considered and trade-offs.
+
+CRITICAL: Generate "Integration & Deprecation Strategy" (結合・廃止戦略) section:
+- List existing files that require modification (wiring points) to integrate new functionality
+- List existing files that must be deleted (cleanup) as part of this change
+- For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
+- If no files need modification or deletion, explicitly state "No existing files affected"
 """
 )
 ```

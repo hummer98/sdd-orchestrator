@@ -80,6 +80,14 @@ For each task in tasks.md:
   - Use Grep to search codebase for evidence of specified method/function/pattern
   - If `_Verify:` field exists, execute the specified verification command/pattern
   - Flag method mismatch as Critical (task says "use X" but code doesn't use X)
+- **Verify deletion tasks physically deleted files**:
+  - For tasks containing "DELETE", "REMOVE", "削除", "廃止", "物理削除"
+  - Use Glob to confirm target files no longer exist in filesystem
+  - Flag as Critical if file still exists
+- **Verify wiring tasks updated consumer files**:
+  - For tasks containing "import", "配線", "結合", "参照更新"
+  - Use Grep to confirm consumer files reference new code, not old
+  - Flag as Critical if old imports remain
 - Verify tests exist and pass (if applicable)
 - Flag incomplete tasks as Critical
 
@@ -105,12 +113,25 @@ Check adherence to CLAUDE.md Design Principles:
 - **YAGNI**: Flag unused/premature features
 - Flag violations as Minor to Major depending on scope
 
-#### 2.6 Dead Code Detection (DeadCodeChecker)
+#### 2.6 Dead Code & Zombie Code Detection (DeadCodeChecker)
+
+**New Code (Dead Code)**:
 For new components/services created:
 - Use Grep to verify they are imported and used
 - Check that components are rendered/called
 - Verify exports are consumed
-- Flag orphaned code as Major
+- Flag orphaned new code as Major
+
+**Old Code (Zombie Code)**:
+For refactoring tasks, verify old implementations are removed:
+- Check if files marked for deletion in tasks.md still exist
+- Use Grep to find lingering old imports in consumer files
+- Verify no component/service has both old and new implementations active
+- **Anti-Pattern Detection**:
+  - New facade/wrapper exists but old implementation still present
+  - Multiple files provide same functionality (violation of SSOT)
+  - Old imports coexist with new imports in consumer files
+- Flag zombie code as Critical (refactoring incomplete)
 
 #### 2.7 Integration Verification (IntegrationChecker)
 Verify all components work together:

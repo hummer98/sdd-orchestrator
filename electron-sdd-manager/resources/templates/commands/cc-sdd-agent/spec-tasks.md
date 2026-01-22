@@ -104,6 +104,40 @@ Generate implementation tasks for the feature based on approved requirements and
 - **Sequential Numbering**: Major tasks increment (1, 2, 3...), never repeat
 - **Task Integration**: Every task must connect to the system (no orphaned work)
 
+## CRITICAL: Task Categories (Mandatory for All Specs)
+
+Every task list MUST include tasks from all three categories:
+
+### 1. Implementation Tasks (実装タスク)
+- Create new logic, components, services
+- Standard development work
+
+### 2. Wiring/Integration Tasks (結合・配線タスク)
+- Update `App.tsx`, `index.ts`, or entry points to use new logic
+- Update consumer files with new import paths
+- Connect new components to existing application flow
+- Example: "Update [file list] import paths to reference new module"
+
+### 3. Cleanup/Deprecation Tasks (クリーンアップ・廃止タスク)
+- Use strong action verbs: "DELETE", "REMOVE", "廃止", "物理削除"
+- Explicitly name files to be removed
+- Example: "- [ ] 4.1 `renderer/components/RecentProjects.tsx` を物理削除する"
+
+## CRITICAL: Refactoring Constraints
+
+**Prohibition of Parallel Implementation**:
+- Unless design.md explicitly specifies phased rollout, do NOT create parallel implementations
+- Refactoring MUST replace existing files, not create facade/wrapper alongside old code
+- If design says "replace X with Y", tasks must include:
+  1. Implementation task for Y
+  2. Wiring task to update all consumers of X to use Y
+  3. Deletion task to remove X
+
+**Anti-Pattern Detection**:
+- ❌ "Create new agentStoreFacade.ts" without "Delete old agentStore.ts"
+- ❌ "Add new service" without "Update consumers" and "Remove old service"
+- ✅ "Replace agentStore.ts with unified store" + "Update all imports" + "Delete legacy files"
+
 ## Tool Guidance
 - **Read first**: Load all context, rules, and templates before generation
 - **Write last**: Generate tasks.md only after complete analysis and verification

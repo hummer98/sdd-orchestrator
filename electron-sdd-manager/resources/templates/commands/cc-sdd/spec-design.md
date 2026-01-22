@@ -104,6 +104,12 @@ Generate technical design document for feature **$1** based on approved requirem
 - Cover: architecture pattern, technology choices, data model decisions, interface design, trade-offs
 - Reference requirement IDs where applicable
 
+5. **Generate Integration & Deprecation Strategy Section** (CRITICAL):
+- List existing files that require modification (wiring points) to integrate new functionality
+- List existing files that must be deleted (cleanup) as part of this change
+- For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
+- If no files need modification or deletion, explicitly state "No existing files affected"
+
 ## Critical Constraints
  - **Type Safety**:
    - Enforce strong typing aligned with the project's technology stack.

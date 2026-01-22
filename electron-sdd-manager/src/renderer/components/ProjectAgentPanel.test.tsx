@@ -166,7 +166,8 @@ describe('ProjectAgentPanel', () => {
       setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
-      expect(screen.getByText('実行中')).toBeInTheDocument();
+      // 共通AgentListItemではステータスはtitle属性として表示
+      expect(screen.getByTitle('実行中')).toBeInTheDocument();
     });
 
     it('should display status icon for completed agent', () => {
@@ -175,7 +176,7 @@ describe('ProjectAgentPanel', () => {
       setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
-      expect(screen.getByText('完了')).toBeInTheDocument();
+      expect(screen.getByTitle('完了')).toBeInTheDocument();
     });
 
     it('should display status icon for failed agent', () => {
@@ -184,7 +185,7 @@ describe('ProjectAgentPanel', () => {
       setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
-      expect(screen.getByText('失敗')).toBeInTheDocument();
+      expect(screen.getByTitle('失敗')).toBeInTheDocument();
     });
   });
 
@@ -200,7 +201,7 @@ describe('ProjectAgentPanel', () => {
 
       render(<ProjectAgentPanel />);
 
-      const agentItem = screen.getByTestId('project-agent-item-project-1');
+      const agentItem = screen.getByTestId('agent-item-project-1');
       fireEvent.click(agentItem);
 
       // selectAgentが呼ばれて、selectedAgentIdが更新される
@@ -215,7 +216,7 @@ describe('ProjectAgentPanel', () => {
 
       render(<ProjectAgentPanel />);
 
-      const selectedItem = screen.getByTestId('project-agent-item-project-1');
+      const selectedItem = screen.getByTestId('agent-item-project-1');
       expect(selectedItem).toHaveClass('bg-blue-50');
     });
 

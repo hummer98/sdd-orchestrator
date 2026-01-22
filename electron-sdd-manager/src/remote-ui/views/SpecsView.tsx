@@ -11,13 +11,13 @@
  * spec-metadata-ssot-refactor: Build SpecMetadataWithPhase from specJson
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecListItem } from '@shared/components/spec/SpecListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, SpecMetadataWithPath, SpecJson, SpecPhase } from '@shared/api/types';
-import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
+import { useSpecListLogic } from '@shared/hooks';
+import type { ApiClient, SpecMetadataWithPath, SpecJson } from '@shared/api/types';
 
 // =============================================================================
 // Types
@@ -32,13 +32,6 @@ export interface SpecsViewProps {
   /** Called when a spec is selected */
   onSelectSpec?: (spec: SpecMetadataWithPath) => void;
 }
-
-/**
- * Unknown phase placeholder for specs without valid specJson
- * spec-metadata-ssot-refactor
- */
-const UNKNOWN_PHASE: SpecPhase = 'initialized';
-const UNKNOWN_DATE = '1970-01-01T00:00:00.000Z';
 
 // =============================================================================
 // Component
@@ -56,7 +49,13 @@ export function SpecsView({
   const [specJsonMap, setSpecJsonMap] = useState<Map<string, SpecJson>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // spec-list-unification: Use shared hook for sorting/filtering
+  const { filteredSpecs, searchQuery, setSearchQuery } = useSpecListLogic({
+    specs,
+    specJsonMap,
+    enableTextSearch: true,
+  });
 
   // Load specs on mount
   useEffect(() => {
@@ -146,40 +145,6 @@ export function SpecsView({
     },
     [onSelectSpec]
   );
-
-  /**
-   * Convert specs to SpecMetadataWithPhase using specJsonMap
-   * spec-metadata-ssot-refactor: Task 8.2 - Build SpecMetadataWithPhase for display
-   * spec-path-ssot-refactor: SpecMetadataWithPhase no longer includes path
-   */
-  const specsWithPhase = useMemo((): SpecMetadataWithPhase[] => {
-    return specs.map((spec) => {
-      const specJson = specJsonMap.get(spec.name);
-      return {
-        name: spec.name,
-        phase: specJson?.phase ?? UNKNOWN_PHASE,
-        updatedAt: specJson?.updated_at ?? UNKNOWN_DATE,
-      };
-    });
-  }, [specs, specJsonMap]);
-
-  // Sort specs by updatedAt descending (matching Electron version default)
-  const sortedSpecs = useMemo(() => {
-    return [...specsWithPhase].sort((a, b) => {
-      // Sort by updatedAt descending (newest first)
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [specsWithPhase]);
-
-  // Filter specs by search query (spec-metadata-ssot-refactor: use sortedSpecs)
-  const filteredSpecs = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return sortedSpecs;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return sortedSpecs.filter((spec) => spec.name.toLowerCase().includes(query));
-  }, [sortedSpecs, searchQuery]);
 
   // Render loading state
   if (isLoading) {

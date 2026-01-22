@@ -21,3 +21,6 @@ export * from './eventLog';
 // Worktree types and utilities (git-worktree-support feature)
 // Requirements: 2.1, 2.2, 2.3
 export * from './worktree';
+
+// Spec types (spec-list-unification feature)
+export * from './spec';

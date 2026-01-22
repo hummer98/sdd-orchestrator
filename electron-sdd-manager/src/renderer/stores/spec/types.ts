@@ -15,19 +15,14 @@ import type {
 } from '../../types';
 import type { WorkflowPhase } from '../../types/workflow';
 import type { ReviewerScheme } from '@shared/registry';
+import type { SpecMetadataWithPhase } from '@shared/types/spec';
 
 // ============================================================
 // spec-metadata-ssot-refactor: Extended type for display with phase info
+// spec-list-unification: Re-export from shared for backwards compatibility
 // ============================================================
 
-/**
- * Extended SpecMetadata with phase info for display
- * spec-metadata-ssot-refactor: SpecListItem needs phase/updatedAt for display
- */
-export interface SpecMetadataWithPhase extends SpecMetadata {
-  readonly phase: SpecPhase;
-  readonly updatedAt: string;
-}
+export type { SpecMetadataWithPhase };
 
 // ============================================================
 // Artifact Type

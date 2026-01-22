@@ -14,3 +14,10 @@ export type {
   UseLaunchingStateOptions,
   UseLaunchingStateReturn,
 } from './useLaunchingState';
+
+// spec-list-unification: Shared spec list sorting/filtering logic
+export { useSpecListLogic } from './useSpecListLogic';
+export type {
+  UseSpecListLogicOptions,
+  UseSpecListLogicResult,
+} from './useSpecListLogic';

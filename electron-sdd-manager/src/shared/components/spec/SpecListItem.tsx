@@ -10,8 +10,8 @@ import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { Bot, Copy, Check, GitBranch } from 'lucide-react';
 import type { SpecPhase } from '@shared/api/types';
-import type { SpecMetadataWithPhase } from '@renderer/stores/spec/types';
-import { hasWorktreePath, type WorktreeConfig } from '@renderer/types/worktree';
+import type { SpecMetadataWithPhase } from '@shared/types/spec';
+import { hasWorktreePath, type WorktreeConfig } from '@shared/types/worktree';
 import type { DocumentReviewState } from '@shared/types/review';
 
 // =============================================================================

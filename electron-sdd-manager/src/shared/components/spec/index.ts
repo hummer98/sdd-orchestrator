@@ -5,3 +5,7 @@
 
 export { SpecListItem } from './SpecListItem';
 export type { SpecListItemProps } from './SpecListItem';
+
+// spec-list-unification: Container component
+export { SpecListContainer, PHASE_FILTER_OPTIONS } from './SpecListContainer';
+export type { SpecListContainerProps } from './SpecListContainer';

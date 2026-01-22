@@ -1905,85 +1905,9 @@ describe('executeDocumentReview - multi-engine support', () => {
   });
 
   // ============================================================
-  // worktree-symlink-permission: --add-dir for worktree mode
-  // When running in worktree mode, add --add-dir to allow access
-  // to main repository files via symlinks
+  // bug-auto-execution-worktree-cwd: worktree cwd resolution for bug: prefix
   // ============================================================
-  describe('startAgent - worktree --add-dir support', () => {
-    it('should add --add-dir with mainProjectPath when effectiveCwd differs from projectPath', async () => {
-      // Setup: Create spec.json with worktree configuration (with path)
-      const specDir = path.join(testDir, '.kiro', 'specs', 'worktree-test');
-      await fs.mkdir(specDir, { recursive: true });
-
-      // Create worktree directory structure
-      const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'specs', 'worktree-test');
-      await fs.mkdir(worktreeDir, { recursive: true });
-
-      await fs.writeFile(path.join(specDir, 'spec.json'), JSON.stringify({
-        feature_name: 'worktree-test',
-        worktree: {
-          path: '.kiro/worktrees/specs/worktree-test',
-          branch: 'feature/worktree-test',
-          created_at: '2026-01-01T00:00:00Z',
-        },
-      }));
-
-      // Verify --add-dir is added by checking the command string in AgentInfo
-      const result = await service.startAgent({
-        specId: 'worktree-test',
-        phase: 'impl-1.1',
-        command: 'claude',
-        args: ['/kiro:spec-impl worktree-test'],
-        group: 'impl',
-        // worktreeCwd not provided - should auto-resolve to worktree path
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // The command string should contain --add-dir with the main project path
-        expect(result.value.command).toContain('--add-dir');
-        expect(result.value.command).toContain(testDir);
-      }
-    });
-
-    it('should NOT add --add-dir when effectiveCwd equals projectPath', async () => {
-      const result = await service.startAgent({
-        specId: 'normal-test',
-        phase: 'requirements',
-        command: 'claude',
-        args: ['/kiro:spec-requirements normal-test'],
-        group: 'doc',
-        // No worktree - effectiveCwd should equal projectPath
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // The command string should NOT contain --add-dir
-        expect(result.value.command).not.toContain('--add-dir');
-      }
-    });
-
-    it('should add --add-dir when explicit worktreeCwd is provided and differs from projectPath', async () => {
-      const explicitWorktreeCwd = path.join(testDir, '.kiro', 'worktrees', 'specs', 'explicit-test');
-      await fs.mkdir(explicitWorktreeCwd, { recursive: true });
-
-      const result = await service.startAgent({
-        specId: 'explicit-test',
-        phase: 'impl-1.1',
-        command: 'claude',
-        args: ['/kiro:spec-impl explicit-test'],
-        group: 'impl',
-        worktreeCwd: explicitWorktreeCwd,
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // The command string should contain --add-dir with the main project path
-        expect(result.value.command).toContain('--add-dir');
-        expect(result.value.command).toContain(testDir);
-      }
-    });
-
+  describe('startAgent - bug: prefix worktree cwd resolution', () => {
     // bug-auto-execution-worktree-cwd: Test for bug: prefix worktree resolution
     it('should auto-resolve worktreeCwd for bug: prefix specId', async () => {
       const bugName = 'test-worktree-bug';

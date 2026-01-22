@@ -709,17 +709,6 @@ export class SpecManagerService {
       ? this.normalizeClaudeArgs(args, effectiveSkipPermissions)
       : args;
 
-    // worktree-symlink-permission: Add --add-dir for worktree mode
-    // When effectiveCwd differs from projectPath, Claude Code needs access to
-    // the main repository for symlinked spec files
-    if (isClaudeCommand && effectiveCwd !== this.projectPath) {
-      effectiveArgs = [...effectiveArgs, '--add-dir', this.projectPath];
-      logger.info('[SpecManagerService] Added --add-dir for worktree mode', {
-        mainProjectPath: this.projectPath,
-        worktreeCwd: effectiveCwd,
-      });
-    }
-
     logger.info('[SpecManagerService] startAgent called', {
       specId, phase, command, args: effectiveArgs, group, sessionId, providerType: effectiveProviderType, skipPermissions: effectiveSkipPermissions,
     });

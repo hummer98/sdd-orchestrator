@@ -27,10 +27,18 @@ export function AgentLogPanel() {
     if (!state.selectedAgentId) return EMPTY_LOGS;
     return state.logs.get(state.selectedAgentId) ?? EMPTY_LOGS;
   });
-  // Bug fix: agent-log-textfield-inactive
-  // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
-  // Bug fix: findAgentById関数を使用して参照安定性を確保
-  const agent = useAgentStore((state) => state.findAgentById(state.selectedAgentId));
+  // Bug fix: getSnapshot無限ループ回避
+  // agentsマップを直接サブスクライブし、useMemoでagentを導出
+  // findAgentByIdは毎回新しいオブジェクトを返すため使用しない
+  const agents = useAgentStore((state) => state.agents);
+  const agent = useMemo(() => {
+    if (!selectedAgentId) return undefined;
+    for (const agentList of agents.values()) {
+      const found = agentList.find((a) => a.agentId === selectedAgentId);
+      if (found) return found;
+    }
+    return undefined;
+  }, [selectedAgentId, agents]);
   const isRunning = agent?.status === 'running';
 
   // Aggregate tokens from logs

@@ -715,7 +715,8 @@ export class SpecManagerService {
 
     // Check if phase is already running
     // agent-state-file-ssot: Now async since it reads from files
-    if (await this.isPhaseRunning(specId, phase)) {
+    // Skip duplicate check for 'ask' phase - multiple ask agents can run concurrently
+    if (phase !== 'ask' && await this.isPhaseRunning(specId, phase)) {
       logger.warn('[SpecManagerService] Phase already running', { specId, phase });
       return {
         ok: false,

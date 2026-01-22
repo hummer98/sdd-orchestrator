@@ -121,6 +121,30 @@ describe('SpecManagerService', () => {
         expect(result.error.type).toBe('ALREADY_RUNNING');
       }
     });
+
+    it('should allow multiple ask agents to run concurrently', async () => {
+      // Start first ask agent
+      const firstResult = await service.startAgent({
+        specId: 'spec-a',
+        phase: 'ask',
+        command: 'sleep',
+        args: ['10'],
+        group: 'doc',
+      });
+
+      expect(firstResult.ok).toBe(true);
+
+      // Start second ask agent for same spec - should succeed (no duplicate check for ask)
+      const secondResult = await service.startAgent({
+        specId: 'spec-a',
+        phase: 'ask',
+        command: 'sleep',
+        args: ['10'],
+        group: 'doc',
+      });
+
+      expect(secondResult.ok).toBe(true);
+    });
   });
 
   // Task 24.2: Agent停止機能

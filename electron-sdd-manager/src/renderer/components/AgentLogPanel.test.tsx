@@ -169,7 +169,8 @@ describe('AgentLogPanel - Task 31', () => {
 
       render(<AgentLogPanel />);
 
-      expect(screen.getByText('コマンド:')).toBeInTheDocument();
+      // New implementation uses SessionInfoBlock for command display
+      expect(screen.getByText('作業ディレクトリ:')).toBeInTheDocument();
       expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });

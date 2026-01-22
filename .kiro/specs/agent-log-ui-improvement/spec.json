@@ -1,0 +1,63 @@
+{
+  "feature_name": "agent-log-ui-improvement",
+  "created_at": "2026-01-19T17:08:23Z",
+  "updated_at": "2026-01-22T06:44:26Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": false,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": true,
+      "inspection": false,
+      "deploy": false
+    },
+    "documentReviewFlag": "run",
+    "inspectionFlag": "run"
+  },
+  "documentReview": {
+    "status": "approved",
+    "totalRounds": 2,
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-22T00:43:02Z"
+      }
+    ]
+  }
+}

@@ -1,9 +1,32 @@
 /**
  * Log Formatter Utility
- * Parses Claude CLI stream-json output and formats it for human-readable display
+ * Re-exports from shared/utils/logFormatter for backward compatibility
+ *
+ * Task 1.1: logFormatterをsrc/shared/utils/へ移動
+ * Requirements: 1.3
  */
 
-// Claude stream-jsonイベントの型定義
+// Re-export new API from shared
+export {
+  parseLogData,
+  getColorClass as getColorClassNew,
+  type ParsedLogEntry,
+} from '@shared/utils/logFormatter';
+
+// =============================================================================
+// Legacy API (kept for backward compatibility with AgentLogPanel)
+// =============================================================================
+
+export interface FormattedLogLine {
+  type: 'system' | 'assistant' | 'tool' | 'tool-result' | 'result' | 'text' | 'error' | 'input';
+  icon: string;
+  label: string;
+  content: string;
+  details?: string;
+  color: 'cyan' | 'magenta' | 'yellow' | 'blue' | 'green' | 'red' | 'gray';
+}
+
+// Claude stream-json event types for legacy API
 interface ClaudeEvent {
   type: 'system' | 'assistant' | 'user' | 'result';
   subtype?: string;
@@ -28,20 +51,11 @@ interface ClaudeEvent {
 
 interface ContentBlock {
   type: string;
-  text?: string;          // type: "text" の場合のテキスト内容
-  tool_use_id?: string;   // type: "tool_result" の場合のツールID
-  name?: string;          // type: "tool_use" の場合のツール名
-  input?: Record<string, unknown>;  // type: "tool_use" の場合の入力
-  content?: string;       // type: "tool_result" の場合の結果
-}
-
-export interface FormattedLogLine {
-  type: 'system' | 'assistant' | 'tool' | 'tool-result' | 'result' | 'text' | 'error' | 'input';
-  icon: string;
-  label: string;
-  content: string;
-  details?: string;
-  color: 'cyan' | 'magenta' | 'yellow' | 'blue' | 'green' | 'red' | 'gray';
+  text?: string;
+  tool_use_id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  content?: string;
 }
 
 function truncate(str: string, maxLen: number): string {
@@ -49,7 +63,6 @@ function truncate(str: string, maxLen: number): string {
   return str.substring(0, maxLen - 3) + '...';
 }
 
-// ツール別アイコンマッピング
 const TOOL_ICONS: Record<string, string> = {
   Read: '📖',
   Edit: '✏️',
@@ -70,12 +83,6 @@ function getToolIcon(toolName: string): string {
   return TOOL_ICONS[toolName] || '🔧';
 }
 
-/**
- * Format tool content based on tool type
- * Read/Edit/Write: show full file path
- * Bash: show description + command
- * Others: use generic formatting
- */
 function formatToolContent(name: string, input: Record<string, unknown>): string {
   switch (name) {
     case 'Read':
@@ -90,7 +97,6 @@ function formatToolContent(name: string, input: Record<string, unknown>): string
       if (desc) {
         return `${desc}`;
       }
-      // descriptionがない場合はコマンドを短縮表示
       return truncate(cmd, 80);
     }
     case 'Glob':
@@ -105,9 +111,7 @@ function formatToolContent(name: string, input: Record<string, unknown>): string
 }
 
 function getFirstMeaningfulLine(content: string, maxLen: number = 100): string {
-  // エスケープされた改行を実際の改行に変換
   const normalized = content.replace(/\\n/g, '\n');
-  // 最初の非空行を取得
   const lines = normalized.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
@@ -115,7 +119,6 @@ function getFirstMeaningfulLine(content: string, maxLen: number = 100): string {
       return truncate(trimmed, maxLen);
     }
   }
-  // 見つからない場合は最初の行
   return truncate(lines[0] || '', maxLen);
 }
 
@@ -139,7 +142,8 @@ function formatToolInput(input: Record<string, unknown>): string {
 }
 
 /**
- * Parse a single Claude stream-json line and return formatted output
+ * Parse a single Claude stream-json line (legacy API)
+ * @deprecated Use parseLogData from @shared/utils/logFormatter instead
  */
 export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
   const lines: FormattedLogLine[] = [];
@@ -164,9 +168,7 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
         if (event.message?.content) {
           for (const block of event.message.content) {
             if (block.type === 'text' && block.text) {
-              // エスケープされた改行を実際の改行に変換
               const normalizedText = block.text.replace(/\\n/g, '\n');
-              // テキストを行ごとに分割
               const textLines = normalizedText.split('\n');
               const maxLines = Math.min(15, textLines.length);
 
@@ -189,7 +191,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             }
           }
         }
-        // トークン使用量はヘッダーで集計表示するため、ログエリアには表示しない
         break;
 
       case 'user':
@@ -209,7 +210,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
                 color: 'blue',
               });
             } else if (block.type === 'text' && block.text) {
-              // ユーザー入力/プロンプトの表示
               const normalizedText = block.text.replace(/\\n/g, '\n');
               const textLines = normalizedText.split('\n');
               const maxLines = Math.min(10, textLines.length);
@@ -236,7 +236,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             color: 'red',
           });
         } else {
-          // 完了ログは常にすべて表示
           lines.push({
             type: 'result',
             icon: '✅',
@@ -245,7 +244,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             color: 'green',
           });
         }
-        // コストと実行時間
         const stats: string[] = [];
         if (event.cost_usd !== undefined) {
           stats.push(`💰 $${event.cost_usd.toFixed(4)}`);
@@ -268,15 +266,11 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
         break;
     }
   } catch {
-    // JSONパース失敗時：長いテキストは省略して表示
     const trimmed = jsonLine.trim();
     if (trimmed) {
-      // 不完全なJSONの場合、意味のある部分だけ抽出
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        // tool_resultパターンを検出
         const toolResultMatch = trimmed.match(/"type"\s*:\s*"tool_result"/);
         if (toolResultMatch) {
-          // tool_result行: ファイル情報を抽出
           const fileMatch = trimmed.match(/"filePath"\s*:\s*"([^"]+)"/);
           const fileName = fileMatch ? fileMatch[1].split('/').pop() : null;
           lines.push({
@@ -287,7 +281,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
             color: 'blue',
           });
         } else {
-          // その他の不完全なJSON
           lines.push({
             type: 'text',
             icon: '📄',
@@ -297,7 +290,6 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
           });
         }
       } else {
-        // プレーンテキスト：最初の意味のある部分を表示
         const preview = getFirstMeaningfulLine(trimmed, 100);
         if (preview) {
           lines.push({
@@ -316,12 +308,11 @@ export function parseClaudeEvent(jsonLine: string): FormattedLogLine[] {
 }
 
 /**
- * Parse raw log data (may contain multiple JSON lines) and return formatted output
+ * Parse raw log data (legacy API)
+ * @deprecated Use parseLogData from @shared/utils/logFormatter instead
  */
 export function formatLogData(data: string): FormattedLogLine[] {
   const lines: FormattedLogLine[] = [];
-
-  // 複数のJSONL行を処理
   const dataLines = data.split('\n').filter(l => l.trim());
 
   for (const line of dataLines) {
@@ -332,7 +323,8 @@ export function formatLogData(data: string): FormattedLogLine[] {
 }
 
 /**
- * Get CSS class for log line color
+ * Get CSS class for log line color (legacy API)
+ * @deprecated Use getColorClass from @shared/utils/logFormatter instead
  */
 export function getColorClass(color: FormattedLogLine['color']): string {
   const colorMap: Record<FormattedLogLine['color'], string> = {
@@ -348,7 +340,7 @@ export function getColorClass(color: FormattedLogLine['color']): string {
 }
 
 /**
- * Get background CSS class for log line type
+ * Get background CSS class for log line type (legacy API)
  */
 export function getBgClass(type: FormattedLogLine['type']): string {
   const bgMap: Record<FormattedLogLine['type'], string> = {

@@ -1,23 +1,18 @@
 /**
  * AgentLogPanel Component
- * Displays logs for the selected SDD Agent
- * Task 31.1-31.2: Agent log display and operations
- * Requirements: 9.1, 9.2, 9.4, 9.7, 9.8, 9.9, 9.10
+ * Displays logs for the selected SDD Agent using shared log display components
+ *
+ * Task 3.1-3.3: RAW mode removal, use LogEntryBlock, maintain existing features
+ * Requirements: 8.1, 8.2, 9.1, 9.2, 9.3, 9.4, 9.5
  */
 
-import { useRef, useEffect, useMemo, useState } from 'react';
-import { Terminal, Copy, Trash2, Loader2, Code, FileText, BarChart3 } from 'lucide-react';
+import { useRef, useEffect, useMemo } from 'react';
+import { Terminal, Copy, Trash2, Loader2, BarChart3 } from 'lucide-react';
 import { useAgentStore, type LogEntry } from '../stores/agentStore';
 import { clsx } from 'clsx';
-import { formatLogData, getColorClass, getBgClass, type FormattedLogLine } from '../utils/logFormatter';
+import { parseLogData, type ParsedLogEntry } from '@shared/utils/logFormatter';
+import { LogEntryBlock } from '@shared/components/agent';
 import { aggregateTokens } from '../utils/tokenAggregator';
-
-interface DisplayLine {
-  id: string;
-  type: 'raw' | 'formatted';
-  raw?: { data: string; stream: 'stdout' | 'stderr' | 'stdin' };
-  formatted?: FormattedLogLine;
-}
 
 // Bug fix: Zustand無限ループ回避のため、空配列を定数化して参照安定性を確保
 const EMPTY_LOGS: LogEntry[] = [];
@@ -36,111 +31,90 @@ export function AgentLogPanel() {
   // セレクタでagentsをサブスクライブすることで、Agent状態変更時に再レンダリングされる
   // Bug fix: findAgentById関数を使用して参照安定性を確保
   const agent = useAgentStore((state) => state.findAgentById(state.selectedAgentId));
-  const [isFormatted, setIsFormatted] = useState(true);
   const isRunning = agent?.status === 'running';
 
   // Aggregate tokens from logs
   const tokenUsage = useMemo(() => aggregateTokens(logs), [logs]);
 
-  // Format logs for display
-  const displayLines = useMemo<DisplayLine[]>(() => {
-    const lines: DisplayLine[] = [];
+  // Parse logs for display using new shared logFormatter
+  const parsedEntries = useMemo<ParsedLogEntry[]>(() => {
+    const entries: ParsedLogEntry[] = [];
 
     // Add command line as first entry if agent exists
     if (agent?.command) {
-      lines.push({
+      entries.push({
         id: 'command-line',
-        type: 'formatted',
-        formatted: {
-          type: 'system',
-          icon: '▶',
-          label: 'コマンド',
-          content: agent.command,
-          color: 'cyan',
+        type: 'system',
+        session: {
+          cwd: agent.command,
         },
       });
     }
 
-    if (!isFormatted) {
-      // Raw mode: show original data
-      logs.forEach((log, idx) => {
-        lines.push({
-          id: `${log.id}-${idx}`,
-          type: 'raw' as const,
-          raw: { data: log.data, stream: log.stream },
-        });
-      });
-      return lines;
-    }
-
-    // Formatted mode: parse and format
+    // Parse each log entry
     logs.forEach((log, logIdx) => {
       if (log.stream === 'stdin') {
-        // stdin shows user input with blue color
-        lines.push({
+        // stdin shows user input
+        entries.push({
           id: `${log.id}-stdin-${logIdx}`,
-          type: 'formatted',
-          formatted: {
-            type: 'input',
-            icon: '👤',
-            label: 'ユーザー入力',
+          type: 'input',
+          text: {
             content: log.data,
-            color: 'blue',
+            role: 'user',
           },
         });
       } else if (log.stream === 'stderr') {
-        // stderr is always shown as-is with red color
-        lines.push({
+        // stderr is always shown as error
+        entries.push({
           id: `${log.id}-stderr-${logIdx}`,
-          type: 'formatted',
-          formatted: {
-            type: 'error',
-            icon: '⚠️',
-            label: 'stderr',
+          type: 'error',
+          result: {
             content: log.data,
-            color: 'red',
+            isError: true,
           },
         });
       } else {
         // Parse stdout as Claude stream-json
-        const formatted = formatLogData(log.data);
-        if (formatted.length === 0) {
-          // If no formatted output, show raw
-          lines.push({
+        const parsed = parseLogData(log.data);
+        if (parsed.length === 0 && log.data.trim()) {
+          // If no parsed output, show as text
+          entries.push({
             id: `${log.id}-raw-${logIdx}`,
-            type: 'raw',
-            raw: { data: log.data, stream: log.stream },
+            type: 'text',
+            text: {
+              content: log.data,
+              role: 'assistant',
+            },
           });
         } else {
-          formatted.forEach((f, fIdx) => {
-            lines.push({
-              id: `${log.id}-${logIdx}-${fIdx}`,
-              type: 'formatted',
-              formatted: f,
+          parsed.forEach((entry, entryIdx) => {
+            entries.push({
+              ...entry,
+              id: `${log.id}-${logIdx}-${entryIdx}`,
             });
           });
         }
       }
     });
-    return lines;
-  }, [logs, isFormatted, agent?.command]);
+    return entries;
+  }, [logs, agent?.command]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new logs arrive (Task 31.2: 9.10)
+  // Auto-scroll to bottom when new logs arrive (Requirement 9.1)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [displayLines.length]);
+  }, [parsedEntries.length]);
 
-  // Copy logs to clipboard (Task 31.2: 9.7)
+  // Copy logs to clipboard (Requirement 9.2)
   const handleCopy = () => {
     const logText = logs.map((log) => log.data).join('\n');
     navigator.clipboard.writeText(logText);
   };
 
-  // Clear logs (Task 31.2: 9.8)
+  // Clear logs (Requirement 9.3)
   const handleClear = () => {
     if (selectedAgentId) {
       clearLogs(selectedAgentId);
@@ -148,26 +122,26 @@ export function AgentLogPanel() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-gray-900">
+    <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-300">
+          <Terminal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Agentログ
           </span>
           {agent && (
             <>
-              <span className="text-sm text-gray-500">-</span>
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 {agent.phase}
               </span>
-              <span className="text-sm text-gray-500">|</span>
-              <span className="text-sm text-gray-500 font-mono flex items-center gap-1">
+              <span className="text-sm text-gray-400 dark:text-gray-500">|</span>
+              <span className="text-sm text-gray-500 dark:text-gray-500 font-mono flex items-center gap-1">
                 {agent.agentId} - セッションID: {agent.sessionId}
                 <button
                   onClick={() => navigator.clipboard.writeText(agent.sessionId)}
-                  className="p-0.5 rounded hover:bg-gray-600 text-gray-500 hover:text-gray-300"
+                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   title="セッションIDをコピー"
                   data-testid="copy-session-id"
                 >
@@ -176,51 +150,36 @@ export function AgentLogPanel() {
               </span>
             </>
           )}
+          {/* Loading indicator (Requirement 9.5) */}
           {isRunning && (
             <Loader2
-              className="w-4 h-4 text-blue-400 animate-spin"
+              className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin"
               data-testid="running-indicator"
             />
           )}
-          {/* Token usage display */}
+          {/* Token usage display (Requirement 9.4) */}
           {tokenUsage.totalTokens > 0 && (
             <div
-              className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded bg-gray-700/50 text-xs text-gray-400"
+              className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700/50 text-xs text-gray-600 dark:text-gray-400"
               data-testid="token-display"
             >
               <BarChart3 className="w-3 h-3" />
               <span>入力: {tokenUsage.inputTokens.toLocaleString()}</span>
-              <span className="text-gray-600">|</span>
+              <span className="text-gray-400 dark:text-gray-600">|</span>
               <span>出力: {tokenUsage.outputTokens.toLocaleString()}</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Format toggle */}
-          <button
-            onClick={() => setIsFormatted(!isFormatted)}
-            className={clsx(
-              'p-1.5 rounded',
-              isFormatted
-                ? 'bg-blue-600 text-white'
-                : 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
-            )}
-            title={isFormatted ? '整形表示中 (クリックでRAW表示)' : 'RAW表示中 (クリックで整形表示)'}
-          >
-            {isFormatted ? (
-              <FileText className="w-4 h-4" />
-            ) : (
-              <Code className="w-4 h-4" />
-            )}
-          </button>
+          {/* Task 3.1: RAW toggle button removed - only formatted display */}
           {/* Actions */}
           <button
             onClick={handleCopy}
             disabled={logs.length === 0}
             className={clsx(
-              'p-1.5 rounded hover:bg-gray-700',
-              'text-gray-400 hover:text-gray-200',
+              'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
+              'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
             title="ログをコピー"
@@ -231,8 +190,8 @@ export function AgentLogPanel() {
             onClick={handleClear}
             disabled={logs.length === 0}
             className={clsx(
-              'p-1.5 rounded hover:bg-gray-700',
-              'text-gray-400 hover:text-gray-200',
+              'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
+              'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
             title="ログをクリア"
@@ -242,64 +201,27 @@ export function AgentLogPanel() {
         </div>
       </div>
 
-      {/* Log content */}
+      {/* Log content - using shared LogEntryBlock components */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-auto font-mono-jp text-sm"
+        className="flex-1 overflow-auto text-sm p-3 bg-gray-50 dark:bg-gray-900"
       >
         {!selectedAgentId ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             Agentを選択してください
           </div>
-        ) : displayLines.length === 0 ? (
+        ) : parsedEntries.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             ログがありません
           </div>
         ) : (
-          <div className="p-2 space-y-1">
-            {displayLines.map((line) => (
-              <div
-                key={line.id}
-                className={clsx(
-                  'px-2 py-1 rounded',
-                  line.type === 'raw'
-                    ? line.raw?.stream === 'stderr'
-                      ? 'text-red-400 bg-red-900/20'
-                      : line.raw?.stream === 'stdin'
-                        ? 'text-blue-400 bg-blue-900/20'
-                        : 'text-gray-300'
-                    : getBgClass(line.formatted!.type)
-                )}
-              >
-                {line.type === 'raw' ? (
-                  <span className="whitespace-pre-wrap break-all">
-                    {line.raw?.data}
-                  </span>
-                ) : (
-                  <FormattedLogLineDisplay line={line.formatted!} />
-                )}
-              </div>
+          <div className="space-y-2">
+            {parsedEntries.map((entry) => (
+              <LogEntryBlock key={entry.id} entry={entry} />
             ))}
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function FormattedLogLineDisplay({ line }: { line: FormattedLogLine }) {
-  return (
-    <div className={clsx('flex items-start gap-2', getColorClass(line.color))}>
-      {line.icon && <span className="shrink-0">{line.icon}</span>}
-      {line.label && (
-        <span className="shrink-0 font-semibold">{line.label}:</span>
-      )}
-      <span className="whitespace-pre-wrap break-all flex-1">
-        {line.content}
-        {line.details && (
-          <span className="text-gray-500 ml-2">{line.details}</span>
-        )}
-      </span>
     </div>
   );
 }

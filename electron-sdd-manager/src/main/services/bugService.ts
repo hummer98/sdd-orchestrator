@@ -565,6 +565,43 @@ export class BugService {
   }
 
   // ============================================================
+  // Bug fix: bug-auto-execution-worktree-cwd
+  // Resolve bug path for both main and worktree directory modes
+  // ============================================================
+
+  /**
+   * Resolve bug directory path from bug name
+   * Checks worktree directory first, then falls back to main directory
+   *
+   * @param projectPath - Main project path
+   * @param bugName - Bug name
+   * @returns Absolute path to bug directory (worktree or main)
+   */
+  async resolveBugPath(projectPath: string, bugName: string): Promise<string> {
+    // Check worktree directory first: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
+    const worktreeBugPath = join(
+      projectPath,
+      '.kiro',
+      'worktrees',
+      'bugs',
+      bugName,
+      '.kiro',
+      'bugs',
+      bugName
+    );
+
+    try {
+      await access(worktreeBugPath);
+      return worktreeBugPath;
+    } catch {
+      // Worktree directory doesn't exist, use main directory
+    }
+
+    // Fall back to main directory: .kiro/bugs/{bugName}/
+    return join(projectPath, '.kiro', 'bugs', bugName);
+  }
+
+  // ============================================================
   // bugs-worktree-support Task 2.3: Agent cwd for worktree mode
   // Requirements: 11.1, 11.2
   // ============================================================

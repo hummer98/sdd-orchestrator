@@ -512,6 +512,56 @@ describe('BugService', () => {
   });
 
   // ============================================================
+  // Bug fix: bug-auto-execution-worktree-cwd
+  // resolveBugPath method tests
+  // ============================================================
+  describe('resolveBugPath', () => {
+    it('should return worktree path when bug exists in worktree directory', async () => {
+      const bugName = 'worktree-resolve-bug';
+      // Create worktree bug directory: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', bugName, '.kiro', 'bugs', bugName);
+      await mkdir(worktreeBugPath, { recursive: true });
+      await writeFile(join(worktreeBugPath, 'report.md'), '# Bug Report');
+
+      const result = await service.resolveBugPath(testDir, bugName);
+      expect(result).toBe(worktreeBugPath);
+    });
+
+    it('should return main path when bug exists only in main directory', async () => {
+      const bugName = 'main-only-bug';
+      const mainBugPath = join(testDir, '.kiro', 'bugs', bugName);
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Bug Report');
+
+      const result = await service.resolveBugPath(testDir, bugName);
+      expect(result).toBe(mainBugPath);
+    });
+
+    it('should return main path when bug does not exist anywhere', async () => {
+      const bugName = 'non-existent-bug';
+      const expectedPath = join(testDir, '.kiro', 'bugs', bugName);
+
+      const result = await service.resolveBugPath(testDir, bugName);
+      expect(result).toBe(expectedPath);
+    });
+
+    it('should prefer worktree path when bug exists in both directories', async () => {
+      const bugName = 'both-dirs-bug';
+      // Create in both locations
+      const mainBugPath = join(testDir, '.kiro', 'bugs', bugName);
+      await mkdir(mainBugPath, { recursive: true });
+      await writeFile(join(mainBugPath, 'report.md'), '# Main Bug');
+
+      const worktreeBugPath = join(testDir, '.kiro', 'worktrees', 'bugs', bugName, '.kiro', 'bugs', bugName);
+      await mkdir(worktreeBugPath, { recursive: true });
+      await writeFile(join(worktreeBugPath, 'report.md'), '# Worktree Bug');
+
+      const result = await service.resolveBugPath(testDir, bugName);
+      expect(result).toBe(worktreeBugPath);
+    });
+  });
+
+  // ============================================================
   // bugs-worktree-support: worktree field in BugMetadata
   // Requirements: 10.1, 10.2
   // ============================================================

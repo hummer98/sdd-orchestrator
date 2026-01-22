@@ -1983,6 +1983,83 @@ describe('executeDocumentReview - multi-engine support', () => {
         expect(result.value.command).toContain(testDir);
       }
     });
+
+    // bug-auto-execution-worktree-cwd: Test for bug: prefix worktree resolution
+    it('should auto-resolve worktreeCwd for bug: prefix specId', async () => {
+      const bugName = 'test-worktree-bug';
+
+      // Setup: Create worktree bug directory with bug.json
+      const worktreeBugPath = path.join(
+        testDir,
+        '.kiro',
+        'worktrees',
+        'bugs',
+        bugName,
+        '.kiro',
+        'bugs',
+        bugName
+      );
+      await fs.mkdir(worktreeBugPath, { recursive: true });
+      await fs.writeFile(path.join(worktreeBugPath, 'report.md'), '# Bug Report');
+      await fs.writeFile(
+        path.join(worktreeBugPath, 'bug.json'),
+        JSON.stringify({
+          bug_name: bugName,
+          created_at: '2026-01-22T00:00:00Z',
+          updated_at: '2026-01-22T00:00:00Z',
+          worktree: {
+            path: `.kiro/worktrees/bugs/${bugName}`,
+            branch: `bugfix/${bugName}`,
+            created_at: '2026-01-22T00:00:00Z',
+          },
+        })
+      );
+
+      const result = await service.startAgent({
+        specId: `bug:${bugName}`,
+        phase: 'analyze',
+        command: 'echo',
+        args: ['test'],
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // The cwd should be the worktree path, not the main project path
+        expect(result.value.cwd).toContain('.kiro/worktrees/bugs');
+        expect(result.value.cwd).toContain(bugName);
+      }
+    });
+
+    it('should use projectPath for bug: prefix when bug has no worktree', async () => {
+      const bugName = 'test-no-worktree-bug';
+
+      // Setup: Create main bug directory with bug.json (no worktree field)
+      const mainBugPath = path.join(testDir, '.kiro', 'bugs', bugName);
+      await fs.mkdir(mainBugPath, { recursive: true });
+      await fs.writeFile(path.join(mainBugPath, 'report.md'), '# Bug Report');
+      await fs.writeFile(
+        path.join(mainBugPath, 'bug.json'),
+        JSON.stringify({
+          bug_name: bugName,
+          created_at: '2026-01-22T00:00:00Z',
+          updated_at: '2026-01-22T00:00:00Z',
+          // No worktree field
+        })
+      );
+
+      const result = await service.startAgent({
+        specId: `bug:${bugName}`,
+        phase: 'analyze',
+        command: 'echo',
+        args: ['test'],
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // The cwd should be the main project path
+        expect(result.value.cwd).toBe(testDir);
+      }
+    });
   });
 
   // ============================================================

@@ -22,6 +22,7 @@ import { LogParserService, ResultSubtype } from './logParserService';
 import { logger } from './logger';
 import type { ProviderType } from './ssh/providerFactory';
 import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
+import { BugService } from './bugService';
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
 // debatex-document-review Task 2.1: BuildArgsContext support
 import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
@@ -500,15 +501,39 @@ export class SpecManagerService {
   }
 
   /**
-   * Get the worktree cwd for a spec by reading spec.json
+   * Get the worktree cwd for a spec or bug by reading spec.json/bug.json
    * git-worktree-support: Helper to resolve worktree path for agent execution
    * spec-worktree-early-creation: Uses FileService.resolveSpecPath as SSOT for path resolution
+   * bug-auto-execution-worktree-cwd: Added support for bug: prefix
    *
-   * @param specId - The spec ID (directory name)
+   * @param specId - The spec ID (directory name) or bug:bugName format
    * @returns Worktree cwd if in worktree mode, or projectPath as fallback
    */
   private async getSpecWorktreeCwd(specId: string): Promise<string> {
     try {
+      // bug-auto-execution-worktree-cwd: Handle bug: prefix
+      if (specId.startsWith('bug:')) {
+        const bugName = specId.slice(4); // Remove 'bug:' prefix
+        const bugService = new BugService();
+
+        // Use resolveBugPath to find the actual bug directory (worktree or main)
+        const bugPath = await bugService.resolveBugPath(this.projectPath, bugName);
+
+        // Use getAgentCwd to resolve worktree path from bug.json
+        const worktreeCwd = await bugService.getAgentCwd(bugPath, this.projectPath);
+
+        if (worktreeCwd !== this.projectPath) {
+          logger.info('[SpecManagerService] getSpecWorktreeCwd: bug worktree resolved', {
+            specId,
+            bugName,
+            bugPath,
+            worktreeCwd,
+          });
+        }
+
+        return worktreeCwd;
+      }
+
       // spec-worktree-early-creation: Use FileService.resolveSpecPath as SSOT
       // This handles both main spec path and worktree spec path (worktree takes priority)
       const fileService = new FileService();

@@ -2169,8 +2169,8 @@ export function registerIpcHandlers(): void {
       }
 
       // Get worktree cwd using BugService
-      // bugPath format: bugName (not full path)
-      const bugDir = path.join(currentProjectPath!, '.kiro', 'bugs', context.bugName);
+      // Bug fix: Use resolveBugPath to check both worktree and main directories
+      const bugDir = await bugService.resolveBugPath(currentProjectPath!, context.bugName);
       const worktreeCwd = await bugService.getAgentCwd(bugDir, currentProjectPath!);
 
       // For deploy phase, use /kiro:bug-merge if in worktree mode

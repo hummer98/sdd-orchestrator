@@ -12,14 +12,13 @@ import { InspectionPanel, type InspectionPanelProps } from '@shared/components/r
 import type { InspectionState } from '@shared/types';
 
 describe('InspectionPanel', () => {
+  // inspection-permission-unification: autoExecutionFlag and onAutoExecutionFlagChange props removed
   const defaultProps: InspectionPanelProps = {
     inspectionState: null,
     isExecuting: false,
     isAutoExecuting: false,
-    autoExecutionFlag: 'run',
     onStartInspection: vi.fn(),
     onExecuteFix: vi.fn(),
-    onAutoExecutionFlagChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -214,51 +213,33 @@ describe('InspectionPanel', () => {
   // ============================================================
   // Task 2.4: Auto execution flag control (title right side)
   // Requirements: 1.10, 5.1
+  // inspection-permission-unification: Tests removed - autoExecutionFlag props removed from component
+  // Auto execution permission is now controlled via impl phase checkbox
   // ============================================================
   describe('Task 2.4: Auto execution flag control', () => {
-    it('should render auto execution flag control button', () => {
-      render(<InspectionPanel {...defaultProps} />);
-      expect(screen.getByTestId('inspection-auto-execution-flag-control')).toBeInTheDocument();
+    // NOTE: All auto execution flag tests removed
+    // inspection-permission-unification: autoExecutionFlag and onAutoExecutionFlagChange props
+    // were removed from InspectionPanel. Auto execution permission is now controlled via
+    // permissions.inspection in PhaseItem checkbox.
+
+    it.skip('should render auto execution flag control button (removed in inspection-permission-unification)', () => {
+      // This functionality has been moved to PhaseItem checkbox
     });
 
-    it('should show run icon when autoExecutionFlag is run', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="run" />);
-      expect(screen.getByTestId('inspection-auto-flag-run')).toBeInTheDocument();
+    it.skip('should show run icon when autoExecutionFlag is run (removed in inspection-permission-unification)', () => {
+      // This functionality has been moved to PhaseItem checkbox
     });
 
-    it('should show pause icon when autoExecutionFlag is pause', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="pause" />);
-      expect(screen.getByTestId('inspection-auto-flag-pause')).toBeInTheDocument();
+    it.skip('should show pause icon when autoExecutionFlag is pause (removed in inspection-permission-unification)', () => {
+      // This functionality has been moved to PhaseItem checkbox
     });
 
-    // NOTE: skip icon test removed - skip option is no longer available
-
-    it('should call onAutoExecutionFlagChange with "pause" when clicked from "run"', () => {
-      const onAutoExecutionFlagChange = vi.fn();
-      render(
-        <InspectionPanel
-          {...defaultProps}
-          autoExecutionFlag="run"
-          onAutoExecutionFlagChange={onAutoExecutionFlagChange}
-        />
-      );
-      fireEvent.click(screen.getByTestId('inspection-auto-execution-flag-control'));
-      expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('pause');
+    it.skip('should call onAutoExecutionFlagChange with "pause" when clicked from "run" (removed in inspection-permission-unification)', () => {
+      // This functionality has been moved to PhaseItem checkbox
     });
 
-    it('should call onAutoExecutionFlagChange with "run" when clicked from "pause"', () => {
-      const onAutoExecutionFlagChange = vi.fn();
-      render(
-        <InspectionPanel
-          {...defaultProps}
-          autoExecutionFlag="pause"
-          onAutoExecutionFlagChange={onAutoExecutionFlagChange}
-        />
-      );
-      fireEvent.click(screen.getByTestId('inspection-auto-execution-flag-control'));
-      expect(onAutoExecutionFlagChange).toHaveBeenCalledWith('run');
+    it.skip('should call onAutoExecutionFlagChange with "run" when clicked from "pause" (removed in inspection-permission-unification)', () => {
+      // This functionality has been moved to PhaseItem checkbox
     });
-
-    // NOTE: skip to run test removed - skip option is no longer available
   });
 });

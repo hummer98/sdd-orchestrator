@@ -33,6 +33,7 @@ const mockWorktreeService = {
   createWorktree: vi.fn(),
   removeWorktree: vi.fn(),
   createSymlinksForWorktree: vi.fn(),
+  checkUncommittedSpecChanges: vi.fn(),
 };
 vi.mock('../services/worktreeService', () => ({
   WorktreeService: vi.fn(() => mockWorktreeService),
@@ -115,6 +116,7 @@ describe('ConvertWorktreeHandlers', () => {
 
       // Mock the service methods
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: false }); // no uncommitted changes
       mockFileService.readSpecJson.mockResolvedValue({
         ok: true,
         value: { feature_name: 'my-feature', phase: 'tasks-generated' },
@@ -189,6 +191,7 @@ describe('ConvertWorktreeHandlers', () => {
 
       // Mock successful conversion
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: false }); // no uncommitted changes
       mockFileService.readSpecJson.mockResolvedValue({
         ok: true,
         value: { feature_name: 'my-feature', phase: 'tasks-generated' },
@@ -253,6 +256,7 @@ describe('ConvertWorktreeHandlers', () => {
       mockFileService.resolveSpecPath.mockResolvedValue({ ok: true, value: resolvedSpecPath });
 
       mockWorktreeService.isOnMainBranch.mockResolvedValue({ ok: true, value: true });
+      mockWorktreeService.checkUncommittedSpecChanges.mockResolvedValue({ ok: true, value: false }); // no uncommitted changes
       mockFileService.readSpecJson.mockResolvedValue({
         ok: true,
         value: { feature_name: 'my-feature', phase: 'tasks-generated' },

@@ -12,13 +12,14 @@ import { useSpecStore } from './specStore';
 import { useAgentStore } from './agentStore';
 import { useSpecDetailStore } from './spec/specDetailStore';
 import { setupAgentStoreSubscription } from './spec/specStoreFacade';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 
 describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)', () => {
   beforeEach(() => {
     // Reset store to initial state via actions instead of setState (for Facade compatibility)
     useSpecStore.getState().clearSelectedSpec();
     useSpecStore.getState().setSpecs([]);
-    // Reset agentStore
+    // Reset agentStore - must reset sharedAgentStore as well since agentStore delegates to it
     useAgentStore.setState({
       agents: new Map(),
       selectedAgentId: null,
@@ -26,6 +27,15 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
       isLoading: false,
       error: null,
       skipPermissions: false,
+    });
+    // Also reset sharedAgentStore (the SSOT)
+    useSharedAgentStore.setState({
+      agents: new Map(),
+      selectedAgentId: null,
+      selectedAgentIdBySpec: new Map(),
+      logs: new Map(),
+      isLoading: false,
+      error: null,
     });
     // Set up agentStore subscription for derived state tests
     setupAgentStoreSubscription();
@@ -93,13 +103,13 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
         };
         useSpecDetailStore.setState({ selectedSpec: mockSpec });
 
-        // Add a running agent
-        const agents = new Map();
-        agents.set('test-spec', [{
-          agentId: 'agent-1',
+        // Add a running agent to sharedAgentStore (SSOT)
+        // agentStore.getAgentsForSpec delegates to sharedAgentStore
+        const sharedAgents = new Map();
+        sharedAgents.set('test-spec', [{
+          id: 'agent-1',
           specId: 'test-spec',
           phase: 'design',
-          pid: 123,
           sessionId: 'session-1',
           status: 'running' as const,
           startedAt: '2024-01-01T00:00:00Z',
@@ -108,7 +118,11 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
           executionMode: 'manual' as const,
           retryCount: 0,
         }]);
-        useAgentStore.setState({ agents });
+        useSharedAgentStore.setState({ agents: sharedAgents });
+
+        // Also update agentStore to trigger its subscription
+        // This ensures specStoreFacade.getAggregatedState() picks up the change
+        useAgentStore.setState({ agents: new Map(sharedAgents) });
 
         const state = useSpecStore.getState();
         expect(state.specManagerExecution.isRunning).toBe(true);
@@ -130,20 +144,19 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
         };
         useSpecDetailStore.setState({ selectedSpec: mockSpec });
 
-        // Add a completed agent
-        const agents = new Map();
-        agents.set('test-spec', [{
-          agentId: 'agent-1',
+        // Add a completed agent to sharedAgentStore (SSOT)
+        const sharedAgents = new Map();
+        sharedAgents.set('test-spec', [{
+          id: 'agent-1',
           specId: 'test-spec',
           phase: 'impl',
-          pid: 123,
           sessionId: 'session-1',
           status: 'completed' as const,
           startedAt: '2024-01-01T00:00:00Z',
           lastActivityAt: '2024-01-01T00:00:00Z',
           command: 'test',
         }]);
-        useAgentStore.setState({ agents });
+        useSharedAgentStore.setState({ agents: sharedAgents });
 
         // Note: completed agents are not "running", so isRunning should be false
         const state = useSpecStore.getState();

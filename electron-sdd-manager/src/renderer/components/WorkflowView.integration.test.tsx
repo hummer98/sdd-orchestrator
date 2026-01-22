@@ -14,6 +14,7 @@ import { useAgentStore } from '../stores/agentStore';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
 import { useSpecListStore } from '../stores/spec/specListStore';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import type { SpecDetail } from '../types';
 import type { ExtendedSpecJson } from '../types/workflow';
 
@@ -64,8 +65,8 @@ describe('WorkflowView Integration', () => {
     });
 
     useSpecListStore.setState({
-      specs: [],
-      specJsonMap: new Map(),
+      specs: [mockSpecDetail.metadata],
+      specJsonMap: new Map([[mockSpecDetail.metadata.name, mockSpecDetail.specJson]]),
       sortBy: 'name',
       sortOrder: 'asc',
       statusFilter: 'all',
@@ -95,6 +96,16 @@ describe('WorkflowView Integration', () => {
     useAgentStore.setState({
       agents: new Map(),
       selectedAgentId: null,
+      logs: new Map(),
+      isLoading: false,
+      error: null,
+    });
+
+    // Also reset sharedAgentStore (the SSOT for agents)
+    useSharedAgentStore.setState({
+      agents: new Map(),
+      selectedAgentId: null,
+      selectedAgentIdBySpec: new Map(),
       logs: new Map(),
       isLoading: false,
       error: null,
@@ -221,15 +232,18 @@ describe('WorkflowView Integration', () => {
         (btn) => btn.textContent?.includes('実行') && !btn.hasAttribute('disabled')
       );
 
+      // Verify we found an execute button
+      expect(executeButton).toBeDefined();
+
       if (executeButton) {
         fireEvent.click(executeButton);
-      }
 
-      // Error is shown via notification, not stored in agentStore
-      // Just verify the API was called
-      await waitFor(() => {
-        expect(mockExecute).toHaveBeenCalled();
-      });
+        // Error is shown via notification, not stored in agentStore
+        // Just verify the API was called
+        await waitFor(() => {
+          expect(mockExecute).toHaveBeenCalled();
+        });
+      }
     });
   });
 

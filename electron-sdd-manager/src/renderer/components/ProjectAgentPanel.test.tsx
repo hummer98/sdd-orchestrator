@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProjectAgentPanel } from './ProjectAgentPanel';
 import { useAgentStore, type AgentInfo, type AgentStatus } from '../stores/agentStore';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 
 // Mock agent data
 const mockProjectAgent1: AgentInfo = {
@@ -47,12 +48,47 @@ const mockProjectAgent3: AgentInfo = {
   command: 'claude',
 };
 
+/**
+ * Helper to set agents in both stores
+ * agentStore.getAgentsForSpec delegates to sharedAgentStore, so we need to update both
+ */
+function setAgentsInStores(agents: Map<string, AgentInfo[]>) {
+  // Convert renderer AgentInfo (agentId) to shared AgentInfo (id) format
+  const sharedAgents = new Map();
+  for (const [specId, agentList] of agents.entries()) {
+    sharedAgents.set(
+      specId,
+      agentList.map((a) => ({
+        id: a.agentId,
+        specId: a.specId,
+        phase: a.phase,
+        status: a.status,
+        startedAt: a.startedAt,
+        command: a.command,
+        sessionId: a.sessionId,
+        lastActivityAt: a.lastActivityAt,
+      }))
+    );
+  }
+  useSharedAgentStore.setState({ agents: sharedAgents });
+  useAgentStore.setState({ agents });
+}
+
 describe('ProjectAgentPanel', () => {
   beforeEach(() => {
     // Reset store state
     useAgentStore.setState({
       agents: new Map(),
       selectedAgentId: null,
+      logs: new Map(),
+      isLoading: false,
+      error: null,
+    });
+    // Also reset sharedAgentStore (the SSOT)
+    useSharedAgentStore.setState({
+      agents: new Map(),
+      selectedAgentId: null,
+      selectedAgentIdBySpec: new Map(),
       logs: new Map(),
       isLoading: false,
       error: null,
@@ -68,7 +104,7 @@ describe('ProjectAgentPanel', () => {
     it('should render header with "Project Agent" title when agents exist', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('Project Agent')).toBeInTheDocument();
@@ -90,7 +126,7 @@ describe('ProjectAgentPanel', () => {
       // project-agent-panel-always-visible feature: エージェントがある場合は空状態メッセージを非表示
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.queryByText('プロジェクトエージェントなし')).not.toBeInTheDocument();
@@ -99,7 +135,7 @@ describe('ProjectAgentPanel', () => {
     it('should render panel when project agents exist', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByTestId('project-agent-panel')).toBeInTheDocument();
@@ -108,7 +144,7 @@ describe('ProjectAgentPanel', () => {
     it('should display all project agents', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1, mockProjectAgent2]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('steering')).toBeInTheDocument();
@@ -118,7 +154,7 @@ describe('ProjectAgentPanel', () => {
     it('should display agent count badge', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1, mockProjectAgent2, mockProjectAgent3]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('(3)')).toBeInTheDocument();
@@ -127,7 +163,7 @@ describe('ProjectAgentPanel', () => {
     it('should display status icon for running agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]); // status: running
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('実行中')).toBeInTheDocument();
@@ -136,7 +172,7 @@ describe('ProjectAgentPanel', () => {
     it('should display status icon for completed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent2]); // status: completed
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('完了')).toBeInTheDocument();
@@ -145,7 +181,7 @@ describe('ProjectAgentPanel', () => {
     it('should display status icon for failed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent3]); // status: failed
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByText('失敗')).toBeInTheDocument();
@@ -160,7 +196,7 @@ describe('ProjectAgentPanel', () => {
     it('should select agent when clicked', async () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]);
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
 
@@ -174,7 +210,8 @@ describe('ProjectAgentPanel', () => {
     it('should highlight selected agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1, mockProjectAgent2]);
-      useAgentStore.setState({ agents, selectedAgentId: 'project-1' });
+      setAgentsInStores(agents);
+      useAgentStore.setState({ selectedAgentId: 'project-1' });
 
       render(<ProjectAgentPanel />);
 
@@ -185,7 +222,7 @@ describe('ProjectAgentPanel', () => {
     it('should show stop button for running agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]); // status: running
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.getByRole('button', { name: /停止/i })).toBeInTheDocument();
@@ -194,7 +231,7 @@ describe('ProjectAgentPanel', () => {
     it('should not show stop button for completed agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent2]); // status: completed
-      useAgentStore.setState({ agents });
+      setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
       expect(screen.queryByRole('button', { name: /停止/i })).not.toBeInTheDocument();

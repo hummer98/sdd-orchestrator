@@ -5,11 +5,11 @@
     "installedAt": "2026-01-18T11:39:49.474Z"
   },
   "layout": {
-    "leftPaneWidth": 399,
-    "rightPaneWidth": 500,
-    "bottomPaneHeight": 438,
-    "agentListHeight": 261,
-    "projectAgentPanelHeight": 234
+    "leftPaneWidth": 344,
+    "rightPaneWidth": 385,
+    "bottomPaneHeight": 477,
+    "agentListHeight": 160,
+    "projectAgentPanelHeight": 120
   },
   "commandsets": {
     "cc-sdd-agent": {

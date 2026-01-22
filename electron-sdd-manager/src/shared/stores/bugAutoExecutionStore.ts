@@ -437,3 +437,103 @@ export function cleanupBugAutoExecutionIpcListeners(): void {
   ipcCleanupFunctions = [];
   console.debug('[BugAutoExecutionStore] IPC listeners cleaned up');
 }
+
+// ============================================================
+// Task 3.2: WebSocket Event Listener Registration (Remote UI)
+// Requirements: 5.4, 2.4 (remote-ui-bug-advanced-features)
+// ============================================================
+
+/**
+ * WebSocket event data for bug auto execution status
+ */
+interface WebSocketBugAutoExecutionStatusEvent {
+  bugPath: string;
+  state: BugAutoExecutionStateResponse;
+}
+
+/**
+ * Initialize WebSocket event listeners for bug auto-execution state sync
+ * This is for Remote UI using WebSocketApiClient
+ *
+ * Requirements: 5.4 (remote-ui-bug-advanced-features Task 3.2)
+ *
+ * @param apiClient - WebSocketApiClient instance with on() method
+ * @returns Cleanup function to unsubscribe all listeners
+ */
+export function initBugAutoExecutionWebSocketListeners(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apiClient: any // WebSocketApiClient with on() method
+): () => void {
+  const cleanupFunctions: (() => void)[] = [];
+
+  // Listen for BUG_AUTO_EXECUTION_STATUS events
+  if (apiClient.on) {
+    const unsubscribeStatus = apiClient.on('bugAutoExecutionStatus', (data: WebSocketBugAutoExecutionStatusEvent) => {
+      const { bugPath, state } = data;
+      if (state) {
+        useBugAutoExecutionStore.getState().updateFromMainProcess(bugPath, {
+          status: state.status as 'idle' | 'running' | 'paused' | 'completed' | 'error',
+          currentPhase: state.currentPhase,
+          retryCount: state.retryCount,
+          lastFailedPhase: state.lastFailedPhase,
+        });
+      }
+    });
+    if (unsubscribeStatus) cleanupFunctions.push(unsubscribeStatus);
+
+    // Listen for BUG_AUTO_EXECUTION_STARTED events
+    const unsubscribeStarted = apiClient.on('bugAutoExecutionStarted', (data: { bugPath: string; state?: BugAutoExecutionStateResponse }) => {
+      const { bugPath, state } = data;
+      if (state) {
+        useBugAutoExecutionStore.getState().updateFromMainProcess(bugPath, {
+          status: state.status as 'idle' | 'running' | 'paused' | 'completed' | 'error',
+          currentPhase: state.currentPhase,
+          retryCount: state.retryCount,
+          lastFailedPhase: state.lastFailedPhase,
+        });
+      } else {
+        useBugAutoExecutionStore.getState().startAutoExecution(bugPath);
+      }
+    });
+    if (unsubscribeStarted) cleanupFunctions.push(unsubscribeStarted);
+
+    // Listen for BUG_AUTO_EXECUTION_PHASE_COMPLETED events
+    const unsubscribePhase = apiClient.on('bugAutoExecutionPhaseCompleted', (data: { bugPath: string; phase: string }) => {
+      console.log(`[BugAutoExecutionStore] Phase completed: ${data.phase}`, { bugPath: data.bugPath });
+    });
+    if (unsubscribePhase) cleanupFunctions.push(unsubscribePhase);
+
+    // Listen for BUG_AUTO_EXECUTION_COMPLETED events
+    const unsubscribeCompleted = apiClient.on('bugAutoExecutionCompleted', (data: { bugPath: string }) => {
+      useBugAutoExecutionStore.getState().setCompletedState(data.bugPath);
+    });
+    if (unsubscribeCompleted) cleanupFunctions.push(unsubscribeCompleted);
+
+    // Listen for BUG_AUTO_EXECUTION_ERROR events
+    const unsubscribeError = apiClient.on('bugAutoExecutionError', (data: { bugPath: string; error: { type: string; message?: string; phase?: string } }) => {
+      console.error('[BugAutoExecutionStore] Bug auto-execution error:', data.error);
+      const phase = data.error.phase as BugWorkflowPhase | null;
+      const currentState = useBugAutoExecutionStore.getState().getBugAutoExecutionRuntime(data.bugPath);
+      useBugAutoExecutionStore.getState().setErrorState(
+        data.bugPath,
+        phase ?? null,
+        currentState.retryCount
+      );
+    });
+    if (unsubscribeError) cleanupFunctions.push(unsubscribeError);
+
+    // Listen for BUG_AUTO_EXECUTION_STOPPED events
+    const unsubscribeStopped = apiClient.on('bugAutoExecutionStopped', (data: { bugPath: string }) => {
+      useBugAutoExecutionStore.getState().stopAutoExecution(data.bugPath);
+    });
+    if (unsubscribeStopped) cleanupFunctions.push(unsubscribeStopped);
+  }
+
+  console.debug('[BugAutoExecutionStore] WebSocket listeners registered');
+
+  // Return cleanup function
+  return () => {
+    cleanupFunctions.forEach((cleanup) => cleanup());
+    console.debug('[BugAutoExecutionStore] WebSocket listeners cleaned up');
+  };
+}

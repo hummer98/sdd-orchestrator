@@ -193,6 +193,16 @@ export interface BugAutoExecutionState {
   lastFailedPhase: string | null;
 }
 
+/**
+ * Bug auto execution permissions for startBugAutoExecution
+ * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
+ */
+export interface BugAutoExecutionPermissions {
+  analyze: boolean;
+  fix: boolean;
+  verify: boolean;
+}
+
 // =============================================================================
 // Event Types
 // =============================================================================
@@ -271,8 +281,21 @@ export interface ApiClient {
    * Execute a bug workflow phase
    * @param bugName - Bug name (directory name)
    * @param action - Bug action to execute
+   * @param options - Optional execution options (useWorktree, etc.)
    */
-  executeBugPhase(bugName: string, action: BugAction): Promise<Result<AgentInfo, ApiError>>;
+  executeBugPhase(
+    bugName: string,
+    action: BugAction,
+    options?: { useWorktree?: boolean }
+  ): Promise<Result<AgentInfo, ApiError>>;
+
+  /**
+   * Create a new bug
+   * Requirements: 5.1 (remote-ui-bug-advanced-features Task 2.1)
+   * @param name - Bug name (directory name)
+   * @param description - Bug description
+   */
+  createBug?(name: string, description: string): Promise<Result<AgentInfo, ApiError>>;
 
   // ===========================================================================
   // Agent Operations
@@ -359,6 +382,24 @@ export interface ApiClient {
    * @param bugPath - Full path to bug directory
    */
   getBugAutoExecutionStatus?(bugPath: string): Promise<Result<BugAutoExecutionState | null, ApiError>>;
+
+  /**
+   * Start bug auto execution
+   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
+   * @param bugPath - Full path to bug directory
+   * @param permissions - Permissions for each phase
+   */
+  startBugAutoExecution?(
+    bugPath: string,
+    permissions: BugAutoExecutionPermissions
+  ): Promise<Result<BugAutoExecutionState, ApiError>>;
+
+  /**
+   * Stop bug auto execution
+   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.2)
+   * @param bugPath - Full path to bug directory
+   */
+  stopBugAutoExecution?(bugPath: string): Promise<Result<void, ApiError>>;
 
   // ===========================================================================
   // File Operations

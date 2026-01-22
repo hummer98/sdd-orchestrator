@@ -25,6 +25,7 @@ import type {
   BugDetail,
   BugAction,
   BugAutoExecutionState,
+  BugAutoExecutionPermissions,
 } from './types';
 import type { ExecuteOptions } from '../types/executeOptions';
 
@@ -260,6 +261,10 @@ export class WebSocketApiClient implements ApiClient {
         this.emit('autoExecutionStatusChanged', message.payload);
         break;
       // bug-auto-execution-per-bug-state Task 6.1, 6.2: Bug auto execution events
+      // remote-ui-bug-advanced-features Task 2.2: Added STARTED, STOPPED events
+      case 'BUG_AUTO_EXECUTION_STARTED':
+        this.emit('bugAutoExecutionStarted', message.payload);
+        break;
       case 'BUG_AUTO_EXECUTION_STATUS':
         this.emit('bugAutoExecutionStatus', message.payload);
         break;
@@ -271,6 +276,9 @@ export class WebSocketApiClient implements ApiClient {
         break;
       case 'BUG_AUTO_EXECUTION_ERROR':
         this.emit('bugAutoExecutionError', message.payload);
+        break;
+      case 'BUG_AUTO_EXECUTION_STOPPED':
+        this.emit('bugAutoExecutionStopped', message.payload);
         break;
       // header-profile-badge feature: profile updates from server
       case 'PROFILE_UPDATED':
@@ -408,8 +416,26 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<BugDetail>('GET_BUG_DETAIL', { bugPath });
   }
 
-  async executeBugPhase(bugName: string, action: BugAction): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('EXECUTE_BUG_PHASE', { bugName, action });
+  async executeBugPhase(
+    bugName: string,
+    action: BugAction,
+    options?: { useWorktree?: boolean }
+  ): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('EXECUTE_BUG_PHASE', {
+      bugName,
+      action,
+      useWorktree: options?.useWorktree,
+    });
+  }
+
+  /**
+   * Create a new bug
+   * Requirements: 5.1 (remote-ui-bug-advanced-features Task 2.1)
+   * @param name - Bug name (directory name)
+   * @param description - Bug description
+   */
+  async createBug(name: string, description: string): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('CREATE_BUG', { name, description });
   }
 
   // ===========================================================================
@@ -509,6 +535,39 @@ export class WebSocketApiClient implements ApiClient {
       return { ok: true, value: response.value.state };
     }
     return response;
+  }
+
+  /**
+   * Start bug auto execution
+   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.2)
+   * @param bugPath - Full path to bug directory
+   * @param permissions - Permissions for each phase
+   */
+  async startBugAutoExecution(
+    bugPath: string,
+    permissions: BugAutoExecutionPermissions
+  ): Promise<Result<BugAutoExecutionState, ApiError>> {
+    interface BugAutoExecutionStartedResponse {
+      bugPath: string;
+      state: BugAutoExecutionState;
+    }
+    const response = await this.wrapRequest<BugAutoExecutionStartedResponse>(
+      'START_BUG_AUTO_EXECUTION',
+      { bugPath, permissions }
+    );
+    if (response.ok) {
+      return { ok: true, value: response.value.state };
+    }
+    return response;
+  }
+
+  /**
+   * Stop bug auto execution
+   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.2)
+   * @param bugPath - Full path to bug directory
+   */
+  async stopBugAutoExecution(bugPath: string): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('STOP_BUG_AUTO_EXECUTION', { bugPath });
   }
 
   // ===========================================================================

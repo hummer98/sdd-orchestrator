@@ -3,6 +3,7 @@
  *
  * Task 9.1-9.3: Remote UIアプリケーション統合
  * Task 13.8: ビュー統合とタブ切り替え
+ * Task 7.1: WebSocketイベントリスナー登録統合 (remote-ui-bug-advanced-features)
  *
  * Requirements: 2.4, 4.1, 7.1, 7.2
  *
@@ -13,11 +14,12 @@
  * - Tab-based navigation for Specs, Bugs, Agent views
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
 import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath } from '../shared/api/types';
+import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 
 /**
  * MainContent props
@@ -193,6 +195,16 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
 function AppContent() {
   const { isMobile } = useDeviceType();
   const [activeTab, setActiveTab] = useState<MobileTab>('specs');
+  const apiClient = useApi();
+
+  // Task 7.1: Initialize WebSocket event listeners for bug auto execution
+  useEffect(() => {
+    // Initialize bug auto execution WebSocket listeners
+    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
+
+    // Cleanup on unmount
+    return cleanup;
+  }, [apiClient]);
 
   // Handle tab change from either layout or content
   const handleTabChange = useCallback((tab: MobileTab) => {

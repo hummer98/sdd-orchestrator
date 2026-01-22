@@ -176,7 +176,11 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(() => window.electronAPI.readBugDetail(bugPath));
   }
 
-  async executeBugPhase(bugName: string, action: BugAction): Promise<Result<AgentInfo, ApiError>> {
+  async executeBugPhase(
+    bugName: string,
+    action: BugAction,
+    _options?: { useWorktree?: boolean } // Reserved for future use
+  ): Promise<Result<AgentInfo, ApiError>> {
     checkElectronAPI();
     const projectPath = getCurrentProjectPath();
     if (!projectPath) {
@@ -185,6 +189,8 @@ export class IpcApiClient implements ApiClient {
 
     // Map action to phase command
     const phaseCommand = `/kiro:bug-${action}`;
+    // Note: useWorktree option is not yet supported via IPC
+    // Task 6.3 (remote-ui-bug-advanced-features): WebSocket API supports useWorktree
     return wrapResult(async () => {
       const result = await window.electronAPI.startAgent(
         bugName,

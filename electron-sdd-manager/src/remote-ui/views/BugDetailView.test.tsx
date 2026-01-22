@@ -12,6 +12,25 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BugDetailView } from './BugDetailView';
 import type { BugMetadata, BugDetail, ApiClient, AgentInfo } from '@shared/api/types';
 
+// Mock stores
+vi.mock('@shared/stores/bugAutoExecutionStore', () => ({
+  useBugAutoExecutionStore: vi.fn(() => ({
+    isAutoExecuting: false,
+    currentAutoPhase: null,
+    autoExecutionStatus: 'idle',
+    lastFailedPhase: null,
+    retryCount: 0,
+  })),
+}));
+
+vi.mock('@shared/stores/bugStore', () => ({
+  useSharedBugStore: vi.fn(() => ({
+    useWorktree: false,
+    setUseWorktree: vi.fn(),
+  })),
+  resetSharedBugStore: vi.fn(),
+}));
+
 // =============================================================================
 // Mock Data
 // =============================================================================
@@ -100,6 +119,7 @@ describe('BugDetailView', () => {
   let mockApiClient: ApiClient;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockApiClient = createMockApiClient();
   });
 
@@ -160,7 +180,7 @@ describe('BugDetailView', () => {
       fireEvent.click(fixButton);
 
       await waitFor(() => {
-        expect(mockApiClient.executeBugPhase).toHaveBeenCalledWith('login-timeout-bug', 'fix');
+        expect(mockApiClient.executeBugPhase).toHaveBeenCalledWith('login-timeout-bug', 'fix', { useWorktree: false });
       });
     });
   });

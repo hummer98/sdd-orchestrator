@@ -23,6 +23,13 @@ export interface SharedBugState {
   isLoading: boolean;
   /** エラーメッセージ */
   error: string | null;
+  /**
+   * Worktreeモードで実行するかどうか
+   * Requirements: 5.3 (remote-ui-bug-advanced-features Task 3.1)
+   */
+  useWorktree: boolean;
+  /** Bug作成中フラグ */
+  isCreating: boolean;
 }
 
 export interface SharedBugActions {
@@ -36,6 +43,16 @@ export interface SharedBugActions {
   updateBugs: (bugs: BugMetadata[]) => void;
   /** エラーをクリアする */
   clearError: () => void;
+  /**
+   * Worktreeモード設定を更新
+   * Requirements: 5.3 (remote-ui-bug-advanced-features Task 3.1)
+   */
+  setUseWorktree: (useWorktree: boolean) => void;
+  /**
+   * ApiClient経由でBugを作成
+   * Requirements: 5.3 (remote-ui-bug-advanced-features Task 3.1)
+   */
+  createBug: (apiClient: ApiClient, name: string, description: string) => Promise<boolean>;
 }
 
 export type SharedBugStore = SharedBugState & SharedBugActions;
@@ -50,6 +67,8 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   selectedBugId: null,
   isLoading: false,
   error: null,
+  useWorktree: false,
+  isCreating: false,
 
   // Actions
   loadBugs: async (apiClient: ApiClient) => {
@@ -79,6 +98,31 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   clearError: () => {
     set({ error: null });
   },
+
+  setUseWorktree: (useWorktree: boolean) => {
+    set({ useWorktree });
+  },
+
+  createBug: async (apiClient: ApiClient, name: string, description: string) => {
+    set({ isCreating: true, error: null });
+
+    // Check if createBug is available on the ApiClient
+    if (!apiClient.createBug) {
+      set({ error: 'Bug creation not supported', isCreating: false });
+      return false;
+    }
+
+    const result = await apiClient.createBug(name, description);
+
+    if (result.ok) {
+      set({ isCreating: false });
+      // Bug list will be updated via onBugsUpdated event subscription
+      return true;
+    } else {
+      set({ error: result.error.message, isCreating: false });
+      return false;
+    }
+  },
 }));
 
 // =============================================================================
@@ -94,6 +138,8 @@ export function resetSharedBugStore(): void {
     selectedBugId: null,
     isLoading: false,
     error: null,
+    useWorktree: false,
+    isCreating: false,
   });
 }
 

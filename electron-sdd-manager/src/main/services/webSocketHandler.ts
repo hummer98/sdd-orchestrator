@@ -204,6 +204,16 @@ export interface BugAutoExecutionErrorWS {
 }
 
 /**
+ * Bug Auto Execution Permissions for Remote UI
+ * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.1)
+ */
+export interface BugAutoExecutionPermissionsWS {
+  readonly analyze: boolean;
+  readonly fix: boolean;
+  readonly verify: boolean;
+}
+
+/**
  * Workflow controller interface for executing workflow operations
  * Requirements: 6.2, 6.3, 6.4 (internal-webserver-sync Tasks 2.1, 2.2, 2.3)
  * execute-method-unification: Task 6.1 - Added unified execute method
@@ -243,6 +253,12 @@ export interface WorkflowController {
   // Requirements: 6.2, 6.3 (Task 6.1, 6.2)
   /** Get bug auto execution status */
   bugAutoExecuteStatus?(bugPath: string): Promise<BugAutoExecutionStateWS | null>;
+  // Bug auto execution start/stop methods (remote-ui-bug-advanced-features feature)
+  // Requirements: 4.1, 4.2 (Task 1.1)
+  /** Start bug auto execution */
+  startBugAutoExecution?(bugPath: string, permissions: BugAutoExecutionPermissionsWS): Promise<WorkflowResult<BugAutoExecutionStateWS>>;
+  /** Stop bug auto execution */
+  stopBugAutoExecution?(bugPath: string): Promise<WorkflowResult<void>>;
 
   // Inspection workflow methods (inspection-workflow-ui feature)
   // Requirements: 6.1, 6.4 (Task 6.2)
@@ -737,6 +753,14 @@ export class WebSocketHandler {
       // Bug auto execution handlers (bug-auto-execution-per-bug-state Task 6.2)
       case 'GET_BUG_AUTO_EXECUTION_STATUS':
         await this.handleGetBugAutoExecutionStatus(client, message);
+        break;
+      // Bug auto execution start/stop handlers (remote-ui-bug-advanced-features Task 1.1)
+      // Requirements: 4.1, 4.2
+      case 'START_BUG_AUTO_EXECUTION':
+        await this.handleStartBugAutoExecution(client, message);
+        break;
+      case 'STOP_BUG_AUTO_EXECUTION':
+        await this.handleStopBugAutoExecution(client, message);
         break;
       // Release handlers (steering-release-integration feature)
       case 'CHECK_RELEASE_MD':
@@ -2510,6 +2534,129 @@ export class WebSocketHandler {
       requestId: message.requestId,
       timestamp: Date.now(),
     });
+  }
+
+  /**
+   * Handle START_BUG_AUTO_EXECUTION message
+   * Requirements: 4.1 (remote-ui-bug-advanced-features Task 1.1)
+   * Starts bug auto execution with specified permissions
+   */
+  private async handleStartBugAutoExecution(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.startBugAutoExecution) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution start not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const bugPath = payload.bugPath as string;
+    const permissions = payload.permissions as BugAutoExecutionPermissionsWS | undefined;
+
+    if (!bugPath || !permissions) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath or permissions' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.startBugAutoExecution(bugPath, permissions);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'BUG_AUTO_EXECUTION_STARTED',
+        payload: { bugPath, state: result.value },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Bug auto execution start failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle STOP_BUG_AUTO_EXECUTION message
+   * Requirements: 4.2 (remote-ui-bug-advanced-features Task 1.1)
+   * Stops bug auto execution for a specified bug
+   */
+  private async handleStopBugAutoExecution(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.stopBugAutoExecution) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Bug auto execution stop not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const bugPath = payload.bugPath as string;
+
+    if (!bugPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing bugPath' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.stopBugAutoExecution(bugPath);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'BUG_AUTO_EXECUTION_STOPPED',
+        payload: { bugPath },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Bug auto execution stop failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
   }
 
   // ============================================================

@@ -2710,3 +2710,444 @@ describe('WebSocketHandler - ASK_PROJECT/ASK_SPEC Handlers (agent-ask-execution)
     });
   });
 });
+
+// ============================================================
+// remote-ui-bug-advanced-features Task 1.1: Bug Auto Execution Handlers
+// Requirements: 4.1, 4.2
+// ============================================================
+
+describe('WebSocketHandler - Bug Auto Execution Handlers (remote-ui-bug-advanced-features)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  // Helper function to create mock WebSocket
+  function createMockWebSocket(): WebSocket {
+    return {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+      close: vi.fn(),
+      on: vi.fn(),
+    } as unknown as WebSocket;
+  }
+
+  // Helper function to create mock request
+  function createMockRequest(ip: string): IncomingMessage {
+    return {
+      socket: { remoteAddress: ip },
+      headers: {},
+    } as unknown as IncomingMessage;
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  describe('START_BUG_AUTO_EXECUTION message handling (Requirement 4.1)', () => {
+    it('should send NO_CONTROLLER error when workflowController not set', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'START_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+          permissions: { analyze: true, fix: true, verify: true },
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NO_CONTROLLER"')
+      );
+    });
+
+    it('should send NOT_SUPPORTED error when startBugAutoExecution not implemented', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // Set workflow controller without startBugAutoExecution
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'START_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+          permissions: { analyze: true, fix: true, verify: true },
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+
+    it('should send INVALID_PAYLOAD error when bugPath is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startBugAutoExecution: vi.fn(),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'START_BUG_AUTO_EXECUTION',
+        payload: {
+          permissions: { analyze: true, fix: true, verify: true },
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+
+    it('should send BUG_AUTO_EXECUTION_STARTED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockState = {
+        bugPath: '/test/project/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        status: 'running',
+        currentPhase: 'analyze',
+        executedPhases: [],
+        errors: [],
+        startTime: Date.now(),
+        lastActivityTime: Date.now(),
+        retryCount: 0,
+        lastFailedPhase: null,
+      };
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startBugAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: mockState }),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'START_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+          permissions: { analyze: true, fix: true, verify: true },
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STARTED"')
+      );
+    });
+
+    it('should send ERROR on failure', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startBugAutoExecution: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'ALREADY_EXECUTING', message: 'Already executing' },
+        }),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'START_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+          permissions: { analyze: true, fix: true, verify: true },
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"ALREADY_EXECUTING"')
+      );
+    });
+  });
+
+  describe('STOP_BUG_AUTO_EXECUTION message handling (Requirement 4.2)', () => {
+    it('should send NO_CONTROLLER error when workflowController not set', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'STOP_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NO_CONTROLLER"')
+      );
+    });
+
+    it('should send NOT_SUPPORTED error when stopBugAutoExecution not implemented', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'STOP_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_SUPPORTED"')
+      );
+    });
+
+    it('should send INVALID_PAYLOAD error when bugPath is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        stopBugAutoExecution: vi.fn(),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'STOP_BUG_AUTO_EXECUTION',
+        payload: {},
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+
+    it('should send BUG_AUTO_EXECUTION_STOPPED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        stopBugAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'STOP_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"BUG_AUTO_EXECUTION_STOPPED"')
+      );
+    });
+
+    it('should send ERROR on failure', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        stopBugAutoExecution: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'NOT_EXECUTING', message: 'Not executing' },
+        }),
+      });
+
+      const mockWs = createMockWebSocket();
+      const mockMessageHandler = vi.fn();
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler.mockImplementation(handlerFn);
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'STOP_BUG_AUTO_EXECUTION',
+        payload: {
+          bugPath: '/test/project/.kiro/bugs/test-bug',
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_EXECUTING"')
+      );
+    });
+  });
+});

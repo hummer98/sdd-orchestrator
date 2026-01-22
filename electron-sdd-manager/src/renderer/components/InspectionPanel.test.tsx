@@ -210,36 +210,8 @@ describe('InspectionPanel', () => {
     });
   });
 
-  // ============================================================
-  // Task 2.4: Auto execution flag control (title right side)
-  // Requirements: 1.10, 5.1
-  // inspection-permission-unification: Tests removed - autoExecutionFlag props removed from component
-  // Auto execution permission is now controlled via impl phase checkbox
-  // ============================================================
-  describe('Task 2.4: Auto execution flag control', () => {
-    // NOTE: All auto execution flag tests removed
-    // inspection-permission-unification: autoExecutionFlag and onAutoExecutionFlagChange props
-    // were removed from InspectionPanel. Auto execution permission is now controlled via
-    // permissions.inspection in PhaseItem checkbox.
-
-    it.skip('should render auto execution flag control button (removed in inspection-permission-unification)', () => {
-      // This functionality has been moved to PhaseItem checkbox
-    });
-
-    it.skip('should show run icon when autoExecutionFlag is run (removed in inspection-permission-unification)', () => {
-      // This functionality has been moved to PhaseItem checkbox
-    });
-
-    it.skip('should show pause icon when autoExecutionFlag is pause (removed in inspection-permission-unification)', () => {
-      // This functionality has been moved to PhaseItem checkbox
-    });
-
-    it.skip('should call onAutoExecutionFlagChange with "pause" when clicked from "run" (removed in inspection-permission-unification)', () => {
-      // This functionality has been moved to PhaseItem checkbox
-    });
-
-    it.skip('should call onAutoExecutionFlagChange with "run" when clicked from "pause" (removed in inspection-permission-unification)', () => {
-      // This functionality has been moved to PhaseItem checkbox
-    });
-  });
+  // NOTE: Task 2.4 (Auto execution flag control) tests removed
+  // inspection-permission-unification: autoExecutionFlag and onAutoExecutionFlagChange props
+  // were removed from InspectionPanel. Auto execution permission is now controlled via
+  // permissions.inspection in PhaseItem checkbox.
 });

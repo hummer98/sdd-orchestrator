@@ -238,30 +238,8 @@ describe('SpecDetailView', () => {
     });
   });
 
-  // Auto Execution button tests skipped - buttons moved to RightSidebar WorkflowFooter
-  // (See: SpecActionsView.test.tsx or integration tests)
-  describe.skip('Auto Execution (moved to WorkflowFooter)', () => {
-    it('renders auto execution button', async () => {
-      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('auto-execution-button')).toBeInTheDocument();
-      });
-    });
-
-    it('calls startAutoExecution when auto execution button is clicked', async () => {
-      render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('auto-execution-button')).toBeInTheDocument();
-      });
-
-      const autoButton = screen.getByTestId('auto-execution-button');
-      fireEvent.click(autoButton);
-
-      expect(mockApiClient.startAutoExecution).toHaveBeenCalled();
-    });
-  });
+  // NOTE: Auto Execution button tests removed - buttons moved to RightSidebar WorkflowFooter
+  // See: SpecActionsView.test.tsx or integration tests for auto execution coverage
 
   describe('Callbacks', () => {
     it('calls onApprovalUpdated when approve button is clicked', async () => {

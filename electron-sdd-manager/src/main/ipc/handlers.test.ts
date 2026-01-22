@@ -570,3 +570,62 @@ describe('IPC Handlers - Project Log (Task 3.1, 3.2, 5.4)', () => {
     });
   });
 });
+
+// ============================================================
+// Bug Auto-Execution: cwd resolution for bug-merge
+// bug-merge must run from projectPath (not worktreeCwd)
+// Similar to WORKTREE_LIFECYCLE_PHASES for spec-merge
+// ============================================================
+describe('getBugAgentEffectiveCwd - bug-merge cwd resolution', () => {
+  it('should be exported from handlers module', async () => {
+    const { getBugAgentEffectiveCwd } = await import('./handlers');
+    expect(typeof getBugAgentEffectiveCwd).toBe('function');
+  });
+
+  it('should return projectPath for deploy phase in worktree mode', async () => {
+    const { getBugAgentEffectiveCwd } = await import('./handlers');
+    const projectPath = '/path/to/project';
+    const worktreeCwd = '/path/to/project/.kiro/worktrees/bugs/test-bug';
+
+    const result = getBugAgentEffectiveCwd('deploy', worktreeCwd, projectPath);
+
+    // bug-merge (deploy in worktree mode) should use projectPath
+    expect(result).toBe(projectPath);
+  });
+
+  it('should return worktreeCwd for deploy phase when not in worktree mode', async () => {
+    const { getBugAgentEffectiveCwd } = await import('./handlers');
+    const projectPath = '/path/to/project';
+    const worktreeCwd = projectPath; // Same as projectPath = not worktree mode
+
+    const result = getBugAgentEffectiveCwd('deploy', worktreeCwd, projectPath);
+
+    // Not in worktree mode, so use worktreeCwd (which equals projectPath)
+    expect(result).toBe(worktreeCwd);
+  });
+
+  it('should return worktreeCwd for non-deploy phases in worktree mode', async () => {
+    const { getBugAgentEffectiveCwd } = await import('./handlers');
+    const projectPath = '/path/to/project';
+    const worktreeCwd = '/path/to/project/.kiro/worktrees/bugs/test-bug';
+
+    // Test all non-deploy phases
+    const phases = ['report', 'analyze', 'fix', 'verify'] as const;
+    for (const phase of phases) {
+      const result = getBugAgentEffectiveCwd(phase, worktreeCwd, projectPath);
+      // Non-deploy phases should use worktreeCwd
+      expect(result).toBe(worktreeCwd);
+    }
+  });
+
+  it('should return worktreeCwd for fix phase in worktree mode', async () => {
+    const { getBugAgentEffectiveCwd } = await import('./handlers');
+    const projectPath = '/path/to/project';
+    const worktreeCwd = '/path/to/project/.kiro/worktrees/bugs/test-bug';
+
+    const result = getBugAgentEffectiveCwd('fix', worktreeCwd, projectPath);
+
+    // bug-fix should use worktreeCwd (only bug-merge uses projectPath)
+    expect(result).toBe(worktreeCwd);
+  });
+});

@@ -163,6 +163,31 @@ export function getAutoExecutionCoordinator(): AutoExecutionCoordinator {
 }
 
 /**
+ * Determine effective cwd for bug agent execution
+ * bug-merge (deploy phase in worktree mode) must run from projectPath
+ * to avoid hanging when worktree directory is deleted during merge.
+ *
+ * This is similar to WORKTREE_LIFECYCLE_PHASES in specManagerService.
+ *
+ * @param phase - Bug workflow phase
+ * @param worktreeCwd - Resolved worktree cwd from BugService.getAgentCwd
+ * @param projectPath - Main project path
+ * @returns effectiveCwd - projectPath for bug-merge, worktreeCwd for other phases
+ */
+export function getBugAgentEffectiveCwd(
+  phase: BugWorkflowPhase,
+  worktreeCwd: string,
+  projectPath: string
+): string {
+  const isWorktreeMode = worktreeCwd !== projectPath;
+  // bug-merge (deploy phase in worktree mode) must use projectPath
+  if (phase === 'deploy' && isWorktreeMode) {
+    return projectPath;
+  }
+  return worktreeCwd;
+}
+
+/**
  * Set initial project path (called from main process)
  */
 export function setInitialProjectPath(path: string | null): void {
@@ -2201,26 +2226,33 @@ export function registerIpcHandlers(): void {
       const worktreeCwd = await bugService.getAgentCwd(bugDir, currentProjectPath!);
 
       // For deploy phase, use /kiro:bug-merge if in worktree mode
-      if (phase === 'deploy' && worktreeCwd !== currentProjectPath) {
+      // bug-merge must run from projectPath (not worktreeCwd) because it deletes the worktree
+      const isWorktreeMode = worktreeCwd !== currentProjectPath;
+      if (phase === 'deploy' && isWorktreeMode) {
         command = '/kiro:bug-merge';
       }
+
+      // Use helper function to determine effective cwd
+      // bug-merge (deploy in worktree mode) uses projectPath, others use worktreeCwd
+      const effectiveCwd = getBugAgentEffectiveCwd(phase, worktreeCwd, currentProjectPath!);
 
       const fullCommand = `${command} ${context.bugName}`;
       logger.info('[handlers] Bug auto-execution starting agent', {
         bugName: context.bugName,
         phase,
         command: fullCommand,
+        effectiveCwd,
         worktreeCwd,
-        isWorktreeMode: worktreeCwd !== currentProjectPath,
+        isWorktreeMode,
       });
 
-      // Start agent with worktreeCwd
+      // Start agent with effectiveCwd (projectPath for bug-merge, worktreeCwd for other phases)
       const result = await service.startAgent({
         specId: `bug:${context.bugName}`,
         phase,
         command: 'claude',
         args: [fullCommand],
-        worktreeCwd,
+        worktreeCwd: effectiveCwd,
       });
 
       if (result.ok) {

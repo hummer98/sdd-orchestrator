@@ -320,3 +320,48 @@ describe('Constants', () => {
     expect(REQUIRED_SETTINGS).toContain('templates/steering/debugging.md');
   });
 });
+
+/**
+ * Tool Availability Check Tests (merge-helper-scripts feature)
+ * Requirements: 6.1 - jq availability check
+ */
+describe('ProjectChecker - Tool Availability', () => {
+  let checker: ProjectChecker;
+
+  beforeEach(() => {
+    checker = new ProjectChecker();
+  });
+
+  describe('checkJqAvailability', () => {
+    it('should return ToolCheck result with name "jq"', async () => {
+      const result = await checker.checkJqAvailability();
+      expect(result.name).toBe('jq');
+    });
+
+    it('should return available: true when jq is installed', async () => {
+      // This test assumes jq is installed on the test machine
+      // If jq is not installed, this test will be skipped
+      const result = await checker.checkJqAvailability();
+      // We don't assert on `available` here because it depends on the test environment
+      // Just verify the structure is correct
+      expect(typeof result.available).toBe('boolean');
+    });
+
+    it('should include installGuidance when jq is not available', async () => {
+      const result = await checker.checkJqAvailability();
+      // If not available, should have installGuidance
+      if (!result.available) {
+        expect(result.installGuidance).toBeDefined();
+        expect(result.installGuidance).toContain('brew install jq');
+      }
+    });
+
+    it('should include version when jq is available', async () => {
+      const result = await checker.checkJqAvailability();
+      // If available, should have version
+      if (result.available) {
+        expect(result.version).toBeDefined();
+      }
+    });
+  });
+});

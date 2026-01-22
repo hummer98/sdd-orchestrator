@@ -31,31 +31,54 @@ Merge the bug fix from worktree branch `bugfix/{bug-name}` to main branch.
    - If not on main/master, abort with error
 
 ## Execution Steps
+
+### Step 1: Prepare Worktree for Merge
+Before merging, update bug.json in the worktree so it's included in the squash merge.
+
+**merge-helper-scripts**: Use the helper script to ensure reliable execution in the worktree directory.
+
+1. **Derive worktree path**:
+   ```bash
+   PROJECT_ROOT=$(pwd)
+   WORKTREE_ABSOLUTE_PATH="${PROJECT_ROOT}/.kiro/worktrees/bugs/$1"
+   ```
+2. **Update bug.json in worktree** using the helper script:
+   ```bash
+   cd "${WORKTREE_ABSOLUTE_PATH}" && .kiro/scripts/update-bug-for-deploy.sh $1
+   ```
+   The script will:
+   - Remove the `worktree` property from bug.json
+   - Update `updated_at` to current UTC timestamp
+   - Stage and commit the changes
+3. **Return to main project**:
+   ```bash
+   cd "$PROJECT_ROOT"
+   ```
+
+### Step 2: Fetch and Merge
 1. **Fetch Latest Changes**:
    - `git fetch origin`
 2. **Perform Squash Merge**:
    - `git merge --squash bugfix/{bug-name}`
-3. **Handle Conflicts** (if any):
-   - Attempt auto-resolution up to 7 times
-   - For each conflict:
-     - Read conflicting files
-     - Analyze both versions
-     - Choose appropriate resolution
-     - `git add {resolved-file}`
-   - If auto-resolution fails after 7 attempts:
-     - Report conflicting files to user
-     - Provide guidance for manual resolution
-     - Abort merge process
-4. **Commit Merge**:
-   - `git commit -m "fix({bug-name}): {bug summary from report.md}"`
-5. **Cleanup Worktree**:
-   - Remove worktree directory: `git worktree remove {worktree-path} --force`
-   - Delete branch: `git branch -d bugfix/{bug-name}` (or -D if necessary)
-6. **Update bug.json**:
-   - Read `.kiro/bugs/$1/bug.json`
-   - Remove `worktree` field
-   - Update `updated_at` timestamp
-   - Write updated bug.json
+
+### Step 3: Handle Conflicts (if any)
+- Attempt auto-resolution up to 7 times
+- For each conflict:
+  - Read conflicting files
+  - Analyze both versions
+  - Choose appropriate resolution
+  - `git add {resolved-file}`
+- If auto-resolution fails after 7 attempts:
+  - Report conflicting files to user
+  - Provide guidance for manual resolution
+  - Abort merge process
+
+### Step 4: Commit Merge
+- `git commit -m "fix({bug-name}): {bug summary from report.md}"`
+
+### Step 5: Cleanup Worktree
+- Remove worktree directory: `git worktree remove {worktree-path} --force`
+- Delete branch: `git branch -d bugfix/{bug-name}` (or -D if necessary)
 
 ## Important Constraints
 - This command is ONLY for bugs in worktree mode

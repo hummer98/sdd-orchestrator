@@ -145,19 +145,20 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
 2. Log: "Worktree内の未コミット変更をコミットしました"
 
 #### 2.3: Update spec.json in Worktree
-Update spec.json to deploy-complete state **in the worktree**, so it's included in the squash merge.
+Update spec.json to deploy-complete state **in the worktree** using the helper script, so it's included in the squash merge.
 
-1. Read `${WORKTREE_ABSOLUTE_PATH}/.kiro/specs/$1/spec.json`
-2. Apply the following changes:
-   - Remove the `worktree` property
-   - Set `phase` to `"deploy-complete"`
-   - Update `updated_at` to current UTC timestamp (ISO 8601 format)
-   - Keep all other fields intact
-3. Write the updated spec.json back
-4. Stage and commit in worktree:
+**merge-helper-scripts**: Use the helper script to ensure reliable execution in the worktree directory.
+
+1. Change directory to worktree and execute the script:
    ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && git add .kiro/specs/$1/spec.json && git commit -m "chore($1): update spec.json for deploy-complete"
+   cd "${WORKTREE_ABSOLUTE_PATH}" && .kiro/scripts/update-spec-for-deploy.sh $1
    ```
+
+The script will:
+- Remove the `worktree` property from spec.json
+- Set `phase` to `"deploy-complete"`
+- Update `updated_at` to current UTC timestamp
+- Stage and commit the changes
 
 #### 2.4: Return to Main Project
 ```bash

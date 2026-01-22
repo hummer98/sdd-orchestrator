@@ -769,3 +769,143 @@ async function fileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Helper Scripts Install Tests
+ * Requirements: 3.1, 3.2, 3.3, 3.4 (merge-helper-scripts feature)
+ */
+describe('CcSddWorkflowInstaller - Helper Scripts', () => {
+  let installer: CcSddWorkflowInstaller;
+  let tempDir: string;
+  let templateDir: string;
+
+  beforeEach(async () => {
+    process.env.SKIP_CLAUDE_MERGE = 'true';
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'helper-scripts-test-'));
+    templateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'helper-scripts-templates-'));
+    installer = new CcSddWorkflowInstaller(templateDir);
+
+    // Create script templates
+    const scriptsDir = path.join(templateDir, 'scripts');
+    await fs.mkdir(scriptsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(scriptsDir, 'update-spec-for-deploy.sh'),
+      '#!/bin/bash\necho "update-spec-for-deploy"',
+      'utf-8'
+    );
+    await fs.writeFile(
+      path.join(scriptsDir, 'update-bug-for-deploy.sh'),
+      '#!/bin/bash\necho "update-bug-for-deploy"',
+      'utf-8'
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+    await fs.rm(templateDir, { recursive: true, force: true });
+    delete process.env.SKIP_CLAUDE_MERGE;
+  });
+
+  describe('installScripts', () => {
+    it('should install helper scripts to .kiro/scripts/', async () => {
+      const result = await installer.installScripts(tempDir);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.installed).toContain('update-spec-for-deploy.sh');
+        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+        expect(result.value.installed.length).toBe(2);
+      }
+
+      // Verify files were created
+      const specScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'update-bug-for-deploy.sh');
+      expect(await fileExists(specScript)).toBe(true);
+      expect(await fileExists(bugScript)).toBe(true);
+    });
+
+    it('should set executable permission on installed scripts', async () => {
+      await installer.installScripts(tempDir);
+
+      const specScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'update-bug-for-deploy.sh');
+
+      // Check file mode includes executable bit (0o100 for owner execute)
+      const specStat = await fs.stat(specScript);
+      const bugStat = await fs.stat(bugScript);
+      expect(specStat.mode & 0o100).toBeTruthy(); // Owner execute bit
+      expect(bugStat.mode & 0o100).toBeTruthy();
+    });
+
+    it('should create .kiro/scripts/ directory if it does not exist', async () => {
+      // Verify directory doesn't exist
+      const scriptsDir = path.join(tempDir, '.kiro', 'scripts');
+      expect(await fileExists(scriptsDir)).toBe(false);
+
+      await installer.installScripts(tempDir);
+
+      expect(await fileExists(scriptsDir)).toBe(true);
+    });
+
+    it('should skip existing scripts when force is false', async () => {
+      // Pre-create a script
+      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      await fs.mkdir(path.dirname(existingScript), { recursive: true });
+      await fs.writeFile(existingScript, '#!/bin/bash\necho "custom script"', 'utf-8');
+
+      const result = await installer.installScripts(tempDir);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.skipped).toContain('update-spec-for-deploy.sh');
+        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+      }
+
+      // Verify existing script was not overwritten
+      const content = await fs.readFile(existingScript, 'utf-8');
+      expect(content).toBe('#!/bin/bash\necho "custom script"');
+    });
+
+    it('should overwrite existing scripts when force is true', async () => {
+      // Pre-create a script
+      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      await fs.mkdir(path.dirname(existingScript), { recursive: true });
+      await fs.writeFile(existingScript, '#!/bin/bash\necho "custom script"', 'utf-8');
+
+      const result = await installer.installScripts(tempDir, { force: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.overwritten).toContain('update-spec-for-deploy.sh');
+        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+      }
+
+      // Verify script was overwritten
+      const content = await fs.readFile(existingScript, 'utf-8');
+      expect(content).toContain('update-spec-for-deploy');
+    });
+
+    it('should return empty result when no script templates exist', async () => {
+      // Remove script templates
+      await fs.rm(path.join(templateDir, 'scripts'), { recursive: true, force: true });
+
+      const result = await installer.installScripts(tempDir);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.installed.length).toBe(0);
+        expect(result.value.skipped.length).toBe(0);
+      }
+    });
+  });
+
+  describe('HELPER_SCRIPTS constant', () => {
+    it('should define the expected helper scripts', async () => {
+      // Import constant to test
+      const { HELPER_SCRIPTS } = await import('./ccSddWorkflowInstaller');
+      expect(HELPER_SCRIPTS).toContain('update-spec-for-deploy.sh');
+      expect(HELPER_SCRIPTS).toContain('update-bug-for-deploy.sh');
+      expect(HELPER_SCRIPTS.length).toBe(2);
+    });
+  });
+});

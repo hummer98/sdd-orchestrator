@@ -4,7 +4,7 @@
  * Requirements: 3.1-3.8, 4.1-4.8, 6.1-6.5
  */
 
-import { readFile, writeFile, mkdir, access } from 'fs/promises';
+import { readFile, writeFile, mkdir, access, chmod, readdir } from 'fs/promises';
 import { join, dirname } from 'path';
 import { spawn } from 'child_process';
 import { addPermissionsToProject } from './permissionsService';
@@ -113,6 +113,16 @@ export const CC_SDD_SETTINGS = [
   'templates/bugs/analysis.md',
   'templates/bugs/fix.md',
   'templates/bugs/verification.md',
+] as const;
+
+/**
+ * Helper scripts for merge operations
+ * Requirements: 3.1, 3.2 (merge-helper-scripts feature)
+ * Location: {projectRoot}/.kiro/scripts/
+ */
+export const HELPER_SCRIPTS = [
+  'update-spec-for-deploy.sh',
+  'update-bug-for-deploy.sh',
 ] as const;
 
 /**
@@ -530,6 +540,86 @@ export class CcSddWorkflowInstaller {
           overwritten.push(setting);
         } else {
           installed.push(setting);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('EACCES') || message.includes('EPERM')) {
+          return {
+            ok: false,
+            error: { type: 'PERMISSION_DENIED', path: targetPath },
+          };
+        }
+        return {
+          ok: false,
+          error: { type: 'WRITE_ERROR', path: targetPath, message },
+        };
+      }
+    }
+
+    return { ok: true, value: { installed, skipped, overwritten } };
+  }
+
+  /**
+   * Install helper scripts to .kiro/scripts/
+   * @param projectPath - Project root path
+   * @param options - Install options
+   * Requirements: 3.1, 3.2, 3.3, 3.4 (merge-helper-scripts feature)
+   */
+  async installScripts(
+    projectPath: string,
+    options: InstallOptions = {}
+  ): Promise<Result<InstallResult, InstallError>> {
+    const installed: string[] = [];
+    const skipped: string[] = [];
+    const overwritten: string[] = [];
+    const { force = false } = options;
+
+    const templateScriptsDir = join(this.templateDir, 'scripts');
+    const targetScriptsDir = join(projectPath, '.kiro', 'scripts');
+
+    // Check if template scripts directory exists
+    if (!(await fileExists(templateScriptsDir))) {
+      // No scripts to install - return empty result
+      return { ok: true, value: { installed, skipped, overwritten } };
+    }
+
+    // Read script files from template directory
+    let scriptFiles: string[];
+    try {
+      const files = await readdir(templateScriptsDir);
+      scriptFiles = files.filter((f) => f.endsWith('.sh'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        error: { type: 'READ_ERROR', path: templateScriptsDir, message },
+      };
+    }
+
+    // Ensure target directory exists
+    await mkdir(targetScriptsDir, { recursive: true });
+
+    for (const script of scriptFiles) {
+      const templatePath = join(templateScriptsDir, script);
+      const targetPath = join(targetScriptsDir, script);
+
+      // Check if target already exists
+      const exists = await fileExists(targetPath);
+      if (exists && !force) {
+        skipped.push(script);
+        continue;
+      }
+
+      // Install the script
+      try {
+        const content = await readFile(templatePath, 'utf-8');
+        await writeFile(targetPath, content, 'utf-8');
+        // Set executable permission (chmod +x)
+        await chmod(targetPath, 0o755);
+        if (exists) {
+          overwritten.push(script);
+        } else {
+          installed.push(script);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

@@ -184,15 +184,19 @@ export class UnifiedCommandsetInstaller {
         const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
         if (!settingsResult.ok) return settingsResult;
 
+        // Install helper scripts (merge-helper-scripts feature)
+        const scriptsResult = await this.ccSddInstaller.installScripts(projectPath, options);
+        if (!scriptsResult.ok) return scriptsResult;
+
         // Add required permissions
         await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
 
         return {
           ok: true,
           value: {
-            installed: [...commandResult.value.installed, ...settingsResult.value.installed],
-            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped],
-            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten]
+            installed: [...commandResult.value.installed, ...settingsResult.value.installed, ...scriptsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped, ...scriptsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten, ...scriptsResult.value.overwritten]
           }
         };
       }
@@ -207,15 +211,19 @@ export class UnifiedCommandsetInstaller {
         const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
         if (!settingsResult.ok) return settingsResult;
 
+        // Install helper scripts (merge-helper-scripts feature)
+        const scriptsResult = await this.ccSddInstaller.installScripts(projectPath, options);
+        if (!scriptsResult.ok) return scriptsResult;
+
         // Add required permissions
         await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
 
         return {
           ok: true,
           value: {
-            installed: [...commandResult.value.installed, ...agentResult.value.installed, ...settingsResult.value.installed],
-            skipped: [...commandResult.value.skipped, ...agentResult.value.skipped, ...settingsResult.value.skipped],
-            overwritten: [...commandResult.value.overwritten, ...agentResult.value.overwritten, ...settingsResult.value.overwritten]
+            installed: [...commandResult.value.installed, ...agentResult.value.installed, ...settingsResult.value.installed, ...scriptsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...agentResult.value.skipped, ...settingsResult.value.skipped, ...scriptsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...agentResult.value.overwritten, ...settingsResult.value.overwritten, ...scriptsResult.value.overwritten]
           }
         };
       }
@@ -261,15 +269,19 @@ export class UnifiedCommandsetInstaller {
         const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
         if (!settingsResult.ok) return settingsResult;
 
+        // Install helper scripts (merge-helper-scripts feature)
+        const scriptsResult = await this.ccSddInstaller.installScripts(projectPath, options);
+        if (!scriptsResult.ok) return scriptsResult;
+
         // Add required permissions
         await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
 
         return {
           ok: true,
           value: {
-            installed: [...commandResult.value.installed, ...settingsResult.value.installed],
-            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped],
-            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten]
+            installed: [...commandResult.value.installed, ...settingsResult.value.installed, ...scriptsResult.value.installed],
+            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped, ...scriptsResult.value.skipped],
+            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten, ...scriptsResult.value.overwritten]
           }
         };
       }

@@ -6,7 +6,11 @@
 
 import { access } from 'fs/promises';
 import { join } from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { checkRequiredPermissions, CheckPermissionsResult } from './permissionsService';
+
+const execAsync = promisify(exec);
 import {
   projectConfigService,
   ProfileName,
@@ -218,6 +222,17 @@ export interface CompleteCheckResult {
 }
 
 /**
+ * Result of checking tool availability
+ * Requirements: 6.1 (merge-helper-scripts feature)
+ */
+export interface ToolCheck {
+  readonly name: string;
+  readonly available: boolean;
+  readonly version?: string;
+  readonly installGuidance?: string;
+}
+
+/**
  * Check if a file exists
  */
 async function fileExists(filePath: string): Promise<boolean> {
@@ -396,5 +411,33 @@ export class ProjectChecker {
       permissions,
       allPresent: commands.allPresent && settings.allPresent && permissions.allPresent,
     };
+  }
+
+  /**
+   * Check if jq command is available on the system
+   * Requirements: 6.1 (merge-helper-scripts feature)
+   *
+   * @returns ToolCheck result for jq
+   */
+  async checkJqAvailability(): Promise<ToolCheck> {
+    const name = 'jq';
+    const installGuidance =
+      'brew install jq (macOS) / apt install jq (Ubuntu/Debian) / choco install jq (Windows)';
+
+    try {
+      const { stdout } = await execAsync('jq --version');
+      const version = stdout.trim();
+      return {
+        name,
+        available: true,
+        version,
+      };
+    } catch {
+      return {
+        name,
+        available: false,
+        installGuidance,
+      };
+    }
   }
 }

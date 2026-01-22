@@ -51,6 +51,11 @@ class AgentProcessImpl implements AgentProcess {
   private errorCallbacks: ((error: Error) => void)[] = [];
   private _isRunning: boolean = true;
 
+  // Buffer for stdout to handle chunked JSONL output
+  // Claude CLI outputs stream-json format (one JSON per line)
+  // but Node.js stdout may split data at arbitrary byte boundaries
+  private stdoutBuffer: string = '';
+
   constructor(options: AgentProcessOptions) {
     this.agentId = options.agentId;
     this.sessionId = options.sessionId ?? '';
@@ -94,11 +99,25 @@ class AgentProcessImpl implements AgentProcess {
   private setupEventHandlers(): void {
     logger.debug('[AgentProcess] Setting up event handlers', { agentId: this.agentId });
 
-    // Handle stdout
+    // Handle stdout with line buffering for JSONL format
+    // Claude CLI outputs one JSON object per line, but chunks may split mid-line
     this.process.stdout?.on('data', (data: Buffer) => {
-      const output = data.toString();
-      logger.debug('[AgentProcess] stdout received', { agentId: this.agentId, length: output.length, preview: output.substring(0, 100) });
-      this.outputCallbacks.forEach((cb) => cb('stdout', output));
+      this.stdoutBuffer += data.toString();
+
+      // Split by newline and process complete lines
+      const lines = this.stdoutBuffer.split('\n');
+
+      // Keep the last element (incomplete line) in the buffer
+      this.stdoutBuffer = lines.pop() ?? '';
+
+      // Send complete lines
+      for (const line of lines) {
+        if (line.trim()) {
+          const output = line + '\n'; // Restore newline for JSONL format
+          logger.debug('[AgentProcess] stdout line', { agentId: this.agentId, length: output.length, preview: output.substring(0, 100) });
+          this.outputCallbacks.forEach((cb) => cb('stdout', output));
+        }
+      }
     });
 
     // Handle stderr
@@ -111,6 +130,15 @@ class AgentProcessImpl implements AgentProcess {
     // Handle process close
     this.process.on('close', (code: number | null) => {
       logger.info('[AgentProcess] Process closed', { agentId: this.agentId, exitCode: code });
+
+      // Flush any remaining buffered stdout data
+      if (this.stdoutBuffer.trim()) {
+        const output = this.stdoutBuffer + '\n';
+        logger.debug('[AgentProcess] Flushing remaining stdout buffer', { agentId: this.agentId, length: output.length });
+        this.outputCallbacks.forEach((cb) => cb('stdout', output));
+        this.stdoutBuffer = '';
+      }
+
       this._isRunning = false;
       this.exitCallbacks.forEach((cb) => cb(code ?? -1));
     });

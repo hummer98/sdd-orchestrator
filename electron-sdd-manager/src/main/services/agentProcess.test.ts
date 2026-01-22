@@ -282,4 +282,119 @@ describe('AgentProcess', () => {
       expect(process.isRunning).toBe(false);
     });
   });
+
+  // Line buffering tests for JSONL format support
+  describe('stdout line buffering', () => {
+    it('should output complete lines with trailing newline', async () => {
+      // printf outputs without trailing newline by default, then we add explicit newlines
+      const options: AgentProcessOptions = {
+        agentId: 'agent-001',
+        command: 'printf',
+        args: ['line1\\nline2\\n'],
+        cwd: '/tmp',
+      };
+
+      const process = createAgentProcess(options);
+      const outputs: string[] = [];
+
+      process.onOutput((stream, data) => {
+        if (stream === 'stdout') {
+          outputs.push(data);
+        }
+      });
+
+      await new Promise<void>((resolve) => {
+        process.onExit(() => resolve());
+      });
+
+      // Each complete line should end with newline
+      expect(outputs.length).toBeGreaterThanOrEqual(1);
+      outputs.forEach((output) => {
+        expect(output.endsWith('\n')).toBe(true);
+      });
+    });
+
+    it('should handle multiple lines output', async () => {
+      const options: AgentProcessOptions = {
+        agentId: 'agent-001',
+        command: 'printf',
+        args: ['{"type":"a"}\\n{"type":"b"}\\n{"type":"c"}\\n'],
+        cwd: '/tmp',
+      };
+
+      const process = createAgentProcess(options);
+      const outputs: string[] = [];
+
+      process.onOutput((stream, data) => {
+        if (stream === 'stdout') {
+          outputs.push(data);
+        }
+      });
+
+      await new Promise<void>((resolve) => {
+        process.onExit(() => resolve());
+      });
+
+      // Combine all outputs and verify content
+      const combined = outputs.join('');
+      expect(combined).toContain('{"type":"a"}');
+      expect(combined).toContain('{"type":"b"}');
+      expect(combined).toContain('{"type":"c"}');
+    });
+
+    it('should flush remaining buffer on process exit', async () => {
+      // printf without trailing newline - buffer should be flushed on exit
+      const options: AgentProcessOptions = {
+        agentId: 'agent-001',
+        command: 'printf',
+        args: ['no-newline-at-end'],
+        cwd: '/tmp',
+      };
+
+      const process = createAgentProcess(options);
+      const outputs: string[] = [];
+
+      process.onOutput((stream, data) => {
+        if (stream === 'stdout') {
+          outputs.push(data);
+        }
+      });
+
+      await new Promise<void>((resolve) => {
+        process.onExit(() => resolve());
+      });
+
+      // The remaining buffer should be flushed with added newline
+      const combined = outputs.join('');
+      expect(combined).toContain('no-newline-at-end');
+      expect(combined.endsWith('\n')).toBe(true);
+    });
+
+    it('should not output empty lines', async () => {
+      const options: AgentProcessOptions = {
+        agentId: 'agent-001',
+        command: 'printf',
+        args: ['line1\\n\\n\\nline2\\n'],
+        cwd: '/tmp',
+      };
+
+      const process = createAgentProcess(options);
+      const outputs: string[] = [];
+
+      process.onOutput((stream, data) => {
+        if (stream === 'stdout') {
+          outputs.push(data);
+        }
+      });
+
+      await new Promise<void>((resolve) => {
+        process.onExit(() => resolve());
+      });
+
+      // Empty lines should be filtered out
+      outputs.forEach((output) => {
+        expect(output.trim().length).toBeGreaterThan(0);
+      });
+    });
+  });
 });

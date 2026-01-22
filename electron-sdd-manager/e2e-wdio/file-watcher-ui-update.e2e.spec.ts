@@ -99,8 +99,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
     browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available');
@@ -122,8 +122,8 @@ async function selectSpecViaStore(specId: string): Promise<boolean> {
     browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === id);
           if (spec) {
             specStore.selectSpec(spec);
@@ -155,10 +155,10 @@ async function getSpecDetail(): Promise<{
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) {
+      if (!stores?.spec?.getState) {
         return { requirements: null, specJsonPhase: null };
       }
-      const specDetail = stores.specStore.getState().specDetail;
+      const specDetail = stores.spec.getState().specDetail;
       if (!specDetail) {
         return { requirements: null, specJsonPhase: null };
       }
@@ -205,8 +205,8 @@ async function isFileWatcherActive(): Promise<boolean> {
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) return false;
-      return stores.specStore.getState().isWatching === true;
+      if (!stores?.spec?.getState) return false;
+      return stores.spec.getState().isWatching === true;
     } catch {
       return false;
     }

@@ -25,8 +25,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
       try {
         // Access stores exposed on window (see stores/index.ts)
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available on window');
@@ -103,8 +103,8 @@ async function selectSpecViaStore(specName: string): Promise<boolean> {
     browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === name);
           if (spec) {
             await specStore.selectSpec(spec);
@@ -133,8 +133,8 @@ async function clearSelectedSpecViaStore(): Promise<boolean> {
     browser.executeAsync(async (done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           specStore.clearSelectedSpec();
           done(true);
         } else {
@@ -495,7 +495,7 @@ describe('Bugs Pane Integration E2E', () => {
       // Specの選択状態がStore上で維持されていることを確認
       const specStillSelected = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const specStore = stores?.specStore?.getState();
+        const specStore = stores?.spec?.getState();
         return specStore?.selectedSpec?.name === 'test-feature';
       });
       expect(specStillSelected).toBe(true);
@@ -538,7 +538,7 @@ describe('Bugs Pane Integration E2E', () => {
       // 両方の選択状態がStore上で維持されていることを確認
       const bothSelected = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const specStore = stores?.specStore?.getState();
+        const specStore = stores?.spec?.getState();
         const bugStore = stores?.bugStore?.getState();
         return {
           specSelected: specStore?.selectedSpec?.name === 'test-feature',

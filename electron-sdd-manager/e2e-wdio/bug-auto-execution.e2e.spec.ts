@@ -93,8 +93,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
     browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available');
@@ -145,9 +145,9 @@ async function setBugAutoExecutionPermissions(permissions: Record<string, boolea
   return browser.execute((perms: Record<string, boolean>) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
+      if (!stores?.workflow?.getState) return false;
 
-      const workflowStore = stores.workflowStore.getState();
+      const workflowStore = stores.workflow.getState();
       const currentPermissions = workflowStore.bugAutoExecutionPermissions;
 
       // Toggle permissions to match desired state
@@ -242,8 +242,8 @@ async function refreshBugStore(): Promise<void> {
 async function clearAgentStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.agentStore?.getState) {
-      const state = stores.agentStore.getState();
+    if (stores?.agent?.getState) {
+      const state = stores.agent.getState();
       state.agents.forEach((agents: any[], specId: string) => {
         agents.forEach((agent: any) => {
           state.removeAgent(agent.agentId);
@@ -273,9 +273,9 @@ async function resetBugAutoExecutionService(): Promise<void> {
 async function resetBugAutoExecutionPermissions(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.workflowStore?.getState) {
+    if (stores?.workflow?.getState) {
       // Reset to default values
-      stores.workflowStore.getState().setBugAutoExecutionPermissions({
+      stores.workflow.getState().setBugAutoExecutionPermissions({
         analyze: true,
         fix: true,
         verify: true,
@@ -291,8 +291,8 @@ async function resetBugAutoExecutionPermissions(): Promise<void> {
 async function clearSelectedSpecViaStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.specStore?.getState) {
-      stores.specStore.getState().clearSelectedSpec();
+    if (stores?.spec?.getState) {
+      stores.spec.getState().clearSelectedSpec();
     }
   });
 }
@@ -518,7 +518,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       // Debug: Check workflowStore permissions
       const permissionsState = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const workflowStore = stores?.workflowStore?.getState();
+        const workflowStore = stores?.workflow?.getState();
         return workflowStore?.bugAutoExecutionPermissions ?? null;
       });
       console.log(`[E2E] Permissions before click: ${JSON.stringify(permissionsState)}`);

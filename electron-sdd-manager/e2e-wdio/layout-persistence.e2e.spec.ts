@@ -194,8 +194,8 @@ describe('Layout Persistence E2E', () => {
       await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
         try {
           const stores = (window as any).__STORES__;
-          if (stores?.projectStore?.getState) {
-            await stores.projectStore.getState().selectProject(projPath);
+          if (stores?.project?.getState) {
+            await stores.project.getState().selectProject(projPath);
             done(true);
           } else {
             done(false);
@@ -271,8 +271,8 @@ describe('Layout Persistence E2E', () => {
       await browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
         try {
           const stores = (window as any).__STORES__;
-          if (stores?.projectStore?.getState) {
-            await stores.projectStore.getState().selectProject(projPath);
+          if (stores?.project?.getState) {
+            await stores.project.getState().selectProject(projPath);
             done(true);
           } else {
             done(false);

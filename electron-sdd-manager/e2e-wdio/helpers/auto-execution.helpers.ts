@@ -26,23 +26,55 @@ export interface AutoExecutionStatusResult {
 }
 
 /**
+ * Result of selectProjectViaStore with detailed error info
+ */
+export interface SelectProjectResult {
+  success: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+/**
  * Helper: Select project using Zustand store action
+ *
+ * Now properly checks the IPC result via lastSelectResult in projectStore.
+ * Returns detailed error information for debugging.
  */
 export async function selectProjectViaStore(projectPath: string): Promise<boolean> {
+  const result = await selectProjectViaStoreDetailed(projectPath);
+  return result.success;
+}
+
+/**
+ * Helper: Select project with detailed result
+ */
+export async function selectProjectViaStoreDetailed(projectPath: string): Promise<SelectProjectResult> {
   return new Promise((resolve) => {
-    browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
+    browser.executeAsync(async (projPath: string, done: (result: SelectProjectResult) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
-          done(true);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
+          // Check the actual IPC result from lastSelectResult
+          const result = stores.project.getState().lastSelectResult;
+          if (result?.success) {
+            done({ success: true });
+          } else {
+            const errorInfo = result?.error || {};
+            console.error('[E2E] selectProject failed:', errorInfo);
+            done({
+              success: false,
+              errorCode: errorInfo.code || 'UNKNOWN_ERROR',
+              errorMessage: errorInfo.message || 'Unknown error',
+            });
+          }
         } else {
           console.error('[E2E] __STORES__ not available');
-          done(false);
+          done({ success: false, errorCode: 'STORES_NOT_AVAILABLE', errorMessage: '__STORES__ not available' });
         }
       } catch (e) {
         console.error('[E2E] selectProject error:', e);
-        done(false);
+        done({ success: false, errorCode: 'EXCEPTION', errorMessage: String(e) });
       }
     }, projectPath).then(resolve);
   });
@@ -56,8 +88,8 @@ export async function selectSpecViaStore(specId: string): Promise<boolean> {
     browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === id);
           if (spec) {
             specStore.selectSpec(spec);
@@ -87,9 +119,9 @@ export async function setAutoExecutionPermissions(
   return browser.execute((perms: Record<string, boolean>) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
+      if (!stores?.workflow?.getState) return false;
 
-      const workflowStore = stores.workflowStore.getState();
+      const workflowStore = stores.workflow.getState();
       const currentPermissions = workflowStore.autoExecutionPermissions;
 
       for (const [phase, desired] of Object.entries(perms)) {
@@ -115,10 +147,10 @@ export async function getAutoExecutionStatus(): Promise<AutoExecutionStatusResul
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) {
+      if (!stores?.spec?.getState) {
         return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
       }
-      const storeState = stores.specStore.getState();
+      const storeState = stores.spec.getState();
       const specId = storeState.specDetail?.metadata?.name || '';
       const state = storeState.getAutoExecutionRuntime(specId);
       return {
@@ -141,10 +173,10 @@ export async function getAutoExecutionStatusForSpec(
   return browser.execute((id: string) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) {
+      if (!stores?.spec?.getState) {
         return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
       }
-      const storeState = stores.specStore.getState();
+      const storeState = stores.spec.getState();
       const state = storeState.getAutoExecutionRuntime(id);
       return {
         isAutoExecuting: state.isAutoExecuting,
@@ -200,7 +232,7 @@ export async function waitForCondition(
 export async function refreshSpecStore(): Promise<void> {
   await browser.executeAsync((done) => {
     const stores = (window as any).__STORES__;
-    const refreshFn = stores?.specStore?.getState()?.refreshSpecs;
+    const refreshFn = stores?.spec?.getState()?.refreshSpecs;
     if (refreshFn) {
       refreshFn()
         .then(() => done())
@@ -218,8 +250,8 @@ export async function refreshSpecStore(): Promise<void> {
 export async function clearAgentStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.agentStore?.getState) {
-      const state = stores.agentStore.getState();
+    if (stores?.agent?.getState) {
+      const state = stores.agent.getState();
       state.agents.forEach((agent: any) => {
         state.removeAgent(agent.agentId);
       });
@@ -245,8 +277,8 @@ export async function resetAutoExecutionService(): Promise<void> {
 export async function resetSpecStoreAutoExecution(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.specStore?.getState) {
-      const storeState = stores.specStore.getState();
+    if (stores?.spec?.getState) {
+      const storeState = stores.spec.getState();
       const specId = storeState.specDetail?.metadata?.name || '';
       if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
         storeState.stopAutoExecution(specId);
@@ -318,8 +350,8 @@ export async function getAutoExecutionServiceDebugInfo(): Promise<{
 export async function getRunningAgentsCount(specName: string): Promise<number> {
   return browser.execute((spec: string) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return 0;
-    const agents = stores.agentStore.getState().getAgentsForSpec(spec);
+    if (!stores?.agent?.getState) return 0;
+    const agents = stores.agent.getState().getAgentsForSpec(spec);
     return agents.filter((a: any) => a.status === 'running').length;
   }, specName);
 }
@@ -330,8 +362,8 @@ export async function getRunningAgentsCount(specName: string): Promise<number> {
 export async function getAgentsCount(specName: string): Promise<number> {
   return browser.execute((spec: string) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return 0;
-    return stores.agentStore.getState().getAgentsForSpec(spec).length;
+    if (!stores?.agent?.getState) return 0;
+    return stores.agent.getState().getAgentsForSpec(spec).length;
   }, specName);
 }
 
@@ -371,8 +403,8 @@ export async function waitForAgentInStore(
 export async function debugGetAllAgents(): Promise<{ specId: string; agents: any[] }[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return [];
-    const state = stores.agentStore.getState();
+    if (!stores?.agent?.getState) return [];
+    const state = stores.agent.getState();
     const result: { specId: string; agents: any[] }[] = [];
     state.agents.forEach((agents: any[], specId: string) => {
       result.push({ specId, agents });
@@ -407,8 +439,8 @@ export async function logBrowserConsole(): Promise<void> {
 export async function stopAutoExecution(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.specStore?.getState) {
-      const storeState = stores.specStore.getState();
+    if (stores?.spec?.getState) {
+      const storeState = stores.spec.getState();
       const specId = storeState.specDetail?.metadata?.name || '';
       if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
         storeState.stopAutoExecution(specId);
@@ -484,9 +516,9 @@ export async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Pro
   return browser.execute((f: string) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
+      if (!stores?.workflow?.getState) return false;
 
-      const workflowStore = stores.workflowStore.getState();
+      const workflowStore = stores.workflow.getState();
       workflowStore.setDocumentReviewAutoExecutionFlag(f);
       return true;
     } catch (e) {

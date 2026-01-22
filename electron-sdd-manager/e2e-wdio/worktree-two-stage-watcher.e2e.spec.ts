@@ -131,8 +131,8 @@ async function getAllSpecsFromStore(): Promise<
 > {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.specStore?.getState) return [];
-    return stores.specStore.getState().specs.map((s: any) => ({
+    if (!stores?.spec?.getState) return [];
+    return stores.spec.getState().specs.map((s: any) => ({
       name: s.name,
       phase: s.phase,
       worktree: s.worktree,
@@ -150,8 +150,8 @@ async function getSelectedSpecFromStore(): Promise<{
 } | null> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.specStore?.getState) return null;
-    const spec = stores.specStore.getState().specDetail?.metadata;
+    if (!stores?.spec?.getState) return null;
+    const spec = stores.spec.getState().specDetail?.metadata;
     if (!spec) return null;
     return {
       name: spec.name,
@@ -171,10 +171,10 @@ async function getSpecDetail(): Promise<{
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) {
+      if (!stores?.spec?.getState) {
         return { phase: null, description: null };
       }
-      const specDetail = stores.specStore.getState().specDetail;
+      const specDetail = stores.spec.getState().specDetail;
       if (!specDetail) {
         return { phase: null, description: null };
       }

@@ -114,8 +114,8 @@ function resetFixture(): void {
 async function getAutoPermissionState(phase: string): Promise<boolean> {
   return browser.execute((p: string) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.workflowStore?.getState) return false;
-    return stores.workflowStore.getState().autoExecutionPermissions[p] ?? false;
+    if (!stores?.workflow?.getState) return false;
+    return stores.workflow.getState().autoExecutionPermissions[p] ?? false;
   }, phase);
 }
 
@@ -125,7 +125,7 @@ async function getAutoPermissionState(phase: string): Promise<boolean> {
 async function getAllPermissionStates(): Promise<Record<string, boolean>> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.workflowStore?.getState) {
+    if (!stores?.workflow?.getState) {
       return {
         requirements: false,
         design: false,
@@ -135,7 +135,7 @@ async function getAllPermissionStates(): Promise<Record<string, boolean>> {
         deploy: false,
       };
     }
-    return stores.workflowStore.getState().autoExecutionPermissions;
+    return stores.workflow.getState().autoExecutionPermissions;
   });
 }
 
@@ -370,7 +370,7 @@ describe('Auto Execution Permissions E2E', () => {
       // Toggle via store
       await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        stores?.workflowStore?.getState()?.toggleAutoPermission('requirements');
+        stores?.workflow?.getState()?.toggleAutoPermission('requirements');
       });
       await browser.pause(200);
 
@@ -382,7 +382,7 @@ describe('Auto Execution Permissions E2E', () => {
       // Toggle back
       await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        stores?.workflowStore?.getState()?.toggleAutoPermission('requirements');
+        stores?.workflow?.getState()?.toggleAutoPermission('requirements');
       });
       await browser.pause(200);
 

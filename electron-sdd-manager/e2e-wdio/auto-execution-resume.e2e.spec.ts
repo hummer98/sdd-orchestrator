@@ -212,8 +212,8 @@ function readSpecJson(): typeof REQUIREMENTS_COMPLETED_SPEC_JSON {
 async function getCurrentExecutingPhase(): Promise<string | null> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.specStore?.getState) return null;
-    const storeState = stores.specStore.getState();
+    if (!stores?.spec?.getState) return null;
+    const storeState = stores.spec.getState();
     const specId = storeState.specDetail?.metadata?.name || '';
     const state = storeState.getAutoExecutionRuntime(specId);
     return state.currentAutoPhase;
@@ -226,8 +226,8 @@ async function getCurrentExecutingPhase(): Promise<string | null> {
 async function getExecutedPhases(): Promise<string[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return [];
-    const agents = stores.agentStore.getState().agents;
+    if (!stores?.agent?.getState) return [];
+    const agents = stores.agent.getState().agents;
     const phases: string[] = [];
     agents.forEach((agentList: any[]) => {
       agentList.forEach((agent: any) => {

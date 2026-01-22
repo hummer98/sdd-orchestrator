@@ -99,8 +99,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
     browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available on window');
@@ -122,8 +122,8 @@ async function selectSpecViaStore(specId: string): Promise<boolean> {
     browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === id);
           if (spec) {
             specStore.selectSpec(spec);
@@ -151,9 +151,9 @@ async function setAutoExecutionPermissions(permissions: Record<string, boolean>)
   return browser.execute((perms: Record<string, boolean>) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
+      if (!stores?.workflow?.getState) return false;
 
-      const workflowStore = stores.workflowStore.getState();
+      const workflowStore = stores.workflow.getState();
       const currentPermissions = workflowStore.autoExecutionPermissions;
 
       for (const [phase, desired] of Object.entries(perms)) {
@@ -181,10 +181,10 @@ async function getAutoExecutionStatus(): Promise<{
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.specStore?.getState) {
+      if (!stores?.spec?.getState) {
         return { isAutoExecuting: false, autoExecutionStatus: 'idle', currentAutoPhase: null };
       }
-      const storeState = stores.specStore.getState();
+      const storeState = stores.spec.getState();
       const specId = storeState.specDetail?.metadata?.name || '';
       const state = storeState.getAutoExecutionRuntime(specId);
       return {
@@ -232,7 +232,7 @@ async function waitForCondition(
 async function refreshSpecStore(): Promise<void> {
   await browser.executeAsync((done) => {
     const stores = (window as any).__STORES__;
-    const refreshFn = stores?.specStore?.getState()?.refreshSpecs;
+    const refreshFn = stores?.spec?.getState()?.refreshSpecs;
     if (refreshFn) {
       refreshFn().then(() => done()).catch(() => done());
     } else {
@@ -248,8 +248,8 @@ async function refreshSpecStore(): Promise<void> {
 async function clearAgentStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.agentStore?.getState) {
-      const state = stores.agentStore.getState();
+    if (stores?.agent?.getState) {
+      const state = stores.agent.getState();
       state.agents.forEach((agent: any) => {
         state.removeAgent(agent.agentId);
       });
@@ -276,8 +276,8 @@ async function resetAutoExecutionService(): Promise<void> {
 async function resetSpecStoreAutoExecution(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (stores?.specStore?.getState) {
-      const storeState = stores.specStore.getState();
+    if (stores?.spec?.getState) {
+      const storeState = stores.spec.getState();
       const specId = storeState.specDetail?.metadata?.name || '';
       // Stop any running auto-execution
       if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
@@ -365,8 +365,8 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
     // Stop any running auto-execution
     await browser.execute(() => {
       const stores = (window as any).__STORES__;
-      if (stores?.specStore?.getState) {
-        const storeState = stores.specStore.getState();
+      if (stores?.spec?.getState) {
+        const storeState = stores.spec.getState();
         const specId = storeState.specDetail?.metadata?.name || '';
         if (specId && storeState.getAutoExecutionRuntime(specId)?.isAutoExecuting) {
           storeState.stopAutoExecution(specId);

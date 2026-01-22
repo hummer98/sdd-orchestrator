@@ -243,8 +243,8 @@ function readSpecJson(): typeof ALL_PHASES_COMPLETED_SPEC_JSON {
 async function getCurrentExecutingPhase(): Promise<string | null> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.specStore?.getState) return null;
-    const storeState = stores.specStore.getState();
+    if (!stores?.spec?.getState) return null;
+    const storeState = stores.spec.getState();
     const specId = storeState.specDetail?.metadata?.name || '';
     const state = storeState.getAutoExecutionRuntime(specId);
     return state.currentAutoPhase;
@@ -257,10 +257,10 @@ async function getCurrentExecutingPhase(): Promise<string | null> {
 async function getExecutedAgentSkills(): Promise<string[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return [];
+    if (!stores?.agent?.getState) return [];
 
     const skills: string[] = [];
-    stores.agentStore.getState().agents.forEach((agentList: any[]) => {
+    stores.agent.getState().agents.forEach((agentList: any[]) => {
       agentList.forEach((agent: any) => {
         if (agent.skill) {
           skills.push(agent.skill);
@@ -278,9 +278,9 @@ async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<bo
   return browser.execute((f: string) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
+      if (!stores?.workflow?.getState) return false;
       // Bug fix: Use correct method name setDocumentReviewAutoExecutionFlag
-      stores.workflowStore.getState().setDocumentReviewAutoExecutionFlag(f);
+      stores.workflow.getState().setDocumentReviewAutoExecutionFlag(f);
       return true;
     } catch (e) {
       return false;

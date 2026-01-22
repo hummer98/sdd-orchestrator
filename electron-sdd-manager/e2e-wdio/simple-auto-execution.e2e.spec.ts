@@ -331,8 +331,8 @@ describe('Simple Auto Execution E2E Test', () => {
       // デバッグ: specStore選択状態の確認
       const specState = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        if (!stores?.specStore?.getState) return { selectedSpec: null, specsCount: 0 };
-        const state = stores.specStore.getState();
+        if (!stores?.spec?.getState) return { selectedSpec: null, specsCount: 0 };
+        const state = stores.spec.getState();
         return {
           selectedSpec: state.selectedSpec?.name || null,
           specsCount: state.specs.length,

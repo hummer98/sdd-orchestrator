@@ -256,8 +256,8 @@ async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<bo
   return browser.execute((f: string) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return false;
-      const workflowStore = stores.workflowStore.getState();
+      if (!stores?.workflow?.getState) return false;
+      const workflowStore = stores.workflow.getState();
       // Bug fix: Use correct method name setDocumentReviewAutoExecutionFlag
       workflowStore.setDocumentReviewAutoExecutionFlag(f);
       return true;
@@ -275,9 +275,9 @@ async function getDocumentReviewFlag(): Promise<string> {
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflowStore?.getState) return 'skip';
+      if (!stores?.workflow?.getState) return 'skip';
       // Bug fix: Use correct property path documentReviewOptions.autoExecutionFlag
-      return stores.workflowStore.getState().documentReviewOptions?.autoExecutionFlag || 'skip';
+      return stores.workflow.getState().documentReviewOptions?.autoExecutionFlag || 'skip';
     } catch (e) {
       return 'skip';
     }
@@ -299,10 +299,10 @@ async function isDocumentReviewPanelVisible(): Promise<boolean> {
 async function getDocumentReviewAgents(): Promise<{ skill: string; status: string }[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.agentStore?.getState) return [];
+    if (!stores?.agent?.getState) return [];
 
     const agents: { skill: string; status: string }[] = [];
-    stores.agentStore.getState().agents.forEach((agentList: any[]) => {
+    stores.agent.getState().agents.forEach((agentList: any[]) => {
       agentList.forEach((agent: any) => {
         if (agent.skill && agent.skill.includes('document-review')) {
           agents.push({ skill: agent.skill, status: agent.status });

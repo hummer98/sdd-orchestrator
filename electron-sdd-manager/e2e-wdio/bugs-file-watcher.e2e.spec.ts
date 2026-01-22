@@ -25,8 +25,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
     browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available');

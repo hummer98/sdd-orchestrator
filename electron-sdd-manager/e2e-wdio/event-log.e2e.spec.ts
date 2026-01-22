@@ -27,8 +27,8 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
     browser.executeAsync(async (projPath: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.projectStore?.getState) {
-          await stores.projectStore.getState().selectProject(projPath);
+        if (stores?.project?.getState) {
+          await stores.project.getState().selectProject(projPath);
           done(true);
         } else {
           console.error('[E2E] __STORES__ not available on window');
@@ -50,8 +50,8 @@ async function selectSpecViaStore(specId: string): Promise<boolean> {
     browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.specStore?.getState) {
-          const specStore = stores.specStore.getState();
+        if (stores?.spec?.getState) {
+          const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === id);
           if (spec) {
             specStore.selectSpec(spec);

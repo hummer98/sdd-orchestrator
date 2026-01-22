@@ -153,8 +153,8 @@ async function waitForPhasesApproved(
 async function getAutoPermissionState(phase: string): Promise<boolean> {
   return browser.execute((p: string) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.workflowStore?.getState) return false;
-    return stores.workflowStore.getState().autoExecutionPermissions[p] ?? false;
+    if (!stores?.workflow?.getState) return false;
+    return stores.workflow.getState().autoExecutionPermissions[p] ?? false;
   }, phase);
 }
 
@@ -450,7 +450,7 @@ describe('Auto Execution Workflow E2E', () => {
       // Toggle via store
       await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        stores?.workflowStore?.getState()?.toggleAutoPermission('design');
+        stores?.workflow?.getState()?.toggleAutoPermission('design');
       });
       await browser.pause(200);
 
@@ -461,7 +461,7 @@ describe('Auto Execution Workflow E2E', () => {
       // Toggle back
       await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        stores?.workflowStore?.getState()?.toggleAutoPermission('design');
+        stores?.workflow?.getState()?.toggleAutoPermission('design');
       });
       await browser.pause(200);
 

@@ -17,3 +17,7 @@ export * from './executeOptions';
 // Event log types (spec-event-log feature)
 // Requirements: 4.1, 4.2, 4.3
 export * from './eventLog';
+
+// Worktree types and utilities (git-worktree-support feature)
+// Requirements: 2.1, 2.2, 2.3
+export * from './worktree';

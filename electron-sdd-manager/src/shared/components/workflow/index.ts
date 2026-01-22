@@ -14,3 +14,7 @@ export type { ImplPhasePanelProps } from './ImplPhasePanel';
 // parallel-task-impl Task 5: Parallel mode toggle component
 export { ParallelModeToggle } from './ParallelModeToggle';
 export type { ParallelModeToggleProps } from './ParallelModeToggle';
+
+// Spec workflow footer component (shared)
+export { SpecWorkflowFooter, canShowConvertButton } from './SpecWorkflowFooter';
+export type { SpecWorkflowFooterProps, SpecJsonForFooter } from './SpecWorkflowFooter';

@@ -19,9 +19,8 @@ import type { WorktreeConfig } from '../types/worktree';
 import { notify } from '../stores';
 // agent-launch-optimistic-ui: Optimistic UI hook
 import { useLaunchingState } from '@shared/hooks';
-import { PhaseItem, ImplPhasePanel } from '@shared/components/workflow';
+import { PhaseItem, ImplPhasePanel, SpecWorkflowFooter } from '@shared/components/workflow';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
-import { SpecWorkflowFooter } from './SpecWorkflowFooter';
 import { DocumentReviewPanel, InspectionPanel, type ReviewerScheme } from '@shared/components/review';
 // spec-event-log: Task 8.1 - Event Log Modal import
 import { EventLogViewerModal } from '@shared/components/eventLog';

@@ -271,6 +271,17 @@ export class IpcApiClient implements ApiClient {
     });
   }
 
+  async executeAskProject(_prompt: string): Promise<Result<AgentInfo, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(async () => {
+      // IpcApiClient needs projectPath - get from current project context
+      // For IpcApiClient, this should use window.electronAPI.executeAskProject
+      // but that requires projectPath. Since IpcApiClient is used in Electron,
+      // we throw an error as this method is primarily for remote-ui usage.
+      throw new Error('executeAskProject via IpcApiClient requires projectPath context. Use renderer components instead.');
+    });
+  }
+
   // ===========================================================================
   // Review Operations
   // ===========================================================================

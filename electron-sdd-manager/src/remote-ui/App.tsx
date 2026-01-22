@@ -19,6 +19,7 @@ import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, Ag
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
+import { ResizeHandle } from '../shared/components/ui';
 import { Bot, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
@@ -340,6 +341,11 @@ interface RightSidebarProps {
   onAutoExecution: () => void;
 }
 
+// Agent一覧の高さ制限
+const AGENT_LIST_MIN = 80;
+const AGENT_LIST_MAX = 300;
+const AGENT_LIST_DEFAULT = 160;
+
 function RightSidebar({
   activeTab,
   selectedSpec,
@@ -351,6 +357,16 @@ function RightSidebar({
 
   // Spec Agents state (filtered by selected spec)
   const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
+
+  // Agent一覧の高さ状態（リサイズ可能）
+  const [agentListHeight, setAgentListHeight] = useState(AGENT_LIST_DEFAULT);
+
+  // リサイズハンドラ（Agent一覧の下方向リサイズ）
+  const handleAgentListResize = useCallback((delta: number) => {
+    setAgentListHeight((prev) =>
+      Math.min(AGENT_LIST_MAX, Math.max(AGENT_LIST_MIN, prev + delta))
+    );
+  }, []);
 
   // Load spec agents when spec changes
   useEffect(() => {
@@ -420,8 +436,8 @@ function RightSidebar({
     <div className="flex flex-col h-full">
       {/* Agent Section - 上部（Electron版と同じ順序） */}
       <div
-        className="shrink-0 border-b border-gray-200 dark:border-gray-700"
-        style={{ height: 160 }}
+        className="shrink-0 overflow-hidden"
+        style={{ height: agentListHeight }}
       >
         <div className="h-full flex flex-col p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -448,6 +464,9 @@ function RightSidebar({
           </div>
         </div>
       </div>
+
+      {/* Agent一覧とWorkflow間のリサイズハンドル */}
+      <ResizeHandle direction="vertical" onResize={handleAgentListResize} />
 
       {/* Workflow Section - 下部（Electron版と同じ順序） */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">

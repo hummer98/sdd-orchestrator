@@ -55,6 +55,45 @@ const RECONNECT_DELAY = 1000; // 1 second
 const MAX_RECONNECT_ATTEMPTS = 5;
 
 // =============================================================================
+// Debug Logging
+// =============================================================================
+
+/**
+ * Check if debug logging is enabled
+ * Enable via: localStorage.setItem('WS_API_DEBUG', 'true')
+ * Or window.__WS_API_DEBUG = true
+ */
+function isDebugEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    // Check window flag (for E2E tests)
+    if ((window as unknown as { __WS_API_DEBUG?: boolean }).__WS_API_DEBUG) {
+      return true;
+    }
+    // Check localStorage
+    try {
+      return localStorage.getItem('WS_API_DEBUG') === 'true';
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * Debug log helper
+ */
+function debugLog(category: string, message: string, data?: unknown): void {
+  if (isDebugEnabled()) {
+    const timestamp = new Date().toISOString();
+    if (data !== undefined) {
+      console.log(`[WS-API][${timestamp}][${category}] ${message}`, data);
+    } else {
+      console.log(`[WS-API][${timestamp}][${category}] ${message}`);
+    }
+  }
+}
+
+// =============================================================================
 // WebSocketApiClient Implementation
 // =============================================================================
 
@@ -104,21 +143,28 @@ export class WebSocketApiClient implements ApiClient {
   // ===========================================================================
 
   async connect(): Promise<Result<void, ApiError>> {
+    debugLog('CONNECT', 'connect() called', { readyState: this.ws?.readyState });
+
     if (this.ws?.readyState === WebSocket.OPEN) {
+      debugLog('CONNECT', 'already connected');
       return { ok: true, value: undefined };
     }
 
     if (this.connectionPromise) {
+      debugLog('CONNECT', 'waiting for existing connection promise');
       await this.connectionPromise;
       return { ok: true, value: undefined };
     }
 
     try {
+      debugLog('CONNECT', 'creating new connection');
       this.connectionPromise = this.createConnection();
       await this.connectionPromise;
       this.reconnectAttempts = 0;
+      debugLog('CONNECT', 'connection established successfully');
       return { ok: true, value: undefined };
     } catch (error) {
+      debugLog('CONNECT', 'connection failed', error);
       return {
         ok: false,
         error: {
@@ -197,25 +243,35 @@ export class WebSocketApiClient implements ApiClient {
   private handleMessage(data: string): void {
     try {
       const message: WebSocketResponse = JSON.parse(data);
+      debugLog('MESSAGE', `received: ${message.type}`, {
+        requestId: message.requestId,
+        hasPayload: !!message.payload,
+        hasError: !!message.error,
+      });
 
       // Handle response to a request
       if (message.requestId && this.pendingRequests.has(message.requestId)) {
+        debugLog('MESSAGE', `matched pending request: ${message.requestId}`);
         const pending = this.pendingRequests.get(message.requestId)!;
         clearTimeout(pending.timeout);
         this.pendingRequests.delete(message.requestId);
 
         if (message.error) {
+          debugLog('MESSAGE', `request error: ${message.requestId}`, message.error);
           pending.reject(message.error);
         } else {
+          debugLog('MESSAGE', `request success: ${message.requestId}`);
           pending.resolve(message.payload);
         }
         return;
       }
 
       // Handle push messages (events)
+      debugLog('MESSAGE', `push message: ${message.type}`);
       this.handlePushMessage(message);
     } catch (error) {
       console.error('Failed to parse WebSocket message:', error);
+      debugLog('MESSAGE', 'parse error', { error, data: data.substring(0, 200) });
     }
   }
 
@@ -296,24 +352,40 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   private async sendRequest<T>(type: string, payload?: unknown): Promise<T> {
+    debugLog('REQUEST', `sendRequest: ${type}`, { payload });
+
     if (!this.isConnected()) {
+      debugLog('REQUEST', 'not connected, connecting first');
       const connectResult = await this.connect();
       if (!connectResult.ok) {
+        debugLog('REQUEST', 'connection failed', connectResult.error);
         throw connectResult.error;
       }
     }
 
     const requestId = this.generateRequestId();
+    const startTime = Date.now();
+    debugLog('REQUEST', `sending: ${type}`, { requestId, payload });
 
     return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        const elapsed = Date.now() - startTime;
+        debugLog('REQUEST', `TIMEOUT: ${type}`, { requestId, elapsed, pendingCount: this.pendingRequests.size });
         this.pendingRequests.delete(requestId);
-        reject({ type: 'TIMEOUT', message: `Request ${type} timed out` } as ApiError);
+        reject({ type: 'TIMEOUT', message: `Request ${type} timed out after ${elapsed}ms` } as ApiError);
       }, DEFAULT_TIMEOUT);
 
       this.pendingRequests.set(requestId, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
+        resolve: (value: unknown) => {
+          const elapsed = Date.now() - startTime;
+          debugLog('REQUEST', `resolved: ${type}`, { requestId, elapsed });
+          resolve(value as T);
+        },
+        reject: (error: ApiError) => {
+          const elapsed = Date.now() - startTime;
+          debugLog('REQUEST', `rejected: ${type}`, { requestId, elapsed, error });
+          reject(error);
+        },
         timeout,
       });
 
@@ -324,6 +396,7 @@ export class WebSocketApiClient implements ApiClient {
       };
 
       this.ws!.send(JSON.stringify(message));
+      debugLog('REQUEST', `sent: ${type}`, { requestId });
     });
   }
 
@@ -460,6 +533,10 @@ export class WebSocketApiClient implements ApiClient {
 
   async getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>> {
     return this.wrapRequest<LogEntry[]>('GET_AGENT_LOGS', { specId, agentId });
+  }
+
+  async executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('ASK_PROJECT', { prompt });
   }
 
   // ===========================================================================

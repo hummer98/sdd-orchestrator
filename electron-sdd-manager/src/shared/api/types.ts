@@ -332,6 +332,12 @@ export interface ApiClient {
    */
   getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>>;
 
+  /**
+   * Execute Project Ask - ask a question in project context
+   * @param prompt - The question/prompt to send to the agent
+   */
+  executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>>;
+
   // ===========================================================================
   // Review Operations
   // ===========================================================================

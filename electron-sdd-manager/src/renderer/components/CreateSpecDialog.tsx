@@ -7,9 +7,11 @@
  */
 
 import { useState } from 'react';
-import { X, Plus, Loader2, AlertCircle, MessageCircle, GitBranch } from 'lucide-react';
+import { X, Loader2, AlertCircle, GitBranch } from 'lucide-react';
 import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../stores';
 import { clsx } from 'clsx';
+// create-spec-dialog-simplify: Task 1.3 - AgentIcon/AgentBranchIconインポート
+import { AgentIcon, AgentBranchIcon } from '@shared/components/ui/AgentIcon';
 
 interface CreateSpecDialogProps {
   isOpen: boolean;
@@ -32,37 +34,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
     setError(null);
   };
 
-  const handleCreate = async () => {
-    if (!currentProject) return;
-
-    // Validate description: just check if not empty
-    const trimmed = description.trim();
-    if (!trimmed) {
-      setError('説明を入力してください');
-      return;
-    }
-
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      // Call spec-init via IPC (uses /kiro:spec-init or /spec-manager:init based on commandPrefix)
-      // spec-worktree-early-creation: Pass worktreeMode to IPC
-      // Don't wait for completion - just start the agent and close dialog
-      const agentInfo = await window.electronAPI.executeSpecInit(currentProject, trimmed, commandPrefix, worktreeMode);
-
-      // Task 5.2.4: エージェントをストアに追加し、プロジェクトエージェントパネルに遷移
-      addAgent('', agentInfo);
-      selectForProjectAgents();
-      selectAgent(agentInfo.agentId);
-
-      notify.success('仕様作成を開始しました（プロジェクトAgentパネルで進捗を確認できます）');
-      handleClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '仕様の作成に失敗しました');
-      setIsCreating(false);
-    }
-  };
+  // create-spec-dialog-simplify: Task 1.2 - handleCreate関数を削除（spec-planに統合）
 
   /**
    * Handle "Plan Start" button click
@@ -124,9 +96,10 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
       />
 
       {/* Dialog */}
+      {/* create-spec-dialog-simplify: Task 1.1 - max-w-mdからmax-w-xlに拡大 */}
       <div
         className={clsx(
-          'relative z-10 w-full max-w-md p-6 rounded-lg shadow-xl',
+          'relative z-10 w-full max-w-xl p-6 rounded-lg shadow-xl',
           'bg-white dark:bg-gray-900'
         )}
       >
@@ -230,6 +203,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
         </div>
 
         {/* Actions */}
+        {/* create-spec-dialog-simplify: Task 1.4 - 統合ボタンの実装 */}
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={handleClose}
@@ -243,16 +217,18 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
           >
             キャンセル
           </button>
-          {/* Plan Start button - spec-plan-ui-integration feature (Task 4) */}
+          {/* Integrated button: spec-plan only with worktree-aware styling */}
+          {/* Requirements: 2.3, 2.4, 3.1, 3.2, 4.1, 4.2 */}
           <button
             onClick={handlePlanStart}
             disabled={isCreating || !isValid}
             className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-md',
-              'bg-purple-500 hover:bg-purple-600 text-white',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'flex items-center gap-2 px-4 py-2 rounded-md text-white',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              worktreeMode
+                ? 'bg-violet-500 hover:bg-violet-600'
+                : 'bg-blue-500 hover:bg-blue-600'
             )}
-            title="対話形式でプランニングを開始（Decision Log付き）"
           >
             {isCreating ? (
               <>
@@ -261,29 +237,12 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
               </>
             ) : (
               <>
-                <MessageCircle className="w-4 h-4" />
-                プランニングで開始
-              </>
-            )}
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={isCreating || !isValid}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-md',
-              'bg-blue-500 hover:bg-blue-600 text-white',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
-          >
-            {isCreating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                作成
+                {worktreeMode ? (
+                  <AgentBranchIcon data-testid="agent-branch-icon" />
+                ) : (
+                  <AgentIcon data-testid="agent-icon" />
+                )}
+                spec-planで作成
               </>
             )}
           </button>

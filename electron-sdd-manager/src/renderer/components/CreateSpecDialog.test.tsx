@@ -3,7 +3,9 @@
  * TDD: Testing simplified create spec dialog with spec-manager:init integration
  * Task 5.1, 5.2, 5.3 (sidebar-refactor)
  * spec-worktree-early-creation: Task 4.1 - worktreeモードスイッチテスト追加
+ * create-spec-dialog-simplify: Task 2.1 - ダイアログ簡素化テスト追加
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+ * Requirements (create-spec-dialog-simplify): 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 4.1, 4.2
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -80,21 +82,22 @@ describe('CreateSpecDialog', () => {
   });
 
   // ============================================================
-  // Task 5.2: spec-manager:init連携の実装
-  // Requirements: 5.3
+  // Task 5.2: spec-plan integration (updated for create-spec-dialog-simplify)
+  // Requirements: 5.3 (updated: spec-initを削除しspec-planに統合)
   // ============================================================
-  describe('Task 5.2: spec-manager:init integration', () => {
-    it('should call executeSpecInit with commandPrefix when create button is clicked', async () => {
+  describe('Task 5.2: spec-plan integration (updated)', () => {
+    // create-spec-dialog-simplify: spec-init tests removed, now uses spec-plan only
+    it('should call executeSpecPlan with commandPrefix when button is clicked', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
           'これは新しい機能の説明です',
           'kiro', // default commandPrefix
@@ -114,11 +117,11 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
           'これは新しい機能の説明です',
           'spec-manager',
@@ -133,11 +136,11 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecInit).toHaveBeenCalled();
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalled();
       });
 
       expect(window.electronAPI.createSpec).not.toHaveBeenCalled();
@@ -146,8 +149,8 @@ describe('CreateSpecDialog', () => {
     // 5.2.4 CreateSpecDialogの修正: ダイアログを閉じてプロジェクトエージェントパネルに遷移
     it('should close dialog immediately after starting agent (not wait for completion)', async () => {
       // Mock a slow response to ensure dialog closes before completion
-      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123', specId: '', phase: 'spec-init', status: 'running' }), 500))
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123', specId: '', phase: 'spec-plan', status: 'running' }), 500))
       );
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
@@ -155,8 +158,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       // Wait for dialog to close (should happen after agent starts, not after completion)
       await waitFor(() => {
@@ -173,8 +176,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'これは新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         // Should navigate to project agent panel (specId='')
@@ -203,35 +206,38 @@ describe('CreateSpecDialog', () => {
       expect(screen.queryByText(/10文字以上/)).not.toBeInTheDocument();
     });
 
-    it('should enable create button when description is not empty (regardless of length)', async () => {
+    // create-spec-dialog-simplify: Updated to use "spec-planで作成" button
+    it('should enable button when description is not empty (regardless of length)', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       // Enter just 3 characters
       fireEvent.change(textarea, { target: { value: 'abc' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
       // Button should be enabled (no 10 character minimum)
-      expect(createButton).not.toBeDisabled();
+      expect(button).not.toBeDisabled();
     });
 
-    it('should disable create button when description is empty', () => {
+    // create-spec-dialog-simplify: Updated to use "spec-planで作成" button
+    it('should disable button when description is empty', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
       // Button should be disabled when empty
-      expect(createButton).toBeDisabled();
+      expect(button).toBeDisabled();
     });
   });
 
   // ============================================================
-  // Task 5.3: ダイアログの状態管理とフィードバック
+  // Task 5.3: ダイアログの状態管理とフィードバック (updated for create-spec-dialog-simplify)
   // Requirements: 5.4, 5.5, 5.6
   // ============================================================
   describe('Task 5.3: Dialog state management and feedback', () => {
+    // create-spec-dialog-simplify: Updated to use executeSpecPlan instead of executeSpecInit
     it('should show loading state while creating', async () => {
       // Slow down the mock to see loading state
-      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
       );
 
@@ -240,25 +246,23 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       // Should show loading state
       await waitFor(() => {
-        expect(screen.getByText(/作成中/i)).toBeInTheDocument();
+        expect(screen.getByText(/開始中/i)).toBeInTheDocument();
       });
     });
 
     it('should close dialog on success', async () => {
-      window.electronAPI.executeSpecInit = vi.fn().mockResolvedValue({ agentId: 'agent-123' });
-
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
@@ -266,24 +270,24 @@ describe('CreateSpecDialog', () => {
     });
 
     it('should show error message on failure', async () => {
-      window.electronAPI.executeSpecInit = vi.fn().mockRejectedValue(new Error('spec-manager:init failed'));
+      window.electronAPI.executeSpecPlan = vi.fn().mockRejectedValue(new Error('spec-plan failed'));
 
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         // エラーメッセージが表示される
-        expect(screen.getByText(/spec-manager:init failed/i)).toBeInTheDocument();
+        expect(screen.getByText(/spec-plan failed/i)).toBeInTheDocument();
       });
     });
 
-    it('should disable create button while loading', async () => {
-      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
+    it('should disable button while loading', async () => {
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 200))
       );
 
@@ -292,11 +296,11 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
-        expect(createButton).toBeDisabled();
+        expect(button).toBeDisabled();
       });
     });
 
@@ -322,8 +326,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       // 作成成功後、ダイアログが閉じる
       await waitFor(() => {
@@ -335,50 +339,51 @@ describe('CreateSpecDialog', () => {
       rerender(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       // 再オープン後、作成ボタンがLoading状態ではなく有効であること
-      const createButtonAfterReopen = screen.getByRole('button', { name: /作成$/i });
+      const buttonAfterReopen = screen.getByRole('button', { name: /spec-planで作成/i });
       // 説明が空なのでdisabledだが、Loading表示ではない
-      expect(screen.queryByText(/作成中/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/開始中/i)).not.toBeInTheDocument();
       // 説明を入力すればボタンが有効になる
       const textareaAfterReopen = screen.getByLabelText('説明');
       fireEvent.change(textareaAfterReopen, { target: { value: 'テスト' } });
-      expect(createButtonAfterReopen).not.toBeDisabled();
+      expect(buttonAfterReopen).not.toBeDisabled();
     });
   });
 
   // ============================================================
-  // spec-plan-ui-integration feature: executeSpecPlan tests
+  // spec-plan-ui-integration feature: executeSpecPlan tests (updated for create-spec-dialog-simplify)
   // Requirements: 4.1, 4.2, 4.3, 4.4, 6.1, 6.2
   // ============================================================
-  describe('spec-plan-ui-integration: Plan Start button', () => {
-    it('should render "プランニングで開始" button', () => {
+  describe('spec-plan-ui-integration: spec-plan button', () => {
+    // create-spec-dialog-simplify: button renamed from "プランニングで開始" to "spec-planで作成"
+    it('should render "spec-planで作成" button', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
-      expect(screen.getByRole('button', { name: /プランニングで開始/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /spec-planで作成/i })).toBeInTheDocument();
     });
 
-    it('should disable "プランニングで開始" button when description is empty', () => {
+    it('should disable "spec-planで作成" button when description is empty', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      expect(planButton).toBeDisabled();
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button).toBeDisabled();
     });
 
-    it('should enable "プランニングで開始" button when description is not empty', () => {
+    it('should enable "spec-planで作成" button when description is not empty', () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'abc' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      expect(planButton).not.toBeDisabled();
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button).not.toBeDisabled();
     });
 
-    it('should call executeSpecPlan when "プランニングで開始" button is clicked', async () => {
+    it('should call executeSpecPlan when "spec-planで作成" button is clicked', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
@@ -400,8 +405,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
@@ -422,8 +427,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(selectForProjectAgents).toHaveBeenCalled();
@@ -436,8 +441,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
@@ -452,8 +457,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(screen.getByText(/spec-plan failed/i)).toBeInTheDocument();
@@ -470,8 +475,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       // Should show loading state
       await waitFor(() => {
@@ -479,14 +484,14 @@ describe('CreateSpecDialog', () => {
       });
     });
 
-    it('should NOT call executeSpecInit when "プランニングで開始" button is clicked', async () => {
+    it('should NOT call executeSpecInit when "spec-planで作成" button is clicked', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'プランニングしたい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalled();
@@ -568,8 +573,9 @@ describe('CreateSpecDialog', () => {
       expect(switchButtonAfterReopen.getAttribute('aria-checked')).toBe('false');
     });
 
+    // create-spec-dialog-simplify: Updated to use "spec-planで作成" button
     it('should disable worktree mode switch when creating', async () => {
-      window.electronAPI.executeSpecInit = vi.fn().mockImplementation(
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 100))
       );
 
@@ -578,8 +584,8 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: '新しい機能の説明です' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       // Switch should be disabled during creation
       await waitFor(() => {
@@ -588,7 +594,8 @@ describe('CreateSpecDialog', () => {
       });
     });
 
-    it('should pass worktreeMode=true to executeSpecInit when worktree mode is on', async () => {
+    // create-spec-dialog-simplify: executeSpecInit removed, now uses executeSpecPlan only
+    it('should pass worktreeMode=true to executeSpecPlan when worktree mode is on', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
       // Turn on worktree mode
@@ -598,11 +605,11 @@ describe('CreateSpecDialog', () => {
       const textarea = screen.getByLabelText('説明');
       fireEvent.change(textarea, { target: { value: 'Worktreeモードで作成する機能' } });
 
-      const createButton = screen.getByRole('button', { name: /作成$/i });
-      fireEvent.click(createButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
-        expect(window.electronAPI.executeSpecInit).toHaveBeenCalledWith(
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
           'Worktreeモードで作成する機能',
           'kiro',
@@ -610,28 +617,151 @@ describe('CreateSpecDialog', () => {
         );
       });
     });
+  });
 
-    it('should pass worktreeMode=true to executeSpecPlan when worktree mode is on', async () => {
+  // ============================================================
+  // create-spec-dialog-simplify: Task 2.1 - ダイアログ簡素化
+  // Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 4.1, 4.2
+  // ============================================================
+  describe('create-spec-dialog-simplify: Dialog simplification', () => {
+    // Requirement 1.1: ダイアログ最大幅がmax-w-xlであること
+    it('should have max-w-xl dialog width (Req 1.1)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const dialog = document.querySelector('.max-w-xl');
+      expect(dialog).toBeInTheDocument();
+    });
+
+    // Requirement 1.1: max-w-mdではないこと
+    it('should NOT have max-w-md dialog width', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      const dialogWithOldWidth = document.querySelector('.max-w-md');
+      expect(dialogWithOldWidth).not.toBeInTheDocument();
+    });
+
+    // Requirement 2.1: 「作成」ボタンが存在しないこと
+    it('should NOT render "作成" button (Req 2.1)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      // 「作成」ボタン（末尾にマッチ）が存在しないことを確認
+      // 「spec-planで作成」はあるが「作成」単体はない
+      const createButton = screen.queryByRole('button', { name: /^作成$/ });
+      expect(createButton).not.toBeInTheDocument();
+    });
+
+    // Requirement 2.3: 「spec-planで作成」ボタンが存在すること
+    it('should render "spec-planで作成" button (Req 2.3)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      expect(screen.getByRole('button', { name: /spec-planで作成/i })).toBeInTheDocument();
+    });
+
+    // Requirement 2.4: ボタンクリック時にexecuteSpecPlanが呼ばれること
+    it('should call executeSpecPlan when "spec-planで作成" button is clicked (Req 2.4)', async () => {
       render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
 
-      // Turn on worktree mode
-      const switchButton = screen.getByTestId('worktree-mode-switch');
-      fireEvent.click(switchButton);
-
       const textarea = screen.getByLabelText('説明');
-      fireEvent.change(textarea, { target: { value: 'Worktreeモードでプランニング' } });
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明' } });
 
-      const planButton = screen.getByRole('button', { name: /プランニングで開始/i });
-      fireEvent.click(planButton);
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
 
       await waitFor(() => {
         expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
           '/test/project',
-          'Worktreeモードでプランニング',
+          '新しい機能の説明',
           'kiro',
-          true // worktreeMode enabled
+          false
         );
       });
+    });
+
+    // Requirement 3.1: 標準モード時にAgentIconが表示されること
+    it('should display AgentIcon in standard mode (Req 3.1)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      // AgentIconはdata-testid="agent-icon"を持つ
+      expect(screen.getByTestId('agent-icon')).toBeInTheDocument();
+    });
+
+    // Requirement 3.2: Worktreeモード時にAgentBranchIconが表示されること
+    it('should display AgentBranchIcon in worktree mode (Req 3.2)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Worktreeモードをオンにする
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      // AgentBranchIconが表示される
+      expect(screen.getByTestId('agent-branch-icon')).toBeInTheDocument();
+    });
+
+    // Requirement 3.2: Worktreeモード時にAgentIconではなくAgentBranchIconが表示されること
+    it('should NOT display AgentIcon in worktree mode (Req 3.2)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Worktreeモードをオンにする
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      // AgentIconは表示されない
+      expect(screen.queryByTestId('agent-icon')).not.toBeInTheDocument();
+    });
+
+    // Requirement 4.1: 標準モード時に青色ボタンであること
+    it('should have blue button in standard mode (Req 4.1)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'テスト' } });
+
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button.className).toContain('bg-blue-500');
+      expect(button.className).toContain('hover:bg-blue-600');
+    });
+
+    // Requirement 4.2: Worktreeモード時に紫色ボタンであること
+    it('should have violet button in worktree mode (Req 4.2)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Worktreeモードをオンにする
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'テスト' } });
+
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button.className).toContain('bg-violet-500');
+      expect(button.className).toContain('hover:bg-violet-600');
+    });
+
+    // Requirement 4.1: 標準モード時に紫色クラスがないこと
+    it('should NOT have violet classes in standard mode (Req 4.1)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'テスト' } });
+
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button.className).not.toContain('bg-violet-500');
+    });
+
+    // Requirement 4.2: Worktreeモード時に青色クラスがないこと
+    it('should NOT have blue classes in worktree mode (Req 4.2)', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Worktreeモードをオンにする
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'テスト' } });
+
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      expect(button.className).not.toContain('bg-blue-500');
+    });
+
+    // 「プランニングで開始」ボタンが存在しないこと（「spec-planで作成」に置き換え）
+    it('should NOT render "プランニングで開始" button', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+      expect(screen.queryByRole('button', { name: /プランニングで開始/i })).not.toBeInTheDocument();
     });
   });
 });

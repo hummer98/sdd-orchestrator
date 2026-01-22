@@ -463,8 +463,9 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(window.electronAPI.onBugAutoExecutionPhaseCompleted).toHaveBeenCalledTimes(1);
       expect(window.electronAPI.onBugAutoExecutionCompleted).toHaveBeenCalledTimes(1);
       expect(window.electronAPI.onBugAutoExecutionError).toHaveBeenCalledTimes(1);
-      // Bug fix: bug-auto-execution-execute-phase-missing
-      expect(window.electronAPI.onBugAutoExecutionExecutePhase).toHaveBeenCalledTimes(1);
+      // Bug fix: bug-auto-execution-worktree-cwd
+      // execute-next-phase is now handled in Main Process (handlers.ts)
+      // Renderer no longer registers onBugAutoExecutionExecutePhase listener
     });
 
     it('should not register duplicate listeners on second call (Req 2.5)', () => {
@@ -485,8 +486,9 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(mockUnsubscribePhase).toHaveBeenCalledTimes(1);
       expect(mockUnsubscribeCompleted).toHaveBeenCalledTimes(1);
       expect(mockUnsubscribeError).toHaveBeenCalledTimes(1);
-      // Bug fix: bug-auto-execution-execute-phase-missing
-      expect(mockUnsubscribeExecutePhase).toHaveBeenCalledTimes(1);
+      // Bug fix: bug-auto-execution-worktree-cwd
+      // execute-next-phase is now handled in Main Process (handlers.ts)
+      // No cleanup needed for onBugAutoExecutionExecutePhase
     });
 
     it('should allow re-registration after cleanup', () => {
@@ -650,43 +652,9 @@ describe('IPC Listeners for Bug Auto-Execution State Sync', () => {
       expect(runtime2.currentAutoPhase).toBe('fix');
     });
 
-    // Bug fix: bug-auto-execution-execute-phase-missing
-    it('should call startAgent when execute phase event is received', async () => {
-      initBugAutoExecutionIpcListeners();
-
-      // Simulate execute phase event from Main Process
-      await executePhaseCallback?.({
-        bugPath: TEST_BUG_PATH,
-        phase: 'analyze',
-        bugName: 'test-bug',
-      });
-
-      // Wait for async handler to complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
-        'bug:test-bug',
-        'analyze',
-        'claude',
-        ['/kiro:bug-analyze test-bug'],
-        undefined,
-        undefined
-      );
-    });
-
-    it('should not call startAgent for report phase (no command)', async () => {
-      initBugAutoExecutionIpcListeners();
-
-      // Report phase has no command (null)
-      await executePhaseCallback?.({
-        bugPath: TEST_BUG_PATH,
-        phase: 'report',
-        bugName: 'test-bug',
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(window.electronAPI.startAgent).not.toHaveBeenCalled();
-    });
+    // Bug fix: bug-auto-execution-worktree-cwd
+    // execute-next-phase is now handled in Main Process (handlers.ts)
+    // Tests for execute phase event handling have been removed
+    // Main Process handles worktree cwd resolution via BugService.getAgentCwd()
   });
 });

@@ -1,7 +1,7 @@
 {
   "feature_name": "remove-inspection-phase-auto-update",
   "created_at": "2026-01-21T12:34:31Z",
-  "updated_at": "2026-01-21T18:44:20Z",
+  "updated_at": "2026-01-21T18:44:42.818Z",
   "language": "ja",
   "phase": "deploy-complete",
   "approvals": {

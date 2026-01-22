@@ -167,7 +167,8 @@ describe('CreateBugDialog', () => {
   // Requirements: 4.4, 4.5, 4.6
   // ============================================================
   describe('bug creation', () => {
-    it('should call executeBugCreate with project path and description', async () => {
+    it('should call executeBugCreate with project path, description and worktreeMode=false', async () => {
+      // bug-create-dialog-unification: Now includes worktreeMode parameter
       mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
       render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
 
@@ -179,7 +180,8 @@ describe('CreateBugDialog', () => {
       await waitFor(() => {
         expect(mockExecuteBugCreate).toHaveBeenCalledWith(
           '/test/project', // projectPath
-          'Bug description here' // description
+          'Bug description here', // description
+          false // worktreeMode
         );
       });
     });
@@ -261,10 +263,159 @@ describe('CreateBugDialog', () => {
   });
 
   // ============================================================
-  // bugs-workflow-footer Task 1.1: worktree switch removed
-  // Worktree mode is now set via footer button after bug creation
-  // Tests for worktree switch have been removed
+  // bug-create-dialog-unification: Worktree mode tests
+  // Requirements: 2.1, 2.2, 2.3, 2.4 (Worktreeモードスイッチ)
+  // Requirements: 3.1, 3.2, 3.3 (ボタンデザイン)
+  // Requirements: 6.1, 6.2 (テスト)
   // ============================================================
+  describe('worktree mode switch', () => {
+    it('should display worktree mode switch with data-testid', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByTestId('worktree-mode-switch')).toBeInTheDocument();
+    });
+
+    // Task 6.1: GitBranch icon in worktree mode switch
+    it('should display GitBranch icon in worktree mode switch container', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByTestId('worktree-switch-git-branch-icon')).toBeInTheDocument();
+    });
+
+    it('should display GitBranch icon with gray color when worktree mode is OFF', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const gitBranchIcon = screen.getByTestId('worktree-switch-git-branch-icon');
+      expect(gitBranchIcon).toHaveClass('text-gray-400');
+    });
+
+    it('should display GitBranch icon with violet color when worktree mode is ON', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      const gitBranchIcon = screen.getByTestId('worktree-switch-git-branch-icon');
+      expect(gitBranchIcon).toHaveClass('text-violet-500');
+    });
+
+    it('should have worktree switch container with background styling', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const container = screen.getByTestId('worktree-switch-container');
+      expect(container).toHaveClass('p-3', 'rounded-md', 'bg-gray-50');
+    });
+
+    it('should toggle worktree mode when switch is clicked', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      expect(switchElement).toHaveAttribute('aria-checked', 'false');
+
+      fireEvent.click(switchElement);
+      expect(switchElement).toHaveAttribute('aria-checked', 'true');
+
+      fireEvent.click(switchElement);
+      expect(switchElement).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('should display purple highlight when worktree mode is ON', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      // Check that switch has violet/purple background
+      expect(switchElement).toHaveClass('bg-violet-500');
+    });
+
+    it('should display description text when worktree mode is ON', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Description should not be visible initially
+      expect(screen.queryByText(/ブランチとWorktreeを作成/)).not.toBeInTheDocument();
+
+      // Toggle worktree mode ON
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      // Description should now be visible
+      expect(screen.getByText(/ブランチとWorktreeを作成/)).toBeInTheDocument();
+    });
+  });
+
+  describe('button styling', () => {
+    it('should display AgentIcon with blue button when worktree mode is OFF', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
+      });
+
+      const createButton = screen.getByTestId('create-button');
+      expect(createButton).toHaveClass('bg-blue-500');
+      expect(screen.getByTestId('agent-icon')).toBeInTheDocument();
+    });
+
+    it('should display AgentBranchIcon with violet button when worktree mode is ON', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description' },
+      });
+
+      // Toggle worktree mode ON
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      const createButton = screen.getByTestId('create-button');
+      expect(createButton).toHaveClass('bg-violet-500');
+      expect(screen.getByTestId('agent-branch-icon')).toBeInTheDocument();
+    });
+  });
+
+  describe('IPC call with worktreeMode', () => {
+    it('should call executeBugCreate with worktreeMode=false when switch is OFF', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description here' },
+      });
+      fireEvent.click(screen.getByTestId('create-button'));
+
+      await waitFor(() => {
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project',
+          'Bug description here',
+          false
+        );
+      });
+    });
+
+    it('should call executeBugCreate with worktreeMode=true when switch is ON', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      fireEvent.change(screen.getByTestId('bug-description-input'), {
+        target: { value: 'Bug description here' },
+      });
+
+      // Toggle worktree mode ON
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      fireEvent.click(screen.getByTestId('create-button'));
+
+      await waitFor(() => {
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project',
+          'Bug description here',
+          true
+        );
+      });
+    });
+  });
 
   // ============================================================
   // Error handling

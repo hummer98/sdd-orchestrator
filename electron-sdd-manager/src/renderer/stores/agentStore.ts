@@ -520,8 +520,15 @@ export const useAgentStore = create<AgentStore>()(
               // Auto-selection logic
               if (type === 'add') {
                 if (specId === '') {
-                  // Project Agent - always auto-select
-                  get().selectAgent(agentId);
+                  // Project Agent - only auto-select if running
+                  // Bug fix: project-agent-auto-select-stale
+                  // On project selection, file watcher fires 'add' events for existing (stale) agents
+                  // due to ignoreInitial: false. Only auto-select running agents to avoid
+                  // selecting old, non-running agents on project switch.
+                  const agent = get().getAgentById(agentId);
+                  if (agent && agent.status === 'running') {
+                    get().selectAgent(agentId);
+                  }
                 } else {
                   // Spec/Bug Agent - auto-select if matches current selection
                   const { selectedSpec } = useSpecStore.getState();

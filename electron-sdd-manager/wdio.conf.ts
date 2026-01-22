@@ -83,6 +83,28 @@ export const config: Options.Testrunner = {
   },
 
   /**
+   * テスト開始前に既存のゾンビプロセスをクリーンアップ
+   * user-data-dirが存在しないプロセスのみ終了（実行中のテストには影響しない）
+   */
+  onPrepare: async function () {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    try {
+      const { stdout } = await execAsync(
+        'bash -c \'./scripts/cleanup-zombie-electrons.sh 2>/dev/null || true\'',
+        { cwd: process.cwd().replace('/electron-sdd-manager', '') }
+      );
+      if (stdout.trim()) {
+        console.log('[wdio] Pre-test cleanup:', stdout.trim());
+      }
+    } catch {
+      // Cleanup script not found or failed, ignore
+    }
+  },
+
+  /**
    * テスト失敗・タイムアウト時のゾンビプロセス防止
    * afterSession: 各ワーカーセッション終了時に確実にブラウザを終了
    * onComplete: 全テスト完了後に残存するElectronプロセスをクリーンアップ

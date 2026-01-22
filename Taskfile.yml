@@ -43,6 +43,11 @@ tasks:
     cmds:
       - npm run test:e2e
 
+  electron:cleanup:
+    desc: Kill zombie Electron processes from E2E tests (safe - only kills orphaned processes)
+    cmds:
+      - ./scripts/cleanup-zombie-electrons.sh {{.CLI_ARGS}}
+
   logs:agent:
     desc: Show formatted Agent output logs (human-readable)
     cmds:

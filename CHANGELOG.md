@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.0] - 2026-01-22
+
+### Added
+- **bug-worktree-spec-alignment**: Bug worktreeとSpec整合性機能の実装
+- **create-spec-dialog-simplify**: Spec作成ダイアログの簡素化
+- **e2e**: E2Eテスト用ゾンビElectronプロセスのクリーンアップ機能追加
+
+### Fixed
+- **specsWatcherService**: checkTaskCompletionがdeploy-completeを上書きしない問題を修正
+- **bug-auto-execution**: worktreeモードで正しいcwdを使用するように修正
+- **BugsWatcherService**: worktree変換後にBugsListが自動更新されない問題を修正
+- **e2e**: __STORES__参照名をwindow公開名に修正
+- **InspectionPanel**: GO/NOGOトグルボタンを復元
+
+### Documentation
+- spec-productivity-metricsの設計をagentStore/SSOT構造に整合
+
 ## [0.38.0] - 2026-01-22
 
 ### Added

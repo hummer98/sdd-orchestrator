@@ -381,7 +381,7 @@ export function BugWorkflowView() {
             {/* Phase Item */}
             <BugPhaseItem
               phase={phase}
-              label={BUG_WORKFLOW_PHASE_LABELS[phase]}
+              label={phase === 'deploy' && bugDetail?.metadata.worktree ? 'Merge' : BUG_WORKFLOW_PHASE_LABELS[phase]}
               status={phaseStatuses[phase]}
               canExecute={canExecutePhase(phase)}
               showExecuteButton={phase !== 'report'} // Report has no execute button

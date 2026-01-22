@@ -290,7 +290,7 @@ describe('BugWorkflowView', () => {
   // bugs-worktree-support Task 12.3: Deployボタンの条件分岐
   // Requirements: 4.1
   // ============================================================
-  describe('Task 12.3: Deploy button conditional command', () => {
+  describe('Task 12.3: Deploy button conditional command and label', () => {
     const completedBugDetail: BugDetail = {
       ...mockBugDetail,
       artifacts: {
@@ -377,6 +377,60 @@ describe('BugWorkflowView', () => {
         undefined,
         undefined
       );
+    });
+
+    it('should show "Merge" label when bug has worktree field', async () => {
+      const bugWithWorktree: BugMetadata = {
+        ...mockBugMetadata,
+        worktree: {
+          path: '../test-worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      };
+
+      mockUseBugStore.mockReturnValue({
+        selectedBug: bugWithWorktree,
+        bugDetail: {
+          ...completedBugDetail,
+          metadata: bugWithWorktree,
+        },
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+        const state = {
+          agents: new Map(),
+          getAgentsForSpec: () => [],
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<BugWorkflowView />);
+
+      // Should show "Merge" label instead of "Deploy" for worktree mode
+      expect(screen.getByText('Merge')).toBeInTheDocument();
+    });
+
+    it('should show "Deploy" label when bug has no worktree field', async () => {
+      mockUseBugStore.mockReturnValue({
+        selectedBug: mockBugMetadata,
+        bugDetail: completedBugDetail,
+        useWorktree: false,
+        setUseWorktree: vi.fn(),
+      });
+      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+        const state = {
+          agents: new Map(),
+          getAgentsForSpec: () => [],
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<BugWorkflowView />);
+
+      // Should show "Deploy" label for non-worktree mode
+      expect(screen.getByText('Deploy')).toBeInTheDocument();
     });
   });
 

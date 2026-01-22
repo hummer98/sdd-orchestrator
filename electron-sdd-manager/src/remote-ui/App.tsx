@@ -20,7 +20,7 @@ import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
 import { ResizeHandle } from '../shared/components/ui';
-import { Bot, MessageSquare } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
@@ -235,7 +235,7 @@ function LeftSidebar({
             aria-label="Project Askを実行"
             data-testid="project-ask-button"
           >
-            <MessageSquare className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
           </button>
         </div>
 

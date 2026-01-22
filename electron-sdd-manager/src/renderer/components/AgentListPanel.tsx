@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Bot, MessageSquare, GitBranch } from 'lucide-react';
+import { Bot, GitBranch } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
@@ -206,7 +206,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
             aria-label="Spec Askを実行"
             data-testid="spec-ask-button"
           >
-            <MessageSquare className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
           </button>
         )}
       </div>

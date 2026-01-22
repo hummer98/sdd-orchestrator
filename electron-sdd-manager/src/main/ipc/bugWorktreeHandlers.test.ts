@@ -2,6 +2,7 @@
  * Bug Worktree IPC Handlers Tests
  * Requirements: 3.1, 3.3, 4.6, 8.5, 9.1, 9.2 (bugs-worktree-support)
  * Requirements: 6.1-6.5, 7.1-7.3 (bugs-worktree-directory-mode)
+ * bug-worktree-spec-alignment: Tests updated for ConvertBugWorktreeService integration
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -17,9 +18,38 @@ import type { BugJson } from '../../renderer/types/bugJson';
 // Unmock this module to test the actual implementation
 vi.unmock('./bugWorktreeHandlers');
 
-// Mock WorktreeService with new directory mode methods
+// Mock WorktreeService with new directory mode methods + ConvertBugWorktreeService requirements
 vi.mock('../services/worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation((projectPath: string) => ({
+    // bug-worktree-spec-alignment: Methods required by ConvertBugWorktreeService
+    isOnMainBranch: vi.fn().mockResolvedValue({ ok: true, value: true }),
+    getCurrentBranch: vi.fn().mockResolvedValue({ ok: true, value: 'main' }),
+    checkUncommittedBugChanges: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        hasChanges: true,
+        files: ['bug.json', 'report.md'],
+        statusOutput: '?? .kiro/bugs/test-bug/bug.json\n?? .kiro/bugs/test-bug/report.md',
+      },
+    }),
+    createBugWorktree: vi.fn().mockImplementation(() => Promise.resolve({
+      ok: true,
+      value: {
+        path: `.kiro/worktrees/bugs/test-bug`,
+        absolutePath: `${projectPath}/.kiro/worktrees/bugs/test-bug`,
+        branch: 'bugfix/test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+      },
+    })),
+    removeBugWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: undefined,
+    }),
+    createSymlinksForWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: undefined,
+    }),
+    // Legacy methods (kept for backward compatibility)
     createEntityWorktree: vi.fn().mockResolvedValue({
       ok: true,
       value: {
@@ -30,20 +60,6 @@ vi.mock('../services/worktreeService', () => ({
       },
     }),
     removeEntityWorktree: vi.fn().mockResolvedValue({
-      ok: true,
-      value: undefined,
-    }),
-    // Legacy methods (kept for backward compatibility)
-    createBugWorktree: vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
-        path: '../test-project-worktrees/bugs/test-bug',
-        absolutePath: '/tmp/test-project-worktrees/bugs/test-bug',
-        branch: 'bugfix/test-bug',
-        created_at: '2025-01-15T00:00:00Z',
-      },
-    }),
-    removeBugWorktree: vi.fn().mockResolvedValue({
       ok: true,
       value: undefined,
     }),
@@ -106,10 +122,10 @@ describe('Bug Worktree IPC Handlers', () => {
       const reportPath = join(worktreeBugPath, 'report.md');
       await expect(access(reportPath)).resolves.toBeUndefined();
 
-      // Verify main bug.json was NOT modified (directory mode invariant)
-      const mainContent = await readFile(join(bugPath, 'bug.json'), 'utf-8');
-      const mainParsed = JSON.parse(mainContent);
-      expect(mainParsed.worktree).toBeUndefined();
+      // bug-worktree-spec-alignment: For untracked bugs, original files ARE deleted after copying
+      // This is the expected behavior of ConvertBugWorktreeService.convertToWorktree
+      // The main bug directory no longer exists (files were moved to worktree)
+      await expect(access(join(bugPath, 'bug.json'))).rejects.toThrow('ENOENT');
     });
   });
 

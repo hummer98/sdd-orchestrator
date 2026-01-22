@@ -3,6 +3,7 @@
  * Git worktree operations for bugs via IPC
  * Requirements: 3.1, 3.3, 4.6, 8.5, 12.1-12.4 (bugs-worktree-support)
  * Requirements: 6.1-6.5, 7.1-7.3 (bugs-worktree-directory-mode)
+ * bug-worktree-spec-alignment: Uses ConvertBugWorktreeService for worktree conversion
  */
 
 import { ipcMain } from 'electron';
@@ -11,9 +12,9 @@ import { WorktreeService } from '../services/worktreeService';
 import { BugService } from '../services/bugService';
 import { getConfigStore } from '../services/configStore';
 import { BugWorkflowService } from '../services/bugWorkflowService';
+import { ConvertBugWorktreeService } from '../services/convertBugWorktreeService';
 import { getCurrentProjectPath } from './handlers';
 import { logger } from '../services/logger';
-import { getWorktreeEntityPath, getWorktreeBasePath } from '../services/worktreeHelpers';
 import type {
   WorktreeInfo,
   WorktreeServiceResult,
@@ -22,14 +23,18 @@ import type { BugPhase } from '../../renderer/types/bug';
 
 /**
  * Handle bug-worktree:create IPC call
- * Create a new worktree for a bug using directory mode
+ * Create a new worktree for a bug using ConvertBugWorktreeService
+ * bug-worktree-spec-alignment: Spec と同等のコミット状態チェックロジックを適用
  * Requirements: 3.1, 3.3, 8.5 (bugs-worktree-support)
  * Requirements: 6.1-6.5 (bugs-worktree-directory-mode)
+ * Requirements: 1.1-1.4, 2.1-2.3, 3.1-3.4, 4.1-4.4, 5.1-5.4 (bug-worktree-spec-alignment)
  *
- * Directory mode flow:
- * 1. Create worktree at .kiro/worktrees/bugs/{bugName}
- * 2. Copy bug files from main to worktree/.kiro/bugs/{bugName}
- * 3. Add worktree field to bug.json inside worktree (NOT main)
+ * ConvertBugWorktreeService flow (based on bug commit status):
+ * 1. Pre-validation: main branch, bug exists, not in worktree mode, not committed-dirty
+ * 2. Worktree creation: git branch bugfix/{bugName} + git worktree add
+ * 3. File handling: untracked: copy+delete, committed-clean: skip
+ * 4. Symlink creation: logs/runtime directories
+ * 5. bug.json update: add worktree field inside worktree
  *
  * @param projectPath - Project root path
  * @param bugPath - Path to bug directory in main project
@@ -41,67 +46,32 @@ export async function handleBugWorktreeCreate(
   bugPath: string,
   bugName: string
 ): Promise<WorktreeServiceResult<WorktreeInfo>> {
-  logger.info('[bugWorktreeHandlers] bug-worktree:create called (directory mode)', { projectPath, bugPath, bugName });
+  logger.info('[bugWorktreeHandlers] bug-worktree:create called (ConvertBugWorktreeService)', { projectPath, bugPath, bugName });
 
   const worktreeService = new WorktreeService(projectPath);
   const bugService = new BugService();
+  const convertService = new ConvertBugWorktreeService(worktreeService, bugService);
 
-  // Step 1: Create worktree using directory mode (createEntityWorktree)
-  // This creates .kiro/worktrees/bugs/{bugName}/ with git worktree
-  const createResult = await worktreeService.createEntityWorktree('bugs', bugName);
-  if (!createResult.ok) {
-    logger.error('[bugWorktreeHandlers] Failed to create bug worktree', { error: createResult.error });
-    return createResult;
-  }
+  // Use ConvertBugWorktreeService for the conversion
+  // This handles commit status checking and conditional file handling
+  const result = await convertService.convertToWorktree(projectPath, bugPath, bugName);
 
-  // Step 2: Copy bug files from main to worktree
-  // Source: .kiro/bugs/{bugName}/
-  // Destination: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/
-  const worktreeBugPath = getWorktreeEntityPath(projectPath, 'bugs', bugName);
-  const copyResult = await bugService.copyBugToWorktree(bugPath, worktreeBugPath.absolute, bugName);
-  if (!copyResult.ok) {
-    // Rollback: remove the worktree we just created
-    logger.warn('[bugWorktreeHandlers] Failed to copy bug files, rolling back worktree', {
-      error: copyResult.error,
-    });
-    await worktreeService.removeEntityWorktree('bugs', bugName).catch(() => {
-      logger.error('[bugWorktreeHandlers] Rollback failed', { bugName });
-    });
+  if (!result.ok) {
+    logger.error('[bugWorktreeHandlers] ConvertBugWorktreeService failed', { error: result.error });
+    // Map ConvertBugError to WorktreeServiceResult error format
+    const errorMessage = 'message' in result.error
+      ? (result.error as { message: string }).message
+      : result.error.type;
     return {
       ok: false,
-      error: { type: 'GIT_ERROR', message: `Failed to copy bug files: ${copyResult.error.type}` },
+      error: { type: 'GIT_ERROR', message: errorMessage },
     };
   }
 
-  // Step 3: Add worktree field to bug.json INSIDE worktree (NOT main bug.json)
-  // This is the key difference from the old flag-based approach
-  const worktreeBasePath = getWorktreeBasePath(projectPath, 'bugs', bugName);
-  const worktreeConfig = {
-    path: worktreeBasePath.relative,  // .kiro/worktrees/bugs/{bugName}
-    branch: createResult.value.branch,
-    created_at: createResult.value.created_at,
-  };
-
-  const updateResult = await bugService.addWorktreeField(worktreeBugPath.absolute, worktreeConfig);
-  if (!updateResult.ok) {
-    // Rollback: remove the worktree we just created
-    logger.warn('[bugWorktreeHandlers] Failed to update bug.json in worktree, rolling back', {
-      error: updateResult.error,
-    });
-    await worktreeService.removeEntityWorktree('bugs', bugName).catch(() => {
-      logger.error('[bugWorktreeHandlers] Rollback failed', { bugName });
-    });
-    return {
-      ok: false,
-      error: { type: 'GIT_ERROR', message: 'Failed to update bug.json in worktree' },
-    };
-  }
-
-  logger.info('[bugWorktreeHandlers] Bug worktree created successfully (directory mode)', {
-    worktreeInfo: createResult.value,
-    worktreeBugPath: worktreeBugPath.absolute,
+  logger.info('[bugWorktreeHandlers] Bug worktree created successfully', {
+    worktreeInfo: result.value,
   });
-  return createResult;
+  return { ok: true, value: result.value };
 }
 
 /**

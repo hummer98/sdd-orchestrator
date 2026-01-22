@@ -13,24 +13,32 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import type { BugJson } from '../../renderer/types/bugJson';
 
-// Mock WorktreeService with directory mode methods
+// Mock WorktreeService with directory mode methods + ConvertBugWorktreeService requirements
 const mockCreateEntityWorktree = vi.fn();
 const mockRemoveEntityWorktree = vi.fn();
+const mockCreateBugWorktree = vi.fn();
+const mockRemoveBugWorktree = vi.fn();
 const mockIsOnMainBranch = vi.fn();
+const mockGetCurrentBranch = vi.fn();
+const mockCheckUncommittedBugChanges = vi.fn();
+const mockCreateSymlinksForWorktree = vi.fn();
 
 vi.mock('./worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation(() => ({
+    // bug-worktree-spec-alignment: Methods required by ConvertBugWorktreeService
+    isOnMainBranch: mockIsOnMainBranch,
+    getCurrentBranch: mockGetCurrentBranch,
+    checkUncommittedBugChanges: mockCheckUncommittedBugChanges,
+    createBugWorktree: mockCreateBugWorktree,
+    removeBugWorktree: mockRemoveBugWorktree,
+    createSymlinksForWorktree: mockCreateSymlinksForWorktree,
     // Directory mode methods
     createEntityWorktree: mockCreateEntityWorktree,
     removeEntityWorktree: mockRemoveEntityWorktree,
-    isOnMainBranch: mockIsOnMainBranch,
     getEntityWorktreePath: vi.fn().mockImplementation((_type: string, name: string) => ({
       relative: `.kiro/worktrees/bugs/${name}`,
       absolute: `/tmp/test-project/.kiro/worktrees/bugs/${name}`,
     })),
-    // Legacy methods (kept for backward compatibility)
-    createBugWorktree: mockCreateEntityWorktree, // Alias
-    removeBugWorktree: mockRemoveEntityWorktree, // Alias
     getBugWorktreePath: vi.fn().mockReturnValue({
       relative: '.kiro/worktrees/bugs/test-bug',
       absolute: '/tmp/test-project/.kiro/worktrees/bugs/test-bug',
@@ -65,6 +73,27 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
     // Default mock implementations
     mockIsOnMainBranch.mockResolvedValue({ ok: true, value: true });
+    mockGetCurrentBranch.mockResolvedValue({ ok: true, value: 'main' });
+    mockCheckUncommittedBugChanges.mockResolvedValue({
+      ok: true,
+      value: {
+        hasChanges: true,
+        files: ['bug.json'],
+        statusOutput: '?? .kiro/bugs/test-bug/bug.json',
+      },
+    });
+    mockCreateBugWorktree.mockImplementation(() => Promise.resolve({
+      ok: true,
+      value: {
+        path: '.kiro/worktrees/bugs/test-bug',
+        absolutePath: `${testDir}/.kiro/worktrees/bugs/test-bug`,
+        branch: 'bugfix/test-bug',
+        created_at: new Date().toISOString(),
+      },
+    }));
+    mockRemoveBugWorktree.mockResolvedValue({ ok: true, value: undefined });
+    mockCreateSymlinksForWorktree.mockResolvedValue({ ok: true, value: undefined });
+    // Legacy mocks (directory mode)
     mockCreateEntityWorktree.mockResolvedValue({
       ok: true,
       value: {
@@ -89,6 +118,7 @@ describe('Bug Worktree Flow Integration Tests', () => {
   // Task 17.1: bug-fix start to worktree creation flow test
   // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
   // bugs-worktree-directory-mode: Updated to test directory mode
+  // bug-worktree-spec-alignment: Updated for ConvertBugWorktreeService integration
   // ============================================================
   describe('Task 17.1: bug-fix start flow', () => {
     it('should verify main branch before worktree creation', async () => {
@@ -103,8 +133,8 @@ describe('Bug Worktree Flow Integration Tests', () => {
       // Execute worktree creation
       await handleBugWorktreeCreate(testDir, bugPath, 'test-bug');
 
-      // Directory mode: createEntityWorktree is called with 'bugs' type
-      expect(mockCreateEntityWorktree).toHaveBeenCalledWith('bugs', 'test-bug');
+      // bug-worktree-spec-alignment: ConvertBugWorktreeService calls createBugWorktree
+      expect(mockCreateBugWorktree).toHaveBeenCalledWith('test-bug');
     });
 
     it('should create worktree with bugfix branch naming', async () => {
@@ -124,7 +154,7 @@ describe('Bug Worktree Flow Integration Tests', () => {
       }
     });
 
-    it('should update bug.json with worktree field in worktree (not main)', async () => {
+    it('should update bug.json with worktree field in worktree', async () => {
       const initialBugJson: BugJson = {
         bug_name: 'test-bug',
         created_at: '2025-01-15T00:00:00Z',
@@ -134,7 +164,7 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
       await handleBugWorktreeCreate(testDir, bugPath, 'test-bug');
 
-      // Directory mode: bug.json is updated in worktree, not main
+      // Directory mode: bug.json is updated in worktree
       const worktreeContent = await readFile(join(worktreeBugPath, 'bug.json'), 'utf-8');
       const worktreeParsed: BugJson = JSON.parse(worktreeContent);
 
@@ -142,22 +172,15 @@ describe('Bug Worktree Flow Integration Tests', () => {
       expect(worktreeParsed.worktree?.branch).toBe('bugfix/test-bug');
       expect(worktreeParsed.worktree?.path).toBe('.kiro/worktrees/bugs/test-bug');
 
-      // Directory mode: main bug.json is NOT modified
-      const mainContent = await readFile(join(bugPath, 'bug.json'), 'utf-8');
-      const mainParsed: BugJson = JSON.parse(mainContent);
-      expect(mainParsed.worktree).toBeUndefined();
+      // bug-worktree-spec-alignment: For untracked bugs, original files are DELETED after copy
+      // The main bug directory no longer exists
+      await expect(access(join(bugPath, 'bug.json'))).rejects.toThrow('ENOENT');
     });
 
     it('should return error when not on main branch', async () => {
-      // Mock: not on main branch
-      mockCreateEntityWorktree.mockResolvedValue({
-        ok: false,
-        error: {
-          type: 'NOT_ON_MAIN_BRANCH' as const,
-          currentBranch: 'bugfix/other-bug',
-          message: 'Not on main branch',
-        },
-      });
+      // bug-worktree-spec-alignment: Mock isOnMainBranch for ConvertBugWorktreeService
+      mockIsOnMainBranch.mockResolvedValue({ ok: true, value: false });
+      mockGetCurrentBranch.mockResolvedValue({ ok: true, value: 'bugfix/other-bug' });
 
       const initialBugJson: BugJson = {
         bug_name: 'test-bug',
@@ -170,7 +193,8 @@ describe('Bug Worktree Flow Integration Tests', () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error?.type).toBe('NOT_ON_MAIN_BRANCH');
+        // ConvertBugWorktreeService returns GIT_ERROR with message containing NOT_ON_MAIN_BRANCH
+        expect(result.error?.type).toBe('GIT_ERROR');
       }
     });
 

@@ -708,6 +708,33 @@ export class WorktreeService {
   }
 
   /**
+   * Check if there are uncommitted changes in a bug directory
+   * bug-worktree-spec-alignment: Same logic as checkUncommittedSpecChanges for Bugs
+   * Requirements: 1.1, 1.2, 1.3, 1.4 (bug-worktree-spec-alignment)
+   *
+   * @param bugPath - Relative path to bug directory (e.g., .kiro/bugs/{bugName})
+   * @returns Object with hasChanges flag, list of changed files, and raw status output
+   */
+  async checkUncommittedBugChanges(bugPath: string): Promise<WorktreeServiceResult<{ hasChanges: boolean; files: string[]; statusOutput: string }>> {
+    // git status --porcelain shows files with changes
+    // Filter to only bug directory
+    const result = await this.execGit(`git status --porcelain "${bugPath}"`);
+    if (!result.ok) {
+      return result;
+    }
+
+    const output = result.value;
+    if (!output) {
+      return { ok: true, value: { hasChanges: false, files: [], statusOutput: '' } };
+    }
+
+    // Parse git status output: each line is "XY filename"
+    const files = output.split('\n').filter(line => line.trim()).map(line => line.slice(3));
+
+    return { ok: true, value: { hasChanges: files.length > 0, files, statusOutput: output } };
+  }
+
+  /**
    * Commit spec changes before creating worktree
    *
    * @param specPath - Relative path to spec directory (e.g., .kiro/specs/{feature})

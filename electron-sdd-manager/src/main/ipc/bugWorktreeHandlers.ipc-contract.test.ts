@@ -60,9 +60,17 @@ vi.mock('../services/worktreeHelpers', () => ({
   })),
 }));
 
-// Mock BugService
+// Mock BugService with readBugJson for ConvertBugWorktreeService
 vi.mock('../services/bugService', () => ({
   BugService: vi.fn().mockImplementation(() => ({
+    readBugJson: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        bug_name: 'test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+        updated_at: '2025-01-15T00:00:00Z',
+      },
+    }),
     addWorktreeField: vi.fn().mockResolvedValue({ ok: true }),
     removeWorktreeField: vi.fn().mockResolvedValue({ ok: true }),
     copyBugToWorktree: vi.fn().mockResolvedValue({ ok: true }),
@@ -76,9 +84,54 @@ vi.mock('../services/bugWorkflowService', () => ({
   })),
 }));
 
-// Mock WorktreeService with directory mode methods
+// Mock ConvertBugWorktreeService for IPC contract tests
+vi.mock('../services/convertBugWorktreeService', () => ({
+  ConvertBugWorktreeService: vi.fn().mockImplementation(() => ({
+    convertToWorktree: vi.fn().mockImplementation((_projectPath: string, _bugPath: string, _bugName: string) =>
+      Promise.resolve({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/bugs/test-bug',
+          absolutePath: '/mock/project/path/.kiro/worktrees/bugs/test-bug',
+          branch: 'bugfix/test-bug',
+          created_at: '2025-01-15T00:00:00Z',
+        },
+      })
+    ),
+  })),
+}));
+
+// Mock WorktreeService with directory mode methods + ConvertBugWorktreeService requirements
 vi.mock('../services/worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation((projectPath: string) => ({
+    // bug-worktree-spec-alignment: Methods required by ConvertBugWorktreeService
+    isOnMainBranch: vi.fn().mockResolvedValue({ ok: true, value: true }),
+    getCurrentBranch: vi.fn().mockResolvedValue({ ok: true, value: 'main' }),
+    checkUncommittedBugChanges: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        hasChanges: true,
+        files: ['bug.json'],
+        statusOutput: '?? .kiro/bugs/test-bug/bug.json',
+      },
+    }),
+    createBugWorktree: vi.fn().mockImplementation(() => Promise.resolve({
+      ok: true,
+      value: {
+        path: `.kiro/worktrees/bugs/test-bug`,
+        absolutePath: `${projectPath}/.kiro/worktrees/bugs/test-bug`,
+        branch: 'bugfix/test-bug',
+        created_at: '2025-01-15T00:00:00Z',
+      },
+    })),
+    removeBugWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: undefined,
+    }),
+    createSymlinksForWorktree: vi.fn().mockResolvedValue({
+      ok: true,
+      value: undefined,
+    }),
     // Directory mode methods (bugs-worktree-directory-mode)
     createEntityWorktree: vi.fn().mockResolvedValue({
       ok: true,
@@ -90,20 +143,6 @@ vi.mock('../services/worktreeService', () => ({
       },
     }),
     removeEntityWorktree: vi.fn().mockResolvedValue({
-      ok: true,
-      value: undefined,
-    }),
-    // Legacy methods (kept for backward compatibility)
-    createBugWorktree: vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
-        path: '../test-project-worktrees/bugs/test-bug',
-        absolutePath: '/tmp/test-project-worktrees/bugs/test-bug',
-        branch: 'bugfix/test-bug',
-        created_at: '2025-01-15T00:00:00Z',
-      },
-    }),
-    removeBugWorktree: vi.fn().mockResolvedValue({
       ok: true,
       value: undefined,
     }),

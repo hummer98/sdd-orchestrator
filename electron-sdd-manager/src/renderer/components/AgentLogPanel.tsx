@@ -48,7 +48,7 @@ export function AgentLogPanel() {
     };
   }, [agent]);
 
-  // Clear logs handler
+// Clear logs handler
   const handleClear = () => {
     if (selectedAgentId) {
       clearLogs(selectedAgentId);

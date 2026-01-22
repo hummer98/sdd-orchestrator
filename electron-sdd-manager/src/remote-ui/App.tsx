@@ -17,7 +17,11 @@ import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../s
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
 import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions } from '../shared/api/types';
+import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
+import { AskAgentDialog } from '../shared/components/project';
+import { Bot, MessageSquare } from 'lucide-react';
+import { clsx } from 'clsx';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 
 // =============================================================================
@@ -25,6 +29,45 @@ import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAuto
 // =============================================================================
 
 type DocsTab = 'specs' | 'bugs';
+
+// =============================================================================
+// Helper Functions for Project Agent
+// =============================================================================
+
+function mapAgentStatus(status: AgentStatus): AgentItemStatus {
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'interrupted':
+      return 'interrupted';
+    case 'hang':
+      return 'hang';
+    case 'failed':
+      return 'failed';
+    default:
+      return 'completed';
+  }
+}
+
+function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
+  const startedAt = typeof agent.startedAt === 'number'
+    ? new Date(agent.startedAt).toISOString()
+    : agent.startedAt;
+  const endedAt = agent.endedAt
+    ? (typeof agent.endedAt === 'number' ? new Date(agent.endedAt).toISOString() : agent.endedAt)
+    : startedAt;
+
+  return {
+    agentId: agent.id,
+    sessionId: agent.specId,
+    phase: agent.phase,
+    status: mapAgentStatus(agent.status),
+    startedAt,
+    lastActivityAt: endedAt,
+  };
+}
 
 // =============================================================================
 // Left Sidebar Component - Spec/Bugsタブ + 一覧
@@ -48,6 +91,80 @@ function LeftSidebar({
   onSelectBug,
 }: LeftSidebarProps) {
   const apiClient = useApi();
+
+  // Project Agent state
+  const [projectAgents, setProjectAgents] = useState<AgentInfo[]>([]);
+  const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+
+  // Load project agents (specId === '')
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProjectAgents() {
+      const result = await apiClient.getAgents();
+      if (!isMounted) return;
+
+      if (result.ok) {
+        const filtered = result.value
+          .filter((a) => a.specId === '')
+          .sort((a, b) => {
+            // Running first, then by startedAt descending
+            if (a.status === 'running' && b.status !== 'running') return -1;
+            if (a.status !== 'running' && b.status === 'running') return 1;
+            const aTime = typeof a.startedAt === 'number' ? a.startedAt : new Date(a.startedAt).getTime();
+            const bTime = typeof b.startedAt === 'number' ? b.startedAt : new Date(b.startedAt).getTime();
+            return bTime - aTime;
+          });
+        setProjectAgents(filtered);
+      }
+    }
+
+    loadProjectAgents();
+
+    // Poll for updates
+    const interval = setInterval(loadProjectAgents, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [apiClient]);
+
+  // Subscribe to agent status changes
+  useEffect(() => {
+    const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
+      setProjectAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === agentId ? { ...agent, status } : agent
+        )
+      );
+    });
+    return unsubscribe;
+  }, [apiClient]);
+
+  // Project Agent handlers
+  const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+    await apiClient.stopAgent(agentId);
+  }, [apiClient]);
+
+  const handleRemoveAgent = useCallback((e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+    setProjectAgents((prev) => prev.filter((a) => a.id !== agentId));
+  }, []);
+
+  const handleAskExecute = useCallback(async (prompt: string) => {
+    const result = await apiClient.executeAskProject(prompt);
+    if (result.ok) {
+      setIsAskDialogOpen(false);
+      // Refresh agents list
+      const agentsResult = await apiClient.getAgents();
+      if (agentsResult.ok) {
+        const filtered = agentsResult.value.filter((a) => a.specId === '');
+        setProjectAgents(filtered);
+      }
+    }
+  }, [apiClient]);
 
   return (
     <div className="flex flex-col h-full">
@@ -76,7 +193,7 @@ function LeftSidebar({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab === 'specs' ? (
           <SpecsView
             apiClient={apiClient}
@@ -90,6 +207,57 @@ function LeftSidebar({
             onSelectBug={onSelectBug}
           />
         )}
+      </div>
+
+      {/* Project Agent Panel - Electron版と同じ位置 */}
+      <div
+        data-testid="project-agent-panel"
+        className="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-2">
+          <Bot className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Project Agent
+          </span>
+          <span className="text-xs text-gray-400">
+            ({projectAgents.length})
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={() => setIsAskDialogOpen(true)}
+            className={clsx(
+              'p-1 rounded-md transition-colors',
+              'text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/30'
+            )}
+            title="Askを実行"
+            aria-label="Project Askを実行"
+            data-testid="project-ask-button"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Agent List */}
+        <div className="px-2 pb-2 max-h-32 overflow-y-auto">
+          <AgentList
+            agents={projectAgents.map(mapAgentInfoToItemInfo)}
+            selectedAgentId={null}
+            onSelect={() => {}}
+            onStop={handleStopAgent}
+            onRemove={handleRemoveAgent}
+            emptyMessage="プロジェクトエージェントなし"
+            testId="project-agent-list"
+          />
+        </div>
+
+        {/* Ask Agent Dialog */}
+        <AskAgentDialog
+          isOpen={isAskDialogOpen}
+          agentType="project"
+          onExecute={handleAskExecute}
+          onCancel={() => setIsAskDialogOpen(false)}
+        />
       </div>
     </div>
   );
@@ -181,9 +349,107 @@ function RightSidebar({
 }: RightSidebarProps) {
   const apiClient = useApi();
 
+  // Spec Agents state (filtered by selected spec)
+  const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
+
+  // Load spec agents when spec changes
+  useEffect(() => {
+    if (!selectedSpec) {
+      setSpecAgents([]);
+      return;
+    }
+
+    // Capture spec name for use in async callback
+    const specName = selectedSpec.name;
+    let isMounted = true;
+
+    async function loadSpecAgents() {
+      const result = await apiClient.getAgents();
+      if (!isMounted) return;
+
+      if (result.ok) {
+        const filtered = result.value
+          .filter((a) => a.specId === specName)
+          .sort((a, b) => {
+            // Running first, then by startedAt descending
+            if (a.status === 'running' && b.status !== 'running') return -1;
+            if (a.status !== 'running' && b.status === 'running') return 1;
+            const aTime = typeof a.startedAt === 'number' ? a.startedAt : new Date(a.startedAt).getTime();
+            const bTime = typeof b.startedAt === 'number' ? b.startedAt : new Date(b.startedAt).getTime();
+            return bTime - aTime;
+          });
+        setSpecAgents(filtered);
+      }
+    }
+
+    loadSpecAgents();
+
+    // Poll for updates
+    const interval = setInterval(loadSpecAgents, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [apiClient, selectedSpec]);
+
+  // Subscribe to agent status changes
+  useEffect(() => {
+    const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
+      setSpecAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === agentId ? { ...agent, status } : agent
+        )
+      );
+    });
+    return unsubscribe;
+  }, [apiClient]);
+
+  // Agent handlers
+  const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+    await apiClient.stopAgent(agentId);
+  }, [apiClient]);
+
+  const handleRemoveAgent = useCallback((e: React.MouseEvent, agentId: string) => {
+    e.stopPropagation();
+    setSpecAgents((prev) => prev.filter((a) => a.id !== agentId));
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
-      {/* Workflow Section */}
+      {/* Agent Section - 上部（Electron版と同じ順序） */}
+      <div
+        className="shrink-0 border-b border-gray-200 dark:border-gray-700"
+        style={{ height: 160 }}
+      >
+        <div className="h-full flex flex-col p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Bot className="w-4 h-4 text-gray-500" />
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Agent一覧
+            </h3>
+            {specAgents.length > 0 && (
+              <span className="text-xs text-gray-400">
+                ({specAgents.length})
+              </span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <AgentList
+              agents={specAgents.map(mapAgentInfoToItemInfo)}
+              selectedAgentId={null}
+              onSelect={() => {}}
+              onStop={handleStopAgent}
+              onRemove={handleRemoveAgent}
+              emptyMessage="エージェントなし"
+              testId="spec-agent-list"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Workflow Section - 下部（Electron版と同じ順序） */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -204,30 +470,16 @@ function RightSidebar({
         </div>
       </div>
 
-      {/* Agent Section */}
-      <div className="shrink-0 border-t border-gray-200 dark:border-gray-700">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Agents
-          </h2>
-        </div>
-        <div className="max-h-32 overflow-y-auto">
-          <AgentView apiClient={apiClient} />
-        </div>
+      {/* Workflow Footer - 自動実行ボタン（常に下部に固定） */}
+      <div className="shrink-0">
+        <SpecWorkflowFooter
+          isAutoExecuting={isAutoExecuting}
+          hasRunningAgents={specAgents.some((a) => a.status === 'running')}
+          onAutoExecution={onAutoExecution}
+          isOnMain={false}
+          specJson={specDetail?.specJson ?? null}
+        />
       </div>
-
-      {/* Workflow Footer - 自動実行ボタン */}
-      {activeTab === 'specs' && selectedSpec && specDetail && (
-        <div className="shrink-0">
-          <SpecWorkflowFooter
-            isAutoExecuting={isAutoExecuting}
-            hasRunningAgents={false}
-            onAutoExecution={onAutoExecution}
-            isOnMain={false}
-            specJson={specDetail.specJson}
-          />
-        </div>
-      )}
     </div>
   );
 }

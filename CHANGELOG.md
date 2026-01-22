@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0] - 2026-01-22
+
+### Added
+- **prompts**: リファクタリング完遂のためのプロンプト改善
+- **inspection-permission-unification**: Inspection Permission統一の実装
+- **remote-ui-bug-advanced-features**: Remote UI Bug Advanced Featuresの実装
+- **worktree-convert-spec-optimization**: Worktree Convert Spec最適化の実装
+
+### Fixed
+- **specs**: spec.jsonの壊れたJSON構文を修正
+- **spec-inspection**: phase更新ステップの番号を6.5から7に変更
+- **AgentProcess**: JSONL出力の行バッファリングを追加
+
+### Changed
+- **tests**: agentStore/sharedAgentStore SSOT構造に対応したテスト修正
+- events.jsonlをgit追跡から除外
+
 ## [0.37.1] - 2026-01-22
 
 ### Fixed

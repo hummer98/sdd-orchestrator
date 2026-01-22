@@ -34,3 +34,7 @@ export type { SessionInfoBlockProps } from './SessionInfoBlock';
 
 export { ResultBlock } from './ResultBlock';
 export type { ResultBlockProps } from './ResultBlock';
+
+// AgentLogPanel - shared log display component (Task: agent-log-panel-unification)
+export { AgentLogPanel } from './AgentLogPanel';
+export type { AgentLogPanelProps, AgentLogInfo } from './AgentLogPanel';

@@ -11,7 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Bot, Terminal } from 'lucide-react';
-import { AgentListItem, type AgentItemInfo, type AgentItemStatus, LogEntryBlock } from '@shared/components/agent';
+import { AgentList, type AgentItemInfo, type AgentItemStatus, LogEntryBlock } from '@shared/components/agent';
 import { Spinner } from '@shared/components/ui/Spinner';
 import { parseLogData, type ParsedLogEntry } from '@shared/utils/logFormatter';
 import type { ApiClient, AgentInfo, AgentStatus, LogEntry } from '@shared/api/types';
@@ -302,25 +302,19 @@ export function AgentView({
   return (
     <div className="flex flex-col h-full" data-testid="agent-view">
       {/* Agent List */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
-        <div className="p-3">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-            <Bot className="w-4 h-4" />
-            Agent ({agents.length})
-          </h3>
-          <ul data-testid="agent-list" className="space-y-2">
-            {agents.map((agent) => (
-              <AgentListItem
-                key={agent.id}
-                agent={mapAgentInfoToItemInfo(agent)}
-                isSelected={selectedAgentId === agent.id}
-                onSelect={() => handleSelectAgent(agent)}
-                onStop={(e) => handleStopAgent(e, agent.id)}
-                onRemove={(e) => handleRemoveAgent(e, agent.id)}
-              />
-            ))}
-          </ul>
-        </div>
+      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 p-3">
+        <AgentList
+          agents={agents.map(mapAgentInfoToItemInfo)}
+          selectedAgentId={selectedAgentId}
+          onSelect={(agentId) => {
+            const agent = agents.find(a => a.id === agentId);
+            if (agent) handleSelectAgent(agent);
+          }}
+          onStop={(e, agentId) => handleStopAgent(e, agentId)}
+          onRemove={(e, agentId) => handleRemoveAgent(e, agentId)}
+          showHeader
+          headerTitle="Agent"
+        />
       </div>
 
       {/* Log Panel - using shared LogEntryBlock components */}

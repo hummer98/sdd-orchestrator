@@ -12,6 +12,10 @@ export type {
   AgentItemStatus,
 } from './AgentListItem';
 
+// Phase 2: Agent一覧表示コンポーネント
+export { AgentList } from './AgentList';
+export type { AgentListProps } from './AgentList';
+
 // Log display components (Task 2.1-2.6)
 export { LogEntryBlock } from './LogEntryBlock';
 export type { LogEntryBlockProps } from './LogEntryBlock';

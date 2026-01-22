@@ -8,66 +8,35 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Bot, StopCircle, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, MessageSquare, GitBranch } from 'lucide-react';
+import { Bot, MessageSquare, GitBranch } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
 import { AskAgentDialog } from '@shared/components/project';
+import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 
-type AgentStatus = AgentInfo['status'];
-
-/**
- * Format ISO date string to "MM/DD HH:mm"
- */
-function formatDateTime(isoString: string): string {
-  const date = new Date(isoString);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${month}/${day} ${hours}:${minutes}`;
-}
+// =============================================================================
+// Type Mapping
+// =============================================================================
 
 /**
- * Format duration in milliseconds to "Xm Ys" or "Xs"
+ * Electron版AgentInfoをshared版AgentItemInfoに変換
+ * Phase 1: AgentListItem共通化のための型マッピング
  */
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes > 0) {
-    return `${minutes}分${seconds}秒`;
-  }
-  return `${seconds}秒`;
+function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
+  return {
+    agentId: agent.agentId,
+    sessionId: agent.sessionId,
+    phase: agent.phase,
+    status: agent.status,
+    startedAt: agent.startedAt,
+    lastActivityAt: agent.lastActivityAt,
+  };
 }
 
-const STATUS_CONFIG: Record<AgentStatus, { label: string; icon: React.ReactNode; iconClassName: string }> = {
-  running: {
-    label: '実行中',
-    icon: <Loader2 className="w-4 h-4 animate-spin" />,
-    iconClassName: 'text-blue-500',
-  },
-  completed: {
-    label: '完了',
-    icon: <CheckCircle className="w-4 h-4" />,
-    iconClassName: 'text-green-500',
-  },
-  interrupted: {
-    label: '中断',
-    icon: <AlertCircle className="w-4 h-4" />,
-    iconClassName: 'text-yellow-500',
-  },
-  hang: {
-    label: '応答なし',
-    icon: <AlertCircle className="w-4 h-4" />,
-    iconClassName: 'text-red-500',
-  },
-  failed: {
-    label: '失敗',
-    icon: <XCircle className="w-4 h-4" />,
-    iconClassName: 'text-red-500',
-  },
-};
+// =============================================================================
+// Component Props
+// =============================================================================
 
 interface AgentListPanelProps {
   /** specId for filtering agents (spec name or 'bug:{bugName}') */
@@ -242,24 +211,17 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
         )}
       </div>
 
-      {filteredAgents.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-2">
-          Agentはありません
-        </p>
-      ) : (
-        <ul className="flex-1 space-y-2 overflow-y-auto">
-          {filteredAgents.map((agent) => (
-            <AgentListItem
-              key={agent.agentId}
-              agent={agent}
-              isSelected={selectedAgentId === agent.agentId}
-              onSelect={() => selectAgent(agent.agentId)}
-              onStop={(e) => handleStop(agent.agentId, e)}
-              onRemove={(e) => handleRemoveClick(agent, e)}
-            />
-          ))}
-        </ul>
-      )}
+      <AgentList
+        agents={filteredAgents.map(mapAgentInfoToItemInfo)}
+        selectedAgentId={selectedAgentId}
+        onSelect={(agentId) => selectAgent(agentId)}
+        onStop={(e, agentId) => handleStop(agentId, e)}
+        onRemove={(e, agentId) => {
+          const agent = filteredAgents.find(a => a.agentId === agentId);
+          if (agent) handleRemoveClick(agent, e);
+        }}
+        className="flex-1 overflow-y-auto"
+      />
 
       {/* 削除確認ダイアログ */}
       {confirmDeleteAgent && (
@@ -303,98 +265,3 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
   );
 }
 
-interface AgentListItemProps {
-  agent: AgentInfo;
-  isSelected: boolean;
-  onSelect: () => void;
-  onStop: (e: React.MouseEvent) => void;
-  onRemove: (e: React.MouseEvent) => void;
-}
-
-function AgentListItem({ agent, isSelected, onSelect, onStop, onRemove }: AgentListItemProps) {
-  const statusConfig = STATUS_CONFIG[agent.status];
-  const showStopButton = agent.status === 'running' || agent.status === 'hang';
-  const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
-  const isRunning = agent.status === 'running';
-
-  // Dynamic elapsed time for running agents
-  const [elapsed, setElapsed] = useState(() => {
-    return Date.now() - new Date(agent.startedAt).getTime();
-  });
-
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setElapsed(Date.now() - new Date(agent.startedAt).getTime());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isRunning, agent.startedAt]);
-
-  // Calculate duration
-  const duration = isRunning
-    ? elapsed
-    : new Date(agent.lastActivityAt).getTime() - new Date(agent.startedAt).getTime();
-
-  return (
-    <li
-      data-testid={`agent-item-${agent.agentId}`}
-      title={`${agent.agentId} / ${agent.sessionId}`}
-      onClick={onSelect}
-      className={clsx(
-        'p-2 rounded-md cursor-pointer transition-colors',
-        'border border-gray-200 dark:border-gray-700',
-        isSelected
-          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-      )}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className={clsx('shrink-0', statusConfig.iconClassName)} title={statusConfig.label}>
-            {statusConfig.icon}
-          </span>
-          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-            {agent.phase}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            {formatDateTime(agent.startedAt)}
-            {' '}
-            ({formatDuration(duration)}{isRunning && '...'})
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 ml-2">
-          {showStopButton && (
-            <button
-              onClick={onStop}
-              className={clsx(
-                'p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30',
-                'text-red-600 dark:text-red-400'
-              )}
-              title="停止"
-              aria-label="停止"
-            >
-              <StopCircle className="w-4 h-4" />
-            </button>
-          )}
-
-          {showRemoveButton && (
-            <button
-              onClick={onRemove}
-              className={clsx(
-                'p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700',
-                'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              )}
-              title="削除"
-              aria-label="削除"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-    </li>
-  );
-}

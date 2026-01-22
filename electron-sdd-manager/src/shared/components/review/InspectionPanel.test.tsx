@@ -2,6 +2,7 @@
  * InspectionPanel Component Tests
  *
  * TDD Test: Task 4.6 - DocumentReview・Inspection・Validation関連コンポーネントを共有化する
+ * inspection-permission-unification Task 9.2: Updated tests - removed auto execution flag tests
  *
  * このテストはprops-drivenのInspectionPanelコンポーネントをテストします。
  * ストア非依存の設計で、Electron版とRemote UI版で共有可能です。
@@ -10,18 +11,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { InspectionPanel, type InspectionPanelProps } from './InspectionPanel';
-import type { InspectionState, InspectionAutoExecutionFlag } from '../../types';
+import type { InspectionState } from '../../types';
+// InspectionAutoExecutionFlag import removed - no longer used
 
 describe('InspectionPanel', () => {
+  // inspection-permission-unification: Updated props - removed autoExecutionFlag and onAutoExecutionFlagChange
   const defaultProps: InspectionPanelProps = {
     inspectionState: null,
     isExecuting: false,
     isAutoExecuting: false,
-    autoExecutionFlag: 'run',
+    // autoExecutionFlag: removed
     canExecuteInspection: true,
     onStartInspection: vi.fn(),
     onExecuteFix: vi.fn(),
-    onAutoExecutionFlagChange: vi.fn(),
+    // onAutoExecutionFlagChange: removed
   };
 
   beforeEach(() => {
@@ -170,41 +173,27 @@ describe('InspectionPanel', () => {
         screen.getByTestId('inspection-progress-indicator-executing')
       ).toBeInTheDocument();
     });
-
-    // NOTE: skip-scheduled test removed - skip option is no longer available
   });
 
-  describe('自動実行フラグ制御', () => {
-    it('runフラグでPlayCircleアイコンを表示する', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="run" />);
+  // inspection-permission-unification Task 9.2: Auto execution flag control tests REMOVED
+  // Auto execution toggle is now handled via permissions.inspection in the phase item checkbox
+  describe('inspection-permission-unification: Auto execution flag toggle removed', () => {
+    it('should not have auto-execution-flag-control button', () => {
+      render(<InspectionPanel {...defaultProps} />);
 
-      expect(screen.getByTestId('inspection-auto-flag-run')).toBeInTheDocument();
+      expect(screen.queryByTestId('inspection-auto-execution-flag-control')).not.toBeInTheDocument();
     });
 
-    it('pauseフラグでBanアイコンを表示する', () => {
-      render(<InspectionPanel {...defaultProps} autoExecutionFlag="pause" />);
+    it('should not have auto-flag-run icon', () => {
+      render(<InspectionPanel {...defaultProps} />);
 
-      expect(screen.getByTestId('inspection-auto-flag-pause')).toBeInTheDocument();
+      expect(screen.queryByTestId('inspection-auto-flag-run')).not.toBeInTheDocument();
     });
 
-    // NOTE: skip flag test removed - skip option is no longer available
+    it('should not have auto-flag-pause icon', () => {
+      render(<InspectionPanel {...defaultProps} />);
 
-    it.each<[InspectionAutoExecutionFlag, InspectionAutoExecutionFlag]>([
-      ['run', 'pause'],
-      ['pause', 'run'],
-    ])('フラグ %s から %s に変更する', (current, expected) => {
-      const onAutoExecutionFlagChange = vi.fn();
-      render(
-        <InspectionPanel
-          {...defaultProps}
-          autoExecutionFlag={current}
-          onAutoExecutionFlagChange={onAutoExecutionFlagChange}
-        />
-      );
-
-      fireEvent.click(screen.getByTestId('inspection-auto-execution-flag-control'));
-
-      expect(onAutoExecutionFlagChange).toHaveBeenCalledWith(expected);
+      expect(screen.queryByTestId('inspection-auto-flag-pause')).not.toBeInTheDocument();
     });
   });
 

@@ -78,14 +78,16 @@ export interface AutoExecutionState {
  * 自動実行許可設定
  * フェーズごとの自動実行許可
  * Requirements: 7.1
+ * inspection-permission-unification Task 1.2: Changed inspection and deploy from optional to required
+ * Requirements: 1.4, 1.5
  */
 export interface AutoExecutionPermissions {
   readonly requirements: boolean;
   readonly design: boolean;
   readonly tasks: boolean;
   readonly impl: boolean;
-  readonly inspection?: boolean;
-  readonly deploy?: boolean;
+  readonly inspection: boolean;
+  readonly deploy: boolean;
 }
 
 /**

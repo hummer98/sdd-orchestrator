@@ -17,7 +17,8 @@ import type { SpecAutoExecutionState } from '../types';
 import type { BugWorkflowPhase } from '../types/bug';
 import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
 import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
-import type { InspectionAutoExecutionFlag } from '../types/inspection';
+// inspection-permission-unification Task 4: InspectionAutoExecutionFlag import removed
+// InspectionAutoExecutionFlag is deprecated - use permissions.inspection instead
 
 // ============================================================
 // Bug Fix: auto-execution-settings-not-persisted
@@ -27,6 +28,8 @@ import type { InspectionAutoExecutionFlag } from '../types/inspection';
 /**
  * Persist current workflow settings to spec.json
  * Called after each setting change to ensure spec-scoped persistence
+ * inspection-permission-unification Task 4.3: Removed inspectionFlag from persistence
+ * Requirements: 3.6
  */
 async function persistSettingsToSpec(): Promise<void> {
   // Dynamic import to avoid circular dependency
@@ -43,12 +46,12 @@ async function persistSettingsToSpec(): Promise<void> {
   const workflowState = useWorkflowStore.getState();
 
   // Build the autoExecution state object
-  // Bug fix: inspection-auto-execution-toggle - include inspectionFlag
+  // inspection-permission-unification: inspectionFlag removed - use permissions.inspection
   const autoExecutionState: SpecAutoExecutionState = {
     enabled: true, // Enable when user explicitly changes settings
     permissions: { ...workflowState.autoExecutionPermissions },
     documentReviewFlag: workflowState.documentReviewOptions.autoExecutionFlag,
-    inspectionFlag: workflowState.inspectionAutoExecutionFlag,
+    // inspectionFlag removed - inspection permission is now handled via permissions.inspection
   };
 
   try {
@@ -96,12 +99,17 @@ export const COMMAND_PREFIXES: Record<CommandPrefix, { label: string; descriptio
 
 export const DEFAULT_COMMAND_PREFIX: CommandPrefix = 'kiro';
 
+/**
+ * inspection-permission-unification Task 2.1: Changed inspection default to true
+ * Requirements: 2.1, 2.3
+ * Rationale: impl完了後に自動的にinspectionが実行される動作が期待される
+ */
 export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
   requirements: true, // デフォルトで許可
   design: false,
   tasks: false,
   impl: false,
-  inspection: false,
+  inspection: true, // inspection-permission-unification: デフォルトGO
   deploy: false,
 };
 
@@ -189,11 +197,10 @@ interface WorkflowState {
   bugAutoExecutionPermissions: BugAutoExecutionPermissions;
 
   // ============================================================
-  // Bug fix: inspection-auto-execution-toggle
-  // Inspection auto execution flag (run/pause/skip)
+  // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag REMOVED
+  // Requirements: 3.1 (inspection-permission-unification)
+  // Use permissions.inspection instead
   // ============================================================
-  /** Inspection自動実行フラグ */
-  inspectionAutoExecutionFlag: InspectionAutoExecutionFlag;
 
   // ============================================================
   // worktree-mode-spec-scoped: worktreeModeSelection REMOVED
@@ -258,10 +265,10 @@ interface WorkflowActions {
   getBugAutoExecutionPermissions: () => BugAutoExecutionPermissions;
 
   // ============================================================
-  // Bug fix: inspection-auto-execution-toggle
+  // inspection-permission-unification Task 4.2: setInspectionAutoExecutionFlag REMOVED
+  // Requirements: 3.3 (inspection-permission-unification)
+  // Use toggleAutoPermission('inspection') instead
   // ============================================================
-  /** Inspection自動実行フラグを設定 */
-  setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => void;
 
   // ============================================================
   // worktree-mode-spec-scoped: Worktree mode actions REMOVED
@@ -302,9 +309,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // bugs-workflow-auto-execution Task 1.1: Bug Auto Execution Settings - initial state
       bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
 
-      // Bug fix: inspection-auto-execution-toggle - initial state
-      // Default to 'pause' - consistent with documentReviewOptions.autoExecutionFlag
-      inspectionAutoExecutionFlag: 'pause' as InspectionAutoExecutionFlag,
+      // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag initial state REMOVED
+      // Use permissions.inspection instead (default: true in DEFAULT_AUTO_EXECUTION_PERMISSIONS)
 
       // worktree-mode-spec-scoped: worktreeModeSelection initial state REMOVED
       // worktreeModeSelection has been moved to spec.json.worktree.enabled
@@ -440,14 +446,9 @@ export const useWorkflowStore = create<WorkflowStore>()(
       },
 
       // ============================================================
-      // Bug fix: inspection-auto-execution-toggle
-      // Set inspection auto execution flag and persist to spec.json
+      // inspection-permission-unification Task 4.2: setInspectionAutoExecutionFlag REMOVED
+      // Use toggleAutoPermission('inspection') instead
       // ============================================================
-      setInspectionAutoExecutionFlag: (flag: InspectionAutoExecutionFlag) => {
-        set({ inspectionAutoExecutionFlag: flag });
-        // Persist to spec.json after state update
-        persistSettingsToSpec();
-      },
 
       // ============================================================
       // worktree-mode-spec-scoped: Worktree mode actions REMOVED
@@ -459,13 +460,13 @@ export const useWorkflowStore = create<WorkflowStore>()(
     {
       name: 'sdd-manager-workflow-settings',
       // Task 1.3: Persistence - include bugAutoExecutionPermissions
+      // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag removed from persistence
       partialize: (state) => ({
         autoExecutionPermissions: state.autoExecutionPermissions,
         commandPrefix: state.commandPrefix,
         documentReviewOptions: state.documentReviewOptions,
         bugAutoExecutionPermissions: state.bugAutoExecutionPermissions,
-        // Bug fix: inspection-auto-execution-toggle - persist inspectionAutoExecutionFlag
-        inspectionAutoExecutionFlag: state.inspectionAutoExecutionFlag,
+        // inspectionAutoExecutionFlag removed - use permissions.inspection instead
       }),
     }
   )

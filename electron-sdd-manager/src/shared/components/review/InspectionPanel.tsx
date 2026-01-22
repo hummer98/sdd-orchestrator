@@ -2,19 +2,21 @@
  * InspectionPanel Component (Shared)
  *
  * Task 4.6: DocumentReview・Inspection・Validation関連コンポーネントを共有化する
+ * inspection-permission-unification Task 5.1, 5.2: Removed run/pause toggle button
  *
  * Inspectionワークフローの制御とステータス表示を行うコンポーネント。
  * props-driven設計で、ストア非依存。Electron版とRemote UI版で共有可能。
  */
 
 import { clsx } from 'clsx';
-import { Bot, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
+import { Bot, Check, Circle, Wrench } from 'lucide-react';
+// inspection-permission-unification Task 5.1: Pause and PlayCircle icons removed
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   InspectionState,
-  InspectionAutoExecutionFlag,
   InspectionProgressIndicatorState,
 } from '../../types';
+// inspection-permission-unification Task 5.1: InspectionAutoExecutionFlag import removed
 import {
   getLatestRound,
   getRoundCount,
@@ -26,6 +28,11 @@ import {
 // Types
 // =============================================================================
 
+/**
+ * inspection-permission-unification Task 5.2: Simplified props
+ * Removed autoExecutionFlag and onAutoExecutionFlagChange
+ * Requirements: 5.1, 5.2
+ */
 export interface InspectionPanelProps {
   /** Current inspection state from spec.json (new simplified structure) */
   inspectionState: InspectionState | null;
@@ -33,16 +40,14 @@ export interface InspectionPanelProps {
   isExecuting: boolean;
   /** Whether auto execution is running (global workflow auto execution) */
   isAutoExecuting?: boolean;
-  /** Auto execution flag (run/pause/skip) */
-  autoExecutionFlag?: InspectionAutoExecutionFlag;
+  // autoExecutionFlag prop removed - use permissions.inspection instead
   /** Whether inspection can be executed (tasks approved and 100% complete) */
   canExecuteInspection?: boolean;
   /** Handler for starting a new inspection round */
   onStartInspection: () => void;
   /** Handler for executing fix for a specific round */
   onExecuteFix?: (roundNumber: number) => void;
-  /** Handler for auto execution flag change */
-  onAutoExecutionFlagChange?: (flag: InspectionAutoExecutionFlag) => void;
+  // onAutoExecutionFlagChange prop removed - use toggleAutoPermission('inspection') instead
   // agent-launch-optimistic-ui: Optimistic UI launching state
   /** Whether an operation is being launched (Optimistic UI) */
   launching?: boolean;
@@ -78,41 +83,9 @@ function renderProgressIndicator(state: InspectionProgressIndicatorState): React
   }
 }
 
-function getNextAutoExecutionFlag(
-  current: InspectionAutoExecutionFlag
-): InspectionAutoExecutionFlag {
-  switch (current) {
-    case 'run':
-      return 'pause';
-    case 'pause':
-      return 'run';
-  }
-}
-
-function renderAutoExecutionFlagIcon(flag: InspectionAutoExecutionFlag): React.ReactNode {
-  switch (flag) {
-    case 'run':
-      return (
-        <PlayCircle
-          data-testid="inspection-auto-flag-run"
-          className="w-4 h-4 text-green-500"
-        />
-      );
-    case 'pause':
-      return (
-        <Pause data-testid="inspection-auto-flag-pause" className="w-4 h-4 text-yellow-500" />
-      );
-  }
-}
-
-function getAutoExecutionFlagTooltip(flag: InspectionAutoExecutionFlag): string {
-  switch (flag) {
-    case 'run':
-      return '自動実行: 実行';
-    case 'pause':
-      return '自動実行: 一時停止';
-  }
-}
+// inspection-permission-unification Task 5.1:
+// getNextAutoExecutionFlag, renderAutoExecutionFlagIcon, getAutoExecutionFlagTooltip removed
+// Auto execution toggle is now handled via permissions.inspection in PhaseItem checkbox
 
 function renderGoNogoBadge(result: 'go' | 'nogo' | null): React.ReactNode {
   if (result === null) {
@@ -144,15 +117,19 @@ function renderGoNogoBadge(result: 'go' | 'nogo' | null): React.ReactNode {
 // Component
 // =============================================================================
 
+/**
+ * inspection-permission-unification Task 5.1, 5.2: Simplified component
+ * Removed autoExecutionFlag prop and toggle button
+ */
 export function InspectionPanel({
   inspectionState,
   isExecuting,
   isAutoExecuting = false,
-  autoExecutionFlag = 'run',
+  // autoExecutionFlag prop removed
   canExecuteInspection = true,
   onStartInspection,
   onExecuteFix,
-  onAutoExecutionFlagChange,
+  // onAutoExecutionFlagChange prop removed
   // agent-launch-optimistic-ui: Optimistic UI launching state
   launching = false,
 }: InspectionPanelProps) {
@@ -167,10 +144,11 @@ export function InspectionPanel({
   const latestResult = latestRound?.result ?? null;
 
   // Calculate progress indicator state
+  // inspection-permission-unification: Pass 'run' as default since toggle is removed
   const progressIndicatorState = getInspectionProgressIndicatorState(
     inspectionState,
     isExecuting,
-    autoExecutionFlag
+    'run'  // Default flag, no longer configurable
   );
 
   // Determine which action button to show using new helper function
@@ -178,17 +156,12 @@ export function InspectionPanel({
   // Inspection button: when no rounds, GO, or NOGO with fixedAt set
   const showFixButton = needsFix(inspectionState);
 
-  // Handle auto execution flag toggle
-  const handleAutoExecutionFlagClick = () => {
-    if (onAutoExecutionFlagChange) {
-      const nextFlag = getNextAutoExecutionFlag(autoExecutionFlag);
-      onAutoExecutionFlagChange(nextFlag);
-    }
-  };
+  // inspection-permission-unification: handleAutoExecutionFlagClick removed
 
   return (
     <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
       {/* Header */}
+      {/* inspection-permission-unification Task 5.2: Removed toggle button */}
       <div className="flex items-center justify-between mb-3">
         {/* Left side: Progress indicator + Icon + Title + GO/NOGO badge */}
         <div className="flex items-center gap-2">
@@ -201,19 +174,8 @@ export function InspectionPanel({
           {renderGoNogoBadge(latestResult)}
         </div>
 
-        {/* Right side: Auto execution flag control */}
-        <button
-          data-testid="inspection-auto-execution-flag-control"
-          onClick={handleAutoExecutionFlagClick}
-          className={clsx(
-            'p-1 rounded',
-            'hover:bg-gray-200 dark:hover:bg-gray-600',
-            'transition-colors'
-          )}
-          title={getAutoExecutionFlagTooltip(autoExecutionFlag)}
-        >
-          {renderAutoExecutionFlagIcon(autoExecutionFlag)}
-        </button>
+        {/* inspection-permission-unification: Auto execution toggle button removed */}
+        {/* Auto execution permission is now controlled via impl phase checkbox */}
       </div>
 
       {/* Stats */}

@@ -2,6 +2,7 @@
  * SpecActionsView Component
  *
  * Task 13.3: Validation・Review・Inspection UIを実装する
+ * inspection-permission-unification Task 8.1: Removed InspectionAutoExecutionFlag usage
  *
  * Spec詳細ビューのアクションセクション。
  * DocumentReviewPanel, InspectionPanelを統合。
@@ -18,7 +19,7 @@ import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
   InspectionState,
-  InspectionAutoExecutionFlag,
+  // InspectionAutoExecutionFlag removed - use permissions.inspection instead
 } from '@shared/types';
 
 // =============================================================================
@@ -75,9 +76,9 @@ export function SpecActionsView({
   // Extract auto execution flags
   const documentReviewFlag: DocumentReviewAutoExecutionFlag =
     specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run';
-  const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection;
-  const inspectionFlag: InspectionAutoExecutionFlag =
-    inspectionPermission === true ? 'run' : 'pause';
+  // inspection-permission-unification Task 8.1: inspectionFlag no longer used
+  // const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection;
+  // Inspection auto execution is now controlled via permissions.inspection boolean
 
   // Check if tasks are approved (required for some actions)
   const tasksApproved = specDetail.specJson?.approvals?.tasks?.approved ?? false;
@@ -156,13 +157,8 @@ export function SpecActionsView({
     }
   }, [apiClient, specDetail.metadata.name, onActionExecuted]);
 
-  // Handle inspection auto execution flag change
-  const handleInspectionFlagChange = useCallback(
-    async (_flag: InspectionAutoExecutionFlag) => {
-      // This would update spec.json
-    },
-    []
-  );
+  // inspection-permission-unification Task 8.1: handleInspectionFlagChange removed
+  // Inspection auto execution is now controlled via permissions.inspection boolean
 
   // gemini-document-review: Handle scheme change
   // Requirements: 7.2, 7.3, 7.4
@@ -226,16 +222,15 @@ export function SpecActionsView({
       />
 
       {/* Inspection Panel */}
+      {/* inspection-permission-unification Task 8.1: Removed autoExecutionFlag and onAutoExecutionFlagChange */}
       <div data-testid="inspection-panel">
         <InspectionPanel
           inspectionState={inspectionState}
           isExecuting={executingAction === 'inspection' || executingAction === 'inspection-fix'}
           isAutoExecuting={isExecuting}
-          autoExecutionFlag={inspectionFlag}
           canExecuteInspection={tasksApproved}
           onStartInspection={handleStartInspection}
           onExecuteFix={handleExecuteFix}
-          onAutoExecutionFlagChange={handleInspectionFlagChange}
         />
       </div>
     </div>

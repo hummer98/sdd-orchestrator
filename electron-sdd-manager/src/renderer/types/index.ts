@@ -237,12 +237,17 @@ export interface AutoExecutionPermissions {
 /** ドキュメントレビューフラグ */
 export type DocumentReviewFlag = 'run' | 'pause';
 
-/** Inspection自動実行フラグ */
+/**
+ * Inspection自動実行フラグ
+ * @deprecated inspection-permission-unification: Use permissions.inspection instead
+ */
 export type InspectionAutoExecutionFlag = 'run' | 'pause';
 
 /**
  * Spec単位の自動実行状態
  * spec.jsonのautoExecutionフィールドに永続化される
+ * inspection-permission-unification Task 3.1: Removed inspectionFlag field
+ * Requirements: 3.2, 3.4
  */
 export interface SpecAutoExecutionState {
   /** 自動実行の有効/無効 */
@@ -251,11 +256,14 @@ export interface SpecAutoExecutionState {
   permissions: AutoExecutionPermissions;
   /** ドキュメントレビューフラグ */
   documentReviewFlag: DocumentReviewFlag;
-  /** Inspection自動実行フラグ (Bug fix: inspection-auto-execution-toggle) */
-  inspectionFlag?: InspectionAutoExecutionFlag;
+  // inspectionFlag field removed - use permissions.inspection instead
 }
 
-/** デフォルトの自動実行状態 */
+/**
+ * デフォルトの自動実行状態
+ * inspection-permission-unification: Removed inspectionFlag
+ * Requirements: 3.4
+ */
 export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
   enabled: false,
   permissions: {
@@ -263,21 +271,24 @@ export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
     design: true,
     tasks: true,
     impl: true,
-    inspection: true,
+    inspection: true,  // inspection permission is now handled via permissions.inspection
     deploy: true,
   },
   documentReviewFlag: 'pause',
-  // Bug fix: inspection-auto-execution-toggle - default to 'pause'
-  inspectionFlag: 'pause',
+  // inspectionFlag removed - use permissions.inspection instead
 };
 
-/** Partial型の自動実行状態からフル状態を生成するファクトリー関数 */
+/**
+ * Partial型の自動実行状態からフル状態を生成するファクトリー関数
+ * inspection-permission-unification Task 3.2: Removed inspectionFlag processing
+ * Requirements: 3.5
+ */
 export function createSpecAutoExecutionState(
   partial?: Partial<{
     enabled: boolean;
     permissions: Partial<AutoExecutionPermissions>;
     documentReviewFlag: DocumentReviewFlag;
-    inspectionFlag: InspectionAutoExecutionFlag;
+    // inspectionFlag parameter removed - use permissions.inspection instead
   }>
 ): SpecAutoExecutionState {
   if (!partial) {
@@ -292,9 +303,7 @@ export function createSpecAutoExecutionState(
     },
     documentReviewFlag:
       partial.documentReviewFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag,
-    // Bug fix: inspection-auto-execution-toggle
-    inspectionFlag:
-      partial.inspectionFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.inspectionFlag,
+    // inspectionFlag processing removed - use permissions.inspection instead
   };
 }
 

@@ -1958,8 +1958,23 @@ export class SpecManagerService {
    * Set inspection auto execution flag in spec.json
    * Requirements: 4.5 (inspection-workflow-ui)
    */
+  /**
+   * @deprecated inspection-permission-unification: Use setInspectionPermission instead
+   * inspection-permission-unification Task 7.1: Backward compatibility wrapper
+   */
   async setInspectionAutoExecutionFlag(specPath: string, flag: 'run' | 'pause'): Promise<void> {
-    logger.info('[SpecManagerService] setInspectionAutoExecutionFlag called', { specPath, flag });
+    logger.info('[SpecManagerService] setInspectionAutoExecutionFlag called (deprecated)', { specPath, flag });
+    // Convert flag to boolean: 'run' => true, 'pause' => false
+    const enabled = flag === 'run';
+    await this.setInspectionPermission(specPath, enabled);
+  }
+
+  /**
+   * Set inspection permission (boolean)
+   * inspection-permission-unification Task 7.2: New method for setting inspection permission
+   */
+  async setInspectionPermission(specPath: string, enabled: boolean): Promise<void> {
+    logger.info('[SpecManagerService] setInspectionPermission called', { specPath, enabled });
 
     const specJsonPath = `${specPath}/spec.json`;
 
@@ -1975,15 +1990,21 @@ export class SpecManagerService {
         specJson.autoExecution.permissions = {};
       }
 
-      // Set the inspection flag
-      specJson.autoExecution.permissions.inspection = flag;
+      // Set the inspection permission as boolean
+      specJson.autoExecution.permissions.inspection = enabled;
+
+      // inspection-permission-unification Task 7.1: Remove inspectionFlag if it exists (migration)
+      if (specJson.autoExecution.inspectionFlag !== undefined) {
+        delete specJson.autoExecution.inspectionFlag;
+        logger.info('[SpecManagerService] Removed deprecated inspectionFlag field', { specPath });
+      }
 
       // Write back to file
       await writeFile(specJsonPath, JSON.stringify(specJson, null, 2), 'utf-8');
 
-      logger.info('[SpecManagerService] setInspectionAutoExecutionFlag succeeded', { specPath, flag });
+      logger.info('[SpecManagerService] setInspectionPermission succeeded', { specPath, enabled });
     } catch (error) {
-      logger.error('[SpecManagerService] setInspectionAutoExecutionFlag failed', { specPath, flag, error });
+      logger.error('[SpecManagerService] setInspectionPermission failed', { specPath, enabled, error });
       throw error;
     }
   }

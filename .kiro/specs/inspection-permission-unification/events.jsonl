@@ -1,0 +1,7 @@
+{"type":"worktree:create","message":"Worktree created: feature/inspection-permission-unification","worktreePath":".kiro/worktrees/specs/inspection-permission-unification","branch":"feature/inspection-permission-unification","timestamp":"2026-01-22T07:59:05.387Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T07:59:11.235Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T07:59:11.237Z"}
+{"type":"approval:update","message":"design approved","phase":"design","approved":true,"timestamp":"2026-01-22T08:02:44.052Z"}
+{"type":"approval:update","message":"tasks approved","phase":"tasks","approved":true,"timestamp":"2026-01-22T08:04:48.456Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (3 phases executed)","status":"completed","endPhase":"impl","timestamp":"2026-01-22T08:23:56.767Z"}
+{"type":"phase:transition","message":"Phase transitioned: tasks-generated -> implementation-complete","oldPhase":"tasks-generated","newPhase":"implementation-complete","timestamp":"2026-01-22T08:28:34.061Z"}

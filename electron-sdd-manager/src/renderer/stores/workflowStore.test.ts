@@ -15,6 +15,7 @@ describe('useWorkflowStore', () => {
     // Reset store state
     // Note: isAutoExecuting, currentAutoPhase, autoExecutionStatus have been removed
     // as part of spec-scoped-auto-execution-state Task 5.1 migration
+    // inspection-permission-unification: inspectionAutoExecutionFlag removed
     useWorkflowStore.setState({
       autoExecutionPermissions: { ...DEFAULT_AUTO_EXECUTION_PERMISSIONS },
       lastFailedPhase: null,
@@ -24,6 +25,7 @@ describe('useWorkflowStore', () => {
       documentReviewOptions: { autoExecutionFlag: 'pause' },
       // bugs-workflow-auto-execution: Reset bug auto execution permissions
       bugAutoExecutionPermissions: { ...DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS },
+      // inspection-permission-unification: inspectionAutoExecutionFlag removed from state
     });
   });
 
@@ -78,6 +80,7 @@ describe('useWorkflowStore', () => {
   // ============================================================
   // Task 2.1: Auto Execution Permissions
   // Requirements: 5.1, 5.2, 5.3
+  // inspection-permission-unification: inspection default changed to true
   // ============================================================
   describe('Task 2.1: Auto execution permissions', () => {
     describe('initial state', () => {
@@ -86,12 +89,18 @@ describe('useWorkflowStore', () => {
         expect(state.autoExecutionPermissions.requirements).toBe(true);
       });
 
+      // inspection-permission-unification: inspection is now true by default
+      it('should have inspection permitted by default (inspection-permission-unification)', () => {
+        const state = useWorkflowStore.getState();
+        expect(state.autoExecutionPermissions.inspection).toBe(true);
+      });
+
       it('should have other phases not permitted by default', () => {
         const state = useWorkflowStore.getState();
         expect(state.autoExecutionPermissions.design).toBe(false);
         expect(state.autoExecutionPermissions.tasks).toBe(false);
         expect(state.autoExecutionPermissions.impl).toBe(false);
-        expect(state.autoExecutionPermissions.inspection).toBe(false);
+        // inspection is now true by default - tested separately above
         expect(state.autoExecutionPermissions.deploy).toBe(false);
       });
     });
@@ -475,6 +484,44 @@ describe('useWorkflowStore', () => {
         // Back to pause
         useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
         expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
+      });
+    });
+  });
+
+  // ============================================================
+  // inspection-permission-unification Task 9.1: Inspection Permission Unification Tests
+  // Requirements: 9.1, 9.2, 9.3
+  // ============================================================
+  describe('inspection-permission-unification: Inspection permission state', () => {
+    describe('deprecated field removal', () => {
+      it('should NOT have inspectionAutoExecutionFlag field (deprecated)', () => {
+        const state = useWorkflowStore.getState();
+        expect(state).not.toHaveProperty('inspectionAutoExecutionFlag');
+      });
+
+      it('should NOT have setInspectionAutoExecutionFlag action (deprecated)', () => {
+        const state = useWorkflowStore.getState();
+        expect(state).not.toHaveProperty('setInspectionAutoExecutionFlag');
+      });
+    });
+
+    describe('permissions.inspection default value', () => {
+      it('should have inspection true by default in DEFAULT_AUTO_EXECUTION_PERMISSIONS', () => {
+        expect(DEFAULT_AUTO_EXECUTION_PERMISSIONS.inspection).toBe(true);
+      });
+
+      it('should use permissions.inspection for auto execution control', () => {
+        const state = useWorkflowStore.getState();
+        // Initial state should have inspection permission as true
+        expect(state.autoExecutionPermissions.inspection).toBe(true);
+
+        // Toggle to false
+        state.toggleAutoPermission('inspection');
+        expect(useWorkflowStore.getState().autoExecutionPermissions.inspection).toBe(false);
+
+        // Toggle back to true
+        useWorkflowStore.getState().toggleAutoPermission('inspection');
+        expect(useWorkflowStore.getState().autoExecutionPermissions.inspection).toBe(true);
       });
     });
   });

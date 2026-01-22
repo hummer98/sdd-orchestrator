@@ -22,7 +22,10 @@ import type {
   DocumentReviewFlag,
   AutoExecutionStatus,
   SpecAutoExecutionState,
+  ApprovalStatus,
 } from '@renderer/types';
+
+import type { WorktreeConfig } from '@shared/types/worktree';
 
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
 
@@ -32,11 +35,20 @@ import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
 // =============================================================================
 
 /**
- * SpecMetadata with path for Remote UI use
- * WebSocket API still returns path, so Remote UI needs this extended type
+ * SpecMetadata with path and additional fields for Remote UI use
+ * WebSocket API returns extended information to avoid additional GET_SPEC_DETAIL calls
+ * remote-ui-spec-list-optimization: Include phase, updatedAt, worktree, approvals
  */
 export interface SpecMetadataWithPath extends SpecMetadata {
   readonly path: string;
+  /** Spec phase from spec.json */
+  readonly phase: SpecPhase;
+  /** Last updated timestamp from spec.json */
+  readonly updatedAt: string;
+  /** Worktree configuration if enabled */
+  readonly worktree?: WorktreeConfig;
+  /** Approval status for each phase */
+  readonly approvals?: ApprovalStatus;
 }
 
 /**

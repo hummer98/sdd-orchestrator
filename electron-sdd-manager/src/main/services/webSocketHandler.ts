@@ -59,8 +59,19 @@ export interface SpecInfo {
 export type BugPhase = 'reported' | 'analyzed' | 'fixed' | 'verified' | 'deployed';
 
 /**
+ * Bug worktree configuration for state distribution
+ * remote-ui-bug-list-optimization: Include worktree info in GET_BUGS response
+ */
+export interface BugWorktreeInfo {
+  readonly path: string;
+  readonly branch: string;
+  readonly created_at: string;
+}
+
+/**
  * Bug information for state distribution
  * Requirements: 1.2 (Task 1.2 - BugInfo interface)
+ * remote-ui-bug-list-optimization: Added worktree and worktreeBasePath fields
  */
 export interface BugInfo {
   readonly name: string;
@@ -68,6 +79,10 @@ export interface BugInfo {
   readonly phase: BugPhase;
   readonly updatedAt: string;
   readonly reportedAt: string;
+  /** Worktree configuration (optional) - for UI display */
+  readonly worktree?: BugWorktreeInfo;
+  /** Worktree base path (directory mode) */
+  readonly worktreeBasePath?: string;
 }
 
 /**
@@ -583,12 +598,26 @@ export class WebSocketHandler {
    * Requirements: 2.1 (Task 2.1 - INIT message with bugs)
    */
   private async sendInitMessage(client: ClientInfo): Promise<void> {
+    this.debugLog('INIT', 'preparing INIT message', {
+      clientId: client.id,
+      hasStateProvider: !!this.stateProvider,
+    });
+
     const project = this.stateProvider?.getProjectPath() || '';
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
     const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
     const agents = this.stateProvider?.getAgents ? await this.stateProvider.getAgents() : [];
     const version = this.stateProvider?.getVersion ? this.stateProvider.getVersion() : '';
     const logs = this.config.logBuffer.getAll();
+
+    this.debugLog('INIT', 'sending INIT message', {
+      clientId: client.id,
+      project,
+      specCount: specs.length,
+      bugCount: bugs.length,
+      agentCount: agents.length,
+      logCount: logs.length,
+    });
 
     this.send(client.id, {
       type: 'INIT',
@@ -605,16 +634,33 @@ export class WebSocketHandler {
   }
 
   /**
+   * Debug log helper - logs when WS_HANDLER_DEBUG env is set
+   */
+  private debugLog(category: string, message: string, data?: unknown): void {
+    if (process.env.WS_HANDLER_DEBUG === 'true') {
+      const timestamp = new Date().toISOString();
+      if (data !== undefined) {
+        console.log(`[WS-Handler][${timestamp}][${category}] ${message}`, JSON.stringify(data));
+      } else {
+        console.log(`[WS-Handler][${timestamp}][${category}] ${message}`);
+      }
+    }
+  }
+
+  /**
    * Handle incoming message from a client
    *
    * @param client Client information
    * @param data Raw message data
    */
   private async handleMessage(client: ClientInfo, data: Buffer | string): Promise<void> {
+    const startTime = Date.now();
+
     // Rate limiting check
     const allowed = await this.config.rateLimiter.consume(client.ip);
     if (!allowed) {
       const resetTime = await this.config.rateLimiter.getResetTime(client.ip);
+      this.debugLog('RATE', `rate limited: ${client.id}`);
       this.send(client.id, {
         type: 'RATE_LIMITED',
         payload: { retryAfter: resetTime },
@@ -628,8 +674,14 @@ export class WebSocketHandler {
     try {
       const messageStr = typeof data === 'string' ? data : data.toString('utf-8');
       message = JSON.parse(messageStr);
+      this.debugLog('RECV', `received: ${message.type}`, {
+        clientId: client.id,
+        requestId: message.requestId,
+        hasPayload: !!message.payload,
+      });
     } catch {
       // Invalid JSON - send error response
+      this.debugLog('ERROR', 'invalid JSON from client', { clientId: client.id });
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'INVALID_JSON', message: 'Invalid JSON format' },
@@ -640,6 +692,10 @@ export class WebSocketHandler {
 
     // Validate message structure
     if (!this.isValidMessage(message)) {
+      this.debugLog('ERROR', 'invalid message structure', {
+        clientId: client.id,
+        receivedType: (message as { type?: unknown }).type,
+      });
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'INVALID_MESSAGE', message: 'Invalid message structure' },
@@ -649,7 +705,19 @@ export class WebSocketHandler {
     }
 
     // Route message to appropriate handler
-    await this.routeMessage(client, message);
+    try {
+      await this.routeMessage(client, message);
+      const elapsed = Date.now() - startTime;
+      this.debugLog('DONE', `handled: ${message.type}`, { clientId: client.id, elapsed });
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      this.debugLog('ERROR', `handler error: ${message.type}`, {
+        clientId: client.id,
+        elapsed,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -1017,7 +1085,19 @@ export class WebSocketHandler {
    * Response payload is the specs array directly for compatibility with wrapRequest
    */
   private async handleGetSpecs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    this.debugLog('GET_SPECS', 'fetching specs', {
+      clientId: client.id,
+      requestId: message.requestId,
+      hasStateProvider: !!this.stateProvider,
+    });
+
     const specs = this.stateProvider ? await this.stateProvider.getSpecs() : [];
+
+    this.debugLog('GET_SPECS', 'sending response', {
+      clientId: client.id,
+      requestId: message.requestId,
+      specCount: specs.length,
+    });
 
     this.send(client.id, {
       type: 'SPECS_UPDATED',
@@ -1034,7 +1114,20 @@ export class WebSocketHandler {
    * Response payload is the bugs array directly for compatibility with wrapRequest
    */
   private async handleGetBugs(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    this.debugLog('GET_BUGS', 'fetching bugs', {
+      clientId: client.id,
+      requestId: message.requestId,
+      hasStateProvider: !!this.stateProvider,
+      hasBugsMethod: !!this.stateProvider?.getBugs,
+    });
+
     const bugs = this.stateProvider?.getBugs ? await this.stateProvider.getBugs() : [];
+
+    this.debugLog('GET_BUGS', 'sending response', {
+      clientId: client.id,
+      requestId: message.requestId,
+      bugCount: bugs.length,
+    });
 
     this.send(client.id, {
       type: 'BUGS_UPDATED',

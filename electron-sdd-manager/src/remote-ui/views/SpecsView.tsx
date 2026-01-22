@@ -8,7 +8,8 @@
  * SpecListItemを使用したリスト表示（検索・フィルタリング）。
  *
  * Requirements: 7.1
- * spec-metadata-ssot-refactor: Build SpecMetadataWithPhase from specJson
+ * remote-ui-spec-list-optimization: Use phase/updatedAt/worktree from WebSocket response
+ * instead of calling GET_SPEC_DETAIL for each spec (fixes rate limiting issue)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -17,7 +18,7 @@ import { clsx } from 'clsx';
 import { SpecListItem } from '@shared/components/spec/SpecListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
 import { useSpecListLogic } from '@shared/hooks';
-import type { ApiClient, SpecMetadataWithPath, SpecJson } from '@shared/api/types';
+import type { ApiClient, SpecMetadataWithPath } from '@shared/api/types';
 
 // =============================================================================
 // Types
@@ -44,20 +45,21 @@ export function SpecsView({
 }: SpecsViewProps): React.ReactElement {
   // State
   // spec-path-ssot-refactor: Remote UI receives SpecMetadataWithPath from WebSocket
+  // remote-ui-spec-list-optimization: SpecMetadataWithPath now includes phase/updatedAt/worktree
   const [specs, setSpecs] = useState<SpecMetadataWithPath[]>([]);
-  /** spec-metadata-ssot-refactor: Map from spec name to SpecJson for phase/updatedAt */
-  const [specJsonMap, setSpecJsonMap] = useState<Map<string, SpecJson>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // spec-list-unification: Use shared hook for sorting/filtering
+  // remote-ui-spec-list-optimization: specs already include phase/updatedAt, no specJsonMap needed
   const { filteredSpecs, searchQuery, setSearchQuery } = useSpecListLogic({
     specs,
-    specJsonMap,
     enableTextSearch: true,
   });
 
   // Load specs on mount
+  // remote-ui-spec-list-optimization: No need to call GET_SPEC_DETAIL for each spec
+  // SpecMetadataWithPath now includes phase/updatedAt/worktree from WebSocket response
   useEffect(() => {
     let isMounted = true;
 
@@ -71,39 +73,14 @@ export function SpecsView({
 
       if (result.ok) {
         // spec-path-ssot-refactor: WebSocket API returns SpecMetadataWithPath
-        // Cast the result to the correct type
+        // remote-ui-spec-list-optimization: Now includes phase/updatedAt/worktree
         const specsWithPath = result.value as unknown as SpecMetadataWithPath[];
         setSpecs(specsWithPath);
-        // spec-metadata-ssot-refactor: Load specJsons for all specs
-        await loadSpecJsons(specsWithPath);
       } else {
         setError(result.error.message);
       }
 
       setIsLoading(false);
-    }
-
-    /**
-     * Load specJsons for all specs
-     * spec-metadata-ssot-refactor: Task 8.1 - Build specJsonMap in Remote UI
-     */
-    async function loadSpecJsons(specList: SpecMetadataWithPath[]) {
-      const newMap = new Map<string, SpecJson>();
-
-      for (const spec of specList) {
-        try {
-          const result = await apiClient.getSpecDetail(spec.name);
-          if (result.ok && result.value.specJson) {
-            newMap.set(spec.name, result.value.specJson as SpecJson);
-          }
-        } catch (e) {
-          console.warn(`[SpecsView] Failed to load specJson for ${spec.name}:`, e);
-        }
-      }
-
-      if (isMounted) {
-        setSpecJsonMap(newMap);
-      }
     }
 
     loadSpecs();
@@ -114,24 +91,13 @@ export function SpecsView({
   }, [apiClient]);
 
   // Subscribe to spec updates
+  // remote-ui-spec-list-optimization: No need to call GET_SPEC_DETAIL
+  // SpecMetadataWithPath from WebSocket already includes phase/updatedAt/worktree
   useEffect(() => {
-    const unsubscribe = apiClient.onSpecsUpdated(async (updatedSpecs) => {
+    const unsubscribe = apiClient.onSpecsUpdated((updatedSpecs) => {
       // spec-path-ssot-refactor: WebSocket API returns SpecMetadataWithPath
       const specsWithPath = updatedSpecs as unknown as SpecMetadataWithPath[];
       setSpecs(specsWithPath);
-      // spec-metadata-ssot-refactor: Also reload specJsons on update
-      const newMap = new Map<string, SpecJson>();
-      for (const spec of specsWithPath) {
-        try {
-          const result = await apiClient.getSpecDetail(spec.name);
-          if (result.ok && result.value.specJson) {
-            newMap.set(spec.name, result.value.specJson as SpecJson);
-          }
-        } catch (e) {
-          console.warn(`[SpecsView] Failed to load specJson for ${spec.name}:`, e);
-        }
-      }
-      setSpecJsonMap(newMap);
     });
 
     return unsubscribe;
@@ -230,11 +196,10 @@ export function SpecsView({
             {/* remote-ui-vanilla-removal: Added remote-spec-list wrapper for E2E */}
             <div data-testid="remote-spec-list">
               {filteredSpecs.map((specWithPhase) => {
-                // git-worktree-support: Task 13.1 - Get worktree info from specJsonMap
-                const specJson = specJsonMap.get(specWithPhase.name);
-                const worktree = specJson?.worktree;
-                // spec-path-ssot-refactor: Get original spec with path for selection callback
+                // remote-ui-spec-list-optimization: Get worktree info directly from specs
+                // (SpecMetadataWithPath now includes worktree from WebSocket response)
                 const originalSpec = specs.find((s) => s.name === specWithPhase.name);
+                const worktree = originalSpec?.worktree;
 
                 return (
                   <div key={specWithPhase.name} data-testid={`remote-spec-item-${specWithPhase.name}`}>

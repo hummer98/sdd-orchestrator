@@ -21,10 +21,13 @@ import type {
 // =============================================================================
 
 export interface UseSpecListLogicOptions {
-  /** Spec list (requires name property) */
-  specs: readonly { name: string }[];
-  /** Map of spec name to SpecJson */
-  specJsonMap: ReadonlyMap<string, SpecJson> | Map<string, SpecJson>;
+  /** Spec list (requires name property, optionally phase/updatedAt) */
+  specs: readonly { name: string; phase?: SpecPhase; updatedAt?: string }[];
+  /**
+   * Map of spec name to SpecJson (optional if specs already contain phase/updatedAt)
+   * remote-ui-spec-list-optimization: Made optional for Remote UI where specs include phase/updatedAt
+   */
+  specJsonMap?: ReadonlyMap<string, SpecJson> | Map<string, SpecJson>;
   /** Initial sort field (default: 'updatedAt') */
   initialSortBy?: SpecSortBy;
   /** Initial sort order (default: 'desc') */
@@ -103,9 +106,19 @@ export function useSpecListLogic(options: UseSpecListLogicOptions): UseSpecListL
   const [searchQuery, setSearchQueryState] = useState('');
 
   // Convert to SpecMetadataWithPhase
+  // remote-ui-spec-list-optimization: Use spec's phase/updatedAt if available, fallback to specJsonMap
   const specsWithPhase = useMemo((): SpecMetadataWithPhase[] => {
     return specs.map((spec) => {
-      const specJson = specJsonMap.get(spec.name);
+      // If spec already has phase/updatedAt (e.g., from WebSocket API), use them directly
+      if (spec.phase && spec.updatedAt) {
+        return {
+          name: spec.name,
+          phase: spec.phase,
+          updatedAt: spec.updatedAt,
+        };
+      }
+      // Fallback to specJsonMap for backward compatibility
+      const specJson = specJsonMap?.get(spec.name);
       return {
         name: spec.name,
         phase: specJson?.phase ?? UNKNOWN_PHASE,

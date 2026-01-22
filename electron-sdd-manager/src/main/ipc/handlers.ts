@@ -491,6 +491,8 @@ export async function setProjectPath(projectPath: string): Promise<void> {
             path: specPath,
             updatedAt: specJsonResult.value.updated_at || '',
             approvals: specJsonResult.value.approvals,
+            // remote-ui-spec-list-optimization: Include worktree info to avoid GET_SPEC_DETAIL calls
+            worktree: specJsonResult.value.worktree,
           });
         } else {
           // Use default values if specJson cannot be read
@@ -518,6 +520,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Get bugs for remote access
   // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
+  // remote-ui-bug-list-optimization: Include worktree info to avoid GET_BUG_DETAIL calls
   const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
     const result = await bugService.readBugs(projectPath);
     if (!result.ok) {
@@ -535,6 +538,9 @@ export async function setProjectPath(projectPath: string): Promise<void> {
         phase: bug.phase,
         updatedAt: bug.updatedAt,
         reportedAt: bug.reportedAt,
+        // remote-ui-bug-list-optimization: Include worktree info from BugMetadata
+        worktree: bug.worktree,
+        worktreeBasePath: bug.worktreeBasePath,
       });
     }
     return bugInfos;

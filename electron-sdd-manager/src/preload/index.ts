@@ -2093,6 +2093,22 @@ const electronAPI = {
     error: import('../main/services/ccSddWorkflowInstaller').InstallError;
   }> =>
     ipcRenderer.invoke(IPC_CHANNELS.CONFIRM_COMMON_COMMANDS, projectPath, decisions),
+
+  // ============================================================
+  // Parallel Task Execution (parallel-task-impl feature)
+  // Requirements: 2.1 - Parse tasks.md for parallel execution
+  // ============================================================
+
+  /**
+   * Parse tasks.md for parallel execution markers
+   * Detects (P) markers and groups consecutive parallel tasks
+   * @param specName Spec name (directory name)
+   * @returns ParseResult with grouped tasks, or null if tasks.md not found
+   */
+  parseTasksForParallel: (
+    specName: string
+  ): Promise<import('../main/services/taskParallelParser').ParseResult | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PARSE_TASKS_FOR_PARALLEL, specName),
 };
 
 // Expose API to renderer

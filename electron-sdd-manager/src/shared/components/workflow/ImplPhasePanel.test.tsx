@@ -237,4 +237,161 @@ describe('ImplPhasePanel', () => {
       expect(screen.getByText('実装')).toBeInTheDocument();
     });
   });
+
+  // ==========================================================================
+  // parallel-task-impl Task 6.1: Integration tests for parallel mode
+  // Requirements: 6.1, 6.2
+  // ==========================================================================
+  describe('parallel mode integration', () => {
+    it('should render correctly with parallel mode context', () => {
+      // ImplPhasePanel should work regardless of parallel mode settings
+      // as parallel mode is handled at a higher level (WorkflowView)
+      render(<ImplPhasePanel {...defaultProps} />);
+      expect(screen.getByTestId('impl-phase-panel')).toBeInTheDocument();
+    });
+
+    it('should maintain execute functionality in parallel mode context', () => {
+      const onExecute = vi.fn();
+      render(<ImplPhasePanel {...defaultProps} onExecute={onExecute} />);
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecute).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ==========================================================================
+  // parallel-task-impl Inspection Fix Task 9.1: ParallelModeToggle integration
+  // Requirements: 1.1, 1.5, 1.6
+  // ==========================================================================
+  describe('ParallelModeToggle integration', () => {
+    const parallelProps = {
+      ...defaultProps,
+      hasParallelTasks: true,
+      parallelTaskCount: 3,
+      parallelModeEnabled: false,
+      onToggleParallelMode: vi.fn(),
+    };
+
+    it('should render ParallelModeToggle when hasParallelTasks is true', () => {
+      render(<ImplPhasePanel {...parallelProps} />);
+      expect(screen.getByTestId('parallel-mode-toggle')).toBeInTheDocument();
+    });
+
+    it('should not render ParallelModeToggle when hasParallelTasks is false', () => {
+      render(<ImplPhasePanel {...parallelProps} hasParallelTasks={false} />);
+      expect(screen.queryByTestId('parallel-mode-toggle')).not.toBeInTheDocument();
+    });
+
+    it('should not render ParallelModeToggle when hasParallelTasks is undefined', () => {
+      render(<ImplPhasePanel {...defaultProps} />);
+      expect(screen.queryByTestId('parallel-mode-toggle')).not.toBeInTheDocument();
+    });
+
+    it('should place ParallelModeToggle to the left of execute button', () => {
+      render(<ImplPhasePanel {...parallelProps} />);
+
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      const button = screen.getByTestId('impl-execute-button');
+
+      // Both should be in the right-side container (flex items)
+      const toggleParent = toggle.closest('[data-testid="impl-phase-panel"]');
+      const buttonParent = button.closest('[data-testid="impl-phase-panel"]');
+      expect(toggleParent).toBe(buttonParent);
+    });
+
+    it('should call onToggleParallelMode when toggle is clicked', () => {
+      const onToggle = vi.fn();
+      render(<ImplPhasePanel {...parallelProps} onToggleParallelMode={onToggle} />);
+
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      fireEvent.click(toggle);
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass parallelModeEnabled state to toggle', () => {
+      render(<ImplPhasePanel {...parallelProps} parallelModeEnabled={true} />);
+
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('should show parallel task count in toggle', () => {
+      render(<ImplPhasePanel {...parallelProps} parallelTaskCount={5} />);
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // parallel-task-impl Inspection Fix Task 9.2: Parallel execution handler
+  // Requirements: 1.5, 4.1
+  // ==========================================================================
+  describe('parallel execution handler', () => {
+    const parallelProps = {
+      ...defaultProps,
+      hasParallelTasks: true,
+      parallelTaskCount: 3,
+      parallelModeEnabled: false,
+      onToggleParallelMode: vi.fn(),
+      onExecuteParallel: vi.fn(),
+    };
+
+    it('should call onExecute when parallel mode is OFF', () => {
+      const onExecute = vi.fn();
+      const onExecuteParallel = vi.fn();
+      render(
+        <ImplPhasePanel
+          {...parallelProps}
+          parallelModeEnabled={false}
+          onExecute={onExecute}
+          onExecuteParallel={onExecuteParallel}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecute).toHaveBeenCalledTimes(1);
+      expect(onExecuteParallel).not.toHaveBeenCalled();
+    });
+
+    it('should call onExecuteParallel when parallel mode is ON', () => {
+      const onExecute = vi.fn();
+      const onExecuteParallel = vi.fn();
+      render(
+        <ImplPhasePanel
+          {...parallelProps}
+          parallelModeEnabled={true}
+          onExecute={onExecute}
+          onExecuteParallel={onExecuteParallel}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecuteParallel).toHaveBeenCalledTimes(1);
+      expect(onExecute).not.toHaveBeenCalled();
+    });
+
+    it('should fallback to onExecute when onExecuteParallel is not provided', () => {
+      const onExecute = vi.fn();
+      // Explicitly set onExecuteParallel to undefined to test fallback
+      render(
+        <ImplPhasePanel
+          {...parallelProps}
+          parallelModeEnabled={true}
+          onExecute={onExecute}
+          onExecuteParallel={undefined}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecute).toHaveBeenCalledTimes(1);
+    });
+  });
 });

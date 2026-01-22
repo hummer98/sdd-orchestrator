@@ -60,6 +60,8 @@ import {
 import { CommandsetVersionService } from '../services/commandsetVersionService';
 // spec-event-log: Event log service import
 import { getDefaultEventLogService } from '../services/eventLogService';
+// parallel-task-impl: Task parser for parallel execution
+import { parseTasksContent, type ParseResult } from '../services/taskParallelParser';
 
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
@@ -2424,6 +2426,53 @@ export function registerIpcHandlers(): void {
     }
   );
   logger.info('[handlers] Event Log handlers registered');
+
+  // ============================================================
+  // Parallel Task Parser (parallel-task-impl feature)
+  // Requirements: 2.1 - Parse tasks.md for parallel execution
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.PARSE_TASKS_FOR_PARALLEL,
+    async (_event, specName: string): Promise<ParseResult | null> => {
+      logger.debug('[handlers] PARSE_TASKS_FOR_PARALLEL called', { specName });
+
+      if (!currentProjectPath) {
+        logger.error('[handlers] PARSE_TASKS_FOR_PARALLEL: No project path set');
+        return null;
+      }
+
+      try {
+        // Resolve spec path and read tasks.md content
+        const specPathResult = await fileService.resolveSpecPath(currentProjectPath, specName);
+        if (!specPathResult.ok) {
+          logger.warn('[handlers] PARSE_TASKS_FOR_PARALLEL: spec path resolution failed', { specName, error: specPathResult.error });
+          return null;
+        }
+
+        const tasksPath = path.join(specPathResult.value, 'tasks.md');
+        const tasksContentResult = await fileService.readArtifact(tasksPath);
+        if (!tasksContentResult.ok) {
+          logger.warn('[handlers] PARSE_TASKS_FOR_PARALLEL: tasks.md not found', { specName, tasksPath });
+          return null;
+        }
+
+        // Parse and return result
+        const result = parseTasksContent(tasksContentResult.value);
+        logger.debug('[handlers] PARSE_TASKS_FOR_PARALLEL result', {
+          specName,
+          totalTasks: result.totalTasks,
+          parallelTasks: result.parallelTasks,
+          groupCount: result.groups.length,
+        });
+
+        return result;
+      } catch (error) {
+        logger.error('[handlers] PARSE_TASKS_FOR_PARALLEL failed', { specName, error });
+        return null;
+      }
+    }
+  );
+  logger.info('[handlers] Parallel Task Parser handlers registered');
 
   // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService

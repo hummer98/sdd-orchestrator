@@ -10,7 +10,7 @@
  * debatex-document-review Inspection Fix 7.1: Use getResolvedScheme for SSOT compliance
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { useSpecStore } from '../stores/specStore';
 import { useWorkflowStore } from '../stores/workflowStore';
@@ -34,6 +34,8 @@ import { useConvertToWorktree } from '../hooks/useConvertToWorktree';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 // debatex-document-review Inspection Fix 7.1: Import getResolvedScheme for SSOT
 import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
+// parallel-task-impl: Task 10.1 - Import parallelModeStore for toggle state management
+import { useParallelModeStore } from '@shared/stores/parallelModeStore';
 import {
   ALL_WORKFLOW_PHASES,
   DISPLAY_PHASES,
@@ -67,6 +69,16 @@ export function WorkflowView() {
   // convert-spec-to-worktree: Task 3.3 - Convert to Worktree Hook
   const { isOnMain, isConverting, handleConvert: handleConvertToWorktree } = useConvertToWorktree();
 
+  // ============================================================
+  // parallel-task-impl: Task 10.1 - Parallel Mode Store Integration
+  // Requirements: 1.1, 1.2, 1.5
+  // ============================================================
+  const parallelModeEnabled = useParallelModeStore((state) => state.parallelModeEnabled);
+  const toggleParallelMode = useParallelModeStore((state) => state.toggleParallelMode);
+  const setParseResult = useParallelModeStore((state) => state.setParseResult);
+  const getParseResult = useParallelModeStore((state) => state.getParseResult);
+  const hasParallelTasks = useParallelModeStore((state) => state.hasParallelTasks);
+
   // agent-launch-optimistic-ui: Optimistic UI state management
   // Provides immediate visual feedback when buttons are clicked
   const { launching, wrapExecution } = useLaunchingState();
@@ -92,6 +104,43 @@ export function WorkflowView() {
   const [eventLogEntries, setEventLogEntries] = useState<EventLogEntry[]>([]);
   const [eventLogLoading, setEventLogLoading] = useState(false);
   const [eventLogError, setEventLogError] = useState<EventLogError | null>(null);
+
+  // ============================================================
+  // parallel-task-impl: Task 10.1 - Parse tasks.md for parallel execution
+  // Requirements: 1.1, 1.2, 1.5
+  // Fetch and cache parse results when spec changes
+  // ============================================================
+  useEffect(() => {
+    if (!specDetail?.metadata.name) {
+      return;
+    }
+
+    const specName = specDetail.metadata.name;
+
+    // Check if we already have cached results for this spec
+    const cachedResult = getParseResult(specName);
+    if (cachedResult) {
+      return;
+    }
+
+    // Fetch parse results from Main Process
+    const fetchParseResults = async () => {
+      try {
+        const parseResult = await window.electronAPI.parseTasksForParallel(specName);
+        if (parseResult) {
+          setParseResult(specName, {
+            groups: parseResult.groups,
+            totalTasks: parseResult.totalTasks,
+            parallelTasks: parseResult.parallelTasks,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse tasks for parallel:', error);
+      }
+    };
+
+    fetchParseResults();
+  }, [specDetail?.metadata.name, getParseResult, setParseResult]);
 
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
@@ -487,6 +536,83 @@ export function WorkflowView() {
   }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   // ============================================================
+  // parallel-task-impl: Task 10.3 - Parallel Execution Handler
+  // Requirements: 4.1, 4.4, 4.5
+  // Executes parallel tasks group by group using existing executeTaskImpl API
+  // ============================================================
+  const handleParallelExecute = useCallback(async () => {
+    if (!specDetail) return;
+
+    const specName = specDetail.metadata.name;
+    const parseResult = getParseResult(specName);
+
+    if (!parseResult || parseResult.groups.length === 0) {
+      notify.error('並列タスクが見つかりません');
+      return;
+    }
+
+    await wrapExecution(async () => {
+      // Get first pending parallel group
+      // For simplicity, execute only the first pending group's tasks in parallel
+      // The service will handle group progression when tasks complete
+      const groups = parseResult.groups as ReadonlyArray<{
+        readonly groupIndex: number;
+        readonly tasks: ReadonlyArray<{
+          readonly id: string;
+          readonly title: string;
+          readonly isParallel: boolean;
+          readonly completed: boolean;
+          readonly parentId: string | null;
+        }>;
+        readonly isParallel: boolean;
+      }>;
+
+      // Find first group with pending (uncompleted) tasks
+      const pendingGroup = groups.find((group) =>
+        group.tasks.some((task) => !task.completed)
+      );
+
+      if (!pendingGroup) {
+        notify.info('全てのタスクが完了しています');
+        return;
+      }
+
+      // Get pending tasks from this group
+      const pendingTasks = pendingGroup.tasks.filter((task) => !task.completed);
+
+      if (pendingTasks.length === 0) {
+        notify.info('実行可能なタスクがありません');
+        return;
+      }
+
+      // Execute all pending tasks in the group in parallel
+      // Using Promise.all to launch all tasks simultaneously
+      // MAX_CONCURRENT_SPECS limit is handled by the Main Process
+      const executePromises = pendingTasks.map((task) =>
+        window.electronAPI.execute({
+          type: 'impl',
+          specId: specName,
+          featureName: specName,
+          taskId: task.id,
+          commandPrefix: workflowStore.commandPrefix,
+        }).catch((error) => {
+          console.error(`Failed to start task ${task.id}:`, error);
+          return null;
+        })
+      );
+
+      const results = await Promise.all(executePromises);
+      const successCount = results.filter((r) => r !== null).length;
+
+      if (successCount > 0) {
+        notify.success(`${successCount}個のタスクを並列起動しました`);
+      } else {
+        notify.error('タスクの起動に失敗しました');
+      }
+    });
+  }, [specDetail, getParseResult, workflowStore.commandPrefix, wrapExecution]);
+
+  // ============================================================
   // Task 14.2, 14.3: Impl start button handlers (git-worktree-support)
   // Requirements: 9.4, 9.5, 9.6, 9.7
   // ============================================================
@@ -501,6 +627,26 @@ export function WorkflowView() {
     // Can start impl if tasks phase is approved and no agents are running
     return phaseStatuses.tasks === 'approved' && runningPhases.size === 0;
   }, [phaseStatuses.tasks, runningPhases.size]);
+
+  // ============================================================
+  // parallel-task-impl: Task 10.2 - Parallel Mode Props Calculation
+  // Requirements: 1.1, 1.5, 1.6
+  // ============================================================
+
+  // Check if current spec has parallel tasks
+  const specHasParallelTasks = useMemo(() => {
+    const specName = specDetail?.metadata.name;
+    if (!specName) return false;
+    return hasParallelTasks(specName);
+  }, [specDetail?.metadata.name, hasParallelTasks]);
+
+  // Get parallel task count for current spec
+  const parallelTaskCount = useMemo(() => {
+    const specName = specDetail?.metadata.name;
+    if (!specName) return 0;
+    const result = getParseResult(specName);
+    return result?.parallelTasks ?? 0;
+  }, [specDetail?.metadata.name, getParseResult]);
 
   // ============================================================
   // worktree-mode-spec-scoped: ImplFlowFrame integration
@@ -661,6 +807,7 @@ export function WorkflowView() {
         </div>
 
         {/* ImplPhasePanel - worktree-aware implementation phase */}
+        {/* parallel-task-impl: Task 10.2 - Pass parallel mode props */}
         <ImplPhasePanel
           worktreeModeSelected={isWorktreeModeSelected}
           isImplStarted={hasImplStarted}
@@ -671,6 +818,11 @@ export function WorkflowView() {
           isAutoPhase={isAutoExecuting && currentAutoPhase === 'impl'}
           onExecute={handleImplExecute}
           onToggleAutoPermission={() => workflowStore.toggleAutoPermission('impl')}
+          hasParallelTasks={specHasParallelTasks}
+          parallelTaskCount={parallelTaskCount}
+          parallelModeEnabled={parallelModeEnabled}
+          onToggleParallelMode={toggleParallelMode}
+          onExecuteParallel={handleParallelExecute}
         />
 
         {/* Task Progress (for impl phase) */}

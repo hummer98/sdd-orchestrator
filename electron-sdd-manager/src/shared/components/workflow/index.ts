@@ -10,3 +10,7 @@ export type { PhaseItemProps, WorkflowPhase, PhaseStatus } from './PhaseItem';
 // impl-flow-hierarchy-fix Task 2.1: Impl phase panel component
 export { ImplPhasePanel } from './ImplPhasePanel';
 export type { ImplPhasePanelProps } from './ImplPhasePanel';
+
+// parallel-task-impl Task 5: Parallel mode toggle component
+export { ParallelModeToggle } from './ParallelModeToggle';
+export type { ParallelModeToggleProps } from './ParallelModeToggle';

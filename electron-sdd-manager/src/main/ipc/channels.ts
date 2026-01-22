@@ -326,6 +326,10 @@ export const IPC_CHANNELS = {
   // Common Commands Install (common-commands-installer feature)
   // Requirements: 3.4, 3.5
   CONFIRM_COMMON_COMMANDS: 'ipc:confirm-common-commands',
+
+  // Parallel Task Execution (parallel-task-impl feature)
+  // Requirements: 2.1 - Parse tasks.md for parallel execution
+  PARSE_TASKS_FOR_PARALLEL: 'ipc:parse-tasks-for-parallel',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

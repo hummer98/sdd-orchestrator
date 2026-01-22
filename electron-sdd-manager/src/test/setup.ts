@@ -192,6 +192,8 @@ const mockElectronAPI = {
   stopBugsWatcher: vi.fn().mockResolvedValue(undefined),
   readBugs: vi.fn().mockResolvedValue([]),
   readBugJson: vi.fn().mockResolvedValue({}),
+  // parallel-task-impl: Task 10.1 - Parse tasks.md for parallel execution
+  parseTasksForParallel: vi.fn().mockResolvedValue(null),
 };
 
 Object.defineProperty(window, 'electronAPI', {

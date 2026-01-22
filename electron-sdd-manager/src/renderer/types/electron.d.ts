@@ -1387,6 +1387,19 @@ export interface ElectronAPI {
     ok: false;
     error: InstallError;
   }>;
+
+  // ============================================================
+  // Parallel Task Execution (parallel-task-impl feature)
+  // Requirements: 2.1 - Parse tasks.md for parallel execution
+  // ============================================================
+
+  /**
+   * Parse tasks.md for parallel execution markers
+   * Detects (P) markers and groups consecutive parallel tasks
+   * @param specName Spec name (directory name)
+   * @returns ParseResult with grouped tasks, or null if tasks.md not found
+   */
+  parseTasksForParallel(specName: string): Promise<import('../../main/services/taskParallelParser').ParseResult | null>;
 }
 
 declare global {

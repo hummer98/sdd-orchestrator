@@ -2,27 +2,27 @@
 
 ## Task 1: tasks.mdパーサー実装
 
-- [ ] 1.1 (P) tasks.mdパーサーのコアロジック実装
+- [x] 1.1 (P) tasks.mdパーサーのコアロジック実装
   - Markdown形式のtasks.mdを解析してタスク構造を抽出する
   - チェックボックス形式のタスク項目（`- [ ]` / `- [x]`）を識別する
   - タスクID（1.1, 2.3等）とタイトルを抽出する
   - 親タスク・サブタスクの階層関係を判定する
   - _Requirements: 2.1_
 
-- [ ] 1.2 (P) 並列実行マーカー(P)の検出と並列フラグ設定
+- [x] 1.2 (P) 並列実行マーカー(P)の検出と並列フラグ設定
   - タスク行内の`(P)`マークを検出する
   - 検出結果に基づいてisParallelフラグを設定する
   - 親タスクとサブタスクそれぞれで独立して(P)判定を行う
   - _Requirements: 2.2, 2.3_
 
-- [ ] 1.3 タスクグループ化ロジックの実装
+- [x] 1.3 タスクグループ化ロジックの実装
   - 連続する(P)マーク付きタスクを同一グループに分類する
   - 非(P)タスクを単独グループとして扱う
   - グループ順序をtasks.md内の出現順で決定する
   - グループ分類結果として、連続(P)→グループ、非(P)→単独グループの構造を返す
   - _Requirements: 2.4, 2.5, 3.1, 3.2, 3.3_
 
-- [ ] 1.4 パーサーの単体テスト作成
+- [x] 1.4 パーサーの単体テスト作成
   - 基本的なタスク解析テスト（タスクID、タイトル、完了状態）
   - (P)マーク検出テスト
   - グループ化ロジックテスト（連続(P)、非(P)、混在パターン）
@@ -31,32 +31,32 @@
 
 ## Task 2: Main側IPCエンドポイント追加
 
-- [ ] 2.1 IPCチャンネル定義の追加
+- [x] 2.1 IPCチャンネル定義の追加
   - PARSE_TASKS_FOR_PARALLELチャンネルを定義する（`ipc:parse-tasks-for-parallel`）
   - 既存のEXECUTE_TASK_IMPL、STOP_AGENT、AGENT_STATUS_CHANGEを活用確認
   - _Requirements: 2.1_
 
-- [ ] 2.2 tasks.md解析IPCハンドラ実装
+- [x] 2.2 tasks.md解析IPCハンドラ実装
   - SpecManagerServiceにparseTasksForParallelメソッドを追加する
   - PARSE_TASKS_FOR_PARALLELハンドラを実装する
   - specId, featureNameからtasks.mdを読み込みパーサーを呼び出す
   - ParseResult型でグループ化されたタスク情報を返却する
   - _Requirements: 2.1, 2.4_
 
-- [ ] 2.3 IPCハンドラの単体テスト作成
+- [x] 2.3 IPCハンドラの単体テスト作成
   - PARSE_TASKS_FOR_PARALLELハンドラのモックテスト
   - エラーケース（ファイル不在、パースエラー）のテスト
   - _Requirements: 2.1_
 
 ## Task 3: ParallelImplService実装
 
-- [ ] 3.1 ParallelImplServiceのコア状態管理実装
+- [x] 3.1 ParallelImplServiceのコア状態管理実装
   - ParallelImplState型の状態を管理するZustand storeを作成する
   - status、specId、featureName、currentGroupIndex、activeAgentIds、completedTasks、failedTasksを管理する
   - 状態遷移（idle→parsing→running→completed/error/cancelled）を実装する
   - _Requirements: 4.1, 5.1_
 
-- [ ] 3.2 グループ内タスク並列起動ロジック実装
+- [x] 3.2 グループ内タスク並列起動ロジック実装
   - グループ内のタスクを並列で既存`executeTaskImpl` IPC経由でAgent起動する
   - MAX_CONCURRENT_SPECS=5の上限を適用する
   - 上限超過時のキューイング処理を実装する
@@ -64,27 +64,27 @@
   - workflowStore.commandPrefixを使用してコマンドセットを選択する
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3.3 Agent完了検知とグループ進行制御の実装
+- [x] 3.3 Agent完了検知とグループ進行制御の実装
   - 既存`onAgentStatusChange`イベント経由でAgent完了を検知する
   - グループ内全タスク完了時に次グループへ自動進行する
   - 1回のボタン押下で全グループ完了まで継続する
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 3.4 エラーハンドリングの実装
+- [x] 3.4 エラーハンドリングの実装
   - Agent失敗ステータス検知時に失敗タスクIDを記録する
   - 失敗検知時に次グループへの進行を停止する
   - 実行中の他タスクは完了まで継続させる
   - ユーザーへエラー情報を通知する
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 3.5 キャンセル処理の実装
+- [x] 3.5 キャンセル処理の実装
   - cancelParallelImpl()メソッドを実装する
   - 新規タスク起動を停止する
   - 既存`stopAgent` IPC経由で実行中Claudeセッションを終了する
   - 状態をcancelledに更新する
   - _Requirements: 9.1, 9.2, 9.3_
 
-- [ ] 3.6 ParallelImplServiceの単体テスト作成
+- [x] 3.6 ParallelImplServiceの単体テスト作成
   - 状態遷移テスト
   - グループ進行ロジックテスト
   - エラーハンドリングテスト
@@ -93,7 +93,7 @@
 
 ## Task 4: preload API追加
 
-- [ ] 4. preloadスクリプトにRenderer API追加
+- [x] 4. preloadスクリプトにRenderer API追加
   - parseTasksForParallel APIを追加する（新規）
   - ElectronAPI型定義を更新する
   - 既存のexecuteTaskImpl、stopAgent、onAgentStatusChangeを活用（変更なし）
@@ -101,7 +101,7 @@
 
 ## Task 5: UIコンポーネント実装
 
-- [ ] 5.1 (P) ParallelModeToggleコンポーネント実装
+- [x] 5.1 (P) ParallelModeToggleコンポーネント実装
   - 「並列」スライド式トグルスイッチUIを実装する
   - OFF状態（デフォルト）: 逐次実装モード
   - ON状態: 並列実装モード
@@ -110,14 +110,14 @@
   - 既存ImplPhasePanelのUIデザインと一貫したスタイルを適用する
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 5.2 ImplPhasePanelへの並列モードトグル統合
+- [x] 5.2 ImplPhasePanelへの並列モードトグル統合
   - ImplPhasePanel内の「実装開始」ボタン横にParallelModeToggleを配置する
   - トグルON状態で実装開始ボタンクリック時に並列実装モードを起動する
   - トグルOFF状態で実装開始ボタンクリック時に既存の逐次実装モードを維持する
   - useLaunchingState()による実行中状態表示を維持する
   - _Requirements: 1.1, 1.5, 1.6, 8.1_
 
-- [ ] 5.3 UIコンポーネントの単体テスト作成
+- [x] 5.3 UIコンポーネントの単体テスト作成
   - ParallelModeToggleの有効/無効状態テスト
   - トグル状態切り替えテスト
   - 実装開始ボタンとの連携テスト
@@ -125,13 +125,13 @@
 
 ## Task 6: 統合テストとE2Eテスト
 
-- [ ] 6.1 統合テスト作成
+- [x] 6.1 統合テスト作成
   - IPC経由のtasks.md解析テスト
   - 複数Agent起動とステータス同期テスト
   - エラー発生時のグループ停止テスト
   - _Requirements: 2.1, 4.1, 6.1_
 
-- [ ] 6.2 E2Eテスト作成
+- [x] 6.2 E2Eテスト作成
   - 並列モードトグルON→実装開始→複数Agent起動確認
   - グループ完了→次グループ自動開始確認
   - キャンセル操作→新規起動停止確認
@@ -139,7 +139,7 @@
 
 ## Task 7: 既存機能との互換性確認
 
-- [ ] 7. 既存実装ボタンの動作確認と互換性テスト
+- [x] 7. 既存実装ボタンの動作確認と互換性テスト
   - 並列モードトグルOFF時に既存「実装開始」ボタンが現行動作を維持することを確認する
   - 並列実装完了後にTaskProgressViewが正常表示されることを確認する
   - 既存のexecuteTaskImpl、startAgent、agentRecordServiceインフラストラクチャとの整合性を確認する
@@ -147,12 +147,50 @@
 
 ## Task 8: 進捗表示の動作確認
 
-- [ ] 8. 並列実行時のAgentListPanel表示確認
+- [x] 8. 並列実行時のAgentListPanel表示確認
   - 複数Claudeセッション起動時に全Agentが一覧表示されることを確認する
   - 各Agentの完了ステータスが正しく表示されることを確認する
   - 既存のagentStore経由の表示機能で対応可能なことを検証する
   - 実装開始ボタンの実行中スピナー表示がuseLaunchingState()で正常動作することを確認する
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
+
+---
+
+## Inspection Fixes
+
+### Round 1 (2026-01-22)
+
+- [x] 9.1 ImplPhasePanelにParallelModeToggleを統合
+  - 関連: Task 5.2, Requirement 1.1, 1.5, 1.6
+  - ParallelModeToggleコンポーネントをインポートする
+  - 「実装開始」ボタンの左側にParallelModeToggleを配置する
+  - useParallelModeStoreを使用してトグル状態を管理する
+  - トグルON時は並列実装を起動、OFF時は既存の逐次実装を維持する
+
+- [x] 9.2 並列実装起動ロジックをImplPhasePanelに追加
+  - 関連: Task 5.2, Requirement 1.5, 4.1
+  - 並列モード有効時にparseTasksForParallel APIを呼び出す
+  - 並列タスクが存在する場合にのみトグルを表示する
+  - トグルON時にParallelImplService経由で並列実装を開始する
+
+### Round 3 (2026-01-22)
+
+- [x] 10.1 WorkflowViewでparseTasksForParallel呼び出しとparallelModeStore統合
+  - 関連: Task 5.2, Requirement 1.1, 1.2, 1.5
+  - specが選択されたときにparseTasksForParallel APIを呼び出す
+  - parallelModeStoreをimportしてトグル状態を管理する
+  - 解析結果をparallelModeStoreにキャッシュする
+
+- [x] 10.2 ImplPhasePanelに並列モードpropsを接続
+  - 関連: Task 9.1, 9.2, Requirement 1.1, 1.5, 1.6
+  - hasParallelTasks, parallelTaskCount, parallelModeEnabled, onToggleParallelMode, onExecuteParallel propsを渡す
+  - parallelModeStoreから状態を読み取りpropsとして渡す
+
+- [x] 10.3 並列実装起動ハンドラをWorkflowViewに実装
+  - 関連: Task 3.2, Requirement 4.1, 4.4, 4.5
+  - onExecuteParallelハンドラを実装する
+  - グループ単位での並列タスク起動を実装する
+  - 既存のexecuteTaskImpl APIを使用して各タスクを起動する
 
 ---
 

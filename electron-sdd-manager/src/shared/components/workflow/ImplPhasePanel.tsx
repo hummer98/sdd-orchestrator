@@ -2,11 +2,13 @@
  * ImplPhasePanel Component
  * impl-flow-hierarchy-fix: Task 2.1, 2.2, 2.3, 2.4
  * spec-worktree-early-creation: Task 7.1 - Simplified props
+ * parallel-task-impl: Inspection Fix Task 9.1, 9.2 - ParallelModeToggle integration
  *
  * Specialized component for the impl phase:
  * - Shows status (pending/executing/approved)
  * - Applies purple accent color in worktree mode (read from spec.json)
  * - Worktree mode is determined at spec creation, not impl time
+ * - Integrates ParallelModeToggle for parallel task execution
  */
 
 import React from 'react';
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { PhaseStatus } from './PhaseItem';
 import { AgentIcon, AgentBranchIcon } from '../ui/AgentIcon';
+import { ParallelModeToggle } from './ParallelModeToggle';
 
 // =============================================================================
 // Types
@@ -46,6 +49,22 @@ export interface ImplPhasePanelProps {
   onToggleAutoPermission: () => void;
   /** Additional CSS classes */
   className?: string;
+
+  // ==========================================================================
+  // parallel-task-impl: Inspection Fix Task 9.1, 9.2 - Parallel mode props
+  // Requirements: 1.1, 1.5, 1.6
+  // ==========================================================================
+
+  /** Whether the spec has parallel tasks (P) markers */
+  hasParallelTasks?: boolean;
+  /** Number of parallel tasks in the spec */
+  parallelTaskCount?: number;
+  /** Whether parallel mode is enabled */
+  parallelModeEnabled?: boolean;
+  /** Callback when parallel mode toggle is clicked */
+  onToggleParallelMode?: () => void;
+  /** Callback for parallel execution (when parallel mode is ON) */
+  onExecuteParallel?: () => void;
 }
 
 // =============================================================================
@@ -88,12 +107,32 @@ export function ImplPhasePanel({
   onExecute,
   onToggleAutoPermission,
   className,
+  // parallel-task-impl: Inspection Fix Task 9.1, 9.2 props
+  hasParallelTasks = false,
+  parallelTaskCount = 0,
+  parallelModeEnabled = false,
+  onToggleParallelMode,
+  onExecuteParallel,
 }: ImplPhasePanelProps): React.ReactElement {
   // Get button label based on current state
   const buttonLabel = getButtonLabel(worktreeModeSelected, isImplStarted);
 
   // Button disabled state
   const isButtonDisabled = !canExecute || isExecuting;
+
+  // parallel-task-impl: Execute handler selection based on parallel mode
+  // Requirements: 1.5, 1.6
+  // When parallel mode is ON and onExecuteParallel is provided, use it.
+  // Otherwise, fallback to standard onExecute handler.
+  const handleExecuteClick = () => {
+    if (parallelModeEnabled && onExecuteParallel) {
+      // Parallel mode ON with handler: use parallel execution
+      onExecuteParallel();
+    } else {
+      // Parallel mode OFF, or no parallel handler: use standard execution
+      onExecute();
+    }
+  };
 
   // Render status icon
   // Requirement 2.9: Status display
@@ -143,7 +182,7 @@ export function ImplPhasePanel({
         </span>
       </div>
 
-      {/* Right side: Auto permission toggle + action button */}
+      {/* Right side: Auto permission toggle + parallel toggle + action button */}
       <div className="flex items-center gap-2">
         {/* Auto execution permission toggle */}
         <button
@@ -169,14 +208,24 @@ export function ImplPhasePanel({
           )}
         </button>
 
+        {/* parallel-task-impl: Parallel mode toggle */}
+        {/* Requirements: 1.1 - Parallel toggle next to execute button */}
+        <ParallelModeToggle
+          parallelModeEnabled={parallelModeEnabled}
+          hasParallelTasks={hasParallelTasks}
+          parallelTaskCount={parallelTaskCount}
+          onToggle={onToggleParallelMode ?? (() => {})}
+        />
+
         {/* Execute button */}
         {/* Requirement 2.7: Execute button with worktree-aware behavior */}
         {/* Requirement 2.10: Purple styling in worktree mode */}
+        {/* parallel-task-impl: Uses handleExecuteClick for parallel mode support */}
         <button
           data-testid="impl-execute-button"
           type="button"
           disabled={isButtonDisabled}
-          onClick={onExecute}
+          onClick={handleExecuteClick}
           className={clsx(
             'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
             isButtonDisabled

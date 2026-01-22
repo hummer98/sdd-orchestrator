@@ -1,3 +1,0 @@
-{"type":"phase:transition","message":"Phase transitioned: tasks-generated -> implementation-complete","oldPhase":"tasks-generated","newPhase":"implementation-complete","timestamp":"2026-01-21T13:33:57.928Z"}
-{"type":"phase:transition","message":"Phase transitioned: deploy-complete -> implementation-complete","oldPhase":"deploy-complete","newPhase":"implementation-complete","timestamp":"2026-01-21T23:38:42.338Z"}
-{"type":"agent:complete","message":"Agent completed: spec-merge phase","agentId":"agent-1769038670171-2208788e","phase":"spec-merge","exitCode":0,"timestamp":"2026-01-21T23:39:11.673Z"}

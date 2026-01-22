@@ -1,6 +1,0 @@
-{"type":"worktree:create","message":"Worktree created: feature/worktree-convert-spec-optimization","worktreePath":".kiro/worktrees/specs/worktree-convert-spec-optimization","branch":"feature/worktree-convert-spec-optimization","timestamp":"2026-01-22T05:51:52.340Z"}
-{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T05:51:54.914Z"}
-{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T05:51:54.915Z"}
-{"type":"approval:update","message":"design approved","phase":"design","approved":true,"timestamp":"2026-01-22T05:55:47.079Z"}
-{"type":"approval:update","message":"tasks approved","phase":"tasks","approved":true,"timestamp":"2026-01-22T05:57:34.902Z"}
-{"type":"auto-execution:complete","message":"Auto-execution completed (3 phases executed)","status":"completed","endPhase":"impl","timestamp":"2026-01-22T06:09:49.715Z"}

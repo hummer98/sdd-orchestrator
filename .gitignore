@@ -2,6 +2,8 @@
 .kiro/runtime
 .kiro/logs
 .kiro/specs/*/logs
+.kiro/specs/*/events.jsonl
+.kiro/bugs/*/events.jsonl
 # worktree-internal-path: worktreeディレクトリ除外（git管理対象外）
 .kiro/worktrees/
 node_modules

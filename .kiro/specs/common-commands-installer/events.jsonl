@@ -1,4 +1,0 @@
-{"type":"agent:start","message":"Agent started: spec-merge phase","agentId":"agent-1769038793322-b770fb72","phase":"spec-merge","command":"claude -p --verbose --output-format stream-json --dangerously-skip-permissions /kiro:spec-merge common-commands-installer","timestamp":"2026-01-21T23:39:53.326Z"}
-{"type":"phase:transition","message":"Phase transitioned: deploy-complete -> implementation-complete","oldPhase":"deploy-complete","newPhase":"implementation-complete","timestamp":"2026-01-21T23:40:33.963Z"}
-{"type":"phase:transition","message":"Phase transitioned: inspection-complete -> implementation-complete","oldPhase":"inspection-complete","newPhase":"implementation-complete","timestamp":"2026-01-21T23:40:59.491Z"}
-{"type":"agent:complete","message":"Agent completed: spec-merge phase","agentId":"agent-1769038793322-b770fb72","phase":"spec-merge","exitCode":0,"timestamp":"2026-01-21T23:41:20.943Z"}

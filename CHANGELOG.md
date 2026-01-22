@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-01-22
+
+### Added
+- **agent-store-unification**: Agent Store統一の実装をworktreeからマージ
+- **agent-log-ui-improvement**: Agent Log UI改善を実装
+- **common-commands-installer**: 共通コマンドインストーラーを追加
+- **bugs-workflow-footer**: Bugsワークフローフッターを追加
+
+### Fixed
+- **spec-merge**: テンプレート側もworktree内spec.jsonを読むように修正
+
+### Documentation
+- agent-resume-cwd-mismatch バグ修正ドキュメントを追加
+
 ## [0.36.0] - 2026-01-21
 
 ### Added

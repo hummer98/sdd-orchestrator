@@ -683,11 +683,12 @@ export class WorktreeService {
 
   /**
    * Check if there are uncommitted changes in a spec directory
+   * worktree-convert-spec-optimization: statusOutputを追加して状態判定に使用
    *
    * @param specPath - Relative path to spec directory (e.g., .kiro/specs/{feature})
-   * @returns Object with hasChanges flag and list of changed files
+   * @returns Object with hasChanges flag, list of changed files, and raw status output
    */
-  async checkUncommittedSpecChanges(specPath: string): Promise<WorktreeServiceResult<{ hasChanges: boolean; files: string[] }>> {
+  async checkUncommittedSpecChanges(specPath: string): Promise<WorktreeServiceResult<{ hasChanges: boolean; files: string[]; statusOutput: string }>> {
     // git status --porcelain shows files with changes
     // Filter to only spec directory
     const result = await this.execGit(`git status --porcelain "${specPath}"`);
@@ -697,13 +698,13 @@ export class WorktreeService {
 
     const output = result.value;
     if (!output) {
-      return { ok: true, value: { hasChanges: false, files: [] } };
+      return { ok: true, value: { hasChanges: false, files: [], statusOutput: '' } };
     }
 
     // Parse git status output: each line is "XY filename"
     const files = output.split('\n').filter(line => line.trim()).map(line => line.slice(3));
 
-    return { ok: true, value: { hasChanges: files.length > 0, files } };
+    return { ok: true, value: { hasChanges: files.length > 0, files, statusOutput: output } };
   }
 
   /**

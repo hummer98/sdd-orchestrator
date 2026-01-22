@@ -2,10 +2,16 @@
  * ConvertWorktreeService Tests
  * Requirements: 2.1, 2.2, 2.3, 2.4, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  * (convert-spec-to-worktree feature)
+ *
+ * worktree-convert-spec-optimization Requirements: 1.1-1.3, 2.1-2.3, 3.1-3.3, 4.1-4.3
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ConvertWorktreeService } from './convertWorktreeService';
+import {
+  ConvertWorktreeService,
+  getConvertErrorMessage,
+  type SpecCommitStatus,
+} from './convertWorktreeService';
 import type { WorktreeService } from './worktreeService';
 import type { FileService } from './fileService';
 import type { SpecJson } from '../../renderer/types';
@@ -248,6 +254,15 @@ describe('ConvertWorktreeService', () => {
             },
           } as SpecJson,
         });
+        // worktree-convert-spec-optimization: mock untracked status for success case
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json',
+          },
+        });
 
         // Act
         const result = await convertService.canConvert(projectPath, specPath);
@@ -275,6 +290,15 @@ describe('ConvertWorktreeService', () => {
               enabled: true,
             },
           } as SpecJson,
+        });
+        // worktree-convert-spec-optimization: mock untracked status for success case
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json',
+          },
         });
 
         // Act
@@ -306,6 +330,15 @@ describe('ConvertWorktreeService', () => {
               tasks: { generated: true, approved: true },
             },
           } as SpecJson,
+        });
+        // worktree-convert-spec-optimization: mock untracked status for conversion
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json',
+          },
         });
         (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
           ok: true,
@@ -372,6 +405,15 @@ describe('ConvertWorktreeService', () => {
             feature_name: 'my-feature',
             phase: 'tasks-generated',
           } as SpecJson,
+        });
+        // worktree-convert-spec-optimization: mock untracked status for rollback tests
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json',
+          },
         });
       });
 
@@ -459,6 +501,631 @@ describe('ConvertWorktreeService', () => {
           expect(result.error.type).toBe('SYMLINK_CREATE_FAILED');
         }
         // Note: Original spec files were already moved, so rollback should restore them if possible
+      });
+    });
+  });
+
+  // ============================================================
+  // worktree-convert-spec-optimization Tests
+  // Task 5.1: getSpecStatus() テスト
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+
+  describe('getSpecStatus', () => {
+    describe('Task 5.1: git status出力パターン別の解析テスト', () => {
+      it('should return "committed-clean" when git status output is empty', async () => {
+        // Arrange - git status returns empty output (no changes)
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: { hasChanges: false, files: [], statusOutput: '' },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-clean');
+        }
+      });
+
+      it('should return "untracked" when git status shows ?? (untracked files)', async () => {
+        // Arrange - git status returns untracked files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json', 'requirements.md'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json\n?? .kiro/specs/my-feature/requirements.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('untracked');
+        }
+      });
+
+      it('should return "untracked" when git status shows A (staged new files)', async () => {
+        // Arrange - git status returns staged new files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: 'A  .kiro/specs/my-feature/spec.json',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('untracked');
+        }
+      });
+
+      it('should return "committed-dirty" when git status shows M (modified)', async () => {
+        // Arrange - git status returns modified files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: ' M .kiro/specs/my-feature/spec.json',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-dirty');
+        }
+      });
+
+      it('should return "committed-dirty" when git status shows D (deleted)', async () => {
+        // Arrange - git status returns deleted files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['design.md'],
+            statusOutput: ' D .kiro/specs/my-feature/design.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-dirty');
+        }
+      });
+
+      it('should return "committed-dirty" when git status shows R (renamed)', async () => {
+        // Arrange - git status returns renamed files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['old.md -> new.md'],
+            statusOutput: 'R  .kiro/specs/my-feature/old.md -> .kiro/specs/my-feature/new.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-dirty');
+        }
+      });
+
+      it('should return "committed-dirty" when git status shows MM (modified in both index and worktree)', async () => {
+        // Arrange - git status returns modified in both
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: 'MM .kiro/specs/my-feature/spec.json',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-dirty');
+        }
+      });
+    });
+
+    describe('Task 5.1: 複数状態混在時の優先度判定テスト', () => {
+      it('should return "committed-dirty" when both untracked and modified files exist (dirty > untracked)', async () => {
+        // Arrange - both untracked and modified files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json', 'requirements.md'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json\n M .kiro/specs/my-feature/requirements.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('committed-dirty');
+        }
+      });
+
+      it('should return "untracked" when only untracked files exist (untracked > clean)', async () => {
+        // Arrange - only untracked files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json', 'requirements.md'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json\nA  .kiro/specs/my-feature/requirements.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('untracked');
+        }
+      });
+    });
+
+    describe('Task 5.1: エラーハンドリング', () => {
+      it('should propagate git error from checkUncommittedSpecChanges', async () => {
+        // Arrange
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: false,
+          error: { type: 'GIT_ERROR', message: 'git command failed' },
+        });
+
+        // Act
+        const result = await convertService.getSpecStatus(specPath);
+
+        // Assert
+        expect(result.ok).toBe(false);
+      });
+    });
+  });
+
+  // ============================================================
+  // worktree-convert-spec-optimization Tests
+  // Task 5.2: canConvert() 拡張テスト
+  // Requirements: 4.1, 4.3
+  // ============================================================
+
+  describe('canConvert - spec status integration', () => {
+    describe('Task 5.2: committed-dirty状態でのエラー返却テスト', () => {
+      it('should return SPEC_HAS_UNCOMMITTED_CHANGES error when spec is committed-dirty', async () => {
+        // Arrange
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // committed-dirty: has modified files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: ' M .kiro/specs/my-feature/spec.json',
+          },
+        });
+
+        // Act
+        const result = await convertService.canConvert(projectPath, specPath);
+
+        // Assert
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('SPEC_HAS_UNCOMMITTED_CHANGES');
+          expect((result.error as { files: string[] }).files).toContain('spec.json');
+        }
+      });
+
+      it('should return SPEC_HAS_UNCOMMITTED_CHANGES with all changed files listed', async () => {
+        // Arrange
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // committed-dirty: has multiple modified files
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json', 'requirements.md', 'design.md'],
+            statusOutput: ' M .kiro/specs/my-feature/spec.json\n M .kiro/specs/my-feature/requirements.md\nD  .kiro/specs/my-feature/design.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.canConvert(projectPath, specPath);
+
+        // Assert
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('SPEC_HAS_UNCOMMITTED_CHANGES');
+          const errorFiles = (result.error as { files: string[] }).files;
+          expect(errorFiles).toContain('spec.json');
+          expect(errorFiles).toContain('requirements.md');
+          expect(errorFiles).toContain('design.md');
+        }
+      });
+    });
+
+    describe('Task 5.2: untracked状態での正常通過テスト', () => {
+      it('should return true when spec is untracked (allowed for conversion)', async () => {
+        // Arrange
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // untracked: all files are new (untracked)
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json', 'requirements.md'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json\n?? .kiro/specs/my-feature/requirements.md',
+          },
+        });
+
+        // Act
+        const result = await convertService.canConvert(projectPath, specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+      });
+    });
+
+    describe('Task 5.2: committed-clean状態での正常通過テスト', () => {
+      it('should return true when spec is committed-clean (allowed for conversion)', async () => {
+        // Arrange
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // committed-clean: no changes
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: false,
+            files: [],
+            statusOutput: '',
+          },
+        });
+
+        // Act
+        const result = await convertService.canConvert(projectPath, specPath);
+
+        // Assert
+        expect(result.ok).toBe(true);
+      });
+    });
+  });
+
+  // ============================================================
+  // worktree-convert-spec-optimization Tests
+  // Task 5.3: convertToWorktree() 分岐テスト
+  // Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3
+  // ============================================================
+
+  describe('convertToWorktree - spec status branching', () => {
+    describe('Task 5.3: untracked時のコピー→削除実行確認テスト', () => {
+      beforeEach(() => {
+        // Setup default success mocks
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // untracked status
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: true,
+            files: ['spec.json'],
+            statusOutput: '?? .kiro/specs/my-feature/spec.json',
+          },
+        });
+        (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            path: '.kiro/worktrees/specs/my-feature',
+            absolutePath: '/test/project/.kiro/worktrees/specs/my-feature',
+            branch: 'feature/my-feature',
+            created_at: '2026-01-19T12:00:00Z',
+          },
+        });
+        mockFsPromises.mkdir.mockResolvedValue(undefined);
+        mockFsPromises.cp.mockResolvedValue(undefined);
+        mockFsPromises.rm.mockResolvedValue(undefined);
+        (mockWorktreeService.createSymlinksForWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+        (mockFileService.updateSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+      });
+
+      it('should execute cp and rm when spec is untracked', async () => {
+        // Act
+        const result = await convertService.convertToWorktree(projectPath, specPath, featureName);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        expect(mockFsPromises.cp).toHaveBeenCalledWith(
+          specPath,
+          '/test/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature',
+          { recursive: true }
+        );
+        expect(mockFsPromises.rm).toHaveBeenCalledWith(specPath, { recursive: true, force: true });
+      });
+    });
+
+    describe('Task 5.3: committed-clean時のコピースキップ確認テスト', () => {
+      beforeEach(() => {
+        // Setup default success mocks
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        mockFsPromises.access.mockResolvedValue(undefined);
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // committed-clean status
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: false,
+            files: [],
+            statusOutput: '',
+          },
+        });
+        (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            path: '.kiro/worktrees/specs/my-feature',
+            absolutePath: '/test/project/.kiro/worktrees/specs/my-feature',
+            branch: 'feature/my-feature',
+            created_at: '2026-01-19T12:00:00Z',
+          },
+        });
+        mockFsPromises.mkdir.mockResolvedValue(undefined);
+        mockFsPromises.cp.mockResolvedValue(undefined);
+        mockFsPromises.rm.mockResolvedValue(undefined);
+        (mockWorktreeService.createSymlinksForWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+        (mockFileService.updateSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+      });
+
+      it('should NOT execute cp and rm when spec is committed-clean', async () => {
+        // Act
+        const result = await convertService.convertToWorktree(projectPath, specPath, featureName);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        expect(mockFsPromises.cp).not.toHaveBeenCalled();
+        expect(mockFsPromises.rm).not.toHaveBeenCalled();
+      });
+
+      it('should still update spec.json in worktree when spec is committed-clean', async () => {
+        // Act
+        const result = await convertService.convertToWorktree(projectPath, specPath, featureName);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        expect(mockFileService.updateSpecJson).toHaveBeenCalledWith(
+          '/test/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature',
+          expect.objectContaining({
+            worktree: expect.objectContaining({
+              path: '.kiro/worktrees/specs/my-feature',
+              branch: 'feature/my-feature',
+              enabled: true,
+            }),
+          })
+        );
+      });
+    });
+
+    describe('Task 5.3: committed-clean時のworktree内spec存在確認テスト', () => {
+      beforeEach(() => {
+        // Setup default success mocks
+        (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: true,
+        });
+        (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            feature_name: 'my-feature',
+            phase: 'tasks-generated',
+          } as SpecJson,
+        });
+        // committed-clean status
+        (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            hasChanges: false,
+            files: [],
+            statusOutput: '',
+          },
+        });
+        (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: {
+            path: '.kiro/worktrees/specs/my-feature',
+            absolutePath: '/test/project/.kiro/worktrees/specs/my-feature',
+            branch: 'feature/my-feature',
+            created_at: '2026-01-19T12:00:00Z',
+          },
+        });
+        (mockWorktreeService.createSymlinksForWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+        (mockFileService.updateSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ok: true,
+          value: undefined,
+        });
+      });
+
+      it('should verify spec exists in worktree when committed-clean', async () => {
+        // Arrange - spec exists in worktree (verified via fs.access on spec.json path)
+        // First call: original spec path (validation)
+        // Second call: worktree spec path (verification for committed-clean)
+        mockFsPromises.access
+          .mockResolvedValueOnce(undefined) // original spec exists
+          .mockResolvedValueOnce(undefined); // worktree spec exists
+
+        // Act
+        const result = await convertService.convertToWorktree(projectPath, specPath, featureName);
+
+        // Assert
+        expect(result.ok).toBe(true);
+        // Verify that access was called to check worktree spec path
+        expect(mockFsPromises.access).toHaveBeenCalledTimes(2);
+      });
+
+      it('should return SPEC_NOT_IN_WORKTREE error when spec does not exist in worktree', async () => {
+        // Arrange - spec does not exist in worktree
+        mockFsPromises.access
+          .mockResolvedValueOnce(undefined) // original spec exists
+          .mockRejectedValueOnce(new Error('ENOENT')); // worktree spec does not exist
+
+        // Act
+        const result = await convertService.convertToWorktree(projectPath, specPath, featureName);
+
+        // Assert
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('SPEC_NOT_IN_WORKTREE');
+        }
+      });
+    });
+  });
+
+  // ============================================================
+  // worktree-convert-spec-optimization Tests
+  // Task 4: エラーメッセージ関数テスト
+  // Requirements: 4.2
+  // ============================================================
+
+  describe('getConvertErrorMessage', () => {
+    describe('Task 4: 新規エラータイプのメッセージ生成テスト', () => {
+      it('should return appropriate message for SPEC_HAS_UNCOMMITTED_CHANGES', () => {
+        // Arrange
+        const error = {
+          type: 'SPEC_HAS_UNCOMMITTED_CHANGES' as const,
+          specPath: '/test/project/.kiro/specs/my-feature',
+          files: ['spec.json', 'requirements.md'],
+        };
+
+        // Act
+        const message = getConvertErrorMessage(error);
+
+        // Assert
+        expect(message).toContain('未コミットの変更');
+        expect(message).toContain('先にコミットしてください');
+        expect(message).toContain('spec.json');
+        expect(message).toContain('requirements.md');
+      });
+
+      it('should return appropriate message for SPEC_NOT_IN_WORKTREE', () => {
+        // Arrange
+        const error = {
+          type: 'SPEC_NOT_IN_WORKTREE' as const,
+          specPath: '/test/project/.kiro/worktrees/specs/my-feature/.kiro/specs/my-feature',
+        };
+
+        // Act
+        const message = getConvertErrorMessage(error);
+
+        // Assert
+        expect(message).toContain('Worktree内にSpec');
+        expect(message).toContain('見つかりません');
       });
     });
   });

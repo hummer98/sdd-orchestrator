@@ -105,15 +105,23 @@ export function BugsView({
     [onSelectBug]
   );
 
+  // Sort bugs by updatedAt descending (matching Electron version)
+  const sortedBugs = useMemo(() => {
+    return [...bugs].sort((a, b) => {
+      // Sort by updatedAt descending (newest first)
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [bugs]);
+
   // Filter bugs by search query
   const filteredBugs = useMemo(() => {
     if (!searchQuery.trim()) {
-      return bugs;
+      return sortedBugs;
     }
 
     const query = searchQuery.toLowerCase();
-    return bugs.filter((bug) => bug.name.toLowerCase().includes(query));
-  }, [bugs, searchQuery]);
+    return sortedBugs.filter((bug) => bug.name.toLowerCase().includes(query));
+  }, [sortedBugs, searchQuery]);
 
   // Render loading state
   if (isLoading) {

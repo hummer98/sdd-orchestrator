@@ -1,16 +1,15 @@
 /**
  * DesktopLayout - Desktop-optimized layout for Remote UI
  *
- * Features:
- * - Multi-pane layout (sidebar, main content, log panel)
- * - Mouse-optimized interactions
- * - Horizontal space utilization
- * - Similar structure to Electron renderer layout
+ * Design Principle: DesktopLayoutはElectron版のレイアウトに準拠する
+ * See: .kiro/steering/tech.md - Remote UI DesktopLayout設計原則
  *
- * Design Decision: DD-003 in design.md
- *
- * header-profile-badge feature: ProfileBadge added to sidebar header
- * Requirements: 4.1, 4.2, 4.3
+ * Layout Structure (matching Electron App.tsx):
+ * - Header: タイトル、プロジェクト名、ProfileBadge、接続状態
+ * - Left Sidebar: Specs/Bugsタブ切り替え、一覧表示
+ * - Main Panel: Artifact表示、ドキュメントタブ
+ * - Right Sidebar: ワークフローパネル、Agent一覧
+ * - Footer: Agentログエリア
  */
 
 import React, { ReactNode, useState, useEffect } from 'react';
@@ -25,126 +24,105 @@ import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 
 interface DesktopLayoutProps {
   /**
-   * Sidebar content (spec/bug list)
+   * Left sidebar content (Spec/Bug list with tabs)
    */
-  sidebar?: ReactNode;
+  leftSidebar?: ReactNode;
 
   /**
-   * Main content area (workflow view, document tabs)
+   * Main content area (Artifact view, document tabs)
    */
   children?: ReactNode;
 
   /**
-   * Log panel content
+   * Right sidebar content (Workflow panel, Agent list)
    */
-  logPanel?: ReactNode;
+  rightSidebar?: ReactNode;
 
   /**
-   * Initial sidebar width in pixels
+   * Footer content (Agent log panel)
    */
-  sidebarWidth?: number;
-
-  /**
-   * Initial log panel height ratio (0-1)
-   */
-  logPanelRatio?: number;
+  footer?: ReactNode;
 }
 
 // =============================================================================
-// Default Values
+// Layout Constants (matching Electron DEFAULT_LAYOUT)
 // =============================================================================
 
-const DEFAULT_SIDEBAR_WIDTH = 280;
-const DEFAULT_LOG_PANEL_RATIO = 0.3;
-// Reserved for future resize functionality
-// const MIN_SIDEBAR_WIDTH = 200;
-// const MAX_SIDEBAR_WIDTH = 400;
+const DEFAULT_LEFT_SIDEBAR_WIDTH = 288;  // w-72 = 18rem = 288px
+const DEFAULT_RIGHT_SIDEBAR_WIDTH = 320; // w-80 = 20rem = 320px
+const DEFAULT_FOOTER_HEIGHT = 192;       // h-48 = 12rem = 192px
 
 // =============================================================================
 // Component
 // =============================================================================
 
 /**
- * DesktopLayout - Desktop-optimized multi-pane layout
+ * DesktopLayout - Electron版に準拠したデスクトップ向けレイアウト
  */
 export function DesktopLayout({
-  sidebar,
+  leftSidebar,
   children,
-  logPanel,
-  sidebarWidth = DEFAULT_SIDEBAR_WIDTH,
-  logPanelRatio = DEFAULT_LOG_PANEL_RATIO,
+  rightSidebar,
+  footer,
 }: DesktopLayoutProps): React.ReactElement {
-  const [currentSidebarWidth] = useState(sidebarWidth);
-  const [currentLogRatio] = useState(logPanelRatio);
-  const [isLogPanelCollapsed, setLogPanelCollapsed] = useState(false);
+  const [isFooterCollapsed, setFooterCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar */}
-      <aside
-        style={{ width: currentSidebarWidth }}
-        className="flex-shrink-0 flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
-      >
-        {/* Sidebar Header with ProfileBadge */}
-        <SidebarHeader />
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header - Electron版のheaderに準拠 */}
+      <DesktopHeader />
 
-        {/* Sidebar Content */}
-        <div className="flex-1 overflow-y-auto">
-          {sidebar || <SidebarPlaceholder />}
-        </div>
-      </aside>
+      {/* Main Content Area - 3ペイン構造 */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Spec/Bugsタブ */}
+        <aside
+          style={{ width: DEFAULT_LEFT_SIDEBAR_WIDTH }}
+          className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700"
+        >
+          {leftSidebar || <LeftSidebarPlaceholder />}
+        </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <DesktopHeader />
+        {/* Main Panel - Artifact表示 */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-white dark:bg-gray-950">
+          {children || <MainPanelPlaceholder />}
+        </main>
 
-        {/* Content + Log Panel */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* Main Content */}
-          <main
-            className="flex-1 overflow-y-auto"
-            style={{
-              flexBasis: isLogPanelCollapsed ? '100%' : `${(1 - currentLogRatio) * 100}%`,
-            }}
-          >
-            {children || <ContentPlaceholder />}
-          </main>
-
-          {/* Log Panel */}
-          {!isLogPanelCollapsed && (
-            <div
-              className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-900"
-              style={{ height: `${currentLogRatio * 100}%` }}
-            >
-              <div className="h-full flex flex-col">
-                <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between bg-gray-800 text-gray-300">
-                  <span className="text-sm font-medium">Agent Logs</span>
-                  <button
-                    onClick={() => setLogPanelCollapsed(true)}
-                    className="text-xs px-2 py-1 hover:bg-gray-700 rounded"
-                  >
-                    Collapse
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {logPanel || <LogPlaceholder />}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Collapsed Log Panel Toggle */}
-          {isLogPanelCollapsed && (
-            <button
-              onClick={() => setLogPanelCollapsed(false)}
-              className="flex-shrink-0 h-8 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-gray-200"
-            >
-              <span className="text-xs">Show Logs</span>
-            </button>
-          )}
-        </div>
+        {/* Right Sidebar - ワークフローパネル */}
+        <aside
+          style={{ width: DEFAULT_RIGHT_SIDEBAR_WIDTH }}
+          className="shrink-0 flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+        >
+          {rightSidebar || <RightSidebarPlaceholder />}
+        </aside>
       </div>
+
+      {/* Footer - Agentログエリア */}
+      {!isFooterCollapsed ? (
+        <div
+          style={{ height: DEFAULT_FOOTER_HEIGHT }}
+          className="shrink-0 flex flex-col border-t border-gray-200 dark:border-gray-700 bg-gray-900"
+        >
+          <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between bg-gray-800 text-gray-300">
+            <span className="text-sm font-medium">Agent Logs</span>
+            <button
+              onClick={() => setFooterCollapsed(true)}
+              className="text-xs px-2 py-1 hover:bg-gray-700 rounded"
+            >
+              Collapse
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {footer || <FooterPlaceholder />}
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setFooterCollapsed(false)}
+          className="shrink-0 h-8 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-gray-200 border-t border-gray-700"
+        >
+          <span className="text-xs">Show Agent Logs</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -154,16 +132,16 @@ export function DesktopLayout({
 // =============================================================================
 
 /**
- * SidebarHeader - Sidebar header with ProfileBadge
- * header-profile-badge feature: ProfileBadge added
- * Requirements: 4.1, 4.2, 4.3
+ * DesktopHeader - Electron版のheaderに準拠
  */
-function SidebarHeader(): React.ReactElement {
+function DesktopHeader(): React.ReactElement {
   const apiClient = useApi();
+  const [projectName, setProjectName] = useState<string>('');
+  const [isConnected, setIsConnected] = useState(false);
   const [profile, setProfile] = useState<{ name: string } | null>(null);
 
   useEffect(() => {
-    // Load profile on mount (only if getProfile is available)
+    // Load profile on mount
     if (apiClient.getProfile) {
       apiClient.getProfile().then(result => {
         if (result.ok) {
@@ -171,39 +149,12 @@ function SidebarHeader(): React.ReactElement {
         }
       });
     }
-  }, [apiClient]);
 
-  return (
-    <div className="flex-shrink-0 h-12 px-4 flex items-center border-b border-gray-200 dark:border-gray-700">
-      <h1 className="text-sm font-semibold text-gray-900 dark:text-white">
-        SDD Orchestrator
-      </h1>
-      <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-        Remote
-      </span>
-      {/* header-profile-badge feature: ProfileBadge */}
-      <ProfileBadge
-        profile={(profile?.name as ProfileName) ?? null}
-        className="ml-2"
-      />
-    </div>
-  );
-}
-
-/**
- * DesktopHeader - Fixed header for desktop layout
- * remote-ui-vanilla-removal: Added data-testid attributes for E2E testing
- */
-function DesktopHeader(): React.ReactElement {
-  const apiClient = useApi();
-  const [projectPath, setProjectPath] = useState<string>('');
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
     // Check connection status and get project path
     const wsClient = apiClient as WebSocketApiClient;
     if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
       setIsConnected(wsClient.isConnected());
+
       // Poll connection status and project path
       const interval = setInterval(() => {
         if ('isConnected' in wsClient && typeof wsClient.isConnected === 'function') {
@@ -211,26 +162,44 @@ function DesktopHeader(): React.ReactElement {
         }
         if ('getProjectPath' in wsClient && typeof wsClient.getProjectPath === 'function') {
           const path = wsClient.getProjectPath();
-          if (path) setProjectPath(path);
+          if (path) {
+            setProjectName(path.split('/').pop() || '');
+          }
         }
       }, 1000);
       return () => clearInterval(interval);
     } else {
-      // IpcApiClient doesn't have isConnected, assume connected
       setIsConnected(true);
     }
   }, [apiClient]);
 
   return (
-    <header className="flex-shrink-0 h-10 px-4 flex items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      {/* remote-ui-vanilla-removal: Project path for E2E */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-        <span>Project:</span>
-        <span data-testid="remote-project-path" className="truncate max-w-md" title={projectPath || undefined}>
-          {projectPath || 'Loading...'}
+    <header className="shrink-0 h-12 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+      {/* Left: Title and Project Info */}
+      <div className="flex items-center">
+        <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+          SDD Orchestrator
+        </h1>
+        <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+          Remote
         </span>
+
+        {/* Project name (matching Electron header) */}
+        {projectName && (
+          <div className="ml-6 flex items-center gap-2">
+            <span className="text-gray-400">/</span>
+            <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+              {projectName}
+            </span>
+            <ProfileBadge
+              profile={(profile?.name as ProfileName) ?? null}
+              className="ml-2"
+            />
+          </div>
+        )}
       </div>
-      {/* remote-ui-vanilla-removal: Status display for E2E */}
+
+      {/* Right: Connection Status */}
       <div className="flex items-center gap-2">
         <span
           data-testid="remote-status-dot"
@@ -248,34 +217,77 @@ function DesktopHeader(): React.ReactElement {
 }
 
 /**
- * SidebarPlaceholder - Placeholder content for sidebar
+ * LeftSidebarPlaceholder - 左サイドバーのプレースホルダー
  */
-function SidebarPlaceholder(): React.ReactElement {
+function LeftSidebarPlaceholder(): React.ReactElement {
   return (
-    <div className="p-4 text-sm text-gray-500 dark:text-gray-400">
-      <p>Loading specs...</p>
-    </div>
-  );
-}
-
-/**
- * ContentPlaceholder - Placeholder content for main area
- */
-function ContentPlaceholder(): React.ReactElement {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center text-gray-500 dark:text-gray-400">
-        <p className="text-lg">Select a spec or bug</p>
-        <p className="text-sm mt-2">to view workflow and documents</p>
+    <div className="flex flex-col h-full">
+      {/* Tabs placeholder */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <button className="flex-1 px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-600 dark:text-blue-400">
+          Specs
+        </button>
+        <button className="flex-1 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+          Bugs
+        </button>
+      </div>
+      {/* List placeholder */}
+      <div className="flex-1 p-4 text-sm text-gray-500 dark:text-gray-400">
+        Loading specs...
       </div>
     </div>
   );
 }
 
 /**
- * LogPlaceholder - Placeholder content for log panel
+ * MainPanelPlaceholder - メインパネルのプレースホルダー
  */
-function LogPlaceholder(): React.ReactElement {
+function MainPanelPlaceholder(): React.ReactElement {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="text-center text-gray-500 dark:text-gray-400">
+        <p className="text-lg">Select a spec or bug</p>
+        <p className="text-sm mt-2">to view documents and artifacts</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * RightSidebarPlaceholder - 右サイドバーのプレースホルダー
+ */
+function RightSidebarPlaceholder(): React.ReactElement {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Workflow header */}
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Workflow
+        </h2>
+      </div>
+      {/* Workflow content placeholder */}
+      <div className="flex-1 p-4 text-sm text-gray-500 dark:text-gray-400">
+        Select a spec to view workflow
+      </div>
+      {/* Agent list section */}
+      <div className="border-t border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Agents
+          </h2>
+        </div>
+        <div className="p-4 text-sm text-gray-500 dark:text-gray-400">
+          No running agents
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * FooterPlaceholder - フッターのプレースホルダー
+ */
+function FooterPlaceholder(): React.ReactElement {
   return (
     <div className="h-full p-4 font-mono text-xs text-gray-500">
       No agent logs yet...

@@ -1,50 +1,274 @@
 /**
  * Remote UI Root Application Component
  *
- * Task 9.1-9.3: Remote UIアプリケーション統合
- * Task 13.8: ビュー統合とタブ切り替え
- * Task 7.1: WebSocketイベントリスナー登録統合 (remote-ui-bug-advanced-features)
+ * Design Principle: DesktopLayoutはElectron版のレイアウトに準拠する
+ * See: .kiro/steering/tech.md - Remote UI DesktopLayout設計原則
  *
- * Requirements: 2.4, 4.1, 7.1, 7.2
- *
- * Entry point for the Remote UI application:
- * - ApiClientProvider (WebSocketApiClient) - API abstraction layer
- * - PlatformProvider (Web platform capabilities) - Platform-specific features
- * - Device-responsive layout (MobileLayout / DesktopLayout)
- * - Tab-based navigation for Specs, Bugs, Agent views
+ * Layout Structure (matching Electron App.tsx):
+ * - Header: タイトル、プロジェクト名、ProfileBadge、接続状態 (DesktopLayout内蔵)
+ * - Left Sidebar: Specs/Bugsタブ切り替え、一覧表示
+ * - Main Panel: Artifact表示、ドキュメントタブ
+ * - Right Sidebar: ワークフローパネル、Agent一覧
+ * - Footer: Agentログエリア
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
 import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath } from '../shared/api/types';
+import { SpecWorkflowFooter } from '../shared/components/workflow';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 
-/**
- * MainContent props
- */
-interface MainContentProps {
-  /** Current active tab */
-  activeTab: MobileTab;
-  /** Callback when tab changes */
-  onTabChange: (tab: MobileTab) => void;
+// =============================================================================
+// Types
+// =============================================================================
+
+type DocsTab = 'specs' | 'bugs';
+
+// =============================================================================
+// Left Sidebar Component - Spec/Bugsタブ + 一覧
+// =============================================================================
+
+interface LeftSidebarProps {
+  activeTab: DocsTab;
+  onTabChange: (tab: DocsTab) => void;
+  selectedSpecId?: string;
+  selectedBugId?: string;
+  onSelectSpec: (spec: SpecMetadataWithPath) => void;
+  onSelectBug: (bug: BugMetadataWithPath) => void;
 }
 
-/**
- * MainContent - Tab-based content area with views
- */
-function MainContent({ activeTab, onTabChange }: MainContentProps) {
+function LeftSidebar({
+  activeTab,
+  onTabChange,
+  selectedSpecId,
+  selectedBugId,
+  onSelectSpec,
+  onSelectBug,
+}: LeftSidebarProps) {
   const apiClient = useApi();
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Tabs - Electron版のDocsTabsに準拠 */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => onTabChange('specs')}
+          className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'specs'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Specs
+        </button>
+        <button
+          onClick={() => onTabChange('bugs')}
+          className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'bugs'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Bugs
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === 'specs' ? (
+          <SpecsView
+            apiClient={apiClient}
+            selectedSpecId={selectedSpecId}
+            onSelectSpec={onSelectSpec}
+          />
+        ) : (
+          <BugsView
+            apiClient={apiClient}
+            selectedBugId={selectedBugId}
+            onSelectBug={onSelectBug}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Main Panel Component - Artifact表示
+// =============================================================================
+
+interface MainPanelProps {
+  activeTab: DocsTab;
+  selectedSpec: SpecMetadataWithPath | null;
+  selectedBug: BugMetadataWithPath | null;
+  onBack: () => void;
+}
+
+function MainPanel({ activeTab, selectedSpec, selectedBug, onBack }: MainPanelProps) {
+  const apiClient = useApi();
+
+  if (activeTab === 'specs' && selectedSpec) {
+    return (
+      <div className="flex flex-col h-full">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600 border-b border-gray-200 dark:border-gray-700"
+        >
+          &larr; Spec一覧に戻る
+        </button>
+        <div className="flex-1 overflow-y-auto">
+          <SpecDetailView
+            spec={selectedSpec}
+            apiClient={apiClient}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (activeTab === 'bugs' && selectedBug) {
+    return (
+      <div className="flex flex-col h-full">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600 border-b border-gray-200 dark:border-gray-700"
+        >
+          &larr; Bug一覧に戻る
+        </button>
+        <div className="flex-1 overflow-y-auto">
+          <BugDetailView
+            bug={selectedBug}
+            apiClient={apiClient}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Placeholder when nothing selected
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="text-center text-gray-500 dark:text-gray-400">
+        <p className="text-lg">Select a spec or bug</p>
+        <p className="text-sm mt-2">to view documents and artifacts</p>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Right Sidebar Component - ワークフローパネル + Agent一覧 + WorkflowFooter
+// =============================================================================
+
+interface RightSidebarProps {
+  activeTab: DocsTab;
+  selectedSpec: SpecMetadataWithPath | null;
+  specDetail: SpecDetail | null;
+  /** 自動実行中かどうか */
+  isAutoExecuting: boolean;
+  /** 自動実行開始/停止ハンドラ */
+  onAutoExecution: () => void;
+}
+
+function RightSidebar({
+  activeTab,
+  selectedSpec,
+  specDetail,
+  isAutoExecuting,
+  onAutoExecution,
+}: RightSidebarProps) {
+  const apiClient = useApi();
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Workflow Section */}
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Workflow
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'specs' && selectedSpec && specDetail ? (
+            <SpecActionsView
+              specDetail={specDetail}
+              apiClient={apiClient}
+            />
+          ) : (
+            <div className="p-4 text-sm text-gray-500 dark:text-gray-400">
+              Select a spec to view workflow
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Agent Section */}
+      <div className="shrink-0 border-t border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Agents
+          </h2>
+        </div>
+        <div className="max-h-32 overflow-y-auto">
+          <AgentView apiClient={apiClient} />
+        </div>
+      </div>
+
+      {/* Workflow Footer - 自動実行ボタン */}
+      {activeTab === 'specs' && selectedSpec && specDetail && (
+        <div className="shrink-0">
+          <SpecWorkflowFooter
+            isAutoExecuting={isAutoExecuting}
+            hasRunningAgents={false}
+            onAutoExecution={onAutoExecution}
+            isOnMain={false}
+            specJson={specDetail.specJson}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// Footer Component - Agentログエリア (仮)
+// =============================================================================
+
+function FooterContent() {
+  // TODO: Implement agent log viewer
+  return (
+    <div className="h-full p-4 font-mono text-xs text-gray-500">
+      Agent logs will be displayed here...
+    </div>
+  );
+}
+
+// =============================================================================
+// Desktop App Content - DesktopLayout使用
+// =============================================================================
+
+function DesktopAppContent() {
+  const apiClient = useApi();
+  const [activeTab, setActiveTab] = useState<DocsTab>('specs');
   const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
   const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
   const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
 
+  // Auto execution state
+  const [isAutoExecuting, setIsAutoExecuting] = useState(false);
+
+  // Initialize WebSocket listeners
+  useEffect(() => {
+    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
+    return cleanup;
+  }, [apiClient]);
+
   // Handle spec selection
-  // spec-path-ssot-refactor: Remote UI receives SpecMetadataWithPath from WebSocket
   const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
     setSelectedSpec(spec);
-    // Load spec detail
+    setIsAutoExecuting(false); // Reset auto execution state on spec change
     const result = await apiClient.getSpecDetail(spec.name);
     if (result.ok) {
       setSelectedSpecDetail(result.value);
@@ -52,28 +276,130 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
   }, [apiClient]);
 
   // Handle bug selection
-  // spec-path-ssot-refactor: Remote UI receives BugMetadataWithPath from WebSocket
   const handleSelectBug = useCallback((bug: BugMetadataWithPath) => {
     setSelectedBug(bug);
   }, []);
 
   // Handle back to list
+  const handleBack = useCallback(() => {
+    setSelectedSpec(null);
+    setSelectedSpecDetail(null);
+    setSelectedBug(null);
+    setIsAutoExecuting(false);
+  }, []);
+
+  // Handle tab change
+  const handleTabChange = useCallback((tab: DocsTab) => {
+    setActiveTab(tab);
+    setSelectedSpec(null);
+    setSelectedSpecDetail(null);
+    setSelectedBug(null);
+    setIsAutoExecuting(false);
+  }, []);
+
+  // Handle auto execution start/stop
+  const handleAutoExecution = useCallback(async () => {
+    if (!selectedSpec || !selectedSpecDetail) return;
+
+    if (isAutoExecuting) {
+      // Stop auto execution
+      await apiClient.stopAutoExecution(selectedSpec.path);
+      setIsAutoExecuting(false);
+    } else {
+      // Start auto execution
+      const options: AutoExecutionOptions = {
+        permissions: selectedSpecDetail.specJson?.autoExecution?.permissions ?? {
+          requirements: true,
+          design: true,
+          tasks: true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        },
+        documentReviewFlag: selectedSpecDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
+      };
+
+      const result = await apiClient.startAutoExecution(selectedSpec.path, selectedSpec.name, options);
+      if (result.ok) {
+        setIsAutoExecuting(true);
+      }
+    }
+  }, [apiClient, selectedSpec, selectedSpecDetail, isAutoExecuting]);
+
+  return (
+    <DesktopLayout
+      leftSidebar={
+        <LeftSidebar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          selectedSpecId={selectedSpec?.name}
+          selectedBugId={selectedBug?.name}
+          onSelectSpec={handleSelectSpec}
+          onSelectBug={handleSelectBug}
+        />
+      }
+      rightSidebar={
+        <RightSidebar
+          activeTab={activeTab}
+          selectedSpec={selectedSpec}
+          specDetail={selectedSpecDetail}
+          isAutoExecuting={isAutoExecuting}
+          onAutoExecution={handleAutoExecution}
+        />
+      }
+      footer={<FooterContent />}
+    >
+      <MainPanel
+        activeTab={activeTab}
+        selectedSpec={selectedSpec}
+        selectedBug={selectedBug}
+        onBack={handleBack}
+      />
+    </DesktopLayout>
+  );
+}
+
+// =============================================================================
+// Mobile App Content - MobileLayout使用 (既存維持)
+// =============================================================================
+
+function MobileAppContent() {
+  const apiClient = useApi();
+  const [activeTab, setActiveTab] = useState<MobileTab>('specs');
+  const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
+  const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
+  const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
+
+  useEffect(() => {
+    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
+    return cleanup;
+  }, [apiClient]);
+
+  const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
+    setSelectedSpec(spec);
+    const result = await apiClient.getSpecDetail(spec.name);
+    if (result.ok) {
+      setSelectedSpecDetail(result.value);
+    }
+  }, [apiClient]);
+
+  const handleSelectBug = useCallback((bug: BugMetadataWithPath) => {
+    setSelectedBug(bug);
+  }, []);
+
   const handleBackToList = useCallback(() => {
     setSelectedSpec(null);
     setSelectedSpecDetail(null);
     setSelectedBug(null);
   }, []);
 
-  // Handle tab change - use the prop callback
   const handleTabChange = useCallback((tab: MobileTab) => {
-    onTabChange(tab);
-    // Clear selections when changing tabs
+    setActiveTab(tab);
     setSelectedSpec(null);
     setSelectedSpecDetail(null);
     setSelectedBug(null);
-  }, [onTabChange]);
+  }, []);
 
-  // Render content based on active tab
   const renderContent = () => {
     switch (activeTab) {
       case 'specs':
@@ -86,19 +412,11 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
               >
                 &larr; Spec一覧に戻る
               </button>
-              <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                <div className="flex-1 overflow-y-auto">
-                  <SpecDetailView
-                    spec={selectedSpec}
-                    apiClient={apiClient}
-                  />
-                </div>
-                <div className="md:w-80 border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
-                  <SpecActionsView
-                    specDetail={selectedSpecDetail}
-                    apiClient={apiClient}
-                  />
-                </div>
+              <div className="flex-1 overflow-y-auto">
+                <SpecDetailView spec={selectedSpec} apiClient={apiClient} />
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-700">
+                <SpecActionsView specDetail={selectedSpecDetail} apiClient={apiClient} />
               </div>
             </div>
           );
@@ -122,10 +440,7 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
                 &larr; Bug一覧に戻る
               </button>
               <div className="flex-1 overflow-y-auto">
-                <BugDetailView
-                  bug={selectedBug}
-                  apiClient={apiClient}
-                />
+                <BugDetailView bug={selectedBug} apiClient={apiClient} />
               </div>
             </div>
           );
@@ -139,18 +454,10 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
         );
 
       case 'agent':
-        return (
-          <AgentView
-            apiClient={apiClient}
-          />
-        );
+        return <AgentView apiClient={apiClient} />;
 
       case 'project':
-        return (
-          <ProjectAgentView
-            apiClient={apiClient}
-          />
-        );
+        return <ProjectAgentView apiClient={apiClient} />;
 
       default:
         return null;
@@ -158,86 +465,32 @@ function MainContent({ activeTab, onTabChange }: MainContentProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Tab Navigation (for desktop, mobile uses layout tabs) */}
-      <div className="hidden md:flex border-b border-gray-200 dark:border-gray-700">
-        {(['specs', 'bugs', 'agent', 'project'] as MobileTab[]).map((tab) => (
-          <button
-            key={tab}
-            data-testid={`remote-tab-${tab}`}
-            aria-selected={activeTab === tab}
-            onClick={() => handleTabChange(tab)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            {tab === 'specs' ? 'Specs' : tab === 'bugs' ? 'Bugs' : tab === 'agent' ? 'Agent' : 'Project'}
-          </button>
-        ))}
-      </div>
-
-      {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
+    <MobileLayout activeTab={activeTab} onTabChange={handleTabChange}>
+      <div className="h-screen bg-gray-50 dark:bg-gray-900">
         {renderContent()}
       </div>
-    </div>
+    </MobileLayout>
   );
 }
 
-/**
- * AppContent - Main content component that uses device type to select layout
- *
- * This component must be inside providers to use useDeviceType hook.
- * Manages tab state and passes it to both layout and content components.
- */
+// =============================================================================
+// AppContent - デバイスタイプに応じたレイアウト選択
+// =============================================================================
+
 function AppContent() {
   const { isMobile } = useDeviceType();
-  const [activeTab, setActiveTab] = useState<MobileTab>('specs');
-  const apiClient = useApi();
-
-  // Task 7.1: Initialize WebSocket event listeners for bug auto execution
-  useEffect(() => {
-    // Initialize bug auto execution WebSocket listeners
-    const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
-
-    // Cleanup on unmount
-    return cleanup;
-  }, [apiClient]);
-
-  // Handle tab change from either layout or content
-  const handleTabChange = useCallback((tab: MobileTab) => {
-    setActiveTab(tab);
-  }, []);
 
   if (isMobile) {
-    return (
-      <MobileLayout activeTab={activeTab} onTabChange={handleTabChange}>
-        <div className="h-screen bg-gray-50 dark:bg-gray-900">
-          <MainContent activeTab={activeTab} onTabChange={handleTabChange} />
-        </div>
-      </MobileLayout>
-    );
+    return <MobileAppContent />;
   }
 
-  return (
-    <DesktopLayout>
-      <div className="h-screen bg-gray-50 dark:bg-gray-900">
-        <MainContent activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
-    </DesktopLayout>
-  );
+  return <DesktopAppContent />;
 }
 
-/**
- * App - Root component with providers
- *
- * Provider nesting order:
- * 1. ApiClientProvider - outermost, provides API client
- * 2. PlatformProvider - provides platform capabilities
- * 3. AppContent - uses providers and renders layout
- */
+// =============================================================================
+// App - Root component with providers
+// =============================================================================
+
 export default function App() {
   return (
     <ApiClientProvider>

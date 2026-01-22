@@ -163,15 +163,23 @@ export function SpecsView({
     });
   }, [specs, specJsonMap]);
 
-  // Filter specs by search query (spec-metadata-ssot-refactor: use specsWithPhase)
+  // Sort specs by updatedAt descending (matching Electron version default)
+  const sortedSpecs = useMemo(() => {
+    return [...specsWithPhase].sort((a, b) => {
+      // Sort by updatedAt descending (newest first)
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [specsWithPhase]);
+
+  // Filter specs by search query (spec-metadata-ssot-refactor: use sortedSpecs)
   const filteredSpecs = useMemo(() => {
     if (!searchQuery.trim()) {
-      return specsWithPhase;
+      return sortedSpecs;
     }
 
     const query = searchQuery.toLowerCase();
-    return specsWithPhase.filter((spec) => spec.name.toLowerCase().includes(query));
-  }, [specsWithPhase, searchQuery]);
+    return sortedSpecs.filter((spec) => spec.name.toLowerCase().includes(query));
+  }, [sortedSpecs, searchQuery]);
 
   // Render loading state
   if (isLoading) {

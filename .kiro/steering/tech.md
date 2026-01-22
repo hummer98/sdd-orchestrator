@@ -165,6 +165,40 @@ Electronアプリはブラウザからアクセス可能なRemote UIを提供す
 | 機能範囲 | フル機能 | 閲覧・実行（設定変更は制限あり） |
 | 状態管理 | shared/stores | shared/stores（ApiClient経由で同期） |
 
+### Remote UI DesktopLayout設計原則（Strict）
+
+**原則: DesktopLayoutはElectron版のレイアウトに準拠する**
+
+Remote UIのDesktopLayout（デスクトップブラウザ向け）は、Electron版のUI/UXと同等の体験を提供することを目標とする。MobileLayoutはタッチ操作に最適化した独自設計が許容されるが、**DesktopLayoutはElectron版の設計を基準とする**。
+
+#### レイアウト構造の準拠ルール
+
+| 構成要素 | Electron版 | DesktopLayout準拠要件 |
+|----------|------------|----------------------|
+| **Header** | タイトル、プロジェクト名、ProfileBadge | 同等の情報を表示 |
+| **左サイドバー** | Specs/Bugsタブ切り替え、一覧表示 | 同等の構成 |
+| **中央エリア** | ワークフロー、ドキュメントタブ | 同等の構成 |
+| **右サイドバー** | Agent一覧、操作パネル | 対応要 |
+| **下部パネル** | AgentLogPanel（リサイズ可能） | 同等のログ表示 |
+
+#### 禁止パターン
+
+- ❌ **独自ナビゲーション構造**: Electron版と異なるタブ構成やナビゲーションパターンを導入しない
+- ❌ **機能の省略**: Desktop表示なのに「モバイル向け」を理由に機能を省略しない
+- ❌ **レイアウトの単純化**: 「Remote UIだから」という理由でElectron版より簡素なレイアウトにしない
+
+#### 許容パターン
+
+- ✅ **技術的制約による差異**: Electron専用API（ファイルダイアログ等）を使用する機能の非表示
+- ✅ **セキュリティ上の制限**: Remote UIでは無効化すべき操作（設定変更等）
+- ✅ **MobileLayoutの独自設計**: モバイルはタッチ操作に最適化した独自レイアウトを許容
+
+#### 実装方針
+
+1. **共通コンポーネントの活用**: `src/shared/components/`のコンポーネントを最大限活用
+2. **Electron版を参照設計**: 新機能追加時はまずElectron版の設計を確認
+3. **差分の明確化**: Electron版と異なる実装をする場合は、技術的理由をコメントで明記
+
 **CLI起動オプション（E2Eテスト用）**:
 ```bash
 sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-test

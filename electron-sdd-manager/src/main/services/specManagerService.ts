@@ -141,8 +141,9 @@ export type AgentExitErrorCallback = (agentId: string, error: Error) => void;
  * - Running in worktreeCwd would cause the process to hang (cwd deleted)
  *
  * agent-exit-robustness: Requirements 1.1, 1.4
+ * bug-merge-cwd-fix: Added 'bug-merge' for bug worktree merge operations
  */
-export const WORKTREE_LIFECYCLE_PHASES = ['spec-merge'] as const;
+export const WORKTREE_LIFECYCLE_PHASES = ['spec-merge', 'bug-merge'] as const;
 
 export type WorktreeLifecyclePhase = typeof WORKTREE_LIFECYCLE_PHASES[number];
 

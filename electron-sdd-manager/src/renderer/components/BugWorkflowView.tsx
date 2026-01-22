@@ -193,8 +193,12 @@ export function BugWorkflowView() {
       // worktreeフィールドが存在する場合は/kiro:bug-merge、そうでない場合は/commit
       // bugs-workflow-footer: Check bugDetail.metadata.worktree (bug.json.worktree as SSOT)
       let command = commandTemplate;
+      // bug-merge-cwd-fix: worktreeモードの場合、phaseも'bug-merge'に変更
+      // これによりWORKTREE_LIFECYCLE_PHASESにマッチし、projectPathで実行される
+      let effectivePhase: string = phase;
       if (phase === 'deploy' && bugDetail?.metadata.worktree) {
         command = '/kiro:bug-merge';
+        effectivePhase = 'bug-merge';
       }
 
       // Build the command: all phases (including deploy) append bug name
@@ -204,7 +208,7 @@ export function BugWorkflowView() {
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
       await window.electronAPI.startAgent(
         `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
-        phase,
+        effectivePhase,
         'claude',
         [fullCommand], // Args: full command (base flags added by service)
         undefined,

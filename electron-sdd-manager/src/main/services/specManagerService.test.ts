@@ -2177,6 +2177,44 @@ describe('WORKTREE_LIFECYCLE_PHASES - cwd resolution for worktree lifecycle phas
     }
   });
 
+  // bug-merge-cwd-fix: Test for bug-merge phase in WORKTREE_LIFECYCLE_PHASES
+  it('should use projectPath as cwd for bug-merge phase (WORKTREE_LIFECYCLE_PHASES)', async () => {
+    // Setup: Create bug.json with worktree configuration
+    const bugDir = path.join(testDir, '.kiro', 'bugs', 'test-bug');
+    await fs.mkdir(bugDir, { recursive: true });
+
+    // Create worktree directory structure with bug.json inside
+    const worktreeDir = path.join(testDir, '.kiro', 'worktrees', 'bugs', 'test-bug');
+    const worktreeBugDir = path.join(worktreeDir, '.kiro', 'bugs', 'test-bug');
+    await fs.mkdir(worktreeBugDir, { recursive: true });
+
+    await fs.writeFile(path.join(worktreeBugDir, 'bug.json'), JSON.stringify({
+      bug_name: 'test-bug',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      worktree: {
+        path: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    }));
+
+    // Start bug-merge agent - should use projectPath, not worktreeCwd
+    const result = await service.startAgent({
+      specId: 'bug:test-bug',
+      phase: 'bug-merge',
+      command: 'echo',
+      args: ['test'],
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // bug-merge phase should use projectPath as cwd (not worktree path)
+      expect(result.value.cwd).toBe(testDir);
+    }
+  });
+
   it('should use worktreeCwd for non-WORKTREE_LIFECYCLE_PHASES (e.g., impl)', async () => {
     // Setup: Create spec.json with worktree configuration
     const specDir = path.join(testDir, '.kiro', 'specs', 'test-spec');

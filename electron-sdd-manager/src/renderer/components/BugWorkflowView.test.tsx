@@ -336,9 +336,10 @@ describe('BugWorkflowView', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       // Should call bug-merge for worktree mode
+      // bug-merge-cwd-fix: phase should be 'bug-merge' (not 'deploy') for WORKTREE_LIFECYCLE_PHASES
       expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
         'bug:test-bug',
-        'deploy',
+        'bug-merge',
         'claude',
         ['/kiro:bug-merge test-bug'],
         undefined,

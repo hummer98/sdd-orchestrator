@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0] - 2026-01-23
+
+### Added
+- **merge-helper-scripts**: マージ操作用ヘルパースクリプトの実装
+- **parallel-task-impl**: 並列タスク実行機能の実装
+
+### Fixed
+- **project-agent-no-response**: ProjectAgentのresumeが動作しない問題を修正
+- **worktree**: --add-dirオプションによる親リポジトリ参照問題を修正
+- **bug-auto-execution**: bug:プレフィックスのworktreeCwd自動解決を修正
+
 ## [0.39.0] - 2026-01-22
 
 ### Added

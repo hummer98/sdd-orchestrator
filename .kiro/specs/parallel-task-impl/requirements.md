@@ -4,17 +4,21 @@
 
 本ドキュメントは、SDD Orchestratorにおける「並列実装」機能の要件を定義する。この機能は、tasks.mdの(P)マークを解析し、並列実行可能なタスクをグループ化して、複数のClaudeセッションで同時に実装を進めることを目的とする。
 
+既存の「実装開始」ボタンに並列モードトグルを追加し、ONの場合は並列実行、OFFの場合は従来の逐次実行を行う。
+
 ## Requirements
 
-### Requirement 1: 並列実装ボタンの配置
+### Requirement 1: 並列モードトグルスイッチの配置
 
-**Objective:** As a 開発者, I want implフェーズに「並列実装」ボタンを配置したい, so that 通常の逐次実装と並列実装を選択できる
+**Objective:** As a 開発者, I want implフェーズの「実装開始」ボタンの横に並列モードトグルを配置したい, so that 通常の逐次実装と並列実装を切り替えできる
 
 #### Acceptance Criteria
-1. When ユーザーがSpecを選択する, the WorkflowView shall implフェーズセクション（TaskProgressViewの上部）に「並列実装」ボタンを表示する
-2. While tasksフェーズが承認済みである, the 並列実装ボタン shall 有効な状態で表示される
-3. If tasksフェーズが未承認である, then the 並列実装ボタン shall 無効化された状態で表示される
-4. The 並列実装ボタン shall 既存のUIデザインと一貫したスタイルで表示される
+1. When ユーザーがSpecを選択する, the ImplPhasePanel shall 「実装開始」ボタンの横に「並列」トグルスイッチを表示する
+2. While tasksフェーズが承認済みである, the 並列トグル shall 有効な状態で表示される
+3. If tasksフェーズが未承認である, then the 並列トグル shall 無効化された状態で表示される
+4. The 並列トグル shall 既存のImplPhasePanelのUIデザインと一貫したスタイルで表示される
+5. When 並列トグルがONの状態で「実装開始」ボタンがクリックされる, the システム shall 並列実装モードで実行を開始する
+6. When 並列トグルがOFFの状態で「実装開始」ボタンがクリックされる, the システム shall 従来の逐次実装モードで実行を開始する
 
 ### Requirement 2: tasks.mdパーサー（taskParallelParser）
 
@@ -41,10 +45,11 @@
 **Objective:** As a システム, I want グループ内タスクを複数のClaudeセッションで並列実行したい, so that 実装時間を短縮できる
 
 #### Acceptance Criteria
-1. When 並列実装ボタンがクリックされる, the システム shall 最初のグループのタスクに対して並列でClaudeセッションを起動する
+1. When 並列トグルがONの状態で実装開始ボタンがクリックされる, the システム shall 最初のグループのタスクに対して並列でClaudeセッションを起動する
 2. While 並列セッションが実行中である, the システム shall MAX_CONCURRENT_SPECS=5の上限を適用する
 3. When グループ内のタスク数がMAX_CONCURRENT_SPECSを超える, the システム shall 上限までのタスクを先に起動し、完了次第残りを起動する
-4. The システム shall /kiro:spec-implと/spec-manager:impl両方のコマンドセットに対応する
+4. The システム shall specManagerService.execute()を拡張して並列実行をサポートする
+5. The システム shall 各タスクに対してstartAgent()を呼び出し、個別のAgentProcessを生成する
 
 ### Requirement 5: グループ間の自動進行
 
@@ -53,7 +58,7 @@
 #### Acceptance Criteria
 1. When 現在のグループの全タスクが正常完了する, the システム shall 次のグループの並列実行を自動的に開始する
 2. When 1回のボタン押下で開始された並列実装, the システム shall 全グループ完了まで自動進行する
-3. While 自動進行中である, the 並列実装ボタン shall 実行中状態を表示する
+3. While 自動進行中である, the 実装開始ボタン shall 実行中状態を表示する（useLaunchingState()による既存のUI挙動を維持）
 
 ### Requirement 6: エラーハンドリング
 
@@ -70,19 +75,20 @@
 **Objective:** As a 開発者, I want 並列実行中のタスク進捗を確認したい, so that 実行状況を把握できる
 
 #### Acceptance Criteria
-1. While 並列実装が実行中である, the AgentListPanel shall 各タスクに対応するAgentを表示する
+1. While 並列実装が実行中である, the AgentListPanel shall 各タスクに対応するAgentを表示する（agentRecordServiceによるファイルベースSSOTを利用）
 2. When 複数のClaudeセッションが起動される, the AgentListPanel shall 全てのアクティブなAgentを一覧表示する
-3. The 並列実装ボタン自体 shall 実行中はスピナーまたは進行状態を表示する
-4. When グループ内の全タスクが完了する, the AgentListPanel shall 各Agentの完了ステータスを表示する
+3. The 実装開始ボタン shall 実行中はスピナーまたは進行状態を表示する（useLaunchingState()による既存の仕組みを利用）
+4. When グループ内の全タスクが完了する, the AgentListPanel shall 各Agentの完了ステータスを表示する（ファイル監視による自動更新）
 
 ### Requirement 8: 既存機能との互換性
 
-**Objective:** As a システム, I want 既存の「実装」ボタンの動作を維持したい, so that 従来の逐次実装ワークフローも利用可能である
+**Objective:** As a システム, I want 並列トグルOFF時に既存の逐次実装動作を維持したい, so that 従来のワークフローも利用可能である
 
 #### Acceptance Criteria
-1. The 既存「実装」ボタン shall 現行の動作を変更なく維持する
-2. The 並列実装機能 shall 既存のagentProcess, agentRegistryインフラストラクチャを活用する
+1. When 並列トグルがOFFである, the 実装開始ボタン shall 現行の逐次実装動作を変更なく維持する
+2. The 並列実装機能 shall 既存のspecManagerService.execute(), startAgent(), agentRecordServiceインフラストラクチャを活用する
 3. When 並列実装完了後, the TaskProgressView shall 通常と同様にタスク完了状態を表示する
+4. The 並列実装機能 shall 既存のIPC API（startImpl）を拡張して並列モードオプションを追加する
 
 ### Requirement 9: キャンセル機能
 

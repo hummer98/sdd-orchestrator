@@ -4,9 +4,9 @@
 
 **Purpose**: tasks.mdの(P)マークを活用し、並列実行可能なタスクを複数のClaudeセッションで同時に実装する機能を提供する。
 
-**Users**: 開発者がWorkflowView内の「並列実装」ボタンを使用し、タスクの並列実行により実装時間を短縮する。
+**Users**: 開発者がImplPhasePanel内の「並列」トグルをONにして実装開始することで、タスクの並列実行により実装時間を短縮する。
 
-**Impact**: 既存の「実装」ボタンと並行して動作し、既存ワークフローを維持しながら並列実行オプションを追加する。
+**Impact**: 既存の「実装開始」ボタンに並列モードトグルを追加し、既存ワークフローを維持しながら並列実行オプションを提供する。
 
 ### Goals
 
@@ -20,8 +20,6 @@
 - 既存の「実装」ボタンの動作変更
 - tasks.mdの(P)マーク生成ロジック（既存のtasks-parallel-analysis.mdで対応済み）
 - 並列ビルド・テスト実行（impl内部の処理）
-- リモートプロジェクトでの並列実装（将来拡張）
-- Remote UI（VS Code Web Extension等）対応: 複数Claudeセッションの同時起動はDesktop専用機能として設計。Remote UI環境での並列実行は複雑性が高いため、将来拡張として別Specで検討する
 
 ## Architecture
 
@@ -30,9 +28,8 @@
 ```mermaid
 graph TB
     subgraph Renderer
-        WorkflowView[WorkflowView]
-        TaskProgressView[TaskProgressView]
-        ParallelBtn[ParallelImplButton]
+        ImplPhasePanel[ImplPhasePanel]
+        ParallelToggle[ParallelModeToggle]
         ParallelSvc[ParallelImplService]
         AgentStore[agentStore]
         AgentListPanel[AgentListPanel]
@@ -51,9 +48,8 @@ graph TB
         ClaudeN[Claude Session N]
     end
 
-    WorkflowView --> TaskProgressView
-    WorkflowView --> ParallelBtn
-    ParallelBtn --> ParallelSvc
+    ImplPhasePanel --> ParallelToggle
+    ImplPhasePanel -->|トグルON時| ParallelSvc
     ParallelSvc --> AgentStore
     ParallelSvc -->|IPC| TaskParser
     ParallelSvc -->|IPC| SpecManager
@@ -89,7 +85,7 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant WorkflowView as WorkflowView
+    participant ImplPanel as ImplPhasePanel
     participant ParallelSvc as ParallelImplService
     participant IPC as Electron IPC
     participant Parser as taskParallelParser
@@ -97,8 +93,8 @@ sequenceDiagram
     participant Registry as AgentRegistry
     participant Claude as Claude Sessions
 
-    User->>WorkflowView: 並列実装ボタンクリック
-    WorkflowView->>ParallelSvc: startParallelImpl(specPath)
+    User->>ImplPanel: 並列トグルON + 実装開始クリック
+    ImplPanel->>ParallelSvc: startParallelImpl(specPath)
     ParallelSvc->>IPC: parseTasksForParallel(specPath)
     IPC->>Parser: parse tasks.md
     Parser-->>IPC: TaskGroup[]
@@ -140,14 +136,15 @@ sequenceDiagram
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.4 | 並列実装ボタン配置 | WorkflowView, ParallelImplButton | なし | UI表示フロー |
+| 1.1-1.4 | 並列モードトグル配置 | ImplPhasePanel, ParallelModeToggle | なし | UI表示フロー |
+| 1.5-1.6 | トグル状態に応じた実装起動 | ImplPhasePanel | ParallelImplService | 実装起動フロー |
 | 2.1-2.5 | tasks.mdパーサー | taskParallelParser | parseTasksForParallel（新規IPC） | パース処理 |
 | 3.1-3.3 | タスクグループ化 | taskParallelParser | TaskGroup型 | グループ化ロジック |
 | 4.1-4.4 | 並列Claudeセッション起動 | ParallelImplService | executeTaskImpl（既存IPC）| 並列起動フロー |
 | 5.1-5.3 | グループ間自動進行 | ParallelImplService | onAgentStatusChange（既存） | 自動進行フロー |
 | 6.1-6.4 | エラーハンドリング | ParallelImplService | onAgentStatusChange（既存） | エラー処理フロー |
-| 7.1-7.4 | 進捗表示 | AgentListPanel, ParallelImplButton | agentStore（既存） | UI更新フロー |
-| 8.1-8.3 | 既存機能互換性 | WorkflowView, TaskProgressView | 既存インターフェース維持 | なし |
+| 7.1-7.4 | 進捗表示 | AgentListPanel | agentStore（既存） | UI更新フロー |
+| 8.1-8.3 | 既存機能互換性 | ImplPhasePanel | 既存インターフェース維持 | なし |
 | 9.1-9.3 | キャンセル機能 | ParallelImplService | stopAgent（既存IPC） | キャンセルフロー |
 
 ## Components and Interfaces
@@ -156,8 +153,8 @@ sequenceDiagram
 |-----------|--------------|--------|--------------|------------------|-----------|
 | taskParallelParser | Main/Service | tasks.mdを解析して(P)マーク付きタスクをグループ化 | 2.1-2.5, 3.1-3.3 | FileService (P0) | Service |
 | ParallelImplService | Renderer/Service | 並列実装のオーケストレーション | 4.1-4.4, 5.1-5.3, 6.1-6.4, 9.1-9.3 | agentStore (P0), electronAPI (P0) | Service, State |
-| ParallelImplButton | Renderer/UI | 並列実装ボタンUI | 1.1-1.4, 7.3 | ParallelImplService (P0) | なし |
-| WorkflowView拡張 | Renderer/UI | 並列実装ボタン配置（TaskProgressViewの上部に配置） | 1.1-1.4 | ParallelImplButton (P1) | なし |
+| ParallelModeToggle | Renderer/UI | 並列/逐次モード切り替えトグルUI | 1.1-1.4 | なし | なし |
+| ImplPhasePanel拡張 | Renderer/UI | トグル配置とモードに応じた実装起動制御 | 1.1-1.6, 8.1-8.3 | ParallelModeToggle (P1), ParallelImplService (P0) | なし |
 
 ### Main/Service
 
@@ -378,42 +375,73 @@ interface ParallelImplStore {
 
 ### Renderer/UI
 
-#### ParallelImplButton
+#### ParallelModeToggle
 
 | Field | Detail |
 |-------|--------|
-| Intent | 並列実装の開始/停止ボタンUI |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 7.3 |
+| Intent | 並列/逐次モードを切り替えるトグルスイッチUI |
+| Requirements | 1.1, 1.2, 1.3, 1.4 |
+
+**UI実装イメージ**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Implementation Phase                                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   ┌──────────────────┐   ┌─────────┐                       │
+│   │  実装開始        │   │ ○──●   │  並列                  │
+│   │     (既存)       │   │ Toggle  │  ラベル               │
+│   └──────────────────┘   └─────────┘                       │
+│         ↑                     ↑                            │
+│    既存ボタン            ParallelModeToggle                 │
+│   (変更なし)            (新規追加)                          │
+│                                                             │
+│   状態別表示:                                               │
+│   ┌─────────────────────────────────────────────┐          │
+│   │ OFF状態:  ●──○  逐次（デフォルト）           │          │
+│   │ ON状態:   ○──●  並列                        │          │
+│   │ 無効状態: ○──○  (グレーアウト、tasks未承認) │          │
+│   └─────────────────────────────────────────────┘          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**動作フロー**
+
+1. トグルOFF + 「実装開始」クリック → 既存の逐次実装
+2. トグルON + 「実装開始」クリック → 並列実装モード起動
 
 **Responsibilities & Constraints**
 - tasksフェーズ承認状態に応じた有効/無効表示
-- 実行中はスピナー表示、キャンセルボタンへ変化
-- 既存「実装」ボタンと一貫したデザイン
+- トグル状態をImplPhasePanelに通知
+- 既存「実装開始」ボタンのデザインと調和したスタイル
 
 **Dependencies**
-- Inbound: WorkflowView - 配置 (P1)
-- Outbound: ParallelImplService - 実行制御 (P0)
-- Outbound: specStore - 承認状態参照 (P1)
+- Inbound: ImplPhasePanel - 配置 (P1)
+- Outbound: なし（状態はprops/callbackで親に通知）
 
 **Contracts**: なし（UIコンポーネント）
 
 **Implementation Notes**
-- Integration: WorkflowView内のimplフェーズセクション、TaskProgressViewの上部に配置
+- Integration: ImplPhasePanel内の「実装開始」ボタンの右側に配置
 - Validation: specDetail.specJson.approvals.tasks.approvedで有効化判定
+- 状態管理: ローカルstate、トグル変更時にonChange callbackで親に通知
 
 ---
 
-#### WorkflowView拡張
+#### ImplPhasePanel拡張
 
 | Field | Detail |
 |-------|--------|
-| Intent | 既存のWorkflowViewにParallelImplButtonを追加 |
-| Requirements | 1.1 |
+| Intent | 既存のImplPhasePanelにParallelModeToggleを追加し、モードに応じた実装起動を制御 |
+| Requirements | 1.1, 1.5, 1.6 |
 
 **Implementation Notes**
-- implフェーズ表示領域（TaskProgressViewの上部）にParallelImplButtonを配置
-- 既存のPhaseItemレイアウトとの整合性を維持
-- 配置場所: `{phase === 'impl' && specDetail.taskProgress && ...}` ブロック内の先頭
+- 「実装開始」ボタンの右側にParallelModeToggleを配置
+- トグル状態を管理し、実装開始時にモードに応じたハンドラを呼び出す
+- トグルON時: ParallelImplService.startParallelImpl()を呼び出し
+- トグルOFF時: 既存の逐次実装処理を呼び出し（変更なし）
 
 ---
 
@@ -535,7 +563,7 @@ interface ElectronAPI {
 ### Unit Tests
 - `taskParallelParser.test.ts`: (P)マーク検出、グループ化ロジック、ネスト構造対応
 - `ParallelImplService.test.ts`: 状態遷移、グループ進行ロジック、キャンセル処理
-- `ParallelImplButton.test.tsx`: 有効/無効状態、実行中表示
+- `ParallelModeToggle.test.tsx`: 有効/無効状態、トグル切り替え
 
 ### Integration Tests
 - IPC経由のtasks.md解析
@@ -543,9 +571,9 @@ interface ElectronAPI {
 - エラー発生時のグループ停止
 
 ### E2E Tests
-- 並列実装ボタンクリック→複数Agent起動確認
+- 並列トグルON + 実装開始→複数Agent起動確認
 - グループ完了→次グループ自動開始
-- キャンセルボタン→新規起動停止確認
+- キャンセル→新規起動停止確認
 
 ### Performance (if applicable)
 - MAX_CONCURRENT_SPECS=5での同時起動時間

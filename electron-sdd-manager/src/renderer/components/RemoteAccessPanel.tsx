@@ -75,6 +75,10 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
   const [tunnelCopySuccess, setTunnelCopySuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Construct URLs with access token for display and copy
+  const urlWithToken = url && accessToken ? `${url}?token=${accessToken}` : url;
+  const tunnelUrlWithToken = tunnelUrl && accessToken ? `${tunnelUrl}?token=${accessToken}` : tunnelUrl;
+
   // Handle checkbox toggle
   const handleToggle = useCallback(async () => {
     if (isLoading) return;
@@ -86,36 +90,36 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
     }
   }, [isRunning, isLoading, startServer, stopServer]);
 
-  // Handle URL copy
+  // Handle URL copy (with access token)
   const handleCopyUrl = useCallback(async () => {
-    if (!url) return;
+    if (!urlWithToken) return;
 
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(urlWithToken);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error('[RemoteAccessPanel] Failed to copy URL:', err);
     }
-  }, [url]);
+  }, [urlWithToken]);
 
   // Handle error dismiss
   const handleDismissError = useCallback(() => {
     clearError();
   }, [clearError]);
 
-  // Handle Tunnel URL copy (Task 9.2)
+  // Handle Tunnel URL copy (Task 9.2) - with access token
   const handleCopyTunnelUrl = useCallback(async () => {
-    if (!tunnelUrl) return;
+    if (!tunnelUrlWithToken) return;
 
     try {
-      await navigator.clipboard.writeText(tunnelUrl);
+      await navigator.clipboard.writeText(tunnelUrlWithToken);
       setTunnelCopySuccess(true);
       setTimeout(() => setTunnelCopySuccess(false), 2000);
     } catch (err) {
       console.error('[RemoteAccessPanel] Failed to copy Tunnel URL:', err);
     }
-  }, [tunnelUrl]);
+  }, [tunnelUrlWithToken]);
 
   // Handle Cloudflare publish toggle (Task 9.1)
   const handleCloudflareToggle = useCallback(() => {
@@ -256,7 +260,7 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
       {isRunning && (
         <div className="space-y-4">
           {/* Connection URL */}
-          {url && (
+          {urlWithToken && (
             <div data-testid="connection-url">
               <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Connection URL
@@ -270,7 +274,7 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
                     'font-mono overflow-x-auto'
                   )}
                 >
-                  {url}
+                  {urlWithToken}
                 </code>
                 <button
                   onClick={handleCopyUrl}
@@ -337,7 +341,7 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
           )}
 
           {/* Tunnel URL (Task 9.2) */}
-          {tunnelUrl && (
+          {tunnelUrlWithToken && (
             <div data-testid="tunnel-url">
               <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1">
                 <Cloud className="w-4 h-4 text-orange-500" />
@@ -353,7 +357,7 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
                     'border border-orange-200 dark:border-orange-800'
                   )}
                 >
-                  {tunnelUrl}
+                  {tunnelUrlWithToken}
                 </code>
                 <button
                   onClick={handleCopyTunnelUrl}

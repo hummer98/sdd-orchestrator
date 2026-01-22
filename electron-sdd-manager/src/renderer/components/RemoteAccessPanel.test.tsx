@@ -534,6 +534,103 @@ describe('RemoteAccessPanel', () => {
   });
 
   // ============================================================
+  // Bug fix: URL should include access token
+  // ============================================================
+  describe('URL with access token', () => {
+    const mockWriteText = vi.fn().mockResolvedValue(undefined);
+
+    beforeEach(() => {
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: mockWriteText,
+        },
+      });
+      mockWriteText.mockClear();
+    });
+
+    it('should display LAN URL with access token', () => {
+      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...defaultStoreState,
+        isRunning: true,
+        port: 8765,
+        url: 'http://192.168.1.100:8765',
+        localIp: '192.168.1.100',
+        accessToken: 'test-token-123',
+      });
+
+      render(<RemoteAccessPanel />);
+
+      expect(screen.getByText('http://192.168.1.100:8765?token=test-token-123')).toBeInTheDocument();
+    });
+
+    it('should copy LAN URL with access token', () => {
+      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...defaultStoreState,
+        isRunning: true,
+        port: 8765,
+        url: 'http://192.168.1.100:8765',
+        localIp: '192.168.1.100',
+        accessToken: 'test-token-123',
+      });
+
+      render(<RemoteAccessPanel />);
+
+      const copyButton = screen.getByRole('button', { name: /copy/i });
+      fireEvent.click(copyButton);
+
+      expect(mockWriteText).toHaveBeenCalledWith('http://192.168.1.100:8765?token=test-token-123');
+    });
+
+    it('should display Tunnel URL with access token', () => {
+      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...defaultStoreState,
+        isRunning: true,
+        port: 8765,
+        url: 'http://192.168.1.100:8765',
+        publishToCloudflare: true,
+        tunnelUrl: 'https://my-tunnel.trycloudflare.com',
+        tunnelStatus: 'connected',
+        accessToken: 'test-token-123',
+        hasTunnelToken: true,
+        setPublishToCloudflare: vi.fn(),
+      });
+
+      render(<RemoteAccessPanel />);
+
+      expect(screen.getByText('https://my-tunnel.trycloudflare.com?token=test-token-123')).toBeInTheDocument();
+    });
+
+    it('should copy Tunnel URL with access token', () => {
+      (useRemoteAccessStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...defaultStoreState,
+        isRunning: true,
+        port: 8765,
+        url: 'http://192.168.1.100:8765',
+        publishToCloudflare: true,
+        tunnelUrl: 'https://my-tunnel.trycloudflare.com',
+        tunnelStatus: 'connected',
+        accessToken: 'test-token-123',
+        hasTunnelToken: true,
+        setPublishToCloudflare: vi.fn(),
+      });
+
+      render(<RemoteAccessPanel />);
+
+      const copyButtons = screen.getAllByRole('button', { name: /copy/i });
+      const tunnelCopyButton = copyButtons.find(btn =>
+        btn.closest('[data-testid="tunnel-url"]') !== null
+      );
+
+      if (tunnelCopyButton) {
+        fireEvent.click(tunnelCopyButton);
+        expect(mockWriteText).toHaveBeenCalledWith('https://my-tunnel.trycloudflare.com?token=test-token-123');
+      } else {
+        throw new Error('Tunnel copy button not found');
+      }
+    });
+  });
+
+  // ============================================================
   // Task 9.4: Access token refresh functionality
   // Requirements: 3.3
   // ============================================================

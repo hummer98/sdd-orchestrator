@@ -691,15 +691,16 @@ export function WorkflowView() {
         </div>
 
         {/* InspectionPanel (after impl, before deploy) */}
-        {/* inspection-permission-unification Task 6.1: Removed autoExecutionFlag and onAutoExecutionFlagChange */}
         <div className="my-3">
           <InspectionPanel
             inspectionState={inspectionState}
             isExecuting={isInspectionExecuting}
             isAutoExecuting={isAutoExecuting}
+            autoExecutionPermitted={workflowStore.autoExecutionPermissions.inspection}
             canExecuteInspection={phaseStatuses.tasks === 'approved' && specDetail.taskProgress?.percentage === 100}
             onStartInspection={handleStartInspection}
             onExecuteFix={handleExecuteInspectionFix}
+            onToggleAutoPermission={() => workflowStore.toggleAutoPermission('inspection')}
             launching={launching}
           />
         </div>

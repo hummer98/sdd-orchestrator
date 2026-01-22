@@ -2,21 +2,19 @@
  * InspectionPanel Component (Shared)
  *
  * Task 4.6: DocumentReview・Inspection・Validation関連コンポーネントを共有化する
- * inspection-permission-unification Task 5.1, 5.2: Removed run/pause toggle button
+ * inspection-permission-unification fix: GO/NOGO toggle restored following PhaseItem pattern
  *
  * Inspectionワークフローの制御とステータス表示を行うコンポーネント。
  * props-driven設計で、ストア非依存。Electron版とRemote UI版で共有可能。
  */
 
 import { clsx } from 'clsx';
-import { Bot, Check, Circle, Wrench } from 'lucide-react';
-// inspection-permission-unification Task 5.1: Pause and PlayCircle icons removed
+import { Bot, Check, Circle, Wrench, PlayCircle, Pause } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   InspectionState,
   InspectionProgressIndicatorState,
 } from '../../types';
-// inspection-permission-unification Task 5.1: InspectionAutoExecutionFlag import removed
 import {
   getLatestRound,
   getRoundCount,
@@ -30,8 +28,8 @@ import {
 
 /**
  * inspection-permission-unification Task 5.2: Simplified props
- * Removed autoExecutionFlag and onAutoExecutionFlagChange
- * Requirements: 5.1, 5.2
+ * inspection-permission-unification fix: Added autoExecutionPermitted and onToggleAutoPermission
+ * for GO/NOGO toggle following PhaseItem pattern
  */
 export interface InspectionPanelProps {
   /** Current inspection state from spec.json (new simplified structure) */
@@ -40,15 +38,16 @@ export interface InspectionPanelProps {
   isExecuting: boolean;
   /** Whether auto execution is running (global workflow auto execution) */
   isAutoExecuting?: boolean;
-  // autoExecutionFlag prop removed - use permissions.inspection instead
+  /** Whether inspection auto execution is permitted (GO/NOGO) */
+  autoExecutionPermitted?: boolean;
   /** Whether inspection can be executed (tasks approved and 100% complete) */
   canExecuteInspection?: boolean;
   /** Handler for starting a new inspection round */
   onStartInspection: () => void;
   /** Handler for executing fix for a specific round */
   onExecuteFix?: (roundNumber: number) => void;
-  // onAutoExecutionFlagChange prop removed - use toggleAutoPermission('inspection') instead
-  // agent-launch-optimistic-ui: Optimistic UI launching state
+  /** Handler for toggling auto execution permission (GO/NOGO) */
+  onToggleAutoPermission?: () => void;
   /** Whether an operation is being launched (Optimistic UI) */
   launching?: boolean;
 }
@@ -83,9 +82,6 @@ function renderProgressIndicator(state: InspectionProgressIndicatorState): React
   }
 }
 
-// inspection-permission-unification Task 5.1:
-// getNextAutoExecutionFlag, renderAutoExecutionFlagIcon, getAutoExecutionFlagTooltip removed
-// Auto execution toggle is now handled via permissions.inspection in PhaseItem checkbox
 
 function renderGoNogoBadge(result: 'go' | 'nogo' | null): React.ReactNode {
   if (result === null) {
@@ -118,19 +114,17 @@ function renderGoNogoBadge(result: 'go' | 'nogo' | null): React.ReactNode {
 // =============================================================================
 
 /**
- * inspection-permission-unification Task 5.1, 5.2: Simplified component
- * Removed autoExecutionFlag prop and toggle button
+ * inspection-permission-unification fix: Restored GO/NOGO toggle following PhaseItem pattern
  */
 export function InspectionPanel({
   inspectionState,
   isExecuting,
   isAutoExecuting = false,
-  // autoExecutionFlag prop removed
+  autoExecutionPermitted = true,
   canExecuteInspection = true,
   onStartInspection,
   onExecuteFix,
-  // onAutoExecutionFlagChange prop removed
-  // agent-launch-optimistic-ui: Optimistic UI launching state
+  onToggleAutoPermission,
   launching = false,
 }: InspectionPanelProps) {
   // Get round count from new structure
@@ -144,11 +138,10 @@ export function InspectionPanel({
   const latestResult = latestRound?.result ?? null;
 
   // Calculate progress indicator state
-  // inspection-permission-unification: Pass 'run' as default since toggle is removed
   const progressIndicatorState = getInspectionProgressIndicatorState(
     inspectionState,
     isExecuting,
-    'run'  // Default flag, no longer configurable
+    autoExecutionPermitted ? 'run' : 'pause'
   );
 
   // Determine which action button to show using new helper function
@@ -156,12 +149,9 @@ export function InspectionPanel({
   // Inspection button: when no rounds, GO, or NOGO with fixedAt set
   const showFixButton = needsFix(inspectionState);
 
-  // inspection-permission-unification: handleAutoExecutionFlagClick removed
-
   return (
     <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      {/* inspection-permission-unification Task 5.2: Removed toggle button */}
       <div className="flex items-center justify-between mb-3">
         {/* Left side: Progress indicator + Icon + Title + GO/NOGO badge */}
         <div className="flex items-center gap-2">
@@ -174,8 +164,31 @@ export function InspectionPanel({
           {renderGoNogoBadge(latestResult)}
         </div>
 
-        {/* inspection-permission-unification: Auto execution toggle button removed */}
-        {/* Auto execution permission is now controlled via impl phase checkbox */}
+        {/* Auto execution permission toggle (PhaseItem pattern) */}
+        {onToggleAutoPermission && (
+          <button
+            data-testid="inspection-auto-permission-toggle"
+            onClick={onToggleAutoPermission}
+            className={clsx(
+              'p-1 rounded',
+              'hover:bg-gray-200 dark:hover:bg-gray-600',
+              'transition-colors'
+            )}
+            title={autoExecutionPermitted ? '自動実行: 許可' : '自動実行: 一時停止'}
+          >
+            {autoExecutionPermitted ? (
+              <PlayCircle
+                data-testid="inspection-auto-permitted-icon"
+                className="w-4 h-4 text-green-500"
+              />
+            ) : (
+              <Pause
+                data-testid="inspection-auto-forbidden-icon"
+                className="w-4 h-4 text-yellow-500"
+              />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Stats */}

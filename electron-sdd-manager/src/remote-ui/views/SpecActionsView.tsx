@@ -2,7 +2,7 @@
  * SpecActionsView Component
  *
  * Task 13.3: Validation・Review・Inspection UIを実装する
- * inspection-permission-unification Task 8.1: Removed InspectionAutoExecutionFlag usage
+ * inspection-permission-unification fix: Restored GO/NOGO toggle using permissions.inspection
  *
  * Spec詳細ビューのアクションセクション。
  * DocumentReviewPanel, InspectionPanelを統合。
@@ -19,7 +19,6 @@ import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
   InspectionState,
-  // InspectionAutoExecutionFlag removed - use permissions.inspection instead
 } from '@shared/types';
 
 // =============================================================================
@@ -76,9 +75,8 @@ export function SpecActionsView({
   // Extract auto execution flags
   const documentReviewFlag: DocumentReviewAutoExecutionFlag =
     specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run';
-  // inspection-permission-unification Task 8.1: inspectionFlag no longer used
-  // const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection;
-  // Inspection auto execution is now controlled via permissions.inspection boolean
+  // inspection-permission-unification fix: Get inspection permission from permissions.inspection
+  const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection ?? true;
 
   // Check if tasks are approved (required for some actions)
   const tasksApproved = specDetail.specJson?.approvals?.tasks?.approved ?? false;
@@ -157,8 +155,13 @@ export function SpecActionsView({
     }
   }, [apiClient, specDetail.metadata.name, onActionExecuted]);
 
-  // inspection-permission-unification Task 8.1: handleInspectionFlagChange removed
-  // Inspection auto execution is now controlled via permissions.inspection boolean
+  // inspection-permission-unification fix: Handle inspection permission toggle
+  const handleToggleInspectionPermission = useCallback(async () => {
+    // Toggle inspection permission via API
+    // Note: This requires server-side API implementation to update spec.json
+    console.warn('[SpecActionsView] Inspection permission toggle not fully supported in Remote UI');
+    // TODO: Implement via apiClient.toggleAutoPermission('inspection')
+  }, []);
 
   // gemini-document-review: Handle scheme change
   // Requirements: 7.2, 7.3, 7.4
@@ -222,15 +225,16 @@ export function SpecActionsView({
       />
 
       {/* Inspection Panel */}
-      {/* inspection-permission-unification Task 8.1: Removed autoExecutionFlag and onAutoExecutionFlagChange */}
       <div data-testid="inspection-panel">
         <InspectionPanel
           inspectionState={inspectionState}
           isExecuting={executingAction === 'inspection' || executingAction === 'inspection-fix'}
           isAutoExecuting={isExecuting}
+          autoExecutionPermitted={inspectionPermission}
           canExecuteInspection={tasksApproved}
           onStartInspection={handleStartInspection}
           onExecuteFix={handleExecuteFix}
+          onToggleAutoPermission={handleToggleInspectionPermission}
         />
       </div>
     </div>

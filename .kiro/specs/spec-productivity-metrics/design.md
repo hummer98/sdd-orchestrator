@@ -34,9 +34,11 @@ Remote UI対応時に考慮すべき拡張ポイント：
 ### 既存アーキテクチャ分析
 
 現行システムの関連コンポーネント:
-- **AgentProcess**: Agent実行ライフサイクル管理（開始/終了イベント発火可能）
-- **SpecManagerService**: フェーズ実行管理（フェーズ開始/終了フック追加可能）
-- **specStore（Zustand）**: Spec状態管理（メトリクスruntime状態を追加可能）
+- **agentStore**: Agent状態管理（SSOT）- Agent実行状態はここから派生される
+- **specStoreFacade**: Spec状態のファサード（specListStore, specDetailStore, autoExecutionStoreを統合）
+- **agentRecordService**: Agent記録管理
+- **specManagerService**: フェーズ実行管理（フェーズ開始/終了フック追加可能）
+- **shared/stores**: 共有ストア（agentStore, specStore, bugStore, executionStore等）
 - **WorkflowView**: ワークフローUI（メトリクス表示領域を追加可能）
 - **IPC Channels**: Main/Renderer間通信（メトリクスIPC追加可能）
 
@@ -46,7 +48,8 @@ Remote UI対応時に考慮すべき拡張ポイント：
 graph TB
     subgraph Renderer[Renderer Process]
         UI[WorkflowView / MetricsSummaryPanel]
-        Store[specStore / metricsStore]
+        SharedStore[shared/stores - agentStore, specStore]
+        RendererStore[renderer/stores - metricsStore]
         Tracker[HumanActivityTracker]
     end
 
@@ -54,19 +57,21 @@ graph TB
         Service[MetricsService]
         Writer[MetricsFileWriter]
         Recovery[SessionRecoveryService]
+        AgentRecord[agentRecordService]
     end
 
     subgraph Storage[File System]
         JSONL[.kiro/metrics.jsonl]
     end
 
-    UI --> Store
+    UI --> SharedStore
+    UI --> RendererStore
     Tracker --> |IPC: record-human-event| Service
-    Store --> |IPC: get-metrics| Service
+    RendererStore --> |IPC: get-metrics| Service
     Service --> Writer
     Writer --> JSONL
     Recovery --> JSONL
-    Service --> |Agent events| Writer
+    AgentRecord --> |Agent events| Service
 ```
 
 **アーキテクチャ統合**:
@@ -74,6 +79,7 @@ graph TB
 - ドメイン境界: メトリクスは独立したドメインとして分離し、既存のSpec管理と疎結合
 - 既存パターン準拠: Zustand Store、IPCハンドラ、Service層パターンを踏襲
 - Steering準拠: DRY（共通時間計算ロジック）、SSOT（metrics.jsonlを単一ソース）
+- agentStore統合: Agent実行状態はagentStoreをSSOTとして使用し、メトリクス計測はagentRecordServiceのイベントにフック
 
 ### 技術スタック
 
@@ -91,17 +97,17 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant UI as WorkflowView
-    participant Service as SpecManagerService
+    participant Agent as agentRecordService
     participant Metrics as MetricsService
     participant File as metrics.jsonl
 
-    UI->>Service: executePhase(specId, phase)
-    Service->>Metrics: startAiSession(specId, phase)
+    UI->>Agent: executePhase(specId, phase)
+    Agent->>Metrics: onAgentStarted(specId, phase)
     Metrics->>Metrics: 開始タイムスタンプ記録
 
-    Note over Service: Agent実行中...
+    Note over Agent: Agent実行中...
 
-    Service->>Metrics: endAiSession(specId, phase)
+    Agent->>Metrics: onAgentCompleted(specId, phase)
     Metrics->>Metrics: 終了タイムスタンプ・実行時間算出
     Metrics->>File: 追記 {type: "ai", ...}
 ```
@@ -185,14 +191,14 @@ sequenceDiagram
 
 | コンポーネント | ドメイン/レイヤー | 意図 | 要件カバレッジ | 主要依存関係 (P0/P1) | コントラクト |
 |---------------|------------------|------|----------------|---------------------|--------------|
-| MetricsService | Main/Service | メトリクス計測のコアロジック | 1.1-1.4, 2.12, 3.1-3.3 | MetricsFileWriter (P0) | Service |
+| MetricsService | Main/Service | メトリクス計測のコアロジック | 1.1-1.4, 2.12, 3.1-3.3 | MetricsFileWriter (P0), agentRecordService (P0) | Service |
 | MetricsFileWriter | Main/Service | JSONL形式でのファイル書き込み | 4.1-4.6 | fs (P0) | Service |
 | MetricsFileReader | Main/Service | JSONL形式でのファイル読み込み | 7.4 | fs (P0) | Service |
 | SessionRecoveryService | Main/Service | 未完了セッションの復旧 | 7.1-7.3 | MetricsFileWriter (P0) | Service |
 | HumanActivityTracker | Renderer/Service | 人間操作イベントの追跡 | 2.1-2.11 | IPC (P0) | Service |
-| metricsStore | Renderer/Store | メトリクスruntime状態 | 5.1-5.6, 6.1-6.4 | specStore (P1) | State |
-| MetricsSummaryPanel | Renderer/UI | メトリクスサマリー表示 | 5.1-5.6 | metricsStore (P0) | - |
-| PhaseMetricsView | Renderer/UI | フェーズ別メトリクス表示 | 6.1-6.4 | metricsStore (P0) | - |
+| metricsStore | Renderer/Store | メトリクスruntime状態 | 5.1-5.6, 6.1-6.4 | specStoreFacade (P1) | State |
+| MetricsSummaryPanel | Shared/UI | メトリクスサマリー表示 | 5.1-5.6 | metricsStore (P0) | - |
+| PhaseMetricsView | Shared/UI | フェーズ別メトリクス表示 | 6.1-6.4 | metricsStore (P0) | - |
 
 ---
 
@@ -212,7 +218,7 @@ sequenceDiagram
 
 **依存関係**
 - Outbound: MetricsFileWriter — メトリクスレコード書き込み (P0)
-- Inbound: SpecManagerService — Agent開始/終了イベント (P0)
+- Inbound: agentRecordService — Agent開始/終了イベント (P0)
 - Inbound: IPC Handler — 人間セッション記録リクエスト (P0)
 
 **コントラクト**: Service [x]
@@ -250,9 +256,10 @@ interface HumanSessionData {
 - 不変条件: 開始されたセッションは必ず終了処理される（復旧サービスによる保証）
 
 **実装ノート**
-- 統合: SpecManagerServiceのexecutePhase/stopAgent呼び出しにフックを追加
+- 統合: agentRecordServiceのonAgentStarted/onAgentCompletedコールバックにフックを追加
 - バリデーション: specId/phaseの存在確認
 - リスク: Agent異常終了時のセッション終了漏れ → SessionRecoveryServiceで対応
+- 配置先: `electron-sdd-manager/src/main/services/metricsService.ts`
 
 ---
 
@@ -316,6 +323,7 @@ interface LifecycleMetricRecord {
 - 統合: 既存のFileServiceパターンに準拠
 - バリデーション: Zodによるレコードスキーマ検証
 - リスク: ディスク容量不足 → エラーログ記録のみ（機能継続）
+- 配置先: `electron-sdd-manager/src/main/services/metricsFileWriter.ts`
 
 ---
 
@@ -351,6 +359,7 @@ interface MetricsFileReader {
 **実装ノート**
 - バリデーション: 各行をJSON.parseし、失敗時はlogger.warnでログ記録
 - リスク: 大容量ファイル → ストリーム読み込み（将来的な最適化）
+- 配置先: `electron-sdd-manager/src/main/services/metricsFileReader.ts`
 
 ---
 
@@ -407,6 +416,7 @@ interface SessionTempData {
 - 統合: app.on('ready')でrecoverIncompleteSessionsを呼び出し
 - バリデーション: 一時ファイルの妥当性検証
 - リスク: 一時ファイル破損 → エラーログ記録、ファイル削除
+- 配置先: `electron-sdd-manager/src/main/services/sessionRecoveryService.ts`
 
 ---
 
@@ -426,7 +436,7 @@ interface SessionTempData {
 
 **依存関係**
 - Outbound: IPC (RECORD_HUMAN_SESSION) — セッション記録送信 (P0)
-- Inbound: specStore — 現在選択中のSpec (P1)
+- Inbound: specStoreFacade — 現在選択中のSpec (P1)
 
 **コントラクト**: Service [x]
 
@@ -464,9 +474,10 @@ const IDLE_TIMEOUT_MS = 45_000;  // 45秒
 - 不変条件: 1つのSpecに対して1つのアクティブセッションのみ
 
 **実装ノート**
-- 統合: WorkflowView/DocsTabsなどのコンポーネントにイベントリスナーを追加
+- 統合: WorkflowView/DocsTabs/などのコンポーネントにイベントリスナーを追加
 - バリデーション: eventTypeの妥当性検証
 - リスク: イベント過多 → debounceで最適化（100ms間隔）
+- 配置先: `electron-sdd-manager/src/renderer/services/humanActivityTracker.ts`
 
 ---
 
@@ -485,7 +496,7 @@ const IDLE_TIMEOUT_MS = 45_000;  // 45秒
 **依存関係**
 - Inbound: IPC (METRICS_UPDATED) — メトリクス更新通知 (P0)
 - Outbound: IPC (GET_METRICS) — メトリクス取得リクエスト (P0)
-- Inbound: specStore — 選択中Spec情報 (P1)
+- Inbound: specStoreFacade — 選択中Spec情報 (P1)
 
 **コントラクト**: State [x]
 
@@ -531,7 +542,10 @@ interface MetricsActions {
 ```
 
 - 永続化: なし（毎回IPCでMain processから取得）
-- 整合性: specStore.selectedSpec変更時に自動リロード
+- 整合性: specStoreFacade.selectedSpec変更時に自動リロード
+
+**実装ノート**
+- 配置先: `electron-sdd-manager/src/renderer/stores/metricsStore.ts`
 
 ---
 
@@ -553,6 +567,7 @@ interface MetricsActions {
 **実装ノート**
 - 配置: WorkflowView内、フェーズリストの上部
 - data-testid: `metrics-summary-panel`, `metrics-ai-time`, `metrics-human-time`, `metrics-total-time`
+- 配置先: `electron-sdd-manager/src/shared/components/metrics/MetricsSummaryPanel.tsx`
 
 ---
 
@@ -574,6 +589,7 @@ interface MetricsActions {
 **実装ノート**
 - 配置: PhaseItem内にインライン表示（オプション）、または別タブ
 - data-testid: `phase-metrics-{phase}`, `phase-metrics-ai-time`, `phase-metrics-human-time`
+- 配置先: `electron-sdd-manager/src/shared/components/metrics/PhaseMetricsView.tsx`
 
 ---
 
@@ -679,7 +695,7 @@ export const IPC_CHANNELS = {
 
 - Main/Renderer間のIPC通信
 - ファイル読み書きの整合性
-- specStore連携
+- specStoreFacade連携
 
 ### E2Eテスト
 
@@ -725,3 +741,4 @@ export const IPC_CHANNELS = {
 ---
 
 *設計生成日: 2025-12-27*
+*最終更新日: 2026-01-22*

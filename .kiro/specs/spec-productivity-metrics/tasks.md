@@ -15,6 +15,7 @@
   - 1レコード1行のJSONL形式を保証
   - ファイルが存在しない場合は新規作成
   - Zodによるレコード検証後に書き込み
+  - 配置先: `electron-sdd-manager/src/main/services/metricsFileWriter.ts`
   - _Requirements: 4.1, 4.2_
   - _Contracts: MetricsFileWriter API_
 
@@ -23,6 +24,7 @@
   - 不正なJSONエントリをスキップし、エラーをログ記録
   - Spec IDでのフィルタリング機能
   - ファイル不在時は空配列を返却
+  - 配置先: `electron-sdd-manager/src/main/services/metricsFileReader.ts`
   - _Requirements: 7.4_
   - _Contracts: MetricsFileReader API_
 
@@ -33,13 +35,14 @@
   - タイムスタンプ記録と経過時間の算出
   - Spec ID とフェーズ名を含めた記録
   - MetricsFileWriterへの委譲による永続化
+  - 配置先: `electron-sdd-manager/src/main/services/metricsService.ts`
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - _Contracts: MetricsService API_
 
-- [ ] 2.2 SpecManagerServiceへのメトリクス計測フックを統合する
-  - フェーズ実行開始時にAIセッション開始を呼び出し
+- [ ] 2.2 agentRecordServiceへのメトリクス計測フックを統合する
+  - agentRecordServiceのonAgentStarted/onAgentCompletedコールバックにフック追加
   - Agent完了時にAIセッション終了を呼び出し
-  - 既存のexecutePhase/stopAgentフローにフックを追加
+  - 既存のAgent管理フローと統合
   - _Requirements: 1.1, 1.2_
 
 ## Task 3. 人間消費時間計測機能
@@ -49,11 +52,12 @@
   - 45秒アイドルタイムアウトによるセッション管理
   - Spec切替・フォーカス離脱時のセッション終了処理
   - debounce（100ms間隔）によるイベント最適化
+  - 配置先: `electron-sdd-manager/src/renderer/services/humanActivityTracker.ts`
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11_
   - _Contracts: HumanActivityTracker API_
 
 - [ ] 3.2 人間セッション記録用のIPCチャンネルを追加する
-  - RECORD_HUMAN_SESSION チャンネルの定義
+  - RECORD_HUMAN_SESSION チャンネルの定義（channels.ts に追加）
   - Renderer→Mainへのセッションデータ送信
   - MetricsServiceでの人間セッション記録処理
   - _Requirements: 2.12_
@@ -86,6 +90,7 @@
   - AIセッション: アプリ終了時刻を終了タイムスタンプとして使用
   - 人間セッション: 最後の操作から45秒後を終了タイムスタンプとして使用
   - 復旧後に一時ファイルを削除
+  - 配置先: `electron-sdd-manager/src/main/services/sessionRecoveryService.ts`
   - _Requirements: 7.1, 7.2, 7.3_
   - _Contracts: SessionRecoveryService API_
 
@@ -100,7 +105,8 @@
   - 現在のSpecに対するメトリクスサマリー状態
   - フェーズ別メトリクスの計算ロジック
   - 読み込み状態とエラー状態の管理
-  - specStore.selectedSpec変更時の自動リロード
+  - specStoreFacade.selectedSpec変更時の自動リロード
+  - 配置先: `electron-sdd-manager/src/renderer/stores/metricsStore.ts`
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2_
   - _Contracts: MetricsState, SpecMetrics_
 
@@ -108,6 +114,7 @@
   - GET_SPEC_METRICS チャンネルの定義
   - GET_PROJECT_METRICS チャンネルの定義
   - METRICS_UPDATED イベント通知チャンネルの定義
+  - channels.ts への追加
   - _Requirements: 5.1_
 
 ## Task 7. メトリクスUI表示
@@ -117,6 +124,7 @@
   - ユーザーフレンドリーな時間形式（"1h 23m", "45m 30s"等）への変換
   - 完了/進行中のステータス表示
   - WorkflowView内、フェーズリストの上部に配置
+  - 配置先: `electron-sdd-manager/src/shared/components/metrics/MetricsSummaryPanel.tsx`
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
   - _Contracts: MetricsSummaryPanel_
 
@@ -125,12 +133,14 @@
   - フェーズ別AI時間・人間時間の表示
   - 進行状況アイコン（未開始/実行中/完了）の表示
   - PhaseItem内へのインライン表示
+  - 配置先: `electron-sdd-manager/src/shared/components/metrics/PhaseMetricsView.tsx`
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
   - _Contracts: PhaseMetricsView_
 
 - [ ] 7.3 時間フォーマットユーティリティを実装する
   - ミリ秒から人間可読形式への変換ロジック
   - 短時間（秒単位）、中時間（分単位）、長時間（時間単位）の適切なフォーマット
+  - 配置先: `electron-sdd-manager/src/shared/utils/timeFormat.ts`
   - _Requirements: 5.6_
 
 ## Task 8. プロジェクト横断メトリクス（オプショナル）

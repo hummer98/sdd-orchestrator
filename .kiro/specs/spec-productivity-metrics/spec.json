@@ -1,7 +1,7 @@
 {
   "feature_name": "spec-productivity-metrics",
   "created_at": "2025-12-27T19:10:00+09:00",
-  "updated_at": "2025-12-27T11:14:44.683Z",
+  "updated_at": "2026-01-22T11:13:12.609Z",
   "language": "ja",
   "phase": "tasks-generated",
   "approvals": {
@@ -42,12 +42,11 @@
       {
         "roundNumber": 1,
         "status": "reply_complete",
-        "fixApplied": true
+        "fixStatus": "applied"
       },
       {
         "roundNumber": 2,
-        "status": "reply_complete",
-        "fixApplied": false
+        "status": "reply_complete"
       }
     ]
   }

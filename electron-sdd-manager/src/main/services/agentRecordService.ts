@@ -283,12 +283,24 @@ export class AgentRecordService {
   /**
    * Get all spec IDs that have agent records
    * Requirements: agent-state-file-ssot (for getAllAgents)
-   * @returns Array of spec IDs (directory names under basePath)
+   * Bug fix: project-agent-no-response - Include empty specId for ProjectAgents
+   * @returns Array of spec IDs (directory names under basePath, plus '' for ProjectAgents)
    */
   async getAllSpecIds(): Promise<string[]> {
     try {
-      const specDirs = await fs.readdir(this.basePath, { withFileTypes: true });
-      return specDirs.filter((d) => d.isDirectory()).map((d) => d.name);
+      const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+      const specIds: string[] = [];
+
+      // Check for ProjectAgents (empty specId) - JSON files directly in basePath
+      const hasProjectAgents = entries.some((e) => e.isFile() && e.name.endsWith('.json'));
+      if (hasProjectAgents) {
+        specIds.push(''); // Empty specId for ProjectAgents
+      }
+
+      // Add spec/bug directories
+      specIds.push(...entries.filter((d) => d.isDirectory()).map((d) => d.name));
+
+      return specIds;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return [];

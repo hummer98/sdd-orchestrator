@@ -34,16 +34,18 @@ export interface AgentViewProps {
 // =============================================================================
 
 function mapAgentStatus(status: AgentStatus): AgentItemStatus {
+  // agent-store-unification: Updated to match unified AgentStatus type
+  // AgentStatus: 'running' | 'completed' | 'interrupted' | 'hang' | 'failed'
   switch (status) {
     case 'running':
       return 'running';
     case 'completed':
       return 'completed';
-    case 'stopped':
+    case 'interrupted':
       return 'interrupted';
-    case 'paused':
+    case 'hang':
       return 'interrupted';
-    case 'error':
+    case 'failed':
       return 'failed';
     default:
       return 'completed';

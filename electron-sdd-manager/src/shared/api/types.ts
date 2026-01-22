@@ -118,22 +118,18 @@ export type WorkflowPhase =
 
 /**
  * Agent status enumeration
+ * agent-store-unification: Unified with renderer/types/electron.d.ts AgentStatus
  */
-export type AgentStatus =
-  | 'idle'
-  | 'running'
-  | 'paused'
-  | 'stopped'
-  | 'completed'
-  | 'error';
+export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'failed';
 
 /**
  * Agent information for tracking running agents
+ * agent-store-unification: Unified with renderer/stores/agentStore AgentInfo
  */
 export interface AgentInfo {
   /** Unique agent identifier */
   id: string;
-  /** Spec ID or 'global' for project-level agents */
+  /** Spec ID or '' for project-level agents */
   specId: string;
   /** Current agent phase */
   phase: string;
@@ -141,10 +137,21 @@ export interface AgentInfo {
   status: AgentStatus;
   /** Start timestamp (ISO string or unix ms) */
   startedAt: string | number;
+  /** Command that started the agent */
+  command?: string;
+  /** Session ID for grouping related agents */
+  sessionId?: string;
+  /** Last activity timestamp */
+  lastActivityAt?: string;
   /** End timestamp (if completed, ISO string or unix ms) */
   endedAt?: string | number;
   /** Agent output buffer */
   output?: string;
+  // execution-store-consolidation: Extended fields (Req 2.1, 2.2)
+  /** Execution mode: auto or manual */
+  executionMode?: 'auto' | 'manual';
+  /** Retry count for failed agents */
+  retryCount?: number;
 }
 
 // =============================================================================

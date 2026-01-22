@@ -1,7 +1,11 @@
 /**
  * Shared agentStore
  *
- * Task 5.3: 共有agentStoreを実装する
+ * agent-store-unification: Single Source of Truth for Agent state
+ *
+ * Data structure: Map<specId, AgentInfo[]>
+ * - Key: specId (empty string '' for Project Agents)
+ * - Value: Array of AgentInfo for that spec
  *
  * IPC依存を除去し、ApiClient経由でデータを取得する共有ストア。
  * Electron版とRemote UI版で同一storeを使用可能。
@@ -10,13 +14,20 @@
 import { create } from 'zustand';
 import type { ApiClient, AgentInfo, AgentStatus, LogEntry } from '../api/types';
 
+// Re-export types for convenience
+export type { AgentInfo, AgentStatus, LogEntry };
+
 // =============================================================================
 // Types
 // =============================================================================
 
 export interface SharedAgentState {
-  /** Agent一覧 */
-  agents: Map<string, AgentInfo>;
+  /**
+   * Agent一覧: specId -> AgentInfo[]
+   * agent-store-unification Task 1.1
+   * Requirements: 1.1
+   */
+  agents: Map<string, AgentInfo[]>;
   /** 選択中のAgent ID */
   selectedAgentId: string | null;
   /**
@@ -38,15 +49,35 @@ export interface SharedAgentActions {
   loadAgents: (apiClient: ApiClient) => Promise<void>;
   /** Agentを選択する */
   selectAgent: (agentId: string | null) => void;
-  /** IDでAgentを取得する */
+  /**
+   * IDでAgentを取得する（全specを走査）
+   * agent-store-unification Task 1.3
+   * Requirements: 1.3
+   */
   getAgentById: (agentId: string) => AgentInfo | undefined;
-  /** Spec/Bug IDでAgentsを取得する */
+  /**
+   * Spec/Bug IDでAgentsを取得する
+   * agent-store-unification Task 1.2
+   * Requirements: 1.2
+   */
   getAgentsForSpec: (specId: string) => AgentInfo[];
-  /** Agentを追加する */
+  /**
+   * Agentを追加する
+   * agent-store-unification Task 1.4
+   * Requirements: 1.4
+   */
   addAgent: (specId: string, agent: AgentInfo) => void;
-  /** Agentのステータスを更新する */
+  /**
+   * Agentのステータスを更新する（全specを走査）
+   * agent-store-unification Task 1.6
+   * Requirements: 1.6
+   */
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
-  /** Agentを削除する */
+  /**
+   * Agentを削除する（全specから削除）
+   * agent-store-unification Task 1.5
+   * Requirements: 1.5
+   */
   removeAgent: (agentId: string) => void;
   /** ログを追加する */
   addLog: (agentId: string, log: LogEntry) => void;
@@ -91,11 +122,44 @@ export interface SharedAgentActions {
 export type SharedAgentStore = SharedAgentState & SharedAgentActions;
 
 // =============================================================================
+// Helper functions
+// =============================================================================
+
+/**
+ * 全specからAgentを検索
+ * agent-store-unification: Map<specId, AgentInfo[]> 構造に対応
+ */
+function findAgentInAllSpecs(
+  agents: Map<string, AgentInfo[]>,
+  agentId: string
+): { agent: AgentInfo; specId: string } | undefined {
+  for (const [specId, agentList] of agents.entries()) {
+    const agent = agentList.find((a) => a.id === agentId);
+    if (agent) {
+      return { agent, specId };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 全specから全Agentを取得
+ */
+function getAllAgents(agents: Map<string, AgentInfo[]>): AgentInfo[] {
+  const allAgents: AgentInfo[] = [];
+  for (const agentList of agents.values()) {
+    allAgents.push(...agentList);
+  }
+  return allAgents;
+}
+
+// =============================================================================
 // Store
 // =============================================================================
 
 export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
   // Initial state
+  // agent-store-unification Task 1.1: Map<specId, AgentInfo[]>
   agents: new Map(),
   selectedAgentId: null,
   selectedAgentIdBySpec: new Map(), // agent-watcher-optimization Task 3.1
@@ -110,9 +174,12 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     const result = await apiClient.getAgents();
 
     if (result.ok) {
-      const agentMap = new Map<string, AgentInfo>();
+      // Convert flat array to Map<specId, AgentInfo[]>
+      const agentMap = new Map<string, AgentInfo[]>();
       result.value.forEach((agent) => {
-        agentMap.set(agent.id, agent);
+        const specId = agent.specId || '';
+        const existing = agentMap.get(specId) || [];
+        agentMap.set(specId, [...existing, agent]);
       });
       set({ agents: agentMap, isLoading: false });
     } else {
@@ -123,10 +190,10 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
   selectAgent: (agentId: string | null) => {
     // agent-watcher-optimization Task 3.3: Save per-spec state when selecting
     if (agentId) {
-      const agent = get().agents.get(agentId);
-      if (agent) {
+      const found = findAgentInAllSpecs(get().agents, agentId);
+      if (found) {
         const newMap = new Map(get().selectedAgentIdBySpec);
-        newMap.set(agent.specId, agentId);
+        newMap.set(found.specId, agentId);
         set({ selectedAgentId: agentId, selectedAgentIdBySpec: newMap });
         return;
       }
@@ -135,38 +202,72 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     set({ selectedAgentId: agentId });
   },
 
+  // agent-store-unification Task 1.3: 全specを走査して該当Agentを返す
   getAgentById: (agentId: string) => {
-    return get().agents.get(agentId);
+    const found = findAgentInAllSpecs(get().agents, agentId);
+    return found?.agent;
   },
 
+  // agent-store-unification Task 1.2: agents.get(specId) || []
   getAgentsForSpec: (specId: string) => {
-    const agents = Array.from(get().agents.values());
-    return agents.filter((agent) => agent.specId === specId);
+    return get().agents.get(specId) || [];
   },
 
+  // agent-store-unification Task 1.4: 該当specの配列に追加
   addAgent: (specId: string, agent: AgentInfo) => {
     set((state) => {
       const newAgents = new Map(state.agents);
-      newAgents.set(agent.id, { ...agent, specId });
+      const existingAgents = newAgents.get(specId) || [];
+
+      // 重複チェック: 既存のagentIdがあれば更新、なければ追加
+      const existingIndex = existingAgents.findIndex((a) => a.id === agent.id);
+      if (existingIndex >= 0) {
+        // 既存のAgentを更新
+        const updatedAgents = [...existingAgents];
+        updatedAgents[existingIndex] = { ...agent, specId };
+        newAgents.set(specId, updatedAgents);
+      } else {
+        // 新規追加
+        newAgents.set(specId, [...existingAgents, { ...agent, specId }]);
+      }
+
       return { agents: newAgents };
     });
   },
 
+  // agent-store-unification Task 1.6: 全specから該当Agentを検索して更新
   updateAgentStatus: (agentId: string, status: AgentStatus) => {
     set((state) => {
-      const agent = state.agents.get(agentId);
-      if (!agent) return state;
+      const found = findAgentInAllSpecs(state.agents, agentId);
+      if (!found) return state;
 
       const newAgents = new Map(state.agents);
-      newAgents.set(agentId, { ...agent, status });
+      const specAgents = newAgents.get(found.specId) || [];
+
+      // Update the agent with new status and lastActivityAt
+      const updatedAgents = specAgents.map((agent) =>
+        agent.id === agentId
+          ? { ...agent, status, lastActivityAt: new Date().toISOString() }
+          : agent
+      );
+      newAgents.set(found.specId, updatedAgents);
+
       return { agents: newAgents };
     });
   },
 
+  // agent-store-unification Task 1.5: 全specから該当Agentを削除
   removeAgent: (agentId: string) => {
     set((state) => {
+      const found = findAgentInAllSpecs(state.agents, agentId);
+      if (!found) return state;
+
       const newAgents = new Map(state.agents);
-      newAgents.delete(agentId);
+      const specAgents = newAgents.get(found.specId) || [];
+
+      // Remove the agent, keep empty array (don't delete key)
+      const filteredAgents = specAgents.filter((agent) => agent.id !== agentId);
+      newAgents.set(found.specId, filteredAgents);
 
       const newLogs = new Map(state.logs);
       newLogs.delete(agentId);
@@ -229,8 +330,8 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     // Case 1: spec/bugが未選択（specId === null）
     if (specId === null) {
       // 全Agentから実行中のものを取得
-      const allRunningAgents = Array.from(state.agents.values())
-        .filter((agent) => agent.status === 'running');
+      const allAgents = getAllAgents(state.agents);
+      const allRunningAgents = allAgents.filter((agent) => agent.status === 'running');
 
       if (allRunningAgents.length === 0) {
         // 実行中なし → 選択をクリア（Agentログエリア空）
@@ -240,8 +341,8 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
 
       // 最新の実行中Agentを選択
       const sortedAgents = allRunningAgents.sort((a, b) => {
-        const timeA = new Date(a.startedAt).getTime();
-        const timeB = new Date(b.startedAt).getTime();
+        const timeA = new Date(a.startedAt as string).getTime();
+        const timeB = new Date(b.startedAt as string).getTime();
         return timeB - timeA; // Descending (newest first)
       });
 
@@ -250,10 +351,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     }
 
     // Case 2: spec/bugが選択されている
-    const specAgents = Array.from(state.agents.values()).filter(
-      (agent) => agent.specId === specId
-    );
-
+    const specAgents = state.agents.get(specId) || [];
     const runningAgents = specAgents.filter((agent) => agent.status === 'running');
 
     if (runningAgents.length === 0) {
@@ -264,8 +362,8 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
 
     // 最新の実行中Agentを選択
     const sortedAgents = runningAgents.sort((a, b) => {
-      const timeA = new Date(a.startedAt).getTime();
-      const timeB = new Date(b.startedAt).getTime();
+      const timeA = new Date(a.startedAt as string).getTime();
+      const timeB = new Date(b.startedAt as string).getTime();
       return timeB - timeA; // Descending (newest first)
     });
 

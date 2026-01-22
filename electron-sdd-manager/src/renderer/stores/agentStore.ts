@@ -1,25 +1,63 @@
 /**
- * Agent Store
- * UI層でのAgent状態管理
- * Requirements: 5.1-5.8, 9.1-9.10
+ * Agent Store (Facade)
+ *
+ * agent-store-unification: Unified Interface for Electron Renderer
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+ *
+ * This Facade provides a single access point for Electron renderer components
+ * to interact with Agent state. It combines:
+ * - shared/agentStore (SSOT for Agent state)
+ * - agentStoreAdapter (IPC operations)
+ * - Facade-specific state (skipPermissions, runningAgentCounts, UI state)
+ *
+ * Usage in components:
+ * ```typescript
+ * import { useAgentStore } from '@renderer/stores/agentStore';
+ *
+ * const agents = useAgentStore((state) => state.getAgentsForSpec(specId));
+ * ```
  */
 
 import { create } from 'zustand';
-import type { LogEntry } from '../types';
-import type { AgentStatus as AgentStatusType } from '../types/electron.d';
+import { subscribeWithSelector } from 'zustand/middleware';
+import {
+  useSharedAgentStore,
+  type AgentInfo as SharedAgentInfo,
+  type AgentStatus as SharedAgentStatus,
+  type LogEntry,
+} from '@shared/stores/agentStore';
+import {
+  agentOperations,
+  setupAgentEventListeners,
+  skipPermissionsOperations,
+} from './agentStoreAdapter';
+
 // Bug fix: agent-log-dynamic-import-issue
-// 循環依存は存在しないため、通常のimportを使用（動的importによるPromise遅延を回避）
+// Import specStore and bugStore synchronously to avoid Promise delays in callbacks
 import { useSpecStore } from './specStore';
 import { useBugStore } from './bugStore';
 
-// Re-export types for use in tests and components
-export type AgentStatus = AgentStatusType;
+// =============================================================================
+// Type Re-exports for Backward Compatibility
+// Requirements: 3.4
+// =============================================================================
 
+/**
+ * AgentStatus type re-export
+ * Ensures backward compatibility with existing components
+ */
+export type AgentStatus = SharedAgentStatus;
+
+/**
+ * AgentInfo interface for renderer
+ * Uses 'agentId' for backward compatibility with existing components
+ * The shared store uses 'id' internally
+ */
 export interface AgentInfo {
   readonly agentId: string;
   readonly specId: string;
   readonly phase: string;
-  readonly pid: number;
+  readonly pid?: number;
   readonly sessionId: string;
   readonly status: AgentStatus;
   readonly startedAt: string;
@@ -32,43 +70,93 @@ export interface AgentInfo {
   retryCount?: number;
 }
 
+/**
+ * Re-export LogEntry type
+ */
 export type { LogEntry };
 
+// =============================================================================
+// Type Conversion Helpers
+// =============================================================================
+
+/**
+ * Convert shared AgentInfo (id) to renderer AgentInfo (agentId)
+ */
+function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
+  return {
+    agentId: shared.id,
+    specId: shared.specId,
+    phase: shared.phase,
+    sessionId: shared.sessionId || '',
+    status: shared.status,
+    startedAt: typeof shared.startedAt === 'number' ? new Date(shared.startedAt).toISOString() : shared.startedAt,
+    lastActivityAt: shared.lastActivityAt || '',
+    command: shared.command || '',
+    // execution-store-consolidation: Preserve extended fields
+    executionMode: shared.executionMode,
+    retryCount: shared.retryCount,
+  };
+}
+
+/**
+ * Convert renderer AgentInfo (agentId) to shared AgentInfo (id)
+ */
+function toSharedAgentInfo(renderer: AgentInfo): SharedAgentInfo {
+  return {
+    id: renderer.agentId,
+    specId: renderer.specId,
+    phase: renderer.phase,
+    status: renderer.status,
+    startedAt: renderer.startedAt,
+    command: renderer.command,
+    sessionId: renderer.sessionId,
+    lastActivityAt: renderer.lastActivityAt,
+    // execution-store-consolidation: Preserve extended fields
+    executionMode: renderer.executionMode,
+    retryCount: renderer.retryCount,
+  };
+}
+
+// =============================================================================
+// Types
+// =============================================================================
+
 interface AgentState {
-  agents: Map<string, AgentInfo[]>; // specId -> AgentInfo[]
+  /** Agents map: specId -> AgentInfo[] */
+  agents: Map<string, AgentInfo[]>;
+  /** Selected agent ID */
   selectedAgentId: string | null;
-  logs: Map<string, LogEntry[]>; // agentId -> logs
+  /** Logs per agent: agentId -> LogEntry[] */
+  logs: Map<string, LogEntry[]>;
+  /** Loading state */
   isLoading: boolean;
+  /** Error message */
   error: string | null;
-  // Skip permissions flag for claude CLI (--dangerously-skip-permissions)
-  // Per-project, in-memory only, default OFF
+  /** Skip permissions flag (--dangerously-skip-permissions) */
   skipPermissions: boolean;
-  /**
-   * Running agent counts per spec (lightweight cache)
-   * agent-watcher-optimization Task 5.1
-   * Requirements: 2.1, 2.2
-   */
+  /** Running agent counts per spec (lightweight cache) */
   runningAgentCounts: Map<string, number>;
 }
 
 interface AgentActions {
-  // Task 29.2: Agent操作アクション
+  // ===========================================================================
+  // Agent Operations (delegate to adapter)
+  // Requirements: 3.3
+  // ===========================================================================
+
+  /** Load all agents from main process */
   loadAgents: () => Promise<void>;
-  /**
-   * Load running agent counts (lightweight)
-   * agent-watcher-optimization Task 5.1
-   * Requirements: 2.1, 2.2
-   */
+  /** Load running agent counts (lightweight) */
   loadRunningAgentCounts: () => Promise<void>;
-  /**
-   * Get running agent count for a spec (from lightweight cache)
-   * agent-watcher-optimization Task 5.2
-   * Requirements: 2.2
-   */
+  /** Get running agent count for a spec */
   getRunningAgentCount: (specId: string) => number;
+  /** Select an agent */
   selectAgent: (agentId: string | null) => Promise<void>;
+  /** Load agent logs */
   loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
+  /** Add an agent to the store */
   addAgent: (specId: string, agent: AgentInfo) => void;
+  /** Start a new agent */
   startAgent: (
     specId: string,
     phase: string,
@@ -77,552 +165,477 @@ interface AgentActions {
     group?: 'doc' | 'impl',
     sessionId?: string
   ) => Promise<string | null>;
+  /** Stop a running agent */
   stopAgent: (agentId: string) => Promise<void>;
+  /** Resume an interrupted agent */
   resumeAgent: (agentId: string, prompt?: string) => Promise<void>;
+  /** Remove an agent */
   removeAgent: (agentId: string) => Promise<void>;
+  /** Send input to an agent */
   sendInput: (agentId: string, input: string) => Promise<void>;
+  /** Update agent status */
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
 
-  // Task 29.3: ログ管理
+  // ===========================================================================
+  // Log Management
+  // ===========================================================================
+
+  /** Append a log entry */
   appendLog: (agentId: string, entry: LogEntry) => void;
+  /** Clear logs for an agent */
   clearLogs: (agentId: string) => void;
+  /** Get logs for an agent */
   getLogsForAgent: (agentId: string) => LogEntry[];
 
-  // Task 29.4: イベントリスナー設定
+  // ===========================================================================
+  // Event Listeners
+  // Requirements: 3.7
+  // ===========================================================================
+
+  /** Setup IPC event listeners */
   setupEventListeners: () => () => void;
 
-  // Helper methods
-  getAgentById: (agentId: string) => AgentInfo | undefined;
-  getSelectedAgent: () => AgentInfo | undefined;
-  getAgentsForSpec: (specId: string) => AgentInfo[];
-  getProjectAgents: () => AgentInfo[];
-  // Bug fix: Zustand無限ループ回避のため、セレクタ内で使用可能な純粋関数を追加
-  findAgentById: (agentId: string | null) => AgentInfo | undefined;
-  clearError: () => void;
+  // ===========================================================================
+  // Helper Methods
+  // Requirements: 3.5
+  // ===========================================================================
 
-  // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
+  /** Get agent by ID */
+  getAgentById: (agentId: string) => AgentInfo | undefined;
+  /** Get selected agent */
+  getSelectedAgent: () => AgentInfo | undefined;
+  /** Get agents for a spec */
+  getAgentsForSpec: (specId: string) => AgentInfo[];
+  /** Get project agents (specId = '') */
+  getProjectAgents: () => AgentInfo[];
+  /** Find agent by ID (pure function for selectors) */
+  findAgentById: (agentId: string | null) => AgentInfo | undefined;
+  /** Clear error */
+  clearError: () => void;
+  /** Select for project agents panel */
   selectForProjectAgents: () => void;
 
-  // Skip permissions control
+  // ===========================================================================
+  // Electron-specific Features
+  // Requirements: 3.6
+  // ===========================================================================
+
+  /** Set skip permissions */
   setSkipPermissions: (enabled: boolean) => void;
-  // Bug fix: persist-skip-permission-per-project
+  /** Load skip permissions from project */
   loadSkipPermissions: (projectPath: string) => Promise<void>;
 }
 
 type AgentStore = AgentState & AgentActions;
 
-export const useAgentStore = create<AgentStore>((set, get) => ({
-  // Initial state (Task 29.1)
-  agents: new Map<string, AgentInfo[]>(),
-  selectedAgentId: null,
-  logs: new Map<string, LogEntry[]>(),
-  isLoading: false,
-  error: null,
-  skipPermissions: false,
-  runningAgentCounts: new Map<string, number>(), // agent-watcher-optimization Task 5.1
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
-  // Task 29.2: Agent操作アクション
-  // Requirements: 5.1-5.8
+/**
+ * Get agents from shared store and convert to renderer format
+ */
+function getAgentsFromShared(): Map<string, AgentInfo[]> {
+  const sharedAgents = useSharedAgentStore.getState().agents;
+  const rendererAgents = new Map<string, AgentInfo[]>();
 
-  loadAgents: async () => {
-    set({ isLoading: true, error: null });
+  for (const [specId, agents] of sharedAgents.entries()) {
+    rendererAgents.set(specId, agents.map(toRendererAgentInfo));
+  }
 
-    try {
-      const agentsRecord = await window.electronAPI.getAllAgents();
-      const agentsMap = new Map<string, AgentInfo[]>();
+  return rendererAgents;
+}
 
-      // Record<string, AgentInfo[]> を Map に変換
-      for (const [specId, agentList] of Object.entries(agentsRecord)) {
-        agentsMap.set(specId, agentList as AgentInfo[]);
-      }
+/**
+ * Get logs from shared store
+ */
+function getLogsFromShared(): Map<string, LogEntry[]> {
+  return useSharedAgentStore.getState().logs;
+}
 
-      // Also update runningAgentCounts from full data
-      const runningCounts = new Map<string, number>();
-      for (const [specId, agentList] of agentsMap) {
-        const runningCount = agentList.filter((a) => a.status === 'running').length;
-        runningCounts.set(specId, runningCount);
-      }
+/**
+ * Calculate running agent counts from shared store
+ */
+function calculateRunningCounts(): Map<string, number> {
+  const sharedState = useSharedAgentStore.getState();
+  const counts = new Map<string, number>();
 
-      set({
-        agents: agentsMap,
-        runningAgentCounts: runningCounts,
-        isLoading: false,
-      });
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Agentの読み込みに失敗しました',
-        isLoading: false,
-      });
-    }
-  },
+  for (const [specId, agents] of sharedState.agents.entries()) {
+    const runningCount = agents.filter((a) => a.status === 'running').length;
+    counts.set(specId, runningCount);
+  }
 
-  // agent-watcher-optimization Task 5.1: Lightweight running agent counts load
-  // Requirements: 2.1, 2.2
-  loadRunningAgentCounts: async () => {
-    try {
-      const countsRecord = await window.electronAPI.getRunningAgentCounts();
-      const countsMap = new Map<string, number>();
+  return counts;
+}
 
-      for (const [specId, count] of Object.entries(countsRecord)) {
-        countsMap.set(specId, count);
-      }
+// =============================================================================
+// Store
+// =============================================================================
 
-      set({ runningAgentCounts: countsMap });
-      console.log('[agentStore] Loaded running agent counts:', countsMap.size, 'specs');
-    } catch (error) {
-      console.error('[agentStore] Failed to load running agent counts:', error);
-      // Don't set error state - this is a non-critical optimization
-    }
-  },
+export const useAgentStore = create<AgentStore>()(
+  subscribeWithSelector((set, get) => ({
+    // Initial state - synced from shared store
+    agents: getAgentsFromShared(),
+    selectedAgentId: useSharedAgentStore.getState().selectedAgentId,
+    logs: getLogsFromShared(),
+    isLoading: useSharedAgentStore.getState().isLoading,
+    error: useSharedAgentStore.getState().error,
+    skipPermissions: false,
+    runningAgentCounts: calculateRunningCounts(),
 
-  // agent-watcher-optimization Task 5.2: Get running agent count from cache
-  // Requirements: 2.2
-  getRunningAgentCount: (specId: string) => {
-    // First check lightweight counts cache
-    const cachedCount = get().runningAgentCounts.get(specId);
-    if (cachedCount !== undefined) {
-      return cachedCount;
-    }
+    // ===========================================================================
+    // Agent Operations (Requirements: 3.3)
+    // ===========================================================================
 
-    // Fallback to calculating from full agents data
-    const agents = get().agents.get(specId) || [];
-    return agents.filter((a) => a.status === 'running').length;
-  },
+    loadAgents: async () => {
+      set({ isLoading: true, error: null });
 
-  selectAgent: async (agentId: string | null) => {
-    set({ selectedAgentId: agentId });
-
-    // Load logs for the selected agent if not already loaded
-    if (agentId) {
-      const state = get();
-      const existingLogs = state.logs.get(agentId);
-
-      // If logs are not already loaded, fetch them from the file
-      if (!existingLogs || existingLogs.length === 0) {
-        const agent = state.getAgentById(agentId);
-        if (agent) {
-          await state.loadAgentLogs(agent.specId, agentId);
-        }
-      }
-    }
-  },
-
-  loadAgentLogs: async (specId: string, agentId: string) => {
-    try {
-      console.log('[agentStore] Loading agent logs', { specId, agentId });
-      const logs = await window.electronAPI.getAgentLogs(specId, agentId);
-
-      // Convert file logs to LogEntry format
-      const logEntries: LogEntry[] = logs.map((log, index) => ({
-        id: `${agentId}-${index}-${log.timestamp}`,
-        stream: log.stream,
-        data: log.data,
-        timestamp: new Date(log.timestamp).getTime(),
-      }));
-
-      set((state) => {
-        const newLogs = new Map(state.logs);
-        newLogs.set(agentId, logEntries);
-        return { logs: newLogs };
-      });
-
-      console.log('[agentStore] Loaded agent logs', { specId, agentId, count: logEntries.length });
-    } catch (error) {
-      console.error('[agentStore] Failed to load agent logs', { specId, agentId, error });
-      // Don't set error state - just log the error, as this is a non-critical feature
-    }
-  },
-
-  addAgent: (specId: string, agent: AgentInfo) => {
-    set((state) => {
-      const newAgents = new Map(state.agents);
-      const existingAgents = newAgents.get(specId) || [];
-
-      // 重複チェック: 既存のagentIdがあれば更新、なければ追加
-      const existingIndex = existingAgents.findIndex((a) => a.agentId === agent.agentId);
-      if (existingIndex >= 0) {
-        // 既存のAgentを更新
-        const updatedAgents = [...existingAgents];
-        updatedAgents[existingIndex] = agent;
-        newAgents.set(specId, updatedAgents);
-      } else {
-        // 新規追加
-        newAgents.set(specId, [...existingAgents, agent]);
-      }
-
-      return { agents: newAgents };
-    });
-  },
-
-  startAgent: async (
-    specId: string,
-    phase: string,
-    command: string,
-    args: string[],
-    group?: 'doc' | 'impl',
-    sessionId?: string
-  ): Promise<string | null> => {
-    try {
-      // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
-      const newAgent = await window.electronAPI.startAgent(
-        specId,
-        phase,
-        command,
-        args,
-        group,
-        sessionId
-      );
-
-      const agentId = (newAgent as AgentInfo).agentId;
-
-      set((state) => {
-        const newAgents = new Map(state.agents);
-        const existingAgents = newAgents.get(specId) || [];
-        newAgents.set(specId, [...existingAgents, newAgent as AgentInfo]);
-
-        return { agents: newAgents, selectedAgentId: agentId };
-      });
-
-      return agentId;
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Agentの起動に失敗しました',
-      });
-      return null;
-    }
-  },
-
-  stopAgent: async (agentId: string) => {
-    try {
-      await window.electronAPI.stopAgent(agentId);
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Agentの停止に失敗しました',
-      });
-    }
-  },
-
-  resumeAgent: async (agentId: string, prompt?: string) => {
-    try {
-      // ユーザー入力をログに追加（API呼び出し前に表示）
-      if (prompt) {
-        const inputLogEntry: LogEntry = {
-          id: `stdin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          stream: 'stdin',
-          data: prompt,
-          timestamp: Date.now(),
-        };
-        get().appendLog(agentId, inputLogEntry);
-      }
-
-      // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
-      const resumedAgent = await window.electronAPI.resumeAgent(agentId, prompt);
-
-      set((state) => {
-        const newAgents = new Map(state.agents);
-
-        // 全てのspecから該当するagentを探して更新
-        for (const [specId, agentList] of newAgents) {
-          const updatedList = agentList.map((agent) =>
-            agent.agentId === agentId ? (resumedAgent as AgentInfo) : agent
-          );
-          newAgents.set(specId, updatedList);
-        }
-
-        return { agents: newAgents };
-      });
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Agentの再開に失敗しました',
-      });
-    }
-  },
-
-  removeAgent: async (agentId: string) => {
-    // Find the specId for this agent
-    const state = get();
-    let targetSpecId: string | null = null;
-    for (const [specId, agentList] of state.agents) {
-      const found = agentList.find((a) => a.agentId === agentId);
-      if (found) {
-        targetSpecId = specId;
-        break;
-      }
-    }
-
-    // Delete from file system first (if we found the agent)
-    if (targetSpecId !== null) {
       try {
-        await window.electronAPI.deleteAgent(targetSpecId, agentId);
-        console.log('[agentStore] Agent record deleted from file system', { specId: targetSpecId, agentId });
-      } catch (error) {
-        console.error('[agentStore] Failed to delete agent record', { agentId, error });
-        // Continue with UI deletion even if file deletion fails
-        // The file watcher will handle cleanup if needed
-      }
-    }
+        const agentsRecord = await window.electronAPI.getAllAgents();
+        const agentsMap = new Map<string, AgentInfo[]>();
 
-    // Remove from UI state
-    set((currentState) => {
-      const newAgents = new Map(currentState.agents);
-      const newLogs = new Map(currentState.logs);
-
-      // 全てのspecから該当するagentを削除
-      for (const [specId, agentList] of newAgents) {
-        const filteredList = agentList.filter((agent) => agent.agentId !== agentId);
-        if (filteredList.length !== agentList.length) {
-          newAgents.set(specId, filteredList);
-        }
-      }
-
-      // ログも削除
-      newLogs.delete(agentId);
-
-      // 選択中のAgentが削除された場合はnullに
-      const newSelectedAgentId = currentState.selectedAgentId === agentId ? null : currentState.selectedAgentId;
-
-      return { agents: newAgents, logs: newLogs, selectedAgentId: newSelectedAgentId };
-    });
-  },
-
-  sendInput: async (agentId: string, input: string) => {
-    try {
-      await window.electronAPI.sendAgentInput(agentId, input);
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : '入力の送信に失敗しました',
-      });
-    }
-  },
-
-  updateAgentStatus: (agentId: string, status: AgentStatus) => {
-    set((state) => {
-      const newAgents = new Map(state.agents);
-
-      // 全てのspecから該当するagentを探して更新
-      for (const [specId, agentList] of newAgents) {
-        const updatedList = agentList.map((agent) =>
-          agent.agentId === agentId ? { ...agent, status } : agent
-        );
-        newAgents.set(specId, updatedList);
-      }
-
-      return { agents: newAgents };
-    });
-  },
-
-  // Task 29.3: ログ管理
-  // Requirements: 9.1-9.10
-
-  appendLog: (agentId: string, entry: LogEntry) => {
-    set((state) => {
-      const newLogs = new Map(state.logs);
-      const existingLogs = newLogs.get(agentId) || [];
-      newLogs.set(agentId, [...existingLogs, entry]);
-
-      return { logs: newLogs };
-    });
-  },
-
-  clearLogs: (agentId: string) => {
-    set((state) => {
-      const newLogs = new Map(state.logs);
-      newLogs.set(agentId, []);
-
-      return { logs: newLogs };
-    });
-  },
-
-  getLogsForAgent: (agentId: string) => {
-    return get().logs.get(agentId) || [];
-  },
-
-  // Task 29.4: イベントリスナー設定
-  // Requirements: 9.1, 5.2
-
-  setupEventListeners: () => {
-    console.log('[agentStore] Setting up event listeners');
-
-    // Agent出力イベントリスナー
-    const cleanupOutput = window.electronAPI.onAgentOutput(
-      (agentId: string, stream: 'stdout' | 'stderr', data: string) => {
-        console.log('[agentStore] Received agent output', { agentId, stream, dataLength: data.length });
-        const entry: LogEntry = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          stream,
-          data,
-          timestamp: Date.now(),
-        };
-        get().appendLog(agentId, entry);
-      }
-    );
-
-    // Agentステータス変更イベントリスナー
-    const cleanupStatus = window.electronAPI.onAgentStatusChange(
-      (agentId: string, status: AgentStatus) => {
-        get().updateAgentStatus(agentId, status);
-      }
-    );
-
-    // Agent Record変更イベントリスナー（ファイル監視）
-    // Bug fix: spec-agent-list-not-updating-on-auto-execution
-    // Simplified to match specsWatcherService/bugsWatcherService pattern:
-    // Receive only event info (type, specId, agentId), then fetch full data via loadAgents()
-    // This avoids file read timing issues in the main process
-    const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
-      (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => {
-        console.log('[agentStore] Agent record changed', { type, eventInfo });
-
-        const { agentId, specId } = eventInfo;
-        // specId can be empty string for global agents, so check for undefined
-        if (!agentId || specId === undefined) {
-          console.warn('[agentStore] Invalid event info, missing agentId or specId');
-          return;
+        // Record<string, AgentInfo[]> を Map に変換
+        for (const [specId, agentList] of Object.entries(agentsRecord)) {
+          agentsMap.set(specId, agentList as AgentInfo[]);
         }
 
-        if (type === 'unlink') {
-          // ファイル削除時はAgentをストアから削除
-          const state = get();
-          const agents = state.agents.get(specId);
-          if (agents) {
-            const filtered = agents.filter((a) => a.agentId !== agentId);
-            const newAgents = new Map(state.agents);
-            if (filtered.length > 0) {
-              newAgents.set(specId, filtered);
-            } else {
-              newAgents.delete(specId);
-            }
-            set({ agents: newAgents });
+        // Also update runningAgentCounts from full data
+        const runningCounts = new Map<string, number>();
+        for (const [specId, agentList] of agentsMap) {
+          const runningCount = agentList.filter((a) => a.status === 'running').length;
+          runningCounts.set(specId, runningCount);
+        }
+
+        // Update shared store with converted data
+        for (const [specId, agentList] of agentsMap) {
+          for (const agent of agentList) {
+            useSharedAgentStore.getState().addAgent(specId, toSharedAgentInfo(agent));
           }
-        } else {
-          // add/change時はloadAgents()で全データを再取得
-          // これにより、ファイル書き込みタイミングの問題を回避
-          get().loadAgents().then(() => {
-            // 新規追加時のみ自動選択（File as SSOT: WorkflowViewからの直接呼び出しを廃止）
-            // Bug fix: agent-selection-scope-mismatch - 選択中のspec/bugと一致する場合のみ自動選択
-            if (type === 'add') {
-              // Project Agent（specId=''）は常に自動選択
-              if (specId === '') {
-                get().selectAgent(agentId);
-              } else {
-                // Spec/Bug Agentは選択中のspec/bugと一致する場合のみ自動選択
-                // Bug fix: agent-log-dynamic-import-issue - 同期的に呼び出し
-                const { selectedSpec } = useSpecStore.getState();
-                // Bug agents use 'bug:{bugName}' format
-                if (specId.startsWith('bug:')) {
-                  const { selectedBug } = useBugStore.getState();
-                  const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
-                  if (specId === expectedSpecId) {
+        }
+
+        set({
+          agents: agentsMap,
+          runningAgentCounts: runningCounts,
+          isLoading: false,
+        });
+      } catch (error) {
+        set({
+          error: error instanceof Error ? error.message : 'Agentの読み込みに失敗しました',
+          isLoading: false,
+        });
+      }
+    },
+
+    loadRunningAgentCounts: async () => {
+      try {
+        const countsRecord = await window.electronAPI.getRunningAgentCounts();
+        const countsMap = new Map<string, number>();
+
+        for (const [specId, count] of Object.entries(countsRecord)) {
+          countsMap.set(specId, count);
+        }
+
+        set({ runningAgentCounts: countsMap });
+        console.log('[agentStore] Loaded running agent counts:', countsMap.size, 'specs');
+      } catch (error) {
+        console.error('[agentStore] Failed to load running agent counts:', error);
+      }
+    },
+
+    getRunningAgentCount: (specId: string) => {
+      const cachedCount = get().runningAgentCounts.get(specId);
+      if (cachedCount !== undefined) {
+        return cachedCount;
+      }
+
+      const agents = get().agents.get(specId) || [];
+      return agents.filter((a) => a.status === 'running').length;
+    },
+
+    selectAgent: async (agentId: string | null) => {
+      // Update shared store
+      useSharedAgentStore.getState().selectAgent(agentId);
+      set({ selectedAgentId: agentId });
+
+      // Load logs if not already loaded
+      if (agentId) {
+        const state = get();
+        const existingLogs = state.logs.get(agentId);
+
+        if (!existingLogs || existingLogs.length === 0) {
+          const agent = state.getAgentById(agentId);
+          if (agent) {
+            await agentOperations.loadAgentLogs(agent.specId, agentId);
+          }
+        }
+      }
+    },
+
+    loadAgentLogs: async (specId: string, agentId: string) => {
+      await agentOperations.loadAgentLogs(specId, agentId);
+      // Sync logs from shared store
+      set({ logs: getLogsFromShared() });
+    },
+
+    addAgent: (specId: string, agent: AgentInfo) => {
+      // Add to shared store
+      useSharedAgentStore.getState().addAgent(specId, toSharedAgentInfo(agent));
+      // Sync from shared store
+      set({ agents: getAgentsFromShared() });
+    },
+
+    startAgent: async (
+      specId: string,
+      phase: string,
+      command: string,
+      args: string[],
+      group?: 'doc' | 'impl',
+      sessionId?: string
+    ) => {
+      set({ isLoading: true, error: null });
+      try {
+        const agentId = await agentOperations.startAgent(specId, phase, command, args, group, sessionId);
+        set({
+          isLoading: false,
+          agents: getAgentsFromShared(),
+          selectedAgentId: agentId,
+          runningAgentCounts: calculateRunningCounts(),
+        });
+        return agentId;
+      } catch (error) {
+        set({
+          error: error instanceof Error ? error.message : 'Agentの起動に失敗しました',
+          isLoading: false,
+        });
+        return null;
+      }
+    },
+
+    stopAgent: async (agentId: string) => {
+      try {
+        await agentOperations.stopAgent(agentId);
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : 'Agentの停止に失敗しました' });
+      }
+    },
+
+    resumeAgent: async (agentId: string, prompt?: string) => {
+      try {
+        // Add stdin log entry if prompt provided
+        if (prompt) {
+          const inputLogEntry: LogEntry = {
+            id: `stdin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            stream: 'stdin',
+            data: prompt,
+            timestamp: Date.now(),
+          };
+          get().appendLog(agentId, inputLogEntry);
+        }
+
+        await agentOperations.resumeAgent(agentId, prompt);
+        // Sync from shared store
+        set({ agents: getAgentsFromShared() });
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : 'Agentの再開に失敗しました' });
+      }
+    },
+
+    removeAgent: async (agentId: string) => {
+      try {
+        await agentOperations.removeAgent(agentId);
+        set({
+          agents: getAgentsFromShared(),
+          logs: getLogsFromShared(),
+          runningAgentCounts: calculateRunningCounts(),
+        });
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : 'Agentの削除に失敗しました' });
+      }
+    },
+
+    sendInput: async (agentId: string, input: string) => {
+      try {
+        await agentOperations.sendInput(agentId, input);
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : '入力の送信に失敗しました' });
+      }
+    },
+
+    updateAgentStatus: (agentId: string, status: AgentStatus) => {
+      useSharedAgentStore.getState().updateAgentStatus(agentId, status);
+      set({ agents: getAgentsFromShared() });
+    },
+
+    // ===========================================================================
+    // Log Management
+    // ===========================================================================
+
+    appendLog: (agentId: string, entry: LogEntry) => {
+      useSharedAgentStore.getState().addLog(agentId, entry);
+      set({ logs: getLogsFromShared() });
+    },
+
+    clearLogs: (agentId: string) => {
+      useSharedAgentStore.getState().clearLogs(agentId);
+      set({ logs: getLogsFromShared() });
+    },
+
+    getLogsForAgent: (agentId: string) => {
+      return useSharedAgentStore.getState().getLogsForAgent(agentId);
+    },
+
+    // ===========================================================================
+    // Event Listeners (Requirements: 3.7)
+    // ===========================================================================
+
+    setupEventListeners: () => {
+      console.log('[agentStore] Setting up event listeners');
+
+      // Setup IPC event listeners via adapter
+      const cleanupAdapter = setupAgentEventListeners();
+
+      // Agent Record変更イベントリスナー（ファイル監視）
+      // Note: The adapter handles basic add/change/unlink, but we need additional
+      // handling for auto-selection which requires specStore/bugStore context
+      const cleanupRecordChanged = window.electronAPI.onAgentRecordChanged(
+        (type: 'add' | 'change' | 'unlink', eventInfo: { agentId?: string; specId?: string }) => {
+          console.log('[agentStore] Agent record changed', { type, eventInfo });
+
+          const { agentId, specId } = eventInfo;
+          if (!agentId || specId === undefined) {
+            console.warn('[agentStore] Invalid event info, missing agentId or specId');
+            return;
+          }
+
+          if (type === 'unlink') {
+            // File deletion - handled by adapter, just sync state
+            set({
+              agents: getAgentsFromShared(),
+              logs: getLogsFromShared(),
+              runningAgentCounts: calculateRunningCounts(),
+            });
+          } else {
+            // add/change - reload and auto-select
+            get().loadAgents().then(() => {
+              // Auto-selection logic
+              if (type === 'add') {
+                if (specId === '') {
+                  // Project Agent - always auto-select
+                  get().selectAgent(agentId);
+                } else {
+                  // Spec/Bug Agent - auto-select if matches current selection
+                  const { selectedSpec } = useSpecStore.getState();
+                  if (specId.startsWith('bug:')) {
+                    const { selectedBug } = useBugStore.getState();
+                    const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
+                    if (specId === expectedSpecId) {
+                      get().selectAgent(agentId);
+                    }
+                  } else if (selectedSpec && specId === selectedSpec.name) {
                     get().selectAgent(agentId);
                   }
-                } else if (selectedSpec && specId === selectedSpec.name) {
-                  get().selectAgent(agentId);
                 }
               }
-            }
-          });
+            });
+          }
         }
+      );
+
+      // Subscribe to shared store changes
+      const unsubscribeShared = useSharedAgentStore.subscribe(() => {
+        set({
+          agents: getAgentsFromShared(),
+          selectedAgentId: useSharedAgentStore.getState().selectedAgentId,
+          logs: getLogsFromShared(),
+          isLoading: useSharedAgentStore.getState().isLoading,
+          error: useSharedAgentStore.getState().error,
+          runningAgentCounts: calculateRunningCounts(),
+        });
+      });
+
+      return () => {
+        console.log('[agentStore] Cleaning up event listeners');
+        cleanupAdapter();
+        cleanupRecordChanged();
+        unsubscribeShared();
+      };
+    },
+
+    // ===========================================================================
+    // Helper Methods (Requirements: 3.5)
+    // ===========================================================================
+
+    getAgentById: (agentId: string) => {
+      const shared = useSharedAgentStore.getState().getAgentById(agentId);
+      return shared ? toRendererAgentInfo(shared) : undefined;
+    },
+
+    getSelectedAgent: () => {
+      const { selectedAgentId } = get();
+      if (!selectedAgentId) return undefined;
+      return get().getAgentById(selectedAgentId);
+    },
+
+    getAgentsForSpec: (specId: string) => {
+      const shared = useSharedAgentStore.getState().getAgentsForSpec(specId);
+      return shared.map(toRendererAgentInfo);
+    },
+
+    getProjectAgents: () => {
+      return get().getAgentsForSpec('');
+    },
+
+    findAgentById: (agentId: string | null) => {
+      if (!agentId) return undefined;
+      return get().getAgentById(agentId);
+    },
+
+    clearError: () => {
+      useSharedAgentStore.getState().clearError();
+      set({ error: null });
+    },
+
+    selectForProjectAgents: () => {
+      set({ selectedAgentId: null });
+    },
+
+    // ===========================================================================
+    // Electron-specific Features (Requirements: 3.6)
+    // ===========================================================================
+
+    setSkipPermissions: async (enabled: boolean) => {
+      set({ skipPermissions: enabled });
+
+      // Persist to project config file
+      const { useProjectStore } = await import('./projectStore');
+      const currentProject = useProjectStore.getState().currentProject;
+      if (currentProject) {
+        await skipPermissionsOperations.setSkipPermissions(enabled, currentProject);
       }
-    );
+    },
 
-    // クリーンアップ関数を返す
-    return () => {
-      cleanupOutput();
-      cleanupStatus();
-      cleanupRecordChanged();
-    };
-  },
-
-  // Helper methods
-
-  getAgentById: (agentId: string) => {
-    const state = get();
-    for (const agentList of state.agents.values()) {
-      const agent = agentList.find((a) => a.agentId === agentId);
-      if (agent) {
-        return agent;
-      }
-    }
-    return undefined;
-  },
-
-  // Bug fix: agent-log-textfield-inactive
-  // selectedAgentIdに対応するAgentInfoを返す
-  // セレクタとして使用することで、agents Map変更時に正しく再レンダリングされる
-  getSelectedAgent: () => {
-    const { selectedAgentId, agents } = get();
-    if (!selectedAgentId) return undefined;
-    for (const agentList of agents.values()) {
-      const found = agentList.find((a) => a.agentId === selectedAgentId);
-      if (found) return found;
-    }
-    return undefined;
-  },
-
-  getAgentsForSpec: (specId: string) => {
-    return get().agents.get(specId) || [];
-  },
-
-  // Bug fix: Zustand無限ループ回避のため、セレクタ内で使用可能な純粋関数
-  // getAgentByIdとは異なり、stateを引数として受け取ることでセレクタ内で安全に使用可能
-  findAgentById: (agentId: string | null) => {
-    if (!agentId) return undefined;
-    const state = get();
-    for (const agentList of state.agents.values()) {
-      const found = agentList.find((a) => a.agentId === agentId);
-      if (found) return found;
-    }
-    return undefined;
-  },
-
-  // Task 4.1 (sidebar-refactor): プロジェクトエージェント取得
-  // specIdが空文字列のエージェントをプロジェクトエージェントとして返す
-  getProjectAgents: () => {
-    return get().agents.get('') || [];
-  },
-
-  clearError: () => {
-    set({ error: null });
-  },
-
-  // Task 5.2.4 (sidebar-refactor): プロジェクトエージェントパネルへの遷移
-  // specId=''のエージェントを選択可能な状態にする
-  selectForProjectAgents: () => {
-    // プロジェクトエージェント（specId=''）を選択対象として設定
-    // selectedAgentIdをnullにリセットして、ProjectAgentPanelにフォーカスを移す
-    set({ selectedAgentId: null });
-  },
-
-  // Skip permissions control
-  // Sets the --dangerously-skip-permissions flag for claude CLI
-  // Bug fix: persist-skip-permission-per-project - Persist to sdd-orchestrator.json
-  setSkipPermissions: async (enabled: boolean) => {
-    set({ skipPermissions: enabled });
-
-    // Persist to project config file
-    // Dynamic import to avoid circular dependency
-    const { useProjectStore } = await import('./projectStore');
-    const currentProject = useProjectStore.getState().currentProject;
-    if (currentProject) {
-      try {
-        await window.electronAPI.saveSkipPermissions(currentProject, enabled);
-      } catch (error) {
-        console.error('[agentStore] Failed to save skipPermissions:', error);
-      }
-    }
-  },
-
-  // Load skipPermissions from project config file
-  // Bug fix: persist-skip-permission-per-project
-  loadSkipPermissions: async (projectPath: string) => {
-    try {
-      const skipPermissions = await window.electronAPI.loadSkipPermissions(projectPath);
+    loadSkipPermissions: async (projectPath: string) => {
+      const skipPermissions = await skipPermissionsOperations.loadSkipPermissions(projectPath);
       set({ skipPermissions });
-      console.log('[agentStore] Loaded skipPermissions:', skipPermissions);
-    } catch (error) {
-      console.error('[agentStore] Failed to load skipPermissions:', error);
-      // Default to false on error
-      set({ skipPermissions: false });
-    }
-  },
-}));
+    },
+  }))
+);
+
+// =============================================================================
+// Test Utilities
+// =============================================================================
+
+/**
+ * Reset store to initial state (for tests)
+ */
+export function resetAgentStore(): void {
+  useAgentStore.setState({
+    agents: new Map(),
+    selectedAgentId: null,
+    logs: new Map(),
+    isLoading: false,
+    error: null,
+    skipPermissions: false,
+    runningAgentCounts: new Map(),
+  });
+}

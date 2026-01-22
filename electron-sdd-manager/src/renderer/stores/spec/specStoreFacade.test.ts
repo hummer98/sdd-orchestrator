@@ -3,6 +3,7 @@
  * TDD: Testing facade that combines all decomposed stores
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
  * execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1, 7.2)
+ * agent-store-unification: agentStore is now a Facade that syncs with shared/agentStore
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -12,8 +13,26 @@ import { useSpecDetailStore } from './specDetailStore';
 import { useAutoExecutionStore } from './autoExecutionStore';
 // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
 // import { useSpecManagerExecutionStore } from './specManagerExecutionStore';
-import { useAgentStore } from '../agentStore';
+import { useAgentStore, resetAgentStore } from '../agentStore';
+import { resetSharedAgentStore } from '@shared/stores/agentStore';
 import type { SpecMetadata } from '../../types';
+
+// Mock agentStoreAdapter for agentStore tests
+vi.mock('../agentStoreAdapter', () => ({
+  agentOperations: {
+    startAgent: vi.fn(),
+    stopAgent: vi.fn(),
+    resumeAgent: vi.fn(),
+    removeAgent: vi.fn(),
+    sendInput: vi.fn(),
+    loadAgentLogs: vi.fn(),
+  },
+  setupAgentEventListeners: vi.fn(() => vi.fn()),
+  skipPermissionsOperations: {
+    setSkipPermissions: vi.fn(),
+    loadSkipPermissions: vi.fn().mockResolvedValue(false),
+  },
+}));
 
 const mockSpecs: SpecMetadata[] = [
   {
@@ -70,15 +89,9 @@ describe('useSpecStoreFacade', () => {
       autoExecutionRuntimeMap: new Map(),
     });
     // execution-store-consolidation: specManagerExecutionStore REMOVED (Req 5.1)
-    // Reset agentStore instead
-    useAgentStore.setState({
-      agents: new Map(),
-      selectedAgentId: null,
-      logs: new Map(),
-      isLoading: false,
-      error: null,
-      skipPermissions: false,
-    });
+    // agent-store-unification: Reset both shared store and renderer store
+    resetSharedAgentStore();
+    resetAgentStore();
     // Set up agentStore subscription for derived state tests
     setupAgentStoreSubscription();
     vi.clearAllMocks();
@@ -112,13 +125,14 @@ describe('useSpecStoreFacade', () => {
     });
 
     // execution-store-consolidation: specManagerExecution derived from agentStore (Req 3.1)
+    // agent-store-unification: Use addAgent to properly add agents through the Facade
     it('should derive specManagerExecution from agentStore', () => {
       // Set up a selected spec first
       useSpecDetailStore.setState({ selectedSpec: mockSpecs[0] });
 
-      // Add a running agent for the selected spec
-      const agents = new Map();
-      agents.set('feature-a', [{
+      // Add a running agent for the selected spec using addAgent
+      // agent-store-unification: This adds to shared store and syncs to Facade
+      useAgentStore.getState().addAgent('feature-a', {
         agentId: 'agent-1',
         specId: 'feature-a',
         phase: 'design',
@@ -130,8 +144,7 @@ describe('useSpecStoreFacade', () => {
         command: 'test',
         executionMode: 'manual' as const,
         retryCount: 0,
-      }]);
-      useAgentStore.setState({ agents });
+      });
 
       const state = useSpecStoreFacade.getState();
       expect(state.specManagerExecution.isRunning).toBe(true);

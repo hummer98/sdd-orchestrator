@@ -1,7 +1,8 @@
 /**
  * Shared agentStore Tests
- * agent-watcher-optimization feature
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+ * agent-store-unification feature
+ * Requirements: 1.1-1.6 (data structure modification)
+ * Also includes: agent-watcher-optimization (3.1, 3.2, 3.3, 3.4, 3.5)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -32,6 +33,316 @@ describe('SharedAgentStore', () => {
     phase: 'requirements',
     sessionId: `session-${id}`,
     lastActivityAt: new Date().toISOString(),
+  });
+
+  // =============================================================================
+  // Task 1: agent-store-unification - データ構造修正
+  // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
+  // =============================================================================
+  describe('Task 1: Data structure unification (agent-store-unification)', () => {
+    // -------------------------------------------------------------------------
+    // Task 1.1: agentsフィールドのデータ構造変更
+    // Requirements: 1.1
+    // -------------------------------------------------------------------------
+    describe('Task 1.1: agents field data structure', () => {
+      it('should have agents as Map<string, AgentInfo[]> (specId -> agents)', () => {
+        const store = getSharedAgentStore();
+        expect(store.agents).toBeInstanceOf(Map);
+      });
+
+      it('should store multiple agents per specId', () => {
+        const store = getSharedAgentStore();
+        const agent1 = createAgent('agent-1', 'spec-a', 'running');
+        const agent2 = createAgent('agent-2', 'spec-a', 'completed');
+
+        store.addAgent('spec-a', agent1);
+        store.addAgent('spec-a', agent2);
+
+        const freshState = getSharedAgentStore();
+        const specAgents = freshState.agents.get('spec-a');
+        expect(specAgents).toBeDefined();
+        expect(specAgents).toHaveLength(2);
+      });
+
+      it('should support empty string specId for Project Agents', () => {
+        const store = getSharedAgentStore();
+        const projectAgent = createAgent('project-agent-1', '', 'running');
+
+        store.addAgent('', projectAgent);
+
+        const freshState = getSharedAgentStore();
+        const projectAgents = freshState.agents.get('');
+        expect(projectAgents).toBeDefined();
+        expect(projectAgents).toHaveLength(1);
+        expect(projectAgents![0].id).toBe('project-agent-1');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.2: getAgentsForSpec(specId) メソッド
+    // Requirements: 1.2
+    // -------------------------------------------------------------------------
+    describe('Task 1.2: getAgentsForSpec(specId)', () => {
+      it('should return agents array for existing specId', () => {
+        const store = getSharedAgentStore();
+        const agent1 = createAgent('agent-1', 'spec-a', 'running');
+        const agent2 = createAgent('agent-2', 'spec-a', 'completed');
+
+        store.addAgent('spec-a', agent1);
+        store.addAgent('spec-a', agent2);
+
+        const agents = store.getAgentsForSpec('spec-a');
+        expect(agents).toHaveLength(2);
+        expect(agents[0].id).toBe('agent-1');
+        expect(agents[1].id).toBe('agent-2');
+      });
+
+      it('should return empty array for non-existent specId', () => {
+        const store = getSharedAgentStore();
+
+        const agents = store.getAgentsForSpec('non-existent');
+        expect(agents).toEqual([]);
+      });
+
+      it('should return empty array for empty store', () => {
+        const store = getSharedAgentStore();
+
+        const agents = store.getAgentsForSpec('any-spec');
+        expect(agents).toEqual([]);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.3: getAgentById(agentId) メソッド修正
+    // Requirements: 1.3
+    // -------------------------------------------------------------------------
+    describe('Task 1.3: getAgentById(agentId)', () => {
+      it('should find agent across all specs', () => {
+        const store = getSharedAgentStore();
+        const agentA = createAgent('agent-a', 'spec-a', 'running');
+        const agentB = createAgent('agent-b', 'spec-b', 'running');
+
+        store.addAgent('spec-a', agentA);
+        store.addAgent('spec-b', agentB);
+
+        const foundAgent = store.getAgentById('agent-b');
+        expect(foundAgent).toBeDefined();
+        expect(foundAgent!.id).toBe('agent-b');
+        expect(foundAgent!.specId).toBe('spec-b');
+      });
+
+      it('should return undefined for non-existent agentId', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+        store.addAgent('spec-a', agent);
+
+        const foundAgent = store.getAgentById('non-existent');
+        expect(foundAgent).toBeUndefined();
+      });
+
+      it('should find agent in empty string specId (Project Agent)', () => {
+        const store = getSharedAgentStore();
+        const projectAgent = createAgent('project-agent', '', 'running');
+        store.addAgent('', projectAgent);
+
+        const foundAgent = store.getAgentById('project-agent');
+        expect(foundAgent).toBeDefined();
+        expect(foundAgent!.specId).toBe('');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.4: addAgent(specId, agent) メソッド修正
+    // Requirements: 1.4
+    // -------------------------------------------------------------------------
+    describe('Task 1.4: addAgent(specId, agent)', () => {
+      it('should create new array for new specId', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.agents.has('spec-a')).toBe(true);
+        expect(freshState.agents.get('spec-a')).toHaveLength(1);
+      });
+
+      it('should append to existing array for existing specId', () => {
+        const store = getSharedAgentStore();
+        const agent1 = createAgent('agent-1', 'spec-a', 'running');
+        const agent2 = createAgent('agent-2', 'spec-a', 'completed');
+
+        store.addAgent('spec-a', agent1);
+        store.addAgent('spec-a', agent2);
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.agents.get('spec-a')).toHaveLength(2);
+      });
+
+      it('should update existing agent if agentId already exists (duplicate check)', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+        const updatedAgent = createAgent('agent-1', 'spec-a', 'completed');
+
+        store.addAgent('spec-a', agent);
+        store.addAgent('spec-a', updatedAgent);
+
+        const freshState = getSharedAgentStore();
+        const specAgents = freshState.agents.get('spec-a');
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents![0].status).toBe('completed');
+      });
+
+      it('should handle empty specId (Project Agent)', () => {
+        const store = getSharedAgentStore();
+        const projectAgent = createAgent('project-agent', '', 'running');
+
+        store.addAgent('', projectAgent);
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.agents.get('')).toBeDefined();
+        expect(freshState.agents.get('')).toHaveLength(1);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.5: removeAgent(agentId) メソッド修正
+    // Requirements: 1.5
+    // -------------------------------------------------------------------------
+    describe('Task 1.5: removeAgent(agentId)', () => {
+      it('should remove agent from correct spec', () => {
+        const store = getSharedAgentStore();
+        const agent1 = createAgent('agent-1', 'spec-a', 'running');
+        const agent2 = createAgent('agent-2', 'spec-a', 'completed');
+
+        store.addAgent('spec-a', agent1);
+        store.addAgent('spec-a', agent2);
+        store.removeAgent('agent-1');
+
+        const freshState = getSharedAgentStore();
+        const specAgents = freshState.agents.get('spec-a');
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents![0].id).toBe('agent-2');
+      });
+
+      it('should search across all specs to find and remove agent', () => {
+        const store = getSharedAgentStore();
+        const agentA = createAgent('agent-a', 'spec-a', 'running');
+        const agentB = createAgent('agent-b', 'spec-b', 'running');
+
+        store.addAgent('spec-a', agentA);
+        store.addAgent('spec-b', agentB);
+        store.removeAgent('agent-b');
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.agents.get('spec-a')).toHaveLength(1);
+        expect(freshState.agents.get('spec-b')).toHaveLength(0);
+      });
+
+      it('should keep empty array after removing last agent (not delete key)', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+        store.removeAgent('agent-1');
+
+        const freshState = getSharedAgentStore();
+        // Empty array is kept, key is not deleted
+        expect(freshState.agents.has('spec-a')).toBe(true);
+        expect(freshState.agents.get('spec-a')).toHaveLength(0);
+      });
+
+      it('should clear selectedAgentId if removing selected agent', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+        store.selectAgent('agent-1');
+        store.removeAgent('agent-1');
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.selectedAgentId).toBeNull();
+      });
+
+      it('should also remove logs for the agent', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+        store.addLog('agent-1', { id: 'log-1', stream: 'stdout', data: 'test', timestamp: Date.now() });
+        store.removeAgent('agent-1');
+
+        const freshState = getSharedAgentStore();
+        expect(freshState.logs.has('agent-1')).toBe(false);
+      });
+
+      it('should handle removing non-existent agent gracefully', () => {
+        const store = getSharedAgentStore();
+
+        // Should not throw
+        expect(() => store.removeAgent('non-existent')).not.toThrow();
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.6: updateAgentStatus(agentId, status) メソッド修正
+    // Requirements: 1.6
+    // -------------------------------------------------------------------------
+    describe('Task 1.6: updateAgentStatus(agentId, status)', () => {
+      it('should update agent status across all specs', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+        store.updateAgentStatus('agent-1', 'completed');
+
+        const freshState = getSharedAgentStore();
+        const updatedAgent = freshState.getAgentById('agent-1');
+        expect(updatedAgent!.status).toBe('completed');
+      });
+
+      it('should find agent in any spec and update', () => {
+        const store = getSharedAgentStore();
+        const agentA = createAgent('agent-a', 'spec-a', 'running');
+        const agentB = createAgent('agent-b', 'spec-b', 'running');
+
+        store.addAgent('spec-a', agentA);
+        store.addAgent('spec-b', agentB);
+        store.updateAgentStatus('agent-b', 'interrupted');
+
+        const freshState = getSharedAgentStore();
+        const updatedAgent = freshState.getAgentById('agent-b');
+        expect(updatedAgent!.status).toBe('interrupted');
+      });
+
+      it('should handle non-existent agent gracefully', () => {
+        const store = getSharedAgentStore();
+
+        // Should not throw
+        expect(() => store.updateAgentStatus('non-existent', 'completed')).not.toThrow();
+      });
+
+      it('should also update lastActivityAt when status changes', () => {
+        const store = getSharedAgentStore();
+        const oldTime = '2025-01-01T00:00:00Z';
+        const agent = createAgent('agent-1', 'spec-a', 'running', oldTime);
+        // Manually set lastActivityAt to old time
+        agent.lastActivityAt = oldTime;
+
+        store.addAgent('spec-a', agent);
+
+        // Small delay to ensure time difference
+        const beforeUpdate = new Date().toISOString();
+        store.updateAgentStatus('agent-1', 'completed');
+
+        const freshState = getSharedAgentStore();
+        const updatedAgent = freshState.getAgentById('agent-1');
+        // lastActivityAt should be updated to a newer time
+        expect(new Date(updatedAgent!.lastActivityAt!).getTime()).toBeGreaterThanOrEqual(
+          new Date(beforeUpdate).getTime() - 1000 // Allow 1 second tolerance
+        );
+      });
+    });
   });
 
   // =============================================================================

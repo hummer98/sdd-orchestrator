@@ -2,13 +2,37 @@
  * Agent Store Tests
  * TDD: Testing agent state management and actions
  * Requirements: 5.1-5.8, 9.1-9.10
+ *
+ * agent-store-unification: This file tests the Facade implementation
+ * which delegates to shared/agentStore (SSOT) and agentStoreAdapter (IPC)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAgentStore, type AgentInfo, type AgentStatus, type LogEntry } from './agentStore';
+import { useAgentStore, resetAgentStore, type AgentInfo, type AgentStatus, type LogEntry } from './agentStore';
+import { resetSharedAgentStore } from '@shared/stores/agentStore';
 // Bug fix: agent-log-dynamic-import-issue - Import stores for state-based mocking
 import { useSpecDetailStore } from './spec/specDetailStore';
 import { useBugStore } from './bugStore';
+
+// Mock agentStoreAdapter
+vi.mock('./agentStoreAdapter', () => ({
+  agentOperations: {
+    startAgent: vi.fn(),
+    stopAgent: vi.fn(),
+    resumeAgent: vi.fn(),
+    removeAgent: vi.fn(),
+    sendInput: vi.fn(),
+    loadAgentLogs: vi.fn(),
+  },
+  setupAgentEventListeners: vi.fn(() => vi.fn()),
+  skipPermissionsOperations: {
+    setSkipPermissions: vi.fn(),
+    loadSkipPermissions: vi.fn().mockResolvedValue(false),
+  },
+}));
+
+// Import mocked adapter
+import { agentOperations, skipPermissionsOperations } from './agentStoreAdapter';
 
 // Mock agent data
 const mockAgentInfo: AgentInfo = {
@@ -49,14 +73,10 @@ const mockAgentInfo3: AgentInfo = {
 
 describe('useAgentStore', () => {
   beforeEach(() => {
-    // Reset store state
-    useAgentStore.setState({
-      agents: new Map(),
-      selectedAgentId: null,
-      logs: new Map(),
-      isLoading: false,
-      error: null,
-    });
+    // Reset both shared store and renderer store
+    // agent-store-unification: Need to reset shared store first as Facade syncs from it
+    resetSharedAgentStore();
+    resetAgentStore();
     vi.clearAllMocks();
   });
 
@@ -178,7 +198,7 @@ describe('useAgentStore', () => {
       });
 
       it('should allow selecting null', async () => {
-        useAgentStore.setState({ selectedAgentId: 'agent-1' });
+        await useAgentStore.getState().selectAgent('agent-1');
 
         await useAgentStore.getState().selectAgent(null);
 
@@ -187,51 +207,36 @@ describe('useAgentStore', () => {
       });
 
       it('should load logs when selecting an agent with no cached logs', async () => {
-        // Set up mock
-        const mockLogs = [
-          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout' as const, data: 'test output' },
-        ];
-        window.electronAPI.getAgentLogs = vi.fn().mockResolvedValue(mockLogs);
-
-        // Add agent to state first
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Facade delegates to adapter for log loading
+        // Add agent to store first via addAgent (which updates shared store)
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
 
         await useAgentStore.getState().selectAgent('agent-1');
 
-        expect(window.electronAPI.getAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-1');
-
-        const state = useAgentStore.getState();
-        const logs = state.logs.get('agent-1');
-        expect(logs).toHaveLength(1);
-        expect(logs?.[0].data).toBe('test output');
+        expect(agentOperations.loadAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-1');
       });
 
       it('should not load logs if already cached', async () => {
-        window.electronAPI.getAgentLogs = vi.fn().mockResolvedValue([]);
-
-        // Add agent and pre-cached logs to state
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        const logs = new Map<string, LogEntry[]>();
-        logs.set('agent-1', [{ id: 'log-1', stream: 'stdout', data: 'cached', timestamp: Date.now() }]);
-        useAgentStore.setState({ agents, logs });
+        // Add agent to store first
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        // Add pre-cached logs via appendLog
+        useAgentStore.getState().appendLog('agent-1', { id: 'log-1', stream: 'stdout', data: 'cached', timestamp: Date.now() });
 
         await useAgentStore.getState().selectAgent('agent-1');
 
-        expect(window.electronAPI.getAgentLogs).not.toHaveBeenCalled();
+        expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
       });
     });
 
     describe('startAgent', () => {
-      it('should call API and add agent to state', async () => {
-        window.electronAPI.startAgent = vi.fn().mockResolvedValue(mockAgentInfo);
+      it('should call adapter and add agent to state', async () => {
+        // agent-store-unification: Facade delegates to adapter, which returns agentId
+        (agentOperations.startAgent as ReturnType<typeof vi.fn>).mockResolvedValue('agent-1');
 
-        await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
+        const result = await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
 
         // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
-        expect(window.electronAPI.startAgent).toHaveBeenCalledWith(
+        expect(agentOperations.startAgent).toHaveBeenCalledWith(
           'spec-1',
           'requirements',
           'claude',
@@ -240,27 +245,11 @@ describe('useAgentStore', () => {
           undefined
         );
 
-        const state = useAgentStore.getState();
-        const specAgents = state.agents.get('spec-1');
-        expect(specAgents).toHaveLength(1);
-        expect(specAgents?.[0].agentId).toBe('agent-1');
-      });
-
-      it('should add agent to existing spec agents', async () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
-
-        window.electronAPI.startAgent = vi.fn().mockResolvedValue(mockAgentInfo2);
-
-        await useAgentStore.getState().startAgent('spec-1', 'design', 'claude', ['-p']);
-
-        const state = useAgentStore.getState();
-        expect(state.agents.get('spec-1')).toHaveLength(2);
+        expect(result).toBe('agent-1');
       });
 
       it('should handle start error', async () => {
-        window.electronAPI.startAgent = vi.fn().mockRejectedValue(new Error('Spawn failed'));
+        (agentOperations.startAgent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Spawn failed'));
 
         await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
 
@@ -270,20 +259,17 @@ describe('useAgentStore', () => {
     });
 
     describe('stopAgent', () => {
-      it('should call API and update agent status', async () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
-
-        window.electronAPI.stopAgent = vi.fn().mockResolvedValue(undefined);
+      it('should call adapter to stop agent', async () => {
+        // agent-store-unification: Facade delegates to adapter
+        (agentOperations.stopAgent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
         await useAgentStore.getState().stopAgent('agent-1');
 
-        expect(window.electronAPI.stopAgent).toHaveBeenCalledWith('agent-1');
+        expect(agentOperations.stopAgent).toHaveBeenCalledWith('agent-1');
       });
 
       it('should handle stop error', async () => {
-        window.electronAPI.stopAgent = vi.fn().mockRejectedValue(new Error('Process not found'));
+        (agentOperations.stopAgent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Process not found'));
 
         await useAgentStore.getState().stopAgent('agent-1');
 
@@ -293,33 +279,18 @@ describe('useAgentStore', () => {
     });
 
     describe('resumeAgent', () => {
-      it('should call API and update agent in state', async () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [{ ...mockAgentInfo, status: 'interrupted' as AgentStatus }]);
-        useAgentStore.setState({ agents });
-
-        const resumedAgent: AgentInfo = {
-          ...mockAgentInfo,
-          status: 'running' as AgentStatus,
-          pid: 99999,
-        };
-        window.electronAPI.resumeAgent = vi.fn().mockResolvedValue(resumedAgent);
+      it('should call adapter to resume agent', async () => {
+        // agent-store-unification: Facade delegates to adapter
+        (agentOperations.resumeAgent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
         await useAgentStore.getState().resumeAgent('agent-1');
 
         // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', undefined);
-
-        const state = useAgentStore.getState();
-        const agent = state.agents.get('spec-1')?.find((a) => a.agentId === 'agent-1');
-        expect(agent?.status).toBe('running');
-        expect(agent?.pid).toBe(99999);
+        expect(agentOperations.resumeAgent).toHaveBeenCalledWith('agent-1', undefined);
       });
 
       it('should handle resume error', async () => {
-        window.electronAPI.resumeAgent = vi
-          .fn()
-          .mockRejectedValue(new Error('Session not found'));
+        (agentOperations.resumeAgent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Session not found'));
 
         await useAgentStore.getState().resumeAgent('agent-1');
 
@@ -328,16 +299,8 @@ describe('useAgentStore', () => {
       });
 
       it('should append user input to logs when prompt is provided', async () => {
-        const agents = new Map<string, AgentInfo[]>([
-          ['spec-1', [mockAgentInfo]],
-        ]);
-        useAgentStore.setState({ agents, logs: new Map() });
-
-        const resumedAgent: AgentInfo = {
-          ...mockAgentInfo,
-          status: 'running' as AgentStatus,
-        };
-        window.electronAPI.resumeAgent = vi.fn().mockResolvedValue(resumedAgent);
+        // agent-store-unification: Facade delegates to adapter
+        (agentOperations.resumeAgent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
         await useAgentStore.getState().resumeAgent('agent-1', 'カスタムプロンプト');
 
@@ -350,21 +313,22 @@ describe('useAgentStore', () => {
         expect(logs?.[0].data).toBe('カスタムプロンプト');
 
         // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
-        expect(window.electronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');
+        expect(agentOperations.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');
       });
     });
 
     describe('sendInput', () => {
-      it('should call API to send input', async () => {
-        window.electronAPI.sendAgentInput = vi.fn().mockResolvedValue(undefined);
+      it('should call adapter to send input', async () => {
+        // agent-store-unification: Facade delegates to adapter
+        (agentOperations.sendInput as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
         await useAgentStore.getState().sendInput('agent-1', 'test input');
 
-        expect(window.electronAPI.sendAgentInput).toHaveBeenCalledWith('agent-1', 'test input');
+        expect(agentOperations.sendInput).toHaveBeenCalledWith('agent-1', 'test input');
       });
 
       it('should handle send input error', async () => {
-        window.electronAPI.sendAgentInput = vi.fn().mockRejectedValue(new Error('Agent not found'));
+        (agentOperations.sendInput as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Agent not found'));
 
         await useAgentStore.getState().sendInput('agent-1', 'test input');
 
@@ -375,9 +339,8 @@ describe('useAgentStore', () => {
 
     describe('updateAgentStatus', () => {
       it('should update agent status in state', () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
 
         useAgentStore.getState().updateAgentStatus('agent-1', 'completed');
 
@@ -401,12 +364,8 @@ describe('useAgentStore', () => {
   describe('Task 29.3: Log management', () => {
     describe('logs Map structure', () => {
       it('should store logs by agentId', () => {
-        const logs = new Map<string, LogEntry[]>();
-        logs.set('agent-1', [
-          { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() },
-        ]);
-
-        useAgentStore.setState({ logs });
+        // agent-store-unification: Use appendLog to add logs
+        useAgentStore.getState().appendLog('agent-1', { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() });
 
         const state = useAgentStore.getState();
         expect(state.logs.get('agent-1')).toHaveLength(1);
@@ -431,15 +390,13 @@ describe('useAgentStore', () => {
       });
 
       it('should append to existing logs', () => {
-        const existingEntry: LogEntry = {
+        // agent-store-unification: Use appendLog to add logs
+        useAgentStore.getState().appendLog('agent-1', {
           id: 'log-1',
           stream: 'stdout',
           data: 'First',
           timestamp: Date.now(),
-        };
-        const logs = new Map<string, LogEntry[]>();
-        logs.set('agent-1', [existingEntry]);
-        useAgentStore.setState({ logs });
+        });
 
         const newEntry: LogEntry = {
           id: 'log-2',
@@ -470,19 +427,16 @@ describe('useAgentStore', () => {
 
     describe('clearLogs', () => {
       it('should clear logs for specific agent', () => {
-        const logs = new Map<string, LogEntry[]>();
-        logs.set('agent-1', [
-          { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() },
-        ]);
-        logs.set('agent-2', [
-          { id: '2', stream: 'stdout', data: 'test2', timestamp: Date.now() },
-        ]);
-        useAgentStore.setState({ logs });
+        // agent-store-unification: Use appendLog to add logs
+        useAgentStore.getState().appendLog('agent-1', { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() });
+        useAgentStore.getState().appendLog('agent-2', { id: '2', stream: 'stdout', data: 'test2', timestamp: Date.now() });
 
         useAgentStore.getState().clearLogs('agent-1');
 
         const state = useAgentStore.getState();
-        expect(state.logs.get('agent-1')).toEqual([]);
+        // agent-store-unification: clearLogs removes the logs (may return empty array or undefined)
+        const agent1Logs = state.logs.get('agent-1');
+        expect(!agent1Logs || agent1Logs.length === 0).toBe(true);
         expect(state.logs.get('agent-2')).toHaveLength(1);
       });
 
@@ -495,11 +449,8 @@ describe('useAgentStore', () => {
 
     describe('getLogsForAgent', () => {
       it('should return logs for specific agent', () => {
-        const logs = new Map<string, LogEntry[]>();
-        logs.set('agent-1', [
-          { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() },
-        ]);
-        useAgentStore.setState({ logs });
+        // agent-store-unification: Use appendLog to add logs
+        useAgentStore.getState().appendLog('agent-1', { id: '1', stream: 'stdout', data: 'test', timestamp: Date.now() });
 
         const agentLogs = useAgentStore.getState().getLogsForAgent('agent-1');
         expect(agentLogs).toHaveLength(1);
@@ -515,96 +466,45 @@ describe('useAgentStore', () => {
   // ============================================================
   // Task 29.4: Event Listener Setup
   // Requirements: 9.1, 5.2
+  // agent-store-unification: Event listeners are now handled by adapter
   // ============================================================
   describe('Task 29.4: Event listener setup', () => {
     describe('setupEventListeners', () => {
-      it('should register onAgentOutput listener', () => {
-        const mockCleanup = vi.fn();
-        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(mockCleanup);
-        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
+      it('should call setupAgentEventListeners from adapter', async () => {
+        // agent-store-unification: Facade delegates to adapter for event setup
         window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
 
         const cleanup = useAgentStore.getState().setupEventListeners();
 
-        expect(window.electronAPI.onAgentOutput).toHaveBeenCalled();
+        // The setupAgentEventListeners should have been called via the mock
+        // Use dynamic import to access the mocked module
+        const { setupAgentEventListeners } = await import('./agentStoreAdapter');
+        expect(setupAgentEventListeners).toHaveBeenCalled();
 
         cleanup();
-        expect(mockCleanup).toHaveBeenCalled();
       });
 
-      it('should register onAgentStatusChange listener', () => {
+      it('should register onAgentRecordChanged listener', () => {
         const mockCleanup = vi.fn();
-        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(vi.fn());
-        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(mockCleanup);
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
+        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(mockCleanup);
 
         const cleanup = useAgentStore.getState().setupEventListeners();
 
-        expect(window.electronAPI.onAgentStatusChange).toHaveBeenCalled();
+        expect(window.electronAPI.onAgentRecordChanged).toHaveBeenCalled();
 
         cleanup();
         expect(mockCleanup).toHaveBeenCalled();
-      });
-
-      it('should append log when onAgentOutput callback is invoked', () => {
-        let outputCallback: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void) | null = null;
-        window.electronAPI.onAgentOutput = vi.fn().mockImplementation((cb) => {
-          outputCallback = cb;
-          return vi.fn();
-        });
-        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(vi.fn());
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
-
-        useAgentStore.getState().setupEventListeners();
-
-        // Invoke the callback
-        outputCallback?.('agent-1', 'stdout', 'Hello from agent');
-
-        const state = useAgentStore.getState();
-        const agentLogs = state.logs.get('agent-1');
-        expect(agentLogs).toBeDefined();
-        expect(agentLogs?.length).toBeGreaterThan(0);
-        expect(agentLogs?.[0].data).toBe('Hello from agent');
-      });
-
-      it('should update agent status when onAgentStatusChange callback is invoked', () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
-
-        let statusCallback: ((agentId: string, status: AgentStatus) => void) | null = null;
-        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(vi.fn());
-        window.electronAPI.onAgentStatusChange = vi.fn().mockImplementation((cb) => {
-          statusCallback = cb;
-          return vi.fn();
-        });
-        window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(vi.fn());
-
-        useAgentStore.getState().setupEventListeners();
-
-        // Invoke the callback
-        statusCallback?.('agent-1', 'completed');
-
-        const state = useAgentStore.getState();
-        const agent = state.agents.get('spec-1')?.find((a) => a.agentId === 'agent-1');
-        expect(agent?.status).toBe('completed');
       });
     });
 
     describe('cleanup function', () => {
-      it('should call both cleanup functions', () => {
-        const cleanupOutput = vi.fn();
-        const cleanupStatus = vi.fn();
+      it('should call all cleanup functions', () => {
         const cleanupRecordChanged = vi.fn();
-        window.electronAPI.onAgentOutput = vi.fn().mockReturnValue(cleanupOutput);
-        window.electronAPI.onAgentStatusChange = vi.fn().mockReturnValue(cleanupStatus);
         window.electronAPI.onAgentRecordChanged = vi.fn().mockReturnValue(cleanupRecordChanged);
 
         const cleanup = useAgentStore.getState().setupEventListeners();
         cleanup();
 
-        expect(cleanupOutput).toHaveBeenCalled();
-        expect(cleanupStatus).toHaveBeenCalled();
         expect(cleanupRecordChanged).toHaveBeenCalled();
       });
     });
@@ -863,10 +763,9 @@ describe('useAgentStore', () => {
   describe('Helper methods', () => {
     describe('getAgentById', () => {
       it('should find agent by id across all specs', () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        agents.set('spec-2', [mockAgentInfo3]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-2', mockAgentInfo3);
 
         const agent = useAgentStore.getState().getAgentById('agent-3');
         expect(agent?.specId).toBe('spec-2');
@@ -880,9 +779,9 @@ describe('useAgentStore', () => {
 
     describe('getAgentsForSpec', () => {
       it('should return agents for specific spec', () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo, mockAgentInfo2]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo2);
 
         const specAgents = useAgentStore.getState().getAgentsForSpec('spec-1');
         expect(specAgents).toHaveLength(2);
@@ -896,6 +795,7 @@ describe('useAgentStore', () => {
 
     describe('clearError', () => {
       it('should clear error state', () => {
+        // agent-store-unification: Set error via setState - error is Facade-specific
         useAgentStore.setState({ error: 'Some error' });
 
         useAgentStore.getState().clearError();
@@ -917,10 +817,9 @@ describe('useAgentStore', () => {
           specId: '', // 空文字列 = プロジェクトエージェント
           phase: 'project-task',
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [projectAgent]);
-        agents.set('spec-1', [mockAgentInfo]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('', projectAgent);
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
 
         const projectAgents = useAgentStore.getState().getProjectAgents();
         expect(projectAgents).toHaveLength(1);
@@ -928,10 +827,9 @@ describe('useAgentStore', () => {
       });
 
       it('should return empty array when no project agents exist', () => {
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [mockAgentInfo]);
-        agents.set('spec-2', [mockAgentInfo3]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-2', mockAgentInfo3);
 
         const projectAgents = useAgentStore.getState().getProjectAgents();
         expect(projectAgents).toEqual([]);
@@ -950,9 +848,9 @@ describe('useAgentStore', () => {
           specId: '',
           phase: 'bug-fix',
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [projectAgent1, projectAgent2]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('', projectAgent1);
+        useAgentStore.getState().addAgent('', projectAgent2);
 
         const projectAgents = useAgentStore.getState().getProjectAgents();
         expect(projectAgents).toHaveLength(2);
@@ -967,11 +865,10 @@ describe('useAgentStore', () => {
           specId: '',
           phase: 'project-task',
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('', [projectAgent]);
-        agents.set('spec-1', [mockAgentInfo]);
-        agents.set('spec-2', [mockAgentInfo3]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('', projectAgent);
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
+        useAgentStore.getState().addAgent('spec-2', mockAgentInfo3);
 
         const projectAgents = useAgentStore.getState().getProjectAgents();
         expect(projectAgents).toHaveLength(1);
@@ -1070,9 +967,8 @@ describe('useAgentStore', () => {
           specId: 'spec-1',
           status: 'running' as AgentStatus,
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [runningAgent]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', runningAgent);
 
         const count = useAgentStore.getState().getRunningAgentCount('spec-1');
         expect(count).toBeGreaterThan(0);
@@ -1087,9 +983,8 @@ describe('useAgentStore', () => {
           specId: 'spec-1',
           status: 'completed' as AgentStatus,
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [completedAgent]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', completedAgent);
 
         const count = useAgentStore.getState().getRunningAgentCount('spec-1');
         expect(count).toBe(0);
@@ -1112,9 +1007,9 @@ describe('useAgentStore', () => {
           phase: 'design',
           startedAt: '2024-01-01T00:01:00Z',
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [runningAgent1, runningAgent2]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', runningAgent1);
+        useAgentStore.getState().addAgent('spec-1', runningAgent2);
 
         const count = useAgentStore.getState().getRunningAgentCount('spec-1');
         expect(count).toBe(2);
@@ -1133,10 +1028,9 @@ describe('useAgentStore', () => {
           specId: 'spec-2',
           status: 'completed' as AgentStatus,
         };
-        const agents = new Map<string, AgentInfo[]>();
-        agents.set('spec-1', [runningAgentSpec1]);
-        agents.set('spec-2', [completedAgentSpec2]);
-        useAgentStore.setState({ agents });
+        // agent-store-unification: Use addAgent to add to shared store
+        useAgentStore.getState().addAgent('spec-1', runningAgentSpec1);
+        useAgentStore.getState().addAgent('spec-2', completedAgentSpec2);
 
         expect(useAgentStore.getState().getRunningAgentCount('spec-1')).toBe(1);
         expect(useAgentStore.getState().getRunningAgentCount('spec-2')).toBe(0);

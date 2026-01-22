@@ -10,10 +10,16 @@
  * - Main Panel: Artifact表示、ドキュメントタブ
  * - Right Sidebar: ワークフローパネル、Agent一覧
  * - Footer: Agentログエリア
+ *
+ * Resize機能（Electron版と同等）:
+ * - 左サイドバー幅のリサイズ
+ * - 右サイドバー幅のリサイズ
+ * - フッター高さのリサイズ
  */
 
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useCallback } from 'react';
 import { ProfileBadge } from '../../shared/components/ui';
+import { ResizeHandle } from '../../shared/components/ui';
 import { useApi } from '../../shared';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
 import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
@@ -52,6 +58,11 @@ const DEFAULT_LEFT_SIDEBAR_WIDTH = 288;  // w-72 = 18rem = 288px
 const DEFAULT_RIGHT_SIDEBAR_WIDTH = 320; // w-80 = 20rem = 320px
 const DEFAULT_FOOTER_HEIGHT = 192;       // h-48 = 12rem = 192px
 
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 500;
+const MIN_FOOTER_HEIGHT = 100;
+const MAX_FOOTER_HEIGHT = 400;
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -67,6 +78,32 @@ export function DesktopLayout({
 }: DesktopLayoutProps): React.ReactElement {
   const [isFooterCollapsed, setFooterCollapsed] = useState(false);
 
+  // Resizable dimensions
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(DEFAULT_LEFT_SIDEBAR_WIDTH);
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(DEFAULT_RIGHT_SIDEBAR_WIDTH);
+  const [footerHeight, setFooterHeight] = useState(DEFAULT_FOOTER_HEIGHT);
+
+  // Resize handlers
+  const handleLeftSidebarResize = useCallback((delta: number) => {
+    setLeftSidebarWidth((prev) =>
+      Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, prev + delta))
+    );
+  }, []);
+
+  const handleRightSidebarResize = useCallback((delta: number) => {
+    // 右サイドバーは左方向にドラッグすると幅が増える（deltaを反転）
+    setRightSidebarWidth((prev) =>
+      Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, prev - delta))
+    );
+  }, []);
+
+  const handleFooterResize = useCallback((delta: number) => {
+    // フッターは上方向にドラッグすると高さが増える（deltaを反転）
+    setFooterHeight((prev) =>
+      Math.min(MAX_FOOTER_HEIGHT, Math.max(MIN_FOOTER_HEIGHT, prev - delta))
+    );
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header - Electron版のheaderに準拠 */}
@@ -76,30 +113,41 @@ export function DesktopLayout({
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Spec/Bugsタブ */}
         <aside
-          style={{ width: DEFAULT_LEFT_SIDEBAR_WIDTH }}
+          style={{ width: leftSidebarWidth }}
           className="shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700"
         >
           {leftSidebar || <LeftSidebarPlaceholder />}
         </aside>
+
+        {/* Left resize handle */}
+        <ResizeHandle direction="horizontal" onResize={handleLeftSidebarResize} />
 
         {/* Main Panel - Artifact表示 */}
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-white dark:bg-gray-950">
           {children || <MainPanelPlaceholder />}
         </main>
 
+        {/* Right resize handle */}
+        <ResizeHandle direction="horizontal" onResize={handleRightSidebarResize} />
+
         {/* Right Sidebar - ワークフローパネル */}
         <aside
-          style={{ width: DEFAULT_RIGHT_SIDEBAR_WIDTH }}
+          style={{ width: rightSidebarWidth }}
           className="shrink-0 flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
         >
           {rightSidebar || <RightSidebarPlaceholder />}
         </aside>
       </div>
 
+      {/* Footer resize handle */}
+      {!isFooterCollapsed && (
+        <ResizeHandle direction="vertical" onResize={handleFooterResize} />
+      )}
+
       {/* Footer - Agentログエリア */}
       {!isFooterCollapsed ? (
         <div
-          style={{ height: DEFAULT_FOOTER_HEIGHT }}
+          style={{ height: footerHeight }}
           className="shrink-0 flex flex-col border-t border-gray-200 dark:border-gray-700 bg-gray-900"
         >
           <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between bg-gray-800 text-gray-300">

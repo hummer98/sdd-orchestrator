@@ -413,8 +413,11 @@ export class SpecsWatcherService {
         const specJsonContent = await readFile(specJsonPath, 'utf-8');
         const specJson = JSON.parse(specJsonContent);
 
-        if (specJson.phase === 'implementation-complete') {
-          logger.debug('[SpecsWatcherService] Phase already implementation-complete', { specId });
+        // Skip if phase is already implementation-complete or beyond
+        // This prevents overwriting inspection-complete or deploy-complete phases
+        const completedPhases = ['implementation-complete', 'inspection-complete', 'deploy-complete'];
+        if (completedPhases.includes(specJson.phase)) {
+          logger.debug('[SpecsWatcherService] Phase already at or beyond implementation-complete', { specId, phase: specJson.phase });
           return;
         }
 

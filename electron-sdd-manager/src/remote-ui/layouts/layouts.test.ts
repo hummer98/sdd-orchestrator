@@ -54,7 +54,9 @@ describe('DesktopLayout', () => {
 
   it('should have log panel support', () => {
     const content = readFileSync(desktopPath, 'utf-8');
-    expect(content).toContain('logPanel');
+    // footer slot is used for Agent log panel (changed from 'logPanel' to 'footer' prop)
+    expect(content).toContain('footer');
+    expect(content).toContain('Agent Logs');
   });
 
   it('should support multi-pane layout', () => {

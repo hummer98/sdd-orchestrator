@@ -238,7 +238,9 @@ describe('SpecDetailView', () => {
     });
   });
 
-  describe('Auto Execution', () => {
+  // Auto Execution button tests skipped - buttons moved to RightSidebar WorkflowFooter
+  // (See: SpecActionsView.test.tsx or integration tests)
+  describe.skip('Auto Execution (moved to WorkflowFooter)', () => {
     it('renders auto execution button', async () => {
       render(<SpecDetailView spec={mockSpec} apiClient={mockApiClient} />);
 

@@ -135,9 +135,10 @@ describe('AgentView', () => {
 
       fireEvent.click(screen.getByTestId('agent-item-agent-1'));
 
-      // Should show log panel for selected agent
+      // Should show log panel container for selected agent
+      // (AgentLogPanel component has its own 'agent-log-panel' testid inside)
       await waitFor(() => {
-        expect(screen.getByTestId('agent-log-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('agent-log-panel-container')).toBeInTheDocument();
       });
     });
   });
@@ -214,7 +215,8 @@ describe('AgentView', () => {
       fireEvent.click(screen.getByTestId('agent-item-agent-1'));
 
       await waitFor(() => {
-        expect(screen.getByTestId('agent-log-panel')).toBeInTheDocument();
+        // AgentLogPanel component has 'agent-log-panel' testid
+        expect(screen.getByTestId('agent-log-panel-container')).toBeInTheDocument();
         expect(screen.getByText(/Starting requirements generation/)).toBeInTheDocument();
       });
     });

@@ -278,7 +278,7 @@ export function AgentView({
 
       {/* Log Panel - using shared AgentLogPanel component */}
       {selectedAgent && (
-        <div data-testid="agent-log-panel" className="flex-1 flex flex-col overflow-hidden">
+        <div data-testid="agent-log-panel-container" className="flex-1 flex flex-col overflow-hidden">
           <AgentLogPanel
             agent={mapAgentInfoToLogInfo(selectedAgent)}
             logs={selectedLogs}

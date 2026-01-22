@@ -85,7 +85,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      const agentCountBadge = screen.getByTestId('agent-count-feature-1');
+      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
+      const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toBeInTheDocument();
       expect(agentCountBadge).toHaveTextContent('1');
     });
@@ -98,7 +99,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      const agentCountBadge = screen.getByTestId('agent-count-feature-1');
+      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
+      const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toHaveTextContent('2');
     });
 
@@ -111,7 +113,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      const agentCountBadge = screen.getByTestId('agent-count-feature-1');
+      // SpecListItem uses 'running-agent-count' testid (not 'agent-count-{specName}')
+      const agentCountBadge = screen.getByTestId('running-agent-count');
       expect(agentCountBadge).toHaveTextContent('1');
     });
   });
@@ -239,7 +242,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      expect(screen.getByTestId('worktree-badge-worktree-feature')).toBeInTheDocument();
+      // SpecListItem uses 'worktree-badge' testid (not 'worktree-badge-{specName}')
+      expect(screen.getByTestId('worktree-badge')).toBeInTheDocument();
     });
 
     it('should NOT display worktree badge when worktree exists but path is missing (normal mode)', () => {
@@ -275,7 +279,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      expect(screen.queryByTestId('worktree-badge-normal-mode-feature')).not.toBeInTheDocument();
+      // SpecListItem uses 'worktree-badge' testid (not 'worktree-badge-{specName}')
+      expect(screen.queryByTestId('worktree-badge')).not.toBeInTheDocument();
     });
 
     it('should NOT display worktree badge when worktree is undefined', () => {
@@ -306,7 +311,8 @@ describe('SpecList - Task 33.1', () => {
 
       render(<SpecList />);
 
-      expect(screen.queryByTestId('worktree-badge-no-worktree-feature')).not.toBeInTheDocument();
+      // SpecListItem uses 'worktree-badge' testid (not 'worktree-badge-{specName}')
+      expect(screen.queryByTestId('worktree-badge')).not.toBeInTheDocument();
     });
   });
 });

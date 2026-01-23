@@ -754,7 +754,8 @@ describe('SpecManagerService', () => {
  * Claude CLI引数の一元管理
  */
 describe('buildClaudeArgs', () => {
-  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json'];
+  // BASE_FLAGS now includes --disallowedTools AskUserQuestion (always disabled in stream-json mode)
+  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json', '--disallowedTools', 'AskUserQuestion'];
 
   it('should build args with command only', () => {
     const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
@@ -799,7 +800,11 @@ describe('buildClaudeArgs', () => {
         skipPermissions: true,
       });
       expect(args).toContain('--dangerously-skip-permissions');
-      expect(args).toEqual([...BASE_FLAGS, '--dangerously-skip-permissions', '/kiro:spec-requirements my-feature']);
+      // Note: --dangerously-skip-permissions comes before --disallowedTools in actual output
+      // BASE_FLAGS already includes --disallowedTools, so we verify position separately
+      const skipIndex = args.indexOf('--dangerously-skip-permissions');
+      const disallowedIndex = args.indexOf('--disallowedTools');
+      expect(skipIndex).toBeLessThan(disallowedIndex);
     });
 
     it('should NOT include --dangerously-skip-permissions when skipPermissions is false', () => {
@@ -839,6 +844,60 @@ describe('buildClaudeArgs', () => {
       });
       expect(args).toContain('--dangerously-skip-permissions');
       expect(args).toContain('--allowedTools');
+    });
+  });
+
+  // ============================================================
+  // disallowedTools tests (--disallowedTools AskUserQuestion)
+  // AskUserQuestion is always disabled because it cannot be handled
+  // in stream-json mode (-p --output-format stream-json)
+  // ============================================================
+  describe('disallowedTools - AskUserQuestion always disabled', () => {
+    it('should always include --disallowedTools AskUserQuestion with no options', () => {
+      const args = buildClaudeArgs({});
+      expect(args).toContain('--disallowedTools');
+      expect(args).toContain('AskUserQuestion');
+      const disallowedIndex = args.indexOf('--disallowedTools');
+      expect(args[disallowedIndex + 1]).toBe('AskUserQuestion');
+    });
+
+    it('should include --disallowedTools AskUserQuestion with command', () => {
+      const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
+      expect(args).toContain('--disallowedTools');
+      expect(args).toContain('AskUserQuestion');
+    });
+
+    it('should include --disallowedTools AskUserQuestion with resume session', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: 'continue',
+      });
+      expect(args).toContain('--disallowedTools');
+      expect(args).toContain('AskUserQuestion');
+    });
+
+    it('should include --disallowedTools AskUserQuestion with allowedTools', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-impl my-feature',
+        allowedTools: ['Read', 'Write', 'Edit'],
+      });
+      expect(args).toContain('--disallowedTools');
+      expect(args).toContain('AskUserQuestion');
+      // Both allowedTools and disallowedTools should be present
+      expect(args).toContain('--allowedTools');
+    });
+
+    it('should place --disallowedTools after base flags and before --resume', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: 'continue',
+        skipPermissions: true,
+      });
+      const disallowedIndex = args.indexOf('--disallowedTools');
+      const resumeIndex = args.indexOf('--resume');
+      // --disallowedTools should come before --resume
+      expect(disallowedIndex).toBeLessThan(resumeIndex);
+      expect(disallowedIndex).toBeGreaterThan(0); // After base flags
     });
   });
 });

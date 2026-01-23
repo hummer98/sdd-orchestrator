@@ -106,6 +106,10 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
     args.push('--dangerously-skip-permissions');
   }
 
+  // AskUserQuestionは常に無効化（stream-jsonモードでは応答できないため）
+  // See: https://github.com/anthropics/claude-code/issues/16712
+  args.push('--disallowedTools', 'AskUserQuestion');
+
   // allowedToolsは--resumeより前に配置（CLIの引数解析順序を考慮）
   if (options.allowedTools && options.allowedTools.length > 0) {
     args.push('--allowedTools', ...options.allowedTools);

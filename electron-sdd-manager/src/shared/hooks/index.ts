@@ -28,3 +28,17 @@ export type {
   UseSpecWorkflowHandlersConfig,
   UseSpecWorkflowHandlersReturn,
 } from './useSpecWorkflowHandlers';
+
+// submit-shortcut-key: Keyboard shortcut for dialog submission
+export { useSubmitShortcut } from './useSubmitShortcut';
+export type {
+  UseSubmitShortcutOptions,
+  UseSubmitShortcutReturn,
+} from './useSubmitShortcut';
+
+// agent-log-perf: Incremental log parsing for performance
+export { useIncrementalLogParser } from './useIncrementalLogParser';
+
+// agent-log-perf: Incremental token aggregation for performance
+export { useIncrementalTokenAggregator } from './useIncrementalTokenAggregator';
+export type { TokenUsage } from './useIncrementalTokenAggregator';

@@ -15,9 +15,10 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { Terminal, Copy, Trash2, Loader2, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { parseLogData, type ParsedLogEntry } from '@shared/utils/logFormatter';
-import { aggregateTokens, type TokenUsage } from '@shared/utils/tokenAggregator';
+import type { TokenUsage } from '@shared/utils/tokenAggregator';
 import { throttle } from '@shared/utils/throttle';
+import { useIncrementalLogParser } from '@shared/hooks/useIncrementalLogParser';
+import { useIncrementalTokenAggregator } from '@shared/hooks/useIncrementalTokenAggregator';
 import { LogEntryBlock } from './LogEntryBlock';
 import type { LogEntry, AgentStatus } from '@shared/api/types';
 import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
@@ -97,70 +98,17 @@ export function AgentLogPanel({
     [onActivity]
   );
 
-  // Calculate token usage from logs if showTokens is true and not provided
-  const tokenUsage = useMemo(() => {
-    if (!showTokens) return undefined;
-    if (providedTokenUsage) return providedTokenUsage;
-    return aggregateTokens(logs);
-  }, [showTokens, providedTokenUsage, logs]);
+  // Performance fix: Incremental token aggregation
+  // Only processes new logs instead of re-aggregating all logs on each update
+  const calculatedTokenUsage = useIncrementalTokenAggregator(
+    logs,
+    showTokens && !providedTokenUsage
+  );
+  const tokenUsage = providedTokenUsage ?? calculatedTokenUsage;
 
-  // Parse logs for display using shared logFormatter
-  const parsedEntries = useMemo<ParsedLogEntry[]>(() => {
-    const entries: ParsedLogEntry[] = [];
-
-    // Add command line as first entry if agent exists
-    if (agent?.command) {
-      entries.push({
-        id: 'command-line',
-        type: 'system',
-        session: {
-          cwd: agent.command,
-        },
-      });
-    }
-
-    // Parse each log entry
-    logs.forEach((log, logIdx) => {
-      if (log.stream === 'stdin') {
-        // Bug fix: stdinは表示しない
-        // Claude CLIのtype: 'user'イベント（stdout）で表示されるため、
-        // ここで表示すると二重表示になる
-        return;
-      } else if (log.stream === 'stderr') {
-        // stderr is always shown as error
-        entries.push({
-          id: `${log.id}-stderr-${logIdx}`,
-          type: 'error',
-          result: {
-            content: log.data,
-            isError: true,
-          },
-        });
-      } else {
-        // Parse stdout as Claude stream-json
-        const parsed = parseLogData(log.data);
-        if (parsed.length === 0 && log.data.trim()) {
-          // If no parsed output, show as text
-          entries.push({
-            id: `${log.id}-raw-${logIdx}`,
-            type: 'text',
-            text: {
-              content: log.data,
-              role: 'assistant',
-            },
-          });
-        } else {
-          parsed.forEach((entry, entryIdx) => {
-            entries.push({
-              ...entry,
-              id: `${log.id}-${logIdx}-${entryIdx}`,
-            });
-          });
-        }
-      }
-    });
-    return entries;
-  }, [logs, agent?.command]);
+  // Performance fix: Incremental log parsing
+  // Only parses new logs instead of re-parsing all logs on each update
+  const parsedEntries = useIncrementalLogParser(logs, agent?.command);
 
   // Track if user is near bottom of scroll area
   useEffect(() => {

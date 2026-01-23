@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Wifi } from 'lucide-react';
 import {
   NotificationProvider,
   UnsavedChangesDialog,
@@ -518,6 +518,17 @@ export function App() {
                 className="titlebar-no-drag px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 VSCodeで開く
+              </button>
+            )}
+            {/* Remote Access Server Status Indicator */}
+            {isRemoteServerRunning && (
+              <button
+                onClick={() => setIsRemoteAccessDialogOpen(true)}
+                className="titlebar-no-drag p-1.5 text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                title="リモートアクセスサーバー稼働中"
+                aria-label="リモートアクセスサーバー設定を開く"
+              >
+                <Wifi className="w-5 h-5" />
               </button>
             )}
             {/* SSH Status Indicator */}

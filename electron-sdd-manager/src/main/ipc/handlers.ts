@@ -2603,37 +2603,6 @@ export function registerIpcHandlers(): void {
   logger.info('[handlers] Parallel Task Parser handlers registered');
 
   // ============================================================
-  // Metrics (spec-productivity-metrics feature)
-  // Task 3.2: Human session recording IPC handler
-  // Requirements: 2.12
-  // ============================================================
-
-  ipcMain.handle(
-    IPC_CHANNELS.RECORD_HUMAN_SESSION,
-    async (_event, session: import('../types/metrics').HumanSessionData) => {
-      logger.debug('[handlers] RECORD_HUMAN_SESSION called', { specId: session.specId, ms: session.ms });
-
-      const metricsService = getDefaultMetricsService();
-      await metricsService.recordHumanSession(session);
-
-      logger.debug('[handlers] RECORD_HUMAN_SESSION completed', { specId: session.specId });
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.GET_SPEC_METRICS,
-    async (_event, specId: string) => {
-      logger.debug('[handlers] GET_SPEC_METRICS called', { specId });
-
-      const metricsService = getDefaultMetricsService();
-      const metrics = await metricsService.getMetricsForSpec(specId);
-
-      logger.debug('[handlers] GET_SPEC_METRICS result', { specId, totalAiTimeMs: metrics.totalAiTimeMs });
-      return metrics;
-    }
-  );
-
-  // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService
   // When coordinator emits 'execute-next-phase', execute the phase via specManagerService
   // ============================================================

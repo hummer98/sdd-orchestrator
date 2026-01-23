@@ -2574,6 +2574,30 @@ describe('handleAgentExit - error handling', () => {
     }
   });
 
+  // spec-productivity-metrics: Bug fix - startAgent must call statusCallbacks with 'running'
+  // This is required for metrics tracking to record AI session start time
+  it('should call statusCallbacks with "running" status when agent starts', async () => {
+    const statusCallback = vi.fn();
+    service.onStatusChange(statusCallback);
+
+    const result = await service.startAgent({
+      specId: 'test-spec',
+      phase: 'requirements',
+      command: 'sleep',
+      args: ['1'], // Use sleep to ensure we can check 'running' before completion
+      group: 'doc',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // statusCallback should have been called with 'running' status immediately
+    expect(statusCallback).toHaveBeenCalledWith(result.value.agentId, 'running');
+
+    // Cleanup: wait for process to complete
+    await new Promise((r) => setTimeout(r, 1200));
+  });
+
   it('should call statusCallbacks even when process completes normally', async () => {
     const statusCallback = vi.fn();
     service.onStatusChange(statusCallback);

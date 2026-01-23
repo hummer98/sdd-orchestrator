@@ -910,6 +910,10 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
+      // spec-productivity-metrics: Notify status change for metrics tracking
+      // This enables metricsService.startAiSession() to be called
+      this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
+
       return { ok: true, value: agentInfo };
     } catch (error) {
       return {

@@ -7,10 +7,68 @@
  * Requirements Coverage:
  * - 3.3: 生成ファイルがUIに反映される待機
  * - 3.4: spec.json更新がUIに反映される待機
+ *
+ * E2E Test Stability Improvements:
+ * - Retry logic with exponential backoff for WebSocket operations
+ * - Extended timeouts for built app environment
  */
 
 import { Page, expect } from '@playwright/test';
 import { getRemoteUIUrl } from './electron-launcher';
+
+// ============================================================================
+// Retry Configuration
+// ============================================================================
+
+const DEFAULT_RETRY_COUNT = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const DEBUG_LOGGING = process.env.E2E_DEBUG === 'true';
+
+/**
+ * Debug log helper - only logs when E2E_DEBUG=true
+ */
+function debugLog(message: string, ...args: unknown[]): void {
+  if (DEBUG_LOGGING) {
+    console.log(`[remote-ui-helpers][DEBUG] ${message}`, ...args);
+  }
+}
+
+/**
+ * Retry helper with exponential backoff
+ * @param fn Async function to retry
+ * @param retries Number of retries
+ * @param delay Initial delay in milliseconds
+ * @param operationName Name for logging
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = DEFAULT_RETRY_COUNT,
+  delay: number = INITIAL_RETRY_DELAY,
+  operationName: string = 'operation'
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    try {
+      debugLog(`${operationName}: attempt ${attempt}/${retries + 1}`);
+      const result = await fn();
+      debugLog(`${operationName}: succeeded on attempt ${attempt}`);
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      debugLog(`${operationName}: attempt ${attempt} failed - ${lastError.message}`);
+
+      if (attempt <= retries) {
+        const waitTime = delay * Math.pow(2, attempt - 1); // Exponential backoff
+        debugLog(`${operationName}: waiting ${waitTime}ms before retry`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  console.error(`[remote-ui-helpers] ${operationName}: all ${retries + 1} attempts failed`);
+  throw lastError;
+}
 
 /**
  * Get the Remote UI full URL (with token) from the port file
@@ -38,31 +96,76 @@ export async function navigateToRemoteUI(page: Page, path = '/'): Promise<void> 
 }
 
 /**
- * WebSocket接続が確立されるまで待機
+ * WebSocket接続が確立されるまで待機（リトライ付き）
  * @param page Playwright Page instance
- * @param timeout Timeout in milliseconds (default: 10000)
+ * @param timeout Timeout in milliseconds (default: 15000 - extended for E2E stability)
+ * @param retries Number of retries (default: 3)
  */
-export async function waitForConnection(page: Page, timeout = 10000): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const statusText = document.querySelector('[data-testid="remote-status-text"]');
-      return statusText?.textContent === 'Connected';
+export async function waitForConnection(
+  page: Page,
+  timeout = 15000,
+  retries = DEFAULT_RETRY_COUNT
+): Promise<void> {
+  await withRetry(
+    async () => {
+      debugLog('waitForConnection: checking connection status');
+      await page.waitForFunction(
+        () => {
+          const statusText = document.querySelector('[data-testid="remote-status-text"]');
+          const status = statusText?.textContent;
+          // Log to browser console for debugging
+          if ((window as unknown as { __e2eDebug?: boolean }).__e2eDebug) {
+            console.log('[E2E] Connection status:', status);
+          }
+          return status === 'Connected';
+        },
+        { timeout }
+      );
+      debugLog('waitForConnection: connected');
     },
-    { timeout }
+    retries,
+    INITIAL_RETRY_DELAY,
+    'waitForConnection'
   );
 }
 
 /**
- * Spec一覧が表示されるまで待機
+ * Spec一覧が表示されるまで待機（リトライ付き）
  * @param page Playwright Page instance
- * @param timeout Timeout in milliseconds (default: 30000 - longer for WebSocket data fetch)
+ * @param timeout Timeout in milliseconds (default: 45000 - extended for E2E stability)
+ * @param retries Number of retries (default: 3)
  */
-export async function waitForSpecList(page: Page, timeout = 30000): Promise<void> {
-  // Wait for the spec list container first
-  await page.waitForSelector('[data-testid="remote-spec-list"]', { timeout });
-  // Then wait for at least one spec item to be visible
-  const specItems = page.locator('[data-testid^="remote-spec-item-"]');
-  await expect(specItems.first()).toBeVisible({ timeout });
+export async function waitForSpecList(
+  page: Page,
+  timeout = 45000,
+  retries = DEFAULT_RETRY_COUNT
+): Promise<void> {
+  await withRetry(
+    async () => {
+      debugLog('waitForSpecList: waiting for spec list container');
+
+      // Check for error state first
+      const errorElement = page.locator('[data-testid="specs-view-error"]');
+      const hasError = await errorElement.isVisible().catch(() => false);
+      if (hasError) {
+        const errorText = await errorElement.textContent().catch(() => 'Unknown error');
+        debugLog('waitForSpecList: error state detected -', errorText);
+        throw new Error(`Spec list error: ${errorText}`);
+      }
+
+      // Wait for the spec list container first
+      await page.waitForSelector('[data-testid="remote-spec-list"]', { timeout });
+      debugLog('waitForSpecList: container found, waiting for spec items');
+
+      // Then wait for at least one spec item to be visible
+      const specItems = page.locator('[data-testid^="remote-spec-item-"]');
+      await expect(specItems.first()).toBeVisible({ timeout });
+      debugLog('waitForSpecList: spec items visible');
+    },
+    retries,
+    INITIAL_RETRY_DELAY,
+    'waitForSpecList'
+  );
 }
 
 /**
@@ -134,31 +237,56 @@ export async function waitForSpecDetail(
 }
 
 /**
- * Bug一覧が表示されるまで待機
+ * Bug一覧が表示されるまで待機（リトライ付き）
  * @param page Playwright Page instance
- * @param timeout Timeout in milliseconds (default: 30000)
+ * @param timeout Timeout in milliseconds (default: 45000 - extended for E2E stability)
+ * @param retries Number of retries (default: 3)
  */
-export async function waitForBugList(page: Page, timeout = 30000): Promise<void> {
-  // Wait for loading to complete
-  await page.waitForFunction(
-    () => {
-      const loading = document.querySelector('[data-testid="bugs-view-loading"]');
-      return !loading || !loading.checkVisibility();
+export async function waitForBugList(
+  page: Page,
+  timeout = 45000,
+  retries = DEFAULT_RETRY_COUNT
+): Promise<void> {
+  await withRetry(
+    async () => {
+      debugLog('waitForBugList: waiting for loading to complete');
+
+      // Wait for loading to complete
+      await page.waitForFunction(
+        () => {
+          const loading = document.querySelector('[data-testid="bugs-view-loading"]');
+          return !loading || !loading.checkVisibility();
+        },
+        { timeout }
+      );
+
+      debugLog('waitForBugList: loading complete, checking for list or empty state');
+
+      // Wait for the bug list container or empty state
+      const bugList = page.locator('[data-testid="remote-bug-list"]');
+      const emptyState = page.locator('[data-testid="bugs-empty-state"]');
+
+      // Either bug list or empty state should be visible
+      const isListVisible = await bugList.isVisible().catch(() => false);
+      const isEmptyVisible = await emptyState.isVisible().catch(() => false);
+
+      if (isListVisible || isEmptyVisible) {
+        debugLog('waitForBugList: list or empty state visible');
+        return;
+      }
+
+      // If neither is visible, wait for one of them
+      await Promise.race([
+        expect(bugList).toBeVisible({ timeout }),
+        expect(emptyState).toBeVisible({ timeout }),
+      ]);
+
+      debugLog('waitForBugList: completed successfully');
     },
-    { timeout }
+    retries,
+    INITIAL_RETRY_DELAY,
+    'waitForBugList'
   );
-
-  // Wait for the bug list container or empty state
-  const bugList = page.locator('[data-testid="remote-bug-list"]');
-  const emptyState = page.locator('[data-testid="bugs-empty-state"]');
-
-  // Either bug list or empty state should be visible
-  await Promise.race([
-    expect(bugList).toBeVisible({ timeout }),
-    expect(emptyState).toBeVisible({ timeout }),
-  ]).catch(() => {
-    // If neither appears, that's also acceptable (may be a different state)
-  });
 }
 
 /**

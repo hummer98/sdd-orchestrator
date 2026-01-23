@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.42.0] - 2026-01-23
+
+### Added
+- **metrics**: Human時間トラッキングにアクティビティ記録を追加
+- **metrics**: メトリクスパネルに説明ダイアログを追加
+- **remote-ui**: デスクトップ版メインパネルにArtifact編集機能を追加
+- **remote-ui-create-buttons**: Create buttons機能をworktreeからマージ
+
+### Fixed
+- **agent-log**: stdin二重表示バグの再修正とテスト追加
+- **agent-log**: エージェント起動時のログストリーム表示のレース条件を修正
+- **cli**: AskUserQuestionをstream-jsonモードで無効化
+- **ui**: Askボタンのアイコンを適切に修正
+- **test**: テストモックを実装変更に追従
+
+### Changed
+- **refactor**: SpecDetailViewコンポーネントを削除
+- **refactor**: 自動実行アイコンをBotに変更、worktreeラベル簡略化
+- **refactor**: レイアウト設定をapp-wideに移行しデフォルトサイズを拡大
+- **refactor**: WorkflowViewをElectron/Remote-UI間で統一
+
 ## [0.41.0] - 2026-01-23
 
 ### Added

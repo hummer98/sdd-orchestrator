@@ -22,10 +22,8 @@ export { AgentListPanel } from './AgentListPanel';
 export { AgentLogPanel } from './AgentLogPanel';
 export { AgentInputPanel } from './AgentInputPanel';
 // SDD Hybrid Workflow Components
-// workflow-view-unification: ElectronWorkflowView is the new unified workflow view
+// workflow-view-unification: ElectronWorkflowView is the unified workflow view
 export { ElectronWorkflowView } from './ElectronWorkflowView';
-// Legacy export (deprecated - use ElectronWorkflowView instead)
-export { WorkflowView } from './WorkflowView';
 // PhaseItem is now exported from @shared/components/workflow
 export { PhaseItem, type PhaseItemProps, type WorkflowPhase, type PhaseStatus } from '@shared/components/workflow';
 export { TaskProgressView } from './TaskProgressView';

@@ -10,6 +10,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLaunchingState } from '@shared/hooks';
 import { useParallelModeStore } from '@shared/stores/parallelModeStore';
+import { parseTasksContent } from '@shared/utils/taskParallelParser';
 import type {
   ApiClient,
   SpecMetadataWithPath,
@@ -112,6 +113,7 @@ export function useRemoteWorkflowState(
   const toggleParallelMode = useParallelModeStore((state) => state.toggleParallelMode);
   const hasParallelTasks = useParallelModeStore((state) => state.hasParallelTasks);
   const getParseResult = useParallelModeStore((state) => state.getParseResult);
+  const setParseResult = useParallelModeStore((state) => state.setParseResult);
 
   // ---------------------------------------------------------------------------
   // Effects
@@ -147,6 +149,27 @@ export function useRemoteWorkflowState(
 
     loadSpecDetail();
   }, [apiClient, spec?.name, initialSpecDetail]);
+
+  // Parse tasks for parallel execution
+  // This mirrors the useEffect in useElectronWorkflowState.ts
+  useEffect(() => {
+    const specName = spec?.name;
+    if (!specName || !specDetail?.artifacts?.tasks?.content) return;
+
+    // Skip if already parsed
+    const cachedResult = getParseResult(specName);
+    if (cachedResult) return;
+
+    // Parse tasks.md content to detect parallel markers
+    const parseResult = parseTasksContent(specDetail.artifacts.tasks.content);
+    if (parseResult) {
+      setParseResult(specName, {
+        groups: parseResult.groups,
+        totalTasks: parseResult.totalTasks,
+        parallelTasks: parseResult.parallelTasks,
+      });
+    }
+  }, [spec?.name, specDetail?.artifacts?.tasks?.content, getParseResult, setParseResult]);
 
   // ---------------------------------------------------------------------------
   // Derived State

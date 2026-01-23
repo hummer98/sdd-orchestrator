@@ -14,33 +14,15 @@
  * - 「cc-sdd Workflowをインストール...」 → 統合インストーラーに統合
  *
  * 削除されたメニュー操作のテストは統合インストーラーのテストでカバーされます。
+ *
+ * Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
  */
 
 describe('Install Dialogs E2E', () => {
   // ============================================================
-  // 基本的なアプリケーション起動確認
+  // CliInstallDialog API
   // ============================================================
-  describe('アプリケーション起動', () => {
-    it('アプリケーションが正常に起動する', async () => {
-      const isWindowOpen = await browser.electron.execute((electron) => {
-        return electron.BrowserWindow.getAllWindows().length > 0;
-      });
-      expect(isWindowOpen).toBe(true);
-    });
-
-    it('メインウィンドウが表示される', async () => {
-      const isVisible = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        return windows.length > 0 && windows[0].isVisible();
-      });
-      expect(isVisible).toBe(true);
-    });
-  });
-
-  // ============================================================
-  // CliInstallDialog
-  // ============================================================
-  describe('CliInstallDialogコンポーネント', () => {
+  describe('CliInstallDialog API', () => {
     it('Renderer APIにCLIインストールメソッドが存在する', async () => {
       const hasCliInstallAPI = await browser.execute(() => {
         return typeof window.electronAPI !== 'undefined' &&
@@ -49,46 +31,8 @@ describe('Install Dialogs E2E', () => {
       expect(hasCliInstallAPI).toBe(true);
     });
 
-    it('CliInstallDialogが開いた場合、ユーザーディレクトリオプションが存在する', async () => {
-      const userOption = await $('[data-testid="cli-install-location-user"]');
-      if (await userOption.isExisting()) {
-        const isDisplayed = await userOption.isDisplayed();
-        expect(isDisplayed).toBe(true);
-      } else {
-        // ダイアログが開いていない場合はスキップ
-        expect(true).toBe(true);
-      }
-    });
-
-    it('CliInstallDialogが開いた場合、システムディレクトリオプションが存在する', async () => {
-      const systemOption = await $('[data-testid="cli-install-location-system"]');
-      if (await systemOption.isExisting()) {
-        const isDisplayed = await systemOption.isDisplayed();
-        expect(isDisplayed).toBe(true);
-      } else {
-        expect(true).toBe(true);
-      }
-    });
-
-    it('CliInstallDialogが開いた場合、インストールボタンが存在する', async () => {
-      const submitButton = await $('[data-testid="cli-install-submit-button"]');
-      if (await submitButton.isExisting()) {
-        const isDisplayed = await submitButton.isDisplayed();
-        expect(isDisplayed).toBe(true);
-      } else {
-        expect(true).toBe(true);
-      }
-    });
-
-    it('CliInstallDialogが開いた場合、閉じるボタンが存在する', async () => {
-      const closeButton = await $('[data-testid="cli-install-close-button"]');
-      if (await closeButton.isExisting()) {
-        const isDisplayed = await closeButton.isDisplayed();
-        expect(isDisplayed).toBe(true);
-      } else {
-        expect(true).toBe(true);
-      }
-    });
+    // Note: ダイアログUI要素テストはダイアログを開く操作が必要
+    // TODO: メニュー操作でダイアログを開いてからUI要素を検証するテストを追加
   });
 
   // ============================================================
@@ -224,49 +168,5 @@ describe('Install Dialogs E2E', () => {
     });
   });
 
-  // ============================================================
-  // セキュリティ確認
-  // ============================================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効である', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効である', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-  });
-
-  // ============================================================
-  // アプリケーション安定性
-  // ============================================================
-  describe('アプリケーション安定性', () => {
-    it('アプリケーションがクラッシュしていない', async () => {
-      const isResponsive = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isCrashed();
-      });
-      expect(isResponsive).toBe(true);
-    });
-
-    it('ウィンドウがリサイズ可能である', async () => {
-      const isResizable = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].isResizable();
-      });
-      expect(isResizable).toBe(true);
-    });
-  });
+  // Note: セキュリティ設定・安定性テストは app-launch.spec.ts に統合
 });

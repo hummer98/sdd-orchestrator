@@ -370,38 +370,7 @@ describe('Multi-Window Support E2E', () => {
     });
   });
 
-  // ============================================================
-  // セキュリティ設定 (Requirements: 5.1)
-  // ============================================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効である', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効である', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-
-    it('sandboxが有効である（E2Eテスト以外）', async () => {
-      const sandboxStatus = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return null;
-        return windows[0].webContents.getLastWebPreferences().sandbox;
-      });
-      // E2Eテストモードではsandboxが無効化されている可能性がある
-      expect(sandboxStatus === true || sandboxStatus === false).toBe(true);
-    });
-  });
+  // Note: 基本的なセキュリティ設定テストは app-launch.spec.ts に統合
 
   // ============================================================
   // IPC通信 (Requirements: 5.3, 5.4)
@@ -436,26 +405,5 @@ describe('Multi-Window Support E2E', () => {
     });
   });
 
-  // ============================================================
-  // アプリケーション安定性
-  // ============================================================
-  describe('アプリケーション安定性', () => {
-    it('アプリケーションがクラッシュしていない', async () => {
-      const isResponsive = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isCrashed();
-      });
-      expect(isResponsive).toBe(true);
-    });
-
-    it('ウィンドウが応答している', async () => {
-      const isResponding = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isWaitingForResponse();
-      });
-      expect(isResponding).toBe(true);
-    });
-  });
+  // Note: 安定性テストは app-launch.spec.ts に統合
 });

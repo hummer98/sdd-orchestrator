@@ -9,57 +9,33 @@
  */
 
 describe('Layout Persistence E2E', () => {
-  // ============================================================
-  // 基本的なアプリケーション起動確認
-  // ============================================================
-  describe('アプリケーション起動', () => {
-    it('アプリケーションが正常に起動する', async () => {
-      const isWindowOpen = await browser.electron.execute((electron) => {
-        return electron.BrowserWindow.getAllWindows().length > 0;
-      });
-      expect(isWindowOpen).toBe(true);
-    });
-
-    it('メインウィンドウが表示される', async () => {
-      const isVisible = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        return windows.length > 0 && windows[0].isVisible();
-      });
-      expect(isVisible).toBe(true);
-    });
-  });
+  // Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
 
   // ============================================================
   // ResizeHandleコンポーネント
   // ============================================================
   describe('ResizeHandleコンポーネント', () => {
-    it('水平方向のリサイズハンドルが存在する', async () => {
-      const resizeHandle = await $('[data-testid="resize-handle-horizontal"]');
-      const exists = await resizeHandle.isExisting();
-      expect(typeof exists).toBe('boolean');
-    });
-
-    it('垂直方向のリサイズハンドルが存在する', async () => {
-      const resizeHandle = await $('[data-testid="resize-handle-vertical"]');
-      const exists = await resizeHandle.isExisting();
-      expect(typeof exists).toBe('boolean');
+    it('いずれかのリサイズハンドルが存在する', async () => {
+      const horizontalHandle = await $('[data-testid="resize-handle-horizontal"]');
+      const verticalHandle = await $('[data-testid="resize-handle-vertical"]');
+      const hasHorizontal = await horizontalHandle.isExisting();
+      const hasVertical = await verticalHandle.isExisting();
+      // 少なくとも1つのリサイズハンドルが存在することを確認
+      expect(hasHorizontal || hasVertical).toBe(true);
     });
 
     it('リサイズハンドルにカーソルスタイルが適用されている', async () => {
       const horizontalHandle = await $('[data-testid="resize-handle-horizontal"]');
+      const verticalHandle = await $('[data-testid="resize-handle-vertical"]');
+
       if (await horizontalHandle.isExisting()) {
         const classList = await horizontalHandle.getAttribute('class');
         expect(classList).toContain('cursor-col-resize');
-      } else {
-        const verticalHandle = await $('[data-testid="resize-handle-vertical"]');
-        if (await verticalHandle.isExisting()) {
-          const classList = await verticalHandle.getAttribute('class');
-          expect(classList).toContain('cursor-row-resize');
-        } else {
-          // どちらも存在しない場合はスキップ
-          expect(true).toBe(true);
-        }
+      } else if (await verticalHandle.isExisting()) {
+        const classList = await verticalHandle.getAttribute('class');
+        expect(classList).toContain('cursor-row-resize');
       }
+      // Note: 両方存在しない場合、前のテストで失敗するのでここはパス
     });
   });
 
@@ -84,22 +60,8 @@ describe('Layout Persistence E2E', () => {
       expect(hasResetAPI).toBe(true);
     });
 
-    it('レイアウト設定を読み込むことができる', async () => {
-      const canLoadLayout = await browser.execute(async () => {
-        if (typeof window.electronAPI === 'undefined' ||
-            typeof window.electronAPI.loadLayoutConfig !== 'function') {
-          return false;
-        }
-        try {
-          const config = await window.electronAPI.loadLayoutConfig();
-          return config !== null;
-        } catch {
-          return false;
-        }
-      });
-      // レイアウト設定がnullでも読み込み自体が成功すればOK
-      expect(typeof canLoadLayout).toBe('boolean');
-    });
+    // Note: loadLayoutConfig()はprojectPathが必要なため、
+    // プロジェクト選択後のテスト（ProjectAgentPanelレイアウト保存・復元）で検証
   });
 
   // ============================================================
@@ -141,43 +103,6 @@ describe('Layout Persistence E2E', () => {
         expect(typeof windowPosition.x).toBe('number');
         expect(typeof windowPosition.y).toBe('number');
       }
-    });
-  });
-
-  // ============================================================
-  // セキュリティ確認
-  // ============================================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効である', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効である', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-  });
-
-  // ============================================================
-  // アプリケーション安定性
-  // ============================================================
-  describe('アプリケーション安定性', () => {
-    it('アプリケーションがクラッシュしていない', async () => {
-      const isResponsive = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isCrashed();
-      });
-      expect(isResponsive).toBe(true);
     });
   });
 
@@ -335,20 +260,11 @@ describe('Layout Persistence E2E', () => {
     it('リサイズ後にレイアウトが保存される', async () => {
       // 1. 初期の高さを記録
       const initialHeight = await browser.execute(async (projPath: string) => {
-        if (typeof window.electronAPI === 'undefined') return null;
-        try {
-          const config = await window.electronAPI.loadLayoutConfig(projPath);
-          return config?.projectAgentPanelHeight ?? 120;
-        } catch {
-          return null;
-        }
+        const config = await window.electronAPI.loadLayoutConfig(projPath);
+        return config?.projectAgentPanelHeight ?? 120;
       }, FIXTURE_PROJECT_PATH);
 
-      if (initialHeight === null) {
-        // APIが利用できない場合はスキップ
-        expect(true).toBe(true);
-        return;
-      }
+      expect(typeof initialHeight).toBe('number');
 
       // 2. 新しい高さで保存
       const newHeight = initialHeight === 150 ? 180 : 150;
@@ -372,32 +288,19 @@ describe('Layout Persistence E2E', () => {
     });
 
     it('resetLayoutConfigでprojectAgentPanelHeightがデフォルト値に戻る', async () => {
-      const resetResult = await browser.execute(async (projPath: string) => {
-        if (typeof window.electronAPI === 'undefined' ||
-            typeof window.electronAPI.resetLayoutConfig !== 'function') {
-          return { success: false, height: null };
-        }
-        try {
-          // リセット実行 (projectPathを渡す)
-          await window.electronAPI.resetLayoutConfig(projPath);
-          // リセット後の値を読み込む
-          const config = await window.electronAPI.loadLayoutConfig(projPath);
-          return {
-            success: true,
-            height: config?.projectAgentPanelHeight ?? null,
-          };
-        } catch {
-          return { success: false, height: null };
-        }
+      // リセット実行
+      await browser.execute(async (projPath: string) => {
+        await window.electronAPI.resetLayoutConfig(projPath);
       }, FIXTURE_PROJECT_PATH);
 
-      if (resetResult.success && resetResult.height !== null) {
-        // デフォルト値（120px）に戻っていることを確認
-        expect(resetResult.height).toBe(120);
-      } else {
-        // APIが利用できない場合はスキップ
-        expect(true).toBe(true);
-      }
+      // リセット後の値を確認
+      const heightAfterReset = await browser.execute(async (projPath: string) => {
+        const config = await window.electronAPI.loadLayoutConfig(projPath);
+        return config?.projectAgentPanelHeight;
+      }, FIXTURE_PROJECT_PATH);
+
+      // デフォルト値（120px）に戻っていることを確認
+      expect(heightAfterReset).toBe(120);
     });
   });
 });

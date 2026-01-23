@@ -612,46 +612,5 @@ describe('Cloudflare Tunnel Integration E2E Tests', () => {
     });
   });
 
-  // ========================================
-  // Security and Stability
-  // ========================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効である', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効である', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-  });
-
-  describe('アプリケーション安定性', () => {
-    it('クラッシュなしで動作する', async () => {
-      const notCrashed = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isCrashed();
-      });
-      expect(notCrashed).toBe(true);
-    });
-
-    it('ウィンドウがリサイズ可能', async () => {
-      const isResizable = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].isResizable();
-      });
-      expect(isResizable).toBe(true);
-    });
-  });
+  // Note: セキュリティ設定・アプリケーション安定性テストは app-launch.spec.ts に統合
 });

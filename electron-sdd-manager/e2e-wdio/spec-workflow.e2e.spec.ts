@@ -10,29 +10,11 @@
  * - WorkflowView表示
  * - フェーズボタン操作
  * - AgentListPanel / AgentLogPanel 連携
+ *
+ * Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
  */
 
 describe('Spec Workflow E2E', () => {
-  // ============================================================
-  // 基本的なアプリケーション起動確認
-  // ============================================================
-  describe('アプリケーション起動', () => {
-    it('アプリケーションが正常に起動する', async () => {
-      const isWindowOpen = await browser.electron.execute((electron) => {
-        return electron.BrowserWindow.getAllWindows().length > 0;
-      });
-      expect(isWindowOpen).toBe(true);
-    });
-
-    it('メインウィンドウが表示される', async () => {
-      const isVisible = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        return windows.length > 0 && windows[0].isVisible();
-      });
-      expect(isVisible).toBe(true);
-    });
-  });
-
   // ============================================================
   // Spec一覧表示
   // Requirements: Spec選択、一覧表示
@@ -40,8 +22,8 @@ describe('Spec Workflow E2E', () => {
   describe('SpecListコンポーネント', () => {
     it('SpecListコンポーネントが存在する', async () => {
       const specList = await $('[data-testid="spec-list"]');
-      const exists = await specList.isExisting();
-      expect(typeof exists).toBe('boolean');
+      // プロジェクト選択後は常にSpecListが表示される
+      await expect(specList).toBeExisting();
     });
 
     it('Specsタブがデフォルトで選択されている', async () => {
@@ -383,51 +365,7 @@ describe('Spec Workflow E2E', () => {
     });
   });
 
-  // ============================================================
-  // セキュリティ確認
-  // ============================================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効である', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効である', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-  });
-
-  // ============================================================
-  // アプリケーション安定性
-  // ============================================================
-  describe('アプリケーション安定性', () => {
-    it('アプリケーションがクラッシュしていない', async () => {
-      const isResponsive = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return !windows[0].webContents.isCrashed();
-      });
-      expect(isResponsive).toBe(true);
-    });
-
-    it('ウィンドウがリサイズ可能である', async () => {
-      const isResizable = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].isResizable();
-      });
-      expect(isResizable).toBe(true);
-    });
-  });
+  // Note: セキュリティ設定・安定性テストは app-launch.spec.ts に統合
 });
 
 /**

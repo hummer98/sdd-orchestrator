@@ -646,58 +646,5 @@ describe('Bugs Pane Integration E2E', () => {
     });
   });
 
-  // ============================================================
-  // セキュリティ設定
-  // ============================================================
-  describe('セキュリティ設定', () => {
-    it('contextIsolationが有効', async () => {
-      const contextIsolation = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].webContents.getLastWebPreferences().contextIsolation;
-      });
-      expect(contextIsolation).toBe(true);
-    });
-
-    it('nodeIntegrationが無効', async () => {
-      const nodeIntegration = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.getLastWebPreferences().nodeIntegration;
-      });
-      expect(nodeIntegration).toBe(false);
-    });
-  });
-
-  // ============================================================
-  // アプリケーション安定性
-  // ============================================================
-  describe('アプリケーション安定性', () => {
-    it('クラッシュしていない', async () => {
-      const isCrashed = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return true;
-        return windows[0].webContents.isCrashed();
-      });
-      expect(isCrashed).toBe(false);
-    });
-
-    it('ウィンドウがリサイズ可能', async () => {
-      const isResizable = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].isResizable();
-      });
-      expect(isResizable).toBe(true);
-    });
-
-    it('ウィンドウが表示されている', async () => {
-      const isVisible = await browser.electron.execute((electron) => {
-        const windows = electron.BrowserWindow.getAllWindows();
-        if (windows.length === 0) return false;
-        return windows[0].isVisible();
-      });
-      expect(isVisible).toBe(true);
-    });
-  });
+  // Note: セキュリティ設定・アプリケーション安定性テストは app-launch.spec.ts に統合
 });

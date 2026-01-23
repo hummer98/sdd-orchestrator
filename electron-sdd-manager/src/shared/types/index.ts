@@ -24,3 +24,6 @@ export * from './worktree';
 
 // Spec types (spec-list-unification feature)
 export * from './spec';
+
+// Workflow state types (workflow-view-unification feature)
+export * from './workflowState';

@@ -15,7 +15,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
-import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
+import { SpecsView, SpecDetailView, BugsView, BugDetailView, AgentView, ProjectAgentView, RemoteWorkflowView } from './views';
 import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
@@ -540,10 +540,10 @@ function RightSidebar({
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'specs' && selectedSpec && specDetail ? (
-            <SpecActionsView
-              specDetail={specDetail}
-              specPath={selectedSpec.path}
+            <RemoteWorkflowView
               apiClient={apiClient}
+              spec={selectedSpec}
+              specDetail={specDetail}
             />
           ) : (
             <div className="p-4 text-sm text-gray-500 dark:text-gray-400">
@@ -744,7 +744,11 @@ function MobileAppContent() {
                 <SpecDetailView spec={selectedSpec} apiClient={apiClient} />
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700">
-                <SpecActionsView specDetail={selectedSpecDetail} specPath={selectedSpec!.path} apiClient={apiClient} />
+                <RemoteWorkflowView
+                  apiClient={apiClient}
+                  spec={selectedSpec}
+                  specDetail={selectedSpecDetail}
+                />
               </div>
             </div>
           );

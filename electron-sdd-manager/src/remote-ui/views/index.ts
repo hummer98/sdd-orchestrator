@@ -7,8 +7,12 @@
 export { SpecsView } from './SpecsView';
 export type { SpecsViewProps } from './SpecsView';
 
-export { SpecDetailView } from './SpecDetailView';
-export type { SpecDetailViewProps } from './SpecDetailView';
+// Mobile版専用のSpec詳細・Phase実行UI
+export { MobileSpecWorkflowView } from './MobileSpecWorkflowView';
+export type { MobileSpecWorkflowViewProps } from './MobileSpecWorkflowView';
+// 後方互換性のためのエイリアス（非推奨）
+export { MobileSpecWorkflowView as SpecDetailView } from './MobileSpecWorkflowView';
+export type { MobileSpecWorkflowViewProps as SpecDetailViewProps } from './MobileSpecWorkflowView';
 
 export { SpecActionsView } from './SpecActionsView';
 export type { SpecActionsViewProps } from './SpecActionsView';
@@ -24,3 +28,7 @@ export type { BugDetailViewProps } from './BugDetailView';
 
 export { ProjectAgentView } from './ProjectAgentView';
 export type { ProjectAgentViewProps } from './ProjectAgentView';
+
+// workflow-view-unification: Remote UI版ワークフロービュー
+export { RemoteWorkflowView } from './RemoteWorkflowView';
+export type { RemoteWorkflowViewProps } from './RemoteWorkflowView';

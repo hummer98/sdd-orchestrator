@@ -18,3 +18,7 @@ export type { ParallelModeToggleProps } from './ParallelModeToggle';
 // Spec workflow footer component (shared)
 export { SpecWorkflowFooter, canShowConvertButton } from './SpecWorkflowFooter';
 export type { SpecWorkflowFooterProps, SpecJsonForFooter } from './SpecWorkflowFooter';
+
+// workflow-view-unification: Core workflow view component (props-driven)
+export { WorkflowViewCore } from './WorkflowViewCore';
+export type { WorkflowViewCoreProps, TaskItem } from './WorkflowViewCore';

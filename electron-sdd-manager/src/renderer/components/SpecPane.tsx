@@ -11,9 +11,10 @@ import { useSpecStore } from '../stores';
 import {
   ArtifactEditor,
   AgentListPanel,
-  WorkflowView,
   ResizeHandle,
 } from './index';
+// workflow-view-unification: Use unified workflow view
+import { ElectronWorkflowView as WorkflowView } from './ElectronWorkflowView';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
 import { normalizeInspectionState } from '../types/inspection';

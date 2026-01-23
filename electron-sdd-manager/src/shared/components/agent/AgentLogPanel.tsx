@@ -121,15 +121,10 @@ export function AgentLogPanel({
     // Parse each log entry
     logs.forEach((log, logIdx) => {
       if (log.stream === 'stdin') {
-        // stdin shows user input
-        entries.push({
-          id: `${log.id}-stdin-${logIdx}`,
-          type: 'input',
-          text: {
-            content: log.data,
-            role: 'user',
-          },
-        });
+        // Bug fix: stdinは表示しない
+        // Claude CLIのtype: 'user'イベント（stdout）で表示されるため、
+        // ここで表示すると二重表示になる
+        return;
       } else if (log.stream === 'stderr') {
         // stderr is always shown as error
         entries.push({

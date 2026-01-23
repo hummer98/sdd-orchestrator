@@ -714,6 +714,27 @@ export class WebSocketApiClient implements ApiClient {
   // Requirements: 4.1, 4.2, 4.3
   // ===========================================================================
 
+  // ===========================================================================
+  // Spec Plan Operations (remote-ui-create-buttons feature)
+  // Requirements: 3.2
+  // ===========================================================================
+
+  /**
+   * Execute spec-plan to create a new spec via interactive dialogue
+   * @param description - Spec description for planning dialogue
+   * @param worktreeMode - Whether to create in worktree mode
+   * @returns AgentInfo on success
+   */
+  async executeSpecPlan(
+    description: string,
+    worktreeMode: boolean
+  ): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('EXECUTE_SPEC_PLAN', {
+      description,
+      worktreeMode,
+    });
+  }
+
   async convertToWorktree(specId: string, featureName: string): Promise<Result<{
     path: string;
     absolutePath: string;

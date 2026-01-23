@@ -20,8 +20,10 @@ import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
 import { ResizeHandle } from '../shared/components/ui';
-import { Bot } from 'lucide-react';
+import { Bot, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
+import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
+import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 
@@ -74,6 +76,9 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
 // Left Sidebar Component - Spec/Bugsタブ + 一覧
 // =============================================================================
 
+// Dialog type for create dialogs
+type CreateDialogType = 'spec' | 'bug' | null;
+
 interface LeftSidebarProps {
   activeTab: DocsTab;
   onTabChange: (tab: DocsTab) => void;
@@ -81,6 +86,7 @@ interface LeftSidebarProps {
   selectedBugId?: string;
   onSelectSpec: (spec: SpecMetadataWithPath) => void;
   onSelectBug: (bug: BugMetadataWithPath) => void;
+  deviceType: 'desktop' | 'smartphone';
 }
 
 function LeftSidebar({
@@ -90,12 +96,16 @@ function LeftSidebar({
   selectedBugId,
   onSelectSpec,
   onSelectBug,
+  deviceType,
 }: LeftSidebarProps) {
   const apiClient = useApi();
 
   // Project Agent state
   const [projectAgents, setProjectAgents] = useState<AgentInfo[]>([]);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+
+  // Create dialog state (Task 3.1)
+  const [createDialogType, setCreateDialogType] = useState<CreateDialogType>(null);
 
   // Load project agents (specId === '')
   useEffect(() => {
@@ -167,6 +177,18 @@ function LeftSidebar({
     }
   }, [apiClient]);
 
+  // Handle create button click
+  const handleCreateClick = useCallback(() => {
+    setCreateDialogType(activeTab === 'specs' ? 'spec' : 'bug');
+  }, [activeTab]);
+
+  // Handle dialog close
+  const handleDialogClose = useCallback(() => {
+    setCreateDialogType(null);
+  }, []);
+
+  const isSmartphone = deviceType === 'smartphone';
+
   return (
     <div className="flex flex-col h-full">
       {/* Tabs - Electron版のDocsTabsに準拠 */}
@@ -191,6 +213,22 @@ function LeftSidebar({
         >
           Bugs
         </button>
+        {/* Create button - Desktop only (Task 3.2) */}
+        {!isSmartphone && (
+          <button
+            data-testid={activeTab === 'specs' ? 'create-spec-button' : 'create-bug-button'}
+            onClick={handleCreateClick}
+            className={clsx(
+              'px-2 py-2 text-sm font-medium transition-colors',
+              'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400',
+              'hover:bg-gray-100 dark:hover:bg-gray-800',
+              'rounded-md mx-1'
+            )}
+            title={activeTab === 'specs' ? '新規Specを作成' : '新規バグを作成'}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* List */}
@@ -260,6 +298,42 @@ function LeftSidebar({
           onCancel={() => setIsAskDialogOpen(false)}
         />
       </div>
+
+      {/* Smartphone FAB (Task 4.2) */}
+      {isSmartphone && (
+        <button
+          data-testid="create-fab"
+          onClick={handleCreateClick}
+          className={clsx(
+            'fixed right-4 bottom-20 z-50',
+            'w-14 h-14 rounded-full',
+            'flex items-center justify-center',
+            'bg-blue-600 hover:bg-blue-700',
+            'text-white shadow-lg',
+            'transition-all duration-200',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+          )}
+          aria-label={activeTab === 'specs' ? '新規Specを作成' : '新規バグを作成'}
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Create Spec Dialog (Task 3.3) */}
+      <CreateSpecDialogRemote
+        isOpen={createDialogType === 'spec'}
+        onClose={handleDialogClose}
+        apiClient={apiClient}
+        deviceType={deviceType}
+      />
+
+      {/* Create Bug Dialog (Task 3.4) */}
+      <CreateBugDialogRemote
+        isOpen={createDialogType === 'bug'}
+        onClose={handleDialogClose}
+        apiClient={apiClient}
+        deviceType={deviceType}
+      />
     </div>
   );
 }
@@ -607,6 +681,7 @@ function DesktopAppContent() {
           selectedBugId={selectedBug?.name}
           onSelectSpec={handleSelectSpec}
           onSelectBug={handleSelectBug}
+          deviceType="desktop"
         />
       }
       rightSidebar={

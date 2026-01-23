@@ -1,0 +1,54 @@
+{
+  "feature_name": "remote-ui-create-buttons",
+  "created_at": "2026-01-23T02:21:43Z",
+  "updated_at": "2026-01-23T02:50:22Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": true,
+      "inspection": true,
+      "deploy": false
+    },
+    "documentReviewFlag": "run"
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixStatus": "not_required",
+        "fixRequired": 0,
+        "needsDiscussion": 0
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-23T02:48:23Z"
+      }
+    ]
+  }
+}

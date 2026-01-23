@@ -53,4 +53,12 @@ describe('WebSocketApiClient', () => {
     expect(content).toContain('disconnect()');
     expect(content).toContain('isConnected()');
   });
+
+  // remote-ui-create-buttons feature
+  // Requirements: 3.2
+  it('should implement executeSpecPlan method using sendRequest', () => {
+    const content = readFileSync(clientPath, 'utf-8');
+    expect(content).toContain('async executeSpecPlan(');
+    expect(content).toContain("'EXECUTE_SPEC_PLAN'");
+  });
 });

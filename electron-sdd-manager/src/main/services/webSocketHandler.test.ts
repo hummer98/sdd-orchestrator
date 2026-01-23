@@ -3151,3 +3151,152 @@ describe('WebSocketHandler - Bug Auto Execution Handlers (remote-ui-bug-advanced
     });
   });
 });
+
+// ============================================================
+// remote-ui-create-buttons feature: EXECUTE_SPEC_PLAN Handler Tests
+// Requirements: 3.3, 3.4
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('EXECUTE_SPEC_PLAN message handler', () => {
+    it('should execute spec-plan and return AgentInfo on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockAgentInfo = { agentId: 'agent-123' };
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeSpecPlan: vi.fn().mockResolvedValue({
+          ok: true,
+          value: mockAgentInfo,
+        }),
+      });
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'EXECUTE_SPEC_PLAN',
+        payload: {
+          description: 'Test new feature',
+          worktreeMode: false,
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"SPEC_PLAN_EXECUTED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"agentId":"agent-123"')
+      );
+    });
+
+    it('should send ERROR when description is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      handler.setWorkflowController({
+        executePhase: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        executeSpecPlan: vi.fn(),
+      });
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'EXECUTE_SPEC_PLAN',
+        payload: {
+          worktreeMode: false,
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+
+    it('should send ERROR when workflowController is not configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // No workflow controller set
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      const message = JSON.stringify({
+        type: 'EXECUTE_SPEC_PLAN',
+        payload: {
+          description: 'Test',
+          worktreeMode: false,
+        },
+        requestId: 'req-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NO_CONTROLLER"')
+      );
+    });
+  });
+});

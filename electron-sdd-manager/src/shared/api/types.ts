@@ -524,6 +524,23 @@ export interface ApiClient {
     branch: string;
     created_at: string;
   }, ApiError>>;
+
+  // ===========================================================================
+  // Spec Plan Operations (remote-ui-create-buttons feature)
+  // Requirements: 3.1
+  // ===========================================================================
+
+  /**
+   * Execute spec-plan to create a new spec via interactive dialogue
+   * Optional: Only implemented for Remote UI (WebSocket client)
+   * @param description - Spec description for planning dialogue
+   * @param worktreeMode - Whether to create in worktree mode
+   * @returns AgentInfo on success
+   */
+  executeSpecPlan?(
+    description: string,
+    worktreeMode: boolean
+  ): Promise<Result<AgentInfo, ApiError>>;
 }
 
 // =============================================================================

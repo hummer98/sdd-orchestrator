@@ -229,3 +229,30 @@ describe('BugsView', () => {
     });
   });
 });
+
+// =============================================================================
+// Task 5.1: Create Button Removal Tests (remote-ui-create-buttons)
+// Requirements: 5.1
+// =============================================================================
+
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const viewPath = resolve(__dirname, 'BugsView.tsx');
+
+describe('BugsView - Create Button Removal (Task 5.1)', () => {
+  it('should NOT import CreateBugButtonRemote', () => {
+    const content = readFileSync(viewPath, 'utf-8');
+    expect(content).not.toContain('CreateBugButtonRemote');
+  });
+
+  it('should NOT import CreateBugDialogRemote', () => {
+    const content = readFileSync(viewPath, 'utf-8');
+    expect(content).not.toContain('CreateBugDialogRemote');
+  });
+
+  it('should NOT have create-bug-fab data-testid', () => {
+    const content = readFileSync(viewPath, 'utf-8');
+    expect(content).not.toContain('data-testid="create-bug-fab"');
+  });
+});

@@ -2,13 +2,13 @@
  * BugsView Component
  *
  * Task 13.5: Bugsタブの機能UIを実装する
- * Task 4.3: Bug作成ボタンとダイアログの統合 (remote-ui-bug-advanced-features)
  *
  * Bug一覧表示コンポーネント。共有bugStoreとApiClientを使用。
  * BugListItemを使用したリスト表示（検索・フィルタリング）。
- * Bug作成ボタン（Desktop: ヘッダー、SP: FAB）とダイアログ。
  *
- * Requirements: 7.2, 1.1, 1.4 (remote-ui-bug-advanced-features)
+ * Note: Bug作成ボタン/ダイアログはLeftSidebarに移動 (remote-ui-create-buttons Task 5.1)
+ *
+ * Requirements: 7.2
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -17,8 +17,6 @@ import { clsx } from 'clsx';
 import { BugListItem } from '@shared/components/bug/BugListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
 import type { ApiClient, BugMetadataWithPath } from '@shared/api/types';
-import { CreateBugButtonRemote } from '../components/CreateBugButtonRemote';
-import { CreateBugDialogRemote } from '../components/CreateBugDialogRemote';
 
 // =============================================================================
 // Types
@@ -44,7 +42,9 @@ export function BugsView({
   apiClient,
   selectedBugId,
   onSelectBug,
-  deviceType = 'desktop',
+  // deviceType is kept for API compatibility but no longer used after
+  // create button moved to LeftSidebar (remote-ui-create-buttons Task 5.1)
+  deviceType: _deviceType = 'desktop',
 }: BugsViewProps): React.ReactElement {
   // State
   // spec-path-ssot-refactor: Remote UI receives BugMetadataWithPath from WebSocket
@@ -52,8 +52,6 @@ export function BugsView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  // Task 4.3: Bug作成ダイアログ表示状態
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Load bugs on mount
   useEffect(() => {
@@ -190,13 +188,6 @@ export function BugsView({
               )}
             />
           </div>
-          {/* Desktop: Create Bug Button */}
-          {deviceType === 'desktop' && (
-            <CreateBugButtonRemote
-              onClick={() => setIsCreateDialogOpen(true)}
-              deviceType={deviceType}
-            />
-          )}
         </div>
       </div>
 
@@ -229,22 +220,6 @@ export function BugsView({
           </ul>
         )}
       </div>
-
-      {/* Smartphone: FAB (Floating Action Button) */}
-      {deviceType === 'smartphone' && (
-        <CreateBugButtonRemote
-          onClick={() => setIsCreateDialogOpen(true)}
-          deviceType={deviceType}
-        />
-      )}
-
-      {/* Create Bug Dialog */}
-      <CreateBugDialogRemote
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        apiClient={apiClient}
-        deviceType={deviceType}
-      />
     </div>
   );
 }

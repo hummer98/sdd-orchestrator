@@ -129,6 +129,13 @@ describe('API types', () => {
       expect(content).toContain('saveFile(');
     });
 
+    // Spec Plan operations (remote-ui-create-buttons feature)
+    // Requirements: 3.1
+    it('should have optional executeSpecPlan method for Remote UI', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('executeSpecPlan?(');
+    });
+
     // Event subscriptions
     it('should have onSpecsUpdated subscription', () => {
       const content = readFileSync(typesPath, 'utf-8');

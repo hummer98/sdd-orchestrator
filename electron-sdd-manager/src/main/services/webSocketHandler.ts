@@ -301,6 +301,11 @@ export interface WorkflowController {
   checkReleaseMd?(): Promise<{ releaseMdExists: boolean }>;
   /** Generate release.md by launching steering-release agent */
   generateReleaseMd?(): Promise<WorkflowResult<AgentInfo>>;
+
+  // Spec Plan methods (remote-ui-create-buttons feature)
+  // Requirements: 3.3, 3.4
+  /** Execute spec-plan to create a new spec via interactive dialogue */
+  executeSpecPlan?(description: string, worktreeMode: boolean): Promise<WorkflowResult<AgentInfo>>;
 }
 
 /**
@@ -801,6 +806,11 @@ export class WebSocketHandler {
         break;
       case 'CREATE_BUG':
         await this.handleCreateBug(client, message);
+        break;
+      // Spec Plan handler (remote-ui-create-buttons feature)
+      // Requirements: 3.3, 3.4
+      case 'EXECUTE_SPEC_PLAN':
+        await this.handleExecuteSpecPlan(client, message);
         break;
       // File operations handlers (remote-ui-react-migration Task 6.2)
       case 'SAVE_FILE':
@@ -2377,6 +2387,75 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'Bug creation failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Spec Plan Handlers (remote-ui-create-buttons feature)
+  // Requirements: 3.3, 3.4
+  // ============================================================
+
+  /**
+   * Handle EXECUTE_SPEC_PLAN message
+   * Requirements: remote-ui-create-buttons
+   * Executes spec-plan to create a new spec via interactive dialogue
+   */
+  private async handleExecuteSpecPlan(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.workflowController) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_CONTROLLER', message: 'Workflow controller not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.workflowController.executeSpecPlan) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_SUPPORTED', message: 'Spec plan execution not supported' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const description = payload.description as string;
+    const worktreeMode = (payload.worktreeMode as boolean) ?? false;
+
+    if (!description) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing description' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const result = await this.workflowController.executeSpecPlan(description, worktreeMode);
+
+    if (result.ok) {
+      this.send(client.id, {
+        type: 'SPEC_PLAN_EXECUTED',
+        payload: {
+          agentId: result.value.agentId,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: result.error.type,
+          message: result.error.message || 'Spec plan execution failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

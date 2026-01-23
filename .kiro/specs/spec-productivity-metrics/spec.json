@@ -1,9 +1,9 @@
 {
   "feature_name": "spec-productivity-metrics",
   "created_at": "2025-12-27T19:10:00+09:00",
-  "updated_at": "2026-01-22T11:13:12.609Z",
+  "updated_at": "2026-01-23T01:16:08Z",
   "language": "ja",
-  "phase": "tasks-generated",
+  "phase": "deploy-complete",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -24,16 +24,11 @@
       "requirements": true,
       "design": true,
       "tasks": true,
-      "impl": false,
+      "impl": true,
       "inspection": false,
       "deploy": false
     },
-    "documentReviewFlag": "run",
-    "validationOptions": {
-      "gap": false,
-      "design": false,
-      "impl": false
-    }
+    "documentReviewFlag": "run"
   },
   "documentReview": {
     "rounds": 2,
@@ -47,6 +42,27 @@
       {
         "roundNumber": 2,
         "status": "reply_complete"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-22T12:44:47Z",
+        "fixedAt": "2026-01-22T13:50:28Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-01-22T13:34:02Z",
+        "fixedAt": "2026-01-22T13:50:28Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-22T14:24:41Z"
       }
     ]
   }

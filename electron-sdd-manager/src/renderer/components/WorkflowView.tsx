@@ -45,6 +45,10 @@ import {
   type ExtendedSpecJson,
 } from '../types/workflow';
 import { hasWorktreePath, isImplStarted } from '../types/worktree';
+// spec-productivity-metrics: Task 10.2, 10.4, 10.5 - Metrics integration
+import { MetricsSummaryPanel } from '@shared/components/metrics';
+import { useMetricsStore } from '../stores/metricsStore';
+import { useHumanActivity } from '../hooks/useHumanActivity';
 
 // SpecManagerStatusDisplay REMOVED - MAX_CONTINUE_RETRIES no longer needed
 
@@ -141,6 +145,14 @@ export function WorkflowView() {
     fetchParseResults();
   }, [specDetail?.metadata.name, getParseResult, setParseResult]);
 
+  // ============================================================
+  // spec-productivity-metrics: Task 10.4, 10.5 - Metrics Integration
+  // Requirements: 2.1-2.7, 2.11, 5.1-5.6
+  // ============================================================
+  const { recordActivity, startTracking, stopTracking } = useHumanActivity();
+  const currentMetrics = useMetricsStore((state) => state.currentMetrics);
+  const loadMetrics = useMetricsStore((state) => state.loadMetrics);
+
   // All hooks must be called before any conditional returns
   const specJson = specDetail?.specJson as ExtendedSpecJson | undefined;
 
@@ -191,6 +203,41 @@ export function WorkflowView() {
       .map((a) => a.phase);
     return new Set(running);
   }, [agents, specDetail, getAgentsForSpec]);
+
+  // ============================================================
+  // spec-productivity-metrics: Task 10.4, 10.5 - Metrics Loading & Activity Tracking
+  // Requirements: 2.1-2.11, 5.1-5.6
+  // ============================================================
+  useEffect(() => {
+    if (!specId) {
+      stopTracking();
+      return;
+    }
+
+    // Load metrics for the selected spec (Task 10.5)
+    const apiClient = {
+      getSpecMetrics: async (id: string) => {
+        try {
+          const result = await window.electronAPI.getSpecMetrics(id);
+          return { ok: true as const, value: result };
+        } catch (error) {
+          return { ok: false as const, error: error instanceof Error ? error.message : String(error) };
+        }
+      },
+      getProjectMetrics: async () => {
+        // Not used here
+        return { ok: false as const, error: 'Not implemented' };
+      },
+    };
+    loadMetrics(specId, apiClient);
+
+    // Start human activity tracking (Task 10.4)
+    startTracking(specId);
+
+    return () => {
+      stopTracking();
+    };
+  }, [specId, loadMetrics, startTracking, stopTracking]);
 
   // フェーズが実行可能かどうかを判定
   const canExecutePhase = useCallback(
@@ -279,8 +326,11 @@ export function WorkflowView() {
   }, [specDetail, specJson?.worktree, workflowStore.commandPrefix, wrapExecution]);
 
   // spec-path-ssot-refactor: Use spec.name instead of spec.path
+  // spec-productivity-metrics Task 10.4: Record approval activity
   const handleApprovePhase = useCallback(async (phase: WorkflowPhase) => {
     if (!specDetail) return;
+    // Record human activity for approval button click (Requirement 2.6)
+    recordActivity('approval-button');
     // Update approval in spec.json via IPC
     try {
       await window.electronAPI.updateApproval(
@@ -293,7 +343,7 @@ export function WorkflowView() {
     } catch (error) {
       console.error('Failed to approve phase:', error);
     }
-  }, [specDetail]);
+  }, [specDetail, recordActivity]);
 
   const handleApproveAndExecutePhase = useCallback(async (phase: WorkflowPhase) => {
     const previousPhase = ALL_WORKFLOW_PHASES[ALL_WORKFLOW_PHASES.indexOf(phase) - 1];
@@ -743,11 +793,16 @@ export function WorkflowView() {
     <div className="flex flex-col h-full" data-testid="workflow-view">
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2" data-testid="phase-execution-panel">
+        {/* spec-productivity-metrics Task 10.2: Metrics Summary Panel */}
+        {/* Requirements: 5.1-5.6 - Display AI time, human time, total time */}
+        <MetricsSummaryPanel metrics={currentMetrics} className="mb-4" />
+
         {/* impl-flow-hierarchy-fix Task 3.1: Use DISPLAY_PHASES (requirements, design, tasks only) */}
         {DISPLAY_PHASES.map((phase, index) => (
           <div key={phase}>
             {/* Phase Item */}
             {/* Task 5.1: Use isAutoExecuting and currentAutoPhase from specStore */}
+            {/* spec-productivity-metrics Task 10.3: Pass phaseMetrics to PhaseItem */}
             <PhaseItem
               phase={phase}
               label={PHASE_LABELS[phase]}
@@ -762,6 +817,7 @@ export function WorkflowView() {
               onApproveAndExecute={() => handleApproveAndExecutePhase(phase)}
               onToggleAutoPermission={() => workflowStore.toggleAutoPermission(phase)}
               onShowAgentLog={() => handleShowAgentLog(phase)}
+              phaseMetrics={currentMetrics?.phaseMetrics?.[phase as keyof typeof currentMetrics.phaseMetrics]}
             />
 
             {/* Connector Arrow between DISPLAY_PHASES */}

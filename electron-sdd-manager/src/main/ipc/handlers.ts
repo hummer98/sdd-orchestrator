@@ -37,6 +37,8 @@ import {
 import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
+// spec-productivity-metrics: Task 10.1 - Metrics handlers registration
+import { registerMetricsHandlers } from './metricsHandlers';
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../services/autoExecutionCoordinator';
@@ -62,6 +64,9 @@ import { CommandsetVersionService } from '../services/commandsetVersionService';
 import { getDefaultEventLogService } from '../services/eventLogService';
 // parallel-task-impl: Task parser for parallel execution
 import { parseTasksContent, type ParseResult } from '../services/taskParallelParser';
+// spec-productivity-metrics: Metrics service import (Task 2.2)
+import { getDefaultMetricsService, initDefaultMetricsService } from '../services/metricsService';
+import type { WorkflowPhase as MetricsWorkflowPhase } from '../types/metrics';
 
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
@@ -432,6 +437,27 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
   initDefaultLogFileService(path.join(projectPath, '.kiro', 'specs'));
   logger.info('[handlers] LogFileService initialized');
+
+  // spec-productivity-metrics: Task 2.2 - Initialize MetricsService with project path
+  // Requirements: 1.1, 1.2 (AI time tracking)
+  initDefaultMetricsService(projectPath);
+  logger.info('[handlers] MetricsService initialized');
+
+  // spec-productivity-metrics: Task 5.3 - Session recovery on project load
+  // Requirements: 7.1 (session recovery on app startup/project selection)
+  try {
+    const { getDefaultSessionRecoveryService } = await import('../services/sessionRecoveryService');
+    const sessionRecoveryService = getDefaultSessionRecoveryService();
+    const recoveryResult = await sessionRecoveryService.recoverIncompleteSessions(projectPath);
+    logger.info('[handlers] Session recovery completed', {
+      aiSessionsRecovered: recoveryResult.aiSessionsRecovered,
+      humanSessionsRecovered: recoveryResult.humanSessionsRecovered,
+    });
+  } catch (error) {
+    logger.error('[handlers] Session recovery failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   // common-commands-installer: Removed auto-install of commit.md
   // Requirement 1.1, 1.2: No implicit installation on project selection
@@ -865,12 +891,35 @@ export function registerIpcHandlers(): void {
             window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
           }
 
+          // Get agent info for metrics and WebSocket broadcast
+          const agentInfo = await service.getAgentById(agentId);
+
+          // spec-productivity-metrics: Task 2.2 - Track AI session metrics
+          // Requirements: 1.1, 1.2 (AI time tracking via agent lifecycle hooks)
+          if (agentInfo) {
+            const metricsService = getDefaultMetricsService();
+            const metricsPhase = agentInfo.phase as MetricsWorkflowPhase;
+
+            // Only track metrics for the 4 core workflow phases
+            const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+            if (corePhases.includes(metricsPhase)) {
+              if (status === 'running') {
+                // Agent started: begin AI session
+                metricsService.startAiSession(agentInfo.specId, metricsPhase);
+                logger.debug('[handlers] AI session started for metrics', { specId: agentInfo.specId, phase: metricsPhase });
+              } else if (status === 'completed' || status === 'failed' || status === 'interrupted') {
+                // Agent ended: close AI session
+                await metricsService.endAiSession(agentInfo.specId, metricsPhase);
+                logger.debug('[handlers] AI session ended for metrics', { specId: agentInfo.specId, phase: metricsPhase, status });
+              }
+            }
+          }
+
           // Broadcast status change to Remote UI via WebSocket
           // Include full agent info for remote-ui to display same content as Electron version
           const remoteServer = getRemoteAccessServer();
           const wsHandler = remoteServer.getWebSocketHandler();
           if (wsHandler) {
-            const agentInfo = await service.getAgentById(agentId);
             wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
               specId: agentInfo.specId,
               phase: agentInfo.phase,
@@ -1385,6 +1434,14 @@ export function registerIpcHandlers(): void {
       const result = await fileService.updateSpecJsonFromPhase(specPathResult.value, completedPhase, options);
       if (!result.ok) {
         throw new Error(`Failed to sync spec phase: ${result.error.type}`);
+      }
+
+      // spec-productivity-metrics: Task 4.1 - Complete lifecycle on impl-complete
+      // Requirements: 3.1, 3.2 (lifecycle measurement)
+      if (completedPhase === 'impl-complete') {
+        const metricsService = getDefaultMetricsService();
+        await metricsService.completeSpecLifecycle(specName);
+        logger.debug('[handlers] Spec lifecycle completed', { specName });
       }
     }
   );
@@ -2292,6 +2349,14 @@ export function registerIpcHandlers(): void {
   logger.info('[handlers] Bug Auto-Execution execute-next-phase handler registered');
 
   // ============================================================
+  // Metrics Handlers (spec-productivity-metrics feature)
+  // Task 10.1: Register metrics IPC handlers
+  // Requirements: 2.12, 5.1 (RECORD_HUMAN_SESSION, GET_SPEC_METRICS, GET_PROJECT_METRICS)
+  // ============================================================
+  registerMetricsHandlers(getCurrentProjectPath);
+  logger.info('[handlers] Metrics handlers registered');
+
+  // ============================================================
   // Steering Verification Handlers (steering-verification-integration feature)
   // Requirements: 3.1, 3.2, 3.3
   // ============================================================
@@ -2536,6 +2601,37 @@ export function registerIpcHandlers(): void {
     }
   );
   logger.info('[handlers] Parallel Task Parser handlers registered');
+
+  // ============================================================
+  // Metrics (spec-productivity-metrics feature)
+  // Task 3.2: Human session recording IPC handler
+  // Requirements: 2.12
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.RECORD_HUMAN_SESSION,
+    async (_event, session: import('../types/metrics').HumanSessionData) => {
+      logger.debug('[handlers] RECORD_HUMAN_SESSION called', { specId: session.specId, ms: session.ms });
+
+      const metricsService = getDefaultMetricsService();
+      await metricsService.recordHumanSession(session);
+
+      logger.debug('[handlers] RECORD_HUMAN_SESSION completed', { specId: session.specId });
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.GET_SPEC_METRICS,
+    async (_event, specId: string) => {
+      logger.debug('[handlers] GET_SPEC_METRICS called', { specId });
+
+      const metricsService = getDefaultMetricsService();
+      const metrics = await metricsService.getMetricsForSpec(specId);
+
+      logger.debug('[handlers] GET_SPEC_METRICS result', { specId, totalAiTimeMs: metrics.totalAiTimeMs });
+      return metrics;
+    }
+  );
 
   // ============================================================
   // Multi-Phase Auto-Execution: connect coordinator to specManagerService
@@ -3003,12 +3099,35 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
       window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
     }
 
+    // Get agent info for metrics and WebSocket broadcast
+    const agentInfo = await service.getAgentById(agentId);
+
+    // spec-productivity-metrics: Task 2.2 - Track AI session metrics
+    // Requirements: 1.1, 1.2 (AI time tracking via agent lifecycle hooks)
+    if (agentInfo) {
+      const metricsService = getDefaultMetricsService();
+      const metricsPhase = agentInfo.phase as MetricsWorkflowPhase;
+
+      // Only track metrics for the 4 core workflow phases
+      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+      if (corePhases.includes(metricsPhase)) {
+        if (status === 'running') {
+          // Agent started: begin AI session
+          metricsService.startAiSession(agentInfo.specId, metricsPhase);
+          logger.debug('[handlers] AI session started for metrics', { specId: agentInfo.specId, phase: metricsPhase });
+        } else if (status === 'completed' || status === 'failed' || status === 'interrupted') {
+          // Agent ended: close AI session
+          await metricsService.endAiSession(agentInfo.specId, metricsPhase);
+          logger.debug('[handlers] AI session ended for metrics', { specId: agentInfo.specId, phase: metricsPhase, status });
+        }
+      }
+    }
+
     // Broadcast status change to Remote UI via WebSocket
     // Include full agent info for remote-ui to display same content as Electron version
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
     if (wsHandler) {
-      const agentInfo = await service.getAgentById(agentId);
       wsHandler.broadcastAgentStatus(agentId, status, agentInfo ? {
         specId: agentInfo.specId,
         phase: agentInfo.phase,
@@ -3049,10 +3168,19 @@ export async function startSpecsWatcher(window: BrowserWindow): Promise<void> {
 
   specsWatcherService = new SpecsWatcherService(currentProjectPath, fileService);
 
-  specsWatcherService.onChange((event) => {
+  specsWatcherService.onChange(async (event) => {
     logger.info('[handlers] Specs changed', { event });
     if (!window.isDestroyed()) {
       window.webContents.send(IPC_CHANNELS.SPECS_CHANGED, event);
+    }
+
+    // spec-productivity-metrics: Task 4.1 - Start lifecycle on new spec creation
+    // Requirements: 3.1 (lifecycle measurement)
+    // When spec.json is added (new spec created), start the lifecycle
+    if (event.type === 'add' && event.path.endsWith('spec.json') && event.specId) {
+      const metricsService = getDefaultMetricsService();
+      await metricsService.startSpecLifecycle(event.specId);
+      logger.debug('[handlers] Spec lifecycle started', { specId: event.specId });
     }
   });
 

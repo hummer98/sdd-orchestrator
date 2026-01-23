@@ -2110,6 +2110,28 @@ const electronAPI = {
     specName: string
   ): Promise<import('../main/services/taskParallelParser').ParseResult | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARSE_TASKS_FOR_PARALLEL, specName),
+
+  // ============================================================
+  // Metrics (spec-productivity-metrics feature)
+  // Task 3.2, 3.3: Human session recording IPC
+  // Requirements: 2.12
+  // ============================================================
+
+  /**
+   * Record a human session for metrics
+   * Called by HumanActivityTracker when a session ends
+   * @param session Human session data with specId, start, end, ms
+   */
+  recordHumanSession: (session: import('../main/types/metrics').HumanSessionData): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RECORD_HUMAN_SESSION, session),
+
+  /**
+   * Get metrics for a specific spec
+   * @param specId Spec identifier
+   * @returns Aggregated metrics for the spec
+   */
+  getSpecMetrics: (specId: string): Promise<import('../main/types/metrics').SpecMetrics> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_SPEC_METRICS, specId),
 };
 
 // Expose API to renderer

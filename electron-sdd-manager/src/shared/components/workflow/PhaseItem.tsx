@@ -2,6 +2,7 @@
  * PhaseItem Component
  * Shared workflow phase item component used by both Electron and Remote UI
  * Requirements: 3.1, 7.1, 7.2
+ * spec-productivity-metrics Task 10.3: Integrate PhaseMetricsView for inline metrics display
  */
 
 import React from 'react';
@@ -14,6 +15,9 @@ import {
   Bot,
 } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
+// spec-productivity-metrics: Task 10.3 - Phase metrics types
+import type { PhaseMetrics } from '../../../main/types/metrics';
+import { formatDurationCompact } from '../../utils/timeFormat';
 
 // =============================================================================
 // Types
@@ -51,6 +55,8 @@ export interface PhaseItemProps {
   onShowAgentLog?: () => void;
   /** Additional CSS classes */
   className?: string;
+  /** Phase metrics data (optional - spec-productivity-metrics Task 10.3) */
+  phaseMetrics?: PhaseMetrics | null;
 }
 
 // =============================================================================
@@ -92,6 +98,7 @@ export function PhaseItem({
   onToggleAutoPermission,
   onShowAgentLog,
   className,
+  phaseMetrics,
 }: PhaseItemProps): React.ReactElement {
   // Show approve and execute button condition
   const showApproveAndExecute =
@@ -150,7 +157,7 @@ export function PhaseItem({
         className
       )}
     >
-      {/* Left side: Progress icon + phase name */}
+      {/* Left side: Progress icon + phase name + metrics (Task 10.3) */}
       <div data-testid="phase-left-side" className="flex items-center gap-2">
         <button
           onClick={handleProgressIconClick}
@@ -166,6 +173,22 @@ export function PhaseItem({
         <span className="font-medium text-gray-700 dark:text-gray-300">
           {label}
         </span>
+        {/* spec-productivity-metrics Task 10.3: Inline phase metrics display */}
+        {/* Requirements: 6.1-6.4 */}
+        {phaseMetrics && (phaseMetrics.aiTimeMs > 0 || phaseMetrics.humanTimeMs > 0) && (
+          <span
+            data-testid={`phase-metrics-${phase}`}
+            className="ml-2 text-xs text-gray-500 dark:text-gray-400"
+          >
+            <span className="text-blue-500 dark:text-blue-400" data-testid={`phase-metrics-${phase}-ai-time`}>
+              AI: {formatDurationCompact(phaseMetrics.aiTimeMs)}
+            </span>
+            <span className="mx-1">|</span>
+            <span className="text-green-500 dark:text-green-400" data-testid={`phase-metrics-${phase}-human-time`}>
+              Human: {formatDurationCompact(phaseMetrics.humanTimeMs)}
+            </span>
+          </span>
+        )}
       </div>
 
       {/* Right side: Auto permission toggle + action buttons */}

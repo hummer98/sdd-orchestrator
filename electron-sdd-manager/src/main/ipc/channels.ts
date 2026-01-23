@@ -330,6 +330,13 @@ export const IPC_CHANNELS = {
   // Parallel Task Execution (parallel-task-impl feature)
   // Requirements: 2.1 - Parse tasks.md for parallel execution
   PARSE_TASKS_FOR_PARALLEL: 'ipc:parse-tasks-for-parallel',
+
+  // Metrics (spec-productivity-metrics feature)
+  // Requirements: 1.1, 1.4, 2.12, 5.1
+  RECORD_HUMAN_SESSION: 'metrics:record-human-session',
+  GET_SPEC_METRICS: 'metrics:get-spec-metrics',
+  GET_PROJECT_METRICS: 'metrics:get-project-metrics',
+  METRICS_UPDATED: 'metrics:updated',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

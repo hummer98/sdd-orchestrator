@@ -1401,6 +1401,26 @@ export interface ElectronAPI {
    * @returns ParseResult with grouped tasks, or null if tasks.md not found
    */
   parseTasksForParallel(specName: string): Promise<import('../../main/services/taskParallelParser').ParseResult | null>;
+
+  // ============================================================
+  // Metrics (spec-productivity-metrics feature)
+  // Task 3.2, 3.3: Human session recording IPC
+  // Requirements: 2.12
+  // ============================================================
+
+  /**
+   * Record a human session for metrics
+   * Called by HumanActivityTracker when a session ends
+   * @param session Human session data with specId, start, end, ms
+   */
+  recordHumanSession(session: import('../../main/types/metrics').HumanSessionData): Promise<void>;
+
+  /**
+   * Get metrics for a specific spec
+   * @param specId Spec identifier
+   * @returns Aggregated metrics for the spec
+   */
+  getSpecMetrics(specId: string): Promise<import('../../main/types/metrics').SpecMetrics>;
 }
 
 declare global {

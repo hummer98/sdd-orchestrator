@@ -41,6 +41,8 @@ export interface AgentLogInfo {
   status: AgentStatus;
   /** Command that started the agent */
   command?: string;
+  /** Log file path for copy functionality */
+  logFilePath?: string;
 }
 
 export interface AgentLogPanelProps {
@@ -133,10 +135,12 @@ export function AgentLogPanel({
     }
   }, [parsedEntries.length]);
 
-  // Default copy handler
+  // Copy handler - copies log file path if available, otherwise log content
   const handleCopy = () => {
     if (onCopy) {
       onCopy();
+    } else if (agent?.logFilePath) {
+      navigator.clipboard.writeText(agent.logFilePath);
     } else {
       const logText = logs.map((log) => log.data).join('\n');
       navigator.clipboard.writeText(logText);
@@ -198,16 +202,16 @@ export function AgentLogPanel({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Copy button */}
+          {/* Copy button - copies log file path */}
           <button
             onClick={handleCopy}
-            disabled={logs.length === 0}
+            disabled={!agent?.logFilePath && logs.length === 0}
             className={clsx(
               'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
               'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
-            title="ログをコピー"
+            title={agent?.logFilePath ? 'ログファイルパスをコピー' : 'ログをコピー'}
           >
             <Copy className="w-4 h-4" />
           </button>

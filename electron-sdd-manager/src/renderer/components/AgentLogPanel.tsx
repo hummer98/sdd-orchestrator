@@ -8,6 +8,7 @@
 
 import { useMemo } from 'react';
 import { useAgentStore, type LogEntry } from '../stores/agentStore';
+import { useProjectStore } from '../stores/projectStore';
 import { AgentLogPanel as SharedAgentLogPanel, type AgentLogInfo } from '@shared/components/agent';
 import { useHumanActivity } from '../hooks/useHumanActivity';
 
@@ -17,6 +18,7 @@ const EMPTY_LOGS: LogEntry[] = [];
 export function AgentLogPanel() {
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
   const clearLogs = useAgentStore((state) => state.clearLogs);
+  const currentProject = useProjectStore((state) => state.currentProject);
   const { recordActivity } = useHumanActivity();
 
   // Bug fix: getSnapshot無限ループ回避
@@ -45,17 +47,34 @@ export function AgentLogPanel() {
     return undefined;
   }, [selectedAgentId, agents]);
 
-  // Convert to shared AgentLogInfo format
+  // Convert to shared AgentLogInfo format with log file path
   const agentLogInfo: AgentLogInfo | undefined = useMemo(() => {
     if (!agent) return undefined;
+
+    // Build log file path: {projectPath}/.kiro/specs/{specId}/logs/{agentId}.log
+    // For bugs (specId starts with 'bug:'): {projectPath}/.kiro/bugs/{bugName}/logs/{agentId}.log
+    let logFilePath: string | undefined;
+    if (currentProject && agent.agentId) {
+      if (agent.specId.startsWith('bug:')) {
+        const bugName = agent.specId.replace('bug:', '');
+        logFilePath = `${currentProject}/.kiro/bugs/${bugName}/logs/${agent.agentId}.log`;
+      } else if (agent.specId) {
+        logFilePath = `${currentProject}/.kiro/specs/${agent.specId}/logs/${agent.agentId}.log`;
+      } else {
+        // Project-level agent (specId = '')
+        logFilePath = `${currentProject}/.kiro/specs/logs/${agent.agentId}.log`;
+      }
+    }
+
     return {
       agentId: agent.agentId,
       sessionId: agent.sessionId,
       phase: agent.phase,
       status: agent.status,
       command: agent.command,
+      logFilePath,
     };
-  }, [agent]);
+  }, [agent, currentProject]);
 
 // Clear logs handler
   const handleClear = () => {

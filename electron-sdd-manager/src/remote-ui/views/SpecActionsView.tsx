@@ -225,8 +225,7 @@ export function SpecActionsView({
       />
 
       {/* Inspection Panel */}
-      <div data-testid="inspection-panel">
-        <InspectionPanel
+      <InspectionPanel
           inspectionState={inspectionState}
           isExecuting={executingAction === 'inspection' || executingAction === 'inspection-fix'}
           isAutoExecuting={isExecuting}
@@ -235,8 +234,7 @@ export function SpecActionsView({
           onStartInspection={handleStartInspection}
           onExecuteFix={handleExecuteFix}
           onToggleAutoPermission={handleToggleInspectionPermission}
-        />
-      </div>
+      />
     </div>
   );
 }

@@ -114,7 +114,13 @@ Generate technical design document for feature based on approved requirements.
    - Cover: architecture pattern, technology choices, data model decisions, interface design, trade-offs
    - Reference requirement IDs where applicable
 
-5. **Internal Consistency Validation**:
+5. **Generate Integration & Deprecation Strategy Section** (CRITICAL):
+   - List existing files that require modification (wiring points) to integrate new functionality
+   - List existing files that must be deleted (cleanup) as part of this change
+   - For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
+   - If no files need modification or deletion, explicitly state "No existing files affected"
+
+6. **Internal Consistency Validation**:
    - Verify all sections describe the same architecture model
    - Check that sequence diagrams align with component interfaces
    - If multiple execution approaches were considered, confirm ONE was selected and rationale documented in Design Decisions section

@@ -80,6 +80,14 @@ For each task in tasks.md:
   - Use Grep to search codebase for evidence of specified method/function/pattern
   - If `_Verify:` field exists, execute the specified verification command/pattern
   - Flag method mismatch as Critical (task says "use X" but code doesn't use X)
+- **Verify deletion tasks physically deleted files**:
+  - For tasks containing "DELETE", "REMOVE", "削除", "廃止", "物理削除"
+  - Use Glob to confirm target files no longer exist in filesystem
+  - Flag as Critical if file still exists
+- **Verify wiring tasks updated consumer files**:
+  - For tasks containing "import", "配線", "結合", "参照更新"
+  - Use Grep to confirm consumer files reference new code, not old
+  - Flag as Critical if old imports remain
 - Verify tests exist and pass (if applicable)
 - Flag incomplete tasks as Critical
 
@@ -105,12 +113,25 @@ Check adherence to CLAUDE.md Design Principles:
 - **YAGNI**: Flag unused/premature features
 - Flag violations as Minor to Major depending on scope
 
-#### 2.6 Dead Code Detection (DeadCodeChecker)
+#### 2.6 Dead Code & Zombie Code Detection (DeadCodeChecker)
+
+**New Code (Dead Code)**:
 For new components/services created:
 - Use Grep to verify they are imported and used
 - Check that components are rendered/called
 - Verify exports are consumed
-- Flag orphaned code as Major
+- Flag orphaned new code as Major
+
+**Old Code (Zombie Code)**:
+For refactoring tasks, verify old implementations are removed:
+- Check if files marked for deletion in tasks.md still exist
+- Use Grep to find lingering old imports in consumer files
+- Verify no component/service has both old and new implementations active
+- **Anti-Pattern Detection**:
+  - New facade/wrapper exists but old implementation still present
+  - Multiple files provide same functionality (violation of SSOT)
+  - Old imports coexist with new imports in consumer files
+- Flag zombie code as Critical (refactoring incomplete)
 
 #### 2.7 Integration Verification (IntegrationChecker)
 Verify all components work together:
@@ -348,55 +369,6 @@ If NOGO judgment AND --autofix option:
 - The `fixedAt` field is set by this agent in `--fix` mode after impl completes
 - The UI enables the Deploy phase button when the latest round has `result: "go"`
 - The UI shows Fix button when the latest round has `result: "nogo"` and no `fixedAt`
-
-### 7. Update Phase to inspection-complete (GO judgment only)
-
-**remove-inspection-phase-auto-update**: This step is CRITICAL for phase progression.
-The specsWatcherService no longer auto-updates phase to `inspection-complete`.
-This agent is now responsible for updating phase when GO judgment is reached.
-
-**Condition**: Execute this step ONLY when:
-1. Judgment is GO (no Critical issues AND no more than 2 Major issues)
-2. Current phase is NOT already `inspection-complete` or `deploy-complete`
-
-**Skip Condition**: Do NOT execute this step when:
-- Judgment is NOGO
-- Phase is already `inspection-complete` or `deploy-complete`
-
-**Execution Steps**:
-1. Read spec.json (should already be in memory from Step 6)
-2. Check current `phase` field:
-   - If `phase` is `inspection-complete` or `deploy-complete`, **SKIP** this step (log: "Phase already at or past inspection-complete, skipping phase update")
-3. Update the following fields in spec.json:
-   - `phase`: `"inspection-complete"`
-   - `updated_at`: current UTC timestamp in ISO 8601 format (e.g., `"2026-01-21T12:00:00Z"`)
-4. Write spec.json using Write tool
-5. Log: "Phase updated to inspection-complete"
-
-**Example spec.json after GO judgment**:
-```json
-{
-  "feature_name": "my-feature",
-  "phase": "inspection-complete",
-  "updated_at": "2026-01-21T12:00:00Z",
-  "inspection": {
-    "rounds": [
-      { "number": 1, "result": "go", "inspectedAt": "2026-01-21T12:00:00Z" }
-    ]
-  }
-}
-```
-
-**Error Handling**:
-- If Write fails, log the error and inform the user: "Phase update to inspection-complete failed. Please manually update spec.json.phase to 'inspection-complete'."
-- The inspection report and inspection.rounds are preserved even if phase update fails
-
-**Rationale**:
-This explicit phase update by the agent (instead of auto-update by specsWatcherService) provides:
-- Predictable phase transitions
-- Git history of phase changes
-- No race condition with spec-merge command
-- Clear ownership of phase update responsibility
 
 ## Important Constraints
 - **Semantic verification**: Use LLM understanding, not just static analysis

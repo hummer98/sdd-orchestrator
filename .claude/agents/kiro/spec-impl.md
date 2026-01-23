@@ -39,7 +39,7 @@ Use Glob tool to expand file patterns for spec files:
 **Core Steering（常時読み込み）**:
 - `.kiro/steering/product.md`
 - `.kiro/steering/tech.md`
-- `.kiro/steering/design-principles.md` (if exists)
+- `.kiro/steering/design-principles.md`
 - `.kiro/steering/structure.md`
 
 **Extended Steering（タスク内容に応じて読み込み）**:
@@ -49,11 +49,8 @@ Use Glob tool to expand file patterns for spec files:
 
 | キーワード | 読み込むファイル |
 |-----------|-----------------|
-| 動作確認, UI確認, MCP, スクリーンショット | `operations.md`, `debugging.md` |
-| E2Eテスト, wdio, WebdriverIO, e2e | `e2e-testing.md` |
-| Playwright, Remote UI, web-e2e | `web-e2e-testing.md` |
 | デバッグ, ログ調査, エラー, debug | `debugging.md` |
-| 用語, シンボル, ドメイン, symbol | `symbol-semantic-map.md` |
+| ログ実装, logging, logger | `logging.md` |
 
 3. If no keywords match extended steering: Use core steering only
 
@@ -130,6 +127,25 @@ For each selected task, follow Kent Beck's TDD cycle:
 - **Test Coverage**: All new code must have tests
 - **No Regressions**: Existing tests must continue to pass
 - **Design Alignment**: Implementation must follow design.md specifications
+
+### Worktree Mode (Critical Path Resolution)
+
+When cwd contains `.kiro/worktrees/`, you are operating in a **worktree isolated environment**:
+
+1. **cwd IS the project root** - The worktree directory is your entire working context
+2. **ALWAYS use relative paths** for Write/Edit/Bash operations
+   - ✅ `electron-sdd-manager/src/shared/hooks/myHook.ts`
+   - ❌ `/Users/.../sdd-orchestrator/electron-sdd-manager/src/shared/hooks/myHook.ts`
+3. **NEVER reference parent repository**
+   - Do not construct absolute paths to parent repo
+   - Do not use `git rev-parse --show-toplevel` for path construction (it returns worktree path, but avoid confusion)
+4. **Bash commands must use relative paths**
+   - ✅ `cd electron-sdd-manager && npm run test`
+   - ❌ `cd /absolute/path/to/parent/electron-sdd-manager && npm test`
+5. **Path validation before Write/Edit**
+   - If you find yourself using an absolute path, STOP
+   - Convert to relative path from cwd
+   - Parent repo paths (without `.kiro/worktrees/` segment) are FORBIDDEN
 
 ## Tool Guidance
 - **Read first**: Load all context before implementation

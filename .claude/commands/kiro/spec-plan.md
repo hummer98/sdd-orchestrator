@@ -1,7 +1,7 @@
 ---
 description: Interactive planning and requirements generation through dialogue
 allowed-tools: Bash, Read, Write, Glob, Grep, WebSearch, WebFetch, Task
-argument-hint: <initial-idea> [--worktree]
+argument-hint: <initial-idea>
 ---
 
 # Spec Plan - Dialogue-Driven Requirements Generation
@@ -16,7 +16,6 @@ argument-hint: <initial-idea> [--worktree]
   - User's idea is clarified through focused questions
   - Technical decisions are made with documented rationale
   - requirements.md is generated with Decision Log section
-  - (If --worktree) Git worktree created for isolated development
   - Spec is ready for design phase (`/kiro:spec-design`)
 </background_information>
 
@@ -31,18 +30,9 @@ argument-hint: <initial-idea> [--worktree]
 
 ## Workflow
 
-### Phase 0: Parse Arguments (--worktree only)
-
-If `--worktree` flag is present in $ARGUMENTS:
-
-1. **Remove flag from input**: Extract the initial idea without `--worktree`
-2. **Check current branch**: Run `git branch --show-current`
-   - If NOT on `main` or `master`: Display error "Worktreeモードはmain/masterブランチでのみ使用できます。現在のブランチ: {branch}" and STOP
-3. **Set worktree mode flag** for Phase 4
-
 ### Phase 1: Initial Understanding
 
-1. **Acknowledge the input**: `$ARGUMENTS` (without --worktree flag if present)
+1. **Acknowledge the input**: `$ARGUMENTS`
 2. **Quick analysis**:
    - What is the user trying to achieve?
    - What domain/area does this touch?
@@ -100,26 +90,9 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
-**Worktree Mode (if --worktree was specified)**:
-
-Before creating any files, create the worktree:
-
-1. **Create branch**: `git branch feature/{feature-name}`
-   - If branch already exists: Display error "ブランチ feature/{feature-name} は既に存在します" and STOP
-2. **Create worktree**: `git worktree add .kiro/worktrees/specs/{feature-name} feature/{feature-name}`
-   - If worktree already exists: Display error and STOP
-   - **Rollback on failure**: If worktree creation fails, delete the branch with `git branch -d feature/{feature-name}`
-3. **Change working directory**: `cd .kiro/worktrees/specs/{feature-name}`
-
-**Directory Creation**:
-
-1. **Create directory**:
-   - Normal mode: `.kiro/specs/{feature-name}/`
-   - Worktree mode: `.kiro/specs/{feature-name}/` (within the worktree)
+1. **Create directory**: `.kiro/specs/{feature-name}/`
 
 2. **Generate spec.json** (get current UTC timestamp first):
-
-**Normal mode spec.json**:
 ```json
 {
   "feature_name": "{feature-name}",
@@ -140,37 +113,6 @@ Before creating any files, create the worktree:
       "generated": false,
       "approved": false
     }
-  }
-}
-```
-
-**Worktree mode spec.json** (add worktree field):
-```json
-{
-  "feature_name": "{feature-name}",
-  "created_at": "{timestamp-from-step-1}",
-  "updated_at": "{timestamp-from-step-1}",
-  "language": "ja",
-  "phase": "requirements-generated",
-  "approvals": {
-    "requirements": {
-      "generated": true,
-      "approved": false
-    },
-    "design": {
-      "generated": false,
-      "approved": false
-    },
-    "tasks": {
-      "generated": false,
-      "approved": false
-    }
-  },
-  "worktree": {
-    "enabled": true,
-    "path": ".kiro/worktrees/specs/{feature-name}",
-    "branch": "feature/{feature-name}",
-    "created_at": "{timestamp-from-step-1}"
   }
 }
 ```
@@ -232,47 +174,12 @@ Generate `.kiro/specs/{feature-name}/requirements.md` with the following structu
 
 After file generation:
 
-**Normal Mode Output**:
 ```
 ## 完了
 
 ### 生成されたファイル
 - `.kiro/specs/{feature-name}/spec.json`
 - `.kiro/specs/{feature-name}/requirements.md`
-
-### Decision Log サマリー
-- {decision-1}: {conclusion}
-- {decision-2}: {conclusion}
-...
-
-### 次のステップ
-
-1. requirements.md を確認してください
-2. 承認後、設計フェーズへ進みます:
-
-\`\`\`
-/kiro:spec-design {feature-name}
-\`\`\`
-
-### オプション
-- Gap分析（既存コードとの差分確認）: `/kiro:validate-gap {feature-name}`
-```
-
-**Worktree Mode Output**:
-```
-## 完了
-
-### モード
-Worktreeモード
-
-### Worktree情報
-- ブランチ: `feature/{feature-name}`
-- パス: `.kiro/worktrees/specs/{feature-name}`
-- 以降のコマンドはworktreeディレクトリで実行されます
-
-### 生成されたファイル
-- `.kiro/specs/{feature-name}/spec.json` (worktree内)
-- `.kiro/specs/{feature-name}/requirements.md` (worktree内)
 
 ### Decision Log サマリー
 - {decision-1}: {conclusion}
@@ -310,9 +217,6 @@ Worktreeモード
 - **Name conflict**: Append suffix or propose alternative
 - **User wants to stop early**: Save partial discussion as draft
 - **Technical uncertainty**: Note in "Open Questions" section
-- **Not on main/master (--worktree)**: Display error message indicating that worktree mode requires main/master branch
-- **Branch exists (--worktree)**: Display error message indicating that the branch already exists
-- **Worktree creation failure**: Rollback by deleting the created branch, then display error message
 
 ## Language
 

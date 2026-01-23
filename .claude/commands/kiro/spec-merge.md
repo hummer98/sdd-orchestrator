@@ -282,9 +282,13 @@ git worktree remove "{WORKTREE_ABSOLUTE_PATH}" --force
 
 #### 5.2: Delete Feature Branch
 ```bash
-git branch -D {worktree.branch}
+git branch -d {worktree.branch}
 ```
-- Use `-D` for force delete (squash-merge does not mark branch as "merged")
+- Use `-d` for safe delete (only if merged)
+- If `-d` fails with "not fully merged" error, use `-D` to force delete:
+  ```bash
+  git branch -D {worktree.branch}
+  ```
 - If this fails, log warning but continue to next step
 
 ### Step 6: Report Success

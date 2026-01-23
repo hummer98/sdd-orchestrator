@@ -99,6 +99,7 @@ export interface SpecDetailActions {
   setSpecJson(specJson: SpecDetail['specJson']): void;
   setArtifact(type: ArtifactType, info: ArtifactInfo | null): void;
   setTaskProgress(progress: TaskProgress | null): void;
+  setParallelTaskInfo(info: import('../../types').ParallelTaskInfo | null): void;
   /**
    * debatex-document-review Task 3.2: Set project default scheme
    * Called when project is selected and projectDefaults.json is loaded
@@ -253,7 +254,7 @@ export interface SpecStoreState
 /** Combined SpecStore actions (for Facade compatibility) */
 export interface SpecStoreActions
   extends SpecListActions,
-    Omit<SpecDetailActions, 'setSpecDetail' | 'setSpecJson' | 'setArtifact' | 'setTaskProgress'>,
+    Omit<SpecDetailActions, 'setSpecDetail' | 'setSpecJson' | 'setArtifact' | 'setTaskProgress' | 'setParallelTaskInfo'>,
     AutoExecutionActions,
     SpecManagerExecutionActions {
   // Note: refreshSpecs removed - File Watcher handles updates automatically

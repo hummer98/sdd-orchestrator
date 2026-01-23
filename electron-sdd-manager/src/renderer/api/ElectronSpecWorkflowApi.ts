@@ -252,6 +252,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
           inspection: null,
         },
         taskProgress: null,
+        parallelTaskInfo: null,
       };
 
       // アーティファクトを読み込み

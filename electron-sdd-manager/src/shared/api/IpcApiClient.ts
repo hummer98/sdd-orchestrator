@@ -125,6 +125,7 @@ export class IpcApiClient implements ApiClient {
           inspection: null,
         },
         taskProgress: null,
+        parallelTaskInfo: null,
       } as SpecDetail;
     });
   }

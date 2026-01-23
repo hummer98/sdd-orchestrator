@@ -4,9 +4,10 @@
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8
  */
 
-import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress, SpecJson } from '../types';
+import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress, SpecJson, ParallelTaskInfo } from '../types';
 import { getLatestInspectionReportFile, normalizeInspectionState } from '../types/inspection';
 import type { ArtifactType } from '../stores/spec/types';
+import { parseTasksContent } from '@shared/utils/taskParallelParser';
 
 /**
  * Callbacks for SpecSyncService initialization
@@ -17,6 +18,7 @@ export interface SpecSyncServiceCallbacks {
   setSpecJson: (specJson: SpecJson) => void;
   setArtifact: (type: ArtifactType, info: ArtifactInfo | null) => void;
   setTaskProgress: (progress: TaskProgress | null) => void;
+  setParallelTaskInfo: (info: ParallelTaskInfo | null) => void;
   updateSpecMetadata: (specId: string) => Promise<void>;
   editorSyncCallback: (specPath: string, artifact: ArtifactType) => Promise<void>;
 }
@@ -244,6 +246,14 @@ export class SpecSyncService {
       // Calculate task progress
       const taskProgress = this.calculateTaskProgress(tasksArtifact.content);
       this.callbacks.setTaskProgress(taskProgress);
+
+      // Calculate parallel task info
+      const parseResult = parseTasksContent(tasksArtifact.content);
+      this.callbacks.setParallelTaskInfo({
+        parallelTasks: parseResult.parallelTasks,
+        totalTasks: parseResult.totalTasks,
+        groups: parseResult.groups,
+      });
 
       // Auto-fix phase if all tasks complete
       // spec-path-ssot-refactor: Use spec.name instead of spec.path

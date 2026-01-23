@@ -182,6 +182,7 @@ export function initSpecStoreFacade(): void {
     setSpecJson: (specJson) => useSpecDetailStore.getState().setSpecJson(specJson),
     setArtifact: (type, info) => useSpecDetailStore.getState().setArtifact(type, info),
     setTaskProgress: (progress) => useSpecDetailStore.getState().setTaskProgress(progress),
+    setParallelTaskInfo: (info) => useSpecDetailStore.getState().setParallelTaskInfo(info),
     updateSpecMetadata: async (specId) => {
       // Dynamic import to avoid circular dependency
       const { useProjectStore } = await import('../projectStore');

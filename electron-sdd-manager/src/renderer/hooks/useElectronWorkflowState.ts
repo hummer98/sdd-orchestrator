@@ -73,12 +73,9 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   // Worktree
   const { isOnMain, isConverting, handleConvert: handleConvertToWorktree } = useConvertToWorktree();
 
-  // Parallel Mode
+  // Parallel Mode (only UI state, parallel task info comes from specDetail)
   const parallelModeEnabled = useParallelModeStore((state) => state.parallelModeEnabled);
   const toggleParallelMode = useParallelModeStore((state) => state.toggleParallelMode);
-  const setParseResult = useParallelModeStore((state) => state.setParseResult);
-  const getParseResult = useParallelModeStore((state) => state.getParseResult);
-  const hasParallelTasks = useParallelModeStore((state) => state.hasParallelTasks);
 
   // Metrics
   const currentMetrics = useMetricsStore((state) => state.currentMetrics);
@@ -156,49 +153,18 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     return hasWorktreePath({ worktree: specJson?.worktree });
   }, [specJson?.worktree]);
 
-  // Parallel Tasks
+  // Parallel Tasks (from specDetail.parallelTaskInfo - calculated in specDetailStore)
   const specHasParallelTasks = useMemo(() => {
-    const specName = specDetail?.metadata.name;
-    if (!specName) return false;
-    return hasParallelTasks(specName);
-  }, [specDetail?.metadata.name, hasParallelTasks]);
+    return (specDetail?.parallelTaskInfo?.parallelTasks ?? 0) > 0;
+  }, [specDetail?.parallelTaskInfo?.parallelTasks]);
 
   const parallelTaskCount = useMemo(() => {
-    const specName = specDetail?.metadata.name;
-    if (!specName) return 0;
-    const result = getParseResult(specName);
-    return result?.parallelTasks ?? 0;
-  }, [specDetail?.metadata.name, getParseResult]);
+    return specDetail?.parallelTaskInfo?.parallelTasks ?? 0;
+  }, [specDetail?.parallelTaskInfo?.parallelTasks]);
 
   // ---------------------------------------------------------------------------
   // Effects
   // ---------------------------------------------------------------------------
-
-  // Fetch parse results for parallel execution
-  useEffect(() => {
-    if (!specDetail?.metadata.name) return;
-
-    const specName = specDetail.metadata.name;
-    const cachedResult = getParseResult(specName);
-    if (cachedResult) return;
-
-    const fetchParseResults = async () => {
-      try {
-        const parseResult = await window.electronAPI.parseTasksForParallel(specName);
-        if (parseResult) {
-          setParseResult(specName, {
-            groups: parseResult.groups,
-            totalTasks: parseResult.totalTasks,
-            parallelTasks: parseResult.parallelTasks,
-          });
-        }
-      } catch (error) {
-        console.error('Failed to parse tasks for parallel:', error);
-      }
-    };
-
-    fetchParseResults();
-  }, [specDetail?.metadata.name, getParseResult, setParseResult]);
 
   // Load metrics and start activity tracking
   useEffect(() => {
@@ -446,25 +412,15 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     const specName = specDetail.metadata.name;
-    const parseResult = getParseResult(specName);
+    const parallelTaskInfo = specDetail.parallelTaskInfo;
 
-    if (!parseResult || parseResult.groups.length === 0) {
+    if (!parallelTaskInfo || parallelTaskInfo.groups.length === 0) {
       notify.error('並列タスクが見つかりません');
       return;
     }
 
     await wrapExecution(async () => {
-      const groups = parseResult.groups as ReadonlyArray<{
-        readonly groupIndex: number;
-        readonly tasks: ReadonlyArray<{
-          readonly id: string;
-          readonly title: string;
-          readonly isParallel: boolean;
-          readonly completed: boolean;
-          readonly parentId: string | null;
-        }>;
-        readonly isParallel: boolean;
-      }>;
+      const groups = parallelTaskInfo.groups;
 
       const pendingGroup = groups.find((group) =>
         group.tasks.some((task) => !task.completed)
@@ -504,7 +460,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         notify.error('タスクの起動に失敗しました');
       }
     });
-  }, [specDetail, getParseResult, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
   const handleToggleParallelMode = useCallback(() => {
     toggleParallelMode();

@@ -68,6 +68,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -83,6 +84,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -93,6 +95,7 @@ describe('SpecSyncService', () => {
         setSpecJson: vi.fn(),
         setArtifact: vi.fn(),
         setTaskProgress: vi.fn(),
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: vi.fn(),
         editorSyncCallback: vi.fn(),
       });
@@ -110,6 +113,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -133,6 +137,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -187,6 +192,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -242,6 +248,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -263,6 +270,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -291,6 +299,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -311,6 +320,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -349,6 +359,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -369,6 +380,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -394,6 +406,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -434,6 +447,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -471,6 +485,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -495,6 +510,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });
@@ -515,6 +531,7 @@ describe('SpecSyncService', () => {
         setSpecJson: mockSetSpecJson,
         setArtifact: mockSetArtifact,
         setTaskProgress: mockSetTaskProgress,
+        setParallelTaskInfo: vi.fn(),
         updateSpecMetadata: mockUpdateSpecMetadata,
         editorSyncCallback: mockEditorSyncCallback,
       });

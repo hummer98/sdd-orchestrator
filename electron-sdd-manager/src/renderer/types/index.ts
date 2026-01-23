@@ -88,6 +88,34 @@ export interface SpecDetail {
     inspection: ArtifactInfo | null;
   };
   taskProgress: TaskProgress | null;
+  /** Parallel task info calculated from tasks.md (P) markers */
+  parallelTaskInfo: ParallelTaskInfo | null;
+}
+
+/** Task item from parsed tasks.md */
+export interface ParsedTaskItem {
+  readonly id: string;
+  readonly title: string;
+  readonly isParallel: boolean;
+  readonly completed: boolean;
+  readonly parentId: string | null;
+}
+
+/** Task group for parallel execution */
+export interface ParsedTaskGroup {
+  readonly groupIndex: number;
+  readonly tasks: readonly ParsedTaskItem[];
+  readonly isParallel: boolean;
+}
+
+/** Parallel task information for parallel execution mode */
+export interface ParallelTaskInfo {
+  /** Number of tasks with (P) marker */
+  parallelTasks: number;
+  /** Total number of tasks */
+  totalTasks: number;
+  /** Grouped tasks for parallel execution */
+  groups: readonly ParsedTaskGroup[];
 }
 
 export interface ArtifactInfo {

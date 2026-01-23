@@ -124,6 +124,58 @@ describe('useSpecDetailStore', () => {
       });
     });
 
+    it('should calculate parallelTaskInfo from tasks.md content with (P) markers', async () => {
+      const tasksContent = `# Tasks
+- [ ] 1. Parent task
+- [ ] 1.1 (P) Parallel task A
+- [ ] 1.2 (P) Parallel task B
+- [ ] 1.3 (P) Parallel task C
+- [ ] 2. Sequential task
+- [ ] 3. Another task`;
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn()
+        .mockImplementation((_specName: string, filename: string) => {
+          if (filename.includes('tasks')) return Promise.resolve(tasksContent);
+          return Promise.reject(new Error('Not found'));
+        });
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
+
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      const state = useSpecDetailStore.getState();
+      const parallelTaskInfo = state.specDetail?.parallelTaskInfo;
+      expect(parallelTaskInfo?.parallelTasks).toBe(3);
+      expect(parallelTaskInfo?.totalTasks).toBe(6);
+      expect(parallelTaskInfo?.groups).toBeDefined();
+      expect(parallelTaskInfo?.groups.length).toBeGreaterThan(0);
+    });
+
+    it('should return parallelTaskInfo with zero parallel tasks when no (P) markers', async () => {
+      const tasksContent = `# Tasks
+- [ ] 1. Task one
+- [ ] 2. Task two
+- [ ] 3. Task three`;
+
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn()
+        .mockImplementation((_specName: string, filename: string) => {
+          if (filename.includes('tasks')) return Promise.resolve(tasksContent);
+          return Promise.reject(new Error('Not found'));
+        });
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
+
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      const state = useSpecDetailStore.getState();
+      const parallelTaskInfo = state.specDetail?.parallelTaskInfo;
+      expect(parallelTaskInfo?.parallelTasks).toBe(0);
+      expect(parallelTaskInfo?.totalTasks).toBe(3);
+      expect(parallelTaskInfo?.groups).toBeDefined();
+    });
+
     it('should set isLoading during selection when not silent', async () => {
       let resolveSpecJson: (value: unknown) => void;
       const specJsonPromise = new Promise((resolve) => {
@@ -381,6 +433,7 @@ describe('useSpecDetailStore', () => {
           inspection: null,
         },
         taskProgress: null,
+        parallelTaskInfo: null,
       };
       useSpecDetailStore.setState({ specDetail: mockDetail });
 
@@ -388,6 +441,37 @@ describe('useSpecDetailStore', () => {
 
       const state = useSpecDetailStore.getState();
       expect(state.specDetail?.taskProgress).toEqual({ total: 5, completed: 3, percentage: 60 });
+    });
+
+    it('setParallelTaskInfo should update parallelTaskInfo', () => {
+      // First set a specDetail
+      const mockDetail: SpecDetail = {
+        metadata: mockSpec,
+        specJson: mockSpecJson,
+        artifacts: {
+          requirements: null,
+          design: null,
+          tasks: null,
+          research: null,
+          inspection: null,
+        },
+        taskProgress: null,
+        parallelTaskInfo: null,
+      };
+      useSpecDetailStore.setState({ specDetail: mockDetail });
+
+      useSpecDetailStore.getState().setParallelTaskInfo({
+        parallelTasks: 3,
+        totalTasks: 10,
+        groups: [],
+      });
+
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.parallelTaskInfo).toEqual({
+        parallelTasks: 3,
+        totalTasks: 10,
+        groups: [],
+      });
     });
   });
 

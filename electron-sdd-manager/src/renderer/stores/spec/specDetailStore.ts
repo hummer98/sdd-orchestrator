@@ -6,12 +6,13 @@
  */
 
 import { create } from 'zustand';
-import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress } from '../../types';
+import type { SpecMetadata, SpecDetail, ArtifactInfo, TaskProgress, ParallelTaskInfo } from '../../types';
 import { getLatestInspectionReportFile, normalizeInspectionState } from '../../types/inspection';
 import type { SpecDetailState, SpecDetailActions, ArtifactType } from './types';
 import { DEFAULT_SPEC_DETAIL_STATE } from './types';
 import { useEditorStore } from '../editorStore';
 import { DEFAULT_REVIEWER_SCHEME, type ReviewerScheme } from '@shared/registry';
+import { parseTasksContent } from '@shared/utils/taskParallelParser';
 
 type SpecDetailStore = SpecDetailState & SpecDetailActions;
 
@@ -173,6 +174,18 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         }
       }
 
+      // Calculate parallel task info from tasks.md content using shared parser
+      let parallelTaskInfo: ParallelTaskInfo | null = null;
+      if (tasks?.content) {
+        const parseResult = parseTasksContent(tasks.content);
+        parallelTaskInfo = {
+          parallelTasks: parseResult.parallelTasks,
+          totalTasks: parseResult.totalTasks,
+          groups: parseResult.groups,
+        };
+        console.log('[specDetailStore] Parallel task info calculated:', { spec: spec.name, parallelTaskInfo });
+      }
+
       // Auto-sync documentReview field with file system state
       // spec-path-ssot-refactor: Use spec.name instead of spec.path
       const t3 = performance.now();
@@ -200,6 +213,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
           inspection,
         },
         taskProgress,
+        parallelTaskInfo,
       };
 
       // Bug fix: spec-json-to-workflowstore-sync-missing
@@ -336,6 +350,21 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       specDetail: {
         ...specDetail,
         taskProgress: progress,
+      },
+    });
+  },
+
+  /**
+   * Set parallelTaskInfo in specDetail
+   */
+  setParallelTaskInfo: (info: ParallelTaskInfo | null) => {
+    const { specDetail } = get();
+    if (!specDetail) return;
+
+    set({
+      specDetail: {
+        ...specDetail,
+        parallelTaskInfo: info,
       },
     });
   },

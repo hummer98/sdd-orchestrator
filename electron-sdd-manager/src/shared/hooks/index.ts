@@ -21,3 +21,10 @@ export type {
   UseSpecListLogicOptions,
   UseSpecListLogicResult,
 } from './useSpecListLogic';
+
+// spec-workflow-unification: Shared workflow handlers for Electron and Remote UI
+export { useSpecWorkflowHandlers } from './useSpecWorkflowHandlers';
+export type {
+  UseSpecWorkflowHandlersConfig,
+  UseSpecWorkflowHandlersReturn,
+} from './useSpecWorkflowHandlers';

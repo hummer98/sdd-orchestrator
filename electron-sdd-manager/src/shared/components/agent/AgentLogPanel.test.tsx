@@ -253,4 +253,134 @@ describe('Shared AgentLogPanel', () => {
       expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // Bug fix: agent-log-result-display - result event display tests
+  // Ensures ResultBlock is rendered for result events
+  // ============================================================
+  describe('result event display', () => {
+    it('should display ResultBlock for successful result event', () => {
+      const resultLog: LogEntry = {
+        id: 'result-1',
+        stream: 'stdout',
+        data: '{"type":"result","subtype":"success","is_error":false,"duration_ms":5000,"num_turns":3,"result":"Task completed successfully","usage":{"input_tokens":100,"output_tokens":50}}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={{ ...baseAgent, status: 'completed' }} logs={[resultLog]} />);
+
+      // Should display ResultBlock with success styling
+      expect(screen.getByTestId('result-block')).toBeInTheDocument();
+      expect(screen.getByTestId('result-success-icon')).toBeInTheDocument();
+      expect(screen.getByText('完了')).toBeInTheDocument();
+      expect(screen.getByText('Task completed successfully')).toBeInTheDocument();
+    });
+
+    it('should display ResultBlock for error result event', () => {
+      const errorResultLog: LogEntry = {
+        id: 'error-result-1',
+        stream: 'stdout',
+        data: '{"type":"result","is_error":true,"result":"Error: Something went wrong","duration_ms":2000}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={{ ...baseAgent, status: 'error' }} logs={[errorResultLog]} />);
+
+      // Should display ResultBlock with error styling
+      expect(screen.getByTestId('result-block')).toBeInTheDocument();
+      expect(screen.getByTestId('result-error-icon')).toBeInTheDocument();
+      expect(screen.getByText('エラー')).toBeInTheDocument();
+      expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
+    });
+
+    it('should display result statistics (duration, turns, tokens)', () => {
+      const resultWithStats: LogEntry = {
+        id: 'result-stats',
+        stream: 'stdout',
+        data: '{"type":"result","is_error":false,"duration_ms":267132,"num_turns":8,"result":"Done","usage":{"input_tokens":9,"output_tokens":1684}}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={{ ...baseAgent, status: 'completed' }} logs={[resultWithStats]} />);
+
+      // Should display all statistics
+      expect(screen.getByText(/267\.1秒/)).toBeInTheDocument(); // duration
+      expect(screen.getByText(/8ターン/)).toBeInTheDocument(); // turns
+      expect(screen.getByText(/9 \/ 1,684 tokens/)).toBeInTheDocument(); // tokens
+    });
+  });
+
+  describe('tool_result event display', () => {
+    it('should display tool_result block from user event', () => {
+      const toolResultLog: LogEntry = {
+        id: 'tool-result-1',
+        stream: 'stdout',
+        data: '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-123","content":"File content here"}]}}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={baseAgent} logs={[toolResultLog]} />);
+
+      // Tool result block should be displayed (collapsed by default)
+      expect(screen.getByTestId('tool-result-block')).toBeInTheDocument();
+      expect(screen.getByText('ツール結果')).toBeInTheDocument();
+      expect(screen.getByText('成功')).toBeInTheDocument();
+
+      // Click to expand and see content
+      fireEvent.click(screen.getByTestId('tool-result-block'));
+      expect(screen.getByText('File content here')).toBeInTheDocument();
+    });
+
+    it('should display tool_result error with error indicator', () => {
+      const toolErrorLog: LogEntry = {
+        id: 'tool-error-1',
+        stream: 'stdout',
+        data: '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-456","content":"Error: File not found","is_error":true}]}}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={baseAgent} logs={[toolErrorLog]} />);
+
+      // Should have tool result block
+      expect(screen.getByTestId('tool-result-block')).toBeInTheDocument();
+      // Should have tool result indicator showing error
+      expect(screen.getByTestId('tool-result-indicator')).toBeInTheDocument();
+      // Error indicator should show "エラー"
+      expect(screen.getByText('エラー')).toBeInTheDocument();
+    });
+
+    it('should show tool_result content when expanded', () => {
+      const toolErrorLog: LogEntry = {
+        id: 'tool-error-2',
+        stream: 'stdout',
+        data: '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-789","content":"Error: Permission denied","is_error":true}]}}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={baseAgent} logs={[toolErrorLog]} />);
+
+      // Click to expand
+      fireEvent.click(screen.getByTestId('tool-result-block'));
+
+      // Content should now be visible
+      expect(screen.getByTestId('tool-result-content')).toBeInTheDocument();
+      expect(screen.getByText('Error: Permission denied')).toBeInTheDocument();
+    });
+  });
+
+  describe('system event display', () => {
+    it('should display system init event with session info', () => {
+      const systemInitLog: LogEntry = {
+        id: 'system-init',
+        stream: 'stdout',
+        data: '{"type":"system","subtype":"init","cwd":"/path/to/project","session_id":"abc-123","model":"claude-opus-4-5-20251101","version":"1.0.0"}',
+        timestamp: Date.now(),
+      };
+
+      render(<AgentLogPanel agent={baseAgent} logs={[systemInitLog]} />);
+
+      // Should display session info
+      expect(screen.getByText(/\/path\/to\/project/)).toBeInTheDocument();
+    });
+  });
 });

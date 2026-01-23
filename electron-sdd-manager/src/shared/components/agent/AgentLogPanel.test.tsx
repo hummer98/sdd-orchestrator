@@ -383,4 +383,108 @@ describe('Shared AgentLogPanel', () => {
       expect(screen.getByText(/\/path\/to\/project/)).toBeInTheDocument();
     });
   });
+
+  describe('Auto-scroll behavior', () => {
+    it('should auto-scroll to bottom when user is near bottom and new logs arrive', () => {
+      const logs: LogEntry[] = [
+        { id: 'log-1', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 1"}]}}', timestamp: Date.now() },
+      ];
+
+      const { rerender } = render(<AgentLogPanel agent={baseAgent} logs={logs} />);
+
+      // Get scroll container
+      const scrollContainer = screen.getByTestId('agent-log-panel').querySelector('.overflow-auto');
+      expect(scrollContainer).toBeTruthy();
+
+      // Mock scroll properties - user is at bottom
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 500, configurable: true });
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 450, writable: true, configurable: true });
+      Object.defineProperty(scrollContainer, 'clientHeight', { value: 100, configurable: true });
+
+      // Simulate scroll event (user at bottom - within 50px threshold)
+      fireEvent.scroll(scrollContainer!);
+
+      // Add new log
+      const newLogs = [
+        ...logs,
+        { id: 'log-2', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 2"}]}}', timestamp: Date.now() + 100 },
+      ];
+
+      // Update scrollHeight for new content
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 600, configurable: true });
+
+      rerender(<AgentLogPanel agent={baseAgent} logs={newLogs} />);
+
+      // Should auto-scroll to bottom (scrollTop should be set to scrollHeight)
+      expect(scrollContainer!.scrollTop).toBe(600);
+    });
+
+    it('should NOT auto-scroll when user has scrolled up', () => {
+      const logs: LogEntry[] = [
+        { id: 'log-1', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 1"}]}}', timestamp: Date.now() },
+      ];
+
+      const { rerender } = render(<AgentLogPanel agent={baseAgent} logs={logs} />);
+
+      // Get scroll container
+      const scrollContainer = screen.getByTestId('agent-log-panel').querySelector('.overflow-auto');
+      expect(scrollContainer).toBeTruthy();
+
+      // Mock scroll properties - user has scrolled up (far from bottom)
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 500, configurable: true });
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, writable: true, configurable: true });
+      Object.defineProperty(scrollContainer, 'clientHeight', { value: 100, configurable: true });
+
+      // Simulate scroll event (user scrolled up - more than 50px from bottom)
+      fireEvent.scroll(scrollContainer!);
+
+      const originalScrollTop = scrollContainer!.scrollTop;
+
+      // Add new log
+      const newLogs = [
+        ...logs,
+        { id: 'log-2', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 2"}]}}', timestamp: Date.now() + 100 },
+      ];
+
+      rerender(<AgentLogPanel agent={baseAgent} logs={newLogs} />);
+
+      // Should NOT auto-scroll - scrollTop should remain unchanged
+      expect(scrollContainer!.scrollTop).toBe(originalScrollTop);
+    });
+
+    it('should resume auto-scroll when user scrolls back to bottom', () => {
+      const logs: LogEntry[] = [
+        { id: 'log-1', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 1"}]}}', timestamp: Date.now() },
+      ];
+
+      const { rerender } = render(<AgentLogPanel agent={baseAgent} logs={logs} />);
+
+      // Get scroll container
+      const scrollContainer = screen.getByTestId('agent-log-panel').querySelector('.overflow-auto');
+      expect(scrollContainer).toBeTruthy();
+
+      // First: user scrolls up
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 500, configurable: true });
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, writable: true, configurable: true });
+      Object.defineProperty(scrollContainer, 'clientHeight', { value: 100, configurable: true });
+      fireEvent.scroll(scrollContainer!);
+
+      // Then: user scrolls back to bottom
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 420, writable: true, configurable: true });
+      fireEvent.scroll(scrollContainer!);
+
+      // Add new log
+      const newLogs = [
+        ...logs,
+        { id: 'log-2', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Line 2"}]}}', timestamp: Date.now() + 100 },
+      ];
+
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 600, configurable: true });
+
+      rerender(<AgentLogPanel agent={baseAgent} logs={newLogs} />);
+
+      // Should auto-scroll again since user is back at bottom
+      expect(scrollContainer!.scrollTop).toBe(600);
+    });
+  });
 });

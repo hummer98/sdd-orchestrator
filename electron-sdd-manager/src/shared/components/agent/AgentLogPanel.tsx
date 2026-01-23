@@ -85,6 +85,7 @@ export function AgentLogPanel({
   onActivity,
 }: AgentLogPanelProps): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
   const isRunning = agent?.status === 'running';
 
@@ -161,9 +162,25 @@ export function AgentLogPanel({
     return entries;
   }, [logs, agent?.command]);
 
-  // Auto-scroll to bottom when new logs arrive
+  // Track if user is near bottom of scroll area
   useEffect(() => {
-    if (scrollRef.current) {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+
+    const handleScrollEnd = () => {
+      // Consider "near bottom" if within 50px of the bottom
+      const threshold = 50;
+      isNearBottomRef.current =
+        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < threshold;
+    };
+
+    scrollEl.addEventListener('scroll', handleScrollEnd);
+    return () => scrollEl.removeEventListener('scroll', handleScrollEnd);
+  }, []);
+
+  // Auto-scroll to bottom only when user is near bottom
+  useEffect(() => {
+    if (scrollRef.current && isNearBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [parsedEntries.length]);

@@ -754,8 +754,9 @@ describe('SpecManagerService', () => {
  * Claude CLI引数の一元管理
  */
 describe('buildClaudeArgs', () => {
-  // BASE_FLAGS now includes --disallowedTools AskUserQuestion (always disabled in stream-json mode)
-  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json', '--disallowedTools', 'AskUserQuestion'];
+  // BASE_FLAGS now includes --disallowedTools=AskUserQuestion (always disabled in stream-json mode)
+  // Note: --disallowedTools uses = syntax to prevent CLI from consuming subsequent args as tool names
+  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json', '--disallowedTools=AskUserQuestion'];
 
   it('should build args with command only', () => {
     const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
@@ -800,10 +801,9 @@ describe('buildClaudeArgs', () => {
         skipPermissions: true,
       });
       expect(args).toContain('--dangerously-skip-permissions');
-      // Note: --dangerously-skip-permissions comes before --disallowedTools in actual output
-      // BASE_FLAGS already includes --disallowedTools, so we verify position separately
+      // Note: --dangerously-skip-permissions comes before --disallowedTools= in actual output
       const skipIndex = args.indexOf('--dangerously-skip-permissions');
-      const disallowedIndex = args.indexOf('--disallowedTools');
+      const disallowedIndex = args.findIndex(arg => arg.startsWith('--disallowedTools='));
       expect(skipIndex).toBeLessThan(disallowedIndex);
     });
 
@@ -843,59 +843,54 @@ describe('buildClaudeArgs', () => {
         allowedTools: ['Read', 'Write'],
       });
       expect(args).toContain('--dangerously-skip-permissions');
-      expect(args).toContain('--allowedTools');
+      expect(args).toContain('--allowedTools=Read,Write');
     });
   });
 
   // ============================================================
-  // disallowedTools tests (--disallowedTools AskUserQuestion)
+  // disallowedTools tests (--disallowedTools=AskUserQuestion)
   // AskUserQuestion is always disabled because it cannot be handled
   // in stream-json mode (-p --output-format stream-json)
+  // Note: Uses = syntax to prevent CLI from consuming subsequent args
   // ============================================================
   describe('disallowedTools - AskUserQuestion always disabled', () => {
-    it('should always include --disallowedTools AskUserQuestion with no options', () => {
+    it('should always include --disallowedTools=AskUserQuestion with no options', () => {
       const args = buildClaudeArgs({});
-      expect(args).toContain('--disallowedTools');
-      expect(args).toContain('AskUserQuestion');
-      const disallowedIndex = args.indexOf('--disallowedTools');
-      expect(args[disallowedIndex + 1]).toBe('AskUserQuestion');
+      expect(args).toContain('--disallowedTools=AskUserQuestion');
     });
 
-    it('should include --disallowedTools AskUserQuestion with command', () => {
+    it('should include --disallowedTools=AskUserQuestion with command', () => {
       const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
-      expect(args).toContain('--disallowedTools');
-      expect(args).toContain('AskUserQuestion');
+      expect(args).toContain('--disallowedTools=AskUserQuestion');
     });
 
-    it('should include --disallowedTools AskUserQuestion with resume session', () => {
+    it('should include --disallowedTools=AskUserQuestion with resume session', () => {
       const args = buildClaudeArgs({
         resumeSessionId: 'session-123',
         resumePrompt: 'continue',
       });
-      expect(args).toContain('--disallowedTools');
-      expect(args).toContain('AskUserQuestion');
+      expect(args).toContain('--disallowedTools=AskUserQuestion');
     });
 
-    it('should include --disallowedTools AskUserQuestion with allowedTools', () => {
+    it('should include --disallowedTools=AskUserQuestion with allowedTools', () => {
       const args = buildClaudeArgs({
         command: '/kiro:spec-impl my-feature',
         allowedTools: ['Read', 'Write', 'Edit'],
       });
-      expect(args).toContain('--disallowedTools');
-      expect(args).toContain('AskUserQuestion');
+      expect(args).toContain('--disallowedTools=AskUserQuestion');
       // Both allowedTools and disallowedTools should be present
-      expect(args).toContain('--allowedTools');
+      expect(args).toContain('--allowedTools=Read,Write,Edit');
     });
 
-    it('should place --disallowedTools after base flags and before --resume', () => {
+    it('should place --disallowedTools= after base flags and before --resume', () => {
       const args = buildClaudeArgs({
         resumeSessionId: 'session-123',
         resumePrompt: 'continue',
         skipPermissions: true,
       });
-      const disallowedIndex = args.indexOf('--disallowedTools');
+      const disallowedIndex = args.findIndex(arg => arg.startsWith('--disallowedTools='));
       const resumeIndex = args.indexOf('--resume');
-      // --disallowedTools should come before --resume
+      // --disallowedTools= should come before --resume
       expect(disallowedIndex).toBeLessThan(resumeIndex);
       expect(disallowedIndex).toBeGreaterThan(0); // After base flags
     });
@@ -1009,7 +1004,7 @@ console.log(JSON.stringify(process.argv.slice(2)));
     });
   }
 
-  it('should preserve --disallowedTools as separate args (not joined with command)', async () => {
+  it('should preserve --disallowedTools= with command as separate args', async () => {
     const args = buildClaudeArgs({ command: '/kiro:spec-design my-feature' });
 
     const spawnArgs = await startAgentAndCaptureArgs(service, {
@@ -1020,24 +1015,21 @@ console.log(JSON.stringify(process.argv.slice(2)));
       group: 'doc',
     });
 
-    // Verify --disallowedTools and AskUserQuestion are separate args
-    expect(spawnArgs).toContain('--disallowedTools');
-    expect(spawnArgs).toContain('AskUserQuestion');
+    // Verify --disallowedTools=AskUserQuestion is a single combined arg (= syntax)
+    expect(spawnArgs).toContain('--disallowedTools=AskUserQuestion');
 
-    const disallowedIndex = spawnArgs.indexOf('--disallowedTools');
-    expect(spawnArgs[disallowedIndex + 1]).toBe('AskUserQuestion');
-
-    // Verify the command is a separate arg (not joined with --disallowedTools)
+    // Verify the command is a separate arg (not consumed by --disallowedTools)
     const commandArg = spawnArgs.find((arg: string) => arg.startsWith('/kiro:'));
     expect(commandArg).toBe('/kiro:spec-design my-feature');
 
-    // Verify no arg contains the joined string (the bug we fixed)
-    const joinedBugPattern = '--disallowedTools AskUserQuestion';
-    const hasBuggyJoinedArg = spawnArgs.some((arg: string) => arg.includes(joinedBugPattern));
+    // Verify no arg contains the joined string (the bug we fixed with = syntax)
+    const hasBuggyJoinedArg = spawnArgs.some((arg: string) =>
+      arg.includes('--disallowedTools AskUserQuestion') || arg.includes('AskUserQuestion /kiro:')
+    );
     expect(hasBuggyJoinedArg).toBe(false);
   });
 
-  it('should preserve --allowedTools as separate args', async () => {
+  it('should preserve --allowedTools= with tools as single combined arg', async () => {
     const args = buildClaudeArgs({
       command: '/kiro:spec-impl my-feature',
       allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
@@ -1051,17 +1043,12 @@ console.log(JSON.stringify(process.argv.slice(2)));
       group: 'impl',
     });
 
-    // Verify --allowedTools and its values are separate args
-    expect(spawnArgs).toContain('--allowedTools');
-    expect(spawnArgs).toContain('Read');
-    expect(spawnArgs).toContain('Write');
-    expect(spawnArgs).toContain('Edit');
+    // Verify --allowedTools= is a single combined arg with comma-separated tools
+    expect(spawnArgs).toContain('--allowedTools=Read,Write,Edit,Glob,Grep');
 
-    // Verify no arg contains joined tool names
-    const hasBuggyJoinedArg = spawnArgs.some((arg: string) =>
-      arg.includes('Read Write') || arg.includes('--allowedTools Read')
-    );
-    expect(hasBuggyJoinedArg).toBe(false);
+    // Verify the command is a separate arg (not consumed by --allowedTools)
+    const commandArg = spawnArgs.find((arg: string) => arg.startsWith('/kiro:'));
+    expect(commandArg).toBe('/kiro:spec-impl my-feature');
   });
 
   it('should preserve --resume and its values as separate args', async () => {

@@ -108,11 +108,15 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
 
   // AskUserQuestionは常に無効化（stream-jsonモードでは応答できないため）
   // See: https://github.com/anthropics/claude-code/issues/16712
-  args.push('--disallowedTools', 'AskUserQuestion');
+  // Note: --disallowedTools は <tools...> 形式（可変長引数）のため、
+  // 別引数として渡すと後続のコマンド引数もツール名として解釈される
+  // そのため = を使って1つの引数として結合する
+  args.push('--disallowedTools=AskUserQuestion');
 
   // allowedToolsは--resumeより前に配置（CLIの引数解析順序を考慮）
+  // Note: --allowedTools も <tools...> 形式のため、カンマ区切りで結合する
   if (options.allowedTools && options.allowedTools.length > 0) {
-    args.push('--allowedTools', ...options.allowedTools);
+    args.push(`--allowedTools=${options.allowedTools.join(',')}`);
   }
 
   if (options.resumeSessionId) {
@@ -619,13 +623,13 @@ export class SpecManagerService {
    * @returns Normalized arguments with base flags guaranteed
    */
   private normalizeClaudeArgs(args: string[], skipPermissions?: boolean): string[] {
-    // Fast path: If args already contain --disallowedTools, they came from buildClaudeArgs
+    // Fast path: If args already contain --disallowedTools=, they came from buildClaudeArgs
     // and are already properly formatted. Just handle skipPermissions if needed.
-    if (args.includes('--disallowedTools')) {
+    const disallowedIndex = args.findIndex(arg => arg.startsWith('--disallowedTools='));
+    if (disallowedIndex !== -1) {
       if (skipPermissions && !args.includes('--dangerously-skip-permissions')) {
         const result = [...args];
-        // Insert after --output-format stream-json but before --disallowedTools
-        const disallowedIndex = result.indexOf('--disallowedTools');
+        // Insert after --output-format stream-json but before --disallowedTools=
         result.splice(disallowedIndex, 0, '--dangerously-skip-permissions');
         return result;
       }

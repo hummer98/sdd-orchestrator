@@ -188,14 +188,14 @@ describe('projectConfigService', () => {
   describe('DEFAULT_LAYOUT (Task 1.1)', () => {
     it('デフォルト値が定義されている', () => {
       expect(DEFAULT_LAYOUT).toBeDefined();
-      expect(DEFAULT_LAYOUT.leftPaneWidth).toBe(288);
-      expect(DEFAULT_LAYOUT.rightPaneWidth).toBe(320);
-      expect(DEFAULT_LAYOUT.bottomPaneHeight).toBe(192);
-      expect(DEFAULT_LAYOUT.agentListHeight).toBe(160);
+      expect(DEFAULT_LAYOUT.leftPaneWidth).toBe(320);
+      expect(DEFAULT_LAYOUT.rightPaneWidth).toBe(360);
+      expect(DEFAULT_LAYOUT.bottomPaneHeight).toBe(240);
+      expect(DEFAULT_LAYOUT.agentListHeight).toBe(200);
     });
 
-    it('projectAgentPanelHeightのデフォルト値が120pxで定義されている', () => {
-      expect(DEFAULT_LAYOUT.projectAgentPanelHeight).toBe(120);
+    it('projectAgentPanelHeightのデフォルト値が160pxで定義されている', () => {
+      expect(DEFAULT_LAYOUT.projectAgentPanelHeight).toBe(160);
     });
 
     it('デフォルト値がスキーマで検証可能', () => {

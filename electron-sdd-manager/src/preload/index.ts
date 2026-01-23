@@ -19,7 +19,7 @@ import type { ServerStartResult, ServerStatus, ServerError } from '../main/servi
 import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '../main/services/unifiedCommandsetInstaller';
 import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
-import type { LayoutValues } from '../main/services/layoutConfigService';
+import type { LayoutValues } from '../main/services/configStore';
 import type {
   InstallOptions as ExperimentalInstallOptions,
   InstallResult as ExperimentalInstallResult,
@@ -969,27 +969,24 @@ const electronAPI = {
   // ============================================================
 
   /**
-   * Load layout config from project
-   * @param projectPath Project root path
-   * @returns Layout values or null if not found
+   * Load layout config (app-wide)
+   * @returns Layout values or null if not found (use DEFAULT_LAYOUT)
    */
-  loadLayoutConfig: (projectPath: string): Promise<LayoutValues | null> =>
-    ipcRenderer.invoke(IPC_CHANNELS.LOAD_LAYOUT_CONFIG, projectPath),
+  loadLayoutConfig: (): Promise<LayoutValues | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_LAYOUT_CONFIG),
 
   /**
-   * Save layout config to project
-   * @param projectPath Project root path
+   * Save layout config (app-wide)
    * @param layout Layout values to save
    */
-  saveLayoutConfig: (projectPath: string, layout: LayoutValues): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SAVE_LAYOUT_CONFIG, projectPath, layout),
+  saveLayoutConfig: (layout: LayoutValues): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_LAYOUT_CONFIG, layout),
 
   /**
-   * Reset layout config to default values
-   * @param projectPath Project root path
+   * Reset layout config to default values (app-wide)
    */
-  resetLayoutConfig: (projectPath: string): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.RESET_LAYOUT_CONFIG, projectPath),
+  resetLayoutConfig: (): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESET_LAYOUT_CONFIG),
 
   // ============================================================
   // Skip Permissions Config (bug fix: persist-skip-permission-per-project)

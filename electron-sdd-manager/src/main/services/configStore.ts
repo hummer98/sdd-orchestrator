@@ -12,6 +12,28 @@ const MAX_RECENT_PROJECTS = 10;
 const DEFAULT_HANG_THRESHOLD = 300000; // 5 minutes in milliseconds
 
 /**
+ * Layout values for UI panes
+ */
+export interface LayoutValues {
+  leftPaneWidth: number;
+  rightPaneWidth: number;
+  bottomPaneHeight: number;
+  agentListHeight: number;
+  projectAgentPanelHeight?: number;
+}
+
+/**
+ * Default layout values (synced with App.tsx)
+ */
+export const DEFAULT_LAYOUT: LayoutValues = {
+  leftPaneWidth: 320,    // w-80 = 20rem = 320px
+  rightPaneWidth: 360,   // 360px
+  bottomPaneHeight: 240, // h-60 = 15rem = 240px
+  agentListHeight: 200,  // Agent一覧パネルの高さ（右サイドバー）
+  projectAgentPanelHeight: 160, // ProjectAgentPanelの高さ（左サイドバー）
+};
+
+/**
  * Multi-window state for persistence
  * Requirements: 4.1-4.6
  */
@@ -30,6 +52,8 @@ interface AppConfig {
   multiWindowStates: MultiWindowState[];
   // bugs-worktree-support: Default worktree mode for bugs
   bugsWorktreeDefault: boolean;
+  // App-wide layout settings (moved from project-specific storage)
+  layout: LayoutValues | null;
 }
 
 const schema = {
@@ -83,6 +107,18 @@ const schema = {
   bugsWorktreeDefault: {
     type: 'boolean',
     default: false,
+  },
+  // App-wide layout settings
+  layout: {
+    type: ['object', 'null'],
+    default: null,
+    properties: {
+      leftPaneWidth: { type: 'number' },
+      rightPaneWidth: { type: 'number' },
+      bottomPaneHeight: { type: 'number' },
+      agentListHeight: { type: 'number' },
+      projectAgentPanelHeight: { type: 'number' },
+    },
   },
 } as const;
 
@@ -213,6 +249,34 @@ export class ConfigStore {
    */
   setBugsWorktreeDefault(value: boolean): void {
     this.store.set('bugsWorktreeDefault', value);
+  }
+
+  // ============================================================
+  // Layout Settings (app-wide, moved from project-specific storage)
+  // ============================================================
+
+  /**
+   * Get layout settings
+   * @returns Layout values or null if not set (use DEFAULT_LAYOUT)
+   */
+  getLayout(): LayoutValues | null {
+    const layout = this.store.get('layout');
+    return layout ?? null;
+  }
+
+  /**
+   * Set layout settings
+   * @param layout - Layout values to save
+   */
+  setLayout(layout: LayoutValues): void {
+    this.store.set('layout', layout);
+  }
+
+  /**
+   * Reset layout to default values
+   */
+  resetLayout(): void {
+    this.store.set('layout', DEFAULT_LAYOUT);
   }
 }
 

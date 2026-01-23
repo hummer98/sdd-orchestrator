@@ -235,4 +235,60 @@ describe('ConfigStore', () => {
       expect(states[0].bounds.width).toBe(1200);
     });
   });
+
+  // App-wide layout settings
+  describe('layout', () => {
+    it('should return null when no layout stored', async () => {
+      mockStore.get.mockReturnValue(undefined);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getLayout();
+      expect(result).toBeNull();
+    });
+
+    it('should return stored layout', async () => {
+      const storedLayout = {
+        leftPaneWidth: 300,
+        rightPaneWidth: 350,
+        bottomPaneHeight: 200,
+        agentListHeight: 180,
+        projectAgentPanelHeight: 140,
+      };
+      mockStore.get.mockReturnValue(storedLayout);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getLayout();
+      expect(result).toEqual(storedLayout);
+    });
+
+    it('should set layout', async () => {
+      const layout = {
+        leftPaneWidth: 300,
+        rightPaneWidth: 350,
+        bottomPaneHeight: 200,
+        agentListHeight: 180,
+        projectAgentPanelHeight: 140,
+      };
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      store.setLayout(layout);
+
+      expect(mockStore.set).toHaveBeenCalledWith('layout', layout);
+    });
+
+    it('should reset layout to default values', async () => {
+      const { ConfigStore, DEFAULT_LAYOUT } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      store.resetLayout();
+
+      expect(mockStore.set).toHaveBeenCalledWith('layout', DEFAULT_LAYOUT);
+    });
+  });
 });

@@ -67,11 +67,11 @@ const PROJECT_AGENT_PANEL_MAX = 300;
 // デフォルトのレイアウト値（pane-layout-persistence feature）
 // layoutConfigService.tsのDEFAULT_LAYOUTと同一の値
 const DEFAULT_LAYOUT = {
-  leftPaneWidth: 288,    // w-72 = 18rem = 288px
-  rightPaneWidth: 320,   // w-80 = 20rem = 320px
-  bottomPaneHeight: 192, // h-48 = 12rem = 192px
-  agentListHeight: 160,  // Agent一覧パネルの高さ（右サイドバー）
-  projectAgentPanelHeight: 120, // ProjectAgentPanelの高さ（左サイドバー）
+  leftPaneWidth: 320,    // w-80 = 20rem = 320px
+  rightPaneWidth: 360,   // 360px
+  bottomPaneHeight: 240, // h-60 = 15rem = 240px
+  agentListHeight: 200,  // Agent一覧パネルの高さ（右サイドバー）
+  projectAgentPanelHeight: 160, // ProjectAgentPanelの高さ（左サイドバー）
 };
 
 export function App() {
@@ -147,76 +147,61 @@ export function App() {
     );
   }, []);
 
-  // レイアウト保存関数（pane-layout-persistence feature）
-  // 現在のペインサイズをプロジェクトの設定ファイルに保存
+  // レイアウト保存関数（app-wide layout persistence）
+  // 現在のペインサイズをアプリ設定に保存
   const saveLayout = useCallback(async () => {
-    if (!currentProject) return;
     try {
-      await window.electronAPI.saveLayoutConfig(currentProject, {
+      await window.electronAPI.saveLayoutConfig({
         leftPaneWidth,
         rightPaneWidth,
         bottomPaneHeight,
         agentListHeight,
-        projectAgentPanelHeight, // project-agent-panel-always-visible feature
+        projectAgentPanelHeight,
       });
       console.log('[App] Layout config saved');
     } catch (error) {
       console.error('[App] Failed to save layout config:', error);
     }
-  }, [currentProject, leftPaneWidth, rightPaneWidth, bottomPaneHeight, agentListHeight, projectAgentPanelHeight]);
+  }, [leftPaneWidth, rightPaneWidth, bottomPaneHeight, agentListHeight, projectAgentPanelHeight]);
 
-  // レイアウト復元関数（pane-layout-persistence feature）
-  // プロジェクトの設定ファイルからペインサイズを読み込む
-  // Note: skipPermissions is now loaded in projectStore.selectProject (Bug fix: skip-permissions-not-loaded)
-  const loadLayout = useCallback(async (projectPath: string) => {
+  // レイアウト復元関数（app-wide layout persistence）
+  // アプリ設定からペインサイズを読み込む
+  const loadLayout = useCallback(async () => {
     try {
-      const config = await window.electronAPI.loadLayoutConfig(projectPath);
+      const config = await window.electronAPI.loadLayoutConfig();
       if (config) {
         setLeftPaneWidth(config.leftPaneWidth);
         setRightPaneWidth(config.rightPaneWidth);
         setBottomPaneHeight(config.bottomPaneHeight);
         setAgentListHeight(config.agentListHeight);
-        // project-agent-panel-always-visible feature: 後方互換性（存在しない場合はデフォルト値）
+        // 後方互換性（存在しない場合はデフォルト値）
         setProjectAgentPanelHeight(config.projectAgentPanelHeight ?? DEFAULT_LAYOUT.projectAgentPanelHeight);
         console.log('[App] Layout config loaded:', config);
       } else {
-        // 設定ファイルが存在しない場合はデフォルト値を使用
-        setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
-        setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
-        setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
-        setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-        setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
+        // 設定が存在しない場合はデフォルト値を使用
         console.log('[App] No layout config found, using defaults');
       }
     } catch (error) {
       console.error('[App] Failed to load layout config:', error);
-      // エラー時もデフォルト値を適用
-      setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
-      setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
-      setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
-      setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-      setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
     }
   }, []);
 
-  // レイアウトリセット関数（pane-layout-persistence feature）
-  // すべてのペインをデフォルト値に戻し、設定ファイルに保存
+  // レイアウトリセット関数（app-wide layout persistence）
+  // すべてのペインをデフォルト値に戻し、設定に保存
   const resetLayout = useCallback(async () => {
     setLeftPaneWidth(DEFAULT_LAYOUT.leftPaneWidth);
     setRightPaneWidth(DEFAULT_LAYOUT.rightPaneWidth);
     setBottomPaneHeight(DEFAULT_LAYOUT.bottomPaneHeight);
     setAgentListHeight(DEFAULT_LAYOUT.agentListHeight);
-    setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight); // project-agent-panel-always-visible feature
+    setProjectAgentPanelHeight(DEFAULT_LAYOUT.projectAgentPanelHeight);
 
-    if (currentProject) {
-      try {
-        await window.electronAPI.resetLayoutConfig(currentProject);
-        console.log('[App] Layout config reset to defaults');
-      } catch (error) {
-        console.error('[App] Failed to reset layout config:', error);
-      }
+    try {
+      await window.electronAPI.resetLayoutConfig();
+      console.log('[App] Layout config reset to defaults');
+    } catch (error) {
+      console.error('[App] Failed to reset layout config:', error);
     }
-  }, [currentProject]);
+  }, []);
 
   // Load initial project from command line argument and recent projects on mount
   const initialProjectLoaded = useRef(false);
@@ -227,14 +212,11 @@ export function App() {
     initialProjectLoaded.current = true;
 
     // Load recent projects first, then check for initial project
+    // Also load app-wide layout config
     loadRecentProjects().then(async () => {
       await loadInitialProject();
-      // After loading initial project, load layout config if project path was set
-      // Note: loadSpecs is no longer needed here - loadInitialProject calls selectProject which syncs specs
-      const initialPath = await window.electronAPI.getInitialProjectPath();
-      if (initialPath) {
-        await loadLayout(initialPath);
-      }
+      // Load app-wide layout config (no longer project-specific)
+      await loadLayout();
     });
   }, [loadRecentProjects, loadInitialProject, loadLayout]);
 
@@ -316,8 +298,7 @@ export function App() {
     const cleanupOpenProject = window.electronAPI.onMenuOpenProject(async (projectPath: string) => {
       console.log(`[App] Opening project from menu: ${projectPath}`);
       await selectProject(projectPath);
-      // Note: loadSpecs is no longer needed here - selectProject now syncs specs to specStore
-      await loadLayout(projectPath);
+      // Note: Layout is app-wide, no need to reload on project switch
     });
 
     const cleanupCliInstall = window.electronAPI.onMenuInstallCliCommand(() => {
@@ -418,7 +399,7 @@ export function App() {
       cleanupResetLayout();
       cleanupExpDebug();
     };
-  }, [selectProject, loadLayout, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
+  }, [selectProject, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
 
   // Handle beforeunload for unsaved changes
   useEffect(() => {

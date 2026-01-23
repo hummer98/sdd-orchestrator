@@ -54,9 +54,9 @@ interface DesktopLayoutProps {
 // Layout Constants (matching Electron DEFAULT_LAYOUT)
 // =============================================================================
 
-const DEFAULT_LEFT_SIDEBAR_WIDTH = 288;  // w-72 = 18rem = 288px
-const DEFAULT_RIGHT_SIDEBAR_WIDTH = 320; // w-80 = 20rem = 320px
-const DEFAULT_FOOTER_HEIGHT = 192;       // h-48 = 12rem = 192px
+const DEFAULT_LEFT_SIDEBAR_WIDTH = 320;  // w-80 = 20rem = 320px
+const DEFAULT_RIGHT_SIDEBAR_WIDTH = 360; // 360px
+const DEFAULT_FOOTER_HEIGHT = 240;       // h-60 = 15rem = 240px
 
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;

@@ -47,7 +47,8 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { access, rm, stat, readdir } from 'fs/promises';
 import { join } from 'path';
-import { layoutConfigService, type LayoutValues } from '../services/layoutConfigService';
+import { layoutConfigService } from '../services/layoutConfigService';
+import type { LayoutValues } from '../services/configStore';
 import {
   ExperimentalToolsInstallerService,
   getExperimentalTemplateDir,
@@ -1883,31 +1884,31 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
-  // Layout Config (pane-layout-persistence feature)
+  // Layout Config (app-wide, moved from project-specific storage)
   // Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2
   // ============================================================
 
   ipcMain.handle(
     IPC_CHANNELS.LOAD_LAYOUT_CONFIG,
-    async (_event, projectPath: string): Promise<LayoutValues | null> => {
-      logger.debug('[handlers] LOAD_LAYOUT_CONFIG called', { projectPath });
-      return layoutConfigService.loadLayoutConfig(projectPath);
+    async (): Promise<LayoutValues | null> => {
+      logger.debug('[handlers] LOAD_LAYOUT_CONFIG called');
+      return configStore.getLayout();
     }
   );
 
   ipcMain.handle(
     IPC_CHANNELS.SAVE_LAYOUT_CONFIG,
-    async (_event, projectPath: string, layout: LayoutValues): Promise<void> => {
-      logger.debug('[handlers] SAVE_LAYOUT_CONFIG called', { projectPath, layout });
-      return layoutConfigService.saveLayoutConfig(projectPath, layout);
+    async (_event, layout: LayoutValues): Promise<void> => {
+      logger.debug('[handlers] SAVE_LAYOUT_CONFIG called', { layout });
+      configStore.setLayout(layout);
     }
   );
 
   ipcMain.handle(
     IPC_CHANNELS.RESET_LAYOUT_CONFIG,
-    async (_event, projectPath: string): Promise<void> => {
-      logger.info('[handlers] RESET_LAYOUT_CONFIG called', { projectPath });
-      return layoutConfigService.resetLayoutConfig(projectPath);
+    async (): Promise<void> => {
+      logger.info('[handlers] RESET_LAYOUT_CONFIG called');
+      configStore.resetLayout();
     }
   );
 

@@ -141,11 +141,11 @@ export type LayoutConfig = LayoutConfigV1;
  * App.tsxの現在の初期値と同一
  */
 export const DEFAULT_LAYOUT: LayoutValues = {
-  leftPaneWidth: 288,    // w-72 = 18rem = 288px
-  rightPaneWidth: 320,   // w-80 = 20rem = 320px
-  bottomPaneHeight: 192, // h-48 = 12rem = 192px
-  agentListHeight: 160,  // Agent一覧パネルの高さ（右サイドバー）
-  projectAgentPanelHeight: 120, // ProjectAgentPanelの高さ（左サイドバー）
+  leftPaneWidth: 320,    // w-80 = 20rem = 320px
+  rightPaneWidth: 360,   // 360px
+  bottomPaneHeight: 240, // h-60 = 15rem = 240px
+  agentListHeight: 200,  // Agent一覧パネルの高さ（右サイドバー）
+  projectAgentPanelHeight: 160, // ProjectAgentPanelの高さ（左サイドバー）
 };
 
 /**

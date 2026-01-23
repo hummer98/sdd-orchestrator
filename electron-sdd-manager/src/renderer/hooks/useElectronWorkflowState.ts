@@ -210,8 +210,9 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     const apiClient = {
       getSpecMetrics: async (id: string) => {
         try {
+          // IPC handler already returns { ok, value } or { ok, error } format
           const result = await window.electronAPI.getSpecMetrics(id);
-          return { ok: true as const, value: result };
+          return result;
         } catch (error) {
           return { ok: false as const, error: error instanceof Error ? error.message : String(error) };
         }

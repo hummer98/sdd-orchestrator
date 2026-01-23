@@ -9,7 +9,7 @@
  */
 
 import { clsx } from 'clsx';
-import { Play, Square, GitBranch } from 'lucide-react';
+import { Bot, Square, GitBranch } from 'lucide-react';
 import { hasWorktreePath, isImplStarted, type WorktreeConfig } from '../../types/worktree';
 import { EventLogButton } from '../eventLog';
 
@@ -121,7 +121,7 @@ export function SpecWorkflowFooter({
           </>
         ) : (
           <>
-            <Play className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
             自動実行
           </>
         )}

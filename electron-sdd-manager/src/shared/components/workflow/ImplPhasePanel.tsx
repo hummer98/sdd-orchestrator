@@ -72,16 +72,11 @@ export interface ImplPhasePanelProps {
 // =============================================================================
 
 /**
- * Determines the button label based on mode and state
+ * Determines the button label based on state
  * spec-worktree-early-creation: Simplified - no hasExistingWorktree needed
+ * Note: Worktree mode is indicated by color only, not label
  */
-function getButtonLabel(
-  worktreeModeSelected: boolean,
-  isImplStarted: boolean
-): string {
-  if (worktreeModeSelected) {
-    return isImplStarted ? 'Worktreeで実装継続' : 'Worktreeで実装開始';
-  }
+function getButtonLabel(isImplStarted: boolean): string {
   return isImplStarted ? '実装継続' : '実装開始';
 }
 
@@ -114,8 +109,8 @@ export function ImplPhasePanel({
   onToggleParallelMode,
   onExecuteParallel,
 }: ImplPhasePanelProps): React.ReactElement {
-  // Get button label based on current state
-  const buttonLabel = getButtonLabel(worktreeModeSelected, isImplStarted);
+  // Get button label based on current state (color indicates worktree mode)
+  const buttonLabel = getButtonLabel(isImplStarted);
 
   // Button disabled state
   const isButtonDisabled = !canExecute || isExecuting;

@@ -66,10 +66,11 @@ describe('ImplPhasePanel', () => {
   // ==========================================================================
   // Label switching logic
   // spec-worktree-early-creation: Simplified - no hasExistingWorktree
+  // Note: Worktree mode is indicated by color only, not label
   // ==========================================================================
   describe('label switching', () => {
-    // Worktree mode + not started = "Worktreeで実装開始"
-    it('should show "Worktreeで実装開始" when worktree mode and not started', () => {
+    // Worktree mode + not started = "実装開始" (color indicates worktree)
+    it('should show "実装開始" when worktree mode and not started', () => {
       render(
         <ImplPhasePanel
           {...defaultProps}
@@ -77,11 +78,11 @@ describe('ImplPhasePanel', () => {
           isImplStarted={false}
         />
       );
-      expect(screen.getByText('Worktreeで実装開始')).toBeInTheDocument();
+      expect(screen.getByText('実装開始')).toBeInTheDocument();
     });
 
-    // Worktree mode + started = "Worktreeで実装継続"
-    it('should show "Worktreeで実装継続" when worktree mode and impl started', () => {
+    // Worktree mode + started = "実装継続" (color indicates worktree)
+    it('should show "実装継続" when worktree mode and impl started', () => {
       render(
         <ImplPhasePanel
           {...defaultProps}
@@ -89,7 +90,7 @@ describe('ImplPhasePanel', () => {
           isImplStarted={true}
         />
       );
-      expect(screen.getByText('Worktreeで実装継続')).toBeInTheDocument();
+      expect(screen.getByText('実装継続')).toBeInTheDocument();
     });
 
     // Normal mode + not started = "実装開始"

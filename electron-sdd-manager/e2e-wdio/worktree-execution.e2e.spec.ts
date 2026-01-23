@@ -6,7 +6,7 @@
  *
  * Test Scenarios (Updated for worktree-execution-ui FIX-4):
  * 1. ImplFlowFrame display (no worktree): Checkbox unchecked, button shows "実装開始"
- * 2. ImplFlowFrame display (with worktree): Checkbox checked & locked, button shows "Worktreeで実装継続"
+ * 2. ImplFlowFrame display (with worktree): Checkbox checked & locked, button shows "実装継続" (color indicates worktree mode)
  * 3. Worktree badge display in spec list
  * 4. Error on non-main branch when worktree mode selected
  * 5. spec.json worktree field verification
@@ -572,17 +572,17 @@ describe('Worktree Execution E2E', () => {
       }
     });
 
-    it('should display continue button with worktree label', async () => {
+    it('should display continue button (color indicates worktree mode)', async () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Check start button text (worktree mode, impl started)
+      // Note: Worktree mode is indicated by color (violet) only, not label
       const startButton = await $('[data-testid="impl-start-button"]');
       if (await startButton.isExisting()) {
         const buttonText = await startButton.getText();
         console.log(`[E2E] Start button text (worktree): "${buttonText}"`);
-        expect(buttonText).toContain('Worktree');
         expect(buttonText).toContain('継続');
       }
     });

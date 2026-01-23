@@ -5,7 +5,7 @@
  * Requirements: 1.1-1.4, 2.1-2.7, 3.1-3.6, 4.1-4.5
  */
 
-import { Play, Square, GitBranch, Loader2 } from 'lucide-react';
+import { Bot, Square, GitBranch, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { BugJson } from '../types/bugJson';
 
@@ -96,7 +96,7 @@ export function BugWorkflowFooter({
               : 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
           )}
         >
-          <Play className="w-4 h-4" />
+          <Bot className="w-4 h-4" />
           <span>自動実行</span>
         </button>
       ) : (

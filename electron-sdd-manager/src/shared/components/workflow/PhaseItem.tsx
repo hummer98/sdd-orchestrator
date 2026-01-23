@@ -5,7 +5,7 @@
  * spec-productivity-metrics Task 10.3: Integrate PhaseMetricsView for inline metrics display
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import {
   Check,
@@ -13,6 +13,8 @@ import {
   Loader2,
   Pause,
   Bot,
+  Info,
+  X,
 } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 // spec-productivity-metrics: Task 10.3 - Phase metrics types
@@ -57,6 +59,8 @@ export interface PhaseItemProps {
   className?: string;
   /** Phase metrics data (optional - spec-productivity-metrics Task 10.3) */
   phaseMetrics?: PhaseMetrics | null;
+  /** Phase description for info dialog (optional) */
+  description?: string;
 }
 
 // =============================================================================
@@ -99,7 +103,11 @@ export function PhaseItem({
   onShowAgentLog,
   className,
   phaseMetrics,
+  description,
 }: PhaseItemProps): React.ReactElement {
+  // Info dialog state
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+
   // Show approve and execute button condition
   const showApproveAndExecute =
     previousStatus === 'generated' && status === 'pending' && !isExecuting && canExecute;
@@ -157,7 +165,7 @@ export function PhaseItem({
         className
       )}
     >
-      {/* Left side: Progress icon + phase name + metrics (Task 10.3) */}
+      {/* Left side: Progress icon + phase name + info icon + metrics (Task 10.3) */}
       <div data-testid="phase-left-side" className="flex items-center gap-2">
         <button
           onClick={handleProgressIconClick}
@@ -173,6 +181,17 @@ export function PhaseItem({
         <span className="font-medium text-gray-700 dark:text-gray-300">
           {label}
         </span>
+        {/* Info icon - shows description dialog when clicked */}
+        {description && (
+          <button
+            data-testid={`phase-info-button-${phase}`}
+            onClick={() => setIsInfoDialogOpen(true)}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            title="詳細を表示"
+          >
+            <Info className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          </button>
+        )}
         {/* spec-productivity-metrics Task 10.3: Inline phase metrics display */}
         {/* Requirements: 6.1-6.4 */}
         {phaseMetrics && (phaseMetrics.aiTimeMs > 0 || phaseMetrics.humanTimeMs > 0) && (
@@ -276,6 +295,57 @@ export function PhaseItem({
           </button>
         )}
       </div>
+
+      {/* Info Dialog */}
+      {description && isInfoDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsInfoDialogOpen(false)}
+          />
+          {/* Dialog */}
+          <div
+            data-testid={`phase-info-dialog-${phase}`}
+            className={clsx(
+              'relative z-10 w-full max-w-sm p-5 rounded-lg shadow-xl',
+              'bg-white dark:bg-gray-900'
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                {label}
+              </h2>
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {/* Content */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+              {description}
+            </p>
+            {/* Close button */}
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className={clsx(
+                  'px-4 py-2 rounded-md text-sm',
+                  'bg-gray-100 dark:bg-gray-800',
+                  'text-gray-700 dark:text-gray-300',
+                  'hover:bg-gray-200 dark:hover:bg-gray-700',
+                  'transition-colors'
+                )}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

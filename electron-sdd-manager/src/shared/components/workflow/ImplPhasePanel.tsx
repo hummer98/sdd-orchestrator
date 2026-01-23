@@ -11,7 +11,7 @@
  * - Integrates ParallelModeToggle for parallel task execution
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import {
   Check,
@@ -19,6 +19,8 @@ import {
   Loader2,
   Pause,
   Bot,
+  Info,
+  X,
 } from 'lucide-react';
 import type { PhaseStatus } from './PhaseItem';
 import { AgentIcon, AgentBranchIcon } from '../ui/AgentIcon';
@@ -65,6 +67,8 @@ export interface ImplPhasePanelProps {
   onToggleParallelMode?: () => void;
   /** Callback for parallel execution (when parallel mode is ON) */
   onExecuteParallel?: () => void;
+  /** Phase description for info dialog (optional) */
+  description?: string;
 }
 
 // =============================================================================
@@ -108,7 +112,11 @@ export function ImplPhasePanel({
   parallelModeEnabled = false,
   onToggleParallelMode,
   onExecuteParallel,
+  description,
 }: ImplPhasePanelProps): React.ReactElement {
+  // Info dialog state
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+
   // Get button label based on current state (color indicates worktree mode)
   const buttonLabel = getButtonLabel(isImplStarted);
 
@@ -169,12 +177,23 @@ export function ImplPhasePanel({
         className
       )}
     >
-      {/* Left side: Status icon + phase label */}
+      {/* Left side: Status icon + phase label + info icon */}
       <div className="flex items-center gap-2">
         <span className="p-1">{renderStatusIcon()}</span>
         <span className="font-medium text-gray-700 dark:text-gray-300">
           実装
         </span>
+        {/* Info icon - shows description dialog when clicked */}
+        {description && (
+          <button
+            data-testid="impl-info-button"
+            onClick={() => setIsInfoDialogOpen(true)}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            title="詳細を表示"
+          >
+            <Info className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          </button>
+        )}
       </div>
 
       {/* Right side: Auto permission toggle + parallel toggle + action button */}
@@ -247,6 +266,57 @@ export function ImplPhasePanel({
           )}
         </button>
       </div>
+
+      {/* Info Dialog */}
+      {description && isInfoDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsInfoDialogOpen(false)}
+          />
+          {/* Dialog */}
+          <div
+            data-testid="impl-info-dialog"
+            className={clsx(
+              'relative z-10 w-full max-w-sm p-5 rounded-lg shadow-xl',
+              'bg-white dark:bg-gray-900'
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                実装
+              </h2>
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {/* Content */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+              {description}
+            </p>
+            {/* Close button */}
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className={clsx(
+                  'px-4 py-2 rounded-md text-sm',
+                  'bg-gray-100 dark:bg-gray-800',
+                  'text-gray-700 dark:text-gray-300',
+                  'hover:bg-gray-200 dark:hover:bg-gray-700',
+                  'transition-colors'
+                )}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

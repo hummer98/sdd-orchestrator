@@ -8,8 +8,9 @@
  * props-driven設計で、ストア非依存。Electron版とRemote UI版で共有可能。
  */
 
+import { useState } from 'react';
 import { clsx } from 'clsx';
-import { Bot, Check, Circle, Pause, PlayCircle, Wrench } from 'lucide-react';
+import { Bot, Check, Circle, Pause, PlayCircle, Wrench, Info, X } from 'lucide-react';
 import { AgentIcon } from '../ui/AgentIcon';
 import type {
   DocumentReviewState,
@@ -49,6 +50,8 @@ export interface DocumentReviewPanelProps {
   // agent-launch-optimistic-ui: Optimistic UI launching state
   /** Whether an operation is being launched (Optimistic UI) */
   launching?: boolean;
+  /** Panel description for info dialog (optional) */
+  description?: string;
 }
 
 // =============================================================================
@@ -152,7 +155,11 @@ export function DocumentReviewPanel({
   onSchemeChange,
   // agent-launch-optimistic-ui: Optimistic UI launching state
   launching = false,
+  description,
 }: DocumentReviewPanelProps) {
+  // Info dialog state
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+
   const rounds = reviewState?.roundDetails?.length ?? 0;
   // Review start button is enabled when:
   // - Not currently launching (Optimistic UI)
@@ -208,6 +215,18 @@ export function DocumentReviewPanel({
           <h3 className="font-medium text-gray-800 dark:text-gray-200">
             ドキュメントレビュー
           </h3>
+
+          {/* Info icon - shows description dialog when clicked */}
+          {description && (
+            <button
+              data-testid="document-review-info-button"
+              onClick={() => setIsInfoDialogOpen(true)}
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              title="詳細を表示"
+            >
+              <Info className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            </button>
+          )}
 
           {/* gemini-document-review Task 7.1, 7.2: Scheme Selector */}
           {/* Requirements: 7.1, 7.2, 7.3, 7.4 */}
@@ -305,6 +324,57 @@ export function DocumentReviewPanel({
           </button>
         )}
       </div>
+
+      {/* Info Dialog */}
+      {description && isInfoDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsInfoDialogOpen(false)}
+          />
+          {/* Dialog */}
+          <div
+            data-testid="document-review-info-dialog"
+            className={clsx(
+              'relative z-10 w-full max-w-sm p-5 rounded-lg shadow-xl',
+              'bg-white dark:bg-gray-900'
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                ドキュメントレビュー
+              </h2>
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {/* Content */}
+            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+              {description}
+            </p>
+            {/* Close button */}
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setIsInfoDialogOpen(false)}
+                className={clsx(
+                  'px-4 py-2 rounded-md text-sm',
+                  'bg-gray-100 dark:bg-gray-800',
+                  'text-gray-700 dark:text-gray-300',
+                  'hover:bg-gray-200 dark:hover:bg-gray-700',
+                  'transition-colors'
+                )}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

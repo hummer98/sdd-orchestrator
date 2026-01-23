@@ -64,6 +64,65 @@ const PHASE_LABELS: Record<WorkflowPhase, string> = {
   deploy: 'デプロイ',
 };
 
+/** フェーズ説明のマッピング（Infoダイアログ用） */
+const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
+  requirements: `要件定義フェーズでは、ユーザーストーリーや機能要件をEARS (Easy Approach to Requirements Syntax) 形式で定義します。
+
+• ユーザーの期待する機能・振る舞いを明確化
+• 曖昧さを排除した構造化された要件記述
+• 検証可能な受け入れ基準の設定`,
+
+  design: `設計フェーズでは、要件を満たすための技術的なアーキテクチャと実装方針を定義します。
+
+• システム構成・コンポーネント設計
+• データフロー・状態管理の設計
+• 既存コードベースとの統合方針
+• 技術的制約・トレードオフの検討`,
+
+  tasks: `タスクフェーズでは、設計をもとに実装タスクを分割し、TDD (テスト駆動開発) の手順を定義します。
+
+• 依存関係を考慮したタスク分割
+• 各タスクのテストファースト実装手順
+• 並列実行可能なタスクの識別`,
+
+  impl: `実装フェーズでは、タスクに従ってTDD方式でコードを実装します。
+
+• Red-Green-Refactor サイクル
+• テストを先に書き、その後実装
+• 継続的なリファクタリング
+• Worktreeモード: 独立したブランチで安全に作業`,
+
+  inspection: `検査フェーズでは、実装が要件と設計に沿っているかを包括的に検証します。
+
+• 要件への適合性チェック
+• 設計との整合性確認
+• コード品質・テストカバレッジ検証
+• GO/NOGO判定による品質ゲート`,
+
+  deploy: `デプロイフェーズでは、実装をバージョン管理に反映します。
+
+• 通常モード: 変更をコミット
+• Worktreeモード: ブランチをmainにマージ
+• コミットメッセージの自動生成`,
+};
+
+/** ドキュメントレビューの説明（Infoダイアログ用） */
+const DOCUMENT_REVIEW_DESCRIPTION = `ドキュメントレビューでは、生成されたドキュメント（requirements, design, tasks）の品質をAIがレビューします。
+
+• 要件の完全性・一貫性チェック
+• 設計の技術的妥当性評価
+• タスク分割の適切性確認
+• 複数ラウンドの反復的改善`;
+
+/** Inspectionの説明（Infoダイアログ用） */
+const INSPECTION_DESCRIPTION = `Inspectionでは、実装が要件と設計に沿っているかを包括的に検証します。
+
+• 要件への適合性チェック
+• 設計との整合性確認
+• コード品質・テストカバレッジ検証
+• GO/NOGO判定による品質ゲート
+• 問題発見時はFix実行で自動修正`;
+
 const ALL_WORKFLOW_PHASES: WorkflowPhase[] = [
   'requirements',
   'design',
@@ -177,6 +236,7 @@ export function WorkflowViewCore({
               onApproveAndExecute={() => handlers.handleApproveAndExecutePhase(phase)}
               onToggleAutoPermission={() => handlers.handleToggleAutoPermission(phase)}
               onShowAgentLog={() => handlers.handleShowAgentLog(phase)}
+              description={PHASE_DESCRIPTIONS[phase]}
             />
 
             {/* Connector Arrow */}
@@ -208,6 +268,7 @@ export function WorkflowViewCore({
             scheme={state.documentReviewScheme}
             onSchemeChange={handlers.handleSchemeChange}
             launching={state.launching}
+            description={DOCUMENT_REVIEW_DESCRIPTION}
           />
         </div>
 
@@ -232,6 +293,7 @@ export function WorkflowViewCore({
           parallelModeEnabled={state.parallelModeEnabled}
           onToggleParallelMode={handlers.handleToggleParallelMode}
           onExecuteParallel={handlers.handleParallelExecute}
+          description={PHASE_DESCRIPTIONS.impl}
         />
 
         {/* Task Progress (custom render) */}
@@ -257,6 +319,7 @@ export function WorkflowViewCore({
             onExecuteFix={handlers.handleExecuteInspectionFix}
             onToggleAutoPermission={handlers.handleToggleInspectionAutoPermission}
             launching={state.launching}
+            description={INSPECTION_DESCRIPTION}
           />
         </div>
 
@@ -280,6 +343,7 @@ export function WorkflowViewCore({
           onApproveAndExecute={() => handlers.handleApproveAndExecutePhase('deploy')}
           onToggleAutoPermission={() => handlers.handleToggleAutoPermission('deploy')}
           onShowAgentLog={() => handlers.handleShowAgentLog('deploy')}
+          description={PHASE_DESCRIPTIONS.deploy}
         />
       </div>
 

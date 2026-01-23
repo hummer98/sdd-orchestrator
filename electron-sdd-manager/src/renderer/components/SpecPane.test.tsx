@@ -20,8 +20,9 @@ vi.mock('./AgentListPanel', () => ({
   AgentListPanel: () => <div data-testid="agent-list-panel">AgentListPanel</div>,
 }));
 
-vi.mock('./WorkflowView', () => ({
-  WorkflowView: () => <div data-testid="workflow-view">WorkflowView</div>,
+// workflow-view-unification: Mock ElectronWorkflowView (used in SpecPane)
+vi.mock('./ElectronWorkflowView', () => ({
+  ElectronWorkflowView: () => <div data-testid="workflow-view">WorkflowView</div>,
 }));
 
 vi.mock('./ResizeHandle', () => ({

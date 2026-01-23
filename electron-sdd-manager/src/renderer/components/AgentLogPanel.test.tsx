@@ -79,6 +79,10 @@ describe('AgentLogPanel - Task 31', () => {
         }
         return undefined;
       },
+      // Bug fix: getLogsForAgent関数をモックに追加（実装で使用）
+      getLogsForAgent: (agentId: string) => {
+        return logsMap.get(agentId) ?? [];
+      },
     };
   };
 

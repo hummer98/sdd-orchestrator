@@ -739,8 +739,9 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
       expect(callArgs.args).toContain('Edit');
       expect(callArgs.args).toContain('Glob');
       expect(callArgs.args).toContain('Grep');
-      // AskUserQuestion should NOT be included
-      expect(callArgs.args).not.toContain('AskUserQuestion');
+      // AskUserQuestion should be disallowed (via --disallowedTools, not --allowedTools)
+      // See buildClaudeArgs: AskUserQuestion is always disabled for stream-json mode
+      expect(callArgs.args).toContain('--disallowedTools');
     });
 
     it('should pass allowedTools for bug-fix phase', async () => {
@@ -761,7 +762,8 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 
       const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
       expect(callArgs.args).toContain('--allowedTools');
-      expect(callArgs.args).not.toContain('AskUserQuestion');
+      // AskUserQuestion is disallowed via --disallowedTools (not in --allowedTools list)
+      expect(callArgs.args).toContain('--disallowedTools');
     });
 
     it('should pass allowedTools for bug-verify phase', async () => {
@@ -782,8 +784,9 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 
       const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
       expect(callArgs.args).toContain('--allowedTools');
-      // bug-verify should have: Bash, Read, Write, Edit, Glob, Grep (no AskUserQuestion)
-      expect(callArgs.args).not.toContain('AskUserQuestion');
+      // bug-verify should have: Bash, Read, Write, Edit, Glob, Grep
+      // AskUserQuestion is disallowed via --disallowedTools (not in --allowedTools list)
+      expect(callArgs.args).toContain('--disallowedTools');
     });
   });
 });

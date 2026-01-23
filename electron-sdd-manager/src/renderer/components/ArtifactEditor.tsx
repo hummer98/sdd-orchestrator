@@ -17,6 +17,8 @@ import { SearchHighlightLayer } from './SearchHighlightLayer';
 import { PreviewHighlightLayer } from './PreviewHighlightLayer';
 import { useTextSearch } from '../hooks/useTextSearch';
 import { useSearchKeyboard } from '../hooks/useSearchKeyboard';
+import { useHumanActivity } from '../hooks/useHumanActivity';
+import { throttle } from '@shared/utils';
 
 /** Tab configuration for artifact editor */
 export interface TabInfo {
@@ -83,6 +85,15 @@ export function ArtifactEditor({
 
   // Ref for preview container (used by PreviewHighlightLayer)
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // Human activity tracking
+  const { recordActivity } = useHumanActivity();
+
+  // Throttled scroll handler for document-scroll event (250ms)
+  const handleScroll = useMemo(
+    () => throttle(() => recordActivity('document-scroll'), 250),
+    [recordActivity]
+  );
 
   // Initialize text search hook to calculate matches
   useTextSearch();
@@ -174,6 +185,7 @@ export function ArtifactEditor({
       );
       if (!confirmed) return;
     }
+    recordActivity('artifact-tab-change');
     setActiveTab(tab);
   };
 
@@ -275,7 +287,11 @@ export function ArtifactEditor({
       )}
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden relative" ref={previewContainerRef}>
+      <div
+        className="flex-1 overflow-hidden relative"
+        ref={previewContainerRef}
+        onScroll={handleScroll}
+      >
         <MDEditor
           value={content}
           onChange={(value) => setContent(value || '')}

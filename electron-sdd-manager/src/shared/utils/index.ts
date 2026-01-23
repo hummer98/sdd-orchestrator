@@ -9,3 +9,5 @@ export {
   type ClaudeEvent,
   type ContentBlock,
 } from './logFormatter';
+
+export { throttle } from './throttle';

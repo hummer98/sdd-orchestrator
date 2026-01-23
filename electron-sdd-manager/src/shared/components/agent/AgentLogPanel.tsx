@@ -17,8 +17,10 @@ import { Terminal, Copy, Trash2, Loader2, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { parseLogData, type ParsedLogEntry } from '@shared/utils/logFormatter';
 import { aggregateTokens, type TokenUsage } from '@shared/utils/tokenAggregator';
+import { throttle } from '@shared/utils/throttle';
 import { LogEntryBlock } from './LogEntryBlock';
 import type { LogEntry, AgentStatus } from '@shared/api/types';
+import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
 
 // =============================================================================
 // Types
@@ -61,6 +63,8 @@ export interface AgentLogPanelProps {
   showSessionId?: boolean;
   /** Test ID for the component */
   testId?: string;
+  /** Callback for human activity tracking (optional, Electron-only) */
+  onActivity?: (eventType: ActivityEventType) => void;
 }
 
 // =============================================================================
@@ -78,10 +82,19 @@ export function AgentLogPanel({
   emptyLogsMessage = 'ログがありません',
   showSessionId = true,
   testId = 'agent-log-panel',
+  onActivity,
 }: AgentLogPanelProps): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isRunning = agent?.status === 'running';
+
+  // Throttled scroll handler for activity tracking (250ms)
+  const handleScroll = useMemo(
+    () => onActivity
+      ? throttle(() => onActivity('agent-log-scroll'), 250)
+      : undefined,
+    [onActivity]
+  );
 
   // Calculate token usage from logs if showTokens is true and not provided
   const tokenUsage = useMemo(() => {
@@ -260,6 +273,7 @@ export function AgentLogPanel({
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto text-sm p-3 bg-gray-50 dark:bg-gray-900"
+        onScroll={handleScroll}
       >
         {!agent ? (
           <div className="flex items-center justify-center h-full text-gray-500">

@@ -399,6 +399,52 @@ describe('SpecManagerService', () => {
       expect(agentInfo).toBeDefined();
       expect(agentInfo?.cwd).toBe(worktreeCwd);
     });
+
+    // Bug fix: Resume prompt should be added to log as user event
+    it('should add resume prompt to log as user event', async () => {
+      // Create an interrupted agent with sessionId
+      const specDir = path.join(pidDir, 'spec-prompt-log');
+      await fs.mkdir(specDir, { recursive: true });
+
+      const pidFile = {
+        agentId: 'agent-prompt-log-001',
+        specId: 'spec-prompt-log',
+        phase: 'requirements',
+        pid: 999999999,
+        sessionId: 'session-prompt-log-123',
+        status: 'interrupted',
+        startedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString(),
+        command: 'test command',
+      };
+
+      await fs.writeFile(
+        path.join(specDir, 'agent-prompt-log-001.json'),
+        JSON.stringify(pidFile)
+      );
+
+      await service.restoreAgents();
+
+      // Track output callbacks
+      const outputs: Array<{ agentId: string; stream: string; data: string }> = [];
+      service.onOutput((agentId, stream, data) => {
+        outputs.push({ agentId, stream, data });
+      });
+
+      // Resume with custom prompt
+      const customPrompt = 'テスト用の追加指示です';
+      const result = await service.resumeAgent('agent-prompt-log-001', customPrompt);
+
+      expect(result.ok).toBe(true);
+
+      // Verify that the prompt was added to output as user event
+      const promptOutput = outputs.find(
+        (o) => o.agentId === 'agent-prompt-log-001' && o.data.includes('"type":"user"')
+      );
+      expect(promptOutput).toBeDefined();
+      expect(promptOutput?.data).toContain(customPrompt);
+      expect(promptOutput?.stream).toBe('stdout');
+    });
   });
 
   // Task 24.5: stdin転送機能

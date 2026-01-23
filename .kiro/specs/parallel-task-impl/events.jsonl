@@ -1,2 +1,0 @@
-{"type":"worktree:create","message":"Worktree created: feature/parallel-task-impl","worktreePath":".kiro/worktrees/specs/parallel-task-impl","branch":"feature/parallel-task-impl","timestamp":"2026-01-22T08:29:29.977Z"}
-{"type":"phase:transition","message":"Phase transitioned: tasks-generated -> implementation-complete","oldPhase":"tasks-generated","newPhase":"implementation-complete","timestamp":"2026-01-22T08:45:02.886Z"}

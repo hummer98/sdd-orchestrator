@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.0] - 2026-01-23
+
+### Added
+- **workflow**: ワークフローフェーズにInfo説明ダイアログを追加
+- **workflow**: フェーズ説明定数（PHASE_DESCRIPTIONS等）を追加
+
+### Fixed
+- **workflow**: getSpecMetricsのレスポンス二重ラップを修正
+- **editor**: worktreeモードでArtifact保存が正しく動作しない問題を修正
+- **remote-ui**: ParallelModeToggleがRemote UIで表示されない問題を修正
+- **agent**: `--disallowedTools`/`--allowedTools`が後続引数を消費するバグを修正
+
+### Changed
+- **chore**: deprecatedなWorkflowView.tsxと関連テストを削除
+
 ## [0.42.2] - 2026-01-23
 
 ### Fixed

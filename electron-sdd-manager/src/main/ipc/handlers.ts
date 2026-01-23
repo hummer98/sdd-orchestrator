@@ -703,6 +703,30 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  // Bug fix: worktree-artifact-save
+  // writeArtifact uses the same path resolution as readArtifact
+  // This ensures artifacts are saved to the correct location (worktree or main)
+  ipcMain.handle(
+    IPC_CHANNELS.WRITE_ARTIFACT,
+    async (_event, name: string, filename: string, content: string, entityType: 'spec' | 'bug' = 'spec') => {
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+      // Use appropriate path resolver based on entityType (same as readArtifact)
+      const pathResult = entityType === 'bug'
+        ? await fileService.resolveBugPath(currentProjectPath, name)
+        : await fileService.resolveSpecPath(currentProjectPath, name);
+      if (!pathResult.ok) {
+        throw new Error(`${entityType === 'bug' ? 'Bug' : 'Spec'} not found: ${name}`);
+      }
+      const artifactPath = path.join(pathResult.value, filename);
+      const result = await fileService.writeFile(artifactPath, content);
+      if (!result.ok) {
+        throw new Error(`Failed to write artifact: ${result.error.type}`);
+      }
+    }
+  );
+
   ipcMain.handle(
     IPC_CHANNELS.CREATE_SPEC,
     async (

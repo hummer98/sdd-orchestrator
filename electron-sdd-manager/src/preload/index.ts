@@ -76,6 +76,12 @@ const electronAPI = {
   readArtifact: (name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') =>
     ipcRenderer.invoke(IPC_CHANNELS.READ_ARTIFACT, name, filename, entityType),
 
+  // Bug fix: worktree-artifact-save
+  // writeArtifact uses path resolution like readArtifact
+  // This ensures artifacts are saved to the correct location (worktree or main)
+  writeArtifact: (name: string, filename: string, content: string, entityType: 'spec' | 'bug' = 'spec') =>
+    ipcRenderer.invoke(IPC_CHANNELS.WRITE_ARTIFACT, name, filename, content, entityType),
+
   createSpec: (projectPath: string, specName: string, description: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CREATE_SPEC, projectPath, specName, description),
 
@@ -2125,9 +2131,12 @@ const electronAPI = {
   /**
    * Get metrics for a specific spec
    * @param specId Spec identifier
-   * @returns Aggregated metrics for the spec
+   * @returns Aggregated metrics for the spec wrapped in Result type
    */
-  getSpecMetrics: (specId: string): Promise<import('../main/types/metrics').SpecMetrics> =>
+  getSpecMetrics: (specId: string): Promise<
+    | { ok: true; value: import('../main/types/metrics').SpecMetrics }
+    | { ok: false; error: string }
+  > =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_SPEC_METRICS, specId),
 };
 

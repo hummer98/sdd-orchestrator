@@ -10,6 +10,8 @@ export const IPC_CHANNELS = {
   READ_SPECS: 'ipc:read-specs',
   READ_SPEC_JSON: 'ipc:read-spec-json',
   READ_ARTIFACT: 'ipc:read-artifact',
+  // Bug fix: worktree-artifact-save - writeArtifact uses path resolution like readArtifact
+  WRITE_ARTIFACT: 'ipc:write-artifact',
   CREATE_SPEC: 'ipc:create-spec',
   WRITE_FILE: 'ipc:write-file',
   UPDATE_APPROVAL: 'ipc:update-approval',

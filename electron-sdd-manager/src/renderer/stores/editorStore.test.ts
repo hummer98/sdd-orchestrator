@@ -18,6 +18,8 @@ describe('useEditorStore', () => {
       isSaving: false,
       mode: 'edit',
       currentPath: null,
+      // Bug fix: worktree-artifact-save - Added currentEntityType
+      currentEntityType: 'spec',
       error: null,
       // Search state reset
       searchVisible: false,
@@ -134,14 +136,18 @@ describe('useEditorStore', () => {
   });
 
   describe('save', () => {
+    // Bug fix: worktree-artifact-save - save now uses writeArtifact with path resolution
     it('should save content and clear dirty flag', async () => {
-      window.electronAPI.writeFile = vi.fn().mockResolvedValue(undefined);
+      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
 
       useEditorStore.setState({
         content: 'new content',
         originalContent: 'old content',
         isDirty: true,
-        currentPath: '/spec/path/requirements.md',
+        activeTab: 'requirements',
+        // Bug fix: worktree-artifact-save - currentPath is now name:artifact format
+        currentPath: 'my-spec:requirements',
+        currentEntityType: 'spec',
       });
 
       await useEditorStore.getState().save();
@@ -149,17 +155,22 @@ describe('useEditorStore', () => {
       const state = useEditorStore.getState();
       expect(state.isDirty).toBe(false);
       expect(state.originalContent).toBe('new content');
-      expect(window.electronAPI.writeFile).toHaveBeenCalled();
+      // Bug fix: worktree-artifact-save - now uses writeArtifact instead of writeFile
+      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
+        'my-spec', 'requirements.md', 'new content', 'spec'
+      );
     });
 
     it('should set isSaving during save', async () => {
-      window.electronAPI.writeFile = vi.fn().mockImplementation(
+      window.electronAPI.writeArtifact = vi.fn().mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
       useEditorStore.setState({
         content: 'content',
-        currentPath: '/path',
+        activeTab: 'requirements',
+        currentPath: 'my-spec:requirements',
+        currentEntityType: 'spec',
         isDirty: true,
       });
 
@@ -170,6 +181,26 @@ describe('useEditorStore', () => {
       await savePromise;
 
       expect(useEditorStore.getState().isSaving).toBe(false);
+    });
+
+    // Bug fix: worktree-artifact-save - test bug artifact saving
+    it('should save bug artifact with correct entityType', async () => {
+      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
+
+      useEditorStore.setState({
+        content: 'bug fix content',
+        originalContent: 'old content',
+        isDirty: true,
+        activeTab: 'analysis',
+        currentPath: 'my-bug:analysis',
+        currentEntityType: 'bug',
+      });
+
+      await useEditorStore.getState().save();
+
+      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
+        'my-bug', 'analysis.md', 'bug fix content', 'bug'
+      );
     });
   });
 

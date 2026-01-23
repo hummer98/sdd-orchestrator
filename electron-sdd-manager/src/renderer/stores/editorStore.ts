@@ -33,6 +33,8 @@ interface EditorState {
   isSaving: boolean;
   mode: 'edit' | 'preview';
   currentPath: string | null;
+  // Bug fix: worktree-artifact-save - Store entityType for writeArtifact
+  currentEntityType: 'spec' | 'bug';
   error: string | null;
   // Search state
   searchVisible: boolean;
@@ -73,6 +75,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isSaving: false,
   mode: 'edit',
   currentPath: null,
+  // Bug fix: worktree-artifact-save - Store entityType for writeArtifact
+  currentEntityType: 'spec',
   error: null,
   // Search initial state
   searchVisible: false,
@@ -99,7 +103,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   save: async () => {
-    const { content, currentPath, isDirty } = get();
+    const { content, currentPath, currentEntityType, isDirty, activeTab } = get();
 
     if (!currentPath || !isDirty) {
       return;
@@ -108,7 +112,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ isSaving: true, error: null });
 
     try {
-      await window.electronAPI.writeFile(currentPath, content);
+      // Bug fix: worktree-artifact-save
+      // Parse currentPath (format: "name:artifact") to extract name
+      // Use writeArtifact with path resolution instead of writeFile
+      const [name] = currentPath.split(':');
+      const filename = `${activeTab}.md`;
+      await window.electronAPI.writeArtifact(name, filename, content, currentEntityType);
       set({
         originalContent: content,
         isDirty: false,
@@ -147,6 +156,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({
         activeTab: artifact,
         currentPath: artifactKey,
+        // Bug fix: worktree-artifact-save - Store entityType for writeArtifact
+        currentEntityType: entityType,
         content: '',
         originalContent: '',
         isDirty: false,
@@ -162,6 +173,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({
         activeTab: artifact,
         currentPath: artifactKey,
+        // Bug fix: worktree-artifact-save - Store entityType for writeArtifact
+        currentEntityType: entityType,
         error: null,
       });
     }
@@ -191,6 +204,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       originalContent: '',
       isDirty: false,
       currentPath: null,
+      // Bug fix: worktree-artifact-save - Reset entityType
+      currentEntityType: 'spec',
       error: null,
     });
   },

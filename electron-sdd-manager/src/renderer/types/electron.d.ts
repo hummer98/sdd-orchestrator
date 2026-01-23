@@ -452,6 +452,8 @@ export interface ElectronAPI {
   // spec-path-ssot-refactor: Changed from artifactPath to (specName, filename)
   // bug-artifact-content-not-displayed: Add entityType to support both specs and bugs
   readArtifact(name: string, filename: string, entityType?: 'spec' | 'bug'): Promise<string>;
+  // Bug fix: worktree-artifact-save - writeArtifact uses path resolution like readArtifact
+  writeArtifact(name: string, filename: string, content: string, entityType?: 'spec' | 'bug'): Promise<void>;
   createSpec(projectPath: string, specName: string, description: string): Promise<void>;
   writeFile(filePath: string, content: string): Promise<void>;
   // spec-path-ssot-refactor: Changed from specPath to specName
@@ -1418,9 +1420,12 @@ export interface ElectronAPI {
   /**
    * Get metrics for a specific spec
    * @param specId Spec identifier
-   * @returns Aggregated metrics for the spec
+   * @returns Aggregated metrics for the spec wrapped in Result type
    */
-  getSpecMetrics(specId: string): Promise<import('../../main/types/metrics').SpecMetrics>;
+  getSpecMetrics(specId: string): Promise<
+    | { ok: true; value: import('../../main/types/metrics').SpecMetrics }
+    | { ok: false; error: string }
+  >;
 }
 
 declare global {

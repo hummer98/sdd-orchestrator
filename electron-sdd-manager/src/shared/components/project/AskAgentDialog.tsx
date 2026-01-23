@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Play, MessageSquare, FileText } from 'lucide-react';
+import { X, Bot, MessageSquare, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // =============================================================================
@@ -184,7 +184,7 @@ export function AskAgentDialog({
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
-            <Play className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
             実行
           </button>
         </div>

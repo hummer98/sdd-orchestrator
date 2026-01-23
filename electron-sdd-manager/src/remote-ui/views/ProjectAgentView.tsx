@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Bot, Sparkles } from 'lucide-react';
+import { MessageSquare, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { AskAgentDialog } from '@shared/components/project/AskAgentDialog';
 import type { ApiClient } from '@shared/api/types';
@@ -61,7 +61,7 @@ export function ProjectAgentView({
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-          <Bot className="w-6 h-6 text-blue-500" />
+          <MessageSquare className="w-6 h-6 text-blue-500" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -106,7 +106,7 @@ export function ProjectAgentView({
           'transition-colors'
         )}
       >
-        <Bot className="w-5 h-5" />
+        <MessageSquare className="w-5 h-5" />
         Project Agentに質問する
       </button>
 

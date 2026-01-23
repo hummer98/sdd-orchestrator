@@ -5,7 +5,7 @@
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
  */
 
-import { Bot } from 'lucide-react';
+import { Bot, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
@@ -129,7 +129,7 @@ export function ProjectAgentPanel() {
           aria-label="Project Askを実行"
           data-testid="project-ask-button"
         >
-          <Bot className="w-4 h-4" />
+          <MessageSquare className="w-4 h-4" />
         </button>
       </div>
 

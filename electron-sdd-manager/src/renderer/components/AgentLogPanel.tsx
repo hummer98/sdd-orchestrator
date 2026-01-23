@@ -19,9 +19,10 @@ export function AgentLogPanel() {
 
   // Bug fix: logs Mapの変更を購読することで、リアルタイムログ更新を実現
   // Bug fix: 空配列を定数化することで、|| []による毎回の新規配列生成を防ぐ
+  // Bug fix: agent-log-stream-race-condition - getLogsForAgentを使用してソート済みログを取得
   const logs = useAgentStore((state) => {
     if (!state.selectedAgentId) return EMPTY_LOGS;
-    return state.logs.get(state.selectedAgentId) ?? EMPTY_LOGS;
+    return state.getLogsForAgent(state.selectedAgentId);
   });
 
   // Bug fix: getSnapshot無限ループ回避

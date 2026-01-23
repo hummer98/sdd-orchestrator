@@ -165,6 +165,11 @@ export const agentOperations = {
 
   /**
    * Load agent logs from file and update shared store
+   *
+   * Bug fix: agent-log-stream-race-condition
+   * Previously, clearLogs() was called before adding file logs, which caused
+   * real-time logs received via onAgentOutput to be lost. Now we merge file logs
+   * with existing real-time logs, using ID-based deduplication and timestamp sorting.
    */
   async loadAgentLogs(specId: string, agentId: string): Promise<void> {
     try {
@@ -172,19 +177,37 @@ export const agentOperations = {
       const logs = await window.electronAPI.getAgentLogs(specId, agentId);
 
       // Convert file logs to LogEntry format
-      const logEntries: LogEntry[] = logs.map((log: { timestamp: string; stream: string; data: string }, index: number) => ({
+      const fileLogEntries: LogEntry[] = logs.map((log: { timestamp: string; stream: string; data: string }, index: number) => ({
         id: `${agentId}-${index}-${log.timestamp}`,
         stream: log.stream as 'stdout' | 'stderr' | 'stdin',
         data: log.data,
         timestamp: new Date(log.timestamp).getTime(),
       }));
 
-      // Clear existing logs and add new ones
+      // Bug fix: agent-log-stream-race-condition
+      // Merge file logs with existing real-time logs instead of clearing
       const state = useSharedAgentStore.getState();
-      state.clearLogs(agentId);
-      logEntries.forEach((entry) => state.addLog(agentId, entry));
+      const existingLogs = state.getLogsForAgent(agentId);
 
-      console.log('[agentStoreAdapter] Loaded agent logs', { specId, agentId, count: logEntries.length });
+      // Create a set of existing log IDs for deduplication
+      const existingIds = new Set(existingLogs.map((log) => log.id));
+
+      // Add only new logs from file (not already in real-time logs)
+      const newFileLogsCount = fileLogEntries.filter((entry) => {
+        if (!existingIds.has(entry.id)) {
+          state.addLog(agentId, entry);
+          return true;
+        }
+        return false;
+      }).length;
+
+      console.log('[agentStoreAdapter] Loaded agent logs', {
+        specId,
+        agentId,
+        fileCount: fileLogEntries.length,
+        existingCount: existingLogs.length,
+        newCount: newFileLogsCount,
+      });
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to load agent logs:', error);
     }

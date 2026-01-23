@@ -298,7 +298,10 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
   },
 
   getLogsForAgent: (agentId: string) => {
-    return get().logs.get(agentId) || [];
+    const logs = get().logs.get(agentId) || [];
+    // Bug fix: agent-log-stream-race-condition
+    // Sort logs by timestamp to ensure correct order when file logs are merged with real-time logs
+    return [...logs].sort((a, b) => a.timestamp - b.timestamp);
   },
 
   clearError: () => {

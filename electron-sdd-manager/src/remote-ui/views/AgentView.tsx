@@ -157,6 +157,8 @@ export function AgentView({
   }, [apiClient]);
 
   // Load logs when agent is selected
+  // Bug fix: agent-log-stream-race-condition
+  // Merge file logs with existing real-time logs instead of overwriting
   useEffect(() => {
     if (!selectedAgentId) return;
     // Capture in const with explicit type after null check
@@ -175,7 +177,23 @@ export function AgentView({
       if (result.ok) {
         setLogs((prev) => {
           const newLogs = new Map(prev);
-          newLogs.set(agentId, result.value);
+          const existingLogs = newLogs.get(agentId) || [];
+
+          // Create a set of existing log IDs for deduplication
+          const existingIds = new Set(existingLogs.map((log) => log.id));
+
+          // Merge file logs with existing real-time logs
+          const mergedLogs = [...existingLogs];
+          for (const log of result.value) {
+            if (!existingIds.has(log.id)) {
+              mergedLogs.push(log);
+            }
+          }
+
+          // Sort by timestamp to ensure correct order
+          mergedLogs.sort((a, b) => a.timestamp - b.timestamp);
+
+          newLogs.set(agentId, mergedLogs);
           return newLogs;
         });
       }

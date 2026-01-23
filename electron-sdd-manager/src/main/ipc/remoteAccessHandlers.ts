@@ -599,6 +599,22 @@ export function setupBugDetailProvider(projectPath: string): void {
 }
 
 /**
+ * Set up FileService on the WebSocketHandler
+ * remote-ui-artifact-editor: For artifact content retrieval
+ * @param projectPath - Current project path (unused, but kept for consistency)
+ */
+export function setupFileService(_projectPath: string): void {
+  const server = getRemoteAccessServer();
+  const wsHandler = server.getWebSocketHandler();
+
+  if (wsHandler) {
+    const fileService = new FileService();
+    wsHandler.setFileService(fileService);
+    logger.info('[remoteAccessHandlers] FileService set up successfully');
+  }
+}
+
+/**
  * Register Remote Access IPC handlers
  *
  * Registers handlers for:

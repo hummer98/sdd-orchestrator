@@ -655,6 +655,31 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<void>('SAVE_FILE', { filePath, content });
   }
 
+  /**
+   * Get artifact content
+   * remote-ui-artifact-editor: For Remote UI ArtifactEditor
+   * @param specId - Spec/Bug identifier
+   * @param artifactType - Artifact type (requirements, design, tasks, research, etc.)
+   * @param entityType - Entity type (spec or bug), defaults to 'spec'
+   */
+  async getArtifactContent(
+    specId: string,
+    artifactType: string,
+    entityType: 'spec' | 'bug' = 'spec'
+  ): Promise<Result<string, ApiError>> {
+    const response = await this.wrapRequest<{ content: string }>('GET_ARTIFACT_CONTENT', {
+      specId,
+      artifactType,
+      entityType,
+    });
+    if (response.ok) {
+      // Handle case where content might be nested or directly returned
+      const content = response.value?.content ?? (typeof response.value === 'string' ? response.value : '');
+      return { ok: true, value: content };
+    }
+    return response;
+  }
+
   // ===========================================================================
   // Profile Operations (header-profile-badge feature)
   // Requirements: 3.1, 5.1

@@ -3,18 +3,22 @@
  *
  * Task 13.3: Validation・Review・Inspection UIを実装する
  * inspection-permission-unification fix: Restored GO/NOGO toggle using permissions.inspection
+ * remote-ui-artifact-editor: PhaseItemワークフローを統合（メインパネルから移動）
  *
- * Spec詳細ビューのアクションセクション。
- * DocumentReviewPanel, InspectionPanelを統合。
+ * 右ペインにワークフロー全体を表示：
+ * - 6フェーズ（PhaseItem x 6）
+ * - Document Review Panel
+ * - Inspection Panel
  *
  * Requirements: 7.1
  */
 
 import React, { useState, useCallback } from 'react';
+import { PhaseItem } from '@shared/components/workflow/PhaseItem';
 import { DocumentReviewPanel } from '@shared/components/review/DocumentReviewPanel';
 import { InspectionPanel } from '@shared/components/review/InspectionPanel';
 import type { ReviewerScheme } from '@shared/components/review/SchemeSelector';
-import type { ApiClient, SpecDetail, AgentInfo, SpecJson } from '@shared/api/types';
+import type { ApiClient, SpecDetail, AgentInfo, SpecJson, WorkflowPhase, Phase } from '@shared/api/types';
 import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
@@ -28,12 +32,83 @@ import type {
 export interface SpecActionsViewProps {
   /** Spec detail */
   specDetail: SpecDetail;
+  /** Spec path for approval updates */
+  specPath: string;
   /** API client instance */
   apiClient: ApiClient;
   /** Whether any agent is currently executing */
   isExecuting?: boolean;
   /** Called when an action is executed */
   onActionExecuted?: (action: string, agent: AgentInfo) => void;
+  /** Called after phase execution */
+  onPhaseExecuted?: (phase: WorkflowPhase, agent: AgentInfo) => void;
+  /** Called after approval update */
+  onApprovalUpdated?: (phase: Phase, approved: boolean) => void;
+}
+
+// Phase label mapping
+const PHASE_LABELS: Record<WorkflowPhase, string> = {
+  requirements: '要件定義',
+  design: '設計',
+  tasks: 'タスク',
+  impl: '実装',
+  inspection: 'Inspection',
+  deploy: 'デプロイ',
+};
+
+// =============================================================================
+// Helper Functions for Workflow
+// =============================================================================
+
+function getPhaseStatus(
+  specDetail: SpecDetail,
+  phase: WorkflowPhase
+): 'pending' | 'generated' | 'approved' {
+  const approvals = specDetail.specJson?.approvals;
+  if (!approvals) return 'pending';
+
+  const phaseKey = phase as Phase;
+  const approval = approvals[phaseKey];
+
+  if (!approval) {
+    if (phase === 'impl') {
+      return approvals.tasks?.approved ? 'pending' : 'pending';
+    }
+    return 'pending';
+  }
+
+  if (approval.approved) return 'approved';
+  if (approval.generated) return 'generated';
+  return 'pending';
+}
+
+function getPreviousPhaseStatus(
+  specDetail: SpecDetail,
+  phase: WorkflowPhase
+): 'pending' | 'generated' | 'approved' | null {
+  const phaseOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
+  const currentIndex = phaseOrder.indexOf(phase);
+  if (currentIndex <= 0) return null;
+
+  const previousPhase = phaseOrder[currentIndex - 1];
+  return getPhaseStatus(specDetail, previousPhase);
+}
+
+function canExecutePhase(specDetail: SpecDetail, phase: WorkflowPhase): boolean {
+  const currentStatus = getPhaseStatus(specDetail, phase);
+  const previousStatus = getPreviousPhaseStatus(specDetail, phase);
+
+  if (currentStatus !== 'pending') return false;
+  if (previousStatus === null) return true; // requirements
+  return previousStatus === 'approved';
+}
+
+function getAutoExecutionPermitted(specDetail: SpecDetail, phase: WorkflowPhase): boolean {
+  const permissions = specDetail.specJson?.autoExecution?.permissions;
+  if (!permissions) return false;
+
+  const value = permissions[phase as keyof typeof permissions];
+  return value === true;
 }
 
 // =============================================================================
@@ -42,12 +117,16 @@ export interface SpecActionsViewProps {
 
 export function SpecActionsView({
   specDetail,
+  specPath,
   apiClient,
   isExecuting = false,
   onActionExecuted,
+  onPhaseExecuted,
+  onApprovalUpdated,
 }: SpecActionsViewProps): React.ReactElement {
   // State for tracking execution
   const [executingAction, setExecutingAction] = useState<string | null>(null);
+  const [executingPhase, setExecutingPhase] = useState<WorkflowPhase | null>(null);
 
   // Extract states from spec.json
   const documentReviewRaw = specDetail.specJson?.documentReview;
@@ -87,6 +166,69 @@ export function SpecActionsView({
   // gemini-document-review: State for optimistic scheme update
   const [optimisticScheme, setOptimisticScheme] = useState<ReviewerScheme | undefined>(documentReviewScheme);
   const [isSavingScheme, setIsSavingScheme] = useState(false);
+
+  // =============================================================================
+  // Phase Execution Handlers (remote-ui-artifact-editor)
+  // =============================================================================
+
+  // Handle phase execution
+  const handleExecutePhase = useCallback(
+    async (phase: WorkflowPhase) => {
+      setExecutingPhase(phase);
+
+      const result = await apiClient.executePhase(specDetail.metadata.name, phase);
+
+      setExecutingPhase(null);
+
+      if (result.ok) {
+        onPhaseExecuted?.(phase, result.value);
+      }
+    },
+    [apiClient, specDetail.metadata.name, onPhaseExecuted]
+  );
+
+  // Handle approval
+  const handleApprove = useCallback(
+    async (phase: WorkflowPhase) => {
+      const phaseKey = phase as Phase;
+      const result = await apiClient.updateApproval(specPath, phaseKey, true);
+
+      if (result.ok) {
+        onApprovalUpdated?.(phaseKey, true);
+      }
+    },
+    [apiClient, specPath, onApprovalUpdated]
+  );
+
+  // Handle approve and execute next phase
+  const handleApproveAndExecute = useCallback(
+    async (phase: WorkflowPhase) => {
+      // First approve the previous phase
+      const phaseOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
+      const currentIndex = phaseOrder.indexOf(phase);
+      if (currentIndex > 0) {
+        const previousPhase = phaseOrder[currentIndex - 1] as Phase;
+        await apiClient.updateApproval(specPath, previousPhase, true);
+      }
+
+      // Then execute the current phase
+      await handleExecutePhase(phase);
+    },
+    [apiClient, specPath, handleExecutePhase]
+  );
+
+  // Handle auto permission toggle
+  const handleToggleAutoPermission = useCallback(
+    async (_phase: WorkflowPhase) => {
+      // Not fully supported in Remote UI - requires server-side API
+      console.warn('[SpecActionsView] Auto permission toggle not fully supported in Remote UI');
+    },
+    []
+  );
+
+  // =============================================================================
+  // Document Review Handlers
+  // =============================================================================
 
   // Handle document review start
   const handleStartReview = useCallback(async () => {
@@ -207,8 +349,43 @@ export function SpecActionsView({
     [apiClient, specDetail.specJson, optimisticScheme]
   );
 
+  // Phase list for workflow
+  const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
+
   return (
     <div className="space-y-4 p-4" data-testid="spec-actions-view">
+      {/* Workflow Phases - remote-ui-artifact-editor */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          Workflow
+        </h3>
+        {phases.map((phase) => {
+          const status = getPhaseStatus(specDetail, phase);
+          const previousStatus = getPreviousPhaseStatus(specDetail, phase);
+          const canExecute = canExecutePhase(specDetail, phase);
+          const autoPermitted = getAutoExecutionPermitted(specDetail, phase);
+          const isPhaseExecuting = executingPhase === phase;
+
+          return (
+            <PhaseItem
+              key={phase}
+              phase={phase}
+              label={PHASE_LABELS[phase]}
+              status={status}
+              previousStatus={previousStatus}
+              autoExecutionPermitted={autoPermitted}
+              isExecuting={isPhaseExecuting}
+              canExecute={canExecute}
+              isAutoPhase={false}
+              onExecute={() => handleExecutePhase(phase)}
+              onApprove={() => handleApprove(phase)}
+              onApproveAndExecute={() => handleApproveAndExecute(phase)}
+              onToggleAutoPermission={() => handleToggleAutoPermission(phase)}
+            />
+          );
+        })}
+      </div>
+
       {/* Document Review Panel */}
       <DocumentReviewPanel
         reviewState={documentReviewState}

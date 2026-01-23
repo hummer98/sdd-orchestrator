@@ -432,6 +432,20 @@ export interface ApiClient {
    */
   saveFile(filePath: string, content: string): Promise<Result<void, ApiError>>;
 
+  /**
+   * Get artifact content
+   * For Electron: reads from file system via IPC
+   * For Remote UI: sends request via WebSocket to server
+   * @param specId - Spec identifier (feature name)
+   * @param artifactType - Artifact type (requirements, design, tasks, research, etc.)
+   * @param entityType - Entity type (spec or bug), defaults to 'spec'
+   */
+  getArtifactContent?(
+    specId: string,
+    artifactType: string,
+    entityType?: 'spec' | 'bug'
+  ): Promise<Result<string, ApiError>>;
+
   // ===========================================================================
   // Event Subscriptions
   // ===========================================================================

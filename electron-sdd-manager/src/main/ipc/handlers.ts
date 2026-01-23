@@ -34,7 +34,7 @@ import {
   UnifiedInstallResult,
   UnifiedInstallStatus,
 } from '../services/unifiedCommandsetInstaller';
-import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, getRemoteAccessServer } from './remoteAccessHandlers';
+import { setupStateProvider, setupWorkflowController, setupAgentLogsProvider, setupSpecDetailProvider, setupBugDetailProvider, setupFileService, getRemoteAccessServer } from './remoteAccessHandlers';
 import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
 // spec-productivity-metrics: Task 10.1 - Metrics handlers registration
@@ -601,7 +601,8 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   setupAgentLogsProvider();
   setupSpecDetailProvider(projectPath);
   setupBugDetailProvider(projectPath);
-  logger.info('[handlers] Remote Access StateProvider, WorkflowController, AgentLogsProvider, SpecDetailProvider, and BugDetailProvider set up');
+  setupFileService(projectPath);
+  logger.info('[handlers] Remote Access StateProvider, WorkflowController, AgentLogsProvider, SpecDetailProvider, BugDetailProvider, and FileService set up');
 }
 
 /**

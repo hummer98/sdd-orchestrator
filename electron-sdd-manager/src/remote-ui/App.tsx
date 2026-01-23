@@ -16,11 +16,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
 import { SpecsView, SpecDetailView, SpecActionsView, BugsView, BugDetailView, AgentView, ProjectAgentView } from './views';
+import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
 import { ResizeHandle } from '../shared/components/ui';
-import { Bot, Plus } from 'lucide-react';
+import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
 import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
@@ -273,7 +274,7 @@ function LeftSidebar({
             aria-label="Project Askを実行"
             data-testid="project-ask-button"
           >
-            <Bot className="w-4 h-4" />
+            <MessageSquare className="w-4 h-4" />
           </button>
         </div>
 
@@ -339,47 +340,39 @@ function LeftSidebar({
 }
 
 // =============================================================================
-// Main Panel Component - Artifact表示
+// Main Panel Component - Artifact表示/編集
+// remote-ui-artifact-editor: Electron版と同じくArtifact編集画面を表示
 // =============================================================================
 
 interface MainPanelProps {
   activeTab: DocsTab;
   selectedSpec: SpecMetadataWithPath | null;
+  specDetail: SpecDetail | null;
   selectedBug: BugMetadataWithPath | null;
-  onBack: () => void;
 }
 
-function MainPanel({ activeTab, selectedSpec, selectedBug, onBack }: MainPanelProps) {
+function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug }: MainPanelProps) {
   const apiClient = useApi();
 
+  // Spec選択時: RemoteArtifactEditorを表示
   if (activeTab === 'specs' && selectedSpec) {
     return (
       <div className="flex flex-col h-full">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600 border-b border-gray-200 dark:border-gray-700"
-        >
-          &larr; Spec一覧に戻る
-        </button>
-        <div className="flex-1 overflow-y-auto">
-          <SpecDetailView
-            spec={selectedSpec}
-            apiClient={apiClient}
-          />
-        </div>
+        <RemoteArtifactEditor
+          spec={selectedSpec}
+          specDetail={specDetail}
+          apiClient={apiClient}
+          placeholder="Specを選択してドキュメントを表示"
+          testId="remote-artifact-editor"
+        />
       </div>
     );
   }
 
+  // Bug選択時: BugDetailViewを表示（従来通り）
   if (activeTab === 'bugs' && selectedBug) {
     return (
       <div className="flex flex-col h-full">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600 border-b border-gray-200 dark:border-gray-700"
-        >
-          &larr; Bug一覧に戻る
-        </button>
         <div className="flex-1 overflow-y-auto">
           <BugDetailView
             bug={selectedBug}
@@ -394,8 +387,8 @@ function MainPanel({ activeTab, selectedSpec, selectedBug, onBack }: MainPanelPr
   return (
     <div className="h-full flex items-center justify-center">
       <div className="text-center text-gray-500 dark:text-gray-400">
-        <p className="text-lg">Select a spec or bug</p>
-        <p className="text-sm mt-2">to view documents and artifacts</p>
+        <p className="text-lg">SpecまたはBugを選択</p>
+        <p className="text-sm mt-2">してドキュメントを表示</p>
       </div>
     </div>
   );
@@ -543,16 +536,13 @@ function RightSidebar({
       <ResizeHandle direction="vertical" onResize={handleAgentListResize} />
 
       {/* Workflow Section - 下部（Electron版と同じ順序） */}
+      {/* remote-ui-artifact-editor: PhaseItemを統合したSpecActionsViewを表示 */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Workflow
-          </h2>
-        </div>
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'specs' && selectedSpec && specDetail ? (
             <SpecActionsView
               specDetail={specDetail}
+              specPath={selectedSpec.path}
               apiClient={apiClient}
             />
           ) : (
@@ -625,14 +615,6 @@ function DesktopAppContent() {
     setSelectedBug(bug);
   }, []);
 
-  // Handle back to list
-  const handleBack = useCallback(() => {
-    setSelectedSpec(null);
-    setSelectedSpecDetail(null);
-    setSelectedBug(null);
-    setIsAutoExecuting(false);
-  }, []);
-
   // Handle tab change
   const handleTabChange = useCallback((tab: DocsTab) => {
     setActiveTab(tab);
@@ -698,8 +680,8 @@ function DesktopAppContent() {
       <MainPanel
         activeTab={activeTab}
         selectedSpec={selectedSpec}
+        specDetail={selectedSpecDetail}
         selectedBug={selectedBug}
-        onBack={handleBack}
       />
     </DesktopLayout>
   );
@@ -762,7 +744,7 @@ function MobileAppContent() {
                 <SpecDetailView spec={selectedSpec} apiClient={apiClient} />
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700">
-                <SpecActionsView specDetail={selectedSpecDetail} apiClient={apiClient} />
+                <SpecActionsView specDetail={selectedSpecDetail} specPath={selectedSpec!.path} apiClient={apiClient} />
               </div>
             </div>
           );

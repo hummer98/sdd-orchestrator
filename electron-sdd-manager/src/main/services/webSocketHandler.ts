@@ -326,6 +326,24 @@ export interface FileServiceInterface {
     filePath: string,
     content: string
   ): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; path: string; message?: string } }>;
+
+  /**
+   * Resolve entity path (spec or bug)
+   * remote-ui-artifact-editor: For artifact content retrieval
+   */
+  resolveEntityPath(
+    projectPath: string,
+    entityType: 'specs' | 'bugs',
+    entityName: string
+  ): Promise<{ ok: true; value: string } | { ok: false; error: { type: string; path: string; reason?: string } }>;
+
+  /**
+   * Read artifact content
+   * remote-ui-artifact-editor: For artifact content retrieval
+   */
+  readArtifact(
+    artifactPath: string
+  ): Promise<{ ok: true; value: string } | { ok: false; error: { type: string; path: string } }>;
 }
 
 /**
@@ -815,6 +833,10 @@ export class WebSocketHandler {
       // File operations handlers (remote-ui-react-migration Task 6.2)
       case 'SAVE_FILE':
         await this.handleSaveFile(client, message);
+        break;
+      // Artifact content handler (remote-ui-artifact-editor feature)
+      case 'GET_ARTIFACT_CONTENT':
+        await this.handleGetArtifactContent(client, message);
         break;
       // Spec detail handlers (remote-ui-react-migration Task 6.3)
       case 'GET_SPEC_DETAIL':
@@ -2517,6 +2539,106 @@ export class WebSocketHandler {
         requestId: message.requestId,
         timestamp: Date.now(),
       });
+    }
+  }
+
+  // ============================================================
+  // Artifact Content Handler (remote-ui-artifact-editor feature)
+  // ============================================================
+
+  /**
+   * Handle GET_ARTIFACT_CONTENT message
+   * remote-ui-artifact-editor: For Remote UI ArtifactEditor
+   * Retrieves artifact content (requirements.md, design.md, etc.)
+   */
+  private async handleGetArtifactContent(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.fileService) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'File service not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.stateProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'State provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const artifactType = payload.artifactType as string;
+    const entityType = (payload.entityType as 'spec' | 'bug') || 'spec';
+
+    if (!specId || !artifactType) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or artifactType' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    // Resolve entity path using fileService
+    const projectPath = this.stateProvider.getProjectPath();
+    const entityTypePlural = entityType === 'spec' ? 'specs' : 'bugs';
+    const pathResult = await this.fileService.resolveEntityPath(projectPath, entityTypePlural, specId);
+
+    if (!pathResult.ok) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: pathResult.error.type,
+          message: pathResult.error.type === 'NOT_FOUND'
+            ? `${entityType} '${specId}' not found`
+            : 'Failed to resolve path',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    // Construct artifact path and read content
+    const artifactFileName = artifactType.endsWith('.md') ? artifactType : `${artifactType}.md`;
+    const artifactPath = `${pathResult.value}/${artifactFileName}`;
+    const readResult = await this.fileService.readArtifact(artifactPath);
+
+    if (readResult.ok) {
+      this.send(client.id, {
+        type: 'ARTIFACT_CONTENT',
+        payload: { content: readResult.value },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      // File not found - return empty string (artifact may not exist yet)
+      if (readResult.error.type === 'NOT_FOUND') {
+        this.send(client.id, {
+          type: 'ARTIFACT_CONTENT',
+          payload: { content: '' },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: {
+            code: readResult.error.type,
+            message: 'Failed to read artifact',
+          },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
     }
   }
 

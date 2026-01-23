@@ -19,13 +19,19 @@ export function AgentLogPanel() {
   const clearLogs = useAgentStore((state) => state.clearLogs);
   const { recordActivity } = useHumanActivity();
 
-  // Bug fix: logs Mapの変更を購読することで、リアルタイムログ更新を実現
-  // Bug fix: 空配列を定数化することで、|| []による毎回の新規配列生成を防ぐ
-  // Bug fix: agent-log-stream-race-condition - getLogsForAgentを使用してソート済みログを取得
-  const logs = useAgentStore((state) => {
+  // Bug fix: getSnapshot無限ループ回避
+  // セレクタ内でgetLogsForAgent()を呼ぶと毎回新しい配列が生成され無限ループになる
+  // 代わりにlogs Mapを直接購読し、useMemoでソートする
+  const rawLogs = useAgentStore((state) => {
     if (!state.selectedAgentId) return EMPTY_LOGS;
-    return state.getLogsForAgent(state.selectedAgentId);
+    return state.logs.get(state.selectedAgentId) || EMPTY_LOGS;
   });
+
+  // Bug fix: agent-log-stream-race-condition - ソートはuseMemo内で行う
+  const logs = useMemo(() => {
+    if (rawLogs === EMPTY_LOGS || rawLogs.length === 0) return EMPTY_LOGS;
+    return [...rawLogs].sort((a, b) => a.timestamp - b.timestamp);
+  }, [rawLogs]);
 
   // Bug fix: getSnapshot無限ループ回避
   // agentsマップを直接サブスクライブし、useMemoでagentを導出

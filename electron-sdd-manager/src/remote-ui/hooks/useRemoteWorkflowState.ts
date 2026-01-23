@@ -114,6 +114,8 @@ export function useRemoteWorkflowState(
   const hasParallelTasks = useParallelModeStore((state) => state.hasParallelTasks);
   const getParseResult = useParallelModeStore((state) => state.getParseResult);
   const setParseResult = useParallelModeStore((state) => state.setParseResult);
+  // Subscribe to parseResults changes to trigger re-render when tasks are parsed
+  const parseResults = useParallelModeStore((state) => state.parseResults);
 
   // ---------------------------------------------------------------------------
   // Effects
@@ -219,14 +221,14 @@ export function useRemoteWorkflowState(
     const specName = spec?.name;
     if (!specName) return false;
     return hasParallelTasks(specName);
-  }, [spec?.name, hasParallelTasks]);
+  }, [spec?.name, hasParallelTasks, parseResults]);
 
   const parallelTaskCount = useMemo(() => {
     const specName = spec?.name;
     if (!specName) return 0;
     const result = getParseResult(specName);
     return result?.parallelTasks ?? 0;
-  }, [spec?.name, getParseResult]);
+  }, [spec?.name, getParseResult, parseResults]);
 
   // ---------------------------------------------------------------------------
   // Handlers

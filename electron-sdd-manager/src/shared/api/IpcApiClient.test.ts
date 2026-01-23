@@ -49,4 +49,12 @@ describe('IpcApiClient', () => {
     expect(content).toContain('onBugsUpdated(');
     expect(content).toContain('onAgentOutput(');
   });
+
+  // Bug fix: agent-command-missing-in-remote-ui
+  // getAgents should include command field for agent log display
+  it('should include command field in getAgents result', () => {
+    const content = readFileSync(clientPath, 'utf-8');
+    // Check that command is copied to AgentInfo in getAgents
+    expect(content).toContain('command: agent.command');
+  });
 });

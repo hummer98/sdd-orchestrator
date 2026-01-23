@@ -3299,4 +3299,123 @@ describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons
       );
     });
   });
+
+  // ============================================================
+  // Bug fix: agent-command-missing-in-remote-ui
+  // AgentStateInfo should include command field for Remote UI display
+  // ============================================================
+  describe('AgentStateInfo command field', () => {
+    it('should include command field in INIT message agents', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      // Set state provider with agents that have command field
+      const mockAgents = [
+        {
+          id: 'agent-1',
+          status: 'running',
+          phase: 'ask',
+          specId: '',
+          startedAt: '2026-01-23T10:00:00Z',
+          command: 'claude -p --verbose /kiro:project-ask "test prompt"',
+          sessionId: 'session-123',
+        },
+        {
+          id: 'agent-2',
+          status: 'completed',
+          phase: 'requirements',
+          specId: 'my-spec',
+          startedAt: '2026-01-23T09:00:00Z',
+          command: 'claude -p --verbose /kiro:spec-requirements my-spec',
+          sessionId: 'session-456',
+        },
+      ];
+
+      handler.setStateProvider({
+        getProjectPath: () => '/test/project',
+        getSpecs: async () => [],
+        getBugs: async () => [],
+        getAgents: async () => mockAgents,
+      });
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Wait for INIT message to be sent
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Check that INIT message contains agents with command field
+      const initCall = mockWs.send.mock.calls.find((call: unknown[]) => {
+        const msg = JSON.parse(call[0] as string);
+        return msg.type === 'INIT';
+      });
+
+      expect(initCall).toBeDefined();
+      const initMessage = JSON.parse(initCall![0] as string);
+      expect(initMessage.payload.agents).toHaveLength(2);
+      expect(initMessage.payload.agents[0].command).toBe('claude -p --verbose /kiro:project-ask "test prompt"');
+      expect(initMessage.payload.agents[1].command).toBe('claude -p --verbose /kiro:spec-requirements my-spec');
+    });
+
+    it('should include command field in GET_AGENTS response', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      handler.initialize(mockWss);
+
+      const mockAgents = [
+        {
+          id: 'agent-1',
+          status: 'running',
+          phase: 'ask',
+          specId: '',
+          startedAt: '2026-01-23T10:00:00Z',
+          command: 'claude -p --verbose /kiro:project-ask "test"',
+          sessionId: 'session-789',
+        },
+      ];
+
+      handler.setStateProvider({
+        getProjectPath: () => '/test/project',
+        getSpecs: async () => [],
+        getBugs: async () => [],
+        getAgents: async () => mockAgents,
+      });
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      // Send GET_AGENTS request
+      const message = JSON.stringify({
+        type: 'GET_AGENTS',
+        payload: {},
+        requestId: 'req-agents',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Check AGENT_LIST response
+      const agentListCall = mockWs.send.mock.calls.find((call: unknown[]) => {
+        const msg = JSON.parse(call[0] as string);
+        return msg.type === 'AGENT_LIST';
+      });
+
+      expect(agentListCall).toBeDefined();
+      const agentListMessage = JSON.parse(agentListCall![0] as string);
+      expect(agentListMessage.payload[0].command).toBe('claude -p --verbose /kiro:project-ask "test"');
+    });
+  });
 });

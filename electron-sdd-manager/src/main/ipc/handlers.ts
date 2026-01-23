@@ -575,6 +575,7 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   // Get agents for remote access
   // Task 4.2 (agent-state-file-ssot): Updated to use async getAllAgents
+  // Bug fix: agent-command-missing-in-remote-ui - Include command and sessionId
   const getAgentsForRemote = async (): Promise<AgentStateInfo[] | null> => {
     if (!specManagerService) {
       logger.error('[handlers] SpecManagerService not initialized for remote access agents');
@@ -591,6 +592,10 @@ export async function setProjectPath(projectPath: string): Promise<void> {
           specId: agent.specId,
           startedAt: agent.startedAt,
           lastActivityAt: agent.lastActivityAt,
+          // Bug fix: agent-command-missing-in-remote-ui
+          // Include command and sessionId for agent log display
+          command: agent.command,
+          sessionId: agent.sessionId,
         });
       }
     }

@@ -228,6 +228,10 @@ export class IpcApiClient implements ApiClient {
             status: agent.status as AgentStatus,
             startedAt: agent.startedAt,
             endedAt: (agent as { endedAt?: string | number }).endedAt,
+            // Bug fix: agent-command-missing-in-remote-ui
+            // Include command and sessionId for agent log display
+            command: agent.command,
+            sessionId: agent.sessionId,
           });
         }
       }

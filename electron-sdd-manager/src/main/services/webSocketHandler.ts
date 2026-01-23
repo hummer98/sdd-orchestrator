@@ -133,6 +133,7 @@ export interface StateProvider {
 
 /**
  * Agent info for state distribution (Remote UI display)
+ * Bug fix: agent-command-missing-in-remote-ui - Added command and sessionId fields
  */
 export interface AgentStateInfo {
   readonly id: string;
@@ -141,6 +142,10 @@ export interface AgentStateInfo {
   readonly specId?: string;
   readonly startedAt?: string;
   readonly lastActivityAt?: string;
+  /** Command that started the agent (for log display) */
+  readonly command?: string;
+  /** Session ID for agent grouping */
+  readonly sessionId?: string;
 }
 
 /**

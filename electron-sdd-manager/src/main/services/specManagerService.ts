@@ -619,19 +619,42 @@ export class SpecManagerService {
    * @returns Normalized arguments with base flags guaranteed
    */
   private normalizeClaudeArgs(args: string[], skipPermissions?: boolean): string[] {
+    // Fast path: If args already contain --disallowedTools, they came from buildClaudeArgs
+    // and are already properly formatted. Just handle skipPermissions if needed.
+    if (args.includes('--disallowedTools')) {
+      if (skipPermissions && !args.includes('--dangerously-skip-permissions')) {
+        const result = [...args];
+        // Insert after --output-format stream-json but before --disallowedTools
+        const disallowedIndex = result.indexOf('--disallowedTools');
+        result.splice(disallowedIndex, 0, '--dangerously-skip-permissions');
+        return result;
+      }
+      return args;
+    }
+
+    // Legacy path: args don't have modern flags, need full normalization
     // Extract command part: filter out known base flags to get the actual command
-    const baseFlags = new Set(['-p', '--verbose', '--output-format', 'stream-json', '--dangerously-skip-permissions']);
+    const standaloneFlags = new Set(['-p', '--verbose', '--dangerously-skip-permissions']);
+    // Flags that take exactly one value
+    const singleValueFlags = new Set(['--output-format']);
+    // Flags that take multiple values (until next flag starting with - or command starting with /)
+    const multiValueFlags = new Set(['--allowedTools', '--resume']);
+
     const commandParts: string[] = [];
 
     let i = 0;
     while (i < args.length) {
       const arg = args[i];
-      if (baseFlags.has(arg)) {
-        // Skip known base flags
-        // Special case: --output-format has a value following it
-        if (arg === '--output-format' && i + 1 < args.length) {
-          i += 2; // Skip both --output-format and its value
-        } else {
+      if (standaloneFlags.has(arg)) {
+        // Skip standalone flags
+        i += 1;
+      } else if (singleValueFlags.has(arg)) {
+        // Skip flag and its single value
+        i += 2;
+      } else if (multiValueFlags.has(arg)) {
+        // Skip flag and its values (until next flag or command starting with /)
+        i += 1;
+        while (i < args.length && !args[i].startsWith('-') && !args[i].startsWith('/')) {
           i += 1;
         }
       } else {

@@ -903,6 +903,221 @@ describe('buildClaudeArgs', () => {
 });
 
 /**
+ * Integration Tests: buildClaudeArgs → normalizeClaudeArgs → spawn
+ * These tests verify that args from buildClaudeArgs are correctly preserved
+ * when passed through normalizeClaudeArgs in startAgent.
+ *
+ * Bug context: normalizeClaudeArgs was joining --disallowedTools, AskUserQuestion,
+ * and the command into a single string, causing "unknown option" errors.
+ *
+ * Test approach: Use a Node.js script that outputs its arguments as JSON to stdout,
+ * then capture and verify the output.
+ */
+describe('Integration: buildClaudeArgs → normalizeClaudeArgs → spawn', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+  let mockScriptPath: string;
+  let originalMockClaudeCommand: string | undefined;
+
+  beforeEach(async () => {
+    // Create temporary directories for testing
+    testDir = path.join(os.tmpdir(), `integration-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+
+    // Create a mock script that outputs arguments as JSON to stdout
+    // Using Node.js instead of bash for better cross-platform compatibility
+    mockScriptPath = path.join(testDir, 'mock-claude.js');
+    await fs.writeFile(mockScriptPath, `#!/usr/bin/env node
+// Output arguments as JSON
+console.log(JSON.stringify(process.argv.slice(2)));
+`, { mode: 0o755 });
+
+    // Set E2E_MOCK_CLAUDE_COMMAND so that getClaudeCommand() returns our mock script
+    // This ensures normalizeClaudeArgs is called (it only runs for claude commands)
+    originalMockClaudeCommand = process.env.E2E_MOCK_CLAUDE_COMMAND;
+    process.env.E2E_MOCK_CLAUDE_COMMAND = mockScriptPath;
+
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    // Restore E2E_MOCK_CLAUDE_COMMAND
+    if (originalMockClaudeCommand === undefined) {
+      delete process.env.E2E_MOCK_CLAUDE_COMMAND;
+    } else {
+      process.env.E2E_MOCK_CLAUDE_COMMAND = originalMockClaudeCommand;
+    }
+
+    // Cleanup
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  /**
+   * Helper function to start agent and capture stdout
+   */
+  async function startAgentAndCaptureArgs(
+    svc: SpecManagerService,
+    options: Parameters<typeof svc.startAgent>[0]
+  ): Promise<string[]> {
+    return new Promise(async (resolve, reject) => {
+      let output = '';
+      let targetAgentId = '';
+
+      // Subscribe to output callback BEFORE starting agent
+      // Note: This is a global callback, so we filter by agentId
+      svc.onOutput((agentId, _stream, data) => {
+        if (agentId === targetAgentId) {
+          output += data;
+        }
+      });
+
+      // Subscribe to status callback to know when agent completes
+      svc.onStatusChange((agentId, status) => {
+        if (agentId === targetAgentId && (status === 'completed' || status === 'failed')) {
+          try {
+            // Find the JSON array in the output
+            const jsonMatch = output.match(/\[.*\]/s);
+            if (jsonMatch) {
+              resolve(JSON.parse(jsonMatch[0]));
+            } else {
+              reject(new Error(`No JSON found in output: ${output}`));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse output: ${output}, error: ${e}`));
+          }
+        }
+      });
+
+      const result = await svc.startAgent(options);
+      if (!result.ok) {
+        reject(new Error(`startAgent failed: ${JSON.stringify(result.error)}`));
+        return;
+      }
+
+      targetAgentId = result.value.agentId;
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        reject(new Error(`Timeout waiting for agent to complete. Output so far: ${output}`));
+      }, 5000);
+    });
+  }
+
+  it('should preserve --disallowedTools as separate args (not joined with command)', async () => {
+    const args = buildClaudeArgs({ command: '/kiro:spec-design my-feature' });
+
+    const spawnArgs = await startAgentAndCaptureArgs(service, {
+      specId: 'test-spec',
+      phase: 'design',
+      command: mockScriptPath,
+      args,
+      group: 'doc',
+    });
+
+    // Verify --disallowedTools and AskUserQuestion are separate args
+    expect(spawnArgs).toContain('--disallowedTools');
+    expect(spawnArgs).toContain('AskUserQuestion');
+
+    const disallowedIndex = spawnArgs.indexOf('--disallowedTools');
+    expect(spawnArgs[disallowedIndex + 1]).toBe('AskUserQuestion');
+
+    // Verify the command is a separate arg (not joined with --disallowedTools)
+    const commandArg = spawnArgs.find((arg: string) => arg.startsWith('/kiro:'));
+    expect(commandArg).toBe('/kiro:spec-design my-feature');
+
+    // Verify no arg contains the joined string (the bug we fixed)
+    const joinedBugPattern = '--disallowedTools AskUserQuestion';
+    const hasBuggyJoinedArg = spawnArgs.some((arg: string) => arg.includes(joinedBugPattern));
+    expect(hasBuggyJoinedArg).toBe(false);
+  });
+
+  it('should preserve --allowedTools as separate args', async () => {
+    const args = buildClaudeArgs({
+      command: '/kiro:spec-impl my-feature',
+      allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
+    });
+
+    const spawnArgs = await startAgentAndCaptureArgs(service, {
+      specId: 'test-spec',
+      phase: 'impl',
+      command: mockScriptPath,
+      args,
+      group: 'impl',
+    });
+
+    // Verify --allowedTools and its values are separate args
+    expect(spawnArgs).toContain('--allowedTools');
+    expect(spawnArgs).toContain('Read');
+    expect(spawnArgs).toContain('Write');
+    expect(spawnArgs).toContain('Edit');
+
+    // Verify no arg contains joined tool names
+    const hasBuggyJoinedArg = spawnArgs.some((arg: string) =>
+      arg.includes('Read Write') || arg.includes('--allowedTools Read')
+    );
+    expect(hasBuggyJoinedArg).toBe(false);
+  });
+
+  it('should preserve --resume and its values as separate args', async () => {
+    const args = buildClaudeArgs({
+      resumeSessionId: 'session-abc-123',
+      resumePrompt: 'continue',
+    });
+
+    const spawnArgs = await startAgentAndCaptureArgs(service, {
+      specId: 'test-spec',
+      phase: 'impl',
+      command: mockScriptPath,
+      args,
+      group: 'impl',
+    });
+
+    // Verify --resume and its values are separate args
+    expect(spawnArgs).toContain('--resume');
+    expect(spawnArgs).toContain('session-abc-123');
+    expect(spawnArgs).toContain('continue');
+
+    // Verify no arg contains joined resume values
+    const hasBuggyJoinedArg = spawnArgs.some((arg: string) =>
+      arg.includes('--resume session-abc-123') || arg.includes('session-abc-123 continue')
+    );
+    expect(hasBuggyJoinedArg).toBe(false);
+  });
+
+  it('should add --dangerously-skip-permissions when skipPermissions is enabled', async () => {
+    // Create service with layoutConfigService that returns skipPermissions: true
+    const mockLayoutConfigService = {
+      loadSkipPermissions: vi.fn().mockResolvedValue(true),
+      loadLayoutConfig: vi.fn(),
+      saveLayoutConfig: vi.fn(),
+      createDefaultConfig: vi.fn(),
+    };
+    const serviceWithSkip = new SpecManagerService(testDir, {
+      layoutConfigService: mockLayoutConfigService as unknown as import('./layoutConfigService').LayoutConfigService,
+    });
+
+    const args = buildClaudeArgs({ command: '/kiro:spec-design my-feature' });
+
+    const spawnArgs = await startAgentAndCaptureArgs(serviceWithSkip, {
+      specId: 'test-spec',
+      phase: 'design',
+      command: mockScriptPath,
+      args,
+      group: 'doc',
+    });
+
+    // Verify --dangerously-skip-permissions is added
+    expect(spawnArgs).toContain('--dangerously-skip-permissions');
+  });
+});
+
+/**
  * executeDocumentReviewReply with autofix option Tests
  * Requirements: 1.1, 1.2, 1.3 (auto-execution-document-review-autofix)
  */

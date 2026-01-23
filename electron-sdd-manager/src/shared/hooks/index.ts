@@ -35,3 +35,10 @@ export { useIncrementalLogParser } from './useIncrementalLogParser';
 // agent-log-perf: Incremental token aggregation for performance
 export { useIncrementalTokenAggregator } from './useIncrementalTokenAggregator';
 export type { TokenUsage } from './useIncrementalTokenAggregator';
+
+// submit-shortcut-key: Keyboard shortcut for dialog form submission
+export { useSubmitShortcut } from './useSubmitShortcut';
+export type {
+  UseSubmitShortcutOptions,
+  UseSubmitShortcutReturn,
+} from './useSubmitShortcut';

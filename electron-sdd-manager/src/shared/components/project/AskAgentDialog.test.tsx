@@ -152,4 +152,66 @@ describe('AskAgentDialog', () => {
       expect(onCancel).toHaveBeenCalled();
     });
   });
+
+  // ============================================================
+  // submit-shortcut-key feature: Task 2.1
+  // Requirement 2.1: AskAgentDialogでショートカット有効
+  // ============================================================
+  describe('ショートカットキー', () => {
+    it('Cmd+Enterでプロンプトが入力されている場合、onExecuteを呼び出す', () => {
+      const onExecute = vi.fn();
+      render(<AskAgentDialog {...defaultProps} onExecute={onExecute} />);
+
+      const input = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(input, { target: { value: 'テストプロンプト' } });
+
+      // Cmd+Enter (macOS)
+      fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+
+      expect(onExecute).toHaveBeenCalledWith('テストプロンプト');
+    });
+
+    it('Ctrl+Enterでプロンプトが入力されている場合、onExecuteを呼び出す', () => {
+      const onExecute = vi.fn();
+      render(<AskAgentDialog {...defaultProps} onExecute={onExecute} />);
+
+      const input = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(input, { target: { value: 'テストプロンプト' } });
+
+      // Ctrl+Enter (Windows/Linux)
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+
+      expect(onExecute).toHaveBeenCalledWith('テストプロンプト');
+    });
+
+    it('プロンプトが空の場合、Cmd+Enterでも送信しない', () => {
+      const onExecute = vi.fn();
+      render(<AskAgentDialog {...defaultProps} onExecute={onExecute} />);
+
+      const input = screen.getByTestId('ask-prompt-input');
+      // Don't enter any text
+
+      // Cmd+Enter
+      fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+
+      expect(onExecute).not.toHaveBeenCalled();
+    });
+
+    it('Enterキーのみでは送信しない（改行動作）', () => {
+      const onExecute = vi.fn();
+      render(<AskAgentDialog {...defaultProps} onExecute={onExecute} />);
+
+      const input = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(input, { target: { value: 'テストプロンプト' } });
+
+      // Enter only (should not trigger submit, allows newline)
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(onExecute).not.toHaveBeenCalled();
+    });
+
+    // Note: IME (isComposing) testing is covered in useSubmitShortcut.test.ts
+    // fireEvent.keyDown doesn't properly support nativeEvent.isComposing mocking
+    // at the component level, so this behavior is verified at the hook level.
+  });
 });

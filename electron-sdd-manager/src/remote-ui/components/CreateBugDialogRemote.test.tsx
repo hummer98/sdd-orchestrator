@@ -1,23 +1,25 @@
 /**
- * CreateSpecDialogRemote Component Tests
+ * CreateBugDialogRemote Component Tests
  *
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6 (remote-ui-create-buttons)
+ * Requirements: 1.2, 1.3, 1.4, 3.1 (remote-ui-bug-advanced-features)
+ * submit-shortcut-key feature: Task 2.5
+ * Requirement 2.5: CreateBugDialogRemoteでショートカット有効
  */
 
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const componentPath = resolve(__dirname, 'CreateSpecDialogRemote.tsx');
+const componentPath = resolve(__dirname, 'CreateBugDialogRemote.tsx');
 
-describe('CreateSpecDialogRemote', () => {
+describe('CreateBugDialogRemote', () => {
   it('should exist', () => {
     expect(existsSync(componentPath)).toBe(true);
   });
 
-  it('should export CreateSpecDialogRemote function', () => {
+  it('should export CreateBugDialogRemote function', () => {
     const content = readFileSync(componentPath, 'utf-8');
-    expect(content).toContain('export function CreateSpecDialogRemote');
+    expect(content).toContain('export function CreateBugDialogRemote');
   });
 
   describe('Props interface', () => {
@@ -40,45 +42,33 @@ describe('CreateSpecDialogRemote', () => {
       const content = readFileSync(componentPath, 'utf-8');
       expect(content).toContain("deviceType: 'desktop' | 'smartphone'");
     });
-
-    it('should have optional onSuccess callback', () => {
-      const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('onSuccess?:');
-    });
   });
 
   describe('UI elements', () => {
     it('should have description textarea with data-testid', () => {
       const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('data-testid="create-spec-description"');
+      expect(content).toContain('data-testid="create-bug-description"');
     });
 
     it('should have worktree mode checkbox with data-testid', () => {
       const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('data-testid="create-spec-worktree-checkbox"');
+      expect(content).toContain('data-testid="create-bug-worktree-checkbox"');
     });
 
     it('should have submit button with data-testid', () => {
       const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('data-testid="create-spec-submit"');
+      expect(content).toContain('data-testid="create-bug-submit"');
     });
 
     it('should have error display with data-testid', () => {
       const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('data-testid="create-spec-error"');
-    });
-  });
-
-  describe('API integration', () => {
-    it('should call apiClient.executeSpecPlan on submit', () => {
-      const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('apiClient.executeSpecPlan');
+      expect(content).toContain('data-testid="create-bug-error"');
     });
   });
 
   // ============================================================
-  // submit-shortcut-key feature: Task 2.4
-  // Requirement 2.4: CreateSpecDialogRemoteでショートカット有効
+  // submit-shortcut-key feature: Task 2.5
+  // Requirement 2.5: CreateBugDialogRemoteでショートカット有効
   // ============================================================
   describe('submit-shortcut-key: Keyboard shortcut implementation', () => {
     it('should import useSubmitShortcut hook', () => {

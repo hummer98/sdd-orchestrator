@@ -12,6 +12,8 @@ import { useProjectStore, useAgentStore, useWorkflowStore, notify } from '../sto
 import { clsx } from 'clsx';
 // create-spec-dialog-simplify: Task 1.3 - AgentIcon/AgentBranchIconインポート
 import { AgentIcon, AgentBranchIcon } from '@shared/components/ui/AgentIcon';
+// submit-shortcut-key: Task 2.2 - Keyboard shortcut hook
+import { useSubmitShortcut } from '@shared/hooks';
 
 interface CreateSpecDialogProps {
   isOpen: boolean;
@@ -82,10 +84,17 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
     onClose();
   };
 
-  if (!isOpen) return null;
-
   // Validation: just check if description is not empty
   const isValid = description.trim().length > 0;
+
+  // submit-shortcut-key: Task 2.2 - Keyboard shortcut for form submission
+  // Note: Hook must be called before early return to comply with React rules of hooks
+  const { handleKeyDown } = useSubmitShortcut({
+    onSubmit: handlePlanStart,
+    disabled: isCreating || !isValid,
+  });
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -130,6 +139,7 @@ export function CreateSpecDialog({ isOpen, onClose }: CreateSpecDialogProps) {
               id="spec-description"
               value={description}
               onChange={(e) => handleDescriptionChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="機能の概要を入力してください。spec-manager:initが仕様名を自動生成します..."
               rows={5}
               disabled={isCreating}

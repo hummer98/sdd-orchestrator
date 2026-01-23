@@ -764,4 +764,121 @@ describe('CreateSpecDialog', () => {
       expect(screen.queryByRole('button', { name: /プランニングで開始/i })).not.toBeInTheDocument();
     });
   });
+
+  // ============================================================
+  // submit-shortcut-key feature: Task 2.2
+  // Requirement 2.2: CreateSpecDialogでショートカット有効
+  // ============================================================
+  describe('submit-shortcut-key: Keyboard shortcut', () => {
+    it('should call executeSpecPlan when Cmd+Enter is pressed with valid description', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明' } });
+
+      // Cmd+Enter (macOS)
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          '新しい機能の説明',
+          'kiro',
+          false
+        );
+      });
+    });
+
+    it('should call executeSpecPlan when Ctrl+Enter is pressed with valid description', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明' } });
+
+      // Ctrl+Enter (Windows/Linux)
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          '新しい機能の説明',
+          'kiro',
+          false
+        );
+      });
+    });
+
+    it('should NOT call executeSpecPlan when description is empty', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      // Don't enter any text
+
+      // Cmd+Enter
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      expect(window.electronAPI.executeSpecPlan).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call executeSpecPlan when Enter is pressed without modifier', () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明' } });
+
+      // Enter only (should not trigger submit)
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+
+      expect(window.electronAPI.executeSpecPlan).not.toHaveBeenCalled();
+    });
+
+    // Note: IME (isComposing) testing is covered in useSubmitShortcut.test.ts
+    // fireEvent.keyDown doesn't properly support nativeEvent.isComposing mocking
+    // at the component level.
+
+    it('should NOT call executeSpecPlan when dialog is in creating state', async () => {
+      // Mock slow response
+      window.electronAPI.executeSpecPlan = vi.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 500))
+      );
+
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: '新しい機能の説明' } });
+
+      // Click button to start creating
+      const button = screen.getByRole('button', { name: /spec-planで作成/i });
+      fireEvent.click(button);
+
+      // Now try shortcut while creating
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      // Should only have been called once (from button click, not from shortcut)
+      expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass worktreeMode when using shortcut with worktree mode enabled', async () => {
+      render(<CreateSpecDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Enable worktree mode
+      const switchButton = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchButton);
+
+      const textarea = screen.getByLabelText('説明');
+      fireEvent.change(textarea, { target: { value: 'Worktreeモードで作成' } });
+
+      // Cmd+Enter
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(window.electronAPI.executeSpecPlan).toHaveBeenCalledWith(
+          '/test/project',
+          'Worktreeモードで作成',
+          'kiro',
+          true // worktreeMode enabled
+        );
+      });
+    });
+  });
 });

@@ -452,4 +452,120 @@ describe('CreateBugDialog', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
+
+  // ============================================================
+  // submit-shortcut-key feature: Task 2.3
+  // Requirement 2.3: CreateBugDialogでショートカット有効
+  // ============================================================
+  describe('submit-shortcut-key: Keyboard shortcut', () => {
+    it('should call executeBugCreate when Cmd+Enter is pressed with valid description', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      fireEvent.change(textarea, { target: { value: 'バグの説明' } });
+
+      // Cmd+Enter (macOS)
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project',
+          'バグの説明',
+          false
+        );
+      });
+    });
+
+    it('should call executeBugCreate when Ctrl+Enter is pressed with valid description', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      fireEvent.change(textarea, { target: { value: 'バグの説明' } });
+
+      // Ctrl+Enter (Windows/Linux)
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+      await waitFor(() => {
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project',
+          'バグの説明',
+          false
+        );
+      });
+    });
+
+    it('should NOT call executeBugCreate when description is empty', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      // Don't enter any text
+
+      // Cmd+Enter
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      expect(mockExecuteBugCreate).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call executeBugCreate when Enter is pressed without modifier', () => {
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      fireEvent.change(textarea, { target: { value: 'バグの説明' } });
+
+      // Enter only (should not trigger submit)
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+
+      expect(mockExecuteBugCreate).not.toHaveBeenCalled();
+    });
+
+    // Note: IME (isComposing) testing is covered in useSubmitShortcut.test.ts
+    // fireEvent.keyDown doesn't properly support nativeEvent.isComposing mocking
+    // at the component level.
+
+    it('should NOT call executeBugCreate when dialog is in creating state', async () => {
+      // Mock slow response
+      mockExecuteBugCreate.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ agentId: 'agent-123' }), 500))
+      );
+
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      fireEvent.change(textarea, { target: { value: 'バグの説明' } });
+
+      // Click button to start creating
+      fireEvent.click(screen.getByTestId('create-button'));
+
+      // Now try shortcut while creating
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      // Should only have been called once (from button click, not from shortcut)
+      expect(mockExecuteBugCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass worktreeMode when using shortcut with worktree mode enabled', async () => {
+      mockExecuteBugCreate.mockResolvedValue({ agentId: 'agent-123', specId: '', phase: 'bug-create' });
+      render(<CreateBugDialog isOpen={true} onClose={mockOnClose} />);
+
+      // Enable worktree mode
+      const switchElement = screen.getByTestId('worktree-mode-switch');
+      fireEvent.click(switchElement);
+
+      const textarea = screen.getByTestId('bug-description-input');
+      fireEvent.change(textarea, { target: { value: 'バグの説明' } });
+
+      // Cmd+Enter
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(mockExecuteBugCreate).toHaveBeenCalledWith(
+          '/test/project',
+          'バグの説明',
+          true // worktreeMode enabled
+        );
+      });
+    });
+  });
 });

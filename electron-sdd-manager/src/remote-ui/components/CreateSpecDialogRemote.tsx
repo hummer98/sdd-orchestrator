@@ -13,6 +13,8 @@ import React, { useState, useCallback } from 'react';
 import { X, AlertCircle, GitBranch, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ApiClient, AgentInfo } from '@shared/api/types';
+// submit-shortcut-key: Task 2.4 - Keyboard shortcut hook
+import { useSubmitShortcut } from '@shared/hooks';
 
 // =============================================================================
 // Types
@@ -104,6 +106,23 @@ export function CreateSpecDialogRemote({
     }
   }, [isSubmitting, onClose]);
 
+  // Validation
+  const isValid = description.trim().length > 0;
+
+  // submit-shortcut-key: Task 2.4 - Shortcut submit handler (wraps handleSubmit without event)
+  const handleShortcutSubmit = useCallback(() => {
+    // Create a synthetic event to satisfy handleSubmit signature
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSubmit(syntheticEvent);
+  }, [handleSubmit]);
+
+  // submit-shortcut-key: Task 2.4 - Keyboard shortcut for form submission
+  // Note: Hook must be called before early return to comply with React rules of hooks
+  const { handleKeyDown } = useSubmitShortcut({
+    onSubmit: handleShortcutSubmit,
+    disabled: isSubmitting || !isValid,
+  });
+
   if (!isOpen) {
     return null;
   }
@@ -176,6 +195,7 @@ export function CreateSpecDialogRemote({
                 data-testid="create-spec-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={handleKeyDown}
                 disabled={isSubmitting}
                 placeholder="実装したい機能の概要を説明してください..."
                 rows={isSmartphone ? 6 : 4}

@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { X, Bot, MessageSquare, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useSubmitShortcut } from '../../hooks';
 
 // =============================================================================
 // Types
@@ -60,10 +61,17 @@ export function AskAgentDialog({
     onCancel();
   };
 
-  if (!isOpen) return null;
-
   const isValid = prompt.trim().length > 0;
   const isProjectAgent = agentType === 'project';
+
+  // submit-shortcut-key: Task 2.1 - Keyboard shortcut for form submission
+  // Note: Hook must be called before early return to comply with React rules of hooks
+  const { handleKeyDown } = useSubmitShortcut({
+    onSubmit: handleExecute,
+    disabled: !isValid,
+  });
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -145,6 +153,7 @@ export function AskAgentDialog({
               id="ask-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="プロンプトを入力してください..."
               rows={6}
               className={clsx(

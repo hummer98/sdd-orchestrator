@@ -14,6 +14,8 @@ import { X, AlertCircle, GitBranch, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ApiClient } from '@shared/api/types';
 import { useSharedBugStore } from '@shared/stores/bugStore';
+// submit-shortcut-key: Task 2.5 - Keyboard shortcut hook
+import { useSubmitShortcut } from '@shared/hooks';
 
 // =============================================================================
 // Types
@@ -105,6 +107,23 @@ export function CreateBugDialogRemote({
     }
   }, [isSubmitting, onClose]);
 
+  // Validation
+  const isValid = description.trim().length > 0;
+
+  // submit-shortcut-key: Task 2.5 - Shortcut submit handler (wraps handleSubmit without event)
+  const handleShortcutSubmit = useCallback(() => {
+    // Create a synthetic event to satisfy handleSubmit signature
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSubmit(syntheticEvent);
+  }, [handleSubmit]);
+
+  // submit-shortcut-key: Task 2.5 - Keyboard shortcut for form submission
+  // Note: Hook must be called before early return to comply with React rules of hooks
+  const { handleKeyDown } = useSubmitShortcut({
+    onSubmit: handleShortcutSubmit,
+    disabled: isSubmitting || !isValid,
+  });
+
   if (!isOpen) {
     return null;
   }
@@ -177,6 +196,7 @@ export function CreateBugDialogRemote({
                 data-testid="create-bug-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={handleKeyDown}
                 disabled={isSubmitting}
                 placeholder="バグの内容を説明してください..."
                 rows={isSmartphone ? 6 : 4}

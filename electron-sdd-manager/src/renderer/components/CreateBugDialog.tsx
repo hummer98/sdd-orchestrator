@@ -12,6 +12,8 @@ import { useBugStore } from '../stores/bugStore';
 import { clsx } from 'clsx';
 // bug-create-dialog-unification: AgentIcon/AgentBranchIcon for button icons
 import { AgentIcon, AgentBranchIcon } from '../../shared/components/ui/AgentIcon';
+// submit-shortcut-key: Task 2.3 - Keyboard shortcut hook
+import { useSubmitShortcut } from '@shared/hooks';
 
 interface CreateBugDialogProps {
   isOpen: boolean;
@@ -85,10 +87,17 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
     onClose();
   };
 
-  if (!isOpen) return null;
-
   // Validation: description is required
   const isValid = description.trim().length > 0;
+
+  // submit-shortcut-key: Task 2.3 - Keyboard shortcut for form submission
+  // Note: Hook must be called before early return to comply with React rules of hooks
+  const { handleKeyDown } = useSubmitShortcut({
+    onSubmit: handleCreate,
+    disabled: isCreating || !isValid,
+  });
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" data-testid="create-bug-dialog">
@@ -139,6 +148,7 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
               id="bug-description"
               value={description}
               onChange={(e) => handleDescriptionChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="発生した問題や再現手順を入力してください..."
               rows={5}
               disabled={isCreating}

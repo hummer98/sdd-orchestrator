@@ -1,0 +1,35 @@
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:18.561Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108718562-301dd453","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:18.566Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108718562-301dd453","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:19.127Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:19.147Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:19.147Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:21.893Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108721894-701f8f53","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:21.896Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108721894-701f8f53","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:22.248Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:22.249Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:22.249Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:25.437Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108725438-1a05e024","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:25.440Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108725438-1a05e024","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:25.791Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:25.792Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:25.792Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:36.271Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108736272-171b99e5","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:36.274Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108736272-171b99e5","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:36.625Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:36.628Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:36.628Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:39.519Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108739520-29450861","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:39.521Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108739520-29450861","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:39.871Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:39.872Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:39.872Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:48.133Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108748134-69c9ef0f","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:48.136Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108748134-69c9ef0f","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:48.481Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:48.481Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:48.481Z"}
+{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2026-01-22T19:05:54.683Z"}
+{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-1769108754684-3ad60e8c","phase":"requirements","command":"/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/scripts/e2e-mock/mock-claude.sh -p --verbose --output-format stream-json /kiro:spec-requirements simple-feature","timestamp":"2026-01-22T19:05:54.688Z"}
+{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-1769108754684-3ad60e8c","phase":"requirements","exitCode":0,"timestamp":"2026-01-22T19:05:55.042Z"}
+{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2026-01-22T19:05:55.043Z"}
+{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2026-01-22T19:05:55.043Z"}

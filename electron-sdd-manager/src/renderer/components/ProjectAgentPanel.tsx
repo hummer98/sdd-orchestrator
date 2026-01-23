@@ -134,7 +134,7 @@ export function ProjectAgentPanel() {
       </div>
 
       {/* Agent List */}
-      <div className="px-2 pb-2">
+      <div className="px-2 pb-2 max-h-48 overflow-y-auto">
         <AgentList
           agents={projectAgents.map(mapAgentInfoToItemInfo)}
           selectedAgentId={selectedAgentId}

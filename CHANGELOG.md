@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0] - 2026-01-23
+
+### Added
+- **spec-productivity-metrics**: Spec生産性メトリクス機能の実装（worktreeからマージ）
+- **api**: ISpecWorkflowApi統一インターフェースを追加
+- **e2e**: remote-ui.helpersにリトライロジックを追加
+- **ask**: askフェーズの二重起動制限を解除
+- **bug-workflow**: worktreeモード時にDeployラベルをMergeに変更
+- **remote-ui**: DesktopLayoutにResizeHandle機能を追加
+- **remote-ui**: 左サイドバー下部にProjectAgentパネルを追加
+- **bug-create-dialog-unification**: バグ作成ダイアログの統一実装をworktreeからマージ
+
+### Fixed
+- **ipc**: metrics IPCハンドラーの二重登録を修正
+- **agent-log**: ユーザー入力の二重表示を修正
+- **bug-workflow**: bug-mergeをprojectPathで実行するよう修正
+- **remote-ui**: Spec/Bug一覧のレート制限問題を修正
+- **remote-ui**: RightSidebarのレイアウトをElectron版に準拠
+- **bug-merge**: worktree内からbug.jsonを読むようにspec-mergeと統一
+- **remote-access**: Remote AccessダイアログのURLにアクセストークンを含める
+- **project-agent**: プロジェクト選択時に古いProjectAgentを自動選択する問題を修正
+
+### Changed
+- **refactor**: AgentLogPanelをElectron/Remote-UI間で共通化
+- **refactor**: ResizeHandleコンポーネントを共通化
+- **refactor**: ProjectAgentPanelを共通AgentListコンポーネントに統合
+- **refactor**: SpecListをremote-uiとの共通化を見据えてリファクタ
+- **refactor**: AgentListPanel/AgentViewのAgent一覧を共通コンポーネント化
+- **refactor**: DesktopLayoutをElectron版に準拠するよう再構築
+- **refactor**: SpecWorkflowFooterとworktreeユーティリティをsharedに共通化
+
+### Testing
+- **test**: SpecActionsViewの重複data-testid削除
+- **test**: E2Eテスト用フィクスチャの更新
+- **e2e**: 重複テストを共通モジュールに統合
+- **e2e**: Document ReviewとInspectionのUI状態遷移テストを追加
+- **test**: 削除/移動された機能の空スキップテストを削除
+- **test**: 並列実行時にflakyなテストを削除
+- **test**: テストとコンポーネントのtestid不一致を修正
+
+### Chores
+- **gitignore**: events.jsonlと.playwright-remote-portを除外
+
 ## [0.40.0] - 2026-01-23
 
 ### Added

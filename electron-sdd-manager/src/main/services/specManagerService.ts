@@ -133,6 +133,34 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   return args;
 }
 
+/**
+ * Extract prompt from args array
+ * Claude CLI args format: [...baseFlags, '-p', ...userArgs]
+ * The userArgs typically contain the slash command with prompt
+ */
+export function extractPromptFromArgs(args: string[]): string | undefined {
+  // userArgs are typically after '-p' flag, joined as a single string or multiple strings
+  // Example: ['-p', '--output-format', 'stream-json', '--verbose', '/kiro:spec-requirements "feature-name"']
+  // The last argument is usually the command with prompt
+  if (args.length === 0) {
+    return undefined;
+  }
+
+  // Look for the actual command argument (starts with '/' for slash commands)
+  const commandArg = args.find((arg) => arg.startsWith('/'));
+  if (commandArg) {
+    return commandArg;
+  }
+
+  // Fallback: return the last argument if it's not a flag
+  const lastArg = args[args.length - 1];
+  if (lastArg && !lastArg.startsWith('-') && !lastArg.startsWith('--')) {
+    return lastArg;
+  }
+
+  return undefined;
+}
+
 export type ExecutionGroup = 'doc' | 'impl';
 
 /**
@@ -266,6 +294,8 @@ export interface StartAgentOptions {
   skipPermissions?: boolean;
   /** Working directory override for worktree mode (git-worktree-support) */
   worktreeCwd?: string;
+  /** Prompt used to start the agent (for recording in agent metadata) */
+  prompt?: string;
 }
 
 /** Document Review execution options (Requirements: 6.1) */
@@ -682,6 +712,8 @@ export class SpecManagerService {
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
     const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd } = options;
     const effectiveProviderType = providerType ?? this.providerType;
+    // Extract prompt from options or args
+    const effectivePrompt = options.prompt ?? extractPromptFromArgs(args);
 
     // execute-method-unification: Task 3.1 - worktreeCwd auto-resolution
     // spec-worktree-early-creation: Task 9.1 - cwd auto-resolution for all phases (impl and doc)
@@ -830,6 +862,7 @@ export class SpecManagerService {
         lastActivityAt: now,
         command: `${command} ${effectiveArgs.join(' ')}`,
         cwd: effectiveCwd,
+        prompt: effectivePrompt,
       };
 
       // agent-state-file-ssot: Store process handle for stdin/kill operations
@@ -881,6 +914,7 @@ export class SpecManagerService {
         lastActivityAt: now,
         command: `${command} ${effectiveArgs.join(' ')}`,
         cwd: effectiveCwd,
+        prompt: effectivePrompt,
       });
 
       // Mark file as written and process any pending events
@@ -1318,6 +1352,26 @@ export class SpecManagerService {
         lastActivityAt: now,
         command: `${command} ${args.join(' ')}`,
       });
+
+      // Bug fix: Add resume prompt to log as user event
+      // Claude CLI doesn't output type:'user' event for --resume prompt,
+      // so we manually add it to the log for UI display
+      const userEventJson = JSON.stringify({
+        type: 'user',
+        message: {
+          content: [{ type: 'text', text: resumePrompt }],
+        },
+      });
+      const promptLogEntry: LogEntry = {
+        timestamp: now,
+        stream: 'stdout',
+        data: userEventJson + '\n',
+      };
+      this.logService.appendLog(agent.specId, agentId, promptLogEntry).catch((err) => {
+        logger.warn('[SpecManagerService] Failed to write prompt log', { agentId, error: err.message });
+      });
+      // Also notify UI via output callbacks
+      this.outputCallbacks.forEach((cb) => cb(agentId, 'stdout', userEventJson + '\n'));
 
       // Set up event handlers (same as startAgent)
       process.onOutput((stream, data) => {

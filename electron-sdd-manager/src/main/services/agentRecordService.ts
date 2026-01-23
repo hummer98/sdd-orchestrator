@@ -32,6 +32,8 @@ export interface AgentInfo {
   readonly command: string;
   /** Working directory used when agent was started. Required for resume in worktree mode. */
   readonly cwd?: string;
+  /** Prompt used to start the agent */
+  readonly prompt?: string;
 }
 
 export interface AgentRecord {
@@ -46,6 +48,8 @@ export interface AgentRecord {
   command: string;
   /** Working directory used when agent was started. Required for resume in worktree mode. */
   cwd?: string;
+  /** Prompt used to start the agent */
+  prompt?: string;
 }
 
 export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;

@@ -16,7 +16,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-import { SpecManagerService, ExecutionGroup, buildClaudeArgs, WORKTREE_LIFECYCLE_PHASES } from './specManagerService';
+import { SpecManagerService, ExecutionGroup, buildClaudeArgs, WORKTREE_LIFECYCLE_PHASES, extractPromptFromArgs } from './specManagerService';
 
 describe('SpecManagerService', () => {
   let testDir: string;
@@ -2718,5 +2718,40 @@ describe('onAgentExitError - callback management', () => {
     // (actual calling will be tested with error scenario)
     expect(callback1).not.toHaveBeenCalled();
     expect(callback2).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * extractPromptFromArgs Tests
+ * Extract prompt from Claude CLI args for agent metadata recording
+ */
+describe('extractPromptFromArgs', () => {
+  it('should extract slash command from args', () => {
+    const args = ['-p', '--verbose', '--output-format', 'stream-json', '/kiro:spec-requirements my-feature'];
+    expect(extractPromptFromArgs(args)).toBe('/kiro:spec-requirements my-feature');
+  });
+
+  it('should extract slash command with quoted content', () => {
+    const args = ['-p', '--verbose', '/kiro:project-ask "What is the architecture?"'];
+    expect(extractPromptFromArgs(args)).toBe('/kiro:project-ask "What is the architecture?"');
+  });
+
+  it('should return undefined for empty args', () => {
+    expect(extractPromptFromArgs([])).toBeUndefined();
+  });
+
+  it('should return last non-flag arg when no slash command', () => {
+    const args = ['-p', '--verbose', 'some-command'];
+    expect(extractPromptFromArgs(args)).toBe('some-command');
+  });
+
+  it('should return undefined when all args are flags', () => {
+    const args = ['-p', '--verbose', '--output-format'];
+    expect(extractPromptFromArgs(args)).toBeUndefined();
+  });
+
+  it('should handle multiple slash commands and return the first one', () => {
+    const args = ['-p', '/first-command', '/second-command'];
+    expect(extractPromptFromArgs(args)).toBe('/first-command');
   });
 });

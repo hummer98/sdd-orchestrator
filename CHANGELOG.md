@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.2] - 2026-01-24
+
+### Fixed
+- **remote-ui**: AgentStateInfoにcommandとsessionIdを追加（リモートUIでのログ表示に必要）
+- **metrics**: startAgentでstatusCallbackを'running'で呼び出すよう修正
+- **agent-log**: スクロールバック時の自動スクロール追従を抑制
+
+### Performance
+- **agent-log**: インクリメンタルパースでログ大量時のレインボーサークル問題を修正
+
+### Documentation
+- **steering**: symbol-semantic-mapを最新のコードベースに更新
+
 ## [0.43.1] - 2026-01-24
 
 ### Fixed

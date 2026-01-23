@@ -29,13 +29,6 @@ export type {
   UseSpecWorkflowHandlersReturn,
 } from './useSpecWorkflowHandlers';
 
-// submit-shortcut-key: Keyboard shortcut for dialog submission
-export { useSubmitShortcut } from './useSubmitShortcut';
-export type {
-  UseSubmitShortcutOptions,
-  UseSubmitShortcutReturn,
-} from './useSubmitShortcut';
-
 // agent-log-perf: Incremental log parsing for performance
 export { useIncrementalLogParser } from './useIncrementalLogParser';
 

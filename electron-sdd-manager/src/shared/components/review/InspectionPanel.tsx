@@ -150,7 +150,7 @@ export function InspectionPanel({
   const showFixButton = needsFix(inspectionState);
 
   return (
-    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+    <div data-testid="inspection-panel" className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         {/* Left side: Progress indicator + Icon + Title + GO/NOGO badge */}

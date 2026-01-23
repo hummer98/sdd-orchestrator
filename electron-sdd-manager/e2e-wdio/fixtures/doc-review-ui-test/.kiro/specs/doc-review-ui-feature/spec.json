@@ -1,0 +1,57 @@
+{
+  "feature_name": "doc-review-ui-feature",
+  "name": "doc-review-ui-feature",
+  "description": "E2Eテスト用：Document Review UI状態テスト",
+  "phase": "implementation-complete",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "documentReview": {
+    "status": "approved",
+    "currentRound": 3,
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "reviewCompletedAt": "2024-01-01T00:01:00.000Z",
+        "replyCompletedAt": "2024-01-01T00:02:00.000Z",
+        "fixRequired": 3,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "reviewCompletedAt": "2024-01-01T00:03:00.000Z",
+        "replyCompletedAt": "2024-01-01T00:04:00.000Z",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 3,
+        "status": "reply_complete",
+        "reviewCompletedAt": "2024-01-01T00:05:00.000Z",
+        "replyCompletedAt": "2024-01-01T00:06:00.000Z",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "updated_at": "2026-01-22T21:31:14.693Z"
+}

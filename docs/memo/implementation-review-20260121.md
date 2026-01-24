@@ -144,6 +144,10 @@ Main と Renderer で重複している「ファイル名 → アクション」
     *   該当箇所には `// normalizeInspectionState and hasPassed are no longer used here` とのコメントがあり、ロジック自体が Main プロセスから除去されたようです。
 2.  **CheckImplResult (Dead Code)**
     *   コードベースから `CheckImplResult` の型定義および使用箇所は削除されました（多数の "REMOVED" コメントとして痕跡は残っていますが、機能的にはクリーンアップ済みです）。
+3.  **Worktree 型の重複定義** (2026-01-25 解決)
+    *   `src/shared/types/worktree.ts` を正として全型定義（`WorktreeConfig`, `WorktreeError`, `WorktreeInfo`, `WorktreeServiceResult`, `hasWorktreePath`, `isImplStarted`, `isWorktreeConfig`）を集約。
+    *   `src/renderer/types/worktree.ts` は Shared からの re-export のみに変更し、後方互換性を維持。
+    *   これにより Main プロセスから Renderer への不正 import 問題も解消。
 
 ### ⚠️ 未解決 (Unresolved / Partially Resolved)
 1.  **不要ファイルの残存**
@@ -156,12 +160,21 @@ Main と Renderer で重複している「ファイル名 → アクション」
     *   `SpecsWatcherService` (Main) と `SpecWatcherService` (Renderer) は両方存在し、リネームされていません。
 5.  **Worktree ロジックの分散**
     *   `worktreeWatcherUtils.ts` は存在しますが、`SpecsWatcherService.ts` 内の `extractSpecId` メソッドなどに依然として Worktree のパス構造に関する詳細なロジック（`worktreeParts` の手動解析など）が残っており、完全な共通化には至っていません。
-6.  ~~**Worktree 型の重複定義**~~
-    *   ✅ **解決済み (2026-01-25)**: `src/shared/types/worktree.ts` を正として全型定義を集約。`src/renderer/types/worktree.ts` は Shared からの re-export のみに変更。これにより Main プロセスからの Renderer への不正 import 問題も解消。
 
 ### 次のアクション (Next Actions)
 優先度の高い順に以下の対応を推奨します。
 
-1.  **[Immediate] 不要ファイルの削除**: `metricsService.ts.design.md` を移動/削除。
+1.  **[Immediate] 不要ファイルの削除**: `metricsService.ts.design.md` を移動/削除（完了済み）。
 2.  **[High] 定数共通化 (Phase 2)**: `src/shared/constants/artifacts.ts` を作成し、Main/Renderer のハードコードを排除。
-3.  **[Medium] ディレクトリ整理 (Phase 4)**: `src/main/services` の整理に着手。
+3.  **[High] Worktree Utilsの統合**: `worktreeWatcherUtils.ts` と `worktreeHelpers.ts` は内容が重複しているため、`worktreeHelpers.ts` に一本化する。
+4.  **[Medium] ディレクトリ整理 (Phase 4)**: `src/main/services` を以下のカテゴリ別に再編する。
+    *   `agents/`: エージェント実行 (`agentProcess`, `autoExecutionCoordinator` 等)
+    *   `bugs/`: バグ管理 (`bugService`, `bugWorkflowService` 等)
+    *   `config/`: 設定管理 (`configStore`, `profileManager` 等)
+    *   `core/`: 基盤 (`fileService`, `windowManager` 等)
+    *   `installers/`: インストーラー (`cliInstaller`, `commandInstaller` 等)
+    *   `logging/`: ログ (`logger`, `loggingService` 等)
+    *   `metrics/`: メトリクス (`metricsService` 等)
+    *   `remote/`: リモートアクセス (`cloudflareTunnelManager` 等)
+    *   `watchers/`: ファイル監視 (`specsWatcherService` 等)
+    *   `worktree/`: Worktree連携 (`worktreeService` 等)

@@ -30,6 +30,9 @@ import { DocumentReviewService } from './documentReviewService';
 // spec-event-log: Event logging for agent activities
 import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
+// spec-productivity-metrics: Direct metrics tracking in service
+import { getDefaultMetricsService } from './metricsService';
+import type { WorkflowPhase as MetricsWorkflowPhase } from '../types/metrics';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -944,8 +947,15 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
-      // spec-productivity-metrics: Notify status change for metrics tracking
-      // This enables metricsService.startAiSession() to be called
+      // spec-productivity-metrics: Direct metrics tracking (simplified approach)
+      // Track AI session start for core workflow phases
+      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+      if (corePhases.includes(phase as MetricsWorkflowPhase)) {
+        const metricsService = getDefaultMetricsService();
+        metricsService.startAiSession(specId, phase as MetricsWorkflowPhase);
+        logger.debug('[SpecManagerService] AI session started for metrics', { specId, phase });
+      }
+
       this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
 
       return { ok: true, value: agentInfo };
@@ -1044,6 +1054,18 @@ export class SpecManagerService {
 
       // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
       const phase = currentRecord?.phase || 'unknown';
+
+      // spec-productivity-metrics: Direct metrics tracking (simplified approach)
+      // Track AI session end for core workflow phases
+      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
+      if (corePhases.includes(phase as MetricsWorkflowPhase)) {
+        const metricsService = getDefaultMetricsService();
+        metricsService.endAiSession(specId, phase as MetricsWorkflowPhase).catch((err) => {
+          logger.warn('[SpecManagerService] Failed to end AI session for metrics', { specId, phase, error: err });
+        });
+        logger.debug('[SpecManagerService] AI session ended for metrics', { specId, phase });
+      }
+
       if (newStatus === 'completed') {
         this.logAgentEvent(specId, {
           type: 'agent:complete',

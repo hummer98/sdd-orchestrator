@@ -67,7 +67,6 @@ import { getDefaultEventLogService } from '../services/eventLogService';
 import { parseTasksContent, type ParseResult } from '../services/taskParallelParser';
 // spec-productivity-metrics: Metrics service import (Task 2.2)
 import { getDefaultMetricsService, initDefaultMetricsService } from '../services/metricsService';
-import type { WorkflowPhase as MetricsWorkflowPhase } from '../types/metrics';
 
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
@@ -922,29 +921,11 @@ export function registerIpcHandlers(): void {
             window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
           }
 
-          // Get agent info for metrics and WebSocket broadcast
+          // Get agent info for WebSocket broadcast
           const agentInfo = await service.getAgentById(agentId);
 
-          // spec-productivity-metrics: Task 2.2 - Track AI session metrics
-          // Requirements: 1.1, 1.2 (AI time tracking via agent lifecycle hooks)
-          if (agentInfo) {
-            const metricsService = getDefaultMetricsService();
-            const metricsPhase = agentInfo.phase as MetricsWorkflowPhase;
-
-            // Only track metrics for the 4 core workflow phases
-            const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
-            if (corePhases.includes(metricsPhase)) {
-              if (status === 'running') {
-                // Agent started: begin AI session
-                metricsService.startAiSession(agentInfo.specId, metricsPhase);
-                logger.debug('[handlers] AI session started for metrics', { specId: agentInfo.specId, phase: metricsPhase });
-              } else if (status === 'completed' || status === 'failed' || status === 'interrupted') {
-                // Agent ended: close AI session
-                await metricsService.endAiSession(agentInfo.specId, metricsPhase);
-                logger.debug('[handlers] AI session ended for metrics', { specId: agentInfo.specId, phase: metricsPhase, status });
-              }
-            }
-          }
+          // spec-productivity-metrics: Metrics tracking moved to specManagerService for simplicity
+          // AI session start/end is now handled directly in startAgent/handleAgentExit
 
           // Broadcast status change to Remote UI via WebSocket
           // Include full agent info for remote-ui to display same content as Electron version
@@ -3098,29 +3079,11 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
       window.webContents.send(IPC_CHANNELS.AGENT_STATUS_CHANGE, agentId, status);
     }
 
-    // Get agent info for metrics and WebSocket broadcast
+    // Get agent info for WebSocket broadcast
     const agentInfo = await service.getAgentById(agentId);
 
-    // spec-productivity-metrics: Task 2.2 - Track AI session metrics
-    // Requirements: 1.1, 1.2 (AI time tracking via agent lifecycle hooks)
-    if (agentInfo) {
-      const metricsService = getDefaultMetricsService();
-      const metricsPhase = agentInfo.phase as MetricsWorkflowPhase;
-
-      // Only track metrics for the 4 core workflow phases
-      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
-      if (corePhases.includes(metricsPhase)) {
-        if (status === 'running') {
-          // Agent started: begin AI session
-          metricsService.startAiSession(agentInfo.specId, metricsPhase);
-          logger.debug('[handlers] AI session started for metrics', { specId: agentInfo.specId, phase: metricsPhase });
-        } else if (status === 'completed' || status === 'failed' || status === 'interrupted') {
-          // Agent ended: close AI session
-          await metricsService.endAiSession(agentInfo.specId, metricsPhase);
-          logger.debug('[handlers] AI session ended for metrics', { specId: agentInfo.specId, phase: metricsPhase, status });
-        }
-      }
-    }
+    // spec-productivity-metrics: Metrics tracking moved to specManagerService for simplicity
+    // AI session start/end is now handled directly in startAgent/handleAgentExit
 
     // Broadcast status change to Remote UI via WebSocket
     // Include full agent info for remote-ui to display same content as Electron version

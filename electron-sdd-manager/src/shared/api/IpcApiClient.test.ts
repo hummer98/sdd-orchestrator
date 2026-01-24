@@ -57,4 +57,36 @@ describe('IpcApiClient', () => {
     // Check that command is copied to AgentInfo in getAgents
     expect(content).toContain('command: agent.command');
   });
+
+  // ===========================================================================
+  // bugs-view-unification: Task 1.2 - Bug monitoring methods
+  // Requirements: 4.5, 4.7
+  // ===========================================================================
+
+  describe('Bug monitoring methods', () => {
+    it('should implement switchAgentWatchScope delegating to window.electronAPI', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async switchAgentWatchScope(');
+      expect(content).toContain('window.electronAPI.switchAgentWatchScope');
+    });
+
+    it('should implement startBugsWatcher via IPC', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async startBugsWatcher()');
+      expect(content).toContain('window.electronAPI.startBugsWatcher');
+    });
+
+    it('should implement stopBugsWatcher via IPC', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async stopBugsWatcher()');
+      expect(content).toContain('window.electronAPI.stopBugsWatcher');
+    });
+
+    it('should implement onBugsChanged with IPC event listener', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('onBugsChanged(');
+      // Should set up IPC event listener
+      expect(content).toMatch(/onBugsChanged[\s\S]*window\.electronAPI\.onBugsChanged/);
+    });
+  });
 });

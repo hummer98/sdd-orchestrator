@@ -1,15 +1,19 @@
 /**
  * BugPane Component Tests
  * Bug fix: bugs-tab-agent-list-missing
+ * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BugPane } from './BugPane';
-import { useBugStore } from '../stores';
 
-// Mock the stores
-vi.mock('../stores');
+// Mock the shared bugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: vi.fn(),
+}));
+
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 // Mock child components - BugPane now uses shared ArtifactEditor with testId="bug-artifact-editor"
 vi.mock('./ArtifactEditor', () => ({
@@ -32,7 +36,7 @@ vi.mock('./ResizeHandle', () => ({
   ),
 }));
 
-const mockUseBugStore = useBugStore as unknown as ReturnType<typeof vi.fn>;
+const mockUseSharedBugStore = useSharedBugStore as unknown as ReturnType<typeof vi.fn>;
 
 describe('BugPane', () => {
   const defaultProps = {
@@ -49,8 +53,10 @@ describe('BugPane', () => {
 
   describe('When no bug is selected', () => {
     beforeEach(() => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: null,
+      // bugs-view-unification Task 6.1: Use selectedBugId and bugs array
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [],
+        selectedBugId: null,
         bugDetail: null,
       });
     });
@@ -82,8 +88,13 @@ describe('BugPane', () => {
 
   describe('When a bug is selected', () => {
     beforeEach(() => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: { name: 'test-bug', path: '/path/to/bug', phase: 'reported' },
+      // bugs-view-unification Task 6.1: Use selectedBugId and bugs array
+      const mockBugs = [
+        { name: 'test-bug', path: '/path/to/bug', phase: 'reported' },
+      ];
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: mockBugs,
+        selectedBugId: 'test-bug',
         bugDetail: null,
       });
     });

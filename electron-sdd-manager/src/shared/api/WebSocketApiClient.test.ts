@@ -61,4 +61,42 @@ describe('WebSocketApiClient', () => {
     expect(content).toContain('async executeSpecPlan(');
     expect(content).toContain("'EXECUTE_SPEC_PLAN'");
   });
+
+  // ===========================================================================
+  // bugs-view-unification: Task 1.3 - Bug monitoring methods
+  // Requirements: 4.6, 4.7
+  // ===========================================================================
+
+  describe('Bug monitoring methods', () => {
+    it('should implement switchAgentWatchScope via WebSocket message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async switchAgentWatchScope(');
+      expect(content).toContain("'SWITCH_AGENT_WATCH_SCOPE'");
+    });
+
+    it('should implement startBugsWatcher via WebSocket', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async startBugsWatcher()');
+      expect(content).toContain("'START_BUGS_WATCHER'");
+    });
+
+    it('should implement stopBugsWatcher via WebSocket', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async stopBugsWatcher()');
+      expect(content).toContain("'STOP_BUGS_WATCHER'");
+    });
+
+    it('should implement onBugsChanged with WebSocket event subscription', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('onBugsChanged(');
+      // Should subscribe to bugsChanged event internally
+      expect(content).toMatch(/onBugsChanged[\s\S]*bugsChanged/);
+    });
+
+    it('should implement detectBugsChanges for event format normalization', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Function to convert WebSocket BugMetadata[] to BugsChangeEvent[]
+      expect(content).toContain('detectBugsChanges');
+    });
+  });
 });

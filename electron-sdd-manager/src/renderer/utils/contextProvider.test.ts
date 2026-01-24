@@ -4,6 +4,7 @@
  * Requirements: 4.1, 4.2, 4.3
  *
  * Tests for automatic context extraction from stores for logging
+ * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -17,10 +18,11 @@ vi.mock('../stores/spec/specDetailStore', () => ({
   },
 }));
 
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: {
+// bugs-view-unification Task 6.1: Mock useSharedBugStore instead of useBugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: {
     getState: vi.fn(() => ({
-      selectedBug: null,
+      selectedBugId: null,
     })),
   },
 }));
@@ -28,7 +30,7 @@ vi.mock('../stores/bugStore', () => ({
 // Now import the module under test and the mocked stores
 import { getAutoContext, type LogContext } from './contextProvider';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
-import { useBugStore } from '../stores/bugStore';
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 describe('ContextProvider', () => {
   beforeEach(() => {
@@ -37,9 +39,10 @@ describe('ContextProvider', () => {
       specDetail: null,
     } as ReturnType<typeof useSpecDetailStore.getState>);
 
-    vi.mocked(useBugStore.getState).mockReturnValue({
-      selectedBug: null,
-    } as ReturnType<typeof useBugStore.getState>);
+    // bugs-view-unification Task 6.1: Use selectedBugId instead of selectedBug
+    vi.mocked(useSharedBugStore.getState).mockReturnValue({
+      selectedBugId: null,
+    } as ReturnType<typeof useSharedBugStore.getState>);
   });
 
   describe('getAutoContext', () => {
@@ -91,36 +94,22 @@ describe('ContextProvider', () => {
     });
 
     // Requirement 4.2: bugName in context when selected
+    // bugs-view-unification Task 6.1: Uses selectedBugId directly
     describe('bugName context', () => {
       it('should include bugName when bug is selected', () => {
-        vi.mocked(useBugStore.getState).mockReturnValue({
-          selectedBug: {
-            name: 'test-bug-123',
-            status: 'analyzing',
-          },
-        } as ReturnType<typeof useBugStore.getState>);
+        vi.mocked(useSharedBugStore.getState).mockReturnValue({
+          selectedBugId: 'test-bug-123',
+        } as ReturnType<typeof useSharedBugStore.getState>);
 
         const context = getAutoContext();
 
         expect(context.bugName).toBe('test-bug-123');
       });
 
-      it('should not include bugName when selectedBug is null', () => {
-        vi.mocked(useBugStore.getState).mockReturnValue({
-          selectedBug: null,
-        } as ReturnType<typeof useBugStore.getState>);
-
-        const context = getAutoContext();
-
-        expect(context.bugName).toBeUndefined();
-      });
-
-      it('should not include bugName when selectedBug.name is undefined', () => {
-        vi.mocked(useBugStore.getState).mockReturnValue({
-          selectedBug: {
-            status: 'analyzing',
-          },
-        } as ReturnType<typeof useBugStore.getState>);
+      it('should not include bugName when selectedBugId is null', () => {
+        vi.mocked(useSharedBugStore.getState).mockReturnValue({
+          selectedBugId: null,
+        } as ReturnType<typeof useSharedBugStore.getState>);
 
         const context = getAutoContext();
 
@@ -147,12 +136,9 @@ describe('ContextProvider', () => {
           },
         } as ReturnType<typeof useSpecDetailStore.getState>);
 
-        vi.mocked(useBugStore.getState).mockReturnValue({
-          selectedBug: {
-            name: 'auth-bug-456',
-            status: 'fixing',
-          },
-        } as ReturnType<typeof useBugStore.getState>);
+        vi.mocked(useSharedBugStore.getState).mockReturnValue({
+          selectedBugId: 'auth-bug-456',
+        } as ReturnType<typeof useSharedBugStore.getState>);
 
         const context = getAutoContext();
 
@@ -174,7 +160,7 @@ describe('ContextProvider', () => {
       });
 
       it('should return empty object if bugStore throws', () => {
-        vi.mocked(useBugStore.getState).mockImplementation(() => {
+        vi.mocked(useSharedBugStore.getState).mockImplementation(() => {
           throw new Error('Store not initialized');
         });
 
@@ -190,7 +176,7 @@ describe('ContextProvider', () => {
           },
         } as ReturnType<typeof useSpecDetailStore.getState>);
 
-        vi.mocked(useBugStore.getState).mockImplementation(() => {
+        vi.mocked(useSharedBugStore.getState).mockImplementation(() => {
           throw new Error('Store not initialized');
         });
 

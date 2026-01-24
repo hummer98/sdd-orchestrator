@@ -2,20 +2,31 @@
  * BugWorkflowView Component Tests
  * Task 3: bugs-pane-integration - BugWorkflowViewコンポーネント
  * Requirements: 3.1, 3.2, 3.3, 4.1-4.7, 6.2, 6.4
+ * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BugWorkflowView } from './BugWorkflowView';
-import { useBugStore } from '../stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import type { BugDetail, BugMetadata } from '../types/bug';
 
-// Mock stores
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: vi.fn(),
+// bugs-view-unification Task 6.1: Mock shared bugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: vi.fn(),
 }));
+
+// bugs-view-unification Task 6.1: Mock ApiClientProvider
+const mockApiClient = {
+  getBugs: vi.fn(),
+  getBugDetail: vi.fn(),
+};
+vi.mock('../../shared/api/ApiClientProvider', () => ({
+  useApi: () => mockApiClient,
+}));
+
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 vi.mock('../stores/agentStore', () => {
   // Create a mock that includes subscribe for Zustand store compatibility
@@ -103,15 +114,18 @@ const mockBugDetail: BugDetail = {
 };
 
 describe('BugWorkflowView', () => {
-  const mockUseBugStore = useBugStore as unknown as ReturnType<typeof vi.fn>;
+  // bugs-view-unification Task 6.1: Use shared bugStore mock
+  const mockUseSharedBugStore = useSharedBugStore as unknown as ReturnType<typeof vi.fn>;
   const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
   const mockUseWorkflowStore = useWorkflowStore as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockUseBugStore.mockReturnValue({
-      selectedBug: mockBugMetadata,
+    // bugs-view-unification Task 6.1: Use selectedBugId and bugs array
+    mockUseSharedBugStore.mockReturnValue({
+      bugs: [mockBugMetadata],
+      selectedBugId: 'test-bug',
       bugDetail: mockBugDetail,
       useWorktree: false,
       setUseWorktree: vi.fn(),
@@ -187,8 +201,9 @@ describe('BugWorkflowView', () => {
           analysis: { exists: true, path: '/test/analysis.md', updatedAt: '2024-01-01T00:00:00Z' },
         },
       };
-      mockUseBugStore.mockReturnValue({
-        selectedBug: mockBugMetadata,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [mockBugMetadata],
+        selectedBugId: 'test-bug',
         bugDetail: bugDetailWithAnalysis,
         useWorktree: false,
         setUseWorktree: vi.fn(),
@@ -232,8 +247,9 @@ describe('BugWorkflowView', () => {
       };
 
       // Set up fresh state for this test
-      mockUseBugStore.mockReturnValue({
-        selectedBug: mockBugMetadata,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [mockBugMetadata],
+        selectedBugId: 'test-bug',
         bugDetail: completedBugDetail,
         useWorktree: false,
         setUseWorktree: vi.fn(),
@@ -265,8 +281,9 @@ describe('BugWorkflowView', () => {
 
   describe('when no bug is selected', () => {
     it('should show placeholder message', () => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: null,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [],
+        selectedBugId: null,
         bugDetail: null,
       });
 
@@ -311,8 +328,9 @@ describe('BugWorkflowView', () => {
         },
       };
 
-      mockUseBugStore.mockReturnValue({
-        selectedBug: bugWithWorktree,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [bugWithWorktree],
+        selectedBugId: 'test-bug',
         bugDetail: {
           ...completedBugDetail,
           metadata: bugWithWorktree,
@@ -348,8 +366,9 @@ describe('BugWorkflowView', () => {
     });
 
     it('should call /commit when bug has no worktree field', async () => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: mockBugMetadata,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [mockBugMetadata],
+        selectedBugId: 'test-bug',
         bugDetail: completedBugDetail,
         useWorktree: false,
         setUseWorktree: vi.fn(),
@@ -390,8 +409,9 @@ describe('BugWorkflowView', () => {
         },
       };
 
-      mockUseBugStore.mockReturnValue({
-        selectedBug: bugWithWorktree,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [bugWithWorktree],
+        selectedBugId: 'test-bug',
         bugDetail: {
           ...completedBugDetail,
           metadata: bugWithWorktree,
@@ -414,8 +434,9 @@ describe('BugWorkflowView', () => {
     });
 
     it('should show "Deploy" label when bug has no worktree field', async () => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: mockBugMetadata,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [mockBugMetadata],
+        selectedBugId: 'test-bug',
         bugDetail: completedBugDetail,
         useWorktree: false,
         setUseWorktree: vi.fn(),
@@ -441,8 +462,9 @@ describe('BugWorkflowView', () => {
   // ============================================================
   describe('Task 4: Auto execution button', () => {
     beforeEach(() => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: mockBugMetadata,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [mockBugMetadata],
+        selectedBugId: 'test-bug',
         bugDetail: mockBugDetail,
         useWorktree: false,
         setUseWorktree: vi.fn(),
@@ -470,8 +492,9 @@ describe('BugWorkflowView', () => {
     });
 
     it('should disable auto execution button when no bug is selected', () => {
-      mockUseBugStore.mockReturnValue({
-        selectedBug: null,
+      mockUseSharedBugStore.mockReturnValue({
+        bugs: [],
+        selectedBugId: null,
         bugDetail: null,
       });
 

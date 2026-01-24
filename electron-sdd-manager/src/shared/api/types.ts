@@ -224,6 +224,14 @@ export interface BugAutoExecutionPermissions {
 // =============================================================================
 
 /**
+ * Bug change event type
+ * bugs-view-unification: Task 1.1 - Re-export from renderer/types/bug
+ * Requirements: 4.4
+ * Note: Type is defined in renderer/types/bug.ts for backward compatibility
+ */
+import type { BugsChangeEvent } from '@renderer/types/bug';
+
+/**
  * Auto execution status change event data
  */
 export interface AutoExecutionStatusEvent {
@@ -492,6 +500,38 @@ export interface ApiClient {
   onAutoExecutionStatusChanged(callback: (data: AutoExecutionStatusEvent) => void): () => void;
 
   // ===========================================================================
+  // Bug Monitoring Operations (bugs-view-unification)
+  // Requirements: 4.1, 4.2, 4.3, 4.4
+  // ===========================================================================
+
+  /**
+   * Switch agent watch scope to a specific spec/bug
+   * bugs-view-unification: Task 1.1
+   * @param specId - Spec ID (feature name or bug:{name} format)
+   */
+  switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>>;
+
+  /**
+   * Start bugs watcher
+   * bugs-view-unification: Task 1.1
+   */
+  startBugsWatcher(): Promise<Result<void, ApiError>>;
+
+  /**
+   * Stop bugs watcher
+   * bugs-view-unification: Task 1.1
+   */
+  stopBugsWatcher(): Promise<Result<void, ApiError>>;
+
+  /**
+   * Subscribe to bug change events
+   * bugs-view-unification: Task 1.1
+   * @param listener - Event listener callback
+   * @returns Unsubscribe function
+   */
+  onBugsChanged(listener: (event: BugsChangeEvent) => void): () => void;
+
+  // ===========================================================================
   // Connection Management (Remote UI only)
   // ===========================================================================
 
@@ -582,6 +622,9 @@ export type {
   BugDetail,
   BugAction,
 };
+
+// bugs-view-unification: Re-export BugsChangeEvent
+export type { BugsChangeEvent };
 
 // Workflow types for shared components
 export type { RendererWorkflowPhase as WorkflowPhaseType, RendererPhaseStatus as PhaseStatusType };

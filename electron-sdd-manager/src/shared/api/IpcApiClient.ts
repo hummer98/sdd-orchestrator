@@ -24,6 +24,7 @@ import type {
   BugMetadata,
   BugDetail,
   BugAction,
+  BugsChangeEvent,
 } from './types';
 
 // Get project store for current project path
@@ -452,6 +453,35 @@ export class IpcApiClient implements ApiClient {
         currentPhase: data.state.currentPhase as WorkflowPhase | undefined,
         completedPhases: data.state.executedPhases as WorkflowPhase[],
       });
+    });
+  }
+
+  // ===========================================================================
+  // Bug Monitoring Operations (bugs-view-unification)
+  // Task 1.2: IpcApiClient implementation
+  // Requirements: 4.5, 4.7
+  // ===========================================================================
+
+  async switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.switchAgentWatchScope(specId));
+  }
+
+  async startBugsWatcher(): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.startBugsWatcher());
+  }
+
+  async stopBugsWatcher(): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.stopBugsWatcher());
+  }
+
+  onBugsChanged(listener: (event: BugsChangeEvent) => void): () => void {
+    checkElectronAPI();
+    // IPC already sends BugsChangeEvent format, so no conversion needed
+    return window.electronAPI.onBugsChanged((event: BugsChangeEvent) => {
+      listener(event);
     });
   }
 }

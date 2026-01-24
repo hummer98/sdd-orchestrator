@@ -9,9 +9,10 @@ import { useNotificationStore } from './notificationStore';
 import { useAgentStore } from './agentStore';
 import { useWorkflowStore } from './workflowStore';
 import { useRemoteAccessStore } from './remoteAccessStore';
-import { useBugStore } from './bugStore';
 import { useConnectionStore } from './connectionStore';
 import { useVersionStatusStore } from './versionStatusStore';
+// bugs-view-unification Task 6.1: Import shared bugStore instead of renderer-specific
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
@@ -28,8 +29,10 @@ export { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS, DEFAULT_COMMAND_P
 export type { AutoExecutionPermissions, ExecutionSummary, CommandPrefix } from './workflowStore';
 // Task 4.2: Remote Access Store (mobile-remote-access)
 export { useRemoteAccessStore, STORAGE_KEY as REMOTE_ACCESS_STORAGE_KEY } from './remoteAccessStore';
-// Bug Workflow Store
-export { useBugStore } from './bugStore';
+// bugs-view-unification Task 6.1: Export shared bugStore (SSOT)
+// Re-export useSharedBugStore for backward compatibility
+export { useSharedBugStore } from '../../shared/stores/bugStore';
+export type { SharedBugState, SharedBugActions, SharedBugStore } from '../../shared/stores/bugStore';
 // SSH Remote Project Store (Requirements: 6.1, 7.1, 7.2)
 export { useConnectionStore } from './connectionStore';
 export type { ConnectionStatus, ProjectType, ConnectionInfo, RecentRemoteProject, ConnectionState } from './connectionStore';
@@ -85,10 +88,11 @@ export { useVersionStatusStore } from './versionStatusStore';
     setState: (state: Parameters<typeof useRemoteAccessStore.setState>[0]) => useRemoteAccessStore.setState(state),
     subscribe: useRemoteAccessStore.subscribe,
   },
+  // bugs-view-unification Task 6.1: Use shared bugStore (SSOT)
   bug: {
-    getState: () => useBugStore.getState(),
-    setState: (state: Parameters<typeof useBugStore.setState>[0]) => useBugStore.setState(state),
-    subscribe: useBugStore.subscribe,
+    getState: () => useSharedBugStore.getState(),
+    setState: (state: Parameters<typeof useSharedBugStore.setState>[0]) => useSharedBugStore.setState(state),
+    subscribe: useSharedBugStore.subscribe,
   },
   connection: {
     getState: () => useConnectionStore.getState(),

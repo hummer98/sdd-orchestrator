@@ -10,8 +10,11 @@
 
 import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { ArrowDown } from 'lucide-react';
+// bugs-view-unification Task 6.1: Import useApi for ApiClient access
+import { useApi } from '../../shared/api/ApiClientProvider';
 // bugs-workflow-footer Task 6.1, 6.2: Removed Play, Square, GitBranch - moved to footer
-import { useBugStore } from '../stores/bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { BugPhaseItem } from './BugPhaseItem';
@@ -68,8 +71,11 @@ function calculatePhaseStatus(
 }
 
 export function BugWorkflowView() {
-  // bugs-workflow-footer Task 1.1: Removed useWorktree/setUseWorktree (SSOT: bug.json.worktree)
-  const { selectedBug, bugDetail } = useBugStore();
+  // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
+  const apiClient = useApi();
+  // Compute selectedBug from bugs + selectedBugId
+  const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
+  const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
   const bugAutoExecutionPermissions = useWorkflowStore((state) => state.bugAutoExecutionPermissions);
@@ -335,14 +341,15 @@ export function BugWorkflowView() {
   }, [isAutoExecuting, handleStartAutoExecution, handleStopAutoExecution]);
 
   // bugs-workflow-footer Task 6.4: Convert to worktree handler
+  // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
   const handleConvertToWorktree = useCallback(async () => {
     if (!bugName) return;
     const success = await handleConvert(bugName);
     if (success) {
       // Refresh bug detail to get updated worktree info
-      await useBugStore.getState().selectBug(selectedBug!);
+      await useSharedBugStore.getState().selectBug(apiClient, bugName);
     }
-  }, [bugName, selectedBug, handleConvert]);
+  }, [bugName, handleConvert, apiClient]);
 
   // If no bug is selected, show placeholder
   if (!selectedBug) {

@@ -6,7 +6,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import './styles/index.css';
-import { useProjectStore, useSpecStore, useBugStore } from './stores';
+import { useProjectStore, useSpecStore, useSharedBugStore } from './stores';
 
 // renderer-unified-logging feature: Initialize console hook before React rendering
 // Requirements: 1.1, 1.3, 1.4
@@ -24,11 +24,12 @@ try {
 }
 
 // Export stores for debugging (dev only)
+// bugs-view-unification Task 6.1: Use shared bugStore
 if (import.meta.env.DEV) {
   (window as unknown as { __stores: unknown }).__stores = {
     projectStore: useProjectStore,
     specStore: useSpecStore,
-    bugStore: useBugStore,
+    bugStore: useSharedBugStore,
   };
 }
 

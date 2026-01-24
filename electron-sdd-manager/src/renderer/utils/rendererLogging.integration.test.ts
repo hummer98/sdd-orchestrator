@@ -39,13 +39,11 @@ vi.mock('../stores/spec/specDetailStore', () => ({
   },
 }));
 
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: {
+// bugs-view-unification Task 6.1: Mock useSharedBugStore instead of useBugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: {
     getState: vi.fn(() => ({
-      selectedBug: {
-        name: 'test-integration-bug',
-        status: 'analyzing',
-      },
+      selectedBugId: 'test-integration-bug',
     })),
   },
 }));

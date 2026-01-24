@@ -8,7 +8,8 @@
  */
 
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
-import { useBugStore } from '../stores/bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 /**
  * Context object for logging
@@ -43,10 +44,11 @@ export function getAutoContext(): LogContext {
       context.specId = specDetail.metadata.name;
     }
 
-    // Requirement 4.2: Get bugName from bugStore
-    const selectedBug = useBugStore.getState().selectedBug;
-    if (selectedBug?.name) {
-      context.bugName = selectedBug.name;
+    // Requirement 4.2: Get bugName from shared bugStore
+    // bugs-view-unification Task 6.1: Use selectedBugId instead of selectedBug
+    const selectedBugId = useSharedBugStore.getState().selectedBugId;
+    if (selectedBugId) {
+      context.bugName = selectedBugId;
     }
   } catch {
     // Requirement 4.3: Return empty object on error (store not initialized)

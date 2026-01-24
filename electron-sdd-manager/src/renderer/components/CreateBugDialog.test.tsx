@@ -7,9 +7,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CreateBugDialog } from './CreateBugDialog';
 import { useProjectStore, useAgentStore, notify } from '../stores';
-import { useBugStore } from '../stores/bugStore';
 
 // Mock stores
+// bugs-view-unification Task 6.1: Removed useBugStore mock (refreshBugs removed)
 vi.mock('../stores', () => ({
   useProjectStore: vi.fn(),
   useAgentStore: vi.fn(),
@@ -19,10 +19,6 @@ vi.mock('../stores', () => ({
   },
 }));
 
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: vi.fn(),
-}));
-
 // Mock electronAPI
 const mockExecuteBugCreate = vi.fn();
 
@@ -30,7 +26,6 @@ describe('CreateBugDialog', () => {
   const mockSelectForProjectAgents = vi.fn();
   const mockSelectAgent = vi.fn();
   const mockAddAgent = vi.fn();
-  const mockRefreshBugs = vi.fn();
   const mockOnClose = vi.fn();
 
   beforeEach(() => {
@@ -54,11 +49,7 @@ describe('CreateBugDialog', () => {
       addAgent: mockAddAgent,
     });
 
-    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      refreshBugs: mockRefreshBugs,
-      useWorktree: false,
-      setUseWorktree: vi.fn(),
-    });
+    // bugs-view-unification Task 6.1: Removed useBugStore mock (refreshBugs removed)
   });
 
   // ============================================================

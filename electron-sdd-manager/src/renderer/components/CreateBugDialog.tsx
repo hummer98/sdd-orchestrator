@@ -8,7 +8,8 @@
 import { useState } from 'react';
 import { X, Loader2, AlertCircle, Bug, GitBranch } from 'lucide-react';
 import { useProjectStore, useAgentStore, notify } from '../stores';
-import { useBugStore } from '../stores/bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+// Note: CreateBugDialog doesn't need refreshBugs since the file watcher handles updates
 import { clsx } from 'clsx';
 // bug-create-dialog-unification: AgentIcon/AgentBranchIcon for button icons
 import { AgentIcon, AgentBranchIcon } from '../../shared/components/ui/AgentIcon';
@@ -31,7 +32,7 @@ interface CreateBugDialogProps {
 export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): React.ReactElement | null {
   const { currentProject } = useProjectStore();
   const { selectForProjectAgents, selectAgent, addAgent } = useAgentStore();
-  const { refreshBugs } = useBugStore();
+  // bugs-view-unification Task 6.1: refreshBugs removed - file watcher handles updates
 
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +71,7 @@ export function CreateBugDialog({ isOpen, onClose }: CreateBugDialogProps): Reac
 
       notify.success('バグレポート作成を開始しました（プロジェクトAgentパネルで進捗を確認できます）');
 
-      // Refresh bugs list after a short delay to allow file creation
-      setTimeout(() => refreshBugs(), 2000);
+      // bugs-view-unification Task 6.1: refreshBugs removed - file watcher handles updates automatically
 
       handleClose();
     } catch (err) {

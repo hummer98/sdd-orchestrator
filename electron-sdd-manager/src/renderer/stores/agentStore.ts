@@ -33,9 +33,10 @@ import {
 } from './agentStoreAdapter';
 
 // Bug fix: agent-log-dynamic-import-issue
-// Import specStore and bugStore synchronously to avoid Promise delays in callbacks
+// Import specStore synchronously to avoid Promise delays in callbacks
 import { useSpecStore } from './specStore';
-import { useBugStore } from './bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 // =============================================================================
 // Type Re-exports for Backward Compatibility
@@ -543,8 +544,9 @@ export const useAgentStore = create<AgentStore>()(
                   // Spec/Bug Agent - auto-select if matches current selection
                   const { selectedSpec } = useSpecStore.getState();
                   if (specId.startsWith('bug:')) {
-                    const { selectedBug } = useBugStore.getState();
-                    const expectedSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
+                    // bugs-view-unification Task 6.1: Use selectedBugId from shared store
+                    const { selectedBugId } = useSharedBugStore.getState();
+                    const expectedSpecId = selectedBugId ? `bug:${selectedBugId}` : '';
                     if (specId === expectedSpecId) {
                       get().selectAgent(agentId);
                     }

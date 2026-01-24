@@ -40,7 +40,7 @@ import {
 } from './components';
 import type { DocsTab } from './components';
 import type { ProfileName } from './components/CommandsetInstallDialog';
-import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useBugStore } from './stores';
+import { useProjectStore, useSpecStore, useEditorStore, useAgentStore, useWorkflowStore, useRemoteAccessStore, useNotificationStore, useConnectionStore, useSharedBugStore } from './stores';
 import type { CommandPrefix, ProfileConfig } from './stores';
 import { initAutoExecutionIpcListeners, cleanupAutoExecutionIpcListeners } from './stores/spec/autoExecutionStore';
 // bug-auto-execution-per-bug-state: Import bug auto-execution IPC listeners
@@ -78,8 +78,10 @@ export function App() {
   const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles, installedProfile } = useProjectStore();
   const { specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
-  // Task 5: bugs-pane-integration - Bug選択状態の参照
-  const { selectedBug } = useBugStore();
+  // bugs-view-unification Task 6.1: Use shared bugStore
+  // Compute selectedBug from bugs + selectedBugId
+  const { bugs, selectedBugId } = useSharedBugStore();
+  const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();

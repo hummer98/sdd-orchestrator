@@ -42,3 +42,11 @@ export type {
   UseSubmitShortcutOptions,
   UseSubmitShortcutReturn,
 } from './useSubmitShortcut';
+
+// bugs-view-unification: Shared bug list sorting/filtering logic
+export { useBugListLogic, BUG_PHASE_FILTER_OPTIONS } from './useBugListLogic';
+export type {
+  UseBugListLogicOptions,
+  UseBugListLogicResult,
+  BugPhaseFilter,
+} from './useBugListLogic';

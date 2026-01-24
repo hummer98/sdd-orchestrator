@@ -8,7 +8,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProjectStore } from './projectStore';
 import { useSpecStore } from './specStore';
-import { useBugStore } from './bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
 
 describe('useProjectStore', () => {
   beforeEach(() => {
@@ -28,7 +29,8 @@ describe('useProjectStore', () => {
     });
     // Reset specStore and bugStore
     useSpecStore.setState({ specs: [], selectedSpec: null, specDetail: null });
-    useBugStore.setState({ bugs: [], selectedBug: null, bugDetail: null });
+    // bugs-view-unification Task 6.1: Use shared bugStore
+    resetSharedBugStore();
     vi.clearAllMocks();
   });
 
@@ -97,7 +99,8 @@ describe('useProjectStore', () => {
       expect(state.kiroValidation).toEqual(mockValidation);
       // specs/bugs are delegated to specStore/bugStore (SSOT)
       expect(useSpecStore.getState().specs).toEqual(mockSpecs);
-      expect(useBugStore.getState().bugs).toEqual(mockBugs);
+      // bugs-view-unification Task 6.1: Use shared bugStore
+      expect(useSharedBugStore.getState().bugs).toEqual(mockBugs);
       // spec-metadata-ssot-refactor: Verify specJsonMap is set from IPC result
       const specJsonMap = useSpecStore.getState().specJsonMap;
       expect(specJsonMap.get('test-spec')).toEqual(mockSpecJson);

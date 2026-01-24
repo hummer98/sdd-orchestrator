@@ -6,7 +6,8 @@
  */
 
 import { useMemo } from 'react';
-import { useBugStore } from '../stores';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 import {
   ArtifactEditor,
   AgentListPanel,
@@ -48,7 +49,10 @@ export function BugPane({
   onAgentListResize,
   onResizeEnd,
 }: BugPaneProps): React.ReactElement {
-  const { selectedBug, bugDetail } = useBugStore();
+  // bugs-view-unification Task 6.1: Use shared bugStore
+  // Compute selectedBug from bugs + selectedBugId
+  const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
+  const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
 
   // Convert artifacts to ArtifactInfo format
   const artifacts = useMemo((): Record<string, ArtifactInfo | null> | undefined => {

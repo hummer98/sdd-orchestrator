@@ -8,7 +8,9 @@
 import { create } from 'zustand';
 import type { KiroValidation, SelectProjectResult } from '../types';
 import { useSpecStore } from './specStore';
-import { useBugStore } from './bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore with IpcApiClient
+import { useSharedBugStore } from '../../shared/stores/bugStore';
+import { IpcApiClient } from '../../shared/api/IpcApiClient';
 import { useAgentStore } from './agentStore';
 
 /** spec-managerファイルチェック結果 */
@@ -231,8 +233,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         // Main process already read all specJsons, no need for separate IPC calls
         useSpecStore.getState().setSpecJsonMap(result.specJsonMap);
       }
+      // bugs-view-unification Task 6.1: Use shared bugStore
       if (result.bugs) {
-        useBugStore.getState().setBugs(result.bugs);
+        useSharedBugStore.getState().updateBugs(result.bugs);
       }
 
       // Bug fix: empty bug directory handling - show warning toast for skipped directories
@@ -255,7 +258,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Note: Watchers are started by Main process in SELECT_PROJECT IPC handler
       // Here we only register the event listeners on Renderer side
       await useSpecStore.getState().startWatching();
-      await useBugStore.getState().startWatching();
+      // bugs-view-unification Task 6.1: Use shared bugStore with IpcApiClient
+      const ipcApiClient = new IpcApiClient();
+      useSharedBugStore.getState().startWatching(ipcApiClient);
 
       // Load recent projects (configStore already updated on main process)
       await get().loadRecentProjects();

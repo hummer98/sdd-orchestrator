@@ -12,7 +12,8 @@ import { useAgentStore, resetAgentStore, type AgentInfo, type AgentStatus, type 
 import { resetSharedAgentStore } from '@shared/stores/agentStore';
 // Bug fix: agent-log-dynamic-import-issue - Import stores for state-based mocking
 import { useSpecDetailStore } from './spec/specDetailStore';
-import { useBugStore } from './bugStore';
+// bugs-view-unification Task 6.1: Use shared bugStore
+import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
 
 // Mock agentStoreAdapter
 vi.mock('./agentStoreAdapter', () => ({
@@ -659,9 +660,9 @@ describe('useAgentStore', () => {
         // Set specDetailStore state (no spec selected)
         useSpecDetailStore.setState({ selectedSpec: null });
 
-        // Set bugStore state with matching bug selected
-        useBugStore.setState({
-          selectedBug: { name: 'my-bug', bugPath: '/path/my-bug', status: 'reported', created_at: '', updated_at: '' },
+        // bugs-view-unification Task 6.1: Use selectedBugId from shared store
+        useSharedBugStore.setState({
+          selectedBugId: 'my-bug',
         });
 
         const bugAgent: AgentInfo = {
@@ -689,8 +690,9 @@ describe('useAgentStore', () => {
       it('should NOT auto-select Bug Agent when selected bug does not match', async () => {
         // Bug fix: agent-log-dynamic-import-issue - Use state-based mocking instead of vi.doMock
         useSpecDetailStore.setState({ selectedSpec: null });
-        useBugStore.setState({
-          selectedBug: { name: 'other-bug', bugPath: '/path/other-bug', status: 'reported', created_at: '', updated_at: '' },
+        // bugs-view-unification Task 6.1: Use selectedBugId from shared store
+        useSharedBugStore.setState({
+          selectedBugId: 'other-bug',
         });
 
         const bugAgent: AgentInfo = {

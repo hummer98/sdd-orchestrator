@@ -1,13 +1,16 @@
 /**
  * BugList + bugStore Integration Tests
  * Requirements: 2.1, 2.2, 2.3, 6.1, 6.3, 6.5
+ *
+ * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BugList } from './BugList';
-import { useBugStore } from '../stores/bugStore';
+import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugStore';
 import type { BugMetadata, BugsChangeEvent } from '../types';
+import type { ApiClient } from '../../shared/api/types';
 
 vi.mock('../stores/agentStore', () => ({
   useAgentStore: vi.fn(() => ({
@@ -32,22 +35,25 @@ vi.mock('../stores/projectStore', () => ({
   },
 }));
 
-// Mock electronAPI
-const mockReadBugs = vi.fn();
-const mockReadBugDetail = vi.fn();
+// Mock ApiClient for the shared bugStore
+const mockGetBugs = vi.fn();
+const mockGetBugDetail = vi.fn();
 const mockStartBugsWatcher = vi.fn();
 const mockStopBugsWatcher = vi.fn();
 const mockOnBugsChanged = vi.fn();
 
-vi.stubGlobal('window', {
-  electronAPI: {
-    readBugs: mockReadBugs,
-    readBugDetail: mockReadBugDetail,
-    startBugsWatcher: mockStartBugsWatcher,
-    stopBugsWatcher: mockStopBugsWatcher,
-    onBugsChanged: mockOnBugsChanged,
-  },
-});
+const mockApiClient: Partial<ApiClient> = {
+  getBugs: mockGetBugs,
+  getBugDetail: mockGetBugDetail,
+  startBugsWatcher: mockStartBugsWatcher,
+  stopBugsWatcher: mockStopBugsWatcher,
+  onBugsChanged: mockOnBugsChanged,
+};
+
+// Mock the ApiClientProvider
+vi.mock('../../shared/api/ApiClientProvider', () => ({
+  useApi: () => mockApiClient,
+}));
 
 describe('BugList + bugStore Integration', () => {
   const mockBugs: BugMetadata[] = [
@@ -75,46 +81,36 @@ describe('BugList + bugStore Integration', () => {
   ];
 
   const mockBugDetail = {
-    name: 'bug-001',
-    path: '/project/.kiro/bugs/bug-001',
-    phase: 'reported',
-    description: 'Test bug description',
-    reportContent: 'Bug report content',
-    analysisContent: null,
-    fixContent: null,
-    verifyContent: null,
+    metadata: {
+      name: 'bug-001',
+      phase: 'reported',
+      reportedAt: '2024-01-15T09:00:00Z',
+      updatedAt: '2024-01-15T10:00:00Z',
+    },
+    artifacts: {
+      report: { exists: true, content: 'Bug report content' },
+      analysis: { exists: false, content: null },
+      fix: { exists: false, content: null },
+      verification: { exists: false, content: null },
+    },
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset bugStore state
-    useBugStore.setState({
-      bugs: [],
-      selectedBug: null,
-      bugDetail: null,
-      isLoading: false,
-      error: null,
-      isWatching: false,
-    });
+    // Reset shared bugStore state
+    resetSharedBugStore();
 
     // Default mock implementations
-    mockReadBugs.mockResolvedValue(mockBugs);
-    mockReadBugDetail.mockResolvedValue(mockBugDetail);
-    mockStartBugsWatcher.mockResolvedValue(undefined);
-    mockStopBugsWatcher.mockResolvedValue(undefined);
+    mockGetBugs.mockResolvedValue({ ok: true, value: mockBugs });
+    mockGetBugDetail.mockResolvedValue({ ok: true, value: mockBugDetail });
+    mockStartBugsWatcher.mockResolvedValue({ ok: true, value: undefined });
+    mockStopBugsWatcher.mockResolvedValue({ ok: true, value: undefined });
     mockOnBugsChanged.mockReturnValue(() => {});
   });
 
   afterEach(() => {
-    useBugStore.setState({
-      bugs: [],
-      selectedBug: null,
-      bugDetail: null,
-      isLoading: false,
-      error: null,
-      isWatching: false,
-    });
+    resetSharedBugStore();
   });
 
   // ============================================================
@@ -124,7 +120,7 @@ describe('BugList + bugStore Integration', () => {
   describe('bug list display and selection', () => {
     it('should display bugs after loading', async () => {
       // Set bugs in store
-      useBugStore.setState({ bugs: mockBugs });
+      useSharedBugStore.setState({ bugs: mockBugs });
 
       render(<BugList />);
 
@@ -134,7 +130,7 @@ describe('BugList + bugStore Integration', () => {
     });
 
     it('should update selection when bug is clicked', async () => {
-      useBugStore.setState({ bugs: mockBugs });
+      useSharedBugStore.setState({ bugs: mockBugs });
 
       const { container } = render(<BugList />);
 
@@ -144,8 +140,8 @@ describe('BugList + bugStore Integration', () => {
       // Verify store was updated (use poll-based check since selectBug is async)
       await waitFor(
         () => {
-          const state = useBugStore.getState();
-          expect(state.selectedBug?.name).toBe('bug-002');
+          const state = useSharedBugStore.getState();
+          expect(state.selectedBugId).toBe('bug-002');
         },
         { container }
       );
@@ -155,7 +151,7 @@ describe('BugList + bugStore Integration', () => {
     // (bugs-panel-label-removal fix)
 
     it('should filter bugs by phase', async () => {
-      useBugStore.setState({ bugs: mockBugs });
+      useSharedBugStore.setState({ bugs: mockBugs });
 
       render(<BugList />);
 
@@ -173,60 +169,59 @@ describe('BugList + bugStore Integration', () => {
   // ============================================================
   // Task 10.1: Store integration
   // Requirements: 6.1, 6.3
+  // bugs-view-unification Task 6.1: Updated to use shared store API
   // ============================================================
   describe('store integration', () => {
     it('should call loadBugs via store action', async () => {
-      // Simulate loading via store
       await act(async () => {
-        await useBugStore.getState().loadBugs('/Users/test/project');
+        await useSharedBugStore.getState().loadBugs(mockApiClient as ApiClient);
       });
 
-      expect(mockReadBugs).toHaveBeenCalledWith('/Users/test/project');
-      expect(useBugStore.getState().bugs).toEqual(mockBugs);
+      expect(mockGetBugs).toHaveBeenCalled();
+      expect(useSharedBugStore.getState().bugs).toEqual(mockBugs);
     });
 
     it('should handle loadBugs error', async () => {
-      mockReadBugs.mockRejectedValue(new Error('Failed to load'));
+      mockGetBugs.mockResolvedValue({ ok: false, error: { type: 'API_ERROR', message: 'Failed to load' } });
 
       await act(async () => {
-        await useBugStore.getState().loadBugs('/Users/test/project');
+        await useSharedBugStore.getState().loadBugs(mockApiClient as ApiClient);
       });
 
-      expect(useBugStore.getState().error).toBe('Failed to load');
-      expect(useBugStore.getState().bugs).toEqual([]);
+      expect(useSharedBugStore.getState().error).toBe('Failed to load');
+      expect(useSharedBugStore.getState().bugs).toEqual([]);
     });
 
-    it('should update selectedBug via selectBug action', async () => {
-      useBugStore.setState({ bugs: mockBugs });
+    it('should update selectedBugId via selectBug action', async () => {
+      useSharedBugStore.setState({ bugs: mockBugs });
 
       await act(async () => {
-        await useBugStore.getState().selectBug(mockBugs[1]);
+        await useSharedBugStore.getState().selectBug(mockApiClient as ApiClient, 'bug-002');
       });
 
-      expect(useBugStore.getState().selectedBug?.name).toBe('bug-002');
+      expect(useSharedBugStore.getState().selectedBugId).toBe('bug-002');
     });
 
     it('should clear selection via clearSelectedBug', async () => {
-      useBugStore.setState({ bugs: mockBugs, selectedBug: mockBugs[0] });
+      useSharedBugStore.setState({ bugs: mockBugs, selectedBugId: 'bug-001' });
 
       act(() => {
-        useBugStore.getState().clearSelectedBug();
+        useSharedBugStore.getState().clearSelectedBug();
       });
 
-      expect(useBugStore.getState().selectedBug).toBeNull();
+      expect(useSharedBugStore.getState().selectedBugId).toBeNull();
     });
   });
 
   // ============================================================
   // Task 10.1: File change auto-update
   // Requirements: 6.5
+  // bugs-view-unification Task 6.1: Updated to use shared store API
   // ============================================================
   describe('file change auto-update', () => {
     it('should register watcher callback via startWatching', async () => {
-      // Note: Watcher is now started by Main process in SELECT_PROJECT IPC
-      // startWatching only registers the event listener
       await act(async () => {
-        await useBugStore.getState().startWatching();
+        useSharedBugStore.getState().startWatching(mockApiClient as ApiClient);
       });
 
       expect(mockOnBugsChanged).toHaveBeenCalled();
@@ -234,21 +229,17 @@ describe('BugList + bugStore Integration', () => {
 
     it('should stop watcher via stopWatching', async () => {
       await act(async () => {
-        await useBugStore.getState().stopWatching();
+        await useSharedBugStore.getState().stopWatching(mockApiClient as ApiClient);
       });
 
       expect(mockStopBugsWatcher).toHaveBeenCalled();
     });
 
-    it('should update bugs when file change event triggers refresh', async () => {
-      // First load bugs to set the project path
-      mockReadBugs.mockResolvedValueOnce(mockBugs);
+    it('should update bugs when updateBugs is called', async () => {
+      // First set initial bugs
+      useSharedBugStore.setState({ bugs: mockBugs });
 
-      await act(async () => {
-        await useBugStore.getState().loadBugs('/Users/test/project');
-      });
-
-      // Now simulate a refresh with updated data
+      // Now update with new bugs
       const updatedBugs: BugMetadata[] = [
         ...mockBugs,
         {
@@ -260,13 +251,11 @@ describe('BugList + bugStore Integration', () => {
         },
       ];
 
-      mockReadBugs.mockResolvedValueOnce(updatedBugs);
-
-      await act(async () => {
-        await useBugStore.getState().refreshBugs();
+      act(() => {
+        useSharedBugStore.getState().updateBugs(updatedBugs);
       });
 
-      expect(useBugStore.getState().bugs).toEqual(updatedBugs);
+      expect(useSharedBugStore.getState().bugs).toEqual(updatedBugs);
     });
   });
 
@@ -276,15 +265,16 @@ describe('BugList + bugStore Integration', () => {
   // ============================================================
   describe('empty states', () => {
     it('should show empty message when no bugs exist', () => {
-      useBugStore.setState({ bugs: [] });
+      useSharedBugStore.setState({ bugs: [] });
 
       render(<BugList />);
 
-      expect(screen.getByText('バグがありません')).toBeInTheDocument();
+      // bugs-view-unification: Empty message changed to unified format
+      expect(screen.getByText('Bugがありません')).toBeInTheDocument();
     });
 
     it('should show filtered empty message when filter has no matches', () => {
-      useBugStore.setState({ bugs: mockBugs });
+      useSharedBugStore.setState({ bugs: mockBugs });
 
       render(<BugList />);
 
@@ -292,7 +282,8 @@ describe('BugList + bugStore Integration', () => {
       const filterSelect = screen.getByRole('combobox');
       fireEvent.change(filterSelect, { target: { value: 'verified' } });
 
-      expect(screen.getByText('検証済のバグはありません')).toBeInTheDocument();
+      // bugs-view-unification: BugListContainer uses unified empty message
+      expect(screen.getByText('Bugがありません')).toBeInTheDocument();
     });
   });
 });

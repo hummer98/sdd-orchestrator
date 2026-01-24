@@ -1,17 +1,19 @@
 /**
  * BugList Component Tests
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1
+ *
+ * bugs-view-unification Task 4.1: Updated to use BugListContainer
+ * bugs-view-unification Task 6.1: Updated to use useSharedBugStore
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BugList } from './BugList';
-import { useBugStore } from '../stores/bugStore';
 import type { BugMetadata } from '../types';
 
-// Mock the bugStore
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: vi.fn(),
+// Mock the shared bugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: vi.fn(),
 }));
 
 // Mock the agentStore
@@ -19,20 +21,25 @@ vi.mock('../stores/agentStore', () => ({
   useAgentStore: vi.fn(),
 }));
 
+// Mock the ApiClientProvider
+const mockApiClient = {
+  getBugs: vi.fn(),
+  getBugDetail: vi.fn(),
+};
+
+vi.mock('../../shared/api/ApiClientProvider', () => ({
+  useApi: () => mockApiClient,
+}));
+
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
 
-// Mock the child components to isolate testing
-vi.mock('./BugListItem', () => ({
+// Mock BugListItem in shared components (used by BugListContainer)
+vi.mock('@shared/components/bug/BugListItem', () => ({
   BugListItem: ({ bug, isSelected, onSelect, runningAgentCount }: { bug: BugMetadata; isSelected: boolean; onSelect: () => void; runningAgentCount?: number }) => (
     <li data-testid={`bug-item-${bug.name}`} data-selected={isSelected} data-running-count={runningAgentCount ?? 0} onClick={onSelect}>
       {bug.name}
     </li>
-  ),
-}));
-
-vi.mock('./BugActionButtons', () => ({
-  BugActionButtons: ({ bug }: { bug: BugMetadata }) => (
-    <div data-testid="action-buttons">{bug.name}</div>
   ),
 }));
 
@@ -63,16 +70,13 @@ describe('BugList', () => {
 
   const mockSelectBug = vi.fn();
 
+  // bugs-view-unification Task 6.1: Updated to use selectedBugId
   const defaultMockState = {
     bugs: mockBugs,
-    selectedBug: null,
+    selectedBugId: null as string | null,
     isLoading: false,
     error: null,
     selectBug: mockSelectBug,
-    getSortedBugs: () => [...mockBugs].sort((a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    ),
-    getBugsByPhase: (phase: string) => mockBugs.filter((b) => b.phase === phase),
   };
 
   const defaultAgentMockState = {
@@ -81,7 +85,7 @@ describe('BugList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultMockState);
+    (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultMockState);
     (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultAgentMockState);
   });
 
@@ -105,36 +109,37 @@ describe('BugList', () => {
     });
 
     it('should display empty message when no bugs', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...defaultMockState,
         bugs: [],
-        getSortedBugs: () => [],
-        getBugsByPhase: () => [],
       });
       render(<BugList />);
 
-      expect(screen.getByTestId('empty-message')).toBeInTheDocument();
-      expect(screen.getByText('バグがありません')).toBeInTheDocument();
+      // bugs-view-unification: testId changed to bug-list-empty
+      expect(screen.getByTestId('bug-list-empty')).toBeInTheDocument();
+      expect(screen.getByText('Bugがありません')).toBeInTheDocument();
     });
 
     it('should display loading indicator when loading', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...defaultMockState,
         isLoading: true,
       });
       render(<BugList />);
 
-      expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+      // bugs-view-unification: testId changed to bug-list-loading
+      expect(screen.getByTestId('bug-list-loading')).toBeInTheDocument();
     });
 
     it('should display error message when error', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...defaultMockState,
         error: 'Failed to load bugs',
       });
       render(<BugList />);
 
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      // bugs-view-unification: testId changed to bug-list-error
+      expect(screen.getByTestId('bug-list-error')).toBeInTheDocument();
       expect(screen.getByText('Failed to load bugs')).toBeInTheDocument();
     });
   });
@@ -177,16 +182,19 @@ describe('BugList', () => {
     });
 
     it('should show appropriate empty message when filtered phase has no bugs', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...defaultMockState,
-        getBugsByPhase: (phase: string) => phase === 'fixed' ? [] : mockBugs.filter((b) => b.phase === phase),
+        // No bugs in fixed phase
+        bugs: mockBugs.filter((b) => b.phase !== 'fixed'),
       });
       render(<BugList />);
 
       const filterSelect = screen.getByTestId('phase-filter');
       fireEvent.change(filterSelect, { target: { value: 'fixed' } });
 
-      expect(screen.getByText('修正済のバグはありません')).toBeInTheDocument();
+      // bugs-view-unification: BugListContainer uses unified empty message
+      expect(screen.getByTestId('bug-list-empty')).toBeInTheDocument();
+      expect(screen.getByText('Bugがありません')).toBeInTheDocument();
     });
   });
 
@@ -200,13 +208,14 @@ describe('BugList', () => {
 
       fireEvent.click(screen.getByTestId('bug-item-bug-1'));
 
-      expect(mockSelectBug).toHaveBeenCalledWith(mockBugs[0]);
+      // bugs-view-unification Task 6.1: selectBug now takes (apiClient, bugName)
+      expect(mockSelectBug).toHaveBeenCalledWith(mockApiClient, 'bug-1');
     });
 
     it('should mark selected bug as selected', () => {
-      (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ...defaultMockState,
-        selectedBug: mockBugs[0],
+        selectedBugId: 'bug-1',
       });
       render(<BugList />);
 

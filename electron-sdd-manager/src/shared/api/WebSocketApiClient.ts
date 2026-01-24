@@ -26,6 +26,7 @@ import type {
   BugAction,
   BugAutoExecutionState,
   BugAutoExecutionPermissions,
+  BugsChangeEvent,
 } from './types';
 import type { ExecuteOptions } from '../types/executeOptions';
 
@@ -94,6 +95,49 @@ function debugLog(category: string, message: string, data?: unknown): void {
 }
 
 // =============================================================================
+// Bug Change Detection (bugs-view-unification)
+// Task 1.3: WebSocket event format normalization
+// Requirements: 4.7
+// =============================================================================
+
+/**
+ * Detect changes between previous and current bug lists
+ * Converts WebSocket full-update format to BugsChangeEvent[] for differential updates
+ * @param previousBugs - Previous bug list
+ * @param currentBugs - Current bug list
+ * @returns Array of BugsChangeEvent
+ */
+export function detectBugsChanges(
+  previousBugs: BugMetadata[],
+  currentBugs: BugMetadata[]
+): BugsChangeEvent[] {
+  const events: BugsChangeEvent[] = [];
+  const prevMap = new Map(previousBugs.map(b => [b.name, b]));
+  const currMap = new Map(currentBugs.map(b => [b.name, b]));
+
+  // Detect additions and changes
+  for (const [name, bug] of currMap) {
+    const prev = prevMap.get(name);
+    if (!prev) {
+      // New bug added
+      events.push({ type: 'add', path: '', bugName: name });
+    } else if (prev.updatedAt !== bug.updatedAt || prev.phase !== bug.phase) {
+      // Bug changed (updatedAt or phase changed)
+      events.push({ type: 'change', path: '', bugName: name });
+    }
+  }
+
+  // Detect deletions
+  for (const [name] of prevMap) {
+    if (!currMap.has(name)) {
+      events.push({ type: 'unlinkDir', path: '', bugName: name });
+    }
+  }
+
+  return events;
+}
+
+// =============================================================================
 // WebSocketApiClient Implementation
 // =============================================================================
 
@@ -116,6 +160,8 @@ export class WebSocketApiClient implements ApiClient {
   // remote-ui-vanilla-removal: Store project path from INIT message
   private projectPath: string = '';
   private appVersion: string = '';
+  // bugs-view-unification: Track previous bugs for differential update detection
+  private previousBugs: BugMetadata[] = [];
 
   constructor(url: string, token: string) {
     this.url = url;
@@ -296,6 +342,8 @@ export class WebSocketApiClient implements ApiClient {
           this.emit('specsUpdated', initPayload.specs);
         }
         if (initPayload?.bugs) {
+          // bugs-view-unification: Initialize previousBugs for differential update detection
+          this.previousBugs = [...initPayload.bugs];
           this.emit('bugsUpdated', initPayload.bugs);
         }
         this.emit('initialized', initPayload);
@@ -306,6 +354,13 @@ export class WebSocketApiClient implements ApiClient {
         break;
       case 'BUGS_UPDATED':
         this.emit('bugsUpdated', message.payload);
+        // bugs-view-unification: Also emit bugsChanged for differential update subscribers
+        // Handle both array format and object format with bugs field
+        if (Array.isArray(message.payload)) {
+          this.emit('bugsChanged', message.payload);
+        } else if (message.payload && typeof message.payload === 'object' && 'bugs' in message.payload) {
+          this.emit('bugsChanged', (message.payload as { bugs: BugMetadata[] }).bugs);
+        }
         break;
       case 'AGENT_OUTPUT':
         this.emit('agentOutput', message.payload);
@@ -807,5 +862,40 @@ export class WebSocketApiClient implements ApiClient {
       };
     }
     return { ok: true, value: worktreeInfo };
+  }
+
+  // ===========================================================================
+  // Bug Monitoring Operations (bugs-view-unification)
+  // Task 1.3: WebSocketApiClient implementation
+  // Requirements: 4.6, 4.7
+  // ===========================================================================
+
+  async switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('SWITCH_AGENT_WATCH_SCOPE', { specId });
+  }
+
+  async startBugsWatcher(): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('START_BUGS_WATCHER');
+  }
+
+  async stopBugsWatcher(): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('STOP_BUGS_WATCHER');
+  }
+
+  onBugsChanged(listener: (event: BugsChangeEvent) => void): () => void {
+    // Subscribe to bugsChanged event
+    // WebSocket sends full BugMetadata[] array, we convert to BugsChangeEvent[]
+    return this.on('bugsChanged', (data) => {
+      const currentBugs = data as BugMetadata[];
+      const events = detectBugsChanges(this.previousBugs, currentBugs);
+
+      // Update previous bugs for next comparison
+      this.previousBugs = [...currentBugs];
+
+      // Emit each event to listener
+      for (const event of events) {
+        listener(event);
+      }
+    });
   }
 }

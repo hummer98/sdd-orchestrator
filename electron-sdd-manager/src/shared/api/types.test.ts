@@ -156,6 +156,49 @@ describe('API types', () => {
       const content = readFileSync(typesPath, 'utf-8');
       expect(content).toContain('onAgentStatusChange(');
     });
+
+    // =========================================================================
+    // bugs-view-unification: Task 1.1 - Bug monitoring methods
+    // Requirements: 4.1, 4.2, 4.3, 4.4
+    // =========================================================================
+
+    it('should have switchAgentWatchScope method', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('switchAgentWatchScope(');
+    });
+
+    it('should have startBugsWatcher method', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('startBugsWatcher():');
+    });
+
+    it('should have stopBugsWatcher method', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('stopBugsWatcher():');
+    });
+
+    it('should have onBugsChanged subscription', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('onBugsChanged(');
+    });
+  });
+
+  // ===========================================================================
+  // bugs-view-unification: Task 1.1 - BugsChangeEvent type
+  // Requirements: 4.4
+  // ===========================================================================
+
+  describe('BugsChangeEvent type', () => {
+    it('should import BugsChangeEvent from renderer/types/bug', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      // SSOT: BugsChangeEvent is defined in renderer/types/bug and re-exported
+      expect(content).toContain("import type { BugsChangeEvent } from '@renderer/types/bug'");
+    });
+
+    it('should re-export BugsChangeEvent type', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('export type { BugsChangeEvent }');
+    });
   });
 
   describe('WorkflowPhase type', () => {

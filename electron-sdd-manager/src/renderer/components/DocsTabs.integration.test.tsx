@@ -9,7 +9,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DocsTabs, type DocsTab } from './DocsTabs';
 import { useProjectStore } from '../stores/projectStore';
 import { useSpecStore } from '../stores/specStore';
-import { useBugStore } from '../stores/bugStore';
+// bugs-view-unification Task 6.1: Updated to use useSharedBugStore
+import { useSharedBugStore } from '../../shared/stores/bugStore';
 
 // Helper component to wrap DocsTabs with controlled state
 function DocsTabsWrapper({ initialTab = 'specs' as DocsTab }: { initialTab?: DocsTab }) {
@@ -29,8 +30,9 @@ vi.mock('../stores/specStore', () => ({
   useSpecStore: vi.fn(),
 }));
 
-vi.mock('../stores/bugStore', () => ({
-  useBugStore: vi.fn(),
+// bugs-view-unification Task 6.1: Mock shared bugStore
+vi.mock('../../shared/stores/bugStore', () => ({
+  useSharedBugStore: vi.fn(),
 }));
 
 // Mock child list components
@@ -150,16 +152,15 @@ describe('DocsTabs Integration', () => {
       clearSelectedSpec: mockClearSelectedSpec,
     });
 
-    // Default bug store mock
-    (useBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    // Default bug store mock - bugs-view-unification Task 6.1
+    (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       bugs: mockBugs,
-      selectedBug: null,
+      selectedBugId: null,
       bugDetail: null,
       isLoading: false,
       error: null,
       isWatching: false,
       selectBug: vi.fn(),
-      getSortedBugs: () => mockBugs,
       clearSelectedBug: mockClearSelectedBug,
     });
 

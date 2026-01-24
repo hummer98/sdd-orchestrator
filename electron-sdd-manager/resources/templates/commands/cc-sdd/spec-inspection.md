@@ -384,10 +384,15 @@ This agent is now responsible for updating phase when GO judgment is reached.
 - Judgment is NOGO
 - Phase is already `inspection-complete` or `deploy-complete`
 
+**IMPORTANT: deploy-complete Skip Behavior**:
+- If phase is `deploy-complete`, do NOT update phase or `updated_at`
+- This allows spec-inspection to be used for post-merge verification without modifying the completed spec
+
 **Execution Steps**:
 1. Read spec.json (should already be in memory from Step 6)
 2. Check current `phase` field:
-   - If `phase` is `inspection-complete` or `deploy-complete`, **SKIP** this step (log: "Phase already at or past inspection-complete, skipping phase update")
+   - If `phase` is `deploy-complete`, **SKIP** this step entirely (log: "Phase is deploy-complete, skipping phase and updated_at update")
+   - If `phase` is `inspection-complete`, **SKIP** this step (log: "Phase already at inspection-complete, skipping phase update")
 3. Update the following fields in spec.json:
    - `phase`: `"inspection-complete"`
    - `updated_at`: current UTC timestamp in ISO 8601 format (e.g., `"2026-01-21T12:00:00Z"`)

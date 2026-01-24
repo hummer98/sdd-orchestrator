@@ -3,7 +3,7 @@ description: Generate .claude/commands/release.md with project-specific release 
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 ---
 
-# Kiro Steering Release
+# Kiro Generate Release
 
 <background_information>
 **Role**: Generate release.md with project-specific release workflow.

@@ -2475,11 +2475,11 @@ export function registerIpcHandlers(): void {
       }
 
       // Start agent with specId='' (project agent)
-      // Uses /kiro:steering-release command
-      const slashCommand = '/kiro:steering-release';
+      // Uses /kiro:generate-release command
+      const slashCommand = '/kiro:generate-release';
       const result = await service.startAgent({
         specId: '', // Empty specId for project agent
-        phase: 'steering-release',
+        phase: 'generate-release',
         command: 'claude',
         args: [slashCommand],
         group: 'doc',

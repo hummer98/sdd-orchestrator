@@ -1,5 +1,5 @@
 ---
-name: steering-release-agent
+name: generate-release-agent
 description: Generate .claude/commands/release.md with project-specific release workflow
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: inherit
@@ -7,7 +7,7 @@ color: green
 permissionMode: bypassPermissions
 ---
 
-# steering-release Agent
+# generate-release Agent
 
 ## Role
 You are a specialized agent for generating `.claude/commands/release.md` with project-specific release workflow.

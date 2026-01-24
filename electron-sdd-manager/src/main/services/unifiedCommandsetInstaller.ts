@@ -266,6 +266,15 @@ export class UnifiedCommandsetInstaller {
         const commandResult = await this.ccSddInstaller.installCommands(projectPath, 'spec-manager', options);
         if (!commandResult.ok) return commandResult;
 
+        // Install generate-release command from cc-sdd-agent template
+        // Requirements: 2.1, 2.2 (generate-release-command feature)
+        const generateReleaseResult = await this.ccSddInstaller.installSingleCommand(
+          projectPath,
+          'cc-sdd-agent',
+          'generate-release',
+          options
+        );
+
         const settingsResult = await this.ccSddInstaller.installSettings(projectPath, options);
         if (!settingsResult.ok) return settingsResult;
 
@@ -276,12 +285,22 @@ export class UnifiedCommandsetInstaller {
         // Add required permissions
         await addPermissionsToProject(projectPath, [...REQUIRED_PERMISSIONS]);
 
+        // Merge generate-release result into command result
+        const mergedInstalled = [...commandResult.value.installed];
+        const mergedSkipped = [...commandResult.value.skipped];
+        const mergedOverwritten = [...commandResult.value.overwritten];
+        if (generateReleaseResult.ok) {
+          mergedInstalled.push(...generateReleaseResult.value.installed);
+          mergedSkipped.push(...generateReleaseResult.value.skipped);
+          mergedOverwritten.push(...generateReleaseResult.value.overwritten);
+        }
+
         return {
           ok: true,
           value: {
-            installed: [...commandResult.value.installed, ...settingsResult.value.installed, ...scriptsResult.value.installed],
-            skipped: [...commandResult.value.skipped, ...settingsResult.value.skipped, ...scriptsResult.value.skipped],
-            overwritten: [...commandResult.value.overwritten, ...settingsResult.value.overwritten, ...scriptsResult.value.overwritten]
+            installed: [...mergedInstalled, ...settingsResult.value.installed, ...scriptsResult.value.installed],
+            skipped: [...mergedSkipped, ...settingsResult.value.skipped, ...scriptsResult.value.skipped],
+            overwritten: [...mergedOverwritten, ...settingsResult.value.overwritten, ...scriptsResult.value.overwritten]
           }
         };
       }

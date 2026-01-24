@@ -11,7 +11,7 @@ import { addPermissionsToProject } from './permissionsService';
 import { REQUIRED_PERMISSIONS } from './projectChecker';
 
 /**
- * cc-sdd コマンド一覧（24種類）
+ * cc-sdd コマンド一覧（25種類）
  * Requirements: 2.1-2.5
  */
 export const CC_SDD_COMMANDS = [
@@ -41,6 +41,8 @@ export const CC_SDD_COMMANDS = [
   // Steering (2)
   'steering',
   'steering-custom',
+  // Generate Release (1)
+  'generate-release',
   // Bug Workflow (5)
   'bug-create',
   'bug-analyze',
@@ -50,7 +52,7 @@ export const CC_SDD_COMMANDS = [
 ] as const;
 
 /**
- * cc-sdd エージェント一覧（10種類）
+ * cc-sdd エージェント一覧（12種類）
  * Claude Code subagent として使用されるエージェント定義ファイル
  */
 export const CC_SDD_AGENTS = [
@@ -63,6 +65,8 @@ export const CC_SDD_AGENTS = [
   'steering',
   'steering-custom',
   'steering-verification',
+  // Generate Release Agent (1)
+  'generate-release',
   // Validation Agents (3)
   'validate-design',
   'validate-gap',
@@ -431,6 +435,68 @@ export class CcSddWorkflowInstaller {
           error: { type: 'WRITE_ERROR', path: targetPath, message },
         };
       }
+    }
+
+    return { ok: true, value: { installed, skipped, overwritten } };
+  }
+
+  /**
+   * Install a single command from a specific commandset directory
+   * @param projectPath - Project root path
+   * @param commandsetDir - Source commandset directory name (e.g., 'cc-sdd-agent')
+   * @param commandName - Command name to install (without .md extension)
+   * @param options - Install options
+   * Requirements: 2.1, 2.2 (generate-release-command feature)
+   */
+  async installSingleCommand(
+    projectPath: string,
+    commandsetDir: string,
+    commandName: string,
+    options: InstallOptions = {}
+  ): Promise<Result<InstallResult, InstallError>> {
+    const installed: string[] = [];
+    const skipped: string[] = [];
+    const overwritten: string[] = [];
+    const { force = false } = options;
+
+    const templatePath = join(this.templateDir, 'commands', commandsetDir, `${commandName}.md`);
+    const targetPath = join(projectPath, '.claude', 'commands', 'kiro', `${commandName}.md`);
+
+    // Check if template exists
+    if (!(await fileExists(templatePath))) {
+      // Return empty result if template doesn't exist (non-fatal for optional commands)
+      return { ok: true, value: { installed, skipped, overwritten } };
+    }
+
+    // Check if target already exists
+    const exists = await fileExists(targetPath);
+    if (exists && !force) {
+      skipped.push(commandName);
+      return { ok: true, value: { installed, skipped, overwritten } };
+    }
+
+    // Install the file
+    try {
+      const content = await readFile(templatePath, 'utf-8');
+      await mkdir(dirname(targetPath), { recursive: true });
+      await writeFile(targetPath, content, 'utf-8');
+      if (exists) {
+        overwritten.push(commandName);
+      } else {
+        installed.push(commandName);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('EACCES') || message.includes('EPERM')) {
+        return {
+          ok: false,
+          error: { type: 'PERMISSION_DENIED', path: targetPath },
+        };
+      }
+      return {
+        ok: false,
+        error: { type: 'WRITE_ERROR', path: targetPath, message },
+      };
     }
 
     return { ok: true, value: { installed, skipped, overwritten } };

@@ -368,10 +368,10 @@ export function createWorkflowController(
     },
 
     generateReleaseMd: async (): Promise<WorkflowResult<AgentInfo>> => {
-      const slashCommand = '/kiro:steering-release';
+      const slashCommand = '/kiro:generate-release';
       const result = await specManagerService.startAgent({
         specId: '', // Empty specId for project agent
-        phase: 'steering-release',
+        phase: 'generate-release',
         command: 'claude',
         args: [slashCommand],
         group: 'doc',

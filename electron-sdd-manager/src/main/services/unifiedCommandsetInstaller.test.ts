@@ -64,7 +64,7 @@ describe('UnifiedCommandsetInstaller', () => {
     // CC-SDD commands (directory-based)
     const ccSddCommands = [
       'spec-design', 'spec-impl', 'spec-init', 'spec-requirements', 'spec-status', 'spec-tasks',
-      'steering', 'steering-custom', 'validate-design', 'validate-gap', 'validate-impl'
+      'steering', 'steering-custom', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl'
     ];
     for (const cmd of ccSddCommands) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd', `${cmd}.md`);
@@ -75,7 +75,7 @@ describe('UnifiedCommandsetInstaller', () => {
     // CC-SDD-Agent commands (directory-based)
     const ccSddAgentCommands = [
       'spec-design', 'spec-impl', 'spec-init', 'spec-quick', 'spec-requirements', 'spec-status', 'spec-tasks',
-      'steering', 'steering-custom', 'validate-design', 'validate-gap', 'validate-impl'
+      'steering', 'steering-custom', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl'
     ];
     for (const cmd of ccSddAgentCommands) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
@@ -110,7 +110,7 @@ describe('UnifiedCommandsetInstaller', () => {
     }
 
     // Agents
-    const agents = ['spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks', 'steering', 'steering-custom', 'steering-verification', 'validate-design', 'validate-gap', 'validate-impl', 'spec-inspection'];
+    const agents = ['spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks', 'steering', 'steering-custom', 'steering-verification', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl', 'spec-inspection'];
     for (const agent of agents) {
       const filePath = path.join(templateDir, 'agents', 'kiro', `${agent}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -173,6 +173,28 @@ describe('UnifiedCommandsetInstaller', () => {
       if (result.ok) {
         expect(result.value.installed.length).toBeGreaterThan(0);
       }
+    });
+
+    // Task 2.2: spec-manager should include generate-release command
+    // Requirements: 2.1, 2.2
+    it('should install generate-release command for spec-manager profile', async () => {
+      // Create generate-release template in cc-sdd-agent directory (template source)
+      const generateReleasePath = path.join(templateDir, 'commands', 'cc-sdd-agent', 'generate-release.md');
+      await fs.mkdir(path.dirname(generateReleasePath), { recursive: true });
+      await fs.writeFile(generateReleasePath, '# generate-release command template', 'utf-8');
+
+      const result = await installer.installCommandset(tempDir, 'spec-manager');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // generate-release should be installed
+        expect(result.value.installed).toContain('generate-release');
+      }
+
+      // Verify the file was actually created
+      const targetPath = path.join(tempDir, '.claude', 'commands', 'kiro', 'generate-release.md');
+      const fileExists = await fs.access(targetPath).then(() => true).catch(() => false);
+      expect(fileExists).toBe(true);
     });
 
     it('should install cc-sdd-agent commandset with agents successfully', async () => {

@@ -300,11 +300,11 @@ export interface WorkflowController {
   /** Create a new bug with bug-create */
   createBug?(name: string, description: string): Promise<WorkflowResult<AgentInfo>>;
 
-  // Release methods (steering-release-integration feature)
+  // Release methods (generate-release-integration feature)
   // Requirements: 3.4, 3.5
   /** Check if release.md exists */
   checkReleaseMd?(): Promise<{ releaseMdExists: boolean }>;
-  /** Generate release.md by launching steering-release agent */
+  /** Generate release.md by launching generate-release agent */
   generateReleaseMd?(): Promise<WorkflowResult<AgentInfo>>;
 
   // Spec Plan methods (remote-ui-create-buttons feature)
@@ -867,7 +867,7 @@ export class WebSocketHandler {
       case 'STOP_BUG_AUTO_EXECUTION':
         await this.handleStopBugAutoExecution(client, message);
         break;
-      // Release handlers (steering-release-integration feature)
+      // Release handlers (generate-release-integration feature)
       case 'CHECK_RELEASE_MD':
         await this.handleCheckReleaseMd(client, message);
         break;
@@ -3023,13 +3023,13 @@ export class WebSocketHandler {
   }
 
   // ============================================================
-  // Release Handlers (steering-release-integration feature)
+  // Release Handlers (generate-release-integration feature)
   // Requirements: 3.4, 3.5
   // ============================================================
 
   /**
    * Handle CHECK_RELEASE_MD message
-   * Requirements: 3.4 (steering-release-integration)
+   * Requirements: 3.4 (generate-release-integration)
    * Checks if release.md exists in the project
    */
   private async handleCheckReleaseMd(client: ClientInfo, message: WebSocketMessage): Promise<void> {
@@ -3055,8 +3055,8 @@ export class WebSocketHandler {
 
   /**
    * Handle GENERATE_RELEASE_MD message
-   * Requirements: 3.4 (steering-release-integration)
-   * Launches steering-release agent to generate release.md
+   * Requirements: 3.4 (generate-release-integration)
+   * Launches generate-release agent to generate release.md
    */
   private async handleGenerateReleaseMd(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     if (!this.workflowController?.generateReleaseMd) {

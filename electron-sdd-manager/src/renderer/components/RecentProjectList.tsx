@@ -14,7 +14,7 @@ import { useProjectStore } from '../stores/projectStore';
 const MAX_RECENT_PROJECTS = 6;
 
 export function RecentProjectList() {
-  const { recentProjects, selectProject } = useProjectStore();
+  const { recentProjects, selectProject, isLoading } = useProjectStore();
 
   // Requirement 3.4: 最近開いたプロジェクトが存在しない場合は非表示
   if (recentProjects.length === 0) {
@@ -45,7 +45,8 @@ export function RecentProjectList() {
             <li key={projectPath}>
               <button
                 onClick={() => handleProjectClick(projectPath)}
-                className="w-full flex items-start gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                disabled={isLoading}
+                className="w-full flex items-start gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {/* Folder icon */}
                 <Folder

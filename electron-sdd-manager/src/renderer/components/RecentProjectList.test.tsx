@@ -203,6 +203,57 @@ describe('RecentProjectList', () => {
   });
 
   // ============================================================
+  // Loading state: Disable buttons during loading
+  // ============================================================
+  describe('Loading state', () => {
+    it('should disable all project buttons when isLoading is true', () => {
+      mockUseProjectStore.mockReturnValue({
+        recentProjects: ['/path/to/project1', '/path/to/project2'],
+        selectProject: mockSelectProject,
+        isLoading: true,
+        error: null,
+      } as any);
+
+      render(<RecentProjectList />);
+
+      const buttons = screen.getAllByRole('button');
+      buttons.forEach((button) => {
+        expect(button).toBeDisabled();
+      });
+    });
+
+    it('should not call selectProject when button is clicked during loading', () => {
+      mockUseProjectStore.mockReturnValue({
+        recentProjects: ['/path/to/project1'],
+        selectProject: mockSelectProject,
+        isLoading: true,
+        error: null,
+      } as any);
+
+      render(<RecentProjectList />);
+
+      const button = screen.getByRole('button');
+      fireEvent.click(button);
+
+      expect(mockSelectProject).not.toHaveBeenCalled();
+    });
+
+    it('should enable buttons when isLoading is false', () => {
+      mockUseProjectStore.mockReturnValue({
+        recentProjects: ['/path/to/project1'],
+        selectProject: mockSelectProject,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      render(<RecentProjectList />);
+
+      const button = screen.getByRole('button');
+      expect(button).not.toBeDisabled();
+    });
+  });
+
+  // ============================================================
   // UI: Folder icon display
   // ============================================================
   describe('Folder icon', () => {

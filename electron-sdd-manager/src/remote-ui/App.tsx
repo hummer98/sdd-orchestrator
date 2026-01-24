@@ -14,9 +14,12 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
-import { MobileLayout, DesktopLayout, type MobileTab } from './layouts';
-import { SpecsView, SpecDetailView, BugsView, BugDetailView, AgentView, ProjectAgentView, RemoteWorkflowView } from './views';
+import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
+import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView } from './views';
+import { AgentsTabView } from './components/AgentsTabView';
 import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
+import { SpecDetailPage } from './components/SpecDetailPage';
+import { BugDetailPage } from './components/BugDetailPage';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
@@ -27,6 +30,7 @@ import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
 import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
+import { useNavigationStack } from './hooks/useNavigationStack';
 
 // =============================================================================
 // Types
@@ -688,95 +692,117 @@ function DesktopAppContent() {
 }
 
 // =============================================================================
-// Mobile App Content - MobileLayout使用 (既存維持)
+// Mobile App Content - MobileLayout使用
+// Task 8.1: useNavigationStack統合
+// Task 8.2: SpecsタブでSpecDetailPageへのプッシュ遷移を実装
+// Requirements:
+// - 1.2: タブタップでコンテンツ切替
+// - 2.1: Specタップでプッシュ遷移 (SpecDetailPage)
+// - 2.4: 戻るボタンでpopPage
+// - 2.6: React stateでナビ管理
 // =============================================================================
 
 function MobileAppContent() {
   const apiClient = useApi();
-  const [activeTab, setActiveTab] = useState<MobileTab>('specs');
-  const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
-  const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
-  const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
+
+  // Task 8.1: useNavigationStack Hookの導入
+  // Manages activeTab, detailContext, showTabBar states
+  const {
+    state: navigationState,
+    setActiveTab,
+    pushSpecDetail,
+    pushBugDetail,
+    popPage,
+  } = useNavigationStack();
+
+  // Extract state from navigation hook
+  const { activeTab, detailContext, showTabBar } = navigationState;
 
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
     return cleanup;
   }, [apiClient]);
 
+  // Task 8.1: Spec選択ハンドラ - pushSpecDetailを使用
   const handleSelectSpec = useCallback(async (spec: SpecMetadataWithPath) => {
-    setSelectedSpec(spec);
     const result = await apiClient.getSpecDetail(spec.name);
     if (result.ok) {
-      setSelectedSpecDetail(result.value);
+      pushSpecDetail(spec, result.value);
     }
-  }, [apiClient]);
+  }, [apiClient, pushSpecDetail]);
 
-  const handleSelectBug = useCallback((bug: BugMetadataWithPath) => {
-    setSelectedBug(bug);
-  }, []);
+  // Task 8.1: Bug選択ハンドラ - pushBugDetailを使用
+  const handleSelectBug = useCallback(async (bug: BugMetadataWithPath) => {
+    const result = await apiClient.getBugDetail(bug.name);
+    if (result.ok) {
+      pushBugDetail(bug, result.value);
+    }
+  }, [apiClient, pushBugDetail]);
 
+  // Task 8.1: 戻るボタンハンドラ - popPageを使用
   const handleBackToList = useCallback(() => {
-    setSelectedSpec(null);
-    setSelectedSpecDetail(null);
-    setSelectedBug(null);
-  }, []);
+    popPage();
+  }, [popPage]);
 
-  const handleTabChange = useCallback((tab: MobileTab) => {
-    setActiveTab(tab);
-    setSelectedSpec(null);
-    setSelectedSpecDetail(null);
-    setSelectedBug(null);
-  }, []);
+  // Task 8.1: タブ切替ハンドラ - setActiveTabを使用
+  // setActiveTabは自動的にdetailContextをクリアする (Req 2.6)
+  // Note: LayoutMobileTab includes legacy values, filter to valid 3-tab values
+  const handleTabChange = useCallback((tab: LayoutMobileTab) => {
+    // Only process the 3 valid tabs (specs/bugs/agents)
+    if (tab === 'specs' || tab === 'bugs' || tab === 'agents') {
+      setActiveTab(tab);
+    }
+  }, [setActiveTab]);
 
   const renderContent = () => {
+    // Task 8.1: detailContextを使用した詳細画面表示判定
+    // Task 8.2: SpecsタブでSpecDetailPageへのプッシュ遷移を実装
+    if (detailContext) {
+      // Task 8.2: SpecDetailPageの表示 (Req 2.1)
+      // - SpecListのアイテムタップ時にpushSpecDetailを呼び出し → handleSelectSpecで実行済
+      // - 戻るボタンでpopPageを呼び出し (Req 2.4) → onBack={handleBackToList}で接続
+      if (detailContext.type === 'spec') {
+        const { spec, specDetail } = detailContext;
+        return (
+          <SpecDetailPage
+            spec={spec}
+            specDetail={specDetail}
+            apiClient={apiClient}
+            onBack={handleBackToList}
+            testId="spec-detail-page"
+          />
+        );
+      }
+
+      // Task 8.3: BugDetailPageの表示 (Req 2.2)
+      // - BugListのアイテムタップ時にpushBugDetailを呼び出し → handleSelectBugで実行済
+      // - 戻るボタンでpopPageを呼び出し (Req 2.4) → onBack={handleBackToList}で接続
+      if (detailContext.type === 'bug') {
+        const { bug, bugDetail } = detailContext;
+        return (
+          <BugDetailPage
+            bug={bug}
+            bugDetail={bugDetail}
+            apiClient={apiClient}
+            onBack={handleBackToList}
+            testId="bug-detail-page"
+          />
+        );
+      }
+    }
+
+    // Task 8.1: リスト表示（detailContextがnull）
     switch (activeTab) {
       case 'specs':
-        if (selectedSpec && selectedSpecDetail) {
-          return (
-            <div className="flex flex-col h-full">
-              <button
-                onClick={handleBackToList}
-                className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600"
-              >
-                &larr; Spec一覧に戻る
-              </button>
-              <div className="flex-1 overflow-y-auto">
-                <SpecDetailView spec={selectedSpec} apiClient={apiClient} />
-              </div>
-              <div className="border-t border-gray-200 dark:border-gray-700">
-                <RemoteWorkflowView
-                  apiClient={apiClient}
-                  spec={selectedSpec}
-                  specDetail={selectedSpecDetail}
-                />
-              </div>
-            </div>
-          );
-        }
         return (
           <SpecsView
             apiClient={apiClient}
-            selectedSpecId={selectedSpec?.name}
+            selectedSpecId={undefined}
             onSelectSpec={handleSelectSpec}
           />
         );
 
       case 'bugs':
-        if (selectedBug) {
-          return (
-            <div className="flex flex-col h-full">
-              <button
-                onClick={handleBackToList}
-                className="flex items-center gap-2 p-3 text-sm text-blue-500 hover:text-blue-600"
-              >
-                &larr; Bug一覧に戻る
-              </button>
-              <div className="flex-1 overflow-y-auto">
-                <BugDetailView bug={selectedBug} apiClient={apiClient} />
-              </div>
-            </div>
-          );
-        }
         return (
           <BugsView
             apiClient={apiClient}
@@ -785,11 +811,11 @@ function MobileAppContent() {
           />
         );
 
-      case 'agent':
-        return <AgentView apiClient={apiClient} />;
-
-      case 'project':
-        return <ProjectAgentView apiClient={apiClient} />;
+      // Task 8.4: AgentsタブをMobileAppContentに統合する (Req 1.2)
+      // AgentsTabViewを使用してプロジェクトレベルAgent一覧を表示
+      // Task 7.1-7.3で実装されたAgentsTabViewコンポーネントを統合
+      case 'agents':
+        return <AgentsTabView apiClient={apiClient} testId="agents-tab-view" />;
 
       default:
         return null;
@@ -797,7 +823,11 @@ function MobileAppContent() {
   };
 
   return (
-    <MobileLayout activeTab={activeTab} onTabChange={handleTabChange}>
+    <MobileLayout
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      showTabBar={showTabBar}
+    >
       <div className="h-screen bg-gray-50 dark:bg-gray-900">
         {renderContent()}
       </div>

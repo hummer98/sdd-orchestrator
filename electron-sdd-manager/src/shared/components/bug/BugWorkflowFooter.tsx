@@ -1,17 +1,58 @@
 /**
- * BugWorkflowFooter Component
- * Footer with auto-execution and worktree conversion controls
- * bugs-workflow-footer: Tasks 4.1, 4.2
- * Requirements: 1.1-1.4, 2.1-2.7, 3.1-3.6, 4.1-4.5
+ * BugWorkflowFooter Component (Shared)
+ * mobile-layout-refine: Task 1.1
+ * Requirements: 7.1, 7.2, 7.3
+ *
+ * Footer with auto-execution and worktree conversion controls.
+ * This component is platform-agnostic and can be used from both
+ * Electron renderer and Remote UI.
+ *
+ * Originally from renderer/components/BugWorkflowFooter.tsx
+ * Moved to shared/components/bug/ for cross-platform usage.
  */
 
+import React from 'react';
 import { Bot, Square, GitBranch, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { BugJson } from '../types/bugJson';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * BugWorktreeConfig - Worktree configuration for bugs
+ * Matches the structure from renderer/types/bugJson.ts
+ */
+interface BugWorktreeConfig {
+  /** Relative path from main project root */
+  path: string;
+  /** Branch name */
+  branch: string;
+  /** Creation timestamp (ISO-8601) */
+  created_at: string;
+}
+
+/**
+ * BugJson - Bug metadata stored in bug.json
+ * Platform-agnostic type definition for the shared component
+ * Matches the structure from renderer/types/bugJson.ts
+ */
+export interface BugJson {
+  /** Bug name (directory name) */
+  bug_name: string;
+  /** Creation timestamp (ISO-8601) */
+  created_at: string;
+  /** Last update timestamp (ISO-8601) */
+  updated_at: string;
+  /** Worktree configuration (optional) */
+  worktree?: BugWorktreeConfig;
+  /** Bug phase (optional for backward compatibility) */
+  phase?: string;
+}
 
 /**
  * Props for BugWorkflowFooter
- * Requirements: 1.2
+ * Requirements: 7.2 - maintain existing functionality
  */
 export interface BugWorkflowFooterProps {
   /** Current auto-execution state */
@@ -30,34 +71,46 @@ export interface BugWorkflowFooterProps {
   isConverting: boolean;
 }
 
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
 /**
- * Determine if convert button should be shown
- * Task 4.1: Requirements 4.1-4.5
+ * Determine if convert button should be shown for bugs
+ * Requirements: 7.2 - maintain existing functionality
  *
  * @param isOnMain - Whether on main/master branch
  * @param bugJson - Bug's bug.json data
  * @returns true if convert button should be shown
  */
-export function canShowConvertButton(
+export function canShowBugConvertButton(
   isOnMain: boolean,
   bugJson: BugJson | null | undefined
 ): boolean {
-  // Requirements 4.2: Not on main branch - hide button
+  // Not on main branch - hide button
   if (!isOnMain) return false;
 
-  // Requirements 4.3: No bugJson - hide button
+  // No bugJson - hide button
   if (!bugJson) return false;
 
-  // Requirements 4.4: Already in worktree mode - hide button
+  // Already in worktree mode - hide button
   if (bugJson.worktree) return false;
 
-  // Requirements 4.5: All conditions met - show button
+  // All conditions met - show button
   return true;
 }
 
+// =============================================================================
+// Component
+// =============================================================================
+
 /**
  * BugWorkflowFooter Component
- * Task 4.2: Requirements 1.1-1.4, 2.1-2.7, 3.1-3.6
+ * Requirements: 7.1, 7.2, 7.3
+ *
+ * Platform-agnostic footer component with:
+ * - Auto-execution start/stop button
+ * - Worktree conversion button (when applicable)
  */
 export function BugWorkflowFooter({
   isAutoExecuting,
@@ -68,9 +121,9 @@ export function BugWorkflowFooter({
   onConvertToWorktree,
   isConverting,
 }: BugWorkflowFooterProps): React.ReactElement {
-  const showConvertButton = canShowConvertButton(isOnMain, bugJson);
+  const showConvertButton = canShowBugConvertButton(isOnMain, bugJson);
 
-  // Requirements 2.3, 3.4: Disable when agents running
+  // Disable when agents running
   const autoExecutionDisabled = hasRunningAgents && !isAutoExecuting;
   const convertDisabled = hasRunningAgents || isAutoExecuting || isConverting;
 
@@ -82,7 +135,7 @@ export function BugWorkflowFooter({
         'flex items-center gap-2'
       )}
     >
-      {/* Requirements 2.1-2.7: Auto Execution Button */}
+      {/* Auto Execution Button */}
       {!isAutoExecuting ? (
         <button
           data-testid="bug-auto-execute-button"
@@ -114,7 +167,7 @@ export function BugWorkflowFooter({
         </button>
       )}
 
-      {/* Requirements 3.1-3.6: Convert to Worktree Button */}
+      {/* Convert to Worktree Button */}
       {showConvertButton && (
         <button
           data-testid="bug-convert-worktree-button"

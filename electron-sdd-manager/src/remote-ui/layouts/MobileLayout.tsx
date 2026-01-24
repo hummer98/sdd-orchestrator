@@ -17,6 +17,7 @@
  */
 
 import React, { ReactNode, useState, useEffect } from 'react';
+import { FileText, Bug, Bot } from 'lucide-react';
 import { ProfileBadge } from '../../shared/components/ui';
 import { useApi } from '../../shared';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
@@ -28,7 +29,7 @@ import type { WebSocketApiClient } from '../../shared/api/WebSocketApiClient';
 
 export type MobileTab = 'specs' | 'bugs' | 'agents' | 'settings' | 'agent' | 'project';
 
-interface MobileLayoutProps {
+export interface MobileLayoutProps {
   /**
    * Current active tab
    */
@@ -43,18 +44,33 @@ interface MobileLayoutProps {
    * Content for each tab
    */
   children?: ReactNode;
+
+  /**
+   * Whether to show the bottom tab bar
+   * Task 2.3: showTabBar prop for DetailPage visibility control
+   * Requirements: 1.4, 2.5
+   * Default: true (show tab bar)
+   */
+  showTabBar?: boolean;
 }
 
 // =============================================================================
 // Tab Configuration
 // =============================================================================
 
-const TAB_CONFIG: { id: MobileTab; label: string; icon: string }[] = [
-  { id: 'specs', label: 'Specs', icon: 'file-text' },
-  { id: 'bugs', label: 'Bugs', icon: 'bug' },
-  // Note: 'agent' and 'project' match MainContent's renderContent switch cases
-  // { id: 'agent', label: 'Agent', icon: 'terminal' },
-  // { id: 'project', label: 'Project', icon: 'settings' },
+/**
+ * TAB_CONFIG - 3-tab configuration for mobile navigation
+ *
+ * Task 2.2: MobileTabBar 3-tab configuration
+ * Requirements:
+ * - 1.1: Display bottom tab bar with three tabs: Specs, Bugs, and Agents
+ * - 1.3: Visual indication of active tab (handled in MobileTabBar)
+ * - 1.5: 44x44px touch target (handled by touch-target class)
+ */
+const TAB_CONFIG: { id: MobileTab; label: string; icon: 'specs' | 'bugs' | 'agents' }[] = [
+  { id: 'specs', label: 'Specs', icon: 'specs' },
+  { id: 'bugs', label: 'Bugs', icon: 'bugs' },
+  { id: 'agents', label: 'Agents', icon: 'agents' },
 ];
 
 // =============================================================================
@@ -66,11 +82,15 @@ const TAB_CONFIG: { id: MobileTab; label: string; icon: string }[] = [
  *
  * Tab state is now controlled by parent component (AppContent).
  * This allows tab changes from the bottom bar to update content in MainContent.
+ *
+ * Task 2.3: Added showTabBar prop for controlling tab bar visibility
+ * Requirements: 1.4, 2.5 - Hide tab bar when DetailPage is displayed
  */
 export function MobileLayout({
   activeTab = 'specs',
   onTabChange,
   children,
+  showTabBar = true,
 }: MobileLayoutProps): React.ReactElement {
   // Use prop value directly instead of internal state
   // Tab state is controlled by parent (AppContent)
@@ -83,15 +103,24 @@ export function MobileLayout({
       {/* Header */}
       <MobileHeader />
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto pb-16">
+      {/* Main Content Area
+          Task 2.3: Adjust bottom padding based on tab bar visibility
+          - pb-16 when tab bar is visible (space for tab bar)
+          - pb-0 when tab bar is hidden (full height content)
+      */}
+      <main className={`flex-1 overflow-y-auto ${showTabBar ? 'pb-16' : 'pb-0'}`}>
         {children}
       </main>
 
-      {/* Bottom Tab Bar */}
+      {/* Bottom Tab Bar
+          Task 2.3: Conditional visibility with transition animation
+          Requirements: 1.4, 2.5 - Hide when DetailPage is displayed
+          Animation: 200ms ease-in-out slide transition (per task spec)
+      */}
       <MobileTabBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        showTabBar={showTabBar}
       />
     </div>
   );
@@ -194,18 +223,50 @@ function MobileHeader(): React.ReactElement {
 interface MobileTabBarProps {
   activeTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
+  /**
+   * Whether to show the tab bar
+   * Task 2.3: Controls visibility with transition animation
+   * Default: true
+   */
+  showTabBar?: boolean;
 }
 
 /**
  * MobileTabBar - Bottom tab navigation
+ *
+ * Task 2.2: 3-tab configuration (Specs/Bugs/Agents)
+ * Task 2.3: showTabBar visibility control with transition animation
+ *
+ * Requirements:
+ * - 1.1: Display bottom tab bar with three tabs
+ * - 1.3: Visual indication of active tab with distinct styling (blue for active)
+ * - 1.4, 2.5: Hide tab bar when DetailPage is displayed
+ * - 1.5: 44x44px touch target size (touch-target class ensures min 44x44px)
+ *
+ * Animation:
+ * - 200ms duration (per task spec: 200-300ms)
+ * - ease-in-out timing function
+ * - Slide transition (translate-y)
+ *
  * remote-ui-vanilla-removal: Added data-testid and aria attributes for E2E testing
  */
 function MobileTabBar({
   activeTab,
   onTabChange,
+  showTabBar = true,
 }: MobileTabBarProps): React.ReactElement {
   return (
-    <nav data-testid="mobile-bottom-tabs" className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch">
+    <nav
+      data-testid="mobile-bottom-tabs"
+      className={`
+        fixed bottom-0 left-0 right-0 h-16
+        bg-white dark:bg-gray-800
+        border-t border-gray-200 dark:border-gray-700
+        flex items-stretch
+        transition-transform duration-200 ease-in-out
+        ${showTabBar ? 'translate-y-0' : 'translate-y-full'}
+      `}
+    >
       {TAB_CONFIG.map((tab) => (
         <button
           key={tab.id}
@@ -231,31 +292,36 @@ function MobileTabBar({
 }
 
 interface TabIconProps {
-  name: string;
+  name: 'specs' | 'bugs' | 'agents';
   active: boolean;
 }
 
 /**
- * TabIcon - Simple icon placeholder (will be replaced with actual icons)
+ * TabIcon - Lucide icon component for tab bar
+ *
+ * Task 2.2: Uses Lucide React icons for consistency with the project.
+ * Icons: FileText (Specs), Bug (Bugs), Bot (Agents)
  */
 function TabIcon({ name, active }: TabIconProps): React.ReactElement {
-  // Placeholder icons using Unicode symbols
-  const icons: Record<string, string> = {
-    'file-text': '\u{1F4C4}', // Document
-    'bug': '\u{1F41B}', // Bug
-    'terminal': '\u{1F4BB}', // Computer
-    'settings': '\u2699', // Gear
-  };
+  const iconSize = active ? 24 : 20;
+  const iconClassName = `transition-all duration-200 ${active ? 'scale-110' : ''}`;
 
-  return (
-    <span className={`text-xl ${active ? 'scale-110' : ''} transition-transform`}>
-      {icons[name] || '\u2753'}
-    </span>
-  );
+  switch (name) {
+    case 'specs':
+      return <FileText size={iconSize} className={iconClassName} />;
+    case 'bugs':
+      return <Bug size={iconSize} className={iconClassName} />;
+    case 'agents':
+      return <Bot size={iconSize} className={iconClassName} />;
+    default:
+      // Exhaustive check - should never reach here
+      return <FileText size={iconSize} className={iconClassName} />;
+  }
 }
 
 // =============================================================================
 // Exports
 // =============================================================================
 
+export { TAB_CONFIG };
 export default MobileLayout;

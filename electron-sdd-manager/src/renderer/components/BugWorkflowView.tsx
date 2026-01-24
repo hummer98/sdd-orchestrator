@@ -20,7 +20,8 @@ import { useWorkflowStore } from '../stores/workflowStore';
 import { BugPhaseItem } from './BugPhaseItem';
 import { BugAutoExecutionStatusDisplay } from './BugAutoExecutionStatusDisplay';
 // bugs-workflow-footer Task 6.4: Import footer component and hook
-import { BugWorkflowFooter } from './BugWorkflowFooter';
+// mobile-layout-refine Task 1.2: Updated import to shared component
+import { BugWorkflowFooter } from '@shared/components/bug';
 import { useConvertBugToWorktree } from '../hooks/useConvertBugToWorktree';
 import {
   BUG_WORKFLOW_PHASES,

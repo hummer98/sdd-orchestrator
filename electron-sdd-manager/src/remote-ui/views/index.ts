@@ -32,3 +32,24 @@ export type { ProjectAgentViewProps } from './ProjectAgentView';
 // workflow-view-unification: Remote UI版ワークフロービュー
 export { RemoteWorkflowView } from './RemoteWorkflowView';
 export type { RemoteWorkflowViewProps } from './RemoteWorkflowView';
+
+// Task 10.2: Mobile Layout Refine - 新規コンポーネントの再エクスポート
+// これらのコンポーネントはremote-ui/components/で実装されており、
+// viewsからのインポートを好むコンシューマー向けに再エクスポートする
+// Requirements: 3.1, 4.1, 5.1, 6.1
+export {
+  SpecDetailPage,
+  BugDetailPage,
+  AgentsTabView,
+  AgentDetailDrawer,
+  SubTabBar,
+} from '../components';
+export type {
+  SpecDetailPageProps,
+  SpecSubTab,
+  BugDetailPageProps,
+  BugSubTab,
+  AgentsTabViewProps,
+  AgentDetailDrawerProps,
+  SubTabBarProps,
+} from '../components';

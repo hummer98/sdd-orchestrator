@@ -128,12 +128,19 @@ export interface ExecuteDocumentReviewFix extends ExecutePhaseBase {
 
 /**
  * Execute inspection phase
- * Command: /kiro:spec-inspection {featureName}
+ * Command: /kiro:spec-inspection {featureName} [--autofix]
  *
  * group: 'impl' - worktreeCwd will be auto-resolved
+ *
+ * When autofix is true:
+ * - Runs inspection
+ * - If NOGO, auto-fixes and re-inspects (up to 3 cycles)
+ * - Used by auto-execution flow
  */
 export interface ExecuteInspection extends ExecutePhaseBase {
   type: 'inspection';
+  /** When true, appends --autofix flag for automatic fix and re-inspection loop */
+  autofix?: boolean;
 }
 
 /**

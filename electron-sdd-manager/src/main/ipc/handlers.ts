@@ -2838,12 +2838,14 @@ export function registerIpcHandlers(): void {
     try {
       const service = getSpecManagerService();
 
-      // Execute inspection via unified execute method
+      // Execute inspection via unified execute method with autofix enabled
+      // autofix mode: if NOGO, auto-fixes and re-inspects (up to 3 cycles)
       const result = await service.execute({
         type: 'inspection',
         specId: context.specId,
         featureName: context.specId,
         commandPrefix: 'kiro',
+        autofix: true, // Enable auto-fix for auto-execution flow
       });
 
       if (!result.ok) {

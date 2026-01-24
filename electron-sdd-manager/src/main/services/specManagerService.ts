@@ -1924,12 +1924,20 @@ export class SpecManagerService {
 
       // ===== Inspection Phases (group: 'impl') =====
       case 'inspection': {
+        const { autofix } = options;
         const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
+
+        // Build command with optional --autofix flag
+        const commandParts = [`${slashCommand} ${featureName}`];
+        if (autofix === true) {
+          commandParts.push('--autofix');
+        }
+
         return this.startAgent({
           specId,
           phase: 'inspection',
           command: getClaudeCommand(),
-          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          args: buildClaudeArgs({ command: commandParts.join(' ') }),
           group: 'impl',
         });
       }

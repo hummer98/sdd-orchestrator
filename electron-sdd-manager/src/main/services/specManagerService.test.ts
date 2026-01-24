@@ -608,6 +608,62 @@ describe('SpecManagerService', () => {
 
       startAgentSpy.mockRestore();
     });
+
+    it('should build command with --autofix when autofix=true', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'inspection',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        commandPrefix: 'kiro',
+        autofix: true,
+      });
+
+      expect(startAgentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: expect.arrayContaining(['/kiro:spec-inspection my-feature --autofix']),
+        })
+      );
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should NOT include --autofix when autofix=false', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'inspection',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        commandPrefix: 'kiro',
+        autofix: false,
+      });
+
+      const callArgs = startAgentSpy.mock.calls[0][0];
+      const commandArg = callArgs.args?.find((arg: string) => arg.includes('spec-inspection'));
+      expect(commandArg).not.toContain('--autofix');
+
+      startAgentSpy.mockRestore();
+    });
+
+    it('should NOT include --autofix when autofix is omitted', async () => {
+      const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+      await service.execute({
+        type: 'inspection',
+        specId: 'test-spec',
+        featureName: 'my-feature',
+        commandPrefix: 'kiro',
+        // autofix not specified
+      });
+
+      const callArgs = startAgentSpy.mock.calls[0][0];
+      const commandArg = callArgs.args?.find((arg: string) => arg.includes('spec-inspection'));
+      expect(commandArg).not.toContain('--autofix');
+
+      startAgentSpy.mockRestore();
+    });
   });
 
   describe('getAgents / getAllAgents', () => {

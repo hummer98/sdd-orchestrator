@@ -729,19 +729,22 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 
       await controller.executeBugPhase!('my-bug', 'analyze');
 
-      // args should contain --allowedTools with the tools for bug-analyze phase
+      // args should contain --allowedTools=... with the tools for bug-analyze phase
+      // Note: buildClaudeArgs uses --allowedTools=Tool1,Tool2 format (single argument)
       const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
-      expect(callArgs.args).toContain('--allowedTools');
+      const allowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--allowedTools='));
+      expect(allowedToolsArg).toBeDefined();
       // bug-analyze should have: Bash, Read, Write, Edit, Glob, Grep
-      expect(callArgs.args).toContain('Bash');
-      expect(callArgs.args).toContain('Read');
-      expect(callArgs.args).toContain('Write');
-      expect(callArgs.args).toContain('Edit');
-      expect(callArgs.args).toContain('Glob');
-      expect(callArgs.args).toContain('Grep');
-      // AskUserQuestion should be disallowed (via --disallowedTools, not --allowedTools)
+      expect(allowedToolsArg).toContain('Bash');
+      expect(allowedToolsArg).toContain('Read');
+      expect(allowedToolsArg).toContain('Write');
+      expect(allowedToolsArg).toContain('Edit');
+      expect(allowedToolsArg).toContain('Glob');
+      expect(allowedToolsArg).toContain('Grep');
+      // AskUserQuestion should be disallowed (via --disallowedTools=..., not --allowedTools)
       // See buildClaudeArgs: AskUserQuestion is always disabled for stream-json mode
-      expect(callArgs.args).toContain('--disallowedTools');
+      const disallowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--disallowedTools='));
+      expect(disallowedToolsArg).toBeDefined();
     });
 
     it('should pass allowedTools for bug-fix phase', async () => {
@@ -760,10 +763,13 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 
       await controller.executeBugPhase!('my-bug', 'fix');
 
+      // Note: buildClaudeArgs uses --allowedTools=Tool1,Tool2 format (single argument)
       const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
-      expect(callArgs.args).toContain('--allowedTools');
-      // AskUserQuestion is disallowed via --disallowedTools (not in --allowedTools list)
-      expect(callArgs.args).toContain('--disallowedTools');
+      const allowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--allowedTools='));
+      expect(allowedToolsArg).toBeDefined();
+      // AskUserQuestion is disallowed via --disallowedTools=... (not in --allowedTools list)
+      const disallowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--disallowedTools='));
+      expect(disallowedToolsArg).toBeDefined();
     });
 
     it('should pass allowedTools for bug-verify phase', async () => {
@@ -782,11 +788,14 @@ describe('WorkflowController.executeBugPhase() (Task 2.1)', () => {
 
       await controller.executeBugPhase!('my-bug', 'verify');
 
+      // Note: buildClaudeArgs uses --allowedTools=Tool1,Tool2 format (single argument)
       const callArgs = mockSpecManagerService.startAgent.mock.calls[0][0];
-      expect(callArgs.args).toContain('--allowedTools');
+      const allowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--allowedTools='));
+      expect(allowedToolsArg).toBeDefined();
       // bug-verify should have: Bash, Read, Write, Edit, Glob, Grep
-      // AskUserQuestion is disallowed via --disallowedTools (not in --allowedTools list)
-      expect(callArgs.args).toContain('--disallowedTools');
+      // AskUserQuestion is disallowed via --disallowedTools=... (not in --allowedTools list)
+      const disallowedToolsArg = callArgs.args.find((arg: string) => arg.startsWith('--disallowedTools='));
+      expect(disallowedToolsArg).toBeDefined();
     });
   });
 });

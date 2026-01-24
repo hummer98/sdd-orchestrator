@@ -21,6 +21,7 @@ import type {
   SpecDetail,
 } from '@shared/api/types';
 import { normalizeInspectionState } from '@renderer/types/inspection';
+import { SPEC_ARTIFACT_TABS } from '@shared/constants/artifacts';
 
 // =============================================================================
 // Types
@@ -62,13 +63,8 @@ export interface RemoteArtifactEditorProps {
 // Constants
 // =============================================================================
 
-/** Base tabs for spec artifacts */
-const SPEC_TABS: TabInfo[] = [
-  { key: 'requirements', label: 'requirements.md' },
-  { key: 'design', label: 'design.md' },
-  { key: 'tasks', label: 'tasks.md' },
-  { key: 'research', label: 'research.md' },
-];
+/** Base tabs for spec artifacts - use shared constant */
+const SPEC_TABS: TabInfo[] = SPEC_ARTIFACT_TABS as unknown as TabInfo[];
 
 // =============================================================================
 // Component

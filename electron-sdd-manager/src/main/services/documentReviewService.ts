@@ -23,6 +23,7 @@ import { logger } from './logger';
 // spec-event-log: Event logging for document review
 import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
+import { REQUIRED_DOC_FILENAMES } from '../../shared/constants/artifacts';
 
 /** Extended SpecJson with documentReview field */
 interface SpecJsonWithReview extends SpecJson {
@@ -118,9 +119,7 @@ export class DocumentReviewService {
    * Requirements: 8.4
    */
   async validateDocuments(specPath: string): Promise<Result<void, ReviewError>> {
-    const requiredDocs = ['requirements.md', 'design.md', 'tasks.md'];
-
-    for (const doc of requiredDocs) {
+    for (const doc of REQUIRED_DOC_FILENAMES) {
       const docPath = join(specPath, doc);
       try {
         await access(docPath);

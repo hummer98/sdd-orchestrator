@@ -7,6 +7,10 @@
 import type { SpecMetadata } from '../types';
 import type { SpecsChangeEvent } from '../types/electron';
 import type { SpecSyncService } from './specSyncService';
+import {
+  SPEC_JSON_FILENAME,
+  getArtifactKeyFromFilename,
+} from '../../shared/constants/artifacts';
 
 /**
  * Dependencies for SpecWatcherService initialization
@@ -148,29 +152,19 @@ export class SpecWatcherService {
     console.log('[specWatcherService] Dispatching for file:', fileName);
 
     // Requirement 4.4: spec.json changes
-    if (fileName === 'spec.json') {
+    if (fileName === SPEC_JSON_FILENAME) {
       this.deps.syncService.updateSpecJson();
       return;
     }
 
-    // Requirement 4.5: artifact changes
-    if (fileName === 'requirements.md') {
-      this.deps.syncService.updateArtifact('requirements');
-      return;
-    }
-    if (fileName === 'design.md') {
-      this.deps.syncService.updateArtifact('design');
-      return;
-    }
-    if (fileName === 'research.md') {
-      this.deps.syncService.updateArtifact('research');
-      return;
-    }
-
-    // Requirement 4.6: tasks.md changes (both updateArtifact and syncTaskProgress)
-    if (fileName === 'tasks.md') {
-      this.deps.syncService.updateArtifact('tasks');
-      this.deps.syncService.syncTaskProgress();
+    // Requirement 4.5, 4.6: artifact changes (requirements.md, design.md, tasks.md, research.md)
+    const artifactKey = getArtifactKeyFromFilename(fileName);
+    if (artifactKey) {
+      this.deps.syncService.updateArtifact(artifactKey);
+      // Requirement 4.6: tasks.md also triggers syncTaskProgress
+      if (artifactKey === 'tasks') {
+        this.deps.syncService.syncTaskProgress();
+      }
       return;
     }
 

@@ -18,6 +18,12 @@ import {
   detectWorktreeAddition,
   buildWorktreeEntityPath,
 } from './worktreeWatcherUtils';
+import {
+  SPEC_JSON_FILENAME,
+  SPEC_ARTIFACT_FILENAMES,
+  ARTIFACT_TO_PHASE,
+  isWatchedArtifactFilename,
+} from '../../shared/constants/artifacts';
 
 export type SpecsChangeEvent = {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
@@ -206,15 +212,14 @@ export class SpecsWatcherService {
     // Check for artifact file generation (requirements.md, design.md, tasks.md)
     // These are user-initiated actions via skills, so we update updated_at
     const fileName = path.basename(filePath);
-    const artifactFiles = ['requirements.md', 'design.md', 'tasks.md'];
-    if (type === 'add' && artifactFiles.includes(fileName) && specId) {
+    if (type === 'add' && isWatchedArtifactFilename(fileName) && specId) {
       this.handleArtifactGeneration(filePath, specId, fileName).catch((error) => {
         logger.error('[SpecsWatcherService] Failed to handle artifact generation', { error, specId, fileName });
       });
     }
 
     // Check if tasks.md was modified and handle completion detection
-    if ((type === 'change' || type === 'add') && fileName === 'tasks.md' && specId) {
+    if ((type === 'change' || type === 'add') && fileName === SPEC_ARTIFACT_FILENAMES.tasks && specId) {
       this.checkTaskCompletion(filePath, specId).catch((error) => {
         logger.error('[SpecsWatcherService] Failed to check task completion', { error, specId });
       });
@@ -222,7 +227,7 @@ export class SpecsWatcherService {
 
     // remove-inspection-phase-auto-update: Check deploy completion when spec.json changes
     // Note: inspection-complete phase update is now handled by spec-inspection agent, not here
-    if ((type === 'change' || type === 'add') && fileName === 'spec.json' && specId) {
+    if ((type === 'change' || type === 'add') && fileName === SPEC_JSON_FILENAME && specId) {
       this.checkDeployCompletion(filePath, specId).catch((error) => {
         logger.error('[SpecsWatcherService] Failed to check deploy completion', { error, specId });
       });
@@ -341,12 +346,7 @@ export class SpecsWatcherService {
       const specJson = JSON.parse(specJsonContent);
 
       // Determine the expected phase based on the artifact file
-      const artifactToPhase: Record<string, string> = {
-        'requirements.md': 'requirements',
-        'design.md': 'design',
-        'tasks.md': 'tasks',
-      };
-      const expectedPhase = artifactToPhase[fileName];
+      const expectedPhase = ARTIFACT_TO_PHASE[fileName as keyof typeof ARTIFACT_TO_PHASE];
 
       if (!expectedPhase) {
         return;

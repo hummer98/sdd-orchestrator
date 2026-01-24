@@ -152,8 +152,8 @@ Main と Renderer で重複している「ファイル名 → アクション」
 ### ⚠️ 未解決 (Unresolved / Partially Resolved)
 1.  **不要ファイルの残存**
     *   `electron-sdd-manager/src/main/services/metricsService.ts.design.md` が依然として存在します。早急な移動または削除が必要です。
-2.  **Shared Constants の不在**
-    *   `src/shared/constants/artifacts.ts` は作成されていません。Main/Renderer 間でファイル名文字列（`tasks.md` 等）のハードコードが残っています。
+2.  ~~**Shared Constants の不在**~~
+    *   ✅ **解決済み (2026-01-25)**: `src/shared/constants/artifacts.ts` を作成。`SPEC_ARTIFACT_FILENAMES`, `WATCHED_ARTIFACT_FILENAMES`, `ARTIFACT_TO_PHASE`, `SPEC_ARTIFACT_TABS` 等を定義し、Main/Renderer両プロセスのハードコードを共通定数に置換。`getArtifactKeyFromFilename()` ユーティリティ関数も追加。
 3.  **ディレクトリ構造の肥大化**
     *   `src/main/services` は依然としてフラットな構造で、大量のファイルが混在しています。整理は行われていません。
 4.  **命名規則の混乱**
@@ -165,7 +165,7 @@ Main と Renderer で重複している「ファイル名 → アクション」
 優先度の高い順に以下の対応を推奨します。
 
 1.  **[Immediate] 不要ファイルの削除**: `metricsService.ts.design.md` を移動/削除（完了済み）。
-2.  **[High] 定数共通化 (Phase 2)**: `src/shared/constants/artifacts.ts` を作成し、Main/Renderer のハードコードを排除。
+2.  ~~**[High] 定数共通化 (Phase 2)**~~: ✅ 完了 (2026-01-25)
 3.  **[High] Worktree Utilsの統合**: `worktreeWatcherUtils.ts` と `worktreeHelpers.ts` は内容が重複しているため、`worktreeHelpers.ts` に一本化する。
 4.  **[Medium] ディレクトリ整理 (Phase 4)**: `src/main/services` を以下のカテゴリ別に再編する。
     *   `agents/`: エージェント実行 (`agentProcess`, `autoExecutionCoordinator` 等)

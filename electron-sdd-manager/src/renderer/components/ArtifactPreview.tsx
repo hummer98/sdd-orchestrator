@@ -9,6 +9,7 @@ import { clsx } from 'clsx';
 import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import type { ArtifactInfo } from '../types';
+import { REQUIRED_ARTIFACT_TABS } from '../../shared/constants/artifacts';
 
 // ============================================================
 // Task 6.1: ArtifactPreview Types
@@ -23,16 +24,8 @@ export interface ArtifactPreviewProps {
   };
 }
 
-interface ArtifactEntry {
-  name: string;
-  key: 'requirements' | 'design' | 'tasks';
-}
-
-const ARTIFACT_ENTRIES: ArtifactEntry[] = [
-  { name: 'requirements.md', key: 'requirements' },
-  { name: 'design.md', key: 'design' },
-  { name: 'tasks.md', key: 'tasks' },
-];
+/** Use shared constant for artifact entries (required artifacts only) */
+const ARTIFACT_ENTRIES = REQUIRED_ARTIFACT_TABS;
 
 export function ArtifactPreview({ artifacts }: ArtifactPreviewProps) {
   const [expandedArtifacts, setExpandedArtifacts] = useState<Set<string>>(new Set());
@@ -54,8 +47,8 @@ export function ArtifactPreview({ artifacts }: ArtifactPreviewProps) {
       {ARTIFACT_ENTRIES.map((entry) => (
         <ArtifactItem
           key={entry.key}
-          name={entry.name}
-          artifact={artifacts[entry.key]}
+          name={entry.label}
+          artifact={artifacts[entry.key as keyof typeof artifacts]}
           isExpanded={expandedArtifacts.has(entry.key)}
           onToggle={() => toggleExpanded(entry.key)}
         />

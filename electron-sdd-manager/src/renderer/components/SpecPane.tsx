@@ -18,14 +18,10 @@ import { ElectronWorkflowView as WorkflowView } from './ElectronWorkflowView';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
 import { normalizeInspectionState } from '../types/inspection';
+import { SPEC_ARTIFACT_TABS } from '../../shared/constants/artifacts';
 
-/** Spec artifact tabs */
-const SPEC_TABS: TabInfo[] = [
-  { key: 'requirements', label: 'requirements.md' },
-  { key: 'design', label: 'design.md' },
-  { key: 'tasks', label: 'tasks.md' },
-  { key: 'research', label: 'research.md' },
-];
+/** Spec artifact tabs - use shared constant cast to local TabInfo type */
+const SPEC_TABS: TabInfo[] = SPEC_ARTIFACT_TABS as unknown as TabInfo[];
 
 interface SpecPaneProps {
   /** Right pane width */

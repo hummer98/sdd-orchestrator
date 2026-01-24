@@ -1,0 +1,17 @@
+# E2E Test Generated Files
+# These are generated during E2E test runs and should not be committed
+
+# Metrics
+*/.kiro/metrics.jsonl
+
+# Runtime agents
+*/.kiro/runtime/
+
+# Agent logs
+*/.kiro/specs/*/logs/
+
+# Event logs (generated during test execution)
+*/.kiro/specs/*/events.jsonl
+
+# Document review files generated during tests
+*/.kiro/specs/*/document-review-*.md

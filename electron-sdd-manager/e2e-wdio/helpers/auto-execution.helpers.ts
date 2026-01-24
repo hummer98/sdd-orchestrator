@@ -246,14 +246,19 @@ export async function refreshSpecStore(): Promise<void> {
 
 /**
  * Helper: Clear agent store
+ *
+ * Note: agents is a Map<string, AgentInfo[]>, so we need to iterate correctly.
  */
 export async function clearAgentStore(): Promise<void> {
   await browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (stores?.agent?.getState) {
       const state = stores.agent.getState();
-      state.agents.forEach((agent: any) => {
-        state.removeAgent(agent.agentId);
+      // agents is a Map<string, AgentInfo[]>
+      state.agents.forEach((agentList: any[], _specId: string) => {
+        agentList.forEach((agent: any) => {
+          state.removeAgent(agent.agentId);
+        });
       });
     }
   });
@@ -414,6 +419,69 @@ export async function debugGetAllAgents(): Promise<{ specId: string; agents: any
 }
 
 /**
+ * Helper: Get agents for a specific phase pattern
+ *
+ * AgentInfo has 'phase' field (not 'skill').
+ * agents is a Map<string, AgentInfo[]> where key is specId.
+ * AgentInfo interface:
+ *   - agentId: string
+ *   - specId: string
+ *   - phase: string (e.g., 'kiro:spec-tasks', 'kiro:spec-impl', 'kiro:document-review')
+ *   - status: 'running' | 'completed' | 'failed' | 'stopped'
+ *
+ * @param phasePattern Pattern to match against agent.phase (e.g., 'tasks', 'impl', 'document-review')
+ */
+export async function getAgentsForPhase(
+  phasePattern: string
+): Promise<{ phase: string; status: string; agentId: string; specId: string }[]> {
+  return browser.execute((pattern: string) => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.agent?.getState) return [];
+
+    const agents: { phase: string; status: string; agentId: string; specId: string }[] = [];
+    const agentsMap = stores.agent.getState().agents;
+
+    // agents is a Map<string, AgentInfo[]>
+    agentsMap.forEach((agentList: any[], specId: string) => {
+      agentList.forEach((agent: any) => {
+        if (agent.phase && agent.phase.includes(pattern)) {
+          agents.push({
+            phase: agent.phase,
+            status: agent.status,
+            agentId: agent.agentId,
+            specId: specId,
+          });
+        }
+      });
+    });
+    return agents;
+  }, phasePattern);
+}
+
+/**
+ * Helper: Wait for agent with specific phase to reach expected status
+ *
+ * @param phasePattern Pattern to match against agent.phase
+ * @param expectedStatus Expected status (e.g., 'completed', 'running')
+ * @param timeout Timeout in milliseconds
+ */
+export async function waitForAgentPhaseStatus(
+  phasePattern: string,
+  expectedStatus: string,
+  timeout: number = 60000
+): Promise<boolean> {
+  return waitForCondition(
+    async () => {
+      const agents = await getAgentsForPhase(phasePattern);
+      return agents.some((a) => a.status === expectedStatus);
+    },
+    timeout,
+    1000,
+    `agent-${phasePattern}-${expectedStatus}`
+  );
+}
+
+/**
  * Helper: Log browser console logs (for debugging)
  */
 export async function logBrowserConsole(): Promise<void> {
@@ -526,4 +594,48 @@ export async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Pro
       return false;
     }
   }, flag);
+}
+
+/**
+ * Helper: Set mock environment variable via IPC
+ *
+ * Allows dynamic control of mock Claude CLI behavior during E2E tests:
+ * - E2E_MOCK_DOC_REVIEW_RESULT: "approved" or "needs_fix"
+ * - E2E_MOCK_TASKS_COMPLETE: "true" or "false"
+ * - E2E_MOCK_CLAUDE_DELAY: delay in seconds
+ *
+ * @param key The environment variable name
+ * @param value The value to set
+ */
+export async function setMockEnv(key: string, value: string): Promise<void> {
+  await browser.execute(async (k, v) => {
+    try {
+      await (window as any).electronAPI.setMockEnv(k, v);
+    } catch (e) {
+      console.error('[E2E] setMockEnv error:', e);
+    }
+  }, key, value);
+}
+
+/**
+ * Helper: Configure mock Claude CLI for E2E tests
+ *
+ * Convenience wrapper for setting multiple mock environment variables.
+ *
+ * @param config Configuration options
+ */
+export async function configureMockClaude(config: {
+  docReviewResult?: 'approved' | 'needs_fix';
+  tasksComplete?: boolean;
+  delay?: string;
+}): Promise<void> {
+  if (config.docReviewResult !== undefined) {
+    await setMockEnv('E2E_MOCK_DOC_REVIEW_RESULT', config.docReviewResult);
+  }
+  if (config.tasksComplete !== undefined) {
+    await setMockEnv('E2E_MOCK_TASKS_COMPLETE', config.tasksComplete ? 'true' : 'false');
+  }
+  if (config.delay !== undefined) {
+    await setMockEnv('E2E_MOCK_CLAUDE_DELAY', config.delay);
+  }
 }

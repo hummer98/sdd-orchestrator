@@ -26,7 +26,7 @@ PlaywrightではなくWebdriverIOを採用した理由:
 ### アーキテクチャ概要
 
 ```
-WebdriverIO -> Chromedriver -> Electron App (ビルド済みバイナリ)
+WebdriverIO -> Chromedriver -> Electron App (開発版 or パッケージ版)
                                     |
                          Browser Window (Renderer)
 ```
@@ -39,10 +39,16 @@ WebdriverIO -> Chromedriver -> Electron App (ビルド済みバイナリ)
 
 ```typescript
 // 主要な設定ポイント
+// デフォルトは開発版（npm run build の成果物）を使用（高速、開発時推奨）
+// パッケージ済みアプリを使用する場合は E2E_USE_PACKAGED_APP=true を設定
+const usePackagedApp = process.env.E2E_USE_PACKAGED_APP === 'true';
+const appEntryPoint = path.join(projectRoot, 'dist/main/index.js');
+const appBinaryPath = path.join(projectRoot, 'release/mac-arm64/SDD Orchestrator.app/.../SDD Orchestrator');
+
 capabilities: [{
   browserName: 'electron',
   'wdio:electronServiceOptions': {
-    appBinaryPath: './release/mac-arm64/SDD Orchestrator.app/.../SDD Orchestrator',
+    ...(usePackagedApp ? { appBinaryPath } : { appEntryPoint }),
     appArgs: ['--e2e-test'],
   },
 }],
@@ -54,7 +60,11 @@ specs: ['./e2e-wdio/**/*.spec.ts'],
 ### 実行コマンド
 
 ```bash
-task electron:test:e2e   # 事前に `task electron:build` が必要
+# 開発版（デフォルト、高速）
+npm run build && task electron:test:e2e
+
+# パッケージ版（CI/リリース前検証用）
+task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 ```
 
 ---
@@ -752,7 +762,7 @@ expect(windows[0].isResizable()).toBe(true);
 1. **メニュー操作**: MCP electronツールではネイティブメニューを直接操作できない
 2. **プロジェクトコンテキスト**: 一部のテストは実際のプロジェクト選択が必要（「インフラテスト」としてマーク）
 3. **エージェント実行**: 完全なエージェントワークフローテストはインフラ確認のみ（実際の実行なし）
-4. **ビルド済みバイナリ必須**: テストはパッケージ済みアプリで実行（事前に`task electron:build`が必要）
+4. **ビルド必須**: テスト実行前に `npm run build`（開発版）または `task electron:build`（パッケージ版）が必要
 
 ---
 

@@ -116,6 +116,18 @@ MOCK_DELAY=${E2E_MOCK_CLAUDE_DELAY:-0.5}
 sleep "$MOCK_DELAY"
 
 # =============================================================================
+# Environment Variables for Test Control
+# =============================================================================
+# E2E_MOCK_DOC_REVIEW_RESULT: "approved" or "needs_fix" (default: based on --autofix flag)
+#   - "approved": document-review-reply returns Fix Required = 0, status = approved
+#   - "needs_fix": document-review-reply returns Fix Required > 0, applies fixes
+#
+# E2E_MOCK_TASKS_COMPLETE: "true" to mark all tasks as complete after impl
+#   - "true": impl phase marks all checkboxes in tasks.md as [x]
+#   - "false" (default): tasks.md is not modified
+# =============================================================================
+
+# =============================================================================
 # File Generation Functions
 # =============================================================================
 
@@ -751,7 +763,9 @@ try:
 
     if has_autofix:
         # Fixes were applied - DO NOT set approved
-        # Set fixApplied = true, keep status as in_progress
+        # Set fixStatus = 'applied' to trigger next review round
+        round_entry['status'] = 'reply_complete'
+        round_entry['fixStatus'] = 'applied'  # Matches real skill behavior
         round_entry['fixApplied'] = True
         round_entry['fixRequired'] = 2  # Mock: 2 fixes required
         round_entry['needsDiscussion'] = 0
@@ -760,6 +774,9 @@ try:
         data['documentReview']['status'] = 'in_progress'
     else:
         # No fixes needed - can set approved
+        # Set fixStatus = 'not_required' to allow proceeding
+        round_entry['status'] = 'reply_complete'
+        round_entry['fixStatus'] = 'not_required'  # Matches real skill behavior
         round_entry['fixApplied'] = False
         round_entry['fixRequired'] = 0
         round_entry['needsDiscussion'] = 0
@@ -877,6 +894,18 @@ case "$PHASE" in
     ;;
 
   impl)
+    SPEC_DIR=$(get_spec_dir)
+
+    # If E2E_MOCK_TASKS_COMPLETE is true, mark all tasks as complete in tasks.md
+    if [ "$E2E_MOCK_TASKS_COMPLETE" = "true" ] && [ -d "$SPEC_DIR" ]; then
+      TASKS_FILE="${SPEC_DIR}/tasks.md"
+      if [ -f "$TASKS_FILE" ]; then
+        # Replace all "- [ ]" with "- [x]" to mark tasks as complete
+        sed -i '' 's/- \[ \]/- [x]/g' "$TASKS_FILE" 2>/dev/null || \
+        sed -i 's/- \[ \]/- [x]/g' "$TASKS_FILE" 2>/dev/null || true
+      fi
+    fi
+
     echo '{"type":"assistant","message":{"id":"msg_mock_impl","type":"message","role":"assistant","content":[{"type":"text","text":"## Implementation Complete\n\nI have implemented the requested changes:\n\n1. Created new files\n2. Modified existing code\n3. Added tests\n\nAll tests pass."}],"model":"claude-sonnet-4-20250514","stop_reason":"end_turn","usage":{"input_tokens":300,"output_tokens":400}}}'
     sleep 0.3
     echo '{"type":"result","subtype":"success","duration_ms":5678,"num_turns":3,"total_cost_usd":0.005,"session_id":"'"$SESSION_ID"'"}'
@@ -923,6 +952,16 @@ case "$PHASE" in
         HAS_AUTOFIX=true
       fi
     done
+
+    # Override with environment variable if set
+    # E2E_MOCK_DOC_REVIEW_RESULT: "approved" -> no fixes, "needs_fix" -> apply fixes
+    if [ -n "$E2E_MOCK_DOC_REVIEW_RESULT" ]; then
+      if [ "$E2E_MOCK_DOC_REVIEW_RESULT" = "approved" ]; then
+        HAS_AUTOFIX=false
+      elif [ "$E2E_MOCK_DOC_REVIEW_RESULT" = "needs_fix" ]; then
+        HAS_AUTOFIX=true
+      fi
+    fi
 
     # Extract round number from command (e.g., "document-review-reply feature-name 2 --autofix")
     ROUND_NUMBER=1

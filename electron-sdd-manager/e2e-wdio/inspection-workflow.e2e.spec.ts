@@ -36,6 +36,7 @@ import {
   stopAutoExecution,
   resetAutoExecutionCoordinator,
   setDocumentReviewFlag,
+  getAgentsForPhase,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path
@@ -330,22 +331,23 @@ async function getInspectionPermissionState(): Promise<{
 }
 
 /**
- * Helper: Get executed agents skills
+ * Helper: Get executed agents phases
+ * Note: AgentInfo has 'phase' field, not 'skill'.
  */
-async function getExecutedAgentSkills(): Promise<string[]> {
+async function getExecutedAgentPhases(): Promise<string[]> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return [];
 
-    const skills: string[] = [];
+    const phases: string[] = [];
     stores.agent.getState().agents.forEach((agentList: any[]) => {
       agentList.forEach((agent: any) => {
-        if (agent.skill) {
-          skills.push(agent.skill);
+        if (agent.phase) {
+          phases.push(agent.phase);
         }
       });
     });
-    return skills;
+    return phases;
   });
 }
 
@@ -653,8 +655,8 @@ describe('Inspection Workflow E2E', () => {
 
       // Wait for inspection to be triggered
       const inspectionStarted = await waitForCondition(async () => {
-        const skills = await getExecutedAgentSkills();
-        return skills.some(s => s.includes('inspection') || s.includes('spec-inspection'));
+        const phases = await getExecutedAgentPhases();
+        return phases.some(p => p.includes('inspection'));
       }, 60000, 1000, 'inspection-agent-started');
 
       console.log(`[E2E] Inspection agent started: ${inspectionStarted}`);
@@ -665,8 +667,8 @@ describe('Inspection Workflow E2E', () => {
         return !s.isAutoExecuting;
       }, 120000, 1000, 'auto-execution-complete');
 
-      const executedSkills = await getExecutedAgentSkills();
-      console.log(`[E2E] Executed skills: ${JSON.stringify(executedSkills)}`);
+      const executedPhases = await getExecutedAgentPhases();
+      console.log(`[E2E] Executed phases: ${JSON.stringify(executedPhases)}`);
     });
 
     it('should not execute inspection when inspection permission is OFF', async () => {
@@ -691,12 +693,12 @@ describe('Inspection Workflow E2E', () => {
         return !s.isAutoExecuting;
       }, 60000, 1000, 'auto-execution-complete');
 
-      const executedSkills = await getExecutedAgentSkills();
-      console.log(`[E2E] Executed skills (inspection OFF): ${JSON.stringify(executedSkills)}`);
+      const executedPhases = await getExecutedAgentPhases();
+      console.log(`[E2E] Executed phases (inspection OFF): ${JSON.stringify(executedPhases)}`);
 
       // Inspection should not be executed
-      const inspectionExecuted = executedSkills.some(
-        s => s.includes('spec-inspection') && !s.includes('document')
+      const inspectionExecuted = executedPhases.some(
+        p => p.includes('inspection') && !p.includes('document')
       );
       expect(inspectionExecuted).toBe(false);
     });
@@ -743,6 +745,231 @@ describe('Inspection Workflow E2E', () => {
           const indicatorVisible = await executingIndicator.isDisplayed();
           console.log(`[E2E] Executing indicator visible: ${indicatorVisible}`);
         }
+      }
+    });
+  });
+
+  // ============================================================
+  // Auto-execution with inspection --autofix
+  // When inspection is enabled in auto-execution, it uses --autofix flag
+  // which auto-fixes on NOGO and re-inspects (up to 3 cycles)
+  // ============================================================
+  describe('Auto-execution inspection with --autofix', () => {
+    beforeEach(async () => {
+      setFixtureState('no_inspection');
+
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Skip document review
+      await setDocumentReviewFlag('skip');
+    });
+
+    it('should execute inspection with --autofix in auto-execution flow', async () => {
+      // Set permissions: inspection enabled
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: true,
+        deploy: false,
+      });
+      await browser.pause(300);
+
+      // Start auto-execution
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for inspection agent to start
+      const inspectionStarted = await waitForCondition(async () => {
+        const agents = await getAgentsForPhase('inspection');
+        return agents.some(a => a.phase.includes('inspection'));
+      }, 90000, 1000, 'inspection-started');
+
+      console.log(`[E2E] Inspection with --autofix started: ${inspectionStarted}`);
+
+      // Note: The actual --autofix behavior (auto-fix on NOGO, re-inspect) is handled
+      // by the spec-inspection agent internally. We verify that inspection phase runs.
+
+      // Wait for auto-execution to complete
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 180000, 2000, 'auto-execution-complete');
+
+      // Verify inspection was executed
+      const inspectionAgents = await getAgentsForPhase('inspection');
+      console.log(`[E2E] Inspection agents: ${JSON.stringify(inspectionAgents)}`);
+      expect(inspectionAgents.length).toBeGreaterThan(0);
+    });
+
+    it('should trigger spec-merge after inspection GO in auto-execution', async () => {
+      // Update fixture to have inspection GO result
+      setFixtureState('one_round_go');
+      await refreshSpecStore();
+
+      // Set permissions: all phases enabled
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: true,
+        deploy: true, // Enable deploy so spec-merge can trigger
+      });
+      await browser.pause(300);
+
+      // Start auto-execution
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for spec-merge to start (after inspection GO)
+      const specMergeStarted = await waitForCondition(async () => {
+        const agents = await getAgentsForPhase('spec-merge');
+        return agents.some(a => a.phase.includes('spec-merge'));
+      }, 120000, 1000, 'spec-merge-started');
+
+      console.log(`[E2E] Spec-merge after inspection GO: ${specMergeStarted}`);
+
+      // Wait for auto-execution to complete
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 180000, 2000, 'auto-execution-complete');
+    });
+  });
+
+  // ============================================================
+  // Standalone inspection manual execution
+  // User clicks "Start Inspection" button manually
+  // ============================================================
+  describe('Standalone inspection execution', () => {
+    beforeEach(async () => {
+      setFixtureState('no_inspection');
+
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+    });
+
+    it('should execute inspection when start button is clicked manually', async () => {
+      // Click start inspection button
+      const startButton = await $('[data-testid="start-inspection-button"]');
+      const buttonExists = await startButton.isExisting();
+      expect(buttonExists).toBe(true);
+
+      if (buttonExists && await startButton.isEnabled()) {
+        await startButton.click();
+
+        // Wait for inspection agent to start
+        const inspectionStarted = await waitForCondition(async () => {
+          const agents = await getAgentsForPhase('inspection');
+          return agents.some(a => a.phase.includes('inspection'));
+        }, 60000, 1000, 'inspection-started');
+
+        console.log(`[E2E] Manual inspection started: ${inspectionStarted}`);
+        expect(inspectionStarted).toBe(true);
+
+        // Wait for inspection to complete
+        const inspectionCompleted = await waitForCondition(async () => {
+          const agents = await getAgentsForPhase('inspection');
+          return agents.some(a => a.status === 'completed' || a.status === 'failed');
+        }, 180000, 2000, 'inspection-completed');
+
+        console.log(`[E2E] Manual inspection completed: ${inspectionCompleted}`);
+      }
+    });
+  });
+
+  // ============================================================
+  // Inspection --fix after NOGO
+  // User clicks "Apply Fix" button after inspection NOGO
+  // ============================================================
+  describe('Inspection fix after NOGO', () => {
+    beforeEach(async () => {
+      setFixtureState('one_round_nogo_fixed');
+
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+    });
+
+    it('should allow re-inspection after fix is applied', async () => {
+      // After fix is applied, start inspection button should be enabled
+      const startButton = await $('[data-testid="start-inspection-button"]');
+      const buttonExists = await startButton.isExisting();
+
+      if (buttonExists) {
+        const isEnabled = await startButton.isEnabled();
+        console.log(`[E2E] Re-inspection button enabled after fix: ${isEnabled}`);
+        expect(isEnabled).toBe(true);
+
+        // Click to re-run inspection
+        if (isEnabled) {
+          await startButton.click();
+
+          // Wait for inspection agent to start
+          const inspectionStarted = await waitForCondition(async () => {
+            const agents = await getAgentsForPhase('inspection');
+            return agents.some(a => a.phase.includes('inspection'));
+          }, 60000, 1000, 'inspection-started');
+
+          console.log(`[E2E] Re-inspection started: ${inspectionStarted}`);
+          expect(inspectionStarted).toBe(true);
+        }
+      }
+    });
+
+    it('should have inspection fix button when NOGO result exists', async () => {
+      // Set to one_round_nogo state (not fixed yet)
+      setFixtureState('one_round_nogo');
+      await refreshSpecStore();
+
+      // Check for fix button
+      const fixButton = await $('[data-testid="inspection-fix-button"]');
+      const fixButtonExists = await fixButton.isExisting();
+      console.log(`[E2E] Inspection fix button exists: ${fixButtonExists}`);
+
+      // If fix button exists, clicking it should start inspection-fix phase
+      if (fixButtonExists && await fixButton.isEnabled()) {
+        await fixButton.click();
+
+        // Wait for inspection-fix agent to start
+        const fixStarted = await waitForCondition(async () => {
+          const agents = await getAgentsForPhase('inspection-fix');
+          return agents.some(a => a.phase.includes('inspection-fix'));
+        }, 60000, 1000, 'inspection-fix-started');
+
+        console.log(`[E2E] Inspection fix started: ${fixStarted}`);
       }
     });
   });

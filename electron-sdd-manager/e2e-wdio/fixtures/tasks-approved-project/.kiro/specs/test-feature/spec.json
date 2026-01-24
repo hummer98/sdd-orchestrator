@@ -1,0 +1,23 @@
+{
+  "feature_name": "test-feature",
+  "name": "test-feature",
+  "description": "E2Eテスト用のテスト機能（tasks承認済み）",
+  "phase": "tasks-approved",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}

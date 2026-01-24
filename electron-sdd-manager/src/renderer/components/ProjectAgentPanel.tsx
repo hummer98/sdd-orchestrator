@@ -3,6 +3,10 @@
  * Displays list of project-level SDD Agents (agents not bound to a specific spec)
  * Task 4.2, 4.3 (sidebar-refactor)
  * Requirements: 4.1, 4.3, 4.4, 4.5, 4.6
+ *
+ * project-agent-release-footer Task 2.1: Layout integration
+ * - Header / AgentList / Footer flex structure
+ * - Footer fixed at bottom (shrink-0), AgentList scrollable (flex-1 overflow-y-auto)
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
@@ -12,6 +16,7 @@ import { clsx } from 'clsx';
 import { useState } from 'react';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
+import { ProjectAgentFooter } from './ProjectAgentFooter';
 
 // =============================================================================
 // Type Mapping
@@ -46,6 +51,17 @@ export function ProjectAgentPanel() {
       // Then by startedAt descending
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
     });
+
+  /**
+   * Task 2.3: isReleaseRunning calculation logic
+   * Requirements: 6.1, 6.2, 6.3
+   * - Uses getProjectAgents selector to get agent list (6.3)
+   * - Detects agents with args?.includes('/release') (6.1)
+   * - Only considers running agents (status === 'running') (6.2)
+   */
+  const isReleaseRunning = projectAgents.some(
+    (agent) => agent.status === 'running' && agent.args?.includes('/release')
+  );
 
   // project-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
 
@@ -98,6 +114,28 @@ export function ProjectAgentPanel() {
     setIsAskDialogOpen(false);
   };
 
+  /**
+   * Task 2.2: handleRelease handler implementation
+   * Requirements: 5.1, 5.2, 5.3, 5.4
+   * - Calls executeAskProject with /release as prompt
+   * - Adds agent to store with addAgent
+   * - Updates selection state with selectForProjectAgents and selectAgent
+   * - Shows success/error notification
+   */
+  const handleRelease = async () => {
+    if (!currentProject) return;
+
+    try {
+      const agentInfo = await window.electronAPI.executeAskProject(currentProject, '/release');
+      addAgent('', agentInfo);
+      selectForProjectAgents();
+      selectAgent(agentInfo.agentId);
+      notify.success('releaseを開始しました');
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'releaseの実行に失敗しました');
+    }
+  };
+
   return (
     <div
       data-testid="project-agent-panel"
@@ -145,6 +183,14 @@ export function ProjectAgentPanel() {
           testId="project-agent-list"
         />
       </div>
+
+      {/* Footer - project-agent-release-footer Task 2.1, 2.2, 2.3 */}
+      {/* Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 6.1, 6.2, 6.3 */}
+      <ProjectAgentFooter
+        onRelease={handleRelease}
+        isReleaseRunning={isReleaseRunning}
+        currentProject={currentProject}
+      />
 
       {/* 削除確認ダイアログ */}
       {confirmDeleteAgent && (

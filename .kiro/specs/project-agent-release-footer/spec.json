@@ -1,0 +1,49 @@
+{
+  "feature_name": "project-agent-release-footer",
+  "created_at": "2026-01-24T09:16:39Z",
+  "updated_at": "2026-01-24T12:11:36Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 3,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-24T11:08:30Z"
+      }
+    ]
+  }
+}

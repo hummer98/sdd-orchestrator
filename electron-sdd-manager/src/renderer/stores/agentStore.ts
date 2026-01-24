@@ -68,6 +68,12 @@ export interface AgentInfo {
   // Optional fields for backward compatibility
   executionMode?: 'auto' | 'manual';
   retryCount?: number;
+
+  // project-agent-release-footer: Task 2.3 - Args field for release detection
+  // Requirements: 6.1, 6.2, 6.3
+  // Contains the prompt/command string used to start the agent
+  // Used to detect release agents via args?.includes('/release')
+  args?: string;
 }
 
 /**
@@ -95,6 +101,8 @@ function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
     // execution-store-consolidation: Preserve extended fields
     executionMode: shared.executionMode,
     retryCount: shared.retryCount,
+    // project-agent-release-footer: Task 2.3 - Map args for release detection
+    args: shared.args,
   };
 }
 
@@ -114,6 +122,8 @@ function toSharedAgentInfo(renderer: AgentInfo): SharedAgentInfo {
     // execution-store-consolidation: Preserve extended fields
     executionMode: renderer.executionMode,
     retryCount: renderer.retryCount,
+    // project-agent-release-footer: Task 2.3 - Preserve args for release detection
+    args: renderer.args,
   };
 }
 

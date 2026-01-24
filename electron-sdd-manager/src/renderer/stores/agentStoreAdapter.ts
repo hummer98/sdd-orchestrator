@@ -24,6 +24,7 @@ import type { LogEntry } from '../types';
 /**
  * Convert renderer AgentInfo to shared AgentInfo format
  * renderer uses 'agentId', shared uses 'id'
+ * project-agent-release-footer: Task 2.3 - Map prompt to args for release detection
  */
 function toSharedAgentInfo(rendererAgent: RendererAgentInfo): SharedAgentInfo {
   return {
@@ -35,11 +36,16 @@ function toSharedAgentInfo(rendererAgent: RendererAgentInfo): SharedAgentInfo {
     command: rendererAgent.command,
     sessionId: rendererAgent.sessionId,
     lastActivityAt: rendererAgent.lastActivityAt,
+    // project-agent-release-footer: Task 2.3 - Map prompt to args for release detection
+    // The main process stores the command string in 'prompt' field (via extractPromptFromArgs)
+    // We map it to 'args' in the renderer for release detection
+    args: rendererAgent.prompt,
   };
 }
 
 /**
  * Renderer-side AgentInfo type (matches existing IPC response)
+ * project-agent-release-footer: Task 2.3 - Added prompt field for release detection
  */
 interface RendererAgentInfo {
   readonly agentId: string;
@@ -48,6 +54,9 @@ interface RendererAgentInfo {
   readonly pid?: number;
   readonly sessionId: string;
   readonly status: string;
+  // project-agent-release-footer: Task 2.3 - Prompt field from main process
+  // Contains the command string used to start the agent (e.g., "/kiro:project-ask \"/release\"")
+  readonly prompt?: string;
   readonly startedAt: string;
   readonly lastActivityAt: string;
   readonly command: string;

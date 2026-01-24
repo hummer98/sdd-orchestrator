@@ -164,6 +164,10 @@ export interface AgentInfo {
   executionMode?: 'auto' | 'manual';
   /** Retry count for failed agents */
   retryCount?: number;
+  // project-agent-release-footer: Task 2.3 - Args field for release detection
+  // Requirements: 6.1, 6.2, 6.3
+  /** Args/prompt used to start the agent (e.g., "/release" or "/kiro:project-ask ...") */
+  args?: string;
 }
 
 // =============================================================================

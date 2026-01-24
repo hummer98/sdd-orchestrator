@@ -325,6 +325,7 @@ export interface CcSddWorkflowInstallStatus {
 /**
  * Agent information interface
  * Requirements: 5.1-5.8
+ * project-agent-release-footer: Task 2.3 - Added args field
  */
 export interface AgentInfo {
   readonly agentId: string;
@@ -336,6 +337,9 @@ export interface AgentInfo {
   readonly startedAt: string;
   readonly lastActivityAt: string;
   readonly command: string;
+  // project-agent-release-footer: Task 2.3 - Args field for release detection
+  // Requirements: 6.1, 6.2, 6.3
+  readonly args?: string;
 }
 
 /**

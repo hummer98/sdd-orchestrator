@@ -33,8 +33,6 @@ import { ParallelModeToggle } from './ParallelModeToggle';
 export interface ImplPhasePanelProps {
   /** Whether worktree mode is enabled (read from spec.json.worktree) */
   worktreeModeSelected: boolean;
-  /** Whether implementation has started (for button label: 開始/継続) */
-  isImplStarted: boolean;
   /** Current phase status */
   status: PhaseStatus;
   /** Auto execution permission flag */
@@ -75,14 +73,8 @@ export interface ImplPhasePanelProps {
 // Helper Functions
 // =============================================================================
 
-/**
- * Determines the button label based on state
- * spec-worktree-early-creation: Simplified - no hasExistingWorktree needed
- * Note: Worktree mode is indicated by color only, not label
- */
-function getButtonLabel(isImplStarted: boolean): string {
-  return isImplStarted ? '実装継続' : '実装開始';
-}
+/** Button label - simple and consistent, worktree mode indicated by color only */
+const BUTTON_LABEL = '実装';
 
 // =============================================================================
 // Component
@@ -97,7 +89,6 @@ function getButtonLabel(isImplStarted: boolean): string {
  */
 export function ImplPhasePanel({
   worktreeModeSelected,
-  isImplStarted,
   status,
   autoExecutionPermitted,
   isExecuting,
@@ -117,8 +108,8 @@ export function ImplPhasePanel({
   // Info dialog state
   const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
 
-  // Get button label based on current state (color indicates worktree mode)
-  const buttonLabel = getButtonLabel(isImplStarted);
+  // Button label is constant - worktree mode indicated by color only
+  const buttonLabel = BUTTON_LABEL;
 
   // Button disabled state
   const isButtonDisabled = !canExecute || isExecuting;

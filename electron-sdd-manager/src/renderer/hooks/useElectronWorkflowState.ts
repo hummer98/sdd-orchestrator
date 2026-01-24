@@ -20,7 +20,7 @@ import { useAutoExecution } from './useAutoExecution';
 import { useConvertToWorktree } from './useConvertToWorktree';
 import { useHumanActivity } from './useHumanActivity';
 import { notify } from '../stores';
-import { hasWorktreePath, isImplStarted } from '../types/worktree';
+import { hasWorktreePath } from '../types/worktree';
 import { normalizeInspectionState } from '../types/inspection';
 import {
   ALL_WORKFLOW_PHASES,
@@ -143,10 +143,6 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     }
     const worktree = specJson?.worktree as WorktreeConfig | undefined;
     return worktree?.enabled === true;
-  }, [specJson?.worktree]);
-
-  const hasImplStartedFlag = useMemo(() => {
-    return isImplStarted({ worktree: specJson?.worktree });
   }, [specJson?.worktree]);
 
   const hasExistingWorktree = useMemo(() => {
@@ -524,7 +520,6 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
 
     // Worktree
     isWorktreeModeSelected,
-    hasImplStarted: hasImplStartedFlag,
     hasExistingWorktree,
     isOnMain,
     isConverting,
@@ -559,7 +554,6 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     documentReviewScheme,
     inspectionState,
     isWorktreeModeSelected,
-    hasImplStartedFlag,
     hasExistingWorktree,
     isOnMain,
     isConverting,

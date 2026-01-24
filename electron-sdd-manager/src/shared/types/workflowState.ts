@@ -85,8 +85,6 @@ export interface WorkflowState {
   // ---------------------------------------------------------------------------
   /** Worktreeモードが選択されているか */
   isWorktreeModeSelected: boolean;
-  /** 実装が開始されているか */
-  hasImplStarted: boolean;
   /** 既存のWorktreeがあるか */
   hasExistingWorktree: boolean;
   /** mainブランチ上かどうか */

@@ -280,7 +280,6 @@ export function WorkflowViewCore({
         {/* ImplPhasePanel */}
         <ImplPhasePanel
           worktreeModeSelected={state.isWorktreeModeSelected}
-          isImplStarted={state.hasImplStarted}
           status={state.phaseStatuses.impl}
           autoExecutionPermitted={state.autoExecutionPermissions.impl}
           isExecuting={isImplExecuting}

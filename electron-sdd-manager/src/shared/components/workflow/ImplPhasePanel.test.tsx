@@ -17,10 +17,8 @@ import type { PhaseStatus } from './PhaseItem';
 
 describe('ImplPhasePanel', () => {
   // Basic props for testing
-  // spec-worktree-early-creation: hasExistingWorktree removed
   const defaultProps = {
     worktreeModeSelected: false,
-    isImplStarted: false,
     status: 'pending' as PhaseStatus,
     autoExecutionPermitted: false,
     isExecuting: false,
@@ -64,57 +62,13 @@ describe('ImplPhasePanel', () => {
   });
 
   // ==========================================================================
-  // Label switching logic
-  // spec-worktree-early-creation: Simplified - no hasExistingWorktree
-  // Note: Worktree mode is indicated by color only, not label
+  // Button label - always shows "実装", worktree mode indicated by color only
   // ==========================================================================
-  describe('label switching', () => {
-    // Worktree mode + not started = "実装開始" (color indicates worktree)
-    it('should show "実装開始" when worktree mode and not started', () => {
-      render(
-        <ImplPhasePanel
-          {...defaultProps}
-          worktreeModeSelected={true}
-          isImplStarted={false}
-        />
-      );
-      expect(screen.getByText('実装開始')).toBeInTheDocument();
-    });
-
-    // Worktree mode + started = "実装継続" (color indicates worktree)
-    it('should show "実装継続" when worktree mode and impl started', () => {
-      render(
-        <ImplPhasePanel
-          {...defaultProps}
-          worktreeModeSelected={true}
-          isImplStarted={true}
-        />
-      );
-      expect(screen.getByText('実装継続')).toBeInTheDocument();
-    });
-
-    // Normal mode + not started = "実装開始"
-    it('should show "実装開始" when normal mode and not started', () => {
-      render(
-        <ImplPhasePanel
-          {...defaultProps}
-          worktreeModeSelected={false}
-          isImplStarted={false}
-        />
-      );
-      expect(screen.getByText('実装開始')).toBeInTheDocument();
-    });
-
-    // Normal mode + started = "実装継続"
-    it('should show "実装継続" when normal mode and started', () => {
-      render(
-        <ImplPhasePanel
-          {...defaultProps}
-          worktreeModeSelected={false}
-          isImplStarted={true}
-        />
-      );
-      expect(screen.getByText('実装継続')).toBeInTheDocument();
+  describe('button label', () => {
+    it('should always show "実装" on button regardless of mode or state', () => {
+      render(<ImplPhasePanel {...defaultProps} />);
+      const button = screen.getByTestId('impl-execute-button');
+      expect(button).toHaveTextContent('実装');
     });
   });
 
@@ -233,9 +187,10 @@ describe('ImplPhasePanel', () => {
   // Phase label
   // ==========================================================================
   describe('phase label', () => {
-    it('should show "実装" label', () => {
+    it('should show "実装" label in panel', () => {
       render(<ImplPhasePanel {...defaultProps} />);
-      expect(screen.getByText('実装')).toBeInTheDocument();
+      // Both label and button show "実装"
+      expect(screen.getAllByText('実装')).toHaveLength(2);
     });
   });
 

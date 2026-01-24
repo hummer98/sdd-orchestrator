@@ -208,11 +208,6 @@ export function useRemoteWorkflowState(
     return hasWorktreePath({ worktree: specDetail?.specJson?.worktree });
   }, [specDetail?.specJson?.worktree]);
 
-  const hasImplStarted = useMemo(() => {
-    const worktree = specDetail?.specJson?.worktree as { impl_started?: boolean } | undefined;
-    return worktree?.impl_started === true;
-  }, [specDetail?.specJson?.worktree]);
-
   const hasExistingWorktree = useMemo(() => {
     return hasWorktreePath({ worktree: specDetail?.specJson?.worktree });
   }, [specDetail?.specJson?.worktree]);
@@ -440,7 +435,6 @@ export function useRemoteWorkflowState(
 
     // Worktree
     isWorktreeModeSelected,
-    hasImplStarted,
     hasExistingWorktree,
     isOnMain: true, // Remote UI doesn't know about git state
     isConverting: false,
@@ -468,7 +462,6 @@ export function useRemoteWorkflowState(
     documentReviewScheme,
     inspectionState,
     isWorktreeModeSelected,
-    hasImplStarted,
     hasExistingWorktree,
     parallelModeEnabled,
     specHasParallelTasks,

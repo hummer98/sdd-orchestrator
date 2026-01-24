@@ -101,12 +101,12 @@ export function ProjectAgentPanel() {
   return (
     <div
       data-testid="project-agent-panel"
-      className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+      className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 h-full flex flex-col"
     >
       {/* Header */}
       <div
         data-testid="project-agent-panel-header"
-        className="flex items-center gap-2 px-4 py-2"
+        className="flex items-center gap-2 px-4 py-2 shrink-0"
       >
         <Bot className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -134,7 +134,7 @@ export function ProjectAgentPanel() {
       </div>
 
       {/* Agent List */}
-      <div className="px-2 pb-2 max-h-48 overflow-y-auto">
+      <div className="px-2 pb-2 flex-1 overflow-y-auto min-h-0">
         <AgentList
           agents={projectAgents.map(mapAgentInfoToItemInfo)}
           selectedAgentId={selectedAgentId}

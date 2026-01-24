@@ -110,23 +110,25 @@ Protocol description.
 
   describe('validateInstallation', () => {
     it('should return valid report when all files exist and are valid', async () => {
-      // Create all required command files
+      // Create all required command files for cc-sdd profile
+      // Note: CC_SDD_PROFILE_COMMANDS does NOT include spec-quick (that's in cc-sdd-agent only)
+      // Note: Bug commands are NOT included in cc-sdd validation (separate commandset)
       const commands = [
-        'spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
+        'spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status',
         'validate-gap', 'validate-design', 'validate-impl',
         'spec-inspection',
         'document-review', 'document-review-reply',
         'steering', 'steering-custom',
-        'bug-create', 'bug-analyze', 'bug-fix', 'bug-verify', 'bug-status',
       ];
       for (const cmd of commands) {
         await createValidCommandFile(cmd);
       }
 
-      // Create all required agent files
+      // Create all required agent files (must match CC_SDD_AGENTS)
       const agents = [
         'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
         'steering', 'steering-custom', 'steering-verification',
+        'generate-release',  // Added: generate-release-command feature
         'validate-design', 'validate-gap', 'validate-impl',
         'spec-inspection',
       ];

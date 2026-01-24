@@ -879,6 +879,13 @@ export interface ElectronAPI {
   autoExecutionReset(): Promise<void>;
 
   /**
+   * Set mock environment variable (E2E test support)
+   * WARNING: This API is intended for E2E tests only.
+   * Only allowed keys: E2E_MOCK_DOC_REVIEW_RESULT, E2E_MOCK_TASKS_COMPLETE, E2E_MOCK_CLAUDE_DELAY
+   */
+  setMockEnv(key: string, value: string): Promise<void>;
+
+  /**
    * Subscribe to auto-execution status changes
    */
   onAutoExecutionStatusChanged(callback: (data: { specPath: string; state: AutoExecutionState }) => void): () => void;

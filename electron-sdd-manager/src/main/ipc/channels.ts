@@ -216,6 +216,8 @@ export const IPC_CHANNELS = {
   AUTO_EXECUTION_RETRY_FROM: 'auto-execution:retry-from',
   // E2E Test Support: Reset all coordinator state
   AUTO_EXECUTION_RESET: 'auto-execution:reset',
+  // E2E Test Support: Set mock environment variable
+  SET_MOCK_ENV: 'e2e:set-mock-env',
   // Events (Renderer -> Main)
   AUTO_EXECUTION_STATUS_CHANGED: 'auto-execution:status-changed',
   AUTO_EXECUTION_PHASE_COMPLETED: 'auto-execution:phase-completed',

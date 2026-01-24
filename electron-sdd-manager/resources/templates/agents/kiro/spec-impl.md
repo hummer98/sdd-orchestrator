@@ -128,6 +128,25 @@ For each selected task, follow Kent Beck's TDD cycle:
 - **No Regressions**: Existing tests must continue to pass
 - **Design Alignment**: Implementation must follow design.md specifications
 
+### Worktree Mode (Critical Path Resolution)
+
+When cwd contains `.kiro/worktrees/`, you are operating in a **worktree isolated environment**:
+
+1. **cwd IS the project root** - The worktree directory is your entire working context
+2. **ALWAYS use relative paths** for Write/Edit/Bash operations
+   - ✅ `electron-sdd-manager/src/shared/hooks/myHook.ts`
+   - ❌ `/Users/.../sdd-orchestrator/electron-sdd-manager/src/shared/hooks/myHook.ts`
+3. **NEVER reference parent repository**
+   - Do not construct absolute paths to parent repo
+   - Do not use `git rev-parse --show-toplevel` for path construction (it returns worktree path, but avoid confusion)
+4. **Bash commands must use relative paths**
+   - ✅ `cd electron-sdd-manager && npm run test`
+   - ❌ `cd /absolute/path/to/parent/electron-sdd-manager && npm test`
+5. **Path validation before Write/Edit**
+   - If you find yourself using an absolute path, STOP
+   - Convert to relative path from cwd
+   - Parent repo paths (without `.kiro/worktrees/` segment) are FORBIDDEN
+
 ## Tool Guidance
 - **Read first**: Load all context before implementation
 - **Test first**: Write tests before code

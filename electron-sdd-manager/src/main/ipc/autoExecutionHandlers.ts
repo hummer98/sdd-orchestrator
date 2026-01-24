@@ -240,6 +240,27 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
     }
   );
 
+  // SET_MOCK_ENV (E2E Test Support)
+  // WARNING: This handler is intended for E2E tests only.
+  // Allows dynamic setting of mock environment variables during tests.
+  ipcMain.handle(
+    IPC_CHANNELS.SET_MOCK_ENV,
+    async (_event, key: string, value: string): Promise<void> => {
+      // Only allow E2E mock environment variables
+      const allowedKeys = [
+        'E2E_MOCK_DOC_REVIEW_RESULT',
+        'E2E_MOCK_TASKS_COMPLETE',
+        'E2E_MOCK_CLAUDE_DELAY',
+      ];
+      if (!allowedKeys.includes(key)) {
+        logger.warn('[autoExecutionHandlers] SET_MOCK_ENV rejected: key not allowed', { key });
+        return;
+      }
+      logger.info('[autoExecutionHandlers] SET_MOCK_ENV (E2E test support)', { key, value });
+      process.env[key] = value;
+    }
+  );
+
   // Register event forwarding to Renderer
   setupEventForwarding(coordinator);
 
@@ -258,6 +279,7 @@ export function unregisterAutoExecutionHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RESET);
+  ipcMain.removeHandler(IPC_CHANNELS.SET_MOCK_ENV);
 
   logger.info('[autoExecutionHandlers] IPC handlers unregistered');
 }

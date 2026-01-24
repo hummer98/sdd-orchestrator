@@ -1296,6 +1296,14 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RESET),
 
   /**
+   * Set mock environment variable (E2E test support)
+   * WARNING: This API is intended for E2E tests only.
+   * Only allowed keys: E2E_MOCK_DOC_REVIEW_RESULT, E2E_MOCK_TASKS_COMPLETE, E2E_MOCK_CLAUDE_DELAY
+   */
+  setMockEnv: (key: string, value: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SET_MOCK_ENV, key, value),
+
+  /**
    * Subscribe to auto-execution status changes
    * @param callback Function called when status changes
    * @returns Cleanup function to unsubscribe

@@ -58,9 +58,13 @@ export const config: Options.Testrunner = {
         // E2Eテストモードを示すカスタム引数のみ
         appArgs: ['--e2e-test'],
         // Pass mock Claude CLI environment variables to the Electron app
+        // E2E_MOCK_DOC_REVIEW_RESULT: "approved" or "needs_fix"
+        // E2E_MOCK_TASKS_COMPLETE: "true" to mark tasks as complete after impl
         appEnv: {
           E2E_MOCK_CLAUDE_COMMAND: mockClaudePath,
           E2E_MOCK_CLAUDE_DELAY: process.env.E2E_MOCK_CLAUDE_DELAY || '0.1',
+          E2E_MOCK_DOC_REVIEW_RESULT: process.env.E2E_MOCK_DOC_REVIEW_RESULT || '',
+          E2E_MOCK_TASKS_COMPLETE: process.env.E2E_MOCK_TASKS_COMPLETE || 'false',
         },
       },
     },

@@ -133,5 +133,35 @@ Main と Renderer で重複している「ファイル名 → アクション」
     *   Renderer: `SpecWatcherService` -> `SpecUpdateListener` (または `SpecSyncService` に統合を検討)
 
 ---
-**合計見積もり工数:** 約 12時間
-**推奨スケジュール:** Phase 1 & 2 を優先的に実施し、安定性を確保した後に Phase 3 以降に取り組む。
+
+## 2026-01-24 Update: 現状調査と残タスク
+
+2026年1月24日時点での実装状況を再調査しました。
+
+### ✅ 解決済み (Resolved)
+1.  **Main プロセスからの不正 Import**
+    *   `SpecsWatcherService.ts` から `renderer/types/inspection` への参照は削除されました。
+    *   該当箇所には `// normalizeInspectionState and hasPassed are no longer used here` とのコメントがあり、ロジック自体が Main プロセスから除去されたようです。
+2.  **CheckImplResult (Dead Code)**
+    *   コードベースから `CheckImplResult` の型定義および使用箇所は削除されました（多数の "REMOVED" コメントとして痕跡は残っていますが、機能的にはクリーンアップ済みです）。
+
+### ⚠️ 未解決 (Unresolved / Partially Resolved)
+1.  **不要ファイルの残存**
+    *   `electron-sdd-manager/src/main/services/metricsService.ts.design.md` が依然として存在します。早急な移動または削除が必要です。
+2.  **Shared Constants の不在**
+    *   `src/shared/constants/artifacts.ts` は作成されていません。Main/Renderer 間でファイル名文字列（`tasks.md` 等）のハードコードが残っています。
+3.  **ディレクトリ構造の肥大化**
+    *   `src/main/services` は依然としてフラットな構造で、大量のファイルが混在しています。整理は行われていません。
+4.  **命名規則の混乱**
+    *   `SpecsWatcherService` (Main) と `SpecWatcherService` (Renderer) は両方存在し、リネームされていません。
+5.  **Worktree ロジックの分散**
+    *   `worktreeWatcherUtils.ts` は存在しますが、`SpecsWatcherService.ts` 内の `extractSpecId` メソッドなどに依然として Worktree のパス構造に関する詳細なロジック（`worktreeParts` の手動解析など）が残っており、完全な共通化には至っていません。
+6.  ~~**Worktree 型の重複定義**~~
+    *   ✅ **解決済み (2026-01-25)**: `src/shared/types/worktree.ts` を正として全型定義を集約。`src/renderer/types/worktree.ts` は Shared からの re-export のみに変更。これにより Main プロセスからの Renderer への不正 import 問題も解消。
+
+### 次のアクション (Next Actions)
+優先度の高い順に以下の対応を推奨します。
+
+1.  **[Immediate] 不要ファイルの削除**: `metricsService.ts.design.md` を移動/削除。
+2.  **[High] 定数共通化 (Phase 2)**: `src/shared/constants/artifacts.ts` を作成し、Main/Renderer のハードコードを排除。
+3.  **[Medium] ディレクトリ整理 (Phase 4)**: `src/main/services` の整理に着手。

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.47.0] - 2026-01-25
+
+### Added
+- **mcp-server-integration**: SDD OrchestratorにMCPサーバー機能を統合
+
+### Fixed
+- **build**: @modelcontextprotocol/sdkをexternalモジュールとして設定
+- **SpecsWatcher**: ログ監視除外とAgentProcessのメモリリーク修正
+- **metrics**: 全Spec Agentフェーズのメトリクス計測を有効化
+
+### Changed
+- **refactor**: Artifact定数を共通化しMain/Renderer間のハードコードを解消
+- **refactor**: Worktree型定義をsharedに統合し重複を解消
+
+### Tests
+- テスト期待値を最新の実装に合わせて更新
+
+### Documentation
+- implementation-review の Worktree 型統合を解決済みセクションに移動
+
 ## [0.46.0] - 2026-01-25
 
 ### Added

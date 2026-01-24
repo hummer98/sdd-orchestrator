@@ -232,6 +232,10 @@ export interface SelectProjectResult {
    * Main process reads all specJsons during selectProject to avoid multiple IPC calls
    */
   readonly specJsonMap: Record<string, SpecJson>;
+  /**
+   * Bug fix: empty bug directory handling - warnings for skipped directories
+   */
+  readonly bugWarnings?: string[];
 }
 
 // ============================================================

@@ -6,6 +6,7 @@ import type {
   BugMetadata,
   BugDetail,
   BugsChangeEvent,
+  ReadBugsResult,
   SelectProjectResult,
   VersionCheckResult,
 } from './index';
@@ -741,7 +742,8 @@ export interface ElectronAPI {
 
   // Bug Management
   // Requirements: 3.1, 6.1, 6.3
-  readBugs(projectPath: string): Promise<BugMetadata[]>;
+  // Bug fix: empty bug directory handling - returns warnings for skipped directories
+  readBugs(projectPath: string): Promise<ReadBugsResult>;
   // spec-path-ssot-refactor: Changed from bugPath to bugName
   readBugDetail(bugName: string): Promise<BugDetail>;
 

@@ -235,6 +235,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         useBugStore.getState().setBugs(result.bugs);
       }
 
+      // Bug fix: empty bug directory handling - show warning toast for skipped directories
+      if (result.bugWarnings && result.bugWarnings.length > 0) {
+        const { notify } = await import('./notificationStore');
+        for (const warning of result.bugWarnings) {
+          notify.warning(warning);
+        }
+      }
+
       // Bug fix: agent-log-shows-selection-without-spec
       // Clear agent selection when switching projects to prevent stale agent logs
       useAgentStore.getState().selectAgent(null);

@@ -169,7 +169,16 @@ export class IpcApiClient implements ApiClient {
     if (!projectPath) {
       return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
     }
-    return wrapResult(() => window.electronAPI.readBugs(projectPath));
+    // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
+    const result = await wrapResult(() => window.electronAPI.readBugs(projectPath));
+    if (!result.ok) {
+      return result;
+    }
+    // Log warnings to console (IpcApiClient doesn't have access to toast)
+    if (result.value.warnings.length > 0) {
+      console.warn('[IpcApiClient] Bug warnings:', result.value.warnings);
+    }
+    return { ok: true, value: result.value.bugs };
   }
 
   async getBugDetail(bugPath: string): Promise<Result<BugDetail, ApiError>> {
@@ -405,9 +414,15 @@ export class IpcApiClient implements ApiClient {
     checkElectronAPI();
     return window.electronAPI.onBugsChanged((_event) => {
       // On any change, reload bugs
+      // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
       const projectPath = getCurrentProjectPath();
       if (projectPath) {
-        window.electronAPI.readBugs(projectPath).then(callback);
+        window.electronAPI.readBugs(projectPath).then((result) => {
+          if (result.warnings.length > 0) {
+            console.warn('[IpcApiClient] Bug warnings:', result.warnings);
+          }
+          callback(result.bugs);
+        });
       }
     });
   }

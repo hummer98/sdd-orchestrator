@@ -35,7 +35,7 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toEqual([]);
+        expect(result.value.bugs).toEqual([]);
       }
     });
 
@@ -47,7 +47,7 @@ describe('BugService', () => {
         const result = await service.readBugs(emptyDir);
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toEqual([]);
+          expect(result.value.bugs).toEqual([]);
         }
       } finally {
         await rm(emptyDir, { recursive: true, force: true });
@@ -62,9 +62,9 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].name).toBe('test-bug');
-        expect(result.value[0].phase).toBe('reported');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].name).toBe('test-bug');
+        expect(result.value.bugs[0].phase).toBe('reported');
       }
     });
 
@@ -77,8 +77,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].phase).toBe('analyzed');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].phase).toBe('analyzed');
       }
     });
 
@@ -92,8 +92,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].phase).toBe('fixed');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].phase).toBe('fixed');
       }
     });
 
@@ -108,8 +108,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].phase).toBe('verified');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].phase).toBe('verified');
       }
     });
 
@@ -128,10 +128,10 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(2);
+        expect(result.value.bugs).toHaveLength(2);
         // bug-2 should be first (more recent)
-        expect(result.value[0].name).toBe('bug-2');
-        expect(result.value[1].name).toBe('bug-1');
+        expect(result.value.bugs[0].name).toBe('bug-2');
+        expect(result.value.bugs[1].name).toBe('bug-1');
       }
     });
 
@@ -150,8 +150,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].reportedAt).toBe('2024-01-01T00:00:00Z');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].reportedAt).toBe('2024-01-01T00:00:00Z');
       }
     });
   });
@@ -585,9 +585,9 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].worktree).toBeDefined();
-        expect(result.value[0].worktree?.path).toBe('../project-worktrees/bugs/worktree-metadata-bug');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].worktree).toBeDefined();
+        expect(result.value.bugs[0].worktree?.path).toBe('../project-worktrees/bugs/worktree-metadata-bug');
       }
     });
 
@@ -605,8 +605,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].worktree).toBeUndefined();
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].worktree).toBeUndefined();
       }
     });
   });
@@ -644,14 +644,14 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(2);
+        expect(result.value.bugs).toHaveLength(2);
         // Should find both main and worktree bugs
-        const bugNames = result.value.map(b => b.name);
+        const bugNames = result.value.bugs.map(b => b.name);
         expect(bugNames).toContain('main-bug');
         expect(bugNames).toContain('worktree-bug');
 
         // Worktree bug should have correct phase
-        const worktreeBug = result.value.find(b => b.name === 'worktree-bug');
+        const worktreeBug = result.value.bugs.find(b => b.name === 'worktree-bug');
         expect(worktreeBug?.phase).toBe('analyzed');
       }
     });
@@ -684,11 +684,11 @@ describe('BugService', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         // Should only have 1 bug (main takes priority)
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].name).toBe(bugName);
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].name).toBe(bugName);
         // spec-path-ssot-refactor: path field removed, check worktreeBasePath instead
         // Main bugs have no worktreeBasePath
-        expect(result.value[0].worktreeBasePath).toBeUndefined();
+        expect(result.value.bugs[0].worktreeBasePath).toBeUndefined();
       }
     });
 
@@ -701,7 +701,7 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(0);
+        expect(result.value.bugs).toHaveLength(0);
       }
     });
 
@@ -714,8 +714,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].name).toBe('solo-bug');
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].name).toBe('solo-bug');
       }
     });
 
@@ -735,8 +735,8 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].worktreeBasePath).toBe(`.kiro/worktrees/bugs/${worktreeBugName}`);
+        expect(result.value.bugs).toHaveLength(1);
+        expect(result.value.bugs[0].worktreeBasePath).toBe(`.kiro/worktrees/bugs/${worktreeBugName}`);
       }
     });
   });
@@ -811,9 +811,9 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
+        expect(result.value.bugs).toHaveLength(1);
         // Phase field should take priority over artifact-based detection
-        expect(result.value[0].phase).toBe('deployed');
+        expect(result.value.bugs[0].phase).toBe('deployed');
       }
     });
 
@@ -834,9 +834,9 @@ describe('BugService', () => {
       const result = await service.readBugs(testDir);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toHaveLength(1);
+        expect(result.value.bugs).toHaveLength(1);
         // Should fall back to artifact-based detection (fixed)
-        expect(result.value[0].phase).toBe('fixed');
+        expect(result.value.bugs[0].phase).toBe('fixed');
       }
     });
   });

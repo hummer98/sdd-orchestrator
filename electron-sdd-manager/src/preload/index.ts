@@ -18,7 +18,7 @@ import type { CliInstallStatus, CliInstallResult } from '../main/services/cliIns
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
 import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '../main/services/unifiedCommandsetInstaller';
-import type { BugMetadata, BugDetail, BugsChangeEvent } from '../renderer/types';
+import type { BugDetail, BugsChangeEvent, ReadBugsResult } from '../renderer/types';
 import type { LayoutValues } from '../main/services/configStore';
 import type {
   InstallOptions as ExperimentalInstallOptions,
@@ -784,7 +784,8 @@ const electronAPI = {
    * @param projectPath Project root path
    * @returns Array of bug metadata
    */
-  readBugs: (projectPath: string): Promise<BugMetadata[]> =>
+  // Bug fix: empty bug directory handling - returns warnings for skipped directories
+  readBugs: (projectPath: string): Promise<ReadBugsResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.READ_BUGS, projectPath),
 
   /**

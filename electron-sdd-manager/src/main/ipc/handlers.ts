@@ -364,8 +364,17 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
     }
 
     // Read bugs
+    // Bug fix: empty bug directory handling - extract bugs and warnings
     const bugsResult = await bugService.readBugs(projectPath);
-    const bugs = bugsResult.ok ? bugsResult.value : [];
+    const bugs = bugsResult.ok ? bugsResult.value.bugs : [];
+    const bugWarnings = bugsResult.ok ? bugsResult.value.warnings : [];
+
+    // Log warnings for empty bug directories
+    if (bugWarnings.length > 0) {
+      for (const warning of bugWarnings) {
+        logger.warn('[handlers] ' + warning);
+      }
+    }
 
     // Update configStore
     const configStore = getConfigStore();
@@ -376,6 +385,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
       specsCount: specs.length,
       specJsonMapCount: Object.keys(specJsonMap).length,
       bugsCount: bugs.length,
+      bugWarningsCount: bugWarnings.length,
       kiroExists: kiroValidation.exists,
     });
 
@@ -386,6 +396,7 @@ export async function selectProject(projectPath: string): Promise<SelectProjectR
       specs,
       bugs,
       specJsonMap,
+      bugWarnings,
     };
   } catch (error) {
     logger.error('[handlers] selectProject failed', { projectPath, error });
@@ -547,15 +558,22 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   // Get bugs for remote access
   // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
   // remote-ui-bug-list-optimization: Include worktree info to avoid GET_BUG_DETAIL calls
+  // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
   const getBugsForRemote = async (): Promise<BugInfo[] | null> => {
     const result = await bugService.readBugs(projectPath);
     if (!result.ok) {
       logger.error('[handlers] Failed to read bugs for remote access', { error: result.error });
       return null;
     }
+    // Log warnings for empty bug directories
+    if (result.value.warnings.length > 0) {
+      for (const warning of result.value.warnings) {
+        logger.warn('[handlers] ' + warning);
+      }
+    }
     // BugMetadata no longer has path field, need to resolve it
     const bugInfos: BugInfo[] = [];
-    for (const bug of result.value) {
+    for (const bug of result.value.bugs) {
       const bugPathResult = await fileService.resolveBugPath(projectPath, bug.name);
       const bugPath = bugPathResult.ok ? bugPathResult.value : '';
       bugInfos.push({
@@ -3233,14 +3251,21 @@ export async function startBugsWatcher(window: BrowserWindow): Promise<void> {
     // Broadcast to Remote UI via WebSocket
     // Requirements: Bug management file watcher - Remote UI integration
     // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
+    // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
     try {
       const remoteServer = getRemoteAccessServer();
       const wsHandler = remoteServer.getWebSocketHandler();
       if (wsHandler && currentProjectPath) {
         const bugsResult = await bugService.readBugs(currentProjectPath);
         if (bugsResult.ok) {
+          // Log warnings for empty bug directories
+          if (bugsResult.value.warnings.length > 0) {
+            for (const warning of bugsResult.value.warnings) {
+              logger.warn('[handlers] ' + warning);
+            }
+          }
           const bugs: BugInfo[] = [];
-          for (const bug of bugsResult.value) {
+          for (const bug of bugsResult.value.bugs) {
             const bugPathResult = await fileService.resolveBugPath(currentProjectPath, bug.name);
             const bugPath = bugPathResult.ok ? bugPathResult.value : '';
             bugs.push({

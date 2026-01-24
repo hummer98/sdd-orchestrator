@@ -93,8 +93,17 @@ export const useBugStore = create<BugStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const bugs = await window.electronAPI.readBugs(projectPath);
-      set({ bugs, isLoading: false });
+      const result = await window.electronAPI.readBugs(projectPath);
+      set({ bugs: result.bugs, isLoading: false });
+
+      // Bug fix: empty bug directory handling - show warning toast for skipped directories
+      if (result.warnings.length > 0) {
+        // Dynamic import to avoid circular dependency
+        const { notify } = await import('./notificationStore');
+        for (const warning of result.warnings) {
+          notify.warning(warning);
+        }
+      }
 
       // Start watching for changes automatically
       await get().startWatching();
@@ -170,8 +179,16 @@ export const useBugStore = create<BugStore>((set, get) => ({
 
     if (currentProject) {
       try {
-        const bugs = await window.electronAPI.readBugs(currentProject);
-        set({ bugs });
+        const result = await window.electronAPI.readBugs(currentProject);
+        set({ bugs: result.bugs });
+
+        // Bug fix: empty bug directory handling - show warning toast for skipped directories
+        if (result.warnings.length > 0) {
+          const { notify } = await import('./notificationStore');
+          for (const warning of result.warnings) {
+            notify.warning(warning);
+          }
+        }
 
         // Task 1.2: bugs-pane-integration - Bug削除時の選択状態整合性チェック
         // Requirements: 5.4
@@ -180,7 +197,7 @@ export const useBugStore = create<BugStore>((set, get) => ({
         const { selectedBug } = get();
         if (selectedBug) {
           // Find updated metadata for the selected bug by name
-          const updatedBug = bugs.find((b) => b.name === selectedBug.name);
+          const updatedBug = result.bugs.find((b) => b.name === selectedBug.name);
           if (updatedBug) {
             // Re-select to refresh detail pane (silent mode for smoother UX)
             await get().selectBug(updatedBug, { silent: true });
@@ -270,8 +287,16 @@ export const useBugStore = create<BugStore>((set, get) => ({
 
     try {
       // Fetch all bugs and find the updated one
-      const allBugs = await window.electronAPI.readBugs(currentProject);
-      const updatedBug = allBugs.find((b) => b.name === bugName);
+      const result = await window.electronAPI.readBugs(currentProject);
+      const updatedBug = result.bugs.find((b) => b.name === bugName);
+
+      // Bug fix: empty bug directory handling - show warning toast for skipped directories
+      if (result.warnings.length > 0) {
+        const { notify } = await import('./notificationStore');
+        for (const warning of result.warnings) {
+          notify.warning(warning);
+        }
+      }
 
       if (updatedBug) {
         // Update the bug in the list (or add if new)

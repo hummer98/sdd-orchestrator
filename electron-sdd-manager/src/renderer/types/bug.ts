@@ -75,6 +75,15 @@ export interface BugsChangeEvent {
 }
 
 /**
+ * Result type for readBugs with warnings support
+ * Bug fix: empty bug directory handling
+ */
+export interface ReadBugsResult {
+  readonly bugs: BugMetadata[];
+  readonly warnings: string[];
+}
+
+/**
  * Determine bug phase from artifacts
  * Requirements: 3.1
  * @param artifacts - Bug artifacts object

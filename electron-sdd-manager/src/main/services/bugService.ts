@@ -19,6 +19,16 @@ import type {
 } from '../../renderer/types';
 import { isBugWorktreeConfig } from '../../renderer/types/bugJson';
 import { scanWorktreeEntities } from './worktreeHelpers';
+import { logger } from './logger';
+
+/**
+ * Result type for readBugs with warnings support
+ * Bug fix: empty bug directory handling
+ */
+export interface ReadBugsResult {
+  bugs: BugMetadata[];
+  warnings: string[];
+}
 
 /**
  * Determine bug phase from existing files
@@ -39,10 +49,12 @@ export class BugService {
    * Read all bugs from a project (including worktree bugs)
    * Requirements: 6.1, 6.3
    * Requirements: 3.1, 3.2, 3.3 (bugs-worktree-directory-mode)
+   * Bug fix: empty bug directory handling - returns warnings for skipped directories
    */
-  async readBugs(projectPath: string): Promise<Result<BugMetadata[], FileError>> {
+  async readBugs(projectPath: string): Promise<Result<ReadBugsResult, FileError>> {
     try {
       const bugs: BugMetadata[] = [];
+      const warnings: string[] = [];
       const seenNames = new Set<string>();
 
       // Step 1: Read bugs from main project (.kiro/bugs/)
@@ -55,10 +67,13 @@ export class BugService {
           if (!entry.isDirectory()) continue;
 
           const bugPath = join(bugsPath, entry.name);
-          const metadata = await this.readSingleBug(bugPath, entry.name);
-          if (metadata) {
-            bugs.push(metadata);
+          const result = await this.readSingleBug(bugPath, entry.name);
+          if (result.metadata) {
+            bugs.push(result.metadata);
             seenNames.add(entry.name); // Track name for deduplication
+          }
+          if (result.warning) {
+            warnings.push(result.warning);
           }
         }
       } catch {
@@ -72,17 +87,20 @@ export class BugService {
         // Skip if already found in main project (main takes priority)
         if (seenNames.has(wtBug.name)) continue;
 
-        const metadata = await this.readSingleBug(wtBug.path, wtBug.name, wtBug.worktreeBasePath);
-        if (metadata) {
-          bugs.push(metadata);
+        const result = await this.readSingleBug(wtBug.path, wtBug.name, wtBug.worktreeBasePath);
+        if (result.metadata) {
+          bugs.push(result.metadata);
           seenNames.add(wtBug.name);
+        }
+        if (result.warning) {
+          warnings.push(result.warning);
         }
       }
 
       // Sort by updatedAt descending (most recent first)
       bugs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-      return { ok: true, value: bugs };
+      return { ok: true, value: { bugs, warnings } };
     } catch (error) {
       return {
         ok: false,
@@ -98,16 +116,17 @@ export class BugService {
    * Read a single bug's metadata
    * Internal helper to avoid code duplication
    * bug-deploy-phase: Requirements 2.2, 2.3 - phase field priority with artifact fallback
+   * Bug fix: empty bug directory handling - returns warning for empty directories
    * @param bugPath - Full path to bug directory
    * @param bugName - Bug name (directory name)
    * @param worktreeBasePath - Optional worktree base path for directory mode bugs
-   * @returns BugMetadata or null if unreadable
+   * @returns Object with metadata and optional warning
    */
   private async readSingleBug(
     bugPath: string,
     bugName: string,
     worktreeBasePath?: string
-  ): Promise<BugMetadata | null> {
+  ): Promise<{ metadata: BugMetadata | null; warning: string | null }> {
     try {
       // Get artifact information to determine phase (fallback)
       const artifacts = await this.getBugArtifacts(bugPath);
@@ -119,6 +138,17 @@ export class BugService {
         if (artifact?.exists && artifact.updatedAt) {
           updateTimes.push(new Date(artifact.updatedAt));
         }
+      }
+
+      // Bug fix: Check if directory is completely empty (no bug.json and no artifacts)
+      const hasBugJson = await this.hasBugJson(bugPath);
+      const hasAnyArtifact = Object.values(artifacts).some((a) => a?.exists);
+
+      if (!hasBugJson && !hasAnyArtifact) {
+        // Completely empty directory - skip with warning
+        const warning = `Empty bug directory skipped: ${bugName}`;
+        logger.warn('[BugService] ' + warning, { bugPath });
+        return { metadata: null, warning };
       }
 
       // Use bug.json if available, otherwise use directory creation time
@@ -157,18 +187,34 @@ export class BugService {
 
       // spec-path-ssot-refactor: Removed path field - path resolution is done via resolveBugPath
       return {
-        name: bugName,
-        phase,
-        updatedAt,
-        reportedAt,
-        // bugs-worktree-support: Include worktree in BugMetadata
-        ...(worktree && { worktree }),
-        // bugs-worktree-directory-mode: Include worktreeBasePath for directory mode bugs
-        ...(worktreeBasePath && { worktreeBasePath }),
+        metadata: {
+          name: bugName,
+          phase,
+          updatedAt,
+          reportedAt,
+          // bugs-worktree-support: Include worktree in BugMetadata
+          ...(worktree && { worktree }),
+          // bugs-worktree-directory-mode: Include worktreeBasePath for directory mode bugs
+          ...(worktreeBasePath && { worktreeBasePath }),
+        },
+        warning: null,
       };
     } catch {
       // Bug is unreadable
-      return null;
+      return { metadata: null, warning: null };
+    }
+  }
+
+  /**
+   * Check if bug.json exists in bug directory
+   * Bug fix: empty bug directory handling
+   */
+  private async hasBugJson(bugPath: string): Promise<boolean> {
+    try {
+      await access(join(bugPath, 'bug.json'));
+      return true;
+    } catch {
+      return false;
     }
   }
 

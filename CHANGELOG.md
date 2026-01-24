@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.44.0] - 2026-01-24
+
+### Added
+- **spec-auto-impl**: spec-auto-implコマンドを追加し、全タスクの自動実行をサポート
+- **e2e**: エージェントログストリーミングE2Eテストとストリーミング版Mockを追加
+- **e2e**: setMockEnv APIでテスト中の動的モック設定をサポート
+- **ui**: Headerにリモートサーバー稼働時のネットワークアイコンを追加
+- **agent**: エージェント起動時のプロンプトをメタファイルに記録
+- **kiro**: merge-helperスクリプトとタスク生成ルール改善
+- **skill**: E2Eテスト記述Skill追加とテスト一覧更新
+- **spec-merge**: squash-merge時に変更内容を分析してコミットメッセージを生成
+- **auto-execution**: inspection実行時に--autofixフラグを使用
+
+### Fixed
+- **spec-merge**: 自動実行時にpermissions.deployをチェックするように修正
+- **merge**: squash-merge後のブランチ削除で最初から-Dを使用
+- **spec-inspection**: phase更新ステップ7を復帰
+- **ui**: RecentProjectListのローディング中ボタン連続クリック防止
+- **path**: resolveEntityPathでspec.json/bug.jsonの存在もチェック
+- **workflow**: Renderer側のphase自動補正ロジックを削除
+- **ui**: ProjectAgentPanelにスクロール機能を追加
+- **ui**: AgentLogPanelのコピーボタンでログファイルパスをコピー
+
+### Changed
+- **refactor**: ImplPhasePanelからisImplStarted状態を削除
+
+### Tests
+- **e2e**: inspection/impl自動実行フローのテストを追加
+- **agent**: resumeAgentのプロンプトログ追加テストを追加
+- **bug**: executeBugPhaseテストの--allowedToolsフラグ形式を修正
+
+### Chores
+- 未使用のtemplates/commands/kiro/ディレクトリを削除
+
 ## [0.43.2] - 2026-01-24
 
 ### Fixed

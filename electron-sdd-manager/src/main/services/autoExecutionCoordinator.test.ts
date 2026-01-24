@@ -1760,6 +1760,7 @@ describe('AutoExecutionCoordinator', () => {
             tasks: false,
             impl: false,
             inspection: true,
+            deploy: true, // spec-merge is permitted
           },
           documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
@@ -1774,7 +1775,7 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
 
         // Simulate inspection completion with GO status
-        // This should trigger spec-merge if in worktree mode
+        // This should trigger spec-merge when deploy permission is true
         await coordinator.handleInspectionCompleted(specPath, 'passed');
 
         expect(specMergeHandler).toHaveBeenCalledWith(specPath, expect.objectContaining({
@@ -1813,6 +1814,80 @@ describe('AutoExecutionCoordinator', () => {
 
         // Should not trigger spec-merge on inspection failure
         expect(specMergeHandler).not.toHaveBeenCalled();
+      });
+
+      it('should NOT execute spec-merge when deploy permission is false', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const specMergeHandler = vi.fn();
+        const completedHandler = vi.fn();
+
+        coordinator.on('execute-spec-merge', specMergeHandler);
+        coordinator.on('execution-completed', completedHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: true,
+            deploy: false, // spec-merge is NOT permitted
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
+
+        // Simulate inspection completion with GO status
+        await coordinator.handleInspectionCompleted(specPath, 'passed');
+
+        // Should NOT trigger spec-merge when deploy=false
+        expect(specMergeHandler).not.toHaveBeenCalled();
+        // Should complete execution instead
+        expect(completedHandler).toHaveBeenCalled();
+      });
+
+      it('should execute spec-merge only when deploy permission is true', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const specMergeHandler = vi.fn();
+
+        coordinator.on('execute-spec-merge', specMergeHandler);
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false,
+            design: false,
+            tasks: false,
+            impl: false,
+            inspection: true,
+            deploy: true, // spec-merge IS permitted
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        };
+
+        await coordinator.start(specPath, 'test-feature', options);
+        coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
+
+        // Simulate inspection completion with GO status
+        await coordinator.handleInspectionCompleted(specPath, 'passed');
+
+        // Should trigger spec-merge when deploy=true
+        expect(specMergeHandler).toHaveBeenCalledWith(specPath, expect.objectContaining({
+          specId: 'test-feature',
+        }));
       });
     });
   });

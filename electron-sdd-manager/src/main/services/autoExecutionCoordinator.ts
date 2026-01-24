@@ -1151,12 +1151,21 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     if (status === 'passed') {
       // git-worktree-support Task 9.2: Inspection成功後、spec-mergeを自動実行
-      logger.info('[AutoExecutionCoordinator] Inspection passed (GO), triggering spec-merge', {
-        specPath,
-      });
-      this.emit('execute-spec-merge', specPath, {
-        specId: state.specId,
-      });
+      // Bug fix: permissions.deploy をチェックしてからspec-mergeを実行
+      const options = this.executionOptions.get(specPath);
+      if (options?.permissions.deploy) {
+        logger.info('[AutoExecutionCoordinator] Inspection passed (GO), triggering spec-merge', {
+          specPath,
+        });
+        this.emit('execute-spec-merge', specPath, {
+          specId: state.specId,
+        });
+      } else {
+        logger.info('[AutoExecutionCoordinator] Inspection passed but deploy not permitted, completing', {
+          specPath,
+        });
+        this.completeExecution(specPath);
+      }
     } else {
       // Inspection失敗: エラー状態に遷移（またはリトライ待ち）
       logger.info('[AutoExecutionCoordinator] Inspection failed (NOGO), pausing for retry', {

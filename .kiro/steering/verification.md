@@ -6,10 +6,10 @@ spec-inspection 実行時に自動実行される検証コマンドを定義し�
 
 | Type | Command | Workdir | Description |
 |------|---------|---------|-------------|
-| build | npm run build | . | プロダクションビルド |
-| typecheck | npm run typecheck | . | TypeScript 型チェック |
-| test | npm run test | . | テスト実行 |
-| lint | npm run lint | . | Lint 検証 |
+| build | task electron:build | . | プロダクションビルド |
+| typecheck | cd electron-sdd-manager && npm run typecheck | . | TypeScript 型チェック |
+| test | task electron:test:run | . | ユニットテスト |
+| lint | cd electron-sdd-manager && npm run lint | . | Lint 検証 |
 
 ## Notes
 

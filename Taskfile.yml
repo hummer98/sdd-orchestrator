@@ -37,6 +37,18 @@ tasks:
     cmds:
       - npm run build:electron
 
+  electron:test:
+    desc: Run unit tests (watch mode)
+    dir: electron-sdd-manager
+    cmds:
+      - npm run test {{.CLI_ARGS}}
+
+  electron:test:run:
+    desc: Run unit tests (single run)
+    dir: electron-sdd-manager
+    cmds:
+      - npm run test:run {{.CLI_ARGS}}
+
   electron:test:e2e:
     desc: Run E2E tests for Electron application
     dir: electron-sdd-manager

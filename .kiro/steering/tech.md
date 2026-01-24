@@ -50,10 +50,16 @@ Electronベースのデスクトップアプリケーション。
 
 ### Testing
 ```bash
-npm run test        # ユニットテスト (watch mode)
-npm run test:run    # ユニットテスト (single run)
-npm run test:e2e    # E2Eテスト
+task electron:test           # ユニットテスト (watch mode)
+task electron:test:run       # ユニットテスト (single run)
+task electron:test:e2e       # E2Eテスト
+
+# 特定テストのみ実行（vitest）
+task electron:test -- "pattern"       # 例: task electron:test -- "bugStore"
+task electron:test -- "foo|bar|baz"   # 複数パターン
 ```
+
+**注意**: `--testPathPattern`はJest用オプション。Vitestでは位置引数でパターンを渡す。
 
 ## Development Environment
 
@@ -64,15 +70,12 @@ npm run test:e2e    # E2Eテスト
 ### Common Commands
 
 ```bash
-cd electron-sdd-manager
-npm run dev          # 開発サーバー
-npm run dev:electron # Electron起動
-npm run test         # テスト実行
-
-# または task コマンド（ルートから）
-task electron:dev    # フォアグラウンド起動
-task electron:start  # バックグラウンド起動
-task electron:stop   # 停止
+# task コマンド（ルートから実行、カレントディレクトリ非依存）
+task electron:dev        # フォアグラウンド起動
+task electron:start      # バックグラウンド起動
+task electron:stop       # 停止
+task electron:test       # ユニットテスト
+task electron:test:e2e   # E2Eテスト
 ```
 
 ## Verification Commands
@@ -84,20 +87,6 @@ cd electron-sdd-manager && npm run build && npm run typecheck
 ```
 
 ## Key Technical Decisions
-
-### Electron選択の理由
-- Node.jsエコシステムとの親和性
-- プロセス管理・シェル実行が容易
-- デスクトップ統合（メニュー、通知）
-
-### Zustand選択の理由
-- 軽量、TypeScriptフレンドリー
-- Reactコンポーネント外からもアクセス可能
-- シンプルなAPI
-
-### Tailwind CSS 4の採用
-- ユーティリティファースト
-- PostCSSプラグインとして動作
 
 ### IPC設計パターン
 - `channels.ts`: チャンネル名定義（型安全）

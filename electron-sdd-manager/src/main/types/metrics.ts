@@ -12,11 +12,24 @@ import { z } from 'zod';
 // =============================================================================
 
 /**
- * Workflow phases that can be measured
+ * Core workflow phases (used for UI display and legacy compatibility)
  * Requirements: 1.3
  */
-export const WorkflowPhaseSchema = z.enum(['requirements', 'design', 'tasks', 'impl']);
-export type WorkflowPhase = z.infer<typeof WorkflowPhaseSchema>;
+export const CoreWorkflowPhaseSchema = z.enum(['requirements', 'design', 'tasks', 'impl']);
+export type CoreWorkflowPhase = z.infer<typeof CoreWorkflowPhaseSchema>;
+
+/**
+ * All agent phases that can be measured
+ * Includes core phases plus extended phases (auto-impl, inspection, document-review, etc.)
+ * Agent phase is now string to support all current and future phases
+ */
+export type AgentPhase = string;
+
+/**
+ * WorkflowPhase - legacy alias for CoreWorkflowPhase
+ * @deprecated Use AgentPhase for metrics recording, CoreWorkflowPhase for UI display
+ */
+export type WorkflowPhase = CoreWorkflowPhase;
 
 // =============================================================================
 // AI Metric Record
@@ -32,8 +45,8 @@ export const AiMetricRecordSchema = z.object({
   type: z.literal('ai'),
   /** Spec identifier */
   spec: z.string().min(1),
-  /** Workflow phase */
-  phase: WorkflowPhaseSchema,
+  /** Agent phase (string to support all agent types: core, auto-impl, inspection, document-review, etc.) */
+  phase: z.string().min(1),
   /** Start timestamp in ISO8601 format (Requirement 4.5) */
   start: z.string(),
   /** End timestamp in ISO8601 format (Requirement 4.5) */
@@ -135,7 +148,7 @@ export interface HumanSessionData {
  */
 export interface ActiveAiSession {
   readonly specId: string;
-  readonly phase: WorkflowPhase;
+  readonly phase: AgentPhase;
   readonly start: string;  // ISO8601
 }
 

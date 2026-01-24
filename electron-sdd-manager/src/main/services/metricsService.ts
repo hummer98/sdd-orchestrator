@@ -9,7 +9,8 @@ import { logger } from './logger';
 import { MetricsFileWriter, getDefaultMetricsFileWriter } from './metricsFileWriter';
 import { MetricsFileReader, getDefaultMetricsFileReader } from './metricsFileReader';
 import type {
-  WorkflowPhase,
+  AgentPhase,
+  CoreWorkflowPhase,
   HumanSessionData,
   AiMetricRecord,
   HumanMetricRecord,
@@ -30,7 +31,7 @@ import type {
  */
 interface InternalAiSession {
   specId: string;
-  phase: WorkflowPhase;
+  phase: AgentPhase;
   start: string;
 }
 
@@ -68,7 +69,7 @@ export class MetricsService {
   /**
    * Generate session key for AI session lookup
    */
-  private getSessionKey(specId: string, phase: WorkflowPhase): string {
+  private getSessionKey(specId: string, phase: AgentPhase): string {
     return `${specId}:${phase}`;
   }
 
@@ -97,8 +98,9 @@ export class MetricsService {
   /**
    * Start an AI execution session
    * Requirement 1.1: Record agent start timestamp
+   * Now supports all agent phases (not just core workflow phases)
    */
-  startAiSession(specId: string, phase: WorkflowPhase): void {
+  startAiSession(specId: string, phase: AgentPhase): void {
     const key = this.getSessionKey(specId, phase);
     const start = new Date().toISOString();
 
@@ -114,8 +116,9 @@ export class MetricsService {
   /**
    * End an AI execution session
    * Requirements 1.2, 1.3, 1.4: Record end timestamp, calculate duration, persist
+   * Now supports all agent phases (not just core workflow phases)
    */
-  async endAiSession(specId: string, phase: WorkflowPhase): Promise<void> {
+  async endAiSession(specId: string, phase: AgentPhase): Promise<void> {
     const key = this.getSessionKey(specId, phase);
     const session = this.activeAiSessions.get(key);
 
@@ -151,7 +154,7 @@ export class MetricsService {
   /**
    * Get active AI session for a spec and phase
    */
-  getActiveAiSession(specId: string, phase: WorkflowPhase): ActiveAiSession | undefined {
+  getActiveAiSession(specId: string, phase: AgentPhase): ActiveAiSession | undefined {
     const key = this.getSessionKey(specId, phase);
     const session = this.activeAiSessions.get(key);
 
@@ -282,8 +285,16 @@ export class MetricsService {
   // ===========================================================================
 
   /**
+   * Check if a phase is a core workflow phase
+   */
+  private isCorePhase(phase: string): phase is CoreWorkflowPhase {
+    return ['requirements', 'design', 'tasks', 'impl'].includes(phase);
+  }
+
+  /**
    * Get aggregated metrics for a spec
    * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+   * Now includes all agent phases (auto-impl, inspection, document-review, etc.) in totalAiTimeMs
    */
   async getMetricsForSpec(specId: string): Promise<SpecMetrics> {
     if (!this.projectPath) {
@@ -292,9 +303,9 @@ export class MetricsService {
 
     const records = await this.reader.readRecordsForSpec(this.projectPath, specId);
 
-    // Use mutable internal structure for accumulation
+    // Use mutable internal structure for accumulation (core phases only for phaseMetrics)
     type MutablePhaseMetrics = { aiTimeMs: number; humanTimeMs: number; status: PhaseStatus };
-    const phaseAccumulators: Record<WorkflowPhase, MutablePhaseMetrics> = {
+    const phaseAccumulators: Record<CoreWorkflowPhase, MutablePhaseMetrics> = {
       requirements: { aiTimeMs: 0, humanTimeMs: 0, status: 'pending' },
       design: { aiTimeMs: 0, humanTimeMs: 0, status: 'pending' },
       tasks: { aiTimeMs: 0, humanTimeMs: 0, status: 'pending' },
@@ -309,11 +320,15 @@ export class MetricsService {
     for (const record of records) {
       switch (record.type) {
         case 'ai':
+          // Always add to total AI time (all phases including auto-impl, inspection, etc.)
           totalAiTimeMs += record.ms;
-          phaseAccumulators[record.phase].aiTimeMs += record.ms;
-          // Mark phase as completed if we have AI time for it
-          if (phaseAccumulators[record.phase].status === 'pending') {
-            phaseAccumulators[record.phase].status = 'completed';
+          // Only accumulate to phaseMetrics for core phases (for UI display)
+          if (this.isCorePhase(record.phase)) {
+            phaseAccumulators[record.phase].aiTimeMs += record.ms;
+            // Mark phase as completed if we have AI time for it
+            if (phaseAccumulators[record.phase].status === 'pending') {
+              phaseAccumulators[record.phase].status = 'completed';
+            }
           }
           break;
 

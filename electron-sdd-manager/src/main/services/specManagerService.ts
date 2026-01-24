@@ -32,7 +32,7 @@ import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
 // spec-productivity-metrics: Direct metrics tracking in service
 import { getDefaultMetricsService } from './metricsService';
-import type { WorkflowPhase as MetricsWorkflowPhase } from '../types/metrics';
+// MetricsWorkflowPhase import removed - now using AgentPhase (string) for all phases
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -947,14 +947,11 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
-      // spec-productivity-metrics: Direct metrics tracking (simplified approach)
-      // Track AI session start for core workflow phases
-      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
-      if (corePhases.includes(phase as MetricsWorkflowPhase)) {
-        const metricsService = getDefaultMetricsService();
-        metricsService.startAiSession(specId, phase as MetricsWorkflowPhase);
-        logger.debug('[SpecManagerService] AI session started for metrics', { specId, phase });
-      }
+      // spec-productivity-metrics: Direct metrics tracking
+      // Track AI session start for ALL agent phases (not just core phases)
+      const metricsService = getDefaultMetricsService();
+      metricsService.startAiSession(specId, phase);
+      logger.debug('[SpecManagerService] AI session started for metrics', { specId, phase });
 
       this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
 
@@ -1055,16 +1052,13 @@ export class SpecManagerService {
       // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
       const phase = currentRecord?.phase || 'unknown';
 
-      // spec-productivity-metrics: Direct metrics tracking (simplified approach)
-      // Track AI session end for core workflow phases
-      const corePhases: MetricsWorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
-      if (corePhases.includes(phase as MetricsWorkflowPhase)) {
-        const metricsService = getDefaultMetricsService();
-        metricsService.endAiSession(specId, phase as MetricsWorkflowPhase).catch((err) => {
-          logger.warn('[SpecManagerService] Failed to end AI session for metrics', { specId, phase, error: err });
-        });
-        logger.debug('[SpecManagerService] AI session ended for metrics', { specId, phase });
-      }
+      // spec-productivity-metrics: Direct metrics tracking
+      // Track AI session end for ALL agent phases (not just core phases)
+      const metricsService = getDefaultMetricsService();
+      metricsService.endAiSession(specId, phase).catch((err) => {
+        logger.warn('[SpecManagerService] Failed to end AI session for metrics', { specId, phase, error: err });
+      });
+      logger.debug('[SpecManagerService] AI session ended for metrics', { specId, phase });
 
       if (newStatus === 'completed') {
         this.logAgentEvent(specId, {

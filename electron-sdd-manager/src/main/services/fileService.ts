@@ -804,8 +804,12 @@ ${description}
       };
     }
 
+    // Determine the entity JSON file name (spec.json or bug.json)
+    const entityJsonFile = entityType === 'specs' ? 'spec.json' : 'bug.json';
+
     // Priority 1: Check worktree path
     // .kiro/worktrees/{entityType}/{entityName}/.kiro/{entityType}/{entityName}/
+    // Must have the entity JSON file (spec.json or bug.json) to be valid
     const worktreePath = join(
       projectPath,
       '.kiro',
@@ -818,21 +822,26 @@ ${description}
     );
 
     try {
+      // Check both directory and entity JSON file exist
       await access(worktreePath);
+      await access(join(worktreePath, entityJsonFile));
       return { ok: true, value: worktreePath };
     } catch {
-      // Worktree doesn't exist, try main path
+      // Worktree doesn't exist or missing entity JSON, try main path
     }
 
     // Priority 2: Check main path
     // .kiro/{entityType}/{entityName}/
+    // Must have the entity JSON file (spec.json or bug.json) to be valid
     const mainPath = join(projectPath, '.kiro', entityType, entityName);
 
     try {
+      // Check both directory and entity JSON file exist
       await access(mainPath);
+      await access(join(mainPath, entityJsonFile));
       return { ok: true, value: mainPath };
     } catch {
-      // Main path doesn't exist either
+      // Main path doesn't exist either or missing entity JSON
     }
 
     // Priority 3: Neither exists

@@ -87,6 +87,7 @@ task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 | `multi-window.e2e.spec.ts` | マルチウィンドウ機能 | 30 |
 | `workflow-integration.e2e.spec.ts` | **ワークフロー統合テスト（Mock Claude使用）** | 25 |
 | `auto-execution-flow.e2e.spec.ts` | **自動実行フロー全通テスト（Mock Claude使用）** | 21 |
+| `agent-log-streaming.e2e.spec.ts` | **エージェントログストリーミングテスト（ストリーミングMock使用）** | 10 |
 
 ---
 
@@ -136,6 +137,38 @@ Mock Claudeはrequirements/design/tasksフェーズ実行時に、以下のフ�
 - `/kiro:spec-requirements`, `/kiro:spec-design`, `/kiro:spec-tasks`, `/kiro:spec-impl`
 - `/kiro:validate-gap`, `/kiro:validate-design`, `/kiro:validate-impl`
 - `/kiro:spec-status`, `/kiro:document-review`, `/kiro:document-review-reply`
+
+### ストリーミング版 Mock Claude CLI
+
+ログのインクリメンタル表示をテストするためのストリーミング版Mock Claude CLIも利用可能です。
+
+**ファイル**: `scripts/e2e-mock/mock-claude-streaming.sh`
+
+**特徴**:
+- 各JSON行を遅延付きで出力（実際のストリーミング動作をシミュレート）
+- `E2E_MOCK_STREAM_DELAY`環境変数で遅延時間を設定可能（デフォルト: 0.3秒）
+- 通常のmock-claude.shと同じフェーズをサポート
+
+**設定例**:
+
+```typescript
+// wdio.conf.ts でストリーミング版を使用
+const mockClaudePath = path.join(projectRoot, 'scripts/e2e-mock/mock-claude-streaming.sh');
+process.env.E2E_MOCK_CLAUDE_COMMAND = mockClaudePath;
+process.env.E2E_MOCK_STREAM_DELAY = '0.3';  // 各行間の遅延（秒）
+```
+
+**出力形式**:
+
+ストリーミング版は以下の順序でJSONLを出力します：
+1. `system/init` - セッション初期化（cwd, model情報）
+2. `assistant` - 複数の思考ステップ（遅延付きで順次出力）
+3. `result/success` - 完了メッセージ
+
+**使用シーン**:
+- エージェントログのインクリメンタル表示テスト
+- ストリーミングパーサー（logFormatter.ts）の動作検証
+- リアルタイムログ更新UIの検証
 
 ---
 
@@ -543,6 +576,44 @@ await selectProjectViaStore(FIXTURE_PROJECT_PATH);
    - nodeIntegration無効確認
    - 自動実行中のクラッシュなし確認
 
+### agent-log-streaming.e2e.spec.ts
+
+**目的**: エージェントログのストリーミング表示テスト - ログのインクリメンタル表示、自動選択。
+
+**前提条件**:
+- Mock Claude CLI（ストリーミング版推奨）が設定済み
+- テスト用Fixture が `e2e-wdio/fixtures/auto-exec-test/` に配置
+
+**テスト観点**:
+1. 自動実行ボタンクリックでエージェント起動
+2. エージェント一覧の更新
+3. 新規エージェント開始時のログビュー自動選択
+4. ログのインクリメンタル表示（stream-json形式パース）
+5. 実行中インジケータの表示
+
+**テストスイート**:
+1. **Auto-execution starts agent** (1テスト)
+   - 自動実行ボタンクリックでエージェント起動確認
+
+2. **Agent list updates** (1テスト)
+   - エージェント開始時に`agent-list-panel`にアイテム追加確認
+
+3. **Agent log auto-selection** (1テスト)
+   - 新規エージェント開始時に`agent-log-panel`が自動表示
+
+4. **Agent log streaming** (2テスト)
+   - ログのインクリメンタル更新検出
+   - stream-json形式のパースとシステム初期化メッセージ表示
+
+5. **Running indicator** (1テスト)
+   - `running-indicator`の表示確認
+
+**使用するヘルパー関数**:
+- `waitForRunningAgent()` - 実行中エージェントの待機
+- `waitForAgentInStore()` - AgentStoreへのエージェント追加待機
+- `debugGetAllAgents()` - デバッグ用全エージェント取得
+- `logBrowserConsole()` - ブラウザコンソールログ出力
+
 ---
 
 ## 共通ヘルパー関数
@@ -592,6 +663,9 @@ import {
 | `stopAutoExecution()` | 現在の自動実行を停止 |
 | `waitForAgentInStore(specName, timeout)` | AgentStoreにエージェントが追加されるまで待機 |
 | `waitForRunningAgent(specName, timeout)` | 実行中エージェントが現れるまで待機 |
+| `debugGetAllAgents()` | デバッグ用：AgentStoreの全エージェントを取得 |
+| `logBrowserConsole()` | デバッグ用：ブラウザコンソールログを出力 |
+| `resetAutoExecutionCoordinator()` | AutoExecutionCoordinatorをリセット |
 
 ### 重要な注意点
 
@@ -792,6 +866,8 @@ expect(windows[0].isResizable()).toBe(true);
 | フェーズコネクタ | `phase-connector` |
 | 進捗アイコン | `progress-icon-executing`, `-generated`, `-approved`, `-pending` |
 | エージェントパネル | `agent-list-panel`, `agent-log-panel`, `agent-input-panel` |
+| エージェント実行インジケータ | `running-indicator` |
+| エージェントアイテム | `agent-item-{id}` |
 
 ### レビューコンポーネント
 
@@ -842,8 +918,8 @@ expect(windows[0].isResizable()).toBe(true);
 
 | 指標 | 数値 |
 |-----|-----|
-| E2Eテストファイル | 11 |
-| E2Eテストケース | 約265 |
+| E2Eテストファイル | 12 |
+| E2Eテストケース | 約275 |
 | ユニットテストファイル | 114 |
 | コンポーネント数 | 44 |
 | data-testid付きコンポーネント | 46 |
@@ -899,4 +975,4 @@ Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずに�
 
 ---
 
-_更新日: 2025-12-22_
+_更新日: 2026-01-24_

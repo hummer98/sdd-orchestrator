@@ -158,6 +158,7 @@ export class SpecsWatcherService {
       ignoreInitial: true,
       persistent: true,
       depth: 2, // Sufficient for {specId}/*.{md,json}
+      ignored: ['**/logs/**', '**/*.log'], // Exclude log directories to reduce event noise
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,

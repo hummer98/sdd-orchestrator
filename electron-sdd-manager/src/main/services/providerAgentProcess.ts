@@ -104,6 +104,10 @@ class ProviderAgentProcessImpl implements AgentProcess {
       });
       this._isRunning = false;
       this.exitCallbacks.forEach((cb) => cb(code));
+      // Clear callback arrays to prevent memory leaks
+      this.outputCallbacks.length = 0;
+      this.exitCallbacks.length = 0;
+      this.errorCallbacks.length = 0;
     });
 
     // Note: ProcessHandle doesn't have onError, but we handle connection issues
@@ -136,6 +140,10 @@ class ProviderAgentProcessImpl implements AgentProcess {
     if (this.handle) {
       this.handle.kill('SIGTERM');
     }
+    // Clear callback arrays to prevent memory leaks
+    this.outputCallbacks.length = 0;
+    this.exitCallbacks.length = 0;
+    this.errorCallbacks.length = 0;
   }
 
   onOutput(callback: (stream: 'stdout' | 'stderr', data: string) => void): void {

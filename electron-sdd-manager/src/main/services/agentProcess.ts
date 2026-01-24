@@ -141,6 +141,10 @@ class AgentProcessImpl implements AgentProcess {
 
       this._isRunning = false;
       this.exitCallbacks.forEach((cb) => cb(code ?? -1));
+      // Clear callback arrays to prevent memory leaks
+      this.outputCallbacks.length = 0;
+      this.exitCallbacks.length = 0;
+      this.errorCallbacks.length = 0;
     });
 
     // Handle process error
@@ -148,6 +152,10 @@ class AgentProcessImpl implements AgentProcess {
       logger.error('[AgentProcess] Process error', { agentId: this.agentId, error: error.message });
       this._isRunning = false;
       this.errorCallbacks.forEach((cb) => cb(error));
+      // Clear callback arrays to prevent memory leaks
+      this.outputCallbacks.length = 0;
+      this.exitCallbacks.length = 0;
+      this.errorCallbacks.length = 0;
     });
   }
 
@@ -160,6 +168,10 @@ class AgentProcessImpl implements AgentProcess {
   kill(): void {
     this._isRunning = false;
     this.process.kill();
+    // Clear callback arrays to prevent memory leaks
+    this.outputCallbacks.length = 0;
+    this.exitCallbacks.length = 0;
+    this.errorCallbacks.length = 0;
   }
 
   onOutput(callback: (stream: 'stdout' | 'stderr', data: string) => void): void {

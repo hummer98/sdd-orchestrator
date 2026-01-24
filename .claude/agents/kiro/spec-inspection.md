@@ -52,6 +52,7 @@ Execute comprehensive inspection across all categories with GO/NOGO judgment.
 - `.kiro/specs/{feature}/design.md` - architecture and design
 - `.kiro/specs/{feature}/tasks.md` - implementation tasks
 - **Entire `.kiro/steering/` directory** - project memory
+- `.kiro/steering/verification-commands.md` - project-specific verification commands (if exists)
 - `CLAUDE.md` - Design Principles
 
 ### 2. Execute Inspection Categories
@@ -140,6 +141,19 @@ Verify all components work together:
 - Run integration tests if available
 - Flag integration gaps as Critical
 
+**Execute verification-commands.md commands** (if file exists):
+1. Read `.kiro/steering/verification-commands.md`
+2. For each command in the table:
+   - **typecheck**: Execute and verify no type errors
+   - **build**: Execute and verify successful build
+   - **test**: Execute and verify tests pass
+   - **lint**: Execute and verify no lint errors (if defined)
+3. Flag command failures:
+   - typecheck/build failures: **Critical**
+   - test failures: **Critical** (unless test is for unrelated feature)
+   - lint failures: **Minor**
+4. Include command output summary in inspection report
+
 #### 2.8 Logging Compliance (LoggingChecker)
 Check adherence to steering/logging.md guidelines:
 - **Required (Critical/Major violations)**:
@@ -200,6 +214,13 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 ### Integration Verification
 ...
+
+### Verification Commands
+| Command | Result | Output |
+|---------|--------|--------|
+| typecheck | PASS/FAIL | ... |
+| build | PASS/FAIL | ... |
+| test | PASS/FAIL | ... |
 
 ### Logging Compliance
 ...

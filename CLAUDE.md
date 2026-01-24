@@ -109,7 +109,7 @@ Report → Analyze → Fix → Verify
 | 用語・ドメイン確認 | `symbol-semantic-map.md` |
 | プロファイル仕様確認 | `skill-reference.md` |
 | ログ実装 | `logging.md` |
-| 検証コマンド確認 | `verification.md` |
+| 検証コマンド確認 | `verification-commands.md` |
 
 Custom files are supported (managed via `/kiro:steering-custom`)
 

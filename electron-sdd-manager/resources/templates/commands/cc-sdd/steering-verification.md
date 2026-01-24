@@ -1,30 +1,30 @@
 ---
-description: Generate .kiro/steering/verification.md with project-specific verification commands
+description: Generate .kiro/steering/verification-commands.md with project-specific verification commands
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
 # Kiro Steering Verification
 
 <background_information>
-**Role**: Generate verification.md with project-specific verification commands.
+**Role**: Generate verification-commands.md with project-specific verification commands.
 
 **Mission**:
 - Analyze project's technical stack
 - Generate appropriate verification commands for spec-inspection
-- Handle existing verification.md with user confirmation
+- Handle existing verification-commands.md with user confirmation
 
 **Success Criteria**:
-- verification.md is generated with valid Markdown table format
+- verification-commands.md is generated with valid Markdown table format
 - Commands are appropriate for the project's tech stack
 </background_information>
 
 <instructions>
-## Step 1: Check for Existing verification.md
+## Step 1: Check for Existing verification-commands.md
 
-Check if `.kiro/steering/verification.md` already exists:
+Check if `.kiro/steering/verification-commands.md` already exists:
 
-1. Use Glob to check for `verification.md`
-2. If exists, read content and **ask user**: "verification.md already exists. Overwrite? (yes/no)"
+1. Use Glob to check for `verification-commands.md`
+2. If exists, read content and **ask user**: "verification-commands.md already exists. Overwrite? (yes/no)"
 3. If user declines, show current content and exit
 
 ## Step 2: Analyze Project Tech Stack
@@ -57,9 +57,9 @@ When multiple sources provide same type:
 2. Otherwise, use first detected source
 3. Different types are all included (union)
 
-## Step 5: Generate verification.md
+## Step 5: Generate verification-commands.md
 
-Read template from `.kiro/settings/templates/steering/verification.md`.
+Read template from `.kiro/settings/templates/steering/verification-commands.md`.
 
 Generate content:
 
@@ -81,7 +81,7 @@ spec-inspection 実行時に自動実行される検証コマンドを定義し�
 ...
 ```
 
-Write to `.kiro/steering/verification.md`.
+Write to `.kiro/steering/verification-commands.md`.
 
 </instructions>
 
@@ -90,7 +90,7 @@ Write to `.kiro/steering/verification.md`.
 - `Glob`: Find config files
 - `Read`: Read config files and templates
 - `Grep`: Search patterns
-- `Write`: Write verification.md
+- `Write`: Write verification-commands.md
 
 **JIT Strategy**: Analyze only necessary files.
 
@@ -100,7 +100,7 @@ Chat summary only (files updated directly).
 
 ### Success:
 ```
-verification.md 生成完了
+verification-commands.md 生成完了
 
 ## 検出されたソース:
 - package.json: build, typecheck, test, lint
@@ -116,7 +116,7 @@ verification.md 生成完了
 
 ### Skipped:
 ```
-verification.md は既に存在します。上書きがキャンセルされました。
+verification-commands.md は既に存在します。上書きがキャンセルされました。
 ```
 
 ## Safety & Fallback

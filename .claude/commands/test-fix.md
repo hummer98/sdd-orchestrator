@@ -38,7 +38,7 @@ allowed-tools: Bash, Read, Edit, Glob, Grep, AskUserQuestion
 - `.kiro/steering/tech.md` - テスト実行コマンド、技術スタック
 - `.kiro/steering/debugging.md` - ログ保存場所、解析方法
 - `.kiro/steering/logging.md` - ログフォーマット、レベル定義
-- `.kiro/steering/verification.md` - 検証コマンド一覧
+- `.kiro/steering/verification-commands.md` - 検証コマンド一覧
 
 ### 1. テスト実行
 

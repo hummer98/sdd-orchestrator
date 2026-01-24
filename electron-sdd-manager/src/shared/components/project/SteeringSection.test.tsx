@@ -1,6 +1,6 @@
 /**
  * SteeringSection Component Tests
- * TDD: Testing steering verification.md check and generation
+ * TDD: Testing steering verification-commands.md check and generation
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
  */
 
@@ -37,7 +37,7 @@ describe('SteeringSection', () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it('should not render when verification.md exists', () => {
+    it('should not render when verification-commands.md exists', () => {
       const { container } = renderComponent({
         steeringCheck: {
           verificationMdExists: true,
@@ -47,7 +47,7 @@ describe('SteeringSection', () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it('should render warning when verification.md is missing', () => {
+    it('should render warning when verification-commands.md is missing', () => {
       renderComponent({
         steeringCheck: {
           verificationMdExists: false,
@@ -55,12 +55,12 @@ describe('SteeringSection', () => {
       });
 
       expect(screen.getByText(/Steering/i)).toBeInTheDocument();
-      expect(screen.getByText(/verification\.md が不足しています/i)).toBeInTheDocument();
+      expect(screen.getByText(/verification-commands\.md が不足しています/i)).toBeInTheDocument();
     });
   });
 
   describe('generate button', () => {
-    it('should display generate button when verification.md is missing', () => {
+    it('should display generate button when verification-commands.md is missing', () => {
       renderComponent({
         steeringCheck: {
           verificationMdExists: false,
@@ -101,7 +101,7 @@ describe('SteeringSection', () => {
 
   describe('other steering files check exclusion', () => {
     // Requirement 3.5: 他のsteeringファイル（product.md, tech.md, structure.md）はチェック対象外
-    it('should only check verification.md, not other steering files', () => {
+    it('should only check verification-commands.md, not other steering files', () => {
       // SteeringCheckResult only contains verificationMdExists
       // This test verifies the type structure
       renderComponent({
@@ -111,8 +111,8 @@ describe('SteeringSection', () => {
         },
       });
 
-      // Should only mention verification.md (in the warning message)
-      expect(screen.getByText(/verification\.md が不足しています/i)).toBeInTheDocument();
+      // Should only mention verification-commands.md (in the warning message)
+      expect(screen.getByText(/verification-commands\.md が不足しています/i)).toBeInTheDocument();
       // Should not mention other steering files
       expect(screen.queryByText(/product\.md/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/tech\.md/i)).not.toBeInTheDocument();

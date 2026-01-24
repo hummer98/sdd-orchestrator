@@ -35,7 +35,7 @@
 | validate-impl | `validation-report.md` | - | 完了タスク存在 | 変更なし | 変更なし | - |
 | steering | `product.md`, `tech.md`, `structure.md` | 既存steering | - | - | - | - (spec.json無関係) |
 | steering-custom | `{name}.md` | - | ドメイン指定 | - | - | - (spec.json無関係) |
-| steering-verification | `verification.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
+| steering-verification | `verification-commands.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
 | generate-release | `release.md` | - | プロジェクトルート存在 | - | - | - (spec.json無関係) |
 
 **ツール**: Bash, Glob, Grep, Read, Write, Edit, MultiEdit, WebSearch, WebFetch
@@ -74,7 +74,7 @@ Slash Command経由でkiroサブエージェントに委譲。Task ツールで�
 | validate-impl | `validation-report.md` | - | 完了タスク存在 | 変更なし | 変更なし | - |
 | steering | `product.md`, `tech.md`, `structure.md` | 既存steering | - | - | - | - (spec.json無関係) |
 | steering-custom | `{name}.md` | - | ドメイン指定 | - | - | - (spec.json無関係) |
-| steering-verification | `verification.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
+| steering-verification | `verification-commands.md` | - | steeringディレクトリ存在 | - | - | - (spec.json無関係) |
 | generate-release | `release.md` | - | プロジェクトルート存在 | - | - | - (spec.json無関係) |
 
 **ツール**: Read, Task（kiroサブエージェントに委譲）

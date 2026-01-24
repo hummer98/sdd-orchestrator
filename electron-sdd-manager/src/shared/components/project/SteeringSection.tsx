@@ -1,6 +1,6 @@
 /**
  * SteeringSection Component
- * Displays steering verification.md status and generation button
+ * Displays steering verification-commands.md status and generation button
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
  *
  * Props-driven design for Electron/Remote UI sharing.
@@ -13,7 +13,7 @@ import { clsx } from 'clsx';
 // Types
 // =============================================================================
 
-/** Steering check result containing verification.md status */
+/** Steering check result containing verification-commands.md status */
 export interface SteeringCheckResult {
   readonly verificationMdExists: boolean;
 }
@@ -23,7 +23,7 @@ export interface SteeringSectionProps {
   readonly steeringCheck: SteeringCheckResult | null;
   /** Loading state for generation */
   readonly steeringGenerateLoading: boolean;
-  /** Callback to generate verification.md */
+  /** Callback to generate verification-commands.md */
   readonly onGenerateVerificationMd: () => void;
 }
 
@@ -36,7 +36,7 @@ export function SteeringSection({
   steeringGenerateLoading,
   onGenerateVerificationMd,
 }: SteeringSectionProps) {
-  // Don't render if no check result or verification.md exists
+  // Don't render if no check result or verification-commands.md exists
   if (!steeringCheck || steeringCheck.verificationMdExists) {
     return null;
   }
@@ -50,7 +50,7 @@ export function SteeringSection({
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
           <FileWarning className="w-4 h-4" />
-          <span>verification.md が不足しています</span>
+          <span>verification-commands.md が不足しています</span>
         </div>
 
         <button
@@ -62,7 +62,7 @@ export function SteeringSection({
             'flex items-center justify-center gap-2',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
-          aria-label="verification.md を生成"
+          aria-label="verification-commands.md を生成"
         >
           {steeringGenerateLoading ? (
             <>
@@ -72,7 +72,7 @@ export function SteeringSection({
           ) : (
             <>
               <Download className="w-3 h-3" />
-              verification.md を生成
+              verification-commands.md を生成
             </>
           )}
         </button>

@@ -405,7 +405,7 @@ const electronAPI = {
   // ============================================================
 
   /**
-   * Check steering files (verification.md exists)
+   * Check steering files (verification-commands.md exists)
    * @param projectPath Project root path
    * @returns SteeringCheckResult with verificationMdExists
    */
@@ -413,7 +413,7 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_STEERING_FILES, projectPath),
 
   /**
-   * Generate verification.md file
+   * Generate verification-commands.md file
    * Uses template from settings and project analysis
    * @param projectPath Project root path
    */

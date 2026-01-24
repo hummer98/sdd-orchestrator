@@ -663,14 +663,14 @@ export interface ElectronAPI {
   // ============================================================
 
   /**
-   * Check steering files (verification.md exists)
+   * Check steering files (verification-commands.md exists)
    * @param projectPath Project root path
    * @returns SteeringCheckResult with verificationMdExists
    */
   checkSteeringFiles(projectPath: string): Promise<{ verificationMdExists: boolean }>;
 
   /**
-   * Generate verification.md file by launching steering-verification agent
+   * Generate verification-commands.md file by launching steering-verification agent
    * Task 6.2: Returns AgentInfo for the launched agent
    * Requirements: 3.4 (ボタンクリックでエージェント起動)
    * @param projectPath Project root path

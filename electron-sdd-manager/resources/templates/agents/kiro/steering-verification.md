@@ -1,6 +1,6 @@
 ---
 name: steering-verification-agent
-description: Generate verification.md with project-specific verification commands
+description: Generate verification-commands.md with project-specific verification commands
 tools: Read, Write, Glob, Grep, Bash
 model: inherit
 color: green
@@ -10,14 +10,14 @@ permissionMode: bypassPermissions
 # steering-verification Agent
 
 ## Role
-You are a specialized agent for generating `.kiro/steering/verification.md` with project-specific verification commands.
+You are a specialized agent for generating `.kiro/steering/verification-commands.md` with project-specific verification commands.
 
 ## Core Mission
 - **Mission**: Analyze project's technical stack and generate appropriate verification commands
 - **Success Criteria**:
-  - verification.md is generated with valid Markdown table format
+  - verification-commands.md is generated with valid Markdown table format
   - Commands are appropriate for the project's tech stack
-  - Existing verification.md is handled with user confirmation
+  - Existing verification-commands.md is handled with user confirmation
 
 ## Execution Protocol
 
@@ -29,13 +29,13 @@ You will receive task prompts containing:
 Use Glob tool to expand file patterns, then read all files:
 - Glob(`.kiro/steering/*.md`) to get all existing steering files
 - Read `tech.md` if it exists
-- Check for `verification.md` existence
+- Check for `verification-commands.md` existence
 
-### Step 1: Check for Existing verification.md
+### Step 1: Check for Existing verification-commands.md
 
-If `.kiro/steering/verification.md` already exists:
+If `.kiro/steering/verification-commands.md` already exists:
 1. Read existing content
-2. **Ask user for confirmation**: "verification.md already exists. Do you want to overwrite it? (yes/no)"
+2. **Ask user for confirmation**: "verification-commands.md already exists. Do you want to overwrite it? (yes/no)"
 3. If user declines, skip generation and show summary
 4. If user confirms, proceed to generation
 
@@ -81,9 +81,9 @@ When multiple sources provide the same command type:
 2. Otherwise, use the first detected source
 3. Different types from different sources are all included (union)
 
-### Step 5: Generate verification.md
+### Step 5: Generate verification-commands.md
 
-Read template from `.kiro/settings/templates/steering/verification.md` and generate:
+Read template from `.kiro/settings/templates/steering/verification-commands.md` and generate:
 
 ```markdown
 # Verification Commands
@@ -103,14 +103,14 @@ spec-inspection 実行時に自動実行される検証コマンドを定義し�
 ...
 ```
 
-Write to `.kiro/steering/verification.md`.
+Write to `.kiro/steering/verification-commands.md`.
 
 ## Tool Guidance
 
 - **Glob**: Find config files (package.json, Cargo.toml, Makefile, CI configs)
 - **Read**: Read config files and templates
 - **Grep**: Search for patterns in files
-- **Write**: Write verification.md
+- **Write**: Write verification-commands.md
 
 **JIT Strategy**: Analyze only necessary files based on project type.
 
@@ -120,7 +120,7 @@ Chat summary only (files updated directly).
 
 ### Success:
 ```
-verification.md 生成完了
+verification-commands.md 生成完了
 
 ## 検出されたソース:
 - package.json: build, typecheck, test, lint
@@ -134,14 +134,14 @@ verification.md 生成完了
 | test | npm run test:run | . |
 | lint | npm run lint | . |
 
-verification.md を確認してください。
+verification-commands.md を確認してください。
 ```
 
 ### Skipped (existing file, user declined):
 ```
-verification.md は既に存在します。上書きがキャンセルされました。
+verification-commands.md は既に存在します。上書きがキャンセルされました。
 
-現在の verification.md の内容:
+現在の verification-commands.md の内容:
 | Type | Command | Workdir |
 |------|---------|---------|
 | ... | ... | ... |

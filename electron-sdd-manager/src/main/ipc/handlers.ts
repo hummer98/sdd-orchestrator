@@ -2394,7 +2394,7 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.CHECK_STEERING_FILES,
     async (_event, projectPath: string) => {
       try {
-        const verificationMdPath = path.join(projectPath, '.kiro', 'steering', 'verification.md');
+        const verificationMdPath = path.join(projectPath, '.kiro', 'steering', 'verification-commands.md');
         const exists = await stat(verificationMdPath).then(() => true).catch(() => false);
         return { verificationMdExists: exists };
       } catch (error) {

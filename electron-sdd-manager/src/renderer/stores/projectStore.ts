@@ -631,7 +631,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // ============================================================
 
   /**
-   * Check steering files (verification.md)
+   * Check steering files (verification-commands.md)
    * Requirements: 3.1, 3.2
    */
   checkSteeringFiles: async (projectPath: string) => {
@@ -645,7 +645,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   /**
-   * Generate verification.md file by launching steering-verification agent
+   * Generate verification-commands.md file by launching steering-verification agent
    * Task 6.2: executeProjectAgent を使用してエージェント起動
    * Requirements: 3.3, 3.4 (ボタンクリックでエージェント起動)
    */
@@ -666,10 +666,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       useAgentStore.getState().selectAgent(agentInfo.agentId);
 
       // Note: steeringCheck will be refreshed when the agent completes
-      // and the file watcher detects the new verification.md file
+      // and the file watcher detects the new verification-commands.md file
       set({ steeringGenerateLoading: false });
     } catch (error) {
-      console.error('[projectStore] Failed to generate verification.md:', error);
+      console.error('[projectStore] Failed to generate verification-commands.md:', error);
       set({ steeringGenerateLoading: false });
     }
   },

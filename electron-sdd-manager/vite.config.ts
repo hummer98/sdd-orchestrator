@@ -19,7 +19,11 @@ export default defineConfig({
           build: {
             outDir: 'dist/main',
             rollupOptions: {
-              external: ['electron'],
+              external: [
+                'electron',
+                '@modelcontextprotocol/sdk',
+                /^@modelcontextprotocol\/sdk\/.*/,
+              ],
             },
           },
         },

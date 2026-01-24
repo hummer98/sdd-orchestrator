@@ -376,8 +376,9 @@ export function useRemoteWorkflowState(
   }, []);
 
   const handleParallelExecute = useCallback(async () => {
-    // Remote UI doesn't have parallel execution API yet
-    console.log('Parallel execute - not implemented in Remote UI');
+    // spec-auto-impl-command: Remote UI would use auto-impl when implemented
+    // Currently stub - would call /kiro:spec-auto-impl for parallel batch execution
+    console.log('Parallel execute (auto-impl) - not implemented in Remote UI');
   }, []);
 
   const handleToggleParallelMode = useCallback(() => {

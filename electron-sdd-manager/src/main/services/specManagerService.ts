@@ -1922,6 +1922,20 @@ export class SpecManagerService {
         });
       }
 
+      // ===== Auto-Impl Phase (group: 'impl') =====
+      // spec-auto-impl-command: Autonomous parallel batch execution
+      case 'auto-impl': {
+        // Only kiro profile supports auto-impl command
+        const slashCommand = '/kiro:spec-auto-impl';
+        return this.startAgent({
+          specId,
+          phase: 'auto-impl',
+          command: getClaudeCommand(),
+          args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
+          group: 'impl',
+        });
+      }
+
       // ===== Inspection Phases (group: 'impl') =====
       case 'inspection': {
         const { autofix } = options;

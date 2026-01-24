@@ -2653,27 +2653,24 @@ export function registerIpcHandlers(): void {
       coordinator.setCurrentPhase(specPath, phase);
 
       // ============================================================
-      // impl-start-unification Task 3.1: Use startImplPhase for impl phase
-      // Requirements: 3.1, 3.2, 3.3
+      // spec-auto-impl-command: Use auto-impl for autonomous parallel batch execution
+      // This replaces the previous startImplPhase approach with /kiro:spec-auto-impl
+      // which handles all parallel batch execution internally using Task tool
       // ============================================================
       if (phase === 'impl') {
-        // Import startImplPhase function
-        const { startImplPhase } = await import('./startImplPhase');
-
-        // Call unified startImplPhase function
-        // NOTE: Auto Execution always uses 'kiro' prefix
-        const result = await startImplPhase({
-          specPath,
+        // Use auto-impl type which invokes /kiro:spec-auto-impl for parallel batch execution
+        const result = await service.execute({
+          type: 'auto-impl',
+          specId: context.specId,
           featureName: context.featureName,
           commandPrefix: 'kiro',
-          specManagerService: service,
         });
 
         if (result.ok) {
           const agentId = result.value.agentId;
-          logger.info('[handlers] execute-next-phase: impl started successfully via startImplPhase', { specPath, agentId });
+          logger.info('[handlers] execute-next-phase: impl started successfully via auto-impl', { specPath, agentId });
 
-          // Update coordinator with agent ID (Requirement 3.3)
+          // Update coordinator with agent ID
           coordinator.setCurrentPhase(specPath, 'impl', agentId);
 
           // Listen for this agent's completion
@@ -2689,8 +2686,8 @@ export function registerIpcHandlers(): void {
           };
           service.onStatusChange(handleStatusChange);
         } else {
-          // Error handling (Requirement 3.2): Call handleAgentCompleted with failed status
-          logger.error('[handlers] execute-next-phase: impl start failed via startImplPhase', { specPath, error: result.error });
+          // Error handling: Call handleAgentCompleted with failed status
+          logger.error('[handlers] execute-next-phase: impl start failed via auto-impl', { specPath, error: result.error });
           coordinator.handleAgentCompleted('', specPath, 'failed');
         }
         return; // Early return for impl phase

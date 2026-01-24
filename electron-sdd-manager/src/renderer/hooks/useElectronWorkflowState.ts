@@ -408,53 +408,16 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     if (!specDetail) return;
 
     const specName = specDetail.metadata.name;
-    const parallelTaskInfo = specDetail.parallelTaskInfo;
 
-    if (!parallelTaskInfo || parallelTaskInfo.groups.length === 0) {
-      notify.error('並列タスクが見つかりません');
-      return;
-    }
-
+    // spec-auto-impl-command: Use /kiro:spec-auto-impl for autonomous parallel batch execution
+    // This command handles all parallel batch execution internally using Task tool
     await wrapExecution(async () => {
-      const groups = parallelTaskInfo.groups;
-
-      const pendingGroup = groups.find((group) =>
-        group.tasks.some((task) => !task.completed)
-      );
-
-      if (!pendingGroup) {
-        notify.info('全てのタスクが完了しています');
-        return;
-      }
-
-      const pendingTasks = pendingGroup.tasks.filter((task) => !task.completed);
-
-      if (pendingTasks.length === 0) {
-        notify.info('実行可能なタスクがありません');
-        return;
-      }
-
-      const executePromises = pendingTasks.map((task) =>
-        window.electronAPI.execute({
-          type: 'impl',
-          specId: specName,
-          featureName: specName,
-          taskId: task.id,
-          commandPrefix: workflowStore.commandPrefix,
-        }).catch((error) => {
-          console.error(`Failed to start task ${task.id}:`, error);
-          return null;
-        })
-      );
-
-      const results = await Promise.all(executePromises);
-      const successCount = results.filter((r) => r !== null).length;
-
-      if (successCount > 0) {
-        notify.success(`${successCount}個のタスクを並列起動しました`);
-      } else {
-        notify.error('タスクの起動に失敗しました');
-      }
+      await window.electronAPI.execute({
+        type: 'auto-impl',
+        specId: specName,
+        featureName: specName,
+        commandPrefix: workflowStore.commandPrefix,
+      });
     });
   }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 

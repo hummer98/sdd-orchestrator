@@ -163,6 +163,21 @@ export interface ExecuteSpecMerge extends ExecutePhaseBase {
   type: 'spec-merge';
 }
 
+/**
+ * Execute auto-impl phase (autonomous parallel batch execution)
+ * Command: /kiro:spec-auto-impl {featureName}
+ *
+ * spec-auto-impl-command: Uses Task tool for parallel subagent execution
+ * - Parses tasks.md and groups by (P) markers
+ * - Executes batches in parallel using spec-tdd-impl-agent subagents
+ * - Parent agent updates tasks.md (subagents do not)
+ *
+ * group: 'impl' - worktreeCwd will be auto-resolved
+ */
+export interface ExecuteAutoImpl extends ExecutePhaseBase {
+  type: 'auto-impl';
+}
+
 // ============================================================
 // Union Type (Requirements: 1.4)
 // ============================================================
@@ -193,6 +208,7 @@ export type ExecuteOptions =
   | ExecuteTasks
   | ExecuteDeploy
   | ExecuteImpl
+  | ExecuteAutoImpl
   | ExecuteDocumentReview
   | ExecuteDocumentReviewReply
   | ExecuteDocumentReviewFix

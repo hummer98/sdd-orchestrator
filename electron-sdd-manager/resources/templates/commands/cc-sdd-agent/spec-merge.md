@@ -180,12 +180,60 @@ cd "$PROJECT_ROOT"
    git merge --squash {worktree.branch}
    ```
 3. If merge succeeds without conflicts:
-   - Create merge commit:
-     ```bash
-     git commit -m "feat($1): merge implementation from worktree"
-     ```
+   - Generate commit message (see Step 3.5)
+   - Create merge commit with generated message
 4. If merge has conflicts:
    - Attempt AI-powered conflict resolution (see Step 4)
+
+### Step 3.5: Generate Commit Message
+
+Generate a meaningful commit message by analyzing the staged changes (same logic as `/commit`).
+
+#### 3.5.1: Analyze Changes
+1. Get list of changed files:
+   ```bash
+   git diff --cached --name-only
+   ```
+2. Get change statistics:
+   ```bash
+   git diff --cached --stat
+   ```
+3. Review the changes to understand what was implemented
+
+#### 3.5.2: Determine Change Type
+Analyze the nature of changes:
+- `feat`: New feature or functionality
+- `fix`: Bug fix
+- `refactor`: Code restructuring without behavior change
+- `perf`: Performance improvement
+- `test`: Test additions or modifications
+- `docs`: Documentation updates
+- `chore`: Build, configuration, or maintenance
+
+**Default**: Use `feat` for spec implementations (most common case)
+
+#### 3.5.3: Generate Message
+Create a commit message following this format:
+
+```
+<type>(<feature-name>): <concise description of what was implemented>
+```
+
+**Guidelines**:
+- Subject should describe WHAT was implemented, not HOW it was merged
+- Keep subject line under 72 characters
+- Use Japanese or English based on project convention
+- Focus on user-visible or developer-visible changes
+
+**Examples**:
+- `feat(submit-shortcut-key): Ctrl+Enterでフォーム送信のショートカットキー機能を追加`
+- `feat(remote-ui-create-buttons): リモートUIにSpec/Bug作成ボタンを追加`
+- `fix(metrics-tracking): メトリクス計測の二重カウント問題を修正`
+
+#### 3.5.4: Create Commit
+```bash
+git commit -m "<generated-message>"
+```
 
 ### Step 4: Conflict Resolution (if needed)
 **Maximum 7 attempts** - Track attempt count and exit after 7 failures.
@@ -235,10 +283,8 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 
 #### 4.3: Post-Resolution
 **IF** all conflicts resolved (no conflicted files remain):
-- Create merge commit:
-  ```bash
-  git commit -m "feat($1): merge implementation from worktree (conflicts resolved)"
-  ```
+- Generate commit message using Step 3.5 logic
+- Create merge commit with generated message
 - Proceed to Step 5
 
 **ELSE IF** `attempt_count >= max_attempts`:
@@ -282,9 +328,13 @@ git worktree remove "{WORKTREE_ABSOLUTE_PATH}" --force
 
 #### 5.2: Delete Feature Branch
 ```bash
-git branch -D {worktree.branch}
+git branch -d {worktree.branch}
 ```
-- Use `-D` for force delete (squash-merge does not mark branch as "merged")
+- Use `-d` for safe delete (only if merged)
+- If `-d` fails with "not fully merged" error, use `-D` to force delete:
+  ```bash
+  git branch -D {worktree.branch}
+  ```
 - If this fails, log warning but continue to next step
 
 ### Step 6: Report Success

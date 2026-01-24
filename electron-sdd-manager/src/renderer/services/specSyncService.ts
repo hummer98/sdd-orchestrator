@@ -219,9 +219,9 @@ export class SpecSyncService {
   }
 
   /**
-   * Sync task progress and auto-fix phase if needed
+   * Sync task progress (read-only, no phase updates)
    * Requirement 3.7: syncTaskProgress for task progress calculation
-   * Requirement 3.8: Auto-fix phase to implementation-complete when all tasks done
+   * Note: Phase updates are handled by Main process (specsWatcherService.checkTaskCompletion)
    */
   async syncTaskProgress(): Promise<void> {
     if (!this.callbacks) {
@@ -254,26 +254,6 @@ export class SpecSyncService {
         totalTasks: parseResult.totalTasks,
         groups: parseResult.groups,
       });
-
-      // Auto-fix phase if all tasks complete
-      // spec-path-ssot-refactor: Use spec.name instead of spec.path
-      if (taskProgress.total > 0) {
-        const isAllComplete = taskProgress.completed === taskProgress.total;
-        const currentPhase = specDetail.specJson.phase;
-
-        if (isAllComplete && currentPhase !== 'implementation-complete') {
-          console.log('[specSyncService] Auto-fixing phase to implementation-complete');
-          try {
-            await window.electronAPI.syncSpecPhase(selectedSpec.name, 'impl-complete', {
-              skipTimestamp: true,
-            });
-            const updatedSpecJson = await window.electronAPI.readSpecJson(selectedSpec.name);
-            this.callbacks.setSpecJson(updatedSpecJson);
-          } catch (error) {
-            console.error('[specSyncService] Failed to auto-fix phase:', error);
-          }
-        }
-      }
 
       console.log('[specSyncService] syncTaskProgress completed:', { spec: selectedSpec.name, taskProgress });
     } catch (error) {

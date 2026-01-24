@@ -420,7 +420,8 @@ describe('SpecSyncService', () => {
       });
     });
 
-    it('should auto-fix phase to implementation-complete when all tasks done (Req 3.8)', async () => {
+    // Phase update is handled by Main process (specsWatcherService), not Renderer
+    it('should NOT update phase even when all tasks are complete', async () => {
       const tasksContent = `# Tasks
 - [x] Task 1
 - [x] Task 2
@@ -429,48 +430,6 @@ describe('SpecSyncService', () => {
       const detailWithTasks: SpecDetail = {
         ...mockSpecDetail,
         specJson: { ...mockSpecJson, phase: 'tasks-generated' },
-        artifacts: {
-          ...mockSpecDetail.artifacts,
-          tasks: { exists: true, updatedAt: null, content: tasksContent },
-        },
-      };
-
-      window.electronAPI.syncSpecPhase = vi.fn().mockResolvedValue(undefined);
-      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue({
-        ...mockSpecJson,
-        phase: 'implementation-complete',
-      });
-
-      service.init({
-        getSelectedSpec: () => mockSpec,
-        getSpecDetail: () => detailWithTasks,
-        setSpecJson: mockSetSpecJson,
-        setArtifact: mockSetArtifact,
-        setTaskProgress: mockSetTaskProgress,
-        setParallelTaskInfo: vi.fn(),
-        updateSpecMetadata: mockUpdateSpecMetadata,
-        editorSyncCallback: mockEditorSyncCallback,
-      });
-
-      await service.syncTaskProgress();
-
-      // spec-path-ssot-refactor: syncSpecPhase now takes specName instead of path
-      expect(window.electronAPI.syncSpecPhase).toHaveBeenCalledWith(
-        mockSpec.name,
-        'impl-complete',
-        { skipTimestamp: true }
-      );
-      expect(mockSetSpecJson).toHaveBeenCalled();
-    });
-
-    it('should not auto-fix phase if already implementation-complete', async () => {
-      const tasksContent = `# Tasks
-- [x] Task 1
-- [x] Task 2`;
-
-      const detailWithTasks: SpecDetail = {
-        ...mockSpecDetail,
-        specJson: { ...mockSpecJson, phase: 'implementation-complete' },
         artifacts: {
           ...mockSpecDetail.artifacts,
           tasks: { exists: true, updatedAt: null, content: tasksContent },
@@ -492,7 +451,16 @@ describe('SpecSyncService', () => {
 
       await service.syncTaskProgress();
 
+      // Renderer should NOT call syncSpecPhase - this is Main process responsibility
       expect(window.electronAPI.syncSpecPhase).not.toHaveBeenCalled();
+      // setSpecJson should NOT be called for phase updates
+      expect(mockSetSpecJson).not.toHaveBeenCalled();
+      // But taskProgress should still be calculated
+      expect(mockSetTaskProgress).toHaveBeenCalledWith({
+        total: 3,
+        completed: 3,
+        percentage: 100,
+      });
     });
 
     it('should do nothing when no tasks content', async () => {

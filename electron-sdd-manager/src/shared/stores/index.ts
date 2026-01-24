@@ -37,3 +37,7 @@ export type {
   BugAutoExecutionRuntimeState,
   BugAutoExecutionRuntimeMap,
 } from './bugAutoExecutionStore';
+
+// MCP store (mcp-server-integration)
+export { useMcpStore, resetMcpStore, getMcpStore } from './mcpStore';
+export type { McpStoreState, McpStoreActions, McpStore, McpServerStatus } from './mcpStore';

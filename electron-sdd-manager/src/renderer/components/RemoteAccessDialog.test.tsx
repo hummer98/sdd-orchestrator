@@ -4,6 +4,7 @@
  * Requirements: 1.4, 1.5, 2.2
  * Task 15.1.1: CloudflareSettingsPanel integration
  * Task 15.1.2: InstallCloudflaredDialog integration
+ * Task 7.4: McpSettingsPanel integration (mcp-server-integration)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -158,6 +159,40 @@ describe('RemoteAccessDialog', () => {
       fireEvent.click(closeButton);
 
       expect(mockDismissInstallDialog).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ============================================================
+  // Task 7.4: McpSettingsPanel integration (mcp-server-integration)
+  // Requirements: 6.2
+  // ============================================================
+  describe('Task 7.4: McpSettingsPanel integration', () => {
+    it('should render McpSettingsPanel in the dialog', () => {
+      render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
+
+      // McpSettingsPanel has heading "MCP Server 設定"
+      expect(screen.getByRole('heading', { name: /MCP Server 設定/i })).toBeInTheDocument();
+    });
+
+    it('should render MCP Server enable/disable checkbox', () => {
+      render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
+
+      // McpSettingsPanel has a checkbox labeled "MCP Server を有効化"
+      expect(screen.getByRole('checkbox', { name: /MCP Server を有効化/i })).toBeInTheDocument();
+    });
+
+    it('should render MCP port input field', () => {
+      render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
+
+      // McpSettingsPanel has an input for port number
+      expect(screen.getByLabelText(/ポート番号/i)).toBeInTheDocument();
+    });
+
+    it('should render Claude CLI registration command section', () => {
+      render(<RemoteAccessDialog isOpen={true} onClose={vi.fn()} />);
+
+      // McpSettingsPanel has a label for Claude CLI command
+      expect(screen.getByText(/Claude CLI 登録コマンド/i)).toBeInTheDocument();
     });
   });
 });

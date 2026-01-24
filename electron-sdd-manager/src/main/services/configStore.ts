@@ -10,6 +10,8 @@ import type { WindowBounds } from '../../renderer/types';
 
 const MAX_RECENT_PROJECTS = 10;
 const DEFAULT_HANG_THRESHOLD = 300000; // 5 minutes in milliseconds
+const DEFAULT_MCP_PORT = 3001;
+const DEFAULT_MCP_ENABLED = true;
 
 /**
  * Layout values for UI panes
@@ -34,6 +36,25 @@ export const DEFAULT_LAYOUT: LayoutValues = {
 };
 
 /**
+ * MCP Server configuration settings
+ * Requirements: 5.3, 6.1 (mcp-server-integration)
+ */
+export interface McpSettings {
+  /** MCPサーバー有効フラグ */
+  enabled: boolean;
+  /** ポート番号（デフォルト: 3001） */
+  port: number;
+}
+
+/**
+ * Default MCP Server settings
+ */
+export const DEFAULT_MCP_SETTINGS: McpSettings = {
+  enabled: DEFAULT_MCP_ENABLED,
+  port: DEFAULT_MCP_PORT,
+};
+
+/**
  * Multi-window state for persistence
  * Requirements: 4.1-4.6
  */
@@ -54,6 +75,8 @@ interface AppConfig {
   bugsWorktreeDefault: boolean;
   // App-wide layout settings (moved from project-specific storage)
   layout: LayoutValues | null;
+  // mcp-server-integration: MCP server settings
+  mcpServer: McpSettings | null;
 }
 
 const schema = {
@@ -118,6 +141,15 @@ const schema = {
       bottomPaneHeight: { type: 'number' },
       agentListHeight: { type: 'number' },
       projectAgentPanelHeight: { type: 'number' },
+    },
+  },
+  // mcp-server-integration: MCP server settings
+  mcpServer: {
+    type: ['object', 'null'],
+    default: null,
+    properties: {
+      enabled: { type: 'boolean' },
+      port: { type: 'number' },
     },
   },
 } as const;
@@ -277,6 +309,37 @@ export class ConfigStore {
    */
   resetLayout(): void {
     this.store.set('layout', DEFAULT_LAYOUT);
+  }
+
+  // ============================================================
+  // mcp-server-integration Task 1.2: MCP Server Settings
+  // Requirements: 5.3, 6.1
+  // ============================================================
+
+  /**
+   * Get MCP server settings
+   * Requirements: 5.3, 6.1
+   * @returns MCP settings with defaults merged for missing fields
+   */
+  getMcpSettings(): McpSettings {
+    const stored = this.store.get('mcpServer');
+    if (!stored) {
+      return DEFAULT_MCP_SETTINGS;
+    }
+    // Merge with defaults to handle partial settings
+    return {
+      enabled: stored.enabled ?? DEFAULT_MCP_SETTINGS.enabled,
+      port: stored.port ?? DEFAULT_MCP_SETTINGS.port,
+    };
+  }
+
+  /**
+   * Set MCP server settings
+   * Requirements: 5.3
+   * @param settings - MCP settings to save
+   */
+  setMcpSettings(settings: McpSettings): void {
+    this.store.set('mcpServer', settings);
   }
 }
 

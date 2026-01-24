@@ -39,6 +39,8 @@ import { registerAutoExecutionHandlers } from './autoExecutionHandlers';
 import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
 // spec-productivity-metrics: Task 10.1 - Metrics handlers registration
 import { registerMetricsHandlers } from './metricsHandlers';
+// mcp-server-integration: Task 6.2 - MCP handlers registration
+import { registerMcpHandlers } from './mcpHandlers';
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../services/autoExecutionCoordinator';
@@ -2385,6 +2387,14 @@ export function registerIpcHandlers(): void {
   // ============================================================
   registerMetricsHandlers(getCurrentProjectPath);
   logger.info('[handlers] Metrics handlers registered');
+
+  // ============================================================
+  // MCP Handlers (mcp-server-integration feature)
+  // Task 6.2: Register MCP IPC handlers
+  // Requirements: 6.3, 6.4, 6.5 (MCP_START, MCP_STOP, MCP_GET_STATUS, etc.)
+  // ============================================================
+  registerMcpHandlers();
+  logger.info('[handlers] MCP handlers registered');
 
   // ============================================================
   // Steering Verification Handlers (steering-verification-integration feature)

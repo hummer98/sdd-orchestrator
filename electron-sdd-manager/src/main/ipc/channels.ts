@@ -341,6 +341,15 @@ export const IPC_CHANNELS = {
   GET_SPEC_METRICS: 'metrics:get-spec-metrics',
   GET_PROJECT_METRICS: 'metrics:get-project-metrics',
   METRICS_UPDATED: 'metrics:updated',
+
+  // MCP Server (mcp-server-integration feature)
+  // Requirements: 6.3, 6.4, 6.5
+  MCP_START: 'mcp:start',
+  MCP_STOP: 'mcp:stop',
+  MCP_GET_STATUS: 'mcp:get-status',
+  MCP_GET_SETTINGS: 'mcp:get-settings',
+  MCP_SET_ENABLED: 'mcp:set-enabled',
+  MCP_SET_PORT: 'mcp:set-port',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

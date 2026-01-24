@@ -4,11 +4,13 @@
  * Requirements: 1.4, 1.5, 2.2
  * Task 15.1.1: CloudflareSettingsPanel integration
  * Task 15.1.2: InstallCloudflaredDialog integration
+ * Task 7.4: McpSettingsPanel integration (mcp-server-integration)
  */
 
 import { clsx } from 'clsx';
 import { RemoteAccessPanel } from './RemoteAccessPanel';
 import { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
+import { McpSettingsPanel } from './McpSettingsPanel';
 import { InstallCloudflaredDialog } from './InstallCloudflaredDialog';
 import { useRemoteAccessStore } from '../stores/remoteAccessStore';
 
@@ -22,11 +24,12 @@ export interface RemoteAccessDialogProps {
 /**
  * RemoteAccessDialog Component
  *
- * A modal dialog that displays the RemoteAccessPanel with Cloudflare settings.
+ * A modal dialog that displays the RemoteAccessPanel with Cloudflare and MCP settings.
  * Used when server is started from the menu to show QR code and URL.
  * Includes:
  * - RemoteAccessPanel for server control and QR code display
  * - CloudflareSettingsPanel for Tunnel Token configuration
+ * - McpSettingsPanel for MCP Server configuration (Task 7.4)
  * - InstallCloudflaredDialog for cloudflared installation guidance
  *
  * @example
@@ -69,6 +72,12 @@ export function RemoteAccessDialog({ isOpen, onClose }: RemoteAccessDialogProps)
 
           {/* CloudflareSettingsPanel - Task 15.1.1 */}
           <CloudflareSettingsPanel className="border-0 shadow-none m-4" />
+
+          {/* Divider */}
+          <div className="border-t border-gray-200 dark:border-gray-700 mx-4" />
+
+          {/* McpSettingsPanel - Task 7.4 */}
+          <McpSettingsPanel className="border-0 shadow-none m-4" />
         </div>
       </div>
 

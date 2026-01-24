@@ -39,3 +39,6 @@ export { AgentIcon, AgentBranchIcon, AGENT_ICON_COLOR } from './AgentIcon';
 export type { AgentIconProps, AgentBranchIconProps } from './AgentIcon';
 
 export { ResizeHandle } from './ResizeHandle';
+
+export { McpStatusIndicator } from './McpStatusIndicator';
+export type { McpStatusIndicatorProps } from './McpStatusIndicator';

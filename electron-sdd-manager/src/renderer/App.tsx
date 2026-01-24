@@ -49,6 +49,8 @@ import { initBugAutoExecutionIpcListeners, cleanupBugAutoExecutionIpcListeners }
 import { ApiClientProvider, PlatformProvider } from '../shared';
 // header-profile-badge feature
 import { ProfileBadge } from '../shared/components/ui';
+// mcp-server-integration Task 7.5: MCP Status Indicator
+import { McpStatusIndicator } from '../shared/components/ui';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -533,6 +535,9 @@ export function App() {
                 <Wifi className="w-5 h-5" />
               </button>
             )}
+            {/* mcp-server-integration Task 7.5: MCP Status Indicator */}
+            {/* Clicking opens RemoteAccessDialog which contains McpSettingsPanel */}
+            <McpStatusIndicator onClick={() => setIsRemoteAccessDialogOpen(true)} />
             {/* SSH Status Indicator */}
             <SSHStatusIndicator />
           </div>

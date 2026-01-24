@@ -366,6 +366,74 @@ export class BugService {
   // ============================================================
 
   /**
+   * Create a new bug with directory, bug.json, and report.md
+   * Requirements: 4.6, 4.7 (mcp-server-integration)
+   *
+   * @param bugPath - Path to bug directory
+   * @param bugName - Bug name (directory name)
+   * @param description - Bug description for report.md
+   * @returns Created BugJson on success
+   */
+  async createBug(
+    bugPath: string,
+    bugName: string,
+    description: string
+  ): Promise<Result<BugJson, FileError>> {
+    try {
+      // Create bug directory
+      await mkdir(bugPath, { recursive: true });
+
+      // Create bug.json
+      const now = new Date().toISOString();
+      const bugJson: BugJson = {
+        bug_name: bugName,
+        created_at: now,
+        updated_at: now,
+      };
+
+      const bugJsonPath = join(bugPath, 'bug.json');
+      await writeFile(bugJsonPath, JSON.stringify(bugJson, null, 2), 'utf-8');
+
+      // Create report.md with description
+      const reportContent = `# Bug Report: ${bugName}
+
+## Description
+
+${description}
+
+## Steps to Reproduce
+
+(記入してください)
+
+## Expected Behavior
+
+(記入してください)
+
+## Actual Behavior
+
+(記入してください)
+
+## Environment
+
+(記入してください)
+`;
+      const reportPath = join(bugPath, 'report.md');
+      await writeFile(reportPath, reportContent, 'utf-8');
+
+      return { ok: true, value: bugJson };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'WRITE_ERROR',
+          path: bugPath,
+          message: String(error),
+        },
+      };
+    }
+  }
+
+  /**
    * Create bug.json for a new bug
    * Requirements: 1.1, 2.1
    *

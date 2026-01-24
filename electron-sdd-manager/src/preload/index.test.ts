@@ -50,6 +50,14 @@ vi.mock('../main/ipc/channels', () => ({
     GET_HANG_THRESHOLD: 'ipc:get-hang-threshold',
     SET_HANG_THRESHOLD: 'ipc:set-hang-threshold',
     GET_APP_VERSION: 'ipc:get-app-version',
+    // MCP Server (mcp-server-integration feature)
+    // Requirements: 6.3, 6.4
+    MCP_START: 'mcp:start',
+    MCP_STOP: 'mcp:stop',
+    MCP_GET_STATUS: 'mcp:get-status',
+    MCP_GET_SETTINGS: 'mcp:get-settings',
+    MCP_SET_ENABLED: 'mcp:set-enabled',
+    MCP_SET_PORT: 'mcp:set-port',
   },
 }));
 
@@ -421,6 +429,129 @@ describe('Preload API - Type Export', () => {
     // The type export should be available (compile-time check)
     // We can verify the module structure has the expected exports
     expect(preloadModule).toBeDefined();
+  });
+});
+
+describe('Preload API - Task 6.3: MCP Server API', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('mcpServer object', () => {
+    it('should expose mcpServer object with all required methods', () => {
+      expect(exposedAPI.mcpServer).toBeDefined();
+      const mcpServer = exposedAPI.mcpServer as Record<string, unknown>;
+
+      // Requirements 6.3, 6.4: MCP server control methods
+      expect(typeof mcpServer.start).toBe('function');
+      expect(typeof mcpServer.stop).toBe('function');
+      expect(typeof mcpServer.getStatus).toBe('function');
+      expect(typeof mcpServer.getSettings).toBe('function');
+      expect(typeof mcpServer.setEnabled).toBe('function');
+      expect(typeof mcpServer.setPort).toBe('function');
+    });
+  });
+
+  describe('mcpServer.start', () => {
+    it('should invoke mcp:start with optional port parameter', async () => {
+      const mockResult = { ok: true, value: { port: 3001, url: 'http://localhost:3001' } };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      const result = await mcpServer.start(3001);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:start', 3001);
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should invoke mcp:start without port parameter', async () => {
+      const mockResult = { ok: true, value: { port: 3001, url: 'http://localhost:3001' } };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      const result = await mcpServer.start();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:start', undefined);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('mcpServer.stop', () => {
+    it('should invoke mcp:stop', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      await mcpServer.stop();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:stop');
+    });
+  });
+
+  describe('mcpServer.getStatus', () => {
+    it('should invoke mcp:get-status', async () => {
+      const mockStatus = { isRunning: true, port: 3001, url: 'http://localhost:3001' };
+      mockIpcRenderer.invoke.mockResolvedValue(mockStatus);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      const result = await mcpServer.getStatus();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:get-status');
+      expect(result).toEqual(mockStatus);
+    });
+  });
+
+  describe('mcpServer.getSettings', () => {
+    it('should invoke mcp:get-settings', async () => {
+      const mockSettings = { enabled: true, port: 3001 };
+      mockIpcRenderer.invoke.mockResolvedValue(mockSettings);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      const result = await mcpServer.getSettings();
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:get-settings');
+      expect(result).toEqual(mockSettings);
+    });
+  });
+
+  describe('mcpServer.setEnabled', () => {
+    it('should invoke mcp:set-enabled with enabled=true', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      await mcpServer.setEnabled(true);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:set-enabled', true);
+    });
+
+    it('should invoke mcp:set-enabled with enabled=false', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      await mcpServer.setEnabled(false);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:set-enabled', false);
+    });
+  });
+
+  describe('mcpServer.setPort', () => {
+    it('should invoke mcp:set-port with port number', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const mcpServer = exposedAPI.mcpServer as Record<string, Function>;
+      await mcpServer.setPort(3002);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('mcp:set-port', 3002);
+    });
   });
 });
 

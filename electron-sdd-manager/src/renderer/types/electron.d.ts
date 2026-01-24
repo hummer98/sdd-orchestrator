@@ -1439,6 +1439,68 @@ export interface ElectronAPI {
     | { ok: true; value: import('../../main/types/metrics').SpecMetrics }
     | { ok: false; error: string }
   >;
+
+  // ============================================================
+  // MCP Server (mcp-server-integration feature)
+  // Requirements: 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8
+  // ============================================================
+
+  /**
+   * MCP Server API object
+   * Provides control methods for the MCP server
+   */
+  mcpServer: {
+    /**
+     * Start the MCP server
+     * @param port Optional preferred port (default: 3001)
+     * @returns Result with server info on success, or error
+     */
+    start(port?: number): Promise<{
+      ok: true;
+      value: { port: number; url: string };
+    } | {
+      ok: false;
+      error: { type: string; triedPorts?: number[]; port?: number; message?: string };
+    }>;
+
+    /**
+     * Stop the MCP server
+     */
+    stop(): Promise<void>;
+
+    /**
+     * Get current MCP server status
+     * @returns Server status with isRunning, port, url
+     */
+    getStatus(): Promise<{
+      isRunning: boolean;
+      port: number | null;
+      url: string | null;
+    }>;
+
+    /**
+     * Get MCP settings from ConfigStore
+     * @returns MCP settings (enabled, port)
+     */
+    getSettings(): Promise<{
+      enabled: boolean;
+      port: number;
+    }>;
+
+    /**
+     * Enable or disable MCP server
+     * Starts the server if enabling, stops if disabling
+     * @param enabled Whether MCP server should be enabled
+     */
+    setEnabled(enabled: boolean): Promise<void>;
+
+    /**
+     * Set MCP server port
+     * Restarts server if currently running
+     * @param port Port number (1024-65535)
+     */
+    setPort(port: number): Promise<void>;
+  };
 }
 
 declare global {

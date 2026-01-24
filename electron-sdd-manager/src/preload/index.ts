@@ -2147,6 +2147,74 @@ const electronAPI = {
     | { ok: false; error: string }
   > =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_SPEC_METRICS, specId),
+
+  // ============================================================
+  // MCP Server (mcp-server-integration feature)
+  // Requirements: 6.3, 6.4
+  // ============================================================
+
+  /**
+   * MCP Server API object
+   * Provides control methods for the MCP server
+   */
+  mcpServer: {
+    /**
+     * Start the MCP server
+     * @param port Optional preferred port (default: 3001)
+     * @returns Result with server info on success, or error
+     */
+    start: (port?: number): Promise<{
+      ok: true;
+      value: { port: number; url: string };
+    } | {
+      ok: false;
+      error: { type: string; triedPorts?: number[]; port?: number; message?: string };
+    }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_START, port),
+
+    /**
+     * Stop the MCP server
+     */
+    stop: (): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_STOP),
+
+    /**
+     * Get current MCP server status
+     * @returns Server status with isRunning, port, url
+     */
+    getStatus: (): Promise<{
+      isRunning: boolean;
+      port: number | null;
+      url: string | null;
+    }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_GET_STATUS),
+
+    /**
+     * Get MCP settings from ConfigStore
+     * @returns MCP settings (enabled, port)
+     */
+    getSettings: (): Promise<{
+      enabled: boolean;
+      port: number;
+    }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_GET_SETTINGS),
+
+    /**
+     * Enable or disable MCP server
+     * Starts the server if enabling, stops if disabling
+     * @param enabled Whether MCP server should be enabled
+     */
+    setEnabled: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_SET_ENABLED, enabled),
+
+    /**
+     * Set MCP server port
+     * Restarts server if currently running
+     * @param port Port number (1024-65535)
+     */
+    setPort: (port: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MCP_SET_PORT, port),
+  },
 };
 
 // Expose API to renderer

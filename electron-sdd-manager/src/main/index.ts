@@ -2,6 +2,7 @@
  * Electron Main Process Entry Point
  * Requirements: 11.1, 11.6, 11.7, 13.1, 13.2
  * Task 10.2: CLI起動オプション統合
+ * Task 6.4: MCP server auto-start (mcp-server-integration)
  */
 
 import { app, BrowserWindow, dialog } from 'electron';
@@ -18,6 +19,7 @@ import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
 import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser';
 import { getAccessTokenService } from './services/accessTokenService';
+import { initializeMcpServer } from './services/mcp/mcpAutoStart';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -205,6 +207,11 @@ app.whenReady().then(async () => {
 
   // Create application menu
   createMenu();
+
+  // Task 6.4: Initialize MCP server (mcp-server-integration)
+  // Auto-start MCP server if enabled in settings
+  const configStore = getConfigStore();
+  await initializeMcpServer(() => configStore.getMcpSettings());
 
   // Initialize with project path from command line if provided
   if (initialProjectPath) {

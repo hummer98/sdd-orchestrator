@@ -291,4 +291,66 @@ describe('ConfigStore', () => {
       expect(mockStore.set).toHaveBeenCalledWith('layout', DEFAULT_LAYOUT);
     });
   });
+
+  // ============================================================
+  // Task 1.2: MCP Server Settings
+  // Requirements: 5.3, 6.1
+  // ============================================================
+  describe('mcpSettings', () => {
+    it('should return default MCP settings when not stored', async () => {
+      mockStore.get.mockReturnValue(undefined);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getMcpSettings();
+      // Default: enabled: true, port: 3001
+      expect(result).toEqual({ enabled: true, port: 3001 });
+    });
+
+    it('should return stored MCP settings', async () => {
+      const storedSettings = { enabled: false, port: 4000 };
+      mockStore.get.mockReturnValue(storedSettings);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getMcpSettings();
+      expect(result).toEqual(storedSettings);
+    });
+
+    it('should set MCP settings', async () => {
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const newSettings = { enabled: false, port: 5000 };
+      store.setMcpSettings(newSettings);
+
+      expect(mockStore.set).toHaveBeenCalledWith('mcpServer', newSettings);
+    });
+
+    it('should merge partial MCP settings with defaults', async () => {
+      // When only enabled is stored (port missing), should use default port
+      mockStore.get.mockReturnValue({ enabled: false });
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getMcpSettings();
+      expect(result.enabled).toBe(false);
+      expect(result.port).toBe(3001); // Default port
+    });
+
+    it('should handle partial port-only setting', async () => {
+      // When only port is stored (enabled missing), should use default enabled
+      mockStore.get.mockReturnValue({ port: 4000 });
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getMcpSettings();
+      expect(result.enabled).toBe(true); // Default enabled
+      expect(result.port).toBe(4000);
+    });
+  });
 });

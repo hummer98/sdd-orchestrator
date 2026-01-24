@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0] - 2026-01-25
+
+### Added
+- **mobile-layout-refine**: モバイルUI詳細ビューとナビゲーション改善
+- **generate-release-command**: steering-releaseからgenerate-releaseへリネームとコマンド体系を統一
+
+### Changed
+- **refactor(docs)**: ドキュメント構造を整理しincidents/technical-notesカテゴリを追加
+- **refactor**: verification.md を verification-commands.md にリネーム
+
 ## [0.45.0] - 2026-01-24
 
 ### Added

@@ -861,6 +861,12 @@ export interface ElectronAPI {
   // Menu Events - Experimental Tools
   onMenuInstallExperimentalDebug(callback: () => void): () => void;
 
+  // gemini-document-review Task 3.2: Gemini document-review IPC
+  // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
+  installExperimentalGeminiDocReview(projectPath: string, options?: { force?: boolean }): Promise<Result<ExperimentalInstallResult, ExperimentalInstallError>>;
+  checkExperimentalGeminiDocReviewExists(projectPath: string): Promise<ExperimentalCheckResult>;
+  onMenuInstallExperimentalGeminiDocReview(callback: () => void): () => void;
+
   // ============================================================
   // Project Log (project-log-separation feature)
   // Requirements: 6.1, 6.2, 6.3, 6.4

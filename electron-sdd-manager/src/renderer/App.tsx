@@ -408,6 +408,44 @@ export function App() {
       }
     });
 
+    // gemini-document-review Task 3.3: Gemini document-review menu event handler
+    // Requirements: 1.1, 1.7, 1.8
+    const cleanupExpGemini = window.electronAPI.onMenuInstallExperimentalGeminiDocReview(async () => {
+      if (!currentProject) {
+        addNotification({
+          type: 'warning',
+          message: 'ツールをインストールするにはプロジェクトを選択してください',
+        });
+        return;
+      }
+
+      // Check if file exists
+      const checkResult = await window.electronAPI.checkExperimentalGeminiDocReviewExists(currentProject);
+      let shouldInstall = true;
+
+      if (checkResult.exists) {
+        shouldInstall = window.confirm('Gemini document-reviewコマンドは既に存在します。上書きしますか？');
+        if (!shouldInstall) {
+          addNotification({ type: 'info', message: 'Gemini document-reviewのインストールをキャンセルしました' });
+          return;
+        }
+      }
+
+      const result = await window.electronAPI.installExperimentalGeminiDocReview(currentProject, { force: shouldInstall && checkResult.exists });
+
+      if (result.ok) {
+        if (result.value.installedFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドをインストールしました' });
+        } else if (result.value.overwrittenFiles.length > 0) {
+          addNotification({ type: 'success', message: 'Gemini document-reviewコマンドを上書きしました' });
+        } else if (result.value.skippedFiles.length > 0) {
+          addNotification({ type: 'info', message: 'Gemini document-reviewコマンドは既にインストール済みです' });
+        }
+      } else {
+        addNotification({ type: 'error', message: `インストールに失敗しました: ${result.error.type}` });
+      }
+    });
+
     return () => {
       menuListenersSetup.current = false;
       cleanupOpenProject();
@@ -417,6 +455,7 @@ export function App() {
       cleanupCommandsetInstall();
       cleanupResetLayout();
       cleanupExpDebug();
+      cleanupExpGemini();
     };
   }, [selectProject, currentProject, setCommandPrefix, startServer, stopServer, addNotification, resetLayout]);
 

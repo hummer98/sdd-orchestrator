@@ -407,43 +407,9 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // ============================================================
   // Ask Agent Execution (agent-ask-execution feature)
   // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  // NOTE: EXECUTE_ASK_PROJECT has been removed (Requirement 4.4)
+  // Use EXECUTE_PROJECT_COMMAND in handlers.ts instead with '/kiro:project-ask "${prompt}"'
   // ============================================================
-
-  // Execute Project Ask: Launch project-ask agent with prompt
-  // Loads steering files as context
-  ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_ASK_PROJECT,
-    async (event, projectPath: string, prompt: string, commandPrefix: CommandPrefix = 'kiro') => {
-      logger.info('[specHandlers] EXECUTE_ASK_PROJECT called', { projectPath, prompt: prompt.substring(0, 100), commandPrefix });
-      const service = getSpecManagerService();
-      const window = BrowserWindow.fromWebContents(event.sender);
-
-      // Ensure event callbacks are registered
-      if (window && !getEventCallbacksRegistered()) {
-        registerEventCallbacks(service, window);
-      }
-
-      // Start agent with specId='' (project agent)
-      // Uses /kiro:project-ask or equivalent command
-      const slashCommand = `/${commandPrefix}:project-ask`;
-      const result = await service.startAgent({
-        specId: '', // Empty specId for project agent
-        phase: 'ask',
-        command: 'claude',
-        args: [`${slashCommand} "${prompt.replace(/"/g, '\\"')}"`],
-        group: 'doc',
-      });
-
-      if (!result.ok) {
-        logger.error('[specHandlers] executeAskProject failed', { error: result.error });
-        const errorMessage = getErrorMessage(result.error);
-        throw new Error(errorMessage);
-      }
-
-      logger.info('[specHandlers] executeAskProject succeeded', { agentId: result.value.agentId });
-      return result.value;
-    }
-  );
 
   // Execute Spec Ask: Launch spec-ask agent with feature name and prompt
   // Loads steering files and spec files as context

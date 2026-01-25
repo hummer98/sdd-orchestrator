@@ -344,6 +344,36 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
 }
 
 // ============================================================
+// release-button-api-fix: Project Command Execution
+// Task 4.1: Parameter validation for executeProjectCommand
+// Requirements: 1.1, 1.5
+// ============================================================
+
+/**
+ * Validate parameters for executeProjectCommand
+ * @param projectPath - Project root path
+ * @param command - Command string to execute
+ * @param title - Display title for Agent list
+ * @returns Result with success or error message
+ */
+export function validateProjectCommandParams(
+  projectPath: string,
+  command: string,
+  title: string
+): { ok: true } | { ok: false; error: string } {
+  if (!projectPath || projectPath.trim() === '') {
+    return { ok: false, error: 'projectPath is required' };
+  }
+  if (!command || command.trim() === '') {
+    return { ok: false, error: 'command is required' };
+  }
+  if (!title || title.trim() === '') {
+    return { ok: false, error: 'title is required' };
+  }
+  return { ok: true };
+}
+
+// ============================================================
 // IPC Handlers Registration (Orchestrator)
 // ============================================================
 
@@ -404,6 +434,59 @@ export function registerIpcHandlers(): void {
   registerMetricsHandlers(getCurrentProjectPath);
   registerMcpHandlers();
   registerScheduleTaskHandlers(getCurrentProjectPath);
+
+  // ============================================================
+  // Project Command Execution (release-button-api-fix feature)
+  // Task 4.1: EXECUTE_PROJECT_COMMAND handler
+  // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 4.4
+  // ============================================================
+
+  // Execute Project Command: Launch project-level agent with any command
+  // Command is passed directly without wrapping, title is used as phase (display name)
+  ipcMain.handle(
+    IPC_CHANNELS.EXECUTE_PROJECT_COMMAND,
+    async (event, projectPath: string, command: string, title: string) => {
+      // Requirement 1.5: Validate parameters
+      const validation = validateProjectCommandParams(projectPath, command, title);
+      if (!validation.ok) {
+        throw new Error(validation.error);
+      }
+
+      // NOTE: projectPath is used for logging only.
+      // The working directory (cwd) for agent execution is managed by
+      // SpecManagerService, which receives projectPath at construction time.
+      // startAgent does not need projectPath as a parameter.
+      logger.info('[handlers] EXECUTE_PROJECT_COMMAND called', { projectPath, command, title });
+
+      const service = getSpecManagerService();
+      const window = BrowserWindow.fromWebContents(event.sender);
+
+      // Ensure event callbacks are registered
+      if (window && !eventCallbacksRegistered) {
+        registerEventCallbacks(service, window);
+      }
+
+      // Requirement 1.2: command is passed directly to args (no wrapping)
+      // Requirement 1.3: title is used as phase for Agent display name
+      const result = await service.startAgent({
+        specId: '', // Empty specId for project agent
+        phase: title, // title is used as phase for display (Requirement 1.3)
+        command: 'claude',
+        args: [command], // command passed directly without wrapping (Requirement 1.2)
+        group: 'doc',
+      });
+
+      if (!result.ok) {
+        logger.error('[handlers] executeProjectCommand failed', { error: result.error });
+        const errorMessage = getErrorMessage(result.error);
+        throw new Error(errorMessage);
+      }
+
+      // Requirement 1.4: Return AgentInfo on success
+      logger.info('[handlers] executeProjectCommand succeeded', { agentId: result.value.agentId });
+      return result.value;
+    }
+  );
 
   // Steering Verification Handlers
   registerSteeringHandlers();

@@ -184,7 +184,8 @@ describe('specHandlers', () => {
       expect(registeredChannels).toContain(IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG);
 
       // Ask
-      expect(registeredChannels).toContain(IPC_CHANNELS.EXECUTE_ASK_PROJECT);
+      // NOTE: EXECUTE_ASK_PROJECT has been removed (release-button-api-fix Requirement 4.4)
+      // Use EXECUTE_PROJECT_COMMAND in handlers.ts instead
       expect(registeredChannels).toContain(IPC_CHANNELS.EXECUTE_ASK_SPEC);
 
       // Merge

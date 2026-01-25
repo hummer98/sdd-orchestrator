@@ -79,23 +79,36 @@ npx electron-builder --mac
 **重要**: パッケージングしたアプリが正常に起動するか確認します。
 
 ```bash
-# アプリを起動して5秒以内にクラッシュしないか確認
-open "release/mac-arm64/SDD Orchestrator.app" &
+# ログファイルの現在位置を記録
+LOG_FILE=~/Library/Logs/sdd-orchestrator/main.log
+LOG_LINES_BEFORE=$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)
+
+# アプリを起動
+open "release/mac-arm64/SDD Orchestrator.app"
 sleep 5
 
-# プロセスが生きているか確認
-if pgrep -f "SDD Orchestrator" > /dev/null; then
-  echo "✅ スモークテスト成功: アプリが正常に起動しました"
-  pkill -f "SDD Orchestrator"
-else
+# 1. プロセス確認
+if ! pgrep -f "SDD Orchestrator" > /dev/null; then
   echo "❌ スモークテスト失敗: アプリが起動時にクラッシュしました"
-  # ここでリリースを中止し、エラーを報告
+  exit 1
 fi
+
+# 2. ログファイルのエラーチェック
+NEW_LOGS=$(tail -n +$((LOG_LINES_BEFORE + 1)) "$LOG_FILE" 2>/dev/null)
+if echo "$NEW_LOGS" | grep -qi "uncaught\|exception\|fatal"; then
+  echo "❌ スモークテスト失敗: 起動時にエラーが発生しました"
+  echo "$NEW_LOGS" | grep -i "uncaught\|exception\|fatal"
+  pkill -f "SDD Orchestrator"
+  exit 1
+fi
+
+echo "✅ スモークテスト成功: アプリが正常に起動しました"
+pkill -f "SDD Orchestrator"
 ```
 
 **スモークテストが失敗した場合:**
-1. エラーダイアログの内容を確認
-2. Console.appでクラッシュログを確認
+1. 上記スクリプトの出力でエラー内容を確認
+2. `tail -100 ~/Library/Logs/sdd-orchestrator/main.log` で詳細ログを確認
 3. 問題を修正してから再ビルド
 4. **リリースを続行しないこと**
 

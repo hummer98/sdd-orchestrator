@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 import { resolve } from 'path';
+import nodeResolve from '@rollup/plugin-node-resolve';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,10 +20,12 @@ export default defineConfig({
           build: {
             outDir: 'dist/main',
             rollupOptions: {
-              external: [
-                'electron',
-                '@modelcontextprotocol/sdk',
-                /^@modelcontextprotocol\/sdk\/.*/,
+              external: ['electron'],
+              plugins: [
+                nodeResolve({
+                  exportConditions: ['node', 'default'],
+                  preferBuiltins: true,
+                }),
               ],
             },
           },

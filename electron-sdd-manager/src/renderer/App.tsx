@@ -525,16 +525,18 @@ export function App() {
               </button>
             )}
             {/* Remote Access Server Status Indicator */}
-            {isRemoteServerRunning && (
-              <button
-                onClick={() => setIsRemoteAccessDialogOpen(true)}
-                className="titlebar-no-drag p-1.5 text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                title="リモートアクセスサーバー稼働中"
-                aria-label="リモートアクセスサーバー設定を開く"
-              >
-                <Wifi className="w-5 h-5" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsRemoteAccessDialogOpen(true)}
+              className={`titlebar-no-drag p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors ${
+                isRemoteServerRunning
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-gray-400 dark:text-gray-600'
+              }`}
+              title={isRemoteServerRunning ? 'リモートアクセスサーバー稼働中' : 'リモートアクセス（停止中）'}
+              aria-label="リモートアクセス設定を開く"
+            >
+              <Wifi className="w-5 h-5" />
+            </button>
             {/* mcp-server-integration Task 7.5: MCP Status Indicator */}
             {/* Clicking opens RemoteAccessDialog which contains McpSettingsPanel */}
             <McpStatusIndicator onClick={() => setIsRemoteAccessDialogOpen(true)} />

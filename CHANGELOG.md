@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.48.0] - 2026-01-25
+
+### Added
+- **auto-execution-projectpath-fix**: projectPath引数による自動実行コマンド呼び出しを実装
+- **prompt-worktree-support**: spec-plan/bug-createプロンプトにworktreeサポートを追加
+- **impl-mode-toggle**: Implフェーズの実行モード切り替え機能を追加
+
+### Fixed
+- **bugs-watcher**: BugsListでファイル変更監視が開始されない問題を修正
+- **preload-ipc-refactor**: マージで失われたEXECUTE_PROJECT_COMMANDハンドラーを復元
+- **document-review**: schemeパラメータがexecute呼び出しに渡されない問題を修正
+- **electron**: vite-plugin-electron起動時の不要な引数を削除
+
+### Changed
+- **refactor(preload-ipc-refactor)**: IPCハンドラーをドメイン別ファイルに分離
+- **chore**: 不要なプレースホルダーファイルを削除
+
 ## [0.47.3] - 2026-01-25
 
 ### Fixed

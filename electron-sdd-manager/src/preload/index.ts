@@ -1054,6 +1054,34 @@ const electronAPI = {
   loadProfile: (projectPath: string): Promise<{ name: string; installedAt: string } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.LOAD_PROFILE, projectPath),
 
+  // ============================================================
+  // LLM Engine Config (llm-engine-abstraction feature)
+  // Requirements: 6.1
+  // ============================================================
+
+  /**
+   * Load LLM engine configuration from project
+   * @param projectPath Project root path
+   * @returns EngineConfig with default and per-phase engine settings
+   */
+  loadEngineConfig: (projectPath: string): Promise<import('../main/services/engineConfigService').EngineConfig> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_ENGINE_CONFIG, projectPath),
+
+  /**
+   * Save LLM engine configuration to project
+   * @param projectPath Project root path
+   * @param config EngineConfig to save
+   */
+  saveEngineConfig: (projectPath: string, config: import('../main/services/engineConfigService').EngineConfig): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_ENGINE_CONFIG, projectPath, config),
+
+  /**
+   * Get list of available LLM engines
+   * @returns Array of available engines with id and label
+   */
+  getAvailableLLMEngines: (): Promise<Array<{ id: string; label: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_AVAILABLE_LLM_ENGINES),
+
   /**
    * Subscribe to menu reset layout event
    * @param callback Function called when reset layout menu item is clicked

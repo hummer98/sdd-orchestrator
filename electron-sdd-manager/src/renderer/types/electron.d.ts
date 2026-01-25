@@ -125,6 +125,30 @@ export type ExecutionGroup = 'doc' | 'impl';
 export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-review' | 'impl' | 'inspection' | 'deploy';
 
 /**
+ * LLM Engine ID type
+ * llm-engine-abstraction feature
+ * Requirements: 1.1
+ */
+export type LLMEngineId = 'claude' | 'gemini';
+
+/**
+ * LLM Engine Config type
+ * llm-engine-abstraction feature
+ * Requirements: 4.2
+ */
+export interface EngineConfig {
+  default?: LLMEngineId;
+  plan?: LLMEngineId;
+  requirements?: LLMEngineId;
+  design?: LLMEngineId;
+  tasks?: LLMEngineId;
+  'document-review'?: LLMEngineId;
+  'document-review-reply'?: LLMEngineId;
+  inspection?: LLMEngineId;
+  impl?: LLMEngineId;
+}
+
+/**
  * Specs change event type
  */
 export interface SpecsChangeEvent {
@@ -819,6 +843,12 @@ export interface ElectronAPI {
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
   loadProfile(projectPath: string): Promise<{ name: string; installedAt: string } | null>;
+
+  // LLM Engine Config (llm-engine-abstraction feature)
+  // Requirements: 6.1
+  loadEngineConfig(projectPath: string): Promise<EngineConfig>;
+  saveEngineConfig(projectPath: string, config: EngineConfig): Promise<void>;
+  getAvailableLLMEngines(): Promise<Array<{ id: string; label: string }>>;
 
   // Menu Events - Layout Reset
   onMenuResetLayout(callback: () => void): () => void;

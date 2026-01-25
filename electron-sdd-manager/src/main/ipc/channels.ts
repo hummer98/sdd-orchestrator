@@ -378,6 +378,12 @@ export const IPC_CHANNELS = {
   CHECK_MIGRATION_NEEDED: 'ipc:check-migration-needed',
   ACCEPT_MIGRATION: 'ipc:accept-migration',
   DECLINE_MIGRATION: 'ipc:decline-migration',
+
+  // LLM Engine Config (llm-engine-abstraction feature)
+  // Requirements: 6.1
+  LOAD_ENGINE_CONFIG: 'ipc:load-engine-config',
+  SAVE_ENGINE_CONFIG: 'ipc:save-engine-config',
+  GET_AVAILABLE_LLM_ENGINES: 'ipc:get-available-llm-engines',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -148,3 +148,43 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
 
   logger.info('[configHandlers] Config handlers registered');
 }
+
+// ============================================================
+// LLM Engine Config Handlers (llm-engine-abstraction feature)
+// Requirements: 6.1
+// ============================================================
+
+import { engineConfigService, type EngineConfig } from '../services/engineConfigService';
+import { getAvailableLLMEngines, type LLMEngineId } from '../../shared/registry/llmEngineRegistry';
+
+/**
+ * Register LLM engine config IPC handlers
+ * Requirements: 6.1
+ */
+export function registerEngineConfigHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_ENGINE_CONFIG,
+    async (_event, projectPath: string): Promise<EngineConfig> => {
+      logger.debug('[configHandlers] LOAD_ENGINE_CONFIG called', { projectPath });
+      return engineConfigService.loadEngineConfig(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_ENGINE_CONFIG,
+    async (_event, projectPath: string, config: EngineConfig): Promise<void> => {
+      logger.debug('[configHandlers] SAVE_ENGINE_CONFIG called', { projectPath, config });
+      return engineConfigService.saveEngineConfig(projectPath, config);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.GET_AVAILABLE_LLM_ENGINES,
+    async (): Promise<Array<{ id: LLMEngineId; label: string }>> => {
+      logger.debug('[configHandlers] GET_AVAILABLE_LLM_ENGINES called');
+      return getAvailableLLMEngines();
+    }
+  );
+
+  logger.info('[configHandlers] Engine config handlers registered');
+}

@@ -26,6 +26,10 @@ import { BugService } from './bugService';
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
 // debatex-document-review Task 2.1: BuildArgsContext support
 import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
+// llm-engine-abstraction: LLM Engine resolution
+// Requirements: 7.1, 7.2
+import { engineConfigService, type EngineConfigPhase } from './engineConfigService';
+import { getLLMEngine, type LLMEngine } from '../../shared/registry/llmEngineRegistry';
 import { DocumentReviewService } from './documentReviewService';
 // spec-event-log: Event logging for agent activities
 import { getDefaultEventLogService } from './eventLogService';
@@ -487,6 +491,40 @@ export class SpecManagerService {
 
     // execution-store-consolidation: ImplCompletionAnalyzer initialization REMOVED (Req 6.2)
     // Task completion state is now managed via TaskProgress from tasks.md
+  }
+
+  // ============================================================
+  // llm-engine-abstraction: Engine Resolution Helper
+  // Requirements: 7.1, 7.2, 7.4
+  // ============================================================
+
+  /**
+   * Resolve and log the LLM engine for a given phase
+   * Currently returns Claude engine (backward compatible), but logs the resolved engine
+   * This enables future per-phase engine switching
+   *
+   * @param specId - Spec ID
+   * @param phase - Workflow phase
+   * @returns LLMEngine instance
+   */
+  private async resolveAndLogEngine(specId: string, phase: EngineConfigPhase): Promise<LLMEngine> {
+    try {
+      const engine = await engineConfigService.resolveEngine(this.projectPath, specId, phase);
+      logger.info('[SpecManagerService] Engine resolved', {
+        specId,
+        phase,
+        engineId: engine.id,
+        engineLabel: engine.label,
+      });
+      return engine;
+    } catch (error) {
+      logger.warn('[SpecManagerService] Engine resolution failed, falling back to claude', {
+        specId,
+        phase,
+        error,
+      });
+      return getLLMEngine('claude');
+    }
   }
 
   // ============================================================
@@ -1833,6 +1871,24 @@ export class SpecManagerService {
     const { specId, featureName, commandPrefix = 'kiro' } = options;
 
     logger.info('[SpecManagerService] execute called', { type: options.type, specId, featureName, commandPrefix });
+
+    // llm-engine-abstraction: Log engine resolution for tracking (Req 7.4)
+    // Phase-specific engine selection will be implemented in future iterations
+    // For now, we log the resolved engine while still using claude
+    const phaseToEngineConfigPhase: Record<string, EngineConfigPhase | undefined> = {
+      'requirements': 'requirements',
+      'design': 'design',
+      'tasks': 'tasks',
+      'impl': 'impl',
+      'inspection': 'inspection',
+      'document-review': 'document-review',
+      'document-review-reply': 'document-review-reply',
+    };
+    const engineConfigPhase = phaseToEngineConfigPhase[options.type];
+    if (engineConfigPhase) {
+      // Fire-and-forget: Log engine resolution without blocking execution
+      this.resolveAndLogEngine(specId, engineConfigPhase).catch(() => {});
+    }
 
     switch (options.type) {
       // ===== Document Generation Phases (group: 'doc') =====

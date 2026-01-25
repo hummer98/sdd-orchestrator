@@ -50,7 +50,7 @@ import { registerMetricsHandlers } from './metricsHandlers';
 import { registerMcpHandlers } from './mcpHandlers';
 import { registerScheduleTaskHandlers, initScheduleTaskCoordinator } from './scheduleTaskHandlers';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
-import { registerConfigHandlers } from './configHandlers';
+import { registerConfigHandlers, registerEngineConfigHandlers } from './configHandlers';
 import { registerInstallHandlers } from './installHandlers';
 import { registerFileHandlers } from './fileHandlers';
 import { registerBugHandlers, startBugsWatcher as startBugsWatcherImpl, stopBugsWatcher as stopBugsWatcherImpl } from './bugHandlers';
@@ -395,6 +395,8 @@ export function registerIpcHandlers(): void {
   // Domain Handler Registration
   registerCloudflareHandlers();
   registerConfigHandlers({ configStore, layoutConfigService });
+  // LLM Engine Config handlers (llm-engine-abstraction feature)
+  registerEngineConfigHandlers();
   registerInstallHandlers({
     commandInstallerService, projectChecker, ccSddWorkflowInstaller, unifiedCommandsetInstaller,
     experimentalToolsInstaller, commandsetVersionService, getCliInstallStatus, installCliCommand, getManualInstallInstructions,

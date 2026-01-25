@@ -1,7 +1,8 @@
 /**
  * ProjectSettingsDialog Component
  * debatex-document-review Task 4.1: Project settings dialog for default scheme selection
- * Requirements: 4.5
+ * llm-engine-abstraction: LLM Engine configuration section added
+ * Requirements: 4.5, 6.1
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,6 +12,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useSpecDetailStore } from '../stores/spec/specDetailStore';
 import { SchemeSelector, type ReviewerScheme } from '@shared/components/review';
 import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
+import { EngineConfigSection } from './EngineConfigSection';
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean;
@@ -127,6 +129,15 @@ export function ProjectSettingsDialog({
 
         {/* Content */}
         <div className="space-y-6">
+          {/* LLM Engine Config Section (llm-engine-abstraction feature) */}
+          {/* Requirements: 6.1 */}
+          {currentProject && (
+            <EngineConfigSection projectPath={currentProject} />
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-gray-200 dark:border-gray-700" />
+
           {/* Document Review Section */}
           <div className="space-y-3">
             <h3 className="font-medium text-gray-700 dark:text-gray-300">

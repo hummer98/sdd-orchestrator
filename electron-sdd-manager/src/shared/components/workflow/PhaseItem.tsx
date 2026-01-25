@@ -25,7 +25,11 @@ import { formatDurationCompact } from '../../utils/timeFormat';
 // Types
 // =============================================================================
 
-export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+/**
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
+ */
+export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-review' | 'impl' | 'inspection' | 'deploy';
 export type PhaseStatus = 'pending' | 'generated' | 'approved';
 
 export interface PhaseItemProps {

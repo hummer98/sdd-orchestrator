@@ -186,18 +186,27 @@ export const WORKTREE_LIFECYCLE_PHASES = ['spec-merge', 'bug-merge'] as const;
 
 export type WorktreeLifecyclePhase = typeof WORKTREE_LIFECYCLE_PHASES[number];
 
-/** ワークフローフェーズ */
-export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+/**
+ * ワークフローフェーズ
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
+ */
+export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-review' | 'impl' | 'inspection' | 'deploy';
 
 /** コマンドプレフィックス */
 export type CommandPrefix = 'kiro' | 'spec-manager';
 
-/** プレフィックス別フェーズ実行コマンドマッピング */
+/**
+ * プレフィックス別フェーズ実行コマンドマッピング
+ * document-review-phase Task 1.3: 'document-review' コマンドを追加
+ * Requirements: 1.4
+ */
 const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
   kiro: {
     requirements: '/kiro:spec-requirements',
     design: '/kiro:spec-design',
     tasks: '/kiro:spec-tasks',
+    'document-review': '/kiro:spec-document-review',
     impl: '/kiro:spec-impl',
     inspection: '/kiro:spec-inspection',  // Requirements: 13.1 - spec-inspection command
     deploy: '/commit',  // Changed from /kiro:deployment to /commit
@@ -206,6 +215,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     requirements: '/spec-manager:requirements',
     design: '/spec-manager:design',
     tasks: '/spec-manager:tasks',
+    'document-review': '/spec-manager:document-review',
     impl: '/spec-manager:impl',
     inspection: '/spec-manager:inspection',  // Requirements: 13.3 - spec-manager inspection command
     deploy: '/commit',  // Changed from /spec-manager:deployment to /commit

@@ -29,7 +29,8 @@ import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecutio
  * Persist current workflow settings to spec.json
  * Called after each setting change to ensure spec-scoped persistence
  * inspection-permission-unification Task 4.3: Removed inspectionFlag from persistence
- * Requirements: 3.6
+ * document-review-phase Task 6.2: Removed documentReviewFlag from persistence
+ * Requirements: 3.6, 6.1, 6.2
  */
 async function persistSettingsToSpec(): Promise<void> {
   // Dynamic import to avoid circular dependency
@@ -46,11 +47,12 @@ async function persistSettingsToSpec(): Promise<void> {
   const workflowState = useWorkflowStore.getState();
 
   // Build the autoExecution state object
+  // document-review-phase: documentReviewFlag removed - use permissions['document-review']
   // inspection-permission-unification: inspectionFlag removed - use permissions.inspection
   const autoExecutionState: SpecAutoExecutionState = {
     enabled: true, // Enable when user explicitly changes settings
     permissions: { ...workflowState.autoExecutionPermissions },
-    documentReviewFlag: workflowState.documentReviewOptions.autoExecutionFlag,
+    // documentReviewFlag removed - use permissions['document-review'] instead
     // inspectionFlag removed - inspection permission is now handled via permissions.inspection
   };
 
@@ -70,10 +72,15 @@ async function persistSettingsToSpec(): Promise<void> {
 // Requirements: 5.1, 5.2, 5.3
 // ============================================================
 
+/**
+ * document-review-phase Task 2.1: AutoExecutionPermissions に documentReview 追加
+ * Requirements: 2.1 - documentReview フィールドの追加
+ */
 export interface AutoExecutionPermissions {
   requirements: boolean;
   design: boolean;
   tasks: boolean;
+  'document-review': boolean;
   impl: boolean;
   inspection: boolean;
   deploy: boolean;
@@ -100,14 +107,15 @@ export const COMMAND_PREFIXES: Record<CommandPrefix, { label: string; descriptio
 export const DEFAULT_COMMAND_PREFIX: CommandPrefix = 'kiro';
 
 /**
- * inspection-permission-unification Task 2.1: Changed inspection default to true
+ * document-review-phase Task 2.3: permissions.documentReview のデフォルト値 true
  * Requirements: 2.1, 2.3
- * Rationale: impl完了後に自動的にinspectionが実行される動作が期待される
+ * Rationale: tasks完了後に自動的にdocument-reviewが実行される動作が期待される
  */
 export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
   requirements: true, // デフォルトで許可
   design: false,
   tasks: false,
+  'document-review': true, // document-review-phase: デフォルトGO
   impl: false,
   inspection: true, // inspection-permission-unification: デフォルトGO
   deploy: false,
@@ -116,20 +124,28 @@ export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
 
 // ============================================================
 // Task 7.1: Document Review Options
-// Requirements: 7.4
+// document-review-phase Task 6.1: DocumentReviewOptions removed
+// Requirements: 6.1 - Use permissions['document-review'] instead
 // ============================================================
 
-/** Auto execution flag for document review (2 values - skip removed) */
+/**
+ * @deprecated document-review-phase Task 6.1: Use permissions['document-review'] instead
+ * Auto execution flag for document review (2 values - skip removed)
+ * Kept for backward compatibility only
+ */
 export type DocumentReviewAutoExecutionFlag = 'run' | 'pause';
 
+/**
+ * @deprecated document-review-phase Task 6.1: Use permissions['document-review'] instead
+ * DocumentReviewOptions interface is deprecated - use permissions['document-review'] instead
+ */
 export interface DocumentReviewOptions {
-  /** Auto execution flag (run/pause/skip) - Requirements: 6.7, 6.8 */
+  /** @deprecated Auto execution flag - use permissions['document-review'] instead */
   autoExecutionFlag: DocumentReviewAutoExecutionFlag;
 }
 
-// NOTE: DEFAULT_DOCUMENT_REVIEW_OPTIONS removed as part of document-review-default-cleanup
-// The default value 'pause' is now defined inline in the store initialization
-// and in DEFAULT_SPEC_AUTO_EXECUTION_STATE (types/index.ts)
+// NOTE: document-review-phase Task 6.1, 7.1: Document review auto-execution is now controlled
+// via permissions['document-review'] in AutoExecutionPermissions (GO/NOGO toggle)
 
 // ============================================================
 // worktree-mode-spec-scoped: WorktreeModeSelection type REMOVED
@@ -179,10 +195,9 @@ interface WorkflowState {
   /** コマンドプレフィックス設定 */
   commandPrefix: CommandPrefix;
 
-  // Task 7.1: Document Review Options
-  // Requirements: 7.4
-  /** ドキュメントレビューオプション */
-  documentReviewOptions: DocumentReviewOptions;
+  // document-review-phase Task 6.1: documentReviewOptions REMOVED
+  // Requirements: 6.1
+  // Document review auto-execution is now controlled via permissions['document-review']
 
   // Task 7.3: Review Confirmation
   // Requirements: 7.5
@@ -236,10 +251,9 @@ interface WorkflowActions {
   /** コマンドプレフィックスを設定 */
   setCommandPrefix: (prefix: CommandPrefix) => void;
 
-  // Task 6.1: Auto Execution Flag Control
-  // Requirements: 6.7, 6.8
-  /** ドキュメントレビュー自動実行フラグを設定 */
-  setDocumentReviewAutoExecutionFlag: (flag: DocumentReviewAutoExecutionFlag) => void;
+  // document-review-phase Task 6.1: setDocumentReviewAutoExecutionFlag REMOVED
+  // Requirements: 6.1
+  // Use toggleAutoPermission('document-review') instead
 
   // Task 7.3: Review Confirmation
   // Requirements: 7.5
@@ -250,8 +264,10 @@ interface WorkflowActions {
   // Requirements: 2.4, 2.5
   /** 自動実行許可設定を一括設定 */
   setAutoExecutionPermissions: (permissions: AutoExecutionPermissions) => void;
-  /** ドキュメントレビューオプションを一括設定 */
-  setDocumentReviewOptions: (options: Partial<DocumentReviewOptions>) => void;
+
+  // document-review-phase Task 6.1: setDocumentReviewOptions REMOVED
+  // Requirements: 6.1
+  // Document review is now controlled via permissions['document-review']
 
   // ============================================================
   // bugs-workflow-auto-execution Task 1.2: Bug Auto Execution Actions
@@ -299,9 +315,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // Command Prefix Configuration - initial state
       commandPrefix: DEFAULT_COMMAND_PREFIX,
 
-      // Task 7.1: Document Review Options - initial state
-      // Default to 'pause' - requires user confirmation before auto-executing document review
-      documentReviewOptions: { autoExecutionFlag: 'pause' },
+      // document-review-phase Task 6.1: documentReviewOptions removed
+      // Document review is now controlled via permissions['document-review']
 
       // Task 7.3: Review Confirmation - initial state
       pendingReviewConfirmation: false,
@@ -368,19 +383,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
         set({ commandPrefix: prefix });
       },
 
-      // Task 6.1: Auto Execution Flag Control
-      // Requirements: 6.7, 6.8
-      // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
-      setDocumentReviewAutoExecutionFlag: (flag: DocumentReviewAutoExecutionFlag) => {
-        set((state) => ({
-          documentReviewOptions: {
-            ...state.documentReviewOptions,
-            autoExecutionFlag: flag,
-          },
-        }));
-        // Persist to spec.json after state update
-        persistSettingsToSpec();
-      },
+      // document-review-phase Task 6.1: setDocumentReviewAutoExecutionFlag REMOVED
+      // Use toggleAutoPermission('document-review') instead
 
       // Task 7.3: Review Confirmation
       // Requirements: 7.5
@@ -394,14 +398,8 @@ export const useWorkflowStore = create<WorkflowStore>()(
         set({ autoExecutionPermissions: { ...permissions } });
       },
 
-      setDocumentReviewOptions: (options: Partial<DocumentReviewOptions>) => {
-        set((state) => ({
-          documentReviewOptions: {
-            ...state.documentReviewOptions,
-            ...options,
-          },
-        }));
-      },
+      // document-review-phase Task 6.1: setDocumentReviewOptions REMOVED
+      // Document review is now controlled via permissions['document-review']
 
       // Helper methods
       isPhaseAutoPermitted: (phase: WorkflowPhase) => {
@@ -461,11 +459,12 @@ export const useWorkflowStore = create<WorkflowStore>()(
       name: 'sdd-manager-workflow-settings',
       // Task 1.3: Persistence - include bugAutoExecutionPermissions
       // inspection-permission-unification Task 4.1: inspectionAutoExecutionFlag removed from persistence
+      // document-review-phase Task 6.1: documentReviewOptions removed from persistence
       partialize: (state) => ({
         autoExecutionPermissions: state.autoExecutionPermissions,
         commandPrefix: state.commandPrefix,
-        documentReviewOptions: state.documentReviewOptions,
         bugAutoExecutionPermissions: state.bugAutoExecutionPermissions,
+        // documentReviewOptions removed - use permissions['document-review'] instead
         // inspectionAutoExecutionFlag removed - use permissions.inspection instead
       }),
     }

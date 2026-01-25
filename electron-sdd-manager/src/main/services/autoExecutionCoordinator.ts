@@ -30,9 +30,12 @@ export const MAX_CONCURRENT_EXECUTIONS = 5;
 /** 最大Document Reviewループ回数 */
 export const MAX_DOCUMENT_REVIEW_ROUNDS = 7;
 
-/** フェーズ順序（requirements -> design -> tasks -> impl -> inspection） */
-// git-worktree-support Task 9.1: inspection を自動実行フローに追加
-export const PHASE_ORDER: readonly WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection'];
+/**
+ * フェーズ順序（requirements -> design -> tasks -> document-review -> impl -> inspection）
+ * document-review-phase Task 1.1: document-review を tasks と impl の間に追加
+ * Requirements: 1.1
+ */
+export const PHASE_ORDER: readonly WorkflowPhase[] = ['requirements', 'design', 'tasks', 'document-review', 'impl', 'inspection'];
 
 // ============================================================
 // Types
@@ -81,13 +84,14 @@ export interface AutoExecutionState {
  * 自動実行許可設定
  * フェーズごとの自動実行許可
  * Requirements: 7.1
- * inspection-permission-unification Task 1.2: Changed inspection and deploy from optional to required
- * Requirements: 1.4, 1.5
+ * document-review-phase Task 2.1: 'document-review' を追加
+ * Requirements: 2.1
  */
 export interface AutoExecutionPermissions {
   readonly requirements: boolean;
   readonly design: boolean;
   readonly tasks: boolean;
+  readonly 'document-review': boolean;
   readonly impl: boolean;
   readonly inspection: boolean;
   readonly deploy: boolean;
@@ -95,7 +99,9 @@ export interface AutoExecutionPermissions {
 
 /**
  * ドキュメントレビューフラグ
- * Requirements: 7.1
+ * @deprecated document-review-phase Task 2.2: Use permissions['document-review'] instead
+ * Kept for backward compatibility with existing spec.json files
+ * Requirements: 2.2, 7.1
  */
 export type DocumentReviewFlag = 'run' | 'pause';
 
@@ -120,19 +126,28 @@ export interface ApprovalsStatus {
 
 /**
  * 自動実行オプション
- * Requirements: 7.1
+ * document-review-phase Task 2.2: documentReviewFlag を削除
+ * Requirements: 2.2, 7.1
  */
 export interface AutoExecutionOptions {
   /** フェーズごとの許可設定 */
   readonly permissions: AutoExecutionPermissions;
-  /** ドキュメントレビューフラグ */
-  readonly documentReviewFlag: DocumentReviewFlag;
+  // documentReviewFlag removed - use permissions['document-review'] instead
   /** タイムアウト（ms） */
   readonly timeoutMs?: number;
   /** コマンドプレフィックス */
   readonly commandPrefix?: 'kiro' | 'spec-manager';
   /** 現在のApproval状態（spec.jsonから取得、開始時のフェーズ判定に使用） */
   readonly approvals?: ApprovalsStatus;
+  /**
+   * Validation options for spec execution
+   * Used for gap analysis, design review, etc.
+   */
+  readonly validationOptions?: {
+    readonly gap: boolean;
+    readonly design: boolean;
+    readonly impl: boolean;
+  };
 }
 
 /**
@@ -159,6 +174,8 @@ export type Result<T, E> =
 
 /**
  * イベント型定義
+ * document-review-phase Task 2.2, 2.3: execute-document-review と execute-inspection を削除
+ * Requirements: 3.1, 5.1
  */
 export interface AutoExecutionEvents {
   'state-changed': (specPath: string, state: AutoExecutionState) => void;
@@ -167,11 +184,10 @@ export interface AutoExecutionEvents {
   'phase-error': (specPath: string, phase: WorkflowPhase, error: string) => void;
   'execution-completed': (specPath: string, summary: ExecutionSummary) => void;
   'execution-error': (specPath: string, error: AutoExecutionError) => void;
-  'execute-document-review': (specPath: string, context: { specId: string }) => void;
-  /** git-worktree-support Task 9.1: impl完了後にinspection自動実行 */
-  'execute-inspection': (specPath: string, context: { specId: string }) => void;
   /** git-worktree-support Task 9.2: inspection成功後にspec-merge自動実行 */
   'execute-spec-merge': (specPath: string, context: { specId: string }) => void;
+  // document-review-phase: execute-document-review and execute-inspection removed
+  // These phases are now handled via execute-next-phase with phase === 'document-review' or 'inspection'
 }
 
 /**
@@ -740,53 +756,59 @@ export class AutoExecutionCoordinator extends EventEmitter {
         // 次フェーズを自動実行
         const options = this.executionOptions.get(specPath);
         if (options) {
-          // tasksフェーズ完了時のDocument Review処理
-          // NOTE: skip option removed - document review is always executed
-          if (currentPhase === 'tasks') {
-            logger.info('[AutoExecutionCoordinator] Tasks completed, triggering document review', {
-              specPath,
-              documentReviewFlag: options.documentReviewFlag,
-            });
-            this.emit('execute-document-review', specPath, {
-              specId: state.specId,
-            });
-            return; // Document Review完了後に次フェーズへ進む
-          }
-
           // Read latest approvals from spec.json (may have been updated by auto-approve)
           let latestApprovals = options.approvals;
           try {
-            const specJsonPath = require('path').join(specPath, 'spec.json');
-            const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+            const path = require('path');
+            const fs = require('fs');
+            const specJsonPath = path.join(specPath, 'spec.json');
+            const content = fs.readFileSync(specJsonPath, 'utf-8');
             const specJson = JSON.parse(content);
             latestApprovals = specJson.approvals;
-            logger.debug('[AutoExecutionCoordinator] Read latest approvals for next phase', {
-              specPath,
-              latestApprovals,
-            });
           } catch (err) {
-            logger.warn('[AutoExecutionCoordinator] Failed to read latest approvals', { specPath, error: err });
+            // Use options.approvals as fallback
           }
 
-          // NOGOフェーズでは停止する（スキップしない）
-          const nextPhase = this.getImmediateNextPhase(currentPhase, options.permissions, latestApprovals);
-          if (nextPhase) {
-            // git-worktree-support Task 9.1: inspectionフェーズは専用イベントで実行
-            if (nextPhase === 'inspection') {
-              logger.info('[AutoExecutionCoordinator] Impl completed, triggering inspection', {
+          // document-review-phase Task 2.2: tasksフェーズ完了後はdocument-reviewへ遷移
+          // execute-document-reviewイベントは廃止し、execute-next-phaseを使用
+          // Requirements: 3.1, 3.2
+          if (currentPhase === 'tasks') {
+            // document-review-phase: Check if document-review is permitted
+            if (options.permissions['document-review']) {
+              logger.info('[AutoExecutionCoordinator] Tasks completed, triggering document-review phase', {
                 specPath,
               });
-              this.emit('execute-inspection', specPath, {
-                specId: state.specId,
-              });
-            } else {
-              // 次フェーズ実行イベントを発火
-              this.emit('execute-next-phase', specPath, nextPhase, {
+              this.emit('execute-next-phase', specPath, 'document-review', {
                 specId: state.specId,
                 featureName: state.specId,
               });
-              logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
+            } else {
+              // document-review is not permitted (NOGO), skip to impl if permitted
+              logger.info('[AutoExecutionCoordinator] Tasks completed, document-review is NOGO', { specPath });
+              const nextPhase = this.getImmediateNextPhase('document-review', options.permissions, latestApprovals);
+              if (nextPhase) {
+                this.emit('execute-next-phase', specPath, nextPhase, {
+                  specId: state.specId,
+                  featureName: state.specId,
+                });
+              } else {
+                this.completeExecution(specPath);
+              }
             }
+            return;
+          }
+
+          // document-review-phase Task 2.3: NOGOフェーズでは停止する（スキップしない）
+          // execute-inspectionイベントは廃止し、execute-next-phaseを使用
+          // Requirements: 5.1, 5.2
+          const nextPhase = this.getImmediateNextPhase(currentPhase, options.permissions, latestApprovals);
+          if (nextPhase) {
+            // 次フェーズ実行イベントを発火（inspectionも含めて統一）
+            this.emit('execute-next-phase', specPath, nextPhase, {
+              specId: state.specId,
+              featureName: state.specId,
+            });
+            logger.info('[AutoExecutionCoordinator] Triggering next phase', { specPath, nextPhase });
           } else {
             // 次フェーズがNOGOまたは全フェーズ完了
             this.completeExecution(specPath);
@@ -836,8 +858,9 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
   /**
    * 保存されたオプションを取得
-   * spec.json から最新の permissions と documentReviewFlag を読み直す
+   * spec.json から最新の permissions を読み直す
    * (Bug fix: auto-execution-settings-not-realtime)
+   * document-review-phase Task 2.2: documentReviewFlag を削除
    * @param specPath specのパス
    * @returns オプション or undefined
    */
@@ -856,7 +879,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
       if (specJson.autoExecution) {
         return {
           permissions: specJson.autoExecution.permissions ?? cached.permissions,
-          documentReviewFlag: specJson.autoExecution.documentReviewFlag ?? cached.documentReviewFlag,
+          // documentReviewFlag removed - use permissions['document-review'] instead
           timeoutMs: cached.timeoutMs,
           commandPrefix: cached.commandPrefix,
           approvals: specJson.approvals ?? cached.approvals,
@@ -1490,8 +1513,10 @@ export class AutoExecutionCoordinator extends EventEmitter {
     });
 
     // Document Reviewを実行するイベントを発火
-    this.emit('execute-document-review', specPath, {
+    // document-review-phase: execute-next-phase に統一
+    this.emit('execute-next-phase', specPath, 'document-review', {
       specId: state.specId,
+      featureName: state.specId,
     });
   }
 
@@ -1538,8 +1563,12 @@ export class AutoExecutionCoordinator extends EventEmitter {
       // ignore
     }
 
-    // Check if next phase (impl) is permitted - NOGOフェーズでは停止する（スキップしない）
-    const nextPhase = this.getImmediateNextPhase('tasks', options.permissions, latestApprovals);
+    /**
+     * document-review-phase: Check next phase after 'document-review'
+     * The phase order is now: tasks -> document-review -> impl
+     * So after document-review completes, the next phase is 'impl'
+     */
+    const nextPhase = this.getImmediateNextPhase('document-review', options.permissions, latestApprovals);
 
     if (approved) {
       // Document Review承認済み、次フェーズへ進む

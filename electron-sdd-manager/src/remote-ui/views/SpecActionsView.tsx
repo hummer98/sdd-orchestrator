@@ -46,11 +46,16 @@ export interface SpecActionsViewProps {
   onApprovalUpdated?: (phase: Phase, approved: boolean) => void;
 }
 
-// Phase label mapping
+/**
+ * Phase label mapping
+ * document-review-phase Task 1.2: 'document-review' のラベルを追加
+ * Requirements: 1.3
+ */
 const PHASE_LABELS: Record<WorkflowPhase, string> = {
   requirements: '要件定義',
   design: '設計',
   tasks: 'タスク',
+  'document-review': 'ドキュメントレビュー',
   impl: '実装',
   inspection: 'Inspection',
   deploy: 'デプロイ',
@@ -152,8 +157,9 @@ export function SpecActionsView({
     : null;
 
   // Extract auto execution flags
+  // document-review-phase Task 7.2: documentReviewFlag derived from permissions['document-review']
   const documentReviewFlag: DocumentReviewAutoExecutionFlag =
-    specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run';
+    specDetail.specJson?.autoExecution?.permissions?.['document-review'] !== false ? 'run' : 'pause';
   // inspection-permission-unification fix: Get inspection permission from permissions.inspection
   const inspectionPermission = specDetail.specJson?.autoExecution?.permissions?.inspection ?? true;
 

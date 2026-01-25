@@ -644,16 +644,18 @@ function DesktopAppContent() {
       setIsAutoExecuting(false);
     } else {
       // Start auto execution
+      // document-review-phase Task 2.1: 'document-review' を追加
       const options: AutoExecutionOptions = {
         permissions: selectedSpecDetail.specJson?.autoExecution?.permissions ?? {
           requirements: true,
           design: true,
           tasks: true,
+          'document-review': selectedSpecDetail.specJson?.autoExecution?.permissions?.['document-review'] ?? true,
           impl: false,
           inspection: false,
           deploy: false,
         },
-        documentReviewFlag: selectedSpecDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
+        // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
       };
 
       // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client

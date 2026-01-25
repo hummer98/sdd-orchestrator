@@ -366,13 +366,15 @@ export class IpcApiClient implements ApiClient {
   ): Promise<Result<AutoExecutionState, ApiError>> {
     checkElectronAPI();
     return wrapResult(async () => {
+      // document-review-phase Task 8.1: documentReviewFlag removed
+      // Use permissions['document-review'] instead
       const result = await window.electronAPI.autoExecutionStart({
         projectPath,
         specPath,
         specId,
         options: {
           permissions: options.permissions,
-          documentReviewFlag: options.documentReviewFlag,
+          // documentReviewFlag removed - use permissions['document-review'] instead
         },
       });
 

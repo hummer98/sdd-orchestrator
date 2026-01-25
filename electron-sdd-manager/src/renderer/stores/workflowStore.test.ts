@@ -446,44 +446,41 @@ describe('useWorkflowStore', () => {
   });
 
   // ============================================================
-  // Task 6.1: Document Review Auto Execution Flag
-  // Requirements: 6.7, 6.8
+  // document-review-phase Task 9.1: Document Review via permissions['document-review']
+  // Requirements: 6.1, 6.2 (document-review-phase)
   // ============================================================
-  describe('Task 6.1: Document review auto execution flag', () => {
-    describe('initial state', () => {
-      it('should have autoExecutionFlag as pause by default', () => {
+  describe('document-review-phase: Document review permission state', () => {
+    describe('deprecated field removal', () => {
+      // Note: documentReviewOptions may still exist due to localStorage persistence
+      // but it is no longer part of the WorkflowState interface
+      it('should NOT have setDocumentReviewAutoExecutionFlag action (deprecated)', () => {
         const state = useWorkflowStore.getState();
-        expect(state.documentReviewOptions.autoExecutionFlag).toBe('pause');
+        expect(state).not.toHaveProperty('setDocumentReviewAutoExecutionFlag');
+      });
+
+      it('should NOT have setDocumentReviewOptions action (deprecated)', () => {
+        const state = useWorkflowStore.getState();
+        expect(state).not.toHaveProperty('setDocumentReviewOptions');
       });
     });
 
-    describe('setDocumentReviewAutoExecutionFlag', () => {
-      it('should set autoExecutionFlag to pause', () => {
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
+    describe('document-review permission via autoExecutionPermissions', () => {
+      it('should have document-review permission set to true by default', () => {
         const state = useWorkflowStore.getState();
-        expect(state.documentReviewOptions.autoExecutionFlag).toBe('pause');
+        expect(state.autoExecutionPermissions['document-review']).toBe(true);
       });
 
-      // NOTE: skip flag test removed - skip option is no longer available
+      it('should toggle document-review permission', () => {
+        // Initial: true
+        expect(useWorkflowStore.getState().autoExecutionPermissions['document-review']).toBe(true);
 
-      it('should set autoExecutionFlag to run', () => {
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
-        const state = useWorkflowStore.getState();
-        expect(state.documentReviewOptions.autoExecutionFlag).toBe('run');
-      });
+        // Toggle to false
+        useWorkflowStore.getState().toggleAutoPermission('document-review');
+        expect(useWorkflowStore.getState().autoExecutionPermissions['document-review']).toBe(false);
 
-      it('should cycle through all flags correctly', () => {
-        // Start with pause (default)
-        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
-
-        // Set to run
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('run');
-        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('run');
-
-        // Back to pause
-        useWorkflowStore.getState().setDocumentReviewAutoExecutionFlag('pause');
-        expect(useWorkflowStore.getState().documentReviewOptions.autoExecutionFlag).toBe('pause');
+        // Toggle back to true
+        useWorkflowStore.getState().toggleAutoPermission('document-review');
+        expect(useWorkflowStore.getState().autoExecutionPermissions['document-review']).toBe(true);
       });
     });
   });

@@ -227,15 +227,20 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         if (specJson.autoExecution.permissions) {
           wf.setAutoExecutionPermissions(specJson.autoExecution.permissions);
         }
-        if (specJson.autoExecution.documentReviewFlag) {
-          wf.setDocumentReviewOptions({
-            autoExecutionFlag: specJson.autoExecution.documentReviewFlag,
+        // document-review-phase Task 7.1: documentReviewFlag removed - use permissions['document-review'] instead
+        // Migration: if old documentReviewFlag exists, convert to permissions['document-review']
+        const oldDocReviewFlag = (specJson.autoExecution as any).documentReviewFlag;
+        if (oldDocReviewFlag && !specJson.autoExecution.permissions?.['document-review']) {
+          // Old format: 'run' -> true, 'pause' -> false
+          const docReviewPermission = oldDocReviewFlag === 'run';
+          wf.setAutoExecutionPermissions({
+            ...wf.autoExecutionPermissions,
+            'document-review': docReviewPermission,
           });
         }
         console.log('[specDetailStore] Synced autoExecution settings to workflowStore:', {
           spec: spec.name,
           permissions: specJson.autoExecution.permissions,
-          documentReviewFlag: specJson.autoExecution.documentReviewFlag,
         });
       }
 

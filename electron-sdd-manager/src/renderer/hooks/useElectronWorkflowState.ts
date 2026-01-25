@@ -276,7 +276,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specDetail.metadata.name,
         {
           permissions: workflowStore.autoExecutionPermissions,
-          documentReviewFlag: workflowStore.documentReviewOptions.autoExecutionFlag,
+          // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
           approvals: specDetail.specJson.approvals,
         }
       );
@@ -284,7 +284,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [autoExecutionRuntime, specDetail, autoExecution, currentProject, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag]);
+  }, [autoExecutionRuntime, specDetail, autoExecution, currentProject, workflowStore.autoExecutionPermissions]);
 
   const handleStartDocumentReview = useCallback(async () => {
     if (!specDetail) return;
@@ -344,8 +344,11 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     }
   }, [specDetail]);
 
-  const handleDocumentReviewAutoExecutionFlagChange = useCallback((flag: 'run' | 'pause') => {
-    workflowStore.setDocumentReviewAutoExecutionFlag(flag);
+  // document-review-phase Task 7.3: documentReviewAutoExecutionFlag now controlled via permissions['document-review']
+  const handleDocumentReviewAutoExecutionFlagChange = useCallback((_flag: 'run' | 'pause') => {
+    // Toggle permissions['document-review'] based on flag
+    // 'run' -> true (GO), 'pause' -> false (NOGO)
+    workflowStore.toggleAutoPermission('document-review');
   }, [workflowStore]);
 
   const handleStartInspection = useCallback(async () => {
@@ -508,7 +511,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     // Document Review
     documentReviewState,
     documentReviewScheme,
-    documentReviewAutoExecutionFlag: workflowStore.documentReviewOptions.autoExecutionFlag,
+    // document-review-phase Task 7.3: documentReviewAutoExecutionFlag derived from permissions['document-review']
+    documentReviewAutoExecutionFlag: workflowStore.autoExecutionPermissions['document-review'] ? 'run' : 'pause',
 
     // Inspection
     inspectionState,
@@ -546,7 +550,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     runningPhases,
     autoExecutionRuntime,
     workflowStore.autoExecutionPermissions,
-    workflowStore.documentReviewOptions.autoExecutionFlag,
+    // document-review-phase: documentReviewOptions removed - use permissions['document-review'] instead
     workflowStore.commandPrefix,
     documentReviewState,
     documentReviewScheme,

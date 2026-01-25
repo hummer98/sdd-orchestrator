@@ -1214,10 +1214,14 @@ const electronAPI = {
         requirements: boolean;
         design: boolean;
         tasks: boolean;
+        'document-review'?: boolean;
         impl: boolean;
+        inspection?: boolean;
+        deploy?: boolean;
       };
-      documentReviewFlag: 'run' | 'pause';
-      validationOptions: {
+      // document-review-phase Task 4.1: documentReviewFlag removed
+      // Use permissions['document-review'] instead
+      validationOptions?: {
         gap: boolean;
         design: boolean;
         impl: boolean;

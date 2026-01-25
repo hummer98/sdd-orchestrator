@@ -47,11 +47,16 @@ export interface MobileSpecWorkflowViewProps {
   onApprovalUpdated?: (phase: Phase, approved: boolean) => void;
 }
 
-// Phase label mapping
+/**
+ * Phase label mapping
+ * document-review-phase Task 1.2: 'document-review' のラベルを追加
+ * Requirements: 1.3
+ */
 const PHASE_LABELS: Record<WorkflowPhase, string> = {
   requirements: '要件定義',
   design: '設計',
   tasks: 'タスク',
+  'document-review': 'ドキュメントレビュー',
   impl: '実装',
   inspection: 'Inspection',
   deploy: 'デプロイ',
@@ -236,6 +241,7 @@ export function MobileSpecWorkflowView({
   );
 
   // Handle auto execution start
+  // document-review-phase Task 2.1: 'document-review' を追加
   const handleStartAutoExecution = useCallback(async () => {
     if (!specDetail) return;
 
@@ -244,11 +250,12 @@ export function MobileSpecWorkflowView({
         requirements: true,
         design: true,
         tasks: true,
+        'document-review': true,
         impl: false,
         inspection: false,
         deploy: false,
       },
-      documentReviewFlag: specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
+      // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
     };
 
     // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client

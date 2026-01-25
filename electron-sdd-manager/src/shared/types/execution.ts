@@ -23,22 +23,28 @@ export type AutoExecutionStatus =
 
 /**
  * Workflow phases that can be executed
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
  */
 export type WorkflowPhase =
   | 'requirements'
   | 'design'
   | 'tasks'
+  | 'document-review'
   | 'impl'
   | 'inspection'
   | 'deploy';
 
 /**
  * Phase labels for display
+ * document-review-phase Task 1.2: 'document-review' のラベルを追加
+ * Requirements: 1.3
  */
 export const PHASE_LABELS: Record<WorkflowPhase, string> = {
   requirements: '要件定義',
   design: '設計',
   tasks: 'タスク',
+  'document-review': 'ドキュメントレビュー',
   impl: '実装',
   inspection: 'Inspection',
   deploy: 'デプロイ',

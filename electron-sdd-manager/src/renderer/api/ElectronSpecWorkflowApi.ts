@@ -177,9 +177,12 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
             requirements: options.permissions.requirements ?? true,
             design: options.permissions.design ?? true,
             tasks: options.permissions.tasks ?? true,
+            'document-review': options.permissions['document-review'] ?? true,
             impl: options.permissions.impl ?? false,
+            inspection: options.permissions.inspection ?? true,
+            deploy: options.permissions.deploy ?? false,
           },
-          documentReviewFlag: options.documentReviewFlag,
+          // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
         },
       });
       if (result.ok) {

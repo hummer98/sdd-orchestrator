@@ -973,11 +973,12 @@ export class SpecToolHandlers {
           requirements: true,
           design: true,
           tasks: true,
+          'document-review': true,  // document-review-phase: default GO
           impl: true,
           inspection: true,
           deploy: false,
         },
-        documentReviewFlag: specJson.autoExecution.documentReviewFlag ?? 'run',
+        // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
         approvals: specJson.approvals,
       }
     );

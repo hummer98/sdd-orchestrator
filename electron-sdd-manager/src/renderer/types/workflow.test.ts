@@ -41,27 +41,41 @@ describe('Workflow Types', () => {
     });
 
     describe('ALL_WORKFLOW_PHASES', () => {
-      it('should contain all 6 phases in order', () => {
+      /**
+       * document-review-phase Task 1.1: WorkflowPhase type extension
+       * Requirements: 1.2 - WorkflowPhase 型に 'document-review' が含まれること
+       */
+      it('should contain all 7 phases in order including document-review', () => {
         expect(ALL_WORKFLOW_PHASES).toEqual([
           'requirements',
           'design',
           'tasks',
+          'document-review',
           'impl',
           'inspection',
           'deploy',
         ]);
       });
 
-      it('should have exactly 6 phases', () => {
-        expect(ALL_WORKFLOW_PHASES.length).toBe(6);
+      it('should have exactly 7 phases', () => {
+        expect(ALL_WORKFLOW_PHASES.length).toBe(7);
+      });
+
+      it('should have document-review between tasks and impl', () => {
+        const tasksIndex = ALL_WORKFLOW_PHASES.indexOf('tasks');
+        const documentReviewIndex = ALL_WORKFLOW_PHASES.indexOf('document-review');
+        const implIndex = ALL_WORKFLOW_PHASES.indexOf('impl');
+        expect(documentReviewIndex).toBe(tasksIndex + 1);
+        expect(documentReviewIndex).toBe(implIndex - 1);
       });
     });
 
     describe('PHASE_LABELS', () => {
-      it('should have Japanese labels for all phases', () => {
+      it('should have Japanese labels for all phases including document-review', () => {
         expect(PHASE_LABELS.requirements).toBe('要件定義');
         expect(PHASE_LABELS.design).toBe('設計');
         expect(PHASE_LABELS.tasks).toBe('タスク');
+        expect(PHASE_LABELS['document-review']).toBe('ドキュメントレビュー');
         expect(PHASE_LABELS.impl).toBe('実装');
         expect(PHASE_LABELS.inspection).toBe('検査');
         expect(PHASE_LABELS.deploy).toBe('コミット');
@@ -167,6 +181,52 @@ describe('Workflow Types', () => {
       });
     });
 
+    /**
+     * document-review-phase Task 1.1: document-review phase status
+     * Requirements: 1.2, 4.1 - documentReview.status === 'approved' で完了判定
+     */
+    describe('document-review phase', () => {
+      it('should return pending when documentReview is undefined', () => {
+        const specJson = createMockSpecJson();
+        expect(getPhaseStatus('document-review', specJson)).toBe('pending');
+      });
+
+      it('should return pending when documentReview.status is not approved', () => {
+        const specJson = createMockSpecJson({
+          documentReview: {
+            status: 'pending',
+            currentRound: 1,
+            roundDetails: [],
+          },
+        });
+        expect(getPhaseStatus('document-review', specJson)).toBe('pending');
+      });
+
+      it('should return approved when documentReview.status is approved', () => {
+        const specJson = createMockSpecJson({
+          documentReview: {
+            status: 'approved',
+            currentRound: 1,
+            roundDetails: [
+              { roundNumber: 1, status: 'reply_complete', fixStatus: 'not_required' },
+            ],
+          },
+        });
+        expect(getPhaseStatus('document-review', specJson)).toBe('approved');
+      });
+
+      it('should return generated when documentReview.status is in_progress', () => {
+        const specJson = createMockSpecJson({
+          documentReview: {
+            status: 'in_progress',
+            currentRound: 1,
+            roundDetails: [],
+          },
+        });
+        expect(getPhaseStatus('document-review', specJson)).toBe('generated');
+      });
+    });
+
     describe('inspection phase', () => {
       it('should return pending when inspection is undefined', () => {
         const specJson = createMockSpecJson();
@@ -264,8 +324,10 @@ describe('Workflow Types', () => {
         expect(permissions.deploy).toBe(true);
       });
 
-      it('should have documentReviewFlag set to pause by default', () => {
-        expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag).toBe('pause');
+      // document-review-phase Task 9.1: documentReviewFlag removed
+      // Use permissions['document-review'] instead
+      it('should have document-review permission set to true by default', () => {
+        expect(DEFAULT_SPEC_AUTO_EXECUTION_STATE.permissions['document-review']).toBe(true);
       });
     });
 
@@ -290,41 +352,47 @@ describe('Workflow Types', () => {
         expect(state.permissions.impl).toBe(true);
       });
 
-      it('should allow setting documentReviewFlag to run', () => {
+      // document-review-phase Task 9.1: Test updated for permissions['document-review']
+      it('should allow setting document-review permission to true (GO)', () => {
         const state = createSpecAutoExecutionState({
-          documentReviewFlag: 'run',
+          permissions: {
+            'document-review': true,
+          },
         });
-        expect(state.documentReviewFlag).toBe('run');
+        expect(state.permissions['document-review']).toBe(true);
       });
 
-      it('should allow setting documentReviewFlag to pause', () => {
+      it('should allow setting document-review permission to false (NOGO)', () => {
         const state = createSpecAutoExecutionState({
-          documentReviewFlag: 'pause',
+          permissions: {
+            'document-review': false,
+          },
         });
-        expect(state.documentReviewFlag).toBe('pause');
+        expect(state.permissions['document-review']).toBe(false);
       });
     });
 
     describe('SpecAutoExecutionState type structure', () => {
       it('should have correct property types', () => {
+        // document-review-phase Task 9.1: documentReviewFlag removed
         const state: SpecAutoExecutionState = {
           enabled: true,
           permissions: {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: false,
             inspection: false,
             deploy: false,
           },
-          documentReviewFlag: 'run',
+          // documentReviewFlag removed - use permissions['document-review'] instead
         };
 
         // Type checking - if this compiles, the types are correct
         expect(typeof state.enabled).toBe('boolean');
         expect(typeof state.permissions).toBe('object');
-        expect(typeof state.documentReviewFlag).toBe('string');
-        expect(['run', 'pause']).toContain(state.documentReviewFlag);
+        expect(typeof state.permissions['document-review']).toBe('boolean');
       });
     });
   });
@@ -347,17 +415,19 @@ describe('Workflow Types', () => {
           design: { generated: false, approved: false },
           tasks: { generated: false, approved: false },
         },
+        // document-review-phase Task 9.1: documentReviewFlag removed
         autoExecution: {
           enabled: true,
           permissions: {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: false,
             inspection: false,
             deploy: false,
           },
-          documentReviewFlag: 'run' as const,
+          // documentReviewFlag removed - use permissions['document-review'] instead
         },
       };
 
@@ -365,7 +435,7 @@ describe('Workflow Types', () => {
       expect(specJson.autoExecution).toBeDefined();
       expect(specJson.autoExecution.enabled).toBe(true);
       expect(specJson.autoExecution.permissions.requirements).toBe(true);
-      expect(specJson.autoExecution.documentReviewFlag).toBe('run');
+      expect(specJson.autoExecution.permissions['document-review']).toBe(true);
     });
 
     it('should work with SpecJson without autoExecution field (backward compatibility)', () => {

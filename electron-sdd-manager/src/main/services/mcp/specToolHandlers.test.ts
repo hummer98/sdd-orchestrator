@@ -977,6 +977,7 @@ describe('SpecToolHandlers', () => {
         ok: true,
         value: '/path/to/project/.kiro/specs/test-feature',
       });
+      // document-review-phase: 'document-review' is now inside permissions
       mockFileService.readSpecJson.mockResolvedValue({
         ok: true,
         value: {
@@ -987,11 +988,11 @@ describe('SpecToolHandlers', () => {
               requirements: true,
               design: true,
               tasks: true,
+              'document-review': true,  // document-review-phase: permission inside permissions
               impl: true,
               inspection: true,
               deploy: false,
             },
-            documentReviewFlag: 'run',
           },
         },
       });
@@ -1011,13 +1012,15 @@ describe('SpecToolHandlers', () => {
 
       expect(result.ok).toBe(true);
       // auto-execution-projectpath-fix Task 1.2: start() now requires projectPath as first argument
+      // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
       expect(mockAutoExecutionCoordinator.start).toHaveBeenCalledWith(
         '/path/to/project',
         '/path/to/project/.kiro/specs/test-feature',
         'test-feature',
         expect.objectContaining({
-          permissions: expect.any(Object),
-          documentReviewFlag: 'run',
+          permissions: expect.objectContaining({
+            'document-review': true,
+          }),
         })
       );
     });
@@ -1086,6 +1089,7 @@ describe('SpecToolHandlers', () => {
         ok: true,
         value: '/path/to/project/.kiro/specs/test-feature',
       });
+      // document-review-phase: 'document-review' is now inside permissions
       mockFileService.readSpecJson.mockResolvedValue({
         ok: true,
         value: {
@@ -1096,11 +1100,11 @@ describe('SpecToolHandlers', () => {
               requirements: true,
               design: true,
               tasks: true,
+              'document-review': true,  // document-review-phase: permission inside permissions
               impl: true,
               inspection: true,
               deploy: false,
             },
-            documentReviewFlag: 'run',
           },
         },
       });

@@ -26,13 +26,20 @@ vi.mock('./eventLogService', () => ({
   getDefaultEventLogService: vi.fn(() => mockEventLogService),
 }));
 
-// Default options for tests
+/**
+ * Default options for tests
+ * document-review-phase Task 2.1: 'document-review' を追加
+ * Requirements: 2.1
+ */
 const createDefaultOptions = (): AutoExecutionOptions => ({
   permissions: {
     requirements: true,
     design: true,
     tasks: true,
+    'document-review': true,
     impl: false,
+    inspection: false,
+    deploy: false,
   },
   documentReviewFlag: 'run',
   validationOptions: { gap: false, design: false, impl: false },
@@ -683,22 +690,31 @@ describe('AutoExecutionCoordinator', () => {
 
   describe('Task 1.4: Phase Transition and Auto-Approval Logic', () => {
     describe('getNextPermittedPhase()', () => {
+      /**
+       * document-review-phase: Updated test to include document-review phase
+       * Phase order: requirements -> design -> tasks -> document-review -> impl
+       */
       it('should return next permitted phase based on permissions', () => {
         const options = createDefaultOptions();
-        // requirements: true, design: true, tasks: true, impl: false
+        // requirements: true, design: true, tasks: true, document-review: true, impl: false
 
         expect(coordinator.getNextPermittedPhase(null, options.permissions)).toBe('requirements');
         expect(coordinator.getNextPermittedPhase('requirements', options.permissions)).toBe('design');
         expect(coordinator.getNextPermittedPhase('design', options.permissions)).toBe('tasks');
-        expect(coordinator.getNextPermittedPhase('tasks', options.permissions)).toBeNull(); // impl is false
+        expect(coordinator.getNextPermittedPhase('tasks', options.permissions)).toBe('document-review');
+        expect(coordinator.getNextPermittedPhase('document-review', options.permissions)).toBeNull(); // impl is false
       });
 
       it('should skip phases that are not permitted', () => {
+        // document-review-phase: Updated permissions to include all fields
         const permissions = {
           requirements: true,
           design: false,
           tasks: true,
+          'document-review': true,
           impl: false,
+          inspection: false,
+          deploy: false,
         };
 
         expect(coordinator.getNextPermittedPhase('requirements', permissions)).toBe('tasks');
@@ -728,10 +744,22 @@ describe('AutoExecutionCoordinator', () => {
     });
 
     describe('PHASE_ORDER constant', () => {
-      it('should have correct phase order', () => {
-        // git-worktree-support Task 9.1: inspection を自動実行フローに追加
-        const expectedOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection'];
+      /**
+       * document-review-phase Task 1.1: PHASE_ORDER の順序変更
+       * Requirements: 1.1 - document-review を tasks と impl の間に追加
+       */
+      it('should have correct phase order including document-review', () => {
+        const expectedOrder: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'document-review', 'impl', 'inspection'];
         expect(coordinator.getPhaseOrder()).toEqual(expectedOrder);
+      });
+
+      it('should have document-review between tasks and impl', () => {
+        const phaseOrder = coordinator.getPhaseOrder();
+        const tasksIndex = phaseOrder.indexOf('tasks');
+        const documentReviewIndex = phaseOrder.indexOf('document-review');
+        const implIndex = phaseOrder.indexOf('impl');
+        expect(documentReviewIndex).toBe(tasksIndex + 1);
+        expect(documentReviewIndex).toBe(implIndex - 1);
       });
     });
 
@@ -1371,6 +1399,10 @@ describe('AutoExecutionCoordinator', () => {
         expect(eventHandler).not.toHaveBeenCalled();
       });
 
+      /**
+       * document-review-phase: Updated to use execute-next-phase for all phases
+       * The execute-document-review event has been replaced with execute-next-phase
+       */
       it('should execute all permitted phases in sequence via events', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options: AutoExecutionOptions = {
@@ -1378,21 +1410,19 @@ describe('AutoExecutionCoordinator', () => {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: false,
+            inspection: false,
+            deploy: false,
           },
-          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
         };
         const executedPhases: WorkflowPhase[] = [];
-        let documentReviewTriggered = false;
 
         await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         coordinator.on('execute-next-phase', (_specPath, phase) => {
           executedPhases.push(phase);
-        });
-        coordinator.on('execute-document-review', () => {
-          documentReviewTriggered = true;
         });
 
         // Phase 1: requirements完了
@@ -1405,16 +1435,16 @@ describe('AutoExecutionCoordinator', () => {
         await coordinator.handleAgentCompleted('agent-2', specPath, 'completed');
         expect(executedPhases).toContain('tasks');
 
-        // Phase 3: tasks完了 - document review is now mandatory (skip option removed)
+        // Phase 3: tasks完了 - document review is triggered via execute-next-phase
         coordinator.setCurrentPhase(specPath, 'tasks', 'agent-3');
         await coordinator.handleAgentCompleted('agent-3', specPath, 'completed');
 
-        // tasks完了後、document reviewが実行される（スキップオプション削除済み）
-        expect(documentReviewTriggered).toBe(true);
+        // tasks完了後、document-reviewがexecute-next-phaseで実行される
+        expect(executedPhases).toContain('document-review');
         const state = coordinator.getStatus(specPath);
         // document review実行中なのでまだrunning
         expect(state?.status).toBe('running');
-        expect(executedPhases).toEqual(['design', 'tasks']);
+        expect(executedPhases).toEqual(['design', 'tasks', 'document-review']);
       });
     });
 
@@ -1548,20 +1578,24 @@ describe('AutoExecutionCoordinator', () => {
         expect(state?.currentDocumentReviewRound).toBe(2);
       });
 
-      it('should emit execute-document-review event on continue', async () => {
+      /**
+       * document-review-phase: Updated to use execute-next-phase event
+       * The execute-document-review event has been replaced with execute-next-phase
+       */
+      it('should emit execute-next-phase event for document-review on continue', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options: AutoExecutionOptions = {
           ...createDefaultOptions(),
-          documentReviewFlag: 'run',
         };
         const eventHandler = vi.fn();
 
         await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
-        coordinator.on('execute-document-review', eventHandler);
+        coordinator.on('execute-next-phase', eventHandler);
         coordinator.continueDocumentReviewLoop(specPath, 2);
 
         expect(eventHandler).toHaveBeenCalledWith(
           specPath,
+          'document-review',
           expect.objectContaining({ specId: 'test-feature' })
         );
       });
@@ -1600,14 +1634,22 @@ describe('AutoExecutionCoordinator', () => {
     // ============================================================
 
     describe('Task 1.3: handleDocumentReviewCompleted with loop logic', () => {
+      /**
+       * document-review-phase: Updated test to match new flow
+       * When document-review completes with approved=true, it should proceed to impl
+       */
       it('should proceed to next phase when approved (fixRequired=0, needsDiscussion=0)', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
+        // document-review-phase: Updated permissions to include all required fields
         const options: AutoExecutionOptions = {
           permissions: {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: true,
+            inspection: false,
+            deploy: false,
           },
           documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
@@ -1617,9 +1659,8 @@ describe('AutoExecutionCoordinator', () => {
         await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('execute-next-phase', eventHandler);
 
-        // Simulate tasks phase completed
-        coordinator.setCurrentPhase(specPath, 'tasks');
-        await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
+        // Simulate document-review phase (set currentPhase to document-review)
+        coordinator.setCurrentPhase(specPath, 'document-review');
 
         // Now handle document review completed with approved=true
         coordinator.handleDocumentReviewCompleted(specPath, true);
@@ -1627,18 +1668,22 @@ describe('AutoExecutionCoordinator', () => {
         expect(eventHandler).toHaveBeenCalledWith(
           specPath,
           'impl',
-          expect.objectContaining({ specId: 'test-feature' })
+          expect.objectContaining({ specId: 'test-feature', featureName: 'test-feature' })
         );
       });
 
       it('should pause when Needs Discussion > 0', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
+        // document-review-phase: Updated permissions to include all required fields
         const options: AutoExecutionOptions = {
           permissions: {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: true,
+            inspection: false,
+            deploy: false,
           },
           documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
@@ -1655,12 +1700,16 @@ describe('AutoExecutionCoordinator', () => {
 
       it('should pause when max rounds reached with impl permitted', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
+        // document-review-phase: Updated permissions to include all required fields
         const options: AutoExecutionOptions = {
           permissions: {
             requirements: true,
             design: true,
             tasks: true,
+            'document-review': true,
             impl: true, // impl must be permitted for pause behavior
+            inspection: false,
+            deploy: false,
           },
           documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
@@ -1677,7 +1726,12 @@ describe('AutoExecutionCoordinator', () => {
         expect(state?.status).toBe('paused');
       });
 
-      it('should complete when max rounds reached but no next phase permitted', async () => {
+      /**
+       * document-review-phase: When max rounds reached and impl is not permitted,
+       * the coordinator marks the execution as completed because there is no
+       * next permitted phase to proceed to.
+       */
+      it('should complete when max rounds reached and impl is not permitted', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options: AutoExecutionOptions = {
           ...createDefaultOptions(), // impl: false
@@ -1690,7 +1744,7 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.continueDocumentReviewLoop(specPath, 8);
 
         const state = coordinator.getStatus(specPath);
-        // When impl is not permitted, completing document review leads to completion
+        // When max rounds reached and impl is not permitted, execution completes
         expect(state?.status).toBe('completed');
       });
     });
@@ -1763,21 +1817,26 @@ describe('AutoExecutionCoordinator', () => {
         expect(options.permissions.inspection).toBe(true);
       });
 
-      it('should emit execute-inspection event after impl completes when inspection enabled', async () => {
+      /**
+       * document-review-phase: Updated to use execute-next-phase event
+       * The execute-inspection event has been replaced with execute-next-phase
+       */
+      it('should emit execute-next-phase event for inspection after impl completes when inspection enabled', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
-        const inspectionHandler = vi.fn();
+        const nextPhaseHandler = vi.fn();
 
-        coordinator.on('execute-inspection', inspectionHandler);
+        coordinator.on('execute-next-phase', nextPhaseHandler);
 
         const options: AutoExecutionOptions = {
           permissions: {
             requirements: false,
             design: false,
             tasks: false,
+            'document-review': false,
             impl: true,
             inspection: true,
+            deploy: false,
           },
-          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },
@@ -1790,18 +1849,21 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
         await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
 
-        // After impl completion, should trigger inspection
-        expect(inspectionHandler).toHaveBeenCalledWith(specPath, expect.objectContaining({
+        // After impl completion, should trigger inspection via execute-next-phase
+        expect(nextPhaseHandler).toHaveBeenCalledWith(specPath, 'inspection', expect.objectContaining({
           specId: 'test-feature',
         }));
       });
 
+      /**
+       * document-review-phase: Updated to use execute-next-phase event
+       */
       it('should not execute inspection when permission disabled', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
-        const inspectionHandler = vi.fn();
+        const nextPhaseHandler = vi.fn();
         const completedHandler = vi.fn();
 
-        coordinator.on('execute-inspection', inspectionHandler);
+        coordinator.on('execute-next-phase', nextPhaseHandler);
         coordinator.on('execution-completed', completedHandler);
 
         const options: AutoExecutionOptions = {
@@ -1809,10 +1871,11 @@ describe('AutoExecutionCoordinator', () => {
             requirements: false,
             design: false,
             tasks: false,
+            'document-review': false,
             impl: true,
             inspection: false, // Disabled
+            deploy: false,
           },
-          documentReviewFlag: 'run',
           validationOptions: { gap: false, design: false, impl: false },
           approvals: {
             requirements: { generated: true, approved: true },
@@ -1825,8 +1888,11 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
         await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
 
-        // Should not trigger inspection
-        expect(inspectionHandler).not.toHaveBeenCalled();
+        // Should not trigger inspection (nextPhaseHandler should not be called with 'inspection')
+        const inspectionCalls = nextPhaseHandler.mock.calls.filter(
+          (call: unknown[]) => call[1] === 'inspection'
+        );
+        expect(inspectionCalls.length).toBe(0);
         // Should complete execution
         expect(completedHandler).toHaveBeenCalled();
       });

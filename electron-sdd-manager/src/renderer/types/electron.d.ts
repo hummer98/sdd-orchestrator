@@ -105,8 +105,10 @@ export type ExecutionGroup = 'doc' | 'impl';
 
 /**
  * Workflow phase type
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
  */
-export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-review' | 'impl' | 'inspection' | 'deploy';
 
 /**
  * Specs change event type
@@ -852,9 +854,13 @@ export interface ElectronAPI {
         requirements: boolean;
         design: boolean;
         tasks: boolean;
+        'document-review'?: boolean;
         impl: boolean;
+        inspection?: boolean;
+        deploy?: boolean;
       };
-      documentReviewFlag: 'run' | 'pause';
+      // document-review-phase Task 4.1: documentReviewFlag removed
+      // Use permissions['document-review'] instead
       timeoutMs?: number;
       /** Current approvals status from spec.json (used to skip completed phases) */
       approvals?: {

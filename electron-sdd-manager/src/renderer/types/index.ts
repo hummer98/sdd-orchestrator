@@ -266,17 +266,27 @@ export type AutoExecutionStatus =
   | 'error'      // エラー停止
   | 'completed'; // 完了
 
-/** 自動実行フェーズ許可設定 */
+/**
+ * 自動実行フェーズ許可設定
+ * document-review-phase Task 2.1: 'document-review' を追加
+ * Requirements: 2.1
+ */
 export interface AutoExecutionPermissions {
   requirements: boolean;
   design: boolean;
   tasks: boolean;
+  'document-review': boolean;
   impl: boolean;
   inspection: boolean;
   deploy: boolean;
 }
 
-/** ドキュメントレビューフラグ */
+/**
+ * ドキュメントレビューフラグ
+ * @deprecated document-review-phase Task 1.3: Use permissions['document-review'] instead
+ * Kept for backward compatibility with existing spec.json files during migration
+ * Requirements: 2.2
+ */
 export type DocumentReviewFlag = 'run' | 'pause';
 
 /**
@@ -289,22 +299,22 @@ export type InspectionAutoExecutionFlag = 'run' | 'pause';
  * Spec単位の自動実行状態
  * spec.jsonのautoExecutionフィールドに永続化される
  * inspection-permission-unification Task 3.1: Removed inspectionFlag field
- * Requirements: 3.2, 3.4
+ * document-review-phase Task 1.3: Removed documentReviewFlag field
+ * Requirements: 2.2, 3.2, 3.4
  */
 export interface SpecAutoExecutionState {
   /** 自動実行の有効/無効 */
   enabled: boolean;
   /** フェーズ別許可設定 */
   permissions: AutoExecutionPermissions;
-  /** ドキュメントレビューフラグ */
-  documentReviewFlag: DocumentReviewFlag;
+  // documentReviewFlag field removed - use permissions['document-review'] instead
   // inspectionFlag field removed - use permissions.inspection instead
 }
 
 /**
  * デフォルトの自動実行状態
- * inspection-permission-unification: Removed inspectionFlag
- * Requirements: 3.4
+ * document-review-phase Task 1.3: documentReviewFlag を削除し permissions['document-review'] を使用
+ * Requirements: 2.2, 2.3
  */
 export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
   enabled: false,
@@ -312,24 +322,26 @@ export const DEFAULT_SPEC_AUTO_EXECUTION_STATE: SpecAutoExecutionState = {
     requirements: true,
     design: true,
     tasks: true,
+    'document-review': true,  // document-review-phase: デフォルトGO
     impl: true,
     inspection: true,  // inspection permission is now handled via permissions.inspection
     deploy: true,
   },
-  documentReviewFlag: 'pause',
+  // documentReviewFlag removed - use permissions['document-review'] instead
   // inspectionFlag removed - use permissions.inspection instead
 };
 
 /**
  * Partial型の自動実行状態からフル状態を生成するファクトリー関数
  * inspection-permission-unification Task 3.2: Removed inspectionFlag processing
- * Requirements: 3.5
+ * document-review-phase Task 1.3: Removed documentReviewFlag processing
+ * Requirements: 2.2, 3.5
  */
 export function createSpecAutoExecutionState(
   partial?: Partial<{
     enabled: boolean;
     permissions: Partial<AutoExecutionPermissions>;
-    documentReviewFlag: DocumentReviewFlag;
+    // documentReviewFlag parameter removed - use permissions['document-review'] instead
     // inspectionFlag parameter removed - use permissions.inspection instead
   }>
 ): SpecAutoExecutionState {
@@ -343,8 +355,7 @@ export function createSpecAutoExecutionState(
       ...DEFAULT_SPEC_AUTO_EXECUTION_STATE.permissions,
       ...(partial.permissions ?? {}),
     },
-    documentReviewFlag:
-      partial.documentReviewFlag ?? DEFAULT_SPEC_AUTO_EXECUTION_STATE.documentReviewFlag,
+    // documentReviewFlag processing removed - use permissions['document-review'] instead
     // inspectionFlag processing removed - use permissions.inspection instead
   };
 }

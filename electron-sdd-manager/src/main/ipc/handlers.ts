@@ -625,6 +625,8 @@ function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBug
 
 function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): void {
   // execute-next-phase
+  // document-review-phase Task 3.1, 3.2: Integrated document-review and inspection handling
+  // Requirements: 3.2, 3.3, 5.2, 5.3
   coordinator.on('execute-next-phase', async (specPath: string, phase: WorkflowPhase, context: { specId: string; featureName: string }) => {
     logger.info('[handlers] execute-next-phase event received', { specPath, phase, context });
     try {
@@ -632,6 +634,80 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
       const window = BrowserWindow.getAllWindows()[0];
       if (!window) return;
       coordinator.setCurrentPhase(specPath, phase);
+
+      // ============================================================
+      // document-review-phase Task 3.1: Handle document-review phase
+      // Requirements: 3.2, 3.3, 3.4
+      // ============================================================
+      if (phase === 'document-review') {
+        logger.info('[handlers] execute-next-phase: executing document-review phase', { specPath, context });
+
+        // Read scheme from spec.json
+        let scheme: import('../../shared/registry/reviewEngineRegistry').ReviewerScheme | undefined;
+        try {
+          const specJsonPath = join(specPath, 'spec.json');
+          const specJsonContent = await access(specJsonPath).then(() => import('fs/promises').then(fs => fs.readFile(specJsonPath, 'utf-8')), () => null);
+          if (specJsonContent) scheme = JSON.parse(specJsonContent).documentReview?.scheme;
+        } catch { /* use default */ }
+
+        const reviewResult = await service.execute({
+          type: 'document-review',
+          specId: context.specId,
+          featureName: context.featureName,
+          commandPrefix: 'kiro',
+          scheme,
+        });
+
+        if (!reviewResult.ok) {
+          coordinator.handleDocumentReviewCompleted(specPath, false);
+          return;
+        }
+
+        // Setup listener for document-review completion to trigger reply
+        const handleReviewStatusChange = async (changedAgentId: string, status: string) => {
+          if (changedAgentId === reviewResult.value.agentId) {
+            if (status === 'completed') {
+              service.offStatusChange(handleReviewStatusChange);
+              await executeDocumentReviewReply(service, specPath, context.specId, coordinator);
+            } else if (status === 'failed' || status === 'stopped') {
+              service.offStatusChange(handleReviewStatusChange);
+              coordinator.handleDocumentReviewCompleted(specPath, false);
+            }
+          }
+        };
+        service.onStatusChange(handleReviewStatusChange);
+        return; // Early return for document-review phase
+      }
+
+      // ============================================================
+      // document-review-phase Task 3.2: Handle inspection phase
+      // Requirements: 5.2, 5.3
+      // ============================================================
+      if (phase === 'inspection') {
+        logger.info('[handlers] execute-next-phase: executing inspection phase', { specPath, context });
+
+        const result = await service.execute({
+          type: 'inspection',
+          specId: context.specId,
+          featureName: context.featureName,
+          commandPrefix: 'kiro',
+          autofix: true,
+        });
+
+        if (!result.ok) {
+          coordinator.handleInspectionCompleted(specPath, 'failed');
+          return;
+        }
+
+        const handleStatusChange = async (changedAgentId: string, status: string) => {
+          if (changedAgentId === result.value.agentId && ['completed', 'failed', 'stopped'].includes(status)) {
+            service.offStatusChange(handleStatusChange);
+            coordinator.handleInspectionCompleted(specPath, status === 'completed' ? 'passed' : 'failed');
+          }
+        };
+        service.onStatusChange(handleStatusChange);
+        return; // Early return for inspection phase
+      }
 
       // ============================================================
       // impl-mode-toggle: Read impl.mode from spec.json to determine execution type
@@ -690,59 +766,10 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
     }
   });
 
-  // execute-document-review
-  coordinator.on('execute-document-review', async (specPath: string, context: { specId: string }) => {
-    logger.info('[handlers] execute-document-review event received', { specPath, context });
-    try {
-      const service = getSpecManagerService();
-      const window = BrowserWindow.getAllWindows()[0];
-      if (!window) { coordinator.handleDocumentReviewCompleted(specPath, false); return; }
-
-      let scheme: import('../../shared/registry/reviewEngineRegistry').ReviewerScheme | undefined;
-      try {
-        const specJsonPath = join(specPath, 'spec.json');
-        const specJsonContent = await access(specJsonPath).then(() => import('fs/promises').then(fs => fs.readFile(specJsonPath, 'utf-8')), () => null);
-        if (specJsonContent) scheme = JSON.parse(specJsonContent).documentReview?.scheme;
-      } catch { /* use default */ }
-
-      const reviewResult = await service.execute({ type: 'document-review', specId: context.specId, featureName: context.specId, commandPrefix: 'kiro', scheme });
-      if (!reviewResult.ok) { coordinator.handleDocumentReviewCompleted(specPath, false); return; }
-
-      const handleReviewStatusChange = async (changedAgentId: string, status: string) => {
-        if (changedAgentId === reviewResult.value.agentId) {
-          if (status === 'completed') {
-            service.offStatusChange(handleReviewStatusChange);
-            await executeDocumentReviewReply(service, specPath, context.specId, coordinator);
-          } else if (status === 'failed' || status === 'stopped') {
-            service.offStatusChange(handleReviewStatusChange);
-            coordinator.handleDocumentReviewCompleted(specPath, false);
-          }
-        }
-      };
-      service.onStatusChange(handleReviewStatusChange);
-    } catch {
-      coordinator.handleDocumentReviewCompleted(specPath, false);
-    }
-  });
-
-  // execute-inspection
-  coordinator.on('execute-inspection', async (specPath: string, context: { specId: string }) => {
-    logger.info('[handlers] execute-inspection event received', { specPath, context });
-    try {
-      const service = getSpecManagerService();
-      const result = await service.execute({ type: 'inspection', specId: context.specId, featureName: context.specId, commandPrefix: 'kiro', autofix: true });
-      if (!result.ok) { coordinator.handleInspectionCompleted(specPath, 'failed'); return; }
-      const handleStatusChange = async (changedAgentId: string, status: string) => {
-        if (changedAgentId === result.value.agentId && ['completed', 'failed', 'stopped'].includes(status)) {
-          service.offStatusChange(handleStatusChange);
-          coordinator.handleInspectionCompleted(specPath, status === 'completed' ? 'passed' : 'failed');
-        }
-      };
-      service.onStatusChange(handleStatusChange);
-    } catch {
-      coordinator.handleInspectionCompleted(specPath, 'failed');
-    }
-  });
+  // document-review-phase Task 3.3: execute-document-review and execute-inspection event handlers removed
+  // These are now handled directly in execute-next-phase when phase === 'document-review' or phase === 'inspection'
+  // The events are still emitted by AutoExecutionCoordinator for backward compatibility with tasks completion logic
+  // but the actual execution is unified in execute-next-phase
 
   // execute-spec-merge
   coordinator.on('execute-spec-merge', async (specPath: string, context: { specId: string }) => {

@@ -11,6 +11,7 @@
  */
 
 // Re-export existing types from renderer
+// document-review-phase Task 8.1: Removed DocumentReviewFlag import
 import type {
   SpecMetadata,
   SpecDetail,
@@ -19,7 +20,6 @@ import type {
   Phase,
   LogEntry,
   AutoExecutionPermissions,
-  DocumentReviewFlag,
   AutoExecutionStatus,
   SpecAutoExecutionState,
   ApprovalStatus,
@@ -114,11 +114,14 @@ export interface ApiError {
  * Workflow phases that can be executed
  * Used for spec phase execution commands
  * Note: Must match the electron.d.ts WorkflowPhase definition
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
  */
 export type WorkflowPhase =
   | 'requirements'
   | 'design'
   | 'tasks'
+  | 'document-review'
   | 'impl'
   | 'inspection'
   | 'deploy';
@@ -176,10 +179,12 @@ export interface AgentInfo {
 
 /**
  * Auto execution options for startAutoExecution
+ * document-review-phase Task 8.1: Removed documentReviewFlag
+ * Requirements: 2.2, 2.5
  */
 export interface AutoExecutionOptions {
   permissions: AutoExecutionPermissions;
-  documentReviewFlag: DocumentReviewFlag;
+  // documentReviewFlag removed - use permissions['document-review'] instead
 }
 
 /**
@@ -648,7 +653,7 @@ export type {
   Phase,
   LogEntry,
   AutoExecutionPermissions,
-  DocumentReviewFlag,
+  // DocumentReviewFlag removed - document-review-phase Task 8.1
   SpecAutoExecutionState,
   BugMetadata,
   BugDetail,

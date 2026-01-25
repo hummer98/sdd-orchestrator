@@ -55,16 +55,25 @@ export interface TaskItem {
 
 const DISPLAY_PHASES: WorkflowPhase[] = ['requirements', 'design', 'tasks'];
 
+/**
+ * document-review-phase Task 1.2: 'document-review' のラベルを追加
+ * Requirements: 1.3
+ */
 const PHASE_LABELS: Record<WorkflowPhase, string> = {
   requirements: '要件定義',
   design: '設計',
   tasks: 'タスク',
+  'document-review': 'ドキュメントレビュー',
   impl: '実装',
   inspection: 'Inspection',
   deploy: 'デプロイ',
 };
 
-/** フェーズ説明のマッピング（Infoダイアログ用） */
+/**
+ * フェーズ説明のマッピング（Infoダイアログ用）
+ * document-review-phase Task 1.2: 'document-review' の説明を追加
+ * Requirements: 1.3
+ */
 const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
   requirements: `要件定義フェーズでは、ユーザーストーリーや機能要件をEARS (Easy Approach to Requirements Syntax) 形式で定義します。
 
@@ -84,6 +93,13 @@ const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
 • 依存関係を考慮したタスク分割
 • 各タスクのテストファースト実装手順
 • 並列実行可能なタスクの識別`,
+
+  'document-review': `ドキュメントレビューフェーズでは、生成されたドキュメント（requirements, design, tasks）の品質をAIがレビューします。
+
+• 要件の完全性・一貫性チェック
+• 設計の技術的妥当性評価
+• タスク分割の適切性確認
+• 複数ラウンドの反復的改善`,
 
   impl: `実装フェーズでは、タスクに従ってTDD方式でコードを実装します。
 

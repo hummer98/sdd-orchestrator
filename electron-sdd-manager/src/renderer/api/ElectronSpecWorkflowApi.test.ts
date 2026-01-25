@@ -47,14 +47,17 @@ describe('ElectronSpecWorkflowApi', () => {
     const testProjectPath = '/path/to/project';
     const testSpecPath = '/path/to/project/.kiro/specs/test-feature';
     const testSpecId = 'test-feature';
+    // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
     const testOptions = {
       permissions: {
         requirements: true,
         design: true,
         tasks: true,
+        'document-review': true,
         impl: false,
+        inspection: true,
+        deploy: false,
       },
-      documentReviewFlag: 'enabled' as const,
     };
 
     it('should accept projectPath as first argument', async () => {
@@ -172,6 +175,7 @@ describe('ElectronSpecWorkflowApi', () => {
       await api.startAutoExecution(testProjectPath, testSpecPath, testSpecId, testOptions);
 
       // Assert - Verify options structure
+      // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
       expect(mockAutoExecutionStart).toHaveBeenCalledWith(
         expect.objectContaining({
           options: expect.objectContaining({
@@ -179,9 +183,9 @@ describe('ElectronSpecWorkflowApi', () => {
               requirements: true,
               design: true,
               tasks: true,
+              'document-review': true,
               impl: false,
             }),
-            documentReviewFlag: 'enabled',
           }),
         })
       );

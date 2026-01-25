@@ -260,11 +260,37 @@ export class FileService {
 
   /**
    * Migrate spec.json from old spec-manager format to new CC-SDD format
+   * document-review-phase Task 5.1: Also migrates documentReviewFlag to permissions['document-review']
+   * Requirements: 4.1, 4.2
    */
   private migrateSpecJson(rawJson: any): SpecJson {
-    // If already in new format, return as is
+    // If already in new format, perform documentReviewFlag migration
     if ('feature_name' in rawJson && 'approvals' in rawJson) {
-      return rawJson as SpecJson;
+      // document-review-phase Task 5.1: Migrate documentReviewFlag to permissions['document-review']
+      const result = rawJson as SpecJson;
+      if (result.autoExecution) {
+        const oldFlag = (result.autoExecution as any).documentReviewFlag;
+        if (oldFlag !== undefined) {
+          // Ensure permissions exists
+          if (!result.autoExecution.permissions) {
+            result.autoExecution.permissions = {
+              requirements: true,
+              design: true,
+              tasks: true,
+              'document-review': oldFlag === 'run', // 'run' -> true, 'pause' -> false
+              impl: true,
+              inspection: true,
+              deploy: true,
+            };
+          } else if (result.autoExecution.permissions['document-review'] === undefined) {
+            // Only set if not already defined
+            result.autoExecution.permissions['document-review'] = oldFlag === 'run';
+          }
+          // Note: documentReviewFlag is kept for backward compatibility
+          // It will be ignored by new code
+        }
+      }
+      return result;
     }
 
     // Old spec-manager format:

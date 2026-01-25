@@ -8,7 +8,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PhaseItem } from './PhaseItem';
 
-type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'impl' | 'inspection' | 'deploy';
+/**
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
+ */
+type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-review' | 'impl' | 'inspection' | 'deploy';
 type PhaseStatus = 'pending' | 'generated' | 'approved';
 
 const defaultProps = {

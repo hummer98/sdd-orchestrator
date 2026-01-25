@@ -291,16 +291,18 @@ export function useRemoteWorkflowState(
         setCurrentAutoPhase(null);
       }
     } else {
+      // document-review-phase Task 2.1: 'document-review' を追加
       const options: AutoExecutionOptions = {
         permissions: specDetail.specJson?.autoExecution?.permissions ?? {
           requirements: true,
           design: true,
           tasks: true,
+          'document-review': true,
           impl: false,
           inspection: false,
           deploy: false,
         },
-        documentReviewFlag: specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
+        // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
       };
 
       // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client
@@ -432,10 +434,12 @@ export function useRemoteWorkflowState(
     isAutoExecuting: autoExecutionStatus === 'running',
     currentAutoPhase,
     autoExecutionStatus,
+    // document-review-phase Task 2.1: 'document-review' を追加
     autoExecutionPermissions: specDetail?.specJson?.autoExecution?.permissions ?? {
       requirements: true,
       design: true,
       tasks: true,
+      'document-review': true,
       impl: false,
       inspection: false,
       deploy: false,
@@ -444,7 +448,8 @@ export function useRemoteWorkflowState(
     // Document Review
     documentReviewState,
     documentReviewScheme,
-    documentReviewAutoExecutionFlag: specDetail?.specJson?.autoExecution?.documentReviewFlag ?? 'run',
+    // document-review-phase: documentReviewAutoExecutionFlag derived from permissions['document-review']
+    documentReviewAutoExecutionFlag: specDetail?.specJson?.autoExecution?.permissions?.['document-review'] !== false ? 'run' : 'pause',
 
     // Inspection
     inspectionState,

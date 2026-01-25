@@ -48,10 +48,11 @@ export interface ApprovalsStatus {
 
 /**
  * Auto execution options
+ * document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
  */
 export interface AutoExecutionOptions {
   readonly permissions: AutoExecutionPermissions;
-  readonly documentReviewFlag: 'run' | 'pause';
+  // documentReviewFlag removed - use permissions['document-review'] instead
   readonly timeoutMs?: number;
   /** Current approvals status from spec.json (used to skip completed phases) */
   readonly approvals?: ApprovalsStatus;

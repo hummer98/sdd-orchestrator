@@ -12,17 +12,25 @@ import { normalizeInspectionState, hasPassed } from './inspection';
 // Requirements: 1.1, 1.3
 // ============================================================
 
-/** SDDワークフローのフェーズ */
+/**
+ * SDDワークフローのフェーズ
+ * document-review-phase Task 1.1: 'document-review' を追加
+ * Requirements: 1.2
+ */
 export type WorkflowPhase =
   | 'requirements' // 要件定義
   | 'design' // 設計
   | 'tasks' // タスク
+  | 'document-review' // ドキュメントレビュー (document-review-phase)
   | 'impl' // 実装
   | 'inspection' // 検査（InspectionPanelで表示）
   | 'deploy'; // デプロイ
 
-/** PhaseItemとして表示されるフェーズ（inspectionはInspectionPanelで別途表示） */
-export type DisplayablePhase = Exclude<WorkflowPhase, 'inspection'>;
+/**
+ * PhaseItemとして表示されるフェーズ
+ * document-review-phase: document-reviewとinspectionは別パネルで表示
+ */
+export type DisplayablePhase = Exclude<WorkflowPhase, 'inspection' | 'document-review'>;
 
 /** PhaseItemとして表示されるフェーズ順序定義 */
 export const WORKFLOW_PHASES: DisplayablePhase[] = [
@@ -41,27 +49,41 @@ export const WORKFLOW_PHASES: DisplayablePhase[] = [
 export const DISPLAY_PHASES = ['requirements', 'design', 'tasks'] as const;
 export type DisplayPhase = typeof DISPLAY_PHASES[number];
 
-/** 全フェーズ順序定義（inspectionを含む、状態判定用） */
+/**
+ * 全フェーズ順序定義（document-review, inspectionを含む、状態判定用）
+ * document-review-phase Task 1.1: 'document-review' を tasks と impl の間に追加
+ * Requirements: 1.2
+ */
 export const ALL_WORKFLOW_PHASES: WorkflowPhase[] = [
   'requirements',
   'design',
   'tasks',
+  'document-review',
   'impl',
   'inspection',
   'deploy',
 ];
 
-/** フェーズ表示名のマッピング（日本語） */
+/**
+ * フェーズ表示名のマッピング（日本語）
+ * document-review-phase Task 1.2: 'document-review' のラベルを追加
+ * Requirements: 1.3
+ */
 export const PHASE_LABELS: Record<WorkflowPhase, string> = {
   requirements: '要件定義',
   design: '設計',
   tasks: 'タスク',
+  'document-review': 'ドキュメントレビュー',
   impl: '実装',
   inspection: '検査',
   deploy: 'コミット',
 };
 
-/** フェーズ説明のマッピング（Infoダイアログ用） */
+/**
+ * フェーズ説明のマッピング（Infoダイアログ用）
+ * document-review-phase Task 1.2: 'document-review' の説明を追加
+ * Requirements: 1.3
+ */
 export const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
   requirements: `要件定義フェーズでは、ユーザーストーリーや機能要件をEARS (Easy Approach to Requirements Syntax) 形式で定義します。
 
@@ -81,6 +103,13 @@ export const PHASE_DESCRIPTIONS: Record<WorkflowPhase, string> = {
 • 依存関係を考慮したタスク分割
 • 各タスクのテストファースト実装手順
 • 並列実行可能なタスクの識別`,
+
+  'document-review': `ドキュメントレビューフェーズでは、生成されたドキュメント（requirements, design, tasks）の品質をAIがレビューします。
+
+• 要件の完全性・一貫性チェック
+• 設計の技術的妥当性評価
+• タスク分割の適切性確認
+• 複数ラウンドの反復的改善`,
 
   impl: `実装フェーズでは、タスクに従ってTDD方式でコードを実装します。
 
@@ -190,6 +219,26 @@ export function getPhaseStatus(
     return 'pending';
   }
 
+  /**
+   * document-review-phase Task 1.1: ドキュメントレビューフェーズの状態判定
+   * Requirements: 1.2, 4.1
+   * - documentReview.status === 'approved' → 'approved'
+   * - documentReview.status === 'in_progress' → 'generated'
+   * - それ以外 → 'pending'
+   */
+  if (phase === 'document-review') {
+    const documentReview = specJson.documentReview;
+    if (!documentReview) return 'pending';
+
+    if (documentReview.status === 'approved') {
+      return 'approved';
+    }
+    if (documentReview.status === 'in_progress') {
+      return 'generated';
+    }
+    return 'pending';
+  }
+
   // 要件定義、設計、タスクフェーズ
   const approval = specJson.approvals[phase as keyof typeof specJson.approvals];
   if (approval) {
@@ -203,12 +252,17 @@ export function getPhaseStatus(
 // Phase Command Mapping
 // ============================================================
 
-/** プレフィックス別フェーズ実行コマンドマッピング */
+/**
+ * プレフィックス別フェーズ実行コマンドマッピング
+ * document-review-phase Task 1.3: 'document-review' コマンドを追加
+ * Requirements: 1.4
+ */
 const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, string>> = {
   kiro: {
     requirements: '/kiro:spec-requirements',
     design: '/kiro:spec-design',
     tasks: '/kiro:spec-tasks',
+    'document-review': '/kiro:spec-document-review',
     impl: '/kiro:spec-impl',
     inspection: '/kiro:spec-inspection',
     deploy: '/commit',
@@ -217,6 +271,7 @@ const PHASE_COMMANDS_BY_PREFIX: Record<CommandPrefix, Record<WorkflowPhase, stri
     requirements: '/spec-manager:requirements',
     design: '/spec-manager:design',
     tasks: '/spec-manager:tasks',
+    'document-review': '/spec-manager:document-review',
     impl: '/spec-manager:impl',
     inspection: '/spec-manager:inspection',
     deploy: '/commit',

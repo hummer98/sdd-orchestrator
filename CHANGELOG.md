@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0] - 2026-01-25
+
+### Added
+- **llm-engine-abstraction**: LLMエンジン抽象化とプロジェクト単位設定機能を追加
+
+### Fixed
+- **gemini-document-review**: メニューイベントハンドラの欠落を修正
+- **metrics**: resumeAgentでAI実行時間の計測が開始されないバグを修正
+
+### Changed
+- **steering**: テンプレートの整理
+
 ## [0.49.0] - 2026-01-25
 
 ### Added

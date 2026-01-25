@@ -1510,6 +1510,13 @@ export interface ElectronAPI {
      * @param port Port number (1024-65535)
      */
     setPort(port: number): Promise<void>;
+
+    /**
+     * Subscribe to MCP server status changes
+     * @param callback Function called when status changes
+     * @returns Cleanup function to unsubscribe
+     */
+    onStatusChanged(callback: (status: { isRunning: boolean; port: number | null; url: string | null }) => void): () => void;
   };
 
   // ============================================================

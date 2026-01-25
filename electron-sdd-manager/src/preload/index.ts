@@ -2224,6 +2224,23 @@ const electronAPI = {
      */
     setPort: (port: number): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.MCP_SET_PORT, port),
+
+    /**
+     * Subscribe to MCP server status changes
+     * @param callback Function called when status changes
+     * @returns Cleanup function to unsubscribe
+     */
+    onStatusChanged: (callback: (status: { isRunning: boolean; port: number | null; url: string | null }) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, status: { isRunning: boolean; port: number | null; url: string | null }) => {
+        callback(status);
+      };
+      ipcRenderer.on(IPC_CHANNELS.MCP_STATUS_CHANGED, handler);
+
+      // Return cleanup function
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.MCP_STATUS_CHANGED, handler);
+      };
+    },
   },
 
   // ============================================================

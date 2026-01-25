@@ -353,6 +353,7 @@ export const IPC_CHANNELS = {
   MCP_GET_SETTINGS: 'mcp:get-settings',
   MCP_SET_ENABLED: 'mcp:set-enabled',
   MCP_SET_PORT: 'mcp:set-port',
+  MCP_STATUS_CHANGED: 'mcp:status-changed',
 
   // Schedule Task (schedule-task-execution feature)
   // Requirements: All IPC (design.md API Contract)

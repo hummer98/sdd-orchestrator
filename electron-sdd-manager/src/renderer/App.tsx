@@ -51,6 +51,8 @@ import { ApiClientProvider, PlatformProvider } from '../shared';
 import { ProfileBadge } from '../shared/components/ui';
 // mcp-server-integration Task 7.5: MCP Status Indicator
 import { McpStatusIndicator } from '../shared/components/ui';
+// mcp-server-integration: MCP store for status synchronization
+import { useMcpStore } from '../shared/stores/mcpStore';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -87,6 +89,8 @@ export function App() {
   const { setupEventListeners } = useAgentStore();
   const { setCommandPrefix } = useWorkflowStore();
   const { isRunning: isRemoteServerRunning, startServer, stopServer, initialize: initializeRemoteAccess } = useRemoteAccessStore();
+  // mcp-server-integration: MCP store initialization
+  const { initialize: initializeMcpStore } = useMcpStore();
   const { addNotification } = useNotificationStore();
   const {
     connectSSH,
@@ -260,6 +264,17 @@ export function App() {
     remoteAccessInitialized.current = true;
     initializeRemoteAccess();
   }, [initializeRemoteAccess]);
+
+  // Initialize MCP store on mount (mcp-server-integration)
+  // This enables mcpStore to receive status updates from Main Process
+  const mcpStoreInitialized = useRef(false);
+  useEffect(() => {
+    if (mcpStoreInitialized.current) {
+      return;
+    }
+    mcpStoreInitialized.current = true;
+    initializeMcpStore();
+  }, [initializeMcpStore]);
 
   // Initialize auto-execution IPC listeners on mount
   // This enables specStore to receive state updates from Main Process (bug fix: auto-execution-state-sync)

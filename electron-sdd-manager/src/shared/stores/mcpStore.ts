@@ -43,9 +43,17 @@ export interface McpStoreState {
 export interface McpStoreActions {
   /** Update server status */
   setStatus: (status: McpServerStatus) => void;
+  /** Initialize store: load initial status and subscribe to changes */
+  initialize: () => Promise<void>;
 }
 
 export type McpStore = McpStoreState & McpStoreActions;
+
+// =============================================================================
+// Module-level state for cleanup
+// =============================================================================
+
+let statusUnsubscribe: (() => void) | null = null;
 
 // =============================================================================
 // Store
@@ -64,6 +72,34 @@ export const useMcpStore = create<McpStore>((set) => ({
       port: status.port,
       url: status.url,
     });
+  },
+
+  initialize: async () => {
+    // Skip if already initialized or if electronAPI is not available (Remote UI)
+    if (statusUnsubscribe || typeof window === 'undefined' || !window.electronAPI?.mcpServer) {
+      return;
+    }
+
+    try {
+      // Load initial status
+      const status = await window.electronAPI.mcpServer.getStatus();
+      set({
+        isRunning: status.isRunning,
+        port: status.port,
+        url: status.url,
+      });
+
+      // Subscribe to status changes
+      statusUnsubscribe = window.electronAPI.mcpServer.onStatusChanged((newStatus) => {
+        set({
+          isRunning: newStatus.isRunning,
+          port: newStatus.port,
+          url: newStatus.url,
+        });
+      });
+    } catch (error) {
+      console.error('[mcpStore] Failed to initialize:', error);
+    }
   },
 }));
 

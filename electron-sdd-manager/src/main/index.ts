@@ -19,7 +19,8 @@ import { getConfigStore } from './services/configStore';
 import { logger } from './services/logger';
 import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser';
 import { getAccessTokenService } from './services/accessTokenService';
-import { initializeMcpServer } from './services/mcp/mcpAutoStart';
+import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
+import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -219,6 +220,11 @@ app.whenReady().then(async () => {
   // Task 6.4: Initialize MCP server (mcp-server-integration)
   // Auto-start MCP server if enabled in settings
   const configStore = getConfigStore();
+
+  // Setup MCP status broadcast to Renderer (must be done before server starts)
+  const mcpService = getMcpServerService();
+  setupMcpStatusBroadcast(mcpService);
+
   await initializeMcpServer(() => configStore.getMcpSettings());
 
   // Initialize with project path from command line if provided

@@ -709,6 +709,49 @@ describe('IPC Handlers - ScheduleTaskCoordinator Integration (Task 8.3)', () => 
   });
 });
 
+// =============================================================================
+// Inspection Fix Tasks - Round 1 (runtime-agents-restructure feature)
+// Requirements: 4.2, 4.3, 4.5, 5.1, 5.2, 5.4
+// =============================================================================
+
+describe('IPC Handlers - SWITCH_AGENT_WATCH_SCOPE with Category (Task 10.1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('SWITCH_AGENT_WATCH_SCOPE channel registration', () => {
+    it('should register switch-agent-watch-scope handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasSwitchScope = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:switch-agent-watch-scope'
+      );
+      expect(hasSwitchScope).toBe(true);
+    });
+  });
+
+  describe('Category determination from scopeId', () => {
+    it('should determine specs category for regular specId', async () => {
+      const { determineCategory, getEntityIdFromSpecId } = await import('../services/agentCategory');
+      expect(determineCategory('my-feature')).toBe('specs');
+      expect(getEntityIdFromSpecId('my-feature')).toBe('my-feature');
+    });
+
+    it('should determine bugs category for bug: prefixed scopeId', async () => {
+      const { determineCategory, getEntityIdFromSpecId } = await import('../services/agentCategory');
+      expect(determineCategory('bug:login-error')).toBe('bugs');
+      expect(getEntityIdFromSpecId('bug:login-error')).toBe('login-error');
+    });
+
+    it('should determine project category for empty scopeId', async () => {
+      const { determineCategory } = await import('../services/agentCategory');
+      expect(determineCategory('')).toBe('project');
+    });
+  });
+});
+
 // ============================================================
 // release-button-api-fix: EXECUTE_PROJECT_COMMAND Handler
 // Task 4.1: Implement EXECUTE_PROJECT_COMMAND handler
@@ -812,6 +855,64 @@ describe('IPC Handlers - EXECUTE_PROJECT_COMMAND (Task 4.1)', () => {
       //
       // This is verified by the _Verify clause and integration test
       expect(true).toBe(true); // Placeholder - actual behavior tested via integration
+    });
+  });
+});
+
+describe('IPC Handlers - Migration Service Integration (Task 10.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Migration IPC channel definitions', () => {
+    it('should define CHECK_MIGRATION_NEEDED channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.CHECK_MIGRATION_NEEDED).toBe('ipc:check-migration-needed');
+    });
+
+    it('should define ACCEPT_MIGRATION channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.ACCEPT_MIGRATION).toBe('ipc:accept-migration');
+    });
+
+    it('should define DECLINE_MIGRATION channel constant', async () => {
+      const { IPC_CHANNELS } = await import('./channels');
+      expect(IPC_CHANNELS.DECLINE_MIGRATION).toBe('ipc:decline-migration');
+    });
+  });
+
+  describe('Migration IPC handler registration', () => {
+    it('should register check-migration-needed handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasCheckMigration = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:check-migration-needed'
+      );
+      expect(hasCheckMigration).toBe(true);
+    });
+
+    it('should register accept-migration handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasAcceptMigration = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:accept-migration'
+      );
+      expect(hasAcceptMigration).toBe(true);
+    });
+
+    it('should register decline-migration handler', async () => {
+      const { registerIpcHandlers } = await import('./handlers');
+      registerIpcHandlers();
+
+      const handleCalls = (ipcMain.handle as any).mock.calls;
+      const hasDeclineMigration = handleCalls.some(
+        ([channel]: [string]) => channel === 'ipc:decline-migration'
+      );
+      expect(hasDeclineMigration).toBe(true);
     });
   });
 });

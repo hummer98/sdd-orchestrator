@@ -57,6 +57,8 @@ import { registerBugHandlers, startBugsWatcher as startBugsWatcherImpl, stopBugs
 import { registerAgentHandlers, startAgentRecordWatcher, stopAgentRecordWatcher } from './agentHandlers';
 import { registerProjectHandlers, validateProjectPath as validateProjectPathImpl, isProjectSelectionInProgress as isProjectSelectionInProgressImpl, setProjectSelectionLock as setProjectSelectionLockImpl, resetProjectSelectionLock as resetProjectSelectionLockImpl } from './projectHandlers';
 import { registerSpecHandlers, startSpecsWatcher as startSpecsWatcherImpl, stopSpecsWatcher as stopSpecsWatcherImpl } from './specHandlers';
+// runtime-agents-restructure: Migration service
+import { MigrationService, type MigrationInfo } from '../services/migrationService';
 
 // Types
 import type { SelectProjectResult } from '../../renderer/types';
@@ -81,6 +83,10 @@ const commandsetVersionService = new CommandsetVersionService();
 // ============================================================
 let specManagerService: SpecManagerService | null = null;
 let autoExecutionCoordinator: AutoExecutionCoordinator | null = null;
+// MigrationService instance (runtime-agents-restructure feature)
+// Requirements: 5.1, 5.2, 5.4
+let migrationService: MigrationService | null = null;
+// Track if event callbacks have been set up to avoid duplicates
 let eventCallbacksRegistered = false;
 let initialProjectPath: string | null = null;
 let currentProjectPath: string | null = null;
@@ -385,6 +391,7 @@ export function registerIpcHandlers(): void {
     projectLogger.logFromRenderer(level, message, context);
   });
 
+
   // Domain Handler Registration
   registerCloudflareHandlers();
   registerConfigHandlers({ configStore, layoutConfigService });
@@ -490,6 +497,103 @@ export function registerIpcHandlers(): void {
 
   // Steering Verification Handlers
   registerSteeringHandlers();
+
+  // ============================================================
+  // Migration Service Handlers (runtime-agents-restructure feature)
+  // Task 10.2: Integrate MigrationService into IPC handlers
+  // Requirements: 5.1, 5.2, 5.4
+  // ============================================================
+
+  // CHECK_MIGRATION_NEEDED: Check if legacy runtime agents exist and need migration for a specific spec/bug
+  // Returns MigrationInfo per spec with fileCount and totalSize
+  ipcMain.handle(
+    IPC_CHANNELS.CHECK_MIGRATION_NEEDED,
+    async (_event, projectPath: string, specId: string): Promise<MigrationInfo | null> => {
+      logger.info('[handlers] CHECK_MIGRATION_NEEDED called', { projectPath, specId });
+
+      try {
+        // Lazily initialize migrationService with project path
+        if (!migrationService) {
+          const runtimeAgentsBasePath = path.join(projectPath, '.kiro', 'runtime', 'agents');
+          migrationService = new MigrationService(runtimeAgentsBasePath);
+        }
+
+        const migrationInfo = await migrationService.checkMigrationNeeded(specId);
+        logger.info('[handlers] CHECK_MIGRATION_NEEDED result', {
+          projectPath,
+          specId,
+          needed: migrationInfo !== null,
+          fileCount: migrationInfo?.fileCount ?? 0,
+          totalSize: migrationInfo?.totalSize ?? 0,
+        });
+
+        return migrationInfo;
+      } catch (error) {
+        logger.error('[handlers] CHECK_MIGRATION_NEEDED failed', { projectPath, specId, error });
+        return null;
+      }
+    }
+  );
+
+  // ACCEPT_MIGRATION: Perform migration of legacy runtime agents for a specific spec/bug
+  ipcMain.handle(
+    IPC_CHANNELS.ACCEPT_MIGRATION,
+    async (_event, projectPath: string, specId: string): Promise<{ ok: true; migratedCount: number } | { ok: false; error: string }> => {
+      logger.info('[handlers] ACCEPT_MIGRATION called', { projectPath, specId });
+
+      try {
+        // Ensure migrationService is initialized
+        if (!migrationService) {
+          const runtimeAgentsBasePath = path.join(projectPath, '.kiro', 'runtime', 'agents');
+          migrationService = new MigrationService(runtimeAgentsBasePath);
+        }
+
+        const result = await migrationService.migrateSpec(specId);
+        logger.info('[handlers] ACCEPT_MIGRATION result', {
+          projectPath,
+          specId,
+          success: result.success,
+          migratedFiles: result.migratedFiles,
+        });
+
+        if (result.success) {
+          return { ok: true, migratedCount: result.migratedFiles };
+        } else {
+          return { ok: false, error: result.error || 'Migration failed' };
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('[handlers] ACCEPT_MIGRATION failed', { projectPath, specId, error: errorMessage });
+        return { ok: false, error: errorMessage };
+      }
+    }
+  );
+
+  // DECLINE_MIGRATION: Mark migration as declined for a specific spec (don't show again this session)
+  ipcMain.handle(
+    IPC_CHANNELS.DECLINE_MIGRATION,
+    async (_event, projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      logger.info('[handlers] DECLINE_MIGRATION called', { projectPath, specId });
+
+      try {
+        // Ensure migrationService is initialized
+        if (!migrationService) {
+          const runtimeAgentsBasePath = path.join(projectPath, '.kiro', 'runtime', 'agents');
+          migrationService = new MigrationService(runtimeAgentsBasePath);
+        }
+
+        migrationService.declineMigration(specId);
+        logger.info('[handlers] DECLINE_MIGRATION completed', { projectPath, specId });
+
+        return { ok: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('[handlers] DECLINE_MIGRATION failed', { projectPath, specId, error: errorMessage });
+        return { ok: false, error: errorMessage };
+      }
+    }
+  );
+  logger.info('[handlers] Migration Service handlers registered');
 
   // Multi-Phase Auto-Execution events
   registerAutoExecutionEvents(coordinator);
@@ -622,6 +726,7 @@ function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBug
 // ============================================================
 // Spec Auto-Execution Events
 // ============================================================
+
 
 function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): void {
   // execute-next-phase

@@ -32,5 +32,8 @@ export * from './project';
 // Schedule Task components
 export * from './schedule';
 
+// Migration components (runtime-agents-restructure feature)
+export * from './migration';
+
 // Component categories will be added as they are migrated
 // export * from './tabs';

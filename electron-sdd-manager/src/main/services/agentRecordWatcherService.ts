@@ -12,6 +12,9 @@ import * as chokidar from 'chokidar';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logger';
+import { getCategoryBasePath } from './agentCategory';
+
+export type WatchCategory = 'specs' | 'bugs';
 
 // Bug fix: spec-agent-list-not-updating-on-auto-execution
 // Simplified event type - no longer includes record data
@@ -34,10 +37,13 @@ export type AgentRecordChangeCallback = (event: AgentRecordChangeEvent) => void;
  * - specWatcher: dynamically watches selected spec's subdirectory
  */
 export class AgentRecordWatcherService {
-  // agent-watcher-optimization: Two watcher instances
+  // agent-watcher-optimization: Three watcher instances for runtime-agents-restructure
   private _projectAgentWatcher: chokidar.FSWatcher | null = null;
   private _specWatcher: chokidar.FSWatcher | null = null;
+  private _bugWatcher: chokidar.FSWatcher | null = null;
   private _currentSpecId: string | null = null;
+  private _currentCategory: WatchCategory | null = null;
+  private _currentEntityId: string | null = null;
 
   private projectPath: string;
   private callbacks: AgentRecordChangeCallback[] = [];
@@ -55,6 +61,10 @@ export class AgentRecordWatcherService {
 
   get specWatcher(): chokidar.FSWatcher | null {
     return this._specWatcher;
+  }
+
+  get bugWatcher(): chokidar.FSWatcher | null {
+    return this._bugWatcher;
   }
 
   get currentSpecId(): string | null {
@@ -265,6 +275,9 @@ export class AgentRecordWatcherService {
    * agent-watcher-optimization:
    * - Stops both projectAgentWatcher and specWatcher
    * - Resets currentSpecId to null
+   *
+   * runtime-agents-restructure:
+   * - Also stops bugWatcher
    */
   async stop(): Promise<void> {
     // Stop projectAgentWatcher
@@ -281,8 +294,17 @@ export class AgentRecordWatcherService {
       this._specWatcher = null;
     }
 
+    // Stop bugWatcher (runtime-agents-restructure)
+    if (this._bugWatcher) {
+      logger.info('[AgentRecordWatcherService] Stopping bug watcher');
+      await this._bugWatcher.close();
+      this._bugWatcher = null;
+    }
+
     // Reset state
     this._currentSpecId = null;
+    this._currentCategory = null;
+    this._currentEntityId = null;
 
     // Clear all debounce timers
     for (const timer of this.debounceTimers.values()) {
@@ -291,6 +313,99 @@ export class AgentRecordWatcherService {
     this.debounceTimers.clear();
 
     this.callbacks = [];
+  }
+
+  // =============================================================================
+  // runtime-agents-restructure: Category-aware watching
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
+  // =============================================================================
+
+  /**
+   * Switch the watch scope with category
+   * Requirements: 4.2, 4.3, 4.5
+   *
+   * @param category - 'specs' | 'bugs'
+   * @param entityId - specId or bugId, or null to clear
+   */
+  async switchWatchScopeWithCategory(category: WatchCategory, entityId: string | null): Promise<void> {
+    // Stop existing spec and bug watchers
+    if (this._specWatcher) {
+      logger.info('[AgentRecordWatcherService] Stopping spec watcher', { previousSpec: this._currentSpecId });
+      await this._specWatcher.close();
+      this._specWatcher = null;
+    }
+    if (this._bugWatcher) {
+      logger.info('[AgentRecordWatcherService] Stopping bug watcher', { previousBug: this._currentEntityId });
+      await this._bugWatcher.close();
+      this._bugWatcher = null;
+    }
+
+    this._currentCategory = category;
+    this._currentEntityId = entityId;
+    // Maintain backward compatibility
+    this._currentSpecId = entityId;
+
+    // If entityId is null, just clear the watchers
+    if (entityId === null) {
+      logger.info('[AgentRecordWatcherService] Watch scope cleared');
+      return;
+    }
+
+    // Build path based on category: runtime/agents/{category}/{entityId}/
+    const categoryPath = getCategoryBasePath(
+      path.join(this.projectPath, '.kiro', 'runtime', 'agents'),
+      category,
+      entityId
+    );
+
+    // Ensure directory exists
+    if (!fs.existsSync(categoryPath)) {
+      logger.info('[AgentRecordWatcherService] Category directory does not exist, creating', { categoryPath });
+      fs.mkdirSync(categoryPath, { recursive: true });
+    }
+
+    logger.info('[AgentRecordWatcherService] Starting category watcher', { category, entityId, categoryPath });
+
+    // Create watcher based on category
+    const watcher = chokidar.watch(categoryPath, {
+      ignoreInitial: true,
+      persistent: true,
+      depth: 0,
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 50,
+      },
+    });
+
+    watcher
+      .on('add', (filePath) => this.handleEvent('add', filePath))
+      .on('change', (filePath) => this.handleEvent('change', filePath))
+      .on('unlink', (filePath) => this.handleEvent('unlink', filePath))
+      .on('error', (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('[AgentRecordWatcherService] Category watcher error', { error: message, category, entityId });
+      })
+      .on('ready', () => {
+        logger.info('[AgentRecordWatcherService] Category watcher ready', { category, entityId });
+      });
+
+    // Assign to appropriate watcher
+    if (category === 'bugs') {
+      this._bugWatcher = watcher;
+    } else {
+      this._specWatcher = watcher;
+    }
+  }
+
+  /**
+   * Get current watch scope with category
+   * @returns Current category and entityId
+   */
+  getWatchScopeWithCategory(): { category: WatchCategory | null; entityId: string | null } {
+    return {
+      category: this._currentCategory,
+      entityId: this._currentEntityId,
+    };
   }
 
   /**

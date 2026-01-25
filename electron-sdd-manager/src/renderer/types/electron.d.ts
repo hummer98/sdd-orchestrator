@@ -92,6 +92,20 @@ export interface CommonCommandConflict {
 }
 
 /**
+ * Migration info for legacy runtime agents
+ * (runtime-agents-restructure feature)
+ * Requirements: 5.1, 5.2, 5.4
+ */
+export interface MigrationInfo {
+  /** Spec ID (including 'bug:' prefix for bugs) */
+  readonly specId: string;
+  /** Number of files to migrate */
+  readonly fileCount: number;
+  /** Total size in bytes */
+  readonly totalSize: number;
+}
+
+/**
  * Agent status type
  * Requirements: 5.2
  */
@@ -1636,6 +1650,36 @@ export interface ElectronAPI {
   onScheduleTaskStatusChanged(
     callback: (event: import('../../shared/types/scheduleTask').ScheduleTaskStatusEvent) => void
   ): () => void;
+
+
+  // Migration Service (runtime-agents-restructure feature)
+  // Task 10.2, 10.3: Migration IPC handlers for legacy runtime agents
+  // Requirements: 5.1, 5.2, 5.4
+  // ============================================================
+
+  /**
+   * Check if migration is needed for legacy runtime agents for a specific spec/bug
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns MigrationInfo with fileCount and totalSize, or null if not needed
+   */
+  checkMigrationNeeded(projectPath: string, specId: string): Promise<MigrationInfo | null>;
+
+  /**
+   * Accept migration and move legacy runtime agents to new structure for a specific spec/bug
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns Result with migrated count or error
+   */
+  acceptMigration(projectPath: string, specId: string): Promise<{ ok: true; migratedCount: number } | { ok: false; error: string }>;
+
+  /**
+   * Decline migration for a specific spec (don't show dialog again this session)
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns Result success or error
+   */
+  declineMigration(projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 declare global {

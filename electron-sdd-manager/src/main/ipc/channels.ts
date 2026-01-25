@@ -345,7 +345,7 @@ export const IPC_CHANNELS = {
   GET_PROJECT_METRICS: 'metrics:get-project-metrics',
   METRICS_UPDATED: 'metrics:updated',
 
-  // MCP Server (mcp-server-integration feature)
+// MCP Server (mcp-server-integration feature)
   // Requirements: 6.3, 6.4, 6.5
   MCP_START: 'mcp:start',
   MCP_STOP: 'mcp:stop',
@@ -372,6 +372,12 @@ export const IPC_CHANNELS = {
   SCHEDULE_TASK_GET_RUNNING: 'schedule-task:get-running',
   // Events (Main -> Renderer)
   SCHEDULE_TASK_STATUS_CHANGED: 'schedule-task:status-changed',
+
+  // Migration Service (runtime-agents-restructure feature)
+  // Requirements: 5.1, 5.2, 5.4
+  CHECK_MIGRATION_NEEDED: 'ipc:check-migration-needed',
+  ACCEPT_MIGRATION: 'ipc:accept-migration',
+  DECLINE_MIGRATION: 'ipc:decline-migration',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

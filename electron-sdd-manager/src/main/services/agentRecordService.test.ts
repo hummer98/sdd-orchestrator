@@ -585,4 +585,194 @@ describe('AgentRecordService', () => {
       expect(counts.get('spec-test')).toBe(1);
     });
   });
+
+  // =============================================================================
+  // runtime-agents-restructure: Task 2.1-2.3 - Category-aware path generation
+  // Requirements: 3.1, 1.1, 1.3, 1.5
+  // =============================================================================
+  describe('Category-aware operations (Tasks 2.1-2.3)', () => {
+    describe('writeRecordWithCategory (Task 2.2)', () => {
+      it('should write spec-bound agent to specs/{specId}/ path', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-001',
+          specId: 'my-feature',
+          phase: 'requirements',
+          pid: 12345,
+          sessionId: 'session-1',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('specs', 'my-feature', record);
+
+        // Verify file was created at new path structure
+        const filePath = path.join(testDir, 'specs', 'my-feature', 'agent-001.json');
+        const content = await fs.readFile(filePath, 'utf-8');
+        const parsed = JSON.parse(content);
+        expect(parsed.agentId).toBe('agent-001');
+      });
+
+      it('should write bug-bound agent to bugs/{bugId}/ path', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-002',
+          specId: 'bug:login-error',
+          phase: 'fix',
+          pid: 12346,
+          sessionId: 'session-2',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('bugs', 'login-error', record);
+
+        // Verify file was created at bugs path
+        const filePath = path.join(testDir, 'bugs', 'login-error', 'agent-002.json');
+        const content = await fs.readFile(filePath, 'utf-8');
+        const parsed = JSON.parse(content);
+        expect(parsed.agentId).toBe('agent-002');
+      });
+
+      it('should write project agent to project/ path', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-003',
+          specId: '',
+          phase: 'steering',
+          pid: 12347,
+          sessionId: 'session-3',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('project', '', record);
+
+        // Verify file was created at project path
+        const filePath = path.join(testDir, 'project', 'agent-003.json');
+        const content = await fs.readFile(filePath, 'utf-8');
+        const parsed = JSON.parse(content);
+        expect(parsed.agentId).toBe('agent-003');
+      });
+    });
+
+    describe('readRecordsFor (Task 2.3)', () => {
+      it('should read records from specs/{specId}/', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-001',
+          specId: 'my-feature',
+          phase: 'requirements',
+          pid: 12345,
+          sessionId: 'session-1',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('specs', 'my-feature', record);
+
+        const records = await service.readRecordsFor('specs', 'my-feature');
+        expect(records).toHaveLength(1);
+        expect(records[0].agentId).toBe('agent-001');
+      });
+
+      it('should read records from bugs/{bugId}/', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-002',
+          specId: 'bug:login-error',
+          phase: 'fix',
+          pid: 12346,
+          sessionId: 'session-2',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('bugs', 'login-error', record);
+
+        const records = await service.readRecordsFor('bugs', 'login-error');
+        expect(records).toHaveLength(1);
+        expect(records[0].agentId).toBe('agent-002');
+      });
+
+      it('should read records from project/', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-003',
+          specId: '',
+          phase: 'steering',
+          pid: 12347,
+          sessionId: 'session-3',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('project', '', record);
+
+        const records = await service.readRecordsFor('project', '');
+        expect(records).toHaveLength(1);
+        expect(records[0].agentId).toBe('agent-003');
+      });
+
+      it('should return empty array for non-existent category path', async () => {
+        const records = await service.readRecordsFor('specs', 'non-existent');
+        expect(records).toHaveLength(0);
+      });
+    });
+
+    describe('readRecordWithCategory', () => {
+      it('should read spec-bound agent record', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-001',
+          specId: 'my-feature',
+          phase: 'requirements',
+          pid: 12345,
+          sessionId: 'session-1',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('specs', 'my-feature', record);
+
+        const result = await service.readRecordWithCategory('specs', 'my-feature', 'agent-001');
+        expect(result).not.toBeNull();
+        expect(result?.agentId).toBe('agent-001');
+      });
+
+      it('should return null for non-existent record', async () => {
+        const result = await service.readRecordWithCategory('specs', 'my-feature', 'non-existent');
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('readRecordsForBug (Task 2.3)', () => {
+      it('should be alias for readRecordsFor with bugs category', async () => {
+        const record: AgentRecord = {
+          agentId: 'agent-002',
+          specId: 'bug:login-error',
+          phase: 'fix',
+          pid: 12346,
+          sessionId: 'session-2',
+          status: 'running',
+          startedAt: '2025-11-26T10:00:00Z',
+          lastActivityAt: '2025-11-26T10:00:00Z',
+          command: 'claude',
+        };
+
+        await service.writeRecordWithCategory('bugs', 'login-error', record);
+
+        const records = await service.readRecordsForBug('login-error');
+        expect(records).toHaveLength(1);
+        expect(records[0].agentId).toBe('agent-002');
+      });
+    });
+  });
 });

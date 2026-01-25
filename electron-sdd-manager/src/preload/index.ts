@@ -27,6 +27,7 @@ import type {
   CheckResult as ExperimentalCheckResult,
   Result as ExperimentalResult,
 } from '../main/services/experimentalToolsInstallerService';
+// runtime-agents-restructure: MigrationInfo is imported via type annotation below, no explicit import needed
 
 /**
  * Exposed API to renderer process
@@ -2384,6 +2385,39 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.SCHEDULE_TASK_STATUS_CHANGED, handler);
     };
   },
+
+
+  // Migration Service (runtime-agents-restructure feature)
+  // Task 10.2, 10.3: Migration IPC handlers for legacy runtime agents
+  // Requirements: 5.1, 5.2, 5.4
+  // ============================================================
+
+  /**
+   * Check if migration is needed for legacy runtime agents for a specific spec/bug
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns MigrationInfo with fileCount and totalSize, or null if not needed
+   */
+  checkMigrationNeeded: (projectPath: string, specId: string): Promise<import('../main/services/migrationService').MigrationInfo | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_MIGRATION_NEEDED, projectPath, specId),
+
+  /**
+   * Accept migration and move legacy runtime agents to new structure for a specific spec/bug
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns Result with migrated count or error
+   */
+  acceptMigration: (projectPath: string, specId: string): Promise<{ ok: true; migratedCount: number } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ACCEPT_MIGRATION, projectPath, specId),
+
+  /**
+   * Decline migration for a specific spec (don't show dialog again this session)
+   * @param projectPath Project root path
+   * @param specId Spec ID (including 'bug:' prefix for bugs)
+   * @returns Result success or error
+   */
+  declineMigration: (projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DECLINE_MIGRATION, projectPath, specId),
 };
 
 // Expose API to renderer

@@ -13,6 +13,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { type AgentCategory, getCategoryBasePath, getMetadataPath } from './agentCategory';
 
 // Agent status types - SSOT for agent state
 // agent-state-file-ssot: Moved from agentRegistry.ts
@@ -441,6 +442,105 @@ export class AgentRecordService {
       }
       // File doesn't exist, nothing to delete
     }
+  }
+
+  // =============================================================================
+  // runtime-agents-restructure: Category-aware operations
+  // Requirements: 3.1, 1.1, 1.3, 1.5, 3.2, 3.3, 3.4
+  // =============================================================================
+
+  /**
+   * Get file path using category-aware structure
+   * @param category - 'specs' | 'bugs' | 'project'
+   * @param entityId - specId or bugId (empty for project)
+   * @param agentId - agent ID
+   */
+  private getFilePathWithCategory(category: AgentCategory, entityId: string, agentId: string): string {
+    return getMetadataPath(this.basePath, category, entityId, agentId);
+  }
+
+  /**
+   * Write an agent record to category-aware path
+   * Requirements: 1.1, 1.3, 1.5, 3.1
+   * @param category - 'specs' | 'bugs' | 'project'
+   * @param entityId - specId or bugId (empty for project)
+   * @param record - agent record to write
+   */
+  async writeRecordWithCategory(category: AgentCategory, entityId: string, record: AgentRecord): Promise<void> {
+    const dirPath = getCategoryBasePath(this.basePath, category, entityId);
+    const filePath = this.getFilePathWithCategory(category, entityId, record.agentId);
+
+    // Ensure directory exists
+    await fs.mkdir(dirPath, { recursive: true });
+
+    // Write file
+    await fs.writeFile(filePath, JSON.stringify(record, null, 2), 'utf-8');
+  }
+
+  /**
+   * Read an agent record from category-aware path
+   * @param category - 'specs' | 'bugs' | 'project'
+   * @param entityId - specId or bugId (empty for project)
+   * @param agentId - agent ID
+   */
+  async readRecordWithCategory(category: AgentCategory, entityId: string, agentId: string): Promise<AgentRecord | null> {
+    const filePath = this.getFilePathWithCategory(category, entityId, agentId);
+
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return JSON.parse(content) as AgentRecord;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Read agent records for a specific category and entity
+   * Requirements: 3.2, 3.3, 3.4
+   * @param category - 'specs' | 'bugs' | 'project'
+   * @param entityId - specId or bugId (empty for project)
+   */
+  async readRecordsFor(category: AgentCategory, entityId: string): Promise<AgentRecord[]> {
+    const result: AgentRecord[] = [];
+    const categoryPath = getCategoryBasePath(this.basePath, category, entityId);
+
+    try {
+      const files = await fs.readdir(categoryPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+
+        const agentId = file.replace('.json', '');
+        try {
+          const record = await this.readRecordWithCategory(category, entityId, agentId);
+          if (record) {
+            result.push(record);
+          }
+        } catch {
+          // Skip corrupted JSON files
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Directory doesn't exist yet
+        return [];
+      }
+      throw error;
+    }
+
+    return result;
+  }
+
+  /**
+   * Read agent records for a bug
+   * Requirements: 3.3
+   * @param bugId - bug ID (without 'bug:' prefix)
+   */
+  async readRecordsForBug(bugId: string): Promise<AgentRecord[]> {
+    return this.readRecordsFor('bugs', bugId);
   }
 
   /**

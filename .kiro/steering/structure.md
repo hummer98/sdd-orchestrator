@@ -215,6 +215,67 @@ components/
 └── ApprovalPanel.test.tsx
 ```
 
+## Runtime Agents Directory Structure
+
+Agent state and logs are stored in `.kiro/runtime/agents/` with a category-based structure:
+
+```
+.kiro/runtime/agents/
+├── specs/{specId}/              # Spec-bound agents
+│   ├── agent-{id}.json         # Agent metadata
+│   └── logs/
+│       └── agent-{id}.log      # Agent logs (JSONL format)
+├── bugs/{bugId}/                # Bug-bound agents
+│   ├── agent-{id}.json
+│   └── logs/
+│       └── agent-{id}.log
+└── project/                     # Project-level agents
+    ├── agent-{id}.json
+    └── logs/
+        └── agent-{id}.log
+```
+
+### Agent Category Rules
+
+| specId Pattern | Category | Storage Path |
+|----------------|----------|--------------|
+| `""` (empty) | project | `runtime/agents/project/` |
+| `bug:{bugId}` | bugs | `runtime/agents/bugs/{bugId}/` |
+| `{specId}` | specs | `runtime/agents/specs/{specId}/` |
+
+### Agent Metadata Format (agent-{id}.json)
+
+```json
+{
+  "agentId": "agent-001",
+  "specId": "my-feature",
+  "phase": "requirements",
+  "pid": 12345,
+  "sessionId": "session-uuid",
+  "status": "running",
+  "startedAt": "2025-11-26T10:00:00Z",
+  "lastActivityAt": "2025-11-26T10:05:00Z",
+  "command": "claude -p \"/kiro:spec-requirements\"",
+  "cwd": "/path/to/project"
+}
+```
+
+### Log Entry Format (JSONL)
+
+```jsonl
+{"timestamp":"2025-11-26T10:00:00Z","stream":"stdout","data":"Starting..."}
+{"timestamp":"2025-11-26T10:00:01Z","stream":"stderr","data":"Warning..."}
+```
+
+### Service Responsibilities
+
+| Service | Responsibility |
+|---------|---------------|
+| `AgentRecordService` | CRUD operations for agent metadata |
+| `LogFileService` | Append and read agent logs |
+| `AgentRecordWatcherService` | File system watching for agent changes |
+| `MigrationService` | Legacy log migration to new structure |
+
 ### Service Pattern (main process)
 ドメイン別にサービスを分離:
 - **Spec管理**: `specManagerService.ts`

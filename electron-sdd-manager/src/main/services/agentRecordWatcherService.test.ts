@@ -411,4 +411,200 @@ describe('AgentRecordWatcherService', () => {
       expect(service.getWatchScope()).toBeNull();
     });
   });
+
+  // =============================================================================
+  // runtime-agents-restructure: Tasks 4.1-4.3 - Category-aware watching
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
+  // =============================================================================
+  describe('Category-aware watching (Tasks 4.1-4.3)', () => {
+    describe('Three watcher categories (Task 4.1)', () => {
+      it('should have bugWatcher property', () => {
+        expect('bugWatcher' in service).toBe(true);
+      });
+
+      it('should start with bugWatcher as null', () => {
+        expect(service.bugWatcher).toBeNull();
+      });
+    });
+
+    describe('switchWatchScopeWithCategory (Task 4.2)', () => {
+      it('should accept category parameter', async () => {
+        service.start();
+
+        // Method should accept category
+        await expect(service.switchWatchScopeWithCategory('specs', 'my-feature')).resolves.not.toThrow();
+      });
+
+      it('should watch specs/{specId}/ for specs category (Req 4.2)', async () => {
+        service.start();
+        vi.clearAllMocks();
+        (chokidar.watch as Mock).mockReturnValue(mockWatcher);
+
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        expect(chokidar.watch).toHaveBeenCalled();
+        const callArgs = (chokidar.watch as Mock).mock.calls[0];
+        const watchedPath = callArgs[0];
+        expect(watchedPath).toBe(path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs', 'my-feature'));
+      });
+
+      it('should watch bugs/{bugId}/ for bugs category (Req 4.3)', async () => {
+        service.start();
+        vi.clearAllMocks();
+        (chokidar.watch as Mock).mockReturnValue(mockWatcher);
+
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        expect(chokidar.watch).toHaveBeenCalled();
+        const callArgs = (chokidar.watch as Mock).mock.calls[0];
+        const watchedPath = callArgs[0];
+        expect(watchedPath).toBe(path.join(projectPath, '.kiro', 'runtime', 'agents', 'bugs', 'login-error'));
+      });
+
+      it('should set bugWatcher when category is bugs', async () => {
+        service.start();
+
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        expect(service.bugWatcher).not.toBeNull();
+        expect(service.specWatcher).toBeNull(); // Only bugWatcher should be set
+      });
+
+      it('should set specWatcher when category is specs', async () => {
+        service.start();
+
+        const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
+
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        expect(service.specWatcher).not.toBeNull();
+        expect(service.bugWatcher).toBeNull(); // Only specWatcher should be set
+      });
+
+      it('should stop bugWatcher when switching to specs category', async () => {
+        service.start();
+
+        // First set bug watcher
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        // Then switch to specs
+        const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        expect(bugMockWatcher.close).toHaveBeenCalled();
+        expect(service.bugWatcher).toBeNull();
+      });
+
+      it('should stop specWatcher when switching to bugs category', async () => {
+        service.start();
+
+        // First set spec watcher
+        const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        // Then switch to bugs
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        expect(specMockWatcher.close).toHaveBeenCalled();
+        expect(service.specWatcher).toBeNull();
+      });
+
+      it('should clear both watchers when entityId is null', async () => {
+        service.start();
+
+        // Set both watchers first
+        const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        // Clear
+        await service.switchWatchScopeWithCategory('specs', null);
+
+        expect(service.specWatcher).toBeNull();
+      });
+    });
+
+    describe('getWatchScopeWithCategory', () => {
+      it('should return category and entityId', async () => {
+        service.start();
+
+        const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        const scope = service.getWatchScopeWithCategory();
+        expect(scope.category).toBe('specs');
+        expect(scope.entityId).toBe('my-feature');
+      });
+
+      it('should return bugs category when watching a bug', async () => {
+        service.start();
+
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        const scope = service.getWatchScopeWithCategory();
+        expect(scope.category).toBe('bugs');
+        expect(scope.entityId).toBe('login-error');
+      });
+
+      it('should return null values when no scope is set', () => {
+        service.start();
+
+        const scope = service.getWatchScopeWithCategory();
+        expect(scope.category).toBeNull();
+        expect(scope.entityId).toBeNull();
+      });
+    });
+
+    describe('projectWatcher always monitors project/ (Req 4.4)', () => {
+      it('should continue monitoring project/ when switching to specs', async () => {
+        service.start();
+        const projectWatcher = service.projectAgentWatcher;
+
+        await service.switchWatchScopeWithCategory('specs', 'my-feature');
+
+        // projectAgentWatcher should remain unchanged
+        expect(service.projectAgentWatcher).toBe(projectWatcher);
+      });
+
+      it('should continue monitoring project/ when switching to bugs', async () => {
+        service.start();
+        const projectWatcher = service.projectAgentWatcher;
+
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        // projectAgentWatcher should remain unchanged
+        expect(service.projectAgentWatcher).toBe(projectWatcher);
+      });
+    });
+
+    describe('stop method handles all three watchers', () => {
+      it('should stop bugWatcher on stop()', async () => {
+        service.start();
+
+        const bugMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
+        (chokidar.watch as Mock).mockReturnValue(bugMockWatcher);
+        await service.switchWatchScopeWithCategory('bugs', 'login-error');
+
+        await service.stop();
+
+        expect(bugMockWatcher.close).toHaveBeenCalled();
+        expect(service.bugWatcher).toBeNull();
+      });
+    });
+  });
 });

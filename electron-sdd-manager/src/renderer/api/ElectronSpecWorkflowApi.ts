@@ -160,14 +160,16 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
   }
 
   async startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, ApiError>> {
     try {
       // Electron版では autoExecutionStart を使用
-      // spec-path-ssot-refactor: specPathとspecIdを両方渡す
+      // auto-execution-projectpath-fix: projectPathを明示的に渡す
       const result = await window.electronAPI.autoExecutionStart({
+        projectPath,
         specPath: specPath || specId,
         specId,
         options: {

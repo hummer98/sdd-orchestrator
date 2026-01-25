@@ -184,8 +184,11 @@ export interface AutoExecutionOptions {
 
 /**
  * Auto execution state returned by auto execution APIs
+ * auto-execution-projectpath-fix Requirement 4.2: Added projectPath field
  */
 export interface AutoExecutionState {
+  /** Project path (main repository) - used to ensure event logs are recorded in the correct location even in worktree environment */
+  projectPath?: string;
   status: AutoExecutionStatus;
   currentPhase?: WorkflowPhase;
   completedPhases: WorkflowPhase[];
@@ -256,6 +259,20 @@ export interface AutoExecutionStatusEvent {
  * All methods are async and return Result<T, ApiError> for consistent error handling.
  */
 export interface ApiClient {
+  // ===========================================================================
+  // Project Operations
+  // auto-execution-projectpath-fix Task 4.5: Added getProjectPath method
+  // ===========================================================================
+
+  /**
+   * Get the current project path
+   * Returns the project root path from the client's context.
+   * - IpcApiClient: Gets from projectStore.currentProject
+   * - WebSocketApiClient: Gets from INIT message projectPath
+   * @returns Project path or empty string if not available
+   */
+  getProjectPath?(): string;
+
   // ===========================================================================
   // Spec Operations
   // ===========================================================================
@@ -396,11 +413,14 @@ export interface ApiClient {
 
   /**
    * Start auto execution for a spec
+   * auto-execution-projectpath-fix: Task 4.4
+   * @param projectPath - Project root path (main repository)
    * @param specPath - Full path to spec directory
    * @param specId - Spec identifier
    * @param options - Auto execution options
    */
   startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions

@@ -39,8 +39,11 @@ export const MAX_RETRIES = 3;
 /**
  * Bug自動実行状態管理
  * bugPath単位での実行状態を保持
+ * Requirement 2.1: projectPathフィールド追加
  */
 export interface BugAutoExecutionState {
+  /** プロジェクトパス（メインリポジトリ） */
+  readonly projectPath: string;
   /** bugのパス */
   readonly bugPath: string;
   /** bugの名前 */
@@ -191,6 +194,8 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
 
   /**
    * 自動実行を開始
+   * Requirement 2.2: start()シグネチャ変更 - projectPathを第一引数として追加
+   * @param projectPath プロジェクトパス（メインリポジトリ）
    * @param bugPath bugのパス
    * @param bugName bugの名前
    * @param options 自動実行オプション
@@ -198,12 +203,13 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
    * @returns 成功時は状態、失敗時はエラー
    */
   async start(
+    projectPath: string,
     bugPath: string,
     bugName: string,
     options: BugAutoExecutionOptions,
     lastCompletedPhase: BugWorkflowPhase | null
   ): Promise<Result<BugAutoExecutionState, BugAutoExecutionError>> {
-    logger.info('[BugAutoExecutionCoordinator] start called', { bugPath, bugName });
+    logger.info('[BugAutoExecutionCoordinator] start called', { projectPath, bugPath, bugName });
 
     // 既に実行中かチェック
     const existingState = this.executionStates.get(bugPath);
@@ -231,6 +237,9 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
     // 新しい状態を作成または既存を更新
     const now = Date.now();
     const state: BugAutoExecutionState = {
+      // Requirement 2.2, 2.3: projectPathをstart()引数から設定
+      // 将来のイベントログ拡張に備え、明示的なprojectPathを保持
+      projectPath,
       bugPath,
       bugName,
       status: 'running',

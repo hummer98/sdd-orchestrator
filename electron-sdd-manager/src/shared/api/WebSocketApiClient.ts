@@ -636,15 +636,18 @@ export class WebSocketApiClient implements ApiClient {
 
   // ===========================================================================
   // Auto Execution Operations
+  // auto-execution-projectpath-fix: Task 4.4 - Added projectPath parameter
   // ===========================================================================
 
   async startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, ApiError>> {
     // Message type matches WebSocketHandler.handleAutoExecuteStart
     const response = await this.wrapRequest<{ state: AutoExecutionState }>('AUTO_EXECUTE_START', {
+      projectPath,
       specPath,
       specId,
       options,

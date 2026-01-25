@@ -634,6 +634,7 @@ function DesktopAppContent() {
   }, []);
 
   // Handle auto execution start/stop
+  // auto-execution-projectpath-fix Task 4.5: Pass projectPath to startAutoExecution
   const handleAutoExecution = useCallback(async () => {
     if (!selectedSpec || !selectedSpecDetail) return;
 
@@ -655,7 +656,9 @@ function DesktopAppContent() {
         documentReviewFlag: selectedSpecDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
       };
 
-      const result = await apiClient.startAutoExecution(selectedSpec.path, selectedSpec.name, options);
+      // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client
+      const projectPath = apiClient.getProjectPath?.() ?? '';
+      const result = await apiClient.startAutoExecution(projectPath, selectedSpec.path, selectedSpec.name, options);
       if (result.ok) {
         setIsAutoExecuting(true);
       }

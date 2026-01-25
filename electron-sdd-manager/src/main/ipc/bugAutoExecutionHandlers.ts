@@ -23,7 +23,11 @@ import type { BugWorkflowPhase } from '../../renderer/types/bug';
 // Types for IPC communication
 // ============================================================
 
+/**
+ * Requirement 3.2: BugStartParamsにprojectPath追加
+ */
 interface BugStartParams {
+  projectPath: string;
   bugPath: string;
   bugName: string;
   options: BugAutoExecutionOptions;
@@ -101,11 +105,13 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   logger.info('[bugAutoExecutionHandlers] Registering IPC handlers');
 
   // BUG_AUTO_EXECUTION_START
+  // Requirement 3.3: projectPathをcoordinator.start()に渡す
   ipcMain.handle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_START,
     async (_event, params: BugStartParams): Promise<Result<SerializableBugAutoExecutionState, BugAutoExecutionError>> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_START', { bugPath: params.bugPath });
       const result = await coordinator.start(
+        params.projectPath,
         params.bugPath,
         params.bugName,
         params.options,

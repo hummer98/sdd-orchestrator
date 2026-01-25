@@ -963,7 +963,9 @@ export class SpecToolHandlers {
     }
 
     // Start auto-execution with settings from spec.json
+    // auto-execution-projectpath-fix Task 1.2: Pass projectPath as first argument
     const result = await this.autoExecutionCoordinator.start(
+      projectPath,
       specPath,
       name,
       {

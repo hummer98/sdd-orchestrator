@@ -1201,10 +1201,12 @@ const electronAPI = {
 
   /**
    * Start auto-execution for a spec
-   * @param params Start parameters (specPath, specId, options)
+   * Requirement 4.1: preload IPC呼び出しでprojectPath送信
+   * @param params Start parameters (projectPath, specPath, specId, options)
    * @returns Result with AutoExecutionState on success, or error
    */
   autoExecutionStart: (params: {
+    projectPath: string;
     specPath: string;
     specId: string;
     options: {
@@ -1223,6 +1225,7 @@ const electronAPI = {
       timeoutMs?: number;
     };
   }): Promise<{ ok: true; value: {
+    projectPath: string;
     specPath: string;
     specId: string;
     status: 'idle' | 'running' | 'paused' | 'completed' | 'error';
@@ -1822,10 +1825,12 @@ const electronAPI = {
 
   /**
    * Start bug auto-execution
-   * @param params Start parameters (bugPath, bugName, options, lastCompletedPhase)
+   * Requirement 4.1: preload IPC呼び出しでprojectPath送信
+   * @param params Start parameters (projectPath, bugPath, bugName, options, lastCompletedPhase)
    * @returns Result with BugAutoExecutionState on success, or error
    */
   bugAutoExecutionStart: (params: {
+    projectPath: string;
     bugPath: string;
     bugName: string;
     options: {
@@ -1839,6 +1844,7 @@ const electronAPI = {
     };
     lastCompletedPhase: 'report' | 'analyze' | 'fix' | 'verify' | 'deploy' | null;
   }): Promise<{ ok: true; value: {
+    projectPath: string;
     bugPath: string;
     bugName: string;
     status: 'idle' | 'running' | 'paused' | 'completed' | 'error';

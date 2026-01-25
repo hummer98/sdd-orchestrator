@@ -92,6 +92,25 @@ describe('WebSocketApiClient', () => {
   });
 
   // ===========================================================================
+  // auto-execution-projectpath-fix: Task 4.4 - startAutoExecution projectPath
+  // Requirements: 4.2
+  // ===========================================================================
+
+  describe('startAutoExecution projectPath', () => {
+    it('should implement startAutoExecution with projectPath as first parameter', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Check that startAutoExecution method accepts projectPath as first parameter
+      expect(content).toMatch(/startAutoExecution\s*\(\s*projectPath[^)]*specPath[^)]*specId[^)]*options/);
+    });
+
+    it('should send projectPath to WebSocket server in AUTO_EXECUTE_START message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Check that AUTO_EXECUTE_START wrapRequest includes projectPath
+      expect(content).toMatch(/AUTO_EXECUTE_START[\s\S]*\{[\s\S]*projectPath/);
+    });
+  });
+
+  // ===========================================================================
   // bugs-view-unification: Task 1.3 - Bug monitoring methods
   // Requirements: 4.6, 4.7
   // ===========================================================================

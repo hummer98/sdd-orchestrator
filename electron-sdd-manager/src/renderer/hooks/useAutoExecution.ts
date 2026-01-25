@@ -2,6 +2,9 @@
  * useAutoExecution Hook
  * Provides auto-execution functionality via IPC to Main Process
  * Requirements: 3.1, 3.4, 3.5
+ *
+ * auto-execution-projectpath-fix Task 4.5:
+ * Requirements: 4.3 - Renderer側store/hookでprojectPath取得・送信
  */
 
 import { useCallback, useState } from 'react';
@@ -102,7 +105,12 @@ export interface UseAutoExecutionReturn {
   readonly canStop: boolean;
 
   // Actions
+  /**
+   * Start auto-execution
+   * auto-execution-projectpath-fix Task 4.5: Added projectPath parameter
+   */
   startAutoExecution: (
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
@@ -145,15 +153,18 @@ export function useAutoExecution(): UseAutoExecutionReturn {
 
   /**
    * Start auto-execution via IPC
+   * auto-execution-projectpath-fix Task 4.5: Added projectPath parameter
    */
   const startAutoExecution = useCallback(
     async (
+      projectPath: string,
       specPath: string,
       specId: string,
       options: AutoExecutionOptions
     ): Promise<Result<AutoExecutionState, AutoExecutionError>> => {
       try {
         const result = await window.electronAPI.autoExecutionStart({
+          projectPath,
           specPath,
           specId,
           options,

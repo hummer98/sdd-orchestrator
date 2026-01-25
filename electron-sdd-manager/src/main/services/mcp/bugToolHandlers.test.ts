@@ -924,7 +924,9 @@ describe('BugToolHandlers', () => {
       const result = await handlers.startExecution('/path/to/project', 'test-bug');
 
       expect(result.ok).toBe(true);
+      // auto-execution-projectpath-fix Task 4.5: Updated to include projectPath as first argument
       expect(mockBugAutoExecutionCoordinator.start).toHaveBeenCalledWith(
+        '/path/to/project',  // projectPath
         '/path/to/project/.kiro/bugs/test-bug',
         'test-bug',
         expect.objectContaining({

@@ -838,7 +838,9 @@ export class BugToolHandlers {
     const lastCompletedPhase = this.deriveBugWorkflowPhaseFromBugPhase(currentPhase);
 
     // Start auto-execution
+    // auto-execution-projectpath-fix Task 4.5: Pass projectPath to start()
     const startResult = await this.bugAutoExecutionCoordinator.start(
+      projectPath,
       bugPath,
       name,
       {

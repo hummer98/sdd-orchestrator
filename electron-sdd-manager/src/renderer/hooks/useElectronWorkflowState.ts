@@ -5,10 +5,12 @@
  * Zustandストアから状態を収集し、WorkflowStateインターフェースに変換
  *
  * workflow-view-unification: ステート抽象化レイヤー
+ * auto-execution-projectpath-fix Task 4.5: projectPath取得・送信
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useSpecStore } from '../stores/specStore';
+import { useProjectStore } from '../stores/projectStore';
 import { useWorkflowStore } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
@@ -55,6 +57,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   // ---------------------------------------------------------------------------
 
   const { specDetail, isLoading, selectedSpec } = useSpecStore();
+  // auto-execution-projectpath-fix Task 4.5: Get project path from store
+  const currentProject = useProjectStore((state) => state.currentProject);
   const workflowStore = useWorkflowStore();
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
@@ -249,6 +253,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     workflowStore.toggleAutoPermission(phase);
   }, [workflowStore]);
 
+  // auto-execution-projectpath-fix Task 4.5: Pass projectPath to startAutoExecution
   const handleAutoExecution = useCallback(async () => {
     if (!specDetail) return;
 
@@ -263,7 +268,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         }
       }
     } else {
+      // auto-execution-projectpath-fix Task 4.5: Include projectPath in start call
+      const projectPath = currentProject ?? '';
       const result = await autoExecution.startAutoExecution(
+        projectPath,
         specDetail.metadata.name,
         specDetail.metadata.name,
         {
@@ -276,7 +284,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [autoExecutionRuntime, specDetail, autoExecution, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag]);
+  }, [autoExecutionRuntime, specDetail, autoExecution, currentProject, workflowStore.autoExecutionPermissions, workflowStore.documentReviewOptions.autoExecutionFlag]);
 
   const handleStartDocumentReview = useCallback(async () => {
     if (!specDetail) return;

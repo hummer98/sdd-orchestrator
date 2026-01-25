@@ -303,7 +303,9 @@ export function useRemoteWorkflowState(
         documentReviewFlag: specDetail.specJson?.autoExecution?.documentReviewFlag ?? 'run',
       };
 
-      const result = await apiClient.startAutoExecution(spec.path, spec.name, options);
+      // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client
+      const projectPath = apiClient.getProjectPath?.() ?? '';
+      const result = await apiClient.startAutoExecution(projectPath, spec.path, spec.name, options);
       if (result.ok) {
         setAutoExecutionStatus(result.value.status);
         setCurrentAutoPhase(result.value.currentPhase ?? null);

@@ -109,8 +109,10 @@ export interface ISpecWorkflowApi {
 
   /**
    * 自動実行を開始
+   * auto-execution-projectpath-fix: Task 4.4 - Added projectPath parameter
    */
   startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions

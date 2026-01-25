@@ -226,4 +226,34 @@ describe('API types', () => {
       expect(content).toContain('export type WorkflowPhase');
     });
   });
+
+  // ===========================================================================
+  // auto-execution-projectpath-fix: Task 4.2 - AutoExecutionState.projectPath
+  // Requirements: 4.2
+  // ===========================================================================
+
+  describe('AutoExecutionState interface', () => {
+    it('should define AutoExecutionState interface', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('export interface AutoExecutionState');
+    });
+
+    it('should have projectPath field for worktree environment support', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      // Requirement 4.2: AutoExecutionState型にprojectPathを追加
+      // projectPath is needed to ensure event logs are recorded in the correct location
+      // even when operating in a git worktree environment
+      expect(content).toMatch(/interface AutoExecutionState[\s\S]*projectPath.*string/);
+    });
+
+    it('should have status field', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toMatch(/interface AutoExecutionState[\s\S]*status:\s*AutoExecutionStatus/);
+    });
+
+    it('should have completedPhases field', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toMatch(/interface AutoExecutionState[\s\S]*completedPhases:\s*WorkflowPhase\[\]/);
+    });
+  });
 });

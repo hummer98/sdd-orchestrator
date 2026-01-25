@@ -27,12 +27,6 @@ vi.mock('electron', () => ({
   },
 }));
 
-// Bug fix: start-impl-path-resolution-missing
-// Mock handlers.ts for getCurrentProjectPath
-vi.mock('./handlers', () => ({
-  getCurrentProjectPath: vi.fn(() => '/test/project'),
-}));
-
 // Mock FileService for resolveSpecPath
 vi.mock('../services/fileService', () => ({
   FileService: vi.fn().mockImplementation(() => ({
@@ -109,6 +103,7 @@ describe('autoExecutionHandlers', () => {
       const handler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
 
       const params = {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -132,6 +127,7 @@ describe('autoExecutionHandlers', () => {
       const handler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
 
       const params = {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -161,6 +157,7 @@ describe('autoExecutionHandlers', () => {
 
       // Start first
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -196,6 +193,7 @@ describe('autoExecutionHandlers', () => {
       const statusHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_STATUS);
 
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -229,6 +227,7 @@ describe('autoExecutionHandlers', () => {
       const allStatusHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS);
 
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/spec/1',
         specId: 'spec-1',
         options: {
@@ -239,6 +238,7 @@ describe('autoExecutionHandlers', () => {
       });
 
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/spec/2',
         specId: 'spec-2',
         options: {
@@ -264,6 +264,7 @@ describe('autoExecutionHandlers', () => {
       const retryHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM);
 
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -281,6 +282,70 @@ describe('autoExecutionHandlers', () => {
       if (result.ok) {
         expect(result.value.status).toBe('running');
         expect(result.value.currentPhase).toBe('design');
+      }
+    });
+  });
+
+  // ============================================================
+  // Task 3.1: StartParams includes projectPath
+  // Requirements: 3.1, 3.3 (auto-execution-projectpath-fix)
+  // ============================================================
+
+  describe('Task 3.1: StartParams with projectPath', () => {
+    it('should pass params.projectPath to coordinator.start()', async () => {
+      const coordinatorSpy = vi.spyOn(coordinator, 'start');
+      registerAutoExecutionHandlers(coordinator);
+
+      const handler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
+
+      // StartParams with projectPath field
+      const params = {
+        projectPath: '/explicit/project/path',
+        specPath: '/test/spec',
+        specId: 'test-feature',
+        options: {
+          permissions: { requirements: true, design: true, tasks: true, impl: false },
+          documentReviewFlag: 'run' as const,
+          validationOptions: { gap: false, design: false, impl: false },
+        },
+      };
+
+      await handler({}, params);
+
+      // Verify coordinator.start() was called with params.projectPath (not getCurrentProjectPath)
+      expect(coordinatorSpy).toHaveBeenCalledWith(
+        '/explicit/project/path',  // should use params.projectPath
+        '/test/spec',
+        'test-feature',
+        expect.objectContaining({
+          permissions: { requirements: true, design: true, tasks: true, impl: false },
+        })
+      );
+
+      coordinatorSpy.mockRestore();
+    });
+
+    it('should return PRECONDITION_FAILED if projectPath is missing', async () => {
+      registerAutoExecutionHandlers(coordinator);
+      const handler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
+
+      // StartParams without projectPath
+      const params = {
+        specPath: '/test/spec',
+        specId: 'test-feature',
+        options: {
+          permissions: { requirements: true, design: true, tasks: true, impl: false },
+          documentReviewFlag: 'run' as const,
+          validationOptions: { gap: false, design: false, impl: false },
+        },
+      };
+
+      const result = await handler({}, params);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('PRECONDITION_FAILED');
+        expect(result.error.message).toContain('projectPath');
       }
     });
   });
@@ -322,6 +387,7 @@ describe('autoExecutionHandlers', () => {
 
       // Minimal required options (without timeoutMs, commandPrefix)
       const params = {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -342,6 +408,7 @@ describe('autoExecutionHandlers', () => {
 
       // Full options with all optional fields
       const params = {
+        projectPath: '/test/project',
         specPath: '/test/spec2',
         specId: 'test-feature2',
         options: {
@@ -382,6 +449,7 @@ describe('autoExecutionHandlers', () => {
       const statusHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_STATUS);
 
       await startHandler({}, {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -410,6 +478,7 @@ describe('autoExecutionHandlers', () => {
 
       // Calling handler should not throw due to logging issues
       await expect(handler({}, {
+        projectPath: '/test/project',
         specPath: '/test/spec',
         specId: 'test-feature',
         options: {
@@ -448,6 +517,7 @@ describe('autoExecutionHandlers', () => {
         // Start auto-execution via handler
         const startHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
         await startHandler({}, {
+          projectPath: '/test/project',
           specPath: '/shared/test/spec',
           specId: 'shared-test',
           options: {
@@ -481,6 +551,7 @@ describe('autoExecutionHandlers', () => {
 
         // Step 1: Start
         const startResult = await startHandler({}, {
+          projectPath: '/test/project',
           specPath: '/e2e/test/spec',
           specId: 'e2e-test',
           options: {
@@ -517,6 +588,7 @@ describe('autoExecutionHandlers', () => {
 
         const startHandler = mockHandlers.get(IPC_CHANNELS.AUTO_EXECUTION_START);
         await startHandler({}, {
+          projectPath: '/test/project',
           specPath: '/spy/test/spec',
           specId: 'spy-test',
           options: {
@@ -527,7 +599,9 @@ describe('autoExecutionHandlers', () => {
         });
 
         // Verify the coordinator's start method was actually called
+        // auto-execution-projectpath-fix Task 3.1: start() uses params.projectPath
         expect(coordinatorSpy).toHaveBeenCalledWith(
+          '/test/project',  // projectPath from params
           '/spy/test/spec',
           'spy-test',
           expect.objectContaining({

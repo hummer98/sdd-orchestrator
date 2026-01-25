@@ -1010,7 +1010,9 @@ describe('SpecToolHandlers', () => {
       );
 
       expect(result.ok).toBe(true);
+      // auto-execution-projectpath-fix Task 1.2: start() now requires projectPath as first argument
       expect(mockAutoExecutionCoordinator.start).toHaveBeenCalledWith(
+        '/path/to/project',
         '/path/to/project/.kiro/specs/test-feature',
         'test-feature',
         expect.objectContaining({

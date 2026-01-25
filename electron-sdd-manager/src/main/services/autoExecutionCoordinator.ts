@@ -48,9 +48,12 @@ export type AutoExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 
  * 自動実行状態管理
  * specPath単位での実行状態を保持
  * Requirements: 1.2
+ * auto-execution-projectpath-fix Requirement 1.1: projectPathフィールド追加
  */
 export interface AutoExecutionState {
-  /** specのパス */
+  /** プロジェクトパス（メインリポジトリ）- worktree環境でも正しい場所にログを記録するために使用 */
+  readonly projectPath: string;
+  /** specのパス（worktreeの場合はworktree内パス） */
   readonly specPath: string;
   /** specのID（specPathから抽出） */
   readonly specId: string;
@@ -206,15 +209,23 @@ export class AutoExecutionCoordinator extends EventEmitter {
   /**
    * Log an auto-execution event using EventLogService
    * Fire-and-forget pattern: errors are logged but not propagated
-   * Requirements: 1.4, 1.5 (spec-event-log)
+   *
+   * auto-execution-projectpath-fix Task 1.3:
+   * - Requirements: 1.4, 1.5
+   * - 逆算ロジック（.kiro/specs/で分割）を削除し、state.projectPathを直接使用
+   * - worktree環境でも正しい場所にログを記録
    */
   private logAutoExecutionEvent(specPath: string, specId: string, event: EventLogInput): void {
-    // Extract project path from specPath (specPath is like /project/.kiro/specs/specId)
-    const pathParts = specPath.split('.kiro/specs/');
-    const projectPath = pathParts[0] ? pathParts[0].replace(/\/$/, '') : specPath;
+    // Task 1.3: Get projectPath from state instead of extracting from specPath
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] logAutoExecutionEvent: state not found', { specPath });
+      return;
+    }
 
+    // Task 1.3: Use state.projectPath directly (Requirement 1.4, 1.5)
     getDefaultEventLogService().logEvent(
-      projectPath,
+      state.projectPath,
       specId,
       event
     ).catch(() => {
@@ -287,13 +298,21 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
   /**
    * 新しい実行状態を作成
+   * @param projectPath プロジェクトパス（メインリポジトリ）
    * @param specPath specのパス
    * @param specId specのID
    * @returns 作成されたAutoExecutionState
+   *
+   * auto-execution-projectpath-fix Task 1.1: projectPathフィールドを状態に追加
+   * Note: projectPath引数はTask 1.2で追加される。現在は一時的にspecPathから逆算。
    */
-  protected createState(specPath: string, specId: string): AutoExecutionState {
+  protected createState(specPath: string, specId: string, projectPath?: string): AutoExecutionState {
     const now = Date.now();
+    // Task 1.1: projectPathを状態に追加（Task 1.2で適切に設定される）
+    // 一時的にspecPathから逆算（既存のlogAutoExecutionEventと同じロジック）
+    const resolvedProjectPath = projectPath ?? this.extractProjectPathFromSpecPath(specPath);
     const state: AutoExecutionState = {
+      projectPath: resolvedProjectPath,
       specPath,
       specId,
       status: 'idle',
@@ -308,13 +327,25 @@ export class AutoExecutionCoordinator extends EventEmitter {
   }
 
   /**
+   * specPathからprojectPathを抽出（一時的なヘルパー）
+   * Task 1.3で削除予定（state.projectPathを直接使用するため）
+   * @param specPath specのパス
+   * @returns プロジェクトパス
+   */
+  private extractProjectPathFromSpecPath(specPath: string): string {
+    const pathParts = specPath.split('.kiro/specs/');
+    return pathParts[0] ? pathParts[0].replace(/\/$/, '') : specPath;
+  }
+
+  /**
    * 実行状態を更新
    * @param specPath specのパス
    * @param updates 更新内容
+   * auto-execution-projectpath-fix Task 1.1: projectPathを readonly フィールドに追加
    */
   protected updateState(
     specPath: string,
-    updates: Partial<Omit<AutoExecutionState, 'specPath' | 'specId'>>
+    updates: Partial<Omit<AutoExecutionState, 'projectPath' | 'specPath' | 'specId'>>
   ): void {
     const state = this.executionStates.get(specPath);
     if (!state) {
@@ -357,17 +388,20 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
   /**
    * 自動実行を開始
+   * auto-execution-projectpath-fix Task 1.2: シグネチャ変更
+   * @param projectPath プロジェクトパス（メインリポジトリ）
    * @param specPath specのパス
    * @param specId specのID
    * @param options 自動実行オプション
    * @returns 成功時は状態、失敗時はエラー
    */
   async start(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, AutoExecutionError>> {
-    logger.info('[AutoExecutionCoordinator] start called', { specPath, specId });
+    logger.info('[AutoExecutionCoordinator] start called', { projectPath, specPath, specId });
 
     // 既に実行中かチェック
     const existingState = this.executionStates.get(specPath);
@@ -394,7 +428,10 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
     // 新しい状態を作成または既存を更新
     const now = Date.now();
+    // auto-execution-projectpath-fix Task 1.2: projectPathは引数から直接取得（逆算ロジックは使用しない）
+    // 既存のstateがある場合でも、新しく渡されたprojectPathを優先する
     const state: AutoExecutionState = {
+      projectPath,  // Task 1.2: 引数で受け取ったprojectPathを直接使用
       specPath,
       specId,
       status: 'running',

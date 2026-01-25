@@ -68,12 +68,14 @@ export class RemoteSpecWorkflowApi implements ISpecWorkflowApi {
     return this.client.executeInspection(specId);
   }
 
+  // auto-execution-projectpath-fix Task 4.5: Added projectPath parameter
   async startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
   ): Promise<Result<AutoExecutionState, ApiError>> {
-    return this.client.startAutoExecution(specPath, specId, options);
+    return this.client.startAutoExecution(projectPath, specPath, specId, options);
   }
 
   async stopAutoExecution(specPath: string): Promise<Result<void, ApiError>> {

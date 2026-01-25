@@ -102,6 +102,25 @@ describe('IpcApiClient', () => {
   });
 
   // ===========================================================================
+  // auto-execution-projectpath-fix: Task 4.4 - startAutoExecution projectPath
+  // Requirements: 4.2
+  // ===========================================================================
+
+  describe('startAutoExecution projectPath', () => {
+    it('should implement startAutoExecution with projectPath as first parameter', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Check that startAutoExecution method accepts projectPath as first parameter
+      expect(content).toMatch(/startAutoExecution\s*\(\s*projectPath[^)]*specPath[^)]*specId[^)]*options/);
+    });
+
+    it('should pass projectPath to window.electronAPI.autoExecutionStart', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Check that autoExecutionStart is called with projectPath included
+      expect(content).toMatch(/autoExecutionStart\s*\(\s*\{[^}]*projectPath/);
+    });
+  });
+
+  // ===========================================================================
   // bugs-view-unification: Task 1.2 - Bug monitoring methods
   // Requirements: 4.5, 4.7
   // ===========================================================================

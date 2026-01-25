@@ -131,6 +131,62 @@ describe('BugAutoExecutionHandlers', () => {
     });
   });
 
+  describe('BUG_AUTO_EXECUTION_START Handler', () => {
+    it('should pass projectPath to coordinator.start() as the first argument', async () => {
+      registerBugAutoExecutionHandlers(mockCoordinatorInstance as any);
+
+      // Mock coordinator.start() to return success
+      mockCoordinatorInstance.start.mockResolvedValue({
+        ok: true,
+        value: {
+          projectPath: '/project/path',
+          bugPath: '/project/path/.kiro/bugs/test-bug',
+          bugName: 'test-bug',
+          status: 'running',
+          currentPhase: null,
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+          retryCount: 0,
+          lastFailedPhase: null,
+        },
+      });
+
+      // Get the handler
+      const handler = mockIpcHandlers.get(IPC_CHANNELS.BUG_AUTO_EXECUTION_START);
+      expect(handler).toBeDefined();
+
+      // Call with BugStartParams including projectPath (Requirement 3.2)
+      const params = {
+        projectPath: '/project/path',
+        bugPath: '/project/path/.kiro/bugs/test-bug',
+        bugName: 'test-bug',
+        options: {
+          permissions: {
+            analyze: true,
+            fix: true,
+            verify: true,
+            deploy: false,
+          },
+        },
+        lastCompletedPhase: null,
+      };
+
+      await handler!({}, params);
+
+      // Verify coordinator.start() was called with projectPath as the first argument
+      // Requirement 3.3: IPCハンドラでprojectPath伝播
+      expect(mockCoordinatorInstance.start).toHaveBeenCalledWith(
+        '/project/path',          // projectPath (first arg)
+        '/project/path/.kiro/bugs/test-bug', // bugPath
+        'test-bug',               // bugName
+        params.options,           // options
+        null                      // lastCompletedPhase
+      );
+    });
+  });
+
   describe('Serialization Logic', () => {
     it('should remove timeoutId from state before sending', async () => {
       registerBugAutoExecutionHandlers(mockCoordinatorInstance as any);

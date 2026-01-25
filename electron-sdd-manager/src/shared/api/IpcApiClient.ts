@@ -88,6 +88,18 @@ function checkElectronAPI(): void {
  */
 export class IpcApiClient implements ApiClient {
   // ===========================================================================
+  // Project Operations
+  // auto-execution-projectpath-fix Task 4.5
+  // ===========================================================================
+
+  /**
+   * Get the current project path from projectStore
+   */
+  getProjectPath(): string {
+    return getCurrentProjectPath() ?? '';
+  }
+
+  // ===========================================================================
   // Spec Operations
   // ===========================================================================
 
@@ -343,9 +355,11 @@ export class IpcApiClient implements ApiClient {
 
   // ===========================================================================
   // Auto Execution Operations
+  // auto-execution-projectpath-fix: Task 4.4 - Added projectPath parameter
   // ===========================================================================
 
   async startAutoExecution(
+    projectPath: string,
     specPath: string,
     specId: string,
     options: AutoExecutionOptions
@@ -353,6 +367,7 @@ export class IpcApiClient implements ApiClient {
     checkElectronAPI();
     return wrapResult(async () => {
       const result = await window.electronAPI.autoExecutionStart({
+        projectPath,
         specPath,
         specId,
         options: {
@@ -367,6 +382,10 @@ export class IpcApiClient implements ApiClient {
 
       const state = result.value;
       return {
+        // projectPath is returned from the caller's argument, not from state
+        // The internal AutoExecutionState stores projectPath but the IPC response
+        // uses the serializable state which may not include it
+        projectPath,
         status: state.status,
         currentPhase: state.currentPhase as WorkflowPhase | undefined,
         completedPhases: state.executedPhases as WorkflowPhase[],

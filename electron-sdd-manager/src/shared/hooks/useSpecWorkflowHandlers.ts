@@ -20,9 +20,13 @@
  *   api,
  *   specDetail,
  *   specPath,
+ *   projectPath,  // auto-execution-projectpath-fix: Task 4.5
  *   onPhaseExecuted,
  * });
  * ```
+ *
+ * auto-execution-projectpath-fix Task 4.5:
+ * Requirements: 4.3 - Renderer側store/hookでprojectPath取得・送信
  */
 
 import { useCallback, useState } from 'react';
@@ -49,6 +53,11 @@ export interface UseSpecWorkflowHandlersConfig {
   specDetail: SpecDetail | null;
   /** Specパス（Remote UI用、Electron版ではspecDetail.metadata.nameを使用） */
   specPath?: string;
+  /**
+   * プロジェクトパス（メインリポジトリ）
+   * auto-execution-projectpath-fix Task 4.5: 自動実行開始時にイベントログ記録先として使用
+   */
+  projectPath?: string;
   /** フェーズ実行後のコールバック */
   onPhaseExecuted?: (phase: WorkflowPhase, agent: AgentInfo) => void;
   /** 承認更新後のコールバック */
@@ -120,6 +129,7 @@ export function useSpecWorkflowHandlers(
     api,
     specDetail,
     specPath,
+    projectPath,
     onPhaseExecuted,
     onApprovalUpdated,
     onError,
@@ -260,6 +270,7 @@ export function useSpecWorkflowHandlers(
 
   // ===========================================================================
   // Auto Execution Handlers
+  // auto-execution-projectpath-fix Task 4.5: Pass projectPath to API
   // ===========================================================================
 
   const handleStartAutoExecution = useCallback(
@@ -268,8 +279,12 @@ export function useSpecWorkflowHandlers(
       const path = getSpecPath();
       if (!specId) return;
 
+      // auto-execution-projectpath-fix Task 4.5: Use projectPath from config
+      // If not provided, fall back to empty string (API will handle validation)
+      const effectiveProjectPath = projectPath ?? '';
+
       try {
-        const result = await api.startAutoExecution(path, specId, options);
+        const result = await api.startAutoExecution(effectiveProjectPath, path, specId, options);
         if (!result.ok) {
           onError?.(result.error.message);
         }
@@ -277,7 +292,7 @@ export function useSpecWorkflowHandlers(
         onError?.(error instanceof Error ? error.message : 'Unknown error');
       }
     },
-    [api, getSpecId, getSpecPath, onError]
+    [api, getSpecId, getSpecPath, projectPath, onError]
   );
 
   const handleStopAutoExecution = useCallback(async () => {

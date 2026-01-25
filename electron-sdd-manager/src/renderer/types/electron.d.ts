@@ -840,8 +840,11 @@ export interface ElectronAPI {
 
   /**
    * Start auto-execution for a spec
+   * auto-execution-projectpath-fix: Task 6.1 - Added projectPath parameter
+   * Requirements: 4.1
    */
   autoExecutionStart(params: {
+    projectPath: string;
     specPath: string;
     specId: string;
     options: {
@@ -1214,8 +1217,11 @@ export interface ElectronAPI {
 
   /**
    * Start bug auto-execution
+   * auto-execution-projectpath-fix: Task 6.1 - Added projectPath parameter
+   * Requirements: 4.1
    */
   bugAutoExecutionStart(params: {
+    projectPath: string;
     bugPath: string;
     bugName: string;
     options: {

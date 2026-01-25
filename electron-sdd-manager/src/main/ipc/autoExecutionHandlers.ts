@@ -11,7 +11,6 @@ import { join } from 'path';
 import { IPC_CHANNELS } from './channels';
 import { logger } from '../services/logger';
 import { FileService } from '../services/fileService';
-import { getCurrentProjectPath } from './handlers';
 import type {
   AutoExecutionCoordinator,
   AutoExecutionOptions,
@@ -61,7 +60,11 @@ async function disableAutoExecutionInSpecJson(specPath: string): Promise<Disable
 // Types for IPC communication
 // ============================================================
 
+/**
+ * Requirement 3.1: StartParamsにprojectPath追加
+ */
 interface StartParams {
+  projectPath: string;
   specPath: string;
   specId: string;
   options: AutoExecutionOptions;
@@ -145,16 +148,16 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
     async (_event, params: StartParams): Promise<Result<SerializableAutoExecutionState, AutoExecutionError>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_START', { specName: params.specPath });
 
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) {
+      // Requirement 3.1, 3.3: Use params.projectPath instead of getCurrentProjectPath()
+      if (!params.projectPath) {
         return {
           ok: false,
-          error: { type: 'PRECONDITION_FAILED', message: 'Project not selected' },
+          error: { type: 'PRECONDITION_FAILED', message: 'projectPath is required' },
         };
       }
 
       // spec-path-ssot-refactor: Resolve path from name
-      const specPathResult = await fileService.resolveSpecPath(projectPath, params.specPath);
+      const specPathResult = await fileService.resolveSpecPath(params.projectPath, params.specPath);
       if (!specPathResult.ok) {
         logger.error('[autoExecutionHandlers] AUTO_EXECUTION_START: spec not found', { specName: params.specPath });
         return {
@@ -164,7 +167,8 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
       }
       const resolvedSpecPath = specPathResult.value;
 
-      const result = await coordinator.start(resolvedSpecPath, params.specId, params.options);
+      // auto-execution-projectpath-fix Task 3.1: Pass params.projectPath to coordinator.start()
+      const result = await coordinator.start(params.projectPath, resolvedSpecPath, params.specId, params.options);
       return toSerializableResult(result);
     }
   );

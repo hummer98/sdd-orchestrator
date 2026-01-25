@@ -73,6 +73,9 @@ vi.mock('../main/ipc/channels', () => ({
     // release-button-api-fix: Project Command Execution
     // Requirements: 1.1, 4.3
     EXECUTE_PROJECT_COMMAND: 'ipc:execute-project-command',
+    // auto-execution-projectpath-fix: Auto Execution channels
+    AUTO_EXECUTION_START: 'auto-execution:start',
+    BUG_AUTO_EXECUTION_START: 'bug-auto-execution:start',
   },
 }));
 
@@ -1037,6 +1040,136 @@ describe('Preload API - Task 13.1: SSH Remote Project API', () => {
       expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
         'ssh:status-changed',
         expect.any(Function)
+      );
+    });
+  });
+});
+
+// ============================================================
+// auto-execution-projectpath-fix Task 4.1: projectPath parameter
+// Requirements: 4.1 (preload IPC呼び出しでprojectPath送信)
+// ============================================================
+
+describe('Preload API - Task 4.1: Auto Execution projectPath', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('autoExecutionStart', () => {
+    it('should expose autoExecutionStart function', () => {
+      expect(typeof exposedAPI.autoExecutionStart).toBe('function');
+    });
+
+    it('should invoke auto-execution:start with projectPath in params', async () => {
+      const mockResult = {
+        ok: true,
+        value: {
+          projectPath: '/path/to/project',
+          specPath: '/path/to/project/.kiro/specs/feature-x',
+          specId: 'feature-x',
+          status: 'running',
+          currentPhase: 'requirements',
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        },
+      };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const params = {
+        projectPath: '/path/to/project',
+        specPath: '/path/to/project/.kiro/specs/feature-x',
+        specId: 'feature-x',
+        options: {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true,
+          },
+          documentReviewFlag: 'run' as const,
+          validationOptions: {
+            gap: false,
+            design: false,
+            impl: false,
+          },
+        },
+      };
+
+      await (exposedAPI.autoExecutionStart as Function)(params);
+
+      // Requirement 4.1: projectPath must be included in params
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'auto-execution:start',
+        expect.objectContaining({
+          projectPath: '/path/to/project',
+          specPath: '/path/to/project/.kiro/specs/feature-x',
+          specId: 'feature-x',
+        })
+      );
+    });
+  });
+
+  describe('bugAutoExecutionStart', () => {
+    it('should expose bugAutoExecutionStart function', () => {
+      expect(typeof exposedAPI.bugAutoExecutionStart).toBe('function');
+    });
+
+    it('should invoke bug-auto-execution:start with projectPath in params', async () => {
+      const mockResult = {
+        ok: true,
+        value: {
+          projectPath: '/path/to/project',
+          bugPath: '/path/to/project/.kiro/bugs/bug-x',
+          bugName: 'bug-x',
+          status: 'running',
+          currentPhase: 'analyze',
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+          retryCount: 0,
+          lastFailedPhase: null,
+        },
+      };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const params = {
+        projectPath: '/path/to/project',
+        bugPath: '/path/to/project/.kiro/bugs/bug-x',
+        bugName: 'bug-x',
+        options: {
+          permissions: {
+            analyze: true,
+            fix: true,
+            verify: true,
+            deploy: false,
+          },
+        },
+        lastCompletedPhase: null,
+      };
+
+      await (exposedAPI.bugAutoExecutionStart as Function)(params);
+
+      // Requirement 4.1: projectPath must be included in params
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'bug-auto-execution:start',
+        expect.objectContaining({
+          projectPath: '/path/to/project',
+          bugPath: '/path/to/project/.kiro/bugs/bug-x',
+          bugName: 'bug-x',
+        })
       );
     });
   });

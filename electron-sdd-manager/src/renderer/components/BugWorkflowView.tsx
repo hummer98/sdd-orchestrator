@@ -17,6 +17,8 @@ import { useApi } from '../../shared/api/ApiClientProvider';
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useWorkflowStore } from '../stores/workflowStore';
+// auto-execution-projectpath-fix Task 4.5: Import useProjectStore for currentProject
+import { useProjectStore } from '../stores/projectStore';
 import { BugPhaseItem } from './BugPhaseItem';
 import { BugAutoExecutionStatusDisplay } from './BugAutoExecutionStatusDisplay';
 // bugs-workflow-footer Task 6.4: Import footer component and hook
@@ -80,6 +82,8 @@ export function BugWorkflowView() {
   const agents = useAgentStore((state) => state.agents);
   const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
   const bugAutoExecutionPermissions = useWorkflowStore((state) => state.bugAutoExecutionPermissions);
+  // auto-execution-projectpath-fix Task 4.5: Get currentProject from store
+  const currentProject = useProjectStore((state) => state.currentProject);
 
   // ============================================================
   // bug-auto-execution-per-bug-state Task 4.1: Read state from store
@@ -269,7 +273,9 @@ export function BugWorkflowView() {
       // spec-path-ssot-refactor: Bug auto-execution API still uses bugPath for backward compatibility
       // The API expects bugPath to be the full path, but we only have name now
       // Use bugName as the identifier (handlers will resolve the path)
+      // auto-execution-projectpath-fix Task 4.5: Add projectPath from store
       const result = await window.electronAPI.bugAutoExecutionStart({
+        projectPath: currentProject ?? '',
         bugPath: bugName,  // Using name as path identifier for now
         bugName: selectedBug.name,
         options: {

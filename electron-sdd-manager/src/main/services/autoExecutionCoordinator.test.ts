@@ -15,6 +15,17 @@ import {
 } from './autoExecutionCoordinator';
 import type { WorkflowPhase } from './specManagerService';
 
+// Mock eventLogService for Task 1.3 tests
+// Create a shared mock instance so we can track calls across invocations
+const mockLogEvent = vi.fn().mockResolvedValue(undefined);
+const mockEventLogService = {
+  logEvent: mockLogEvent,
+};
+
+vi.mock('./eventLogService', () => ({
+  getDefaultEventLogService: vi.fn(() => mockEventLogService),
+}));
+
 // Default options for tests
 const createDefaultOptions = (): AutoExecutionOptions => ({
   permissions: {
@@ -26,6 +37,9 @@ const createDefaultOptions = (): AutoExecutionOptions => ({
   documentReviewFlag: 'run',
   validationOptions: { gap: false, design: false, impl: false },
 });
+
+// auto-execution-projectpath-fix Task 1.2: Default project path for tests
+const TEST_PROJECT_PATH = '/test/project';
 
 describe('AutoExecutionCoordinator', () => {
   let coordinator: AutoExecutionCoordinator;
@@ -45,8 +59,36 @@ describe('AutoExecutionCoordinator', () => {
 
   describe('Task 1.1: Core State Management Structure', () => {
     describe('AutoExecutionState interface', () => {
+      /**
+       * Task 1.1 (auto-execution-projectpath-fix): projectPath field
+       * Requirement 1.1: AutoExecutionStateにprojectPathフィールドが追加されること
+       *
+       * projectPathはメインリポジトリのパスを保持し、worktree環境でも
+       * 正しい場所にイベントログが記録されるようにする。
+       */
+      it('should have projectPath field for main repository path', () => {
+        const state: AutoExecutionState = {
+          projectPath: '/project/root',
+          specPath: '/project/root/.kiro/specs/test-spec',
+          specId: 'test-spec',
+          status: 'idle',
+          currentPhase: null,
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+        };
+
+        // projectPath should be a required readonly field
+        expect(state.projectPath).toBe('/project/root');
+        // projectPath should be different from specPath (specPath contains .kiro/specs/)
+        expect(state.projectPath).not.toBe(state.specPath);
+        expect(state.specPath).toContain(state.projectPath);
+      });
+
       it('should have all required properties', () => {
         const state: AutoExecutionState = {
+          projectPath: '/test/project',
           specPath: '/test/spec',
           specId: 'test-spec',
           status: 'idle',
@@ -57,6 +99,7 @@ describe('AutoExecutionCoordinator', () => {
           lastActivityTime: Date.now(),
         };
 
+        expect(state.projectPath).toBe('/test/project');
         expect(state.specPath).toBe('/test/spec');
         expect(state.specId).toBe('test-spec');
         expect(state.status).toBe('idle');
@@ -78,6 +121,7 @@ describe('AutoExecutionCoordinator', () => {
 
         statuses.forEach((status) => {
           const state: AutoExecutionState = {
+            projectPath: '/test/project',
             specPath: '/test/spec',
             specId: 'test-spec',
             status,
@@ -228,11 +272,53 @@ describe('AutoExecutionCoordinator', () => {
 
   describe('Task 1.2: Start/Stop/Status API', () => {
     describe('start() method', () => {
-      it('should start auto-execution and return success', async () => {
+      /**
+       * Task 1.2 (auto-execution-projectpath-fix): start()シグネチャ変更
+       * Requirement 1.2: start()メソッドのシグネチャが start(projectPath, specPath, specId, options) に変更されること
+       * Requirement 1.3: start()呼び出し時に渡されたprojectPathがAutoExecutionStateに保存されること
+       */
+      it('should accept projectPath as first argument and store it in state', async () => {
+        const projectPath = '/test/project';
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        const result = await coordinator.start(specPath, 'test-feature', options);
+        const result = await coordinator.start(projectPath, specPath, 'test-feature', options);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          // Requirement 1.2: projectPathが第一引数として受け取られる
+          // Requirement 1.3: projectPathが状態に保存される
+          expect(result.value.projectPath).toBe(projectPath);
+          expect(result.value.specPath).toBe(specPath);
+          expect(result.value.specId).toBe('test-feature');
+          expect(result.value.status).toBe('running');
+        }
+      });
+
+      it('should use provided projectPath instead of extracting from specPath', async () => {
+        // Worktree scenario: projectPath is different from specPath's parent
+        const projectPath = '/original/project';
+        const specPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+        const options = createDefaultOptions();
+
+        const result = await coordinator.start(projectPath, specPath, 'feature-x', options);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          // projectPath should be the explicitly provided value, not extracted from specPath
+          expect(result.value.projectPath).toBe(projectPath);
+          // The specPath extraction logic would give '/original/project/.kiro/worktrees/specs/feature-x'
+          // but we want the explicitly provided '/original/project'
+          expect(result.value.projectPath).not.toContain('worktrees');
+        }
+      });
+
+      it('should start auto-execution and return success', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options = createDefaultOptions();
+
+        const result = await coordinator.start(projectPath, specPath, 'test-feature', options);
 
         expect(result.ok).toBe(true);
         if (result.ok) {
@@ -247,11 +333,11 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
 
         // First start should succeed
-        const first = await coordinator.start(specPath, 'test-feature', options);
+        const first = await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         expect(first.ok).toBe(true);
 
         // Second start should fail
-        const second = await coordinator.start(specPath, 'test-feature', options);
+        const second = await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         expect(second.ok).toBe(false);
         if (!second.ok) {
           expect(second.error.type).toBe('ALREADY_EXECUTING');
@@ -263,12 +349,12 @@ describe('AutoExecutionCoordinator', () => {
 
         // Start MAX_CONCURRENT_EXECUTIONS specs
         for (let i = 0; i < MAX_CONCURRENT_EXECUTIONS; i++) {
-          const result = await coordinator.start(`/spec/${i}`, `spec-${i}`, options);
+          const result = await coordinator.start(TEST_PROJECT_PATH, `/spec/${i}`, `spec-${i}`, options);
           expect(result.ok).toBe(true);
         }
 
         // Next start should fail
-        const result = await coordinator.start('/spec/overflow', 'spec-overflow', options);
+        const result = await coordinator.start(TEST_PROJECT_PATH, '/spec/overflow', 'spec-overflow', options);
         expect(result.ok).toBe(false);
         if (!result.ok) {
           expect(result.error.type).toBe('MAX_CONCURRENT_REACHED');
@@ -284,7 +370,7 @@ describe('AutoExecutionCoordinator', () => {
         const eventHandler = vi.fn();
 
         coordinator.on('state-changed', eventHandler);
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         expect(eventHandler).toHaveBeenCalledWith(
           specPath,
@@ -301,7 +387,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const result = await coordinator.stop(specPath);
 
         expect(result.ok).toBe(true);
@@ -323,7 +409,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('state-changed', eventHandler);
         await coordinator.stop(specPath);
 
@@ -346,7 +432,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const state = coordinator.getStatus(specPath);
 
         expect(state).not.toBeNull();
@@ -365,8 +451,8 @@ describe('AutoExecutionCoordinator', () => {
       it('should return all current states', async () => {
         const options = createDefaultOptions();
 
-        await coordinator.start('/spec/1', 'spec-1', options);
-        await coordinator.start('/spec/2', 'spec-2', options);
+        await coordinator.start(TEST_PROJECT_PATH, '/spec/1', 'spec-1', options);
+        await coordinator.start(TEST_PROJECT_PATH, '/spec/2', 'spec-2', options);
 
         const statuses = coordinator.getAllStatuses();
         expect(statuses.size).toBe(2);
@@ -380,7 +466,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         await coordinator.stop(specPath);
 
         const result = await coordinator.retryFrom(specPath, 'design');
@@ -411,7 +497,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         expect(coordinator.isExecuting(specPath)).toBe(true);
       });
 
@@ -419,7 +505,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         await coordinator.stop(specPath);
         expect(coordinator.isExecuting(specPath)).toBe(false);
       });
@@ -433,8 +519,8 @@ describe('AutoExecutionCoordinator', () => {
       it('should return correct count of running specs', async () => {
         const options = createDefaultOptions();
 
-        await coordinator.start('/spec/1', 'spec-1', options);
-        await coordinator.start('/spec/2', 'spec-2', options);
+        await coordinator.start(TEST_PROJECT_PATH, '/spec/1', 'spec-1', options);
+        await coordinator.start(TEST_PROJECT_PATH, '/spec/2', 'spec-2', options);
         expect(coordinator.getRunningCount()).toBe(2);
 
         await coordinator.stop('/spec/1');
@@ -454,7 +540,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const initialState = coordinator.getStatus(specPath);
         const initialTime = initialState?.lastActivityTime ?? 0;
 
@@ -470,7 +556,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.handleAgentStatusChange('agent-123', 'running', specPath);
 
         const state = coordinator.getStatus(specPath);
@@ -484,7 +570,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.on('phase-completed', eventHandler);
 
@@ -497,7 +583,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'completed');
 
@@ -509,7 +595,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.handleAgentStatusChange('agent-123', 'running', specPath);
         await coordinator.handleAgentCompleted('agent-123', specPath, 'completed');
 
@@ -523,7 +609,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -535,7 +621,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -549,7 +635,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.on('execution-error', eventHandler);
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
@@ -569,7 +655,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'design');
 
         const state = coordinator.getStatus(specPath);
@@ -581,7 +667,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('phase-started', eventHandler);
         coordinator.setCurrentPhase(specPath, 'design', 'agent-456');
 
@@ -654,7 +740,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const storedOptions = coordinator.getOptions(specPath);
 
         expect(storedOptions).toEqual(options);
@@ -666,7 +752,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.markPhaseComplete(specPath, 'requirements');
 
         const state = coordinator.getStatus(specPath);
@@ -686,7 +772,7 @@ describe('AutoExecutionCoordinator', () => {
           validationOptions: { gap: false, design: false, impl: false },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.markPhaseComplete(specPath, 'requirements');
 
         const state = coordinator.getStatus(specPath);
@@ -707,7 +793,7 @@ describe('AutoExecutionCoordinator', () => {
         };
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('execution-completed', eventHandler);
         coordinator.markPhaseComplete(specPath, 'requirements');
 
@@ -726,7 +812,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         expect(coordinator.isPhaseCompleted(specPath, 'requirements')).toBe(false);
       });
 
@@ -734,7 +820,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.markPhaseComplete(specPath, 'requirements');
         expect(coordinator.isPhaseCompleted(specPath, 'requirements')).toBe(true);
       });
@@ -752,7 +838,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.handleAgentCrash(specPath, 'agent-123', 1);
 
@@ -764,7 +850,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.handleAgentCrash(specPath, 'agent-123', 137);
 
@@ -777,7 +863,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.on('execution-error', eventHandler);
         coordinator.handleAgentCrash(specPath, 'agent-123', 1);
@@ -806,7 +892,7 @@ describe('AutoExecutionCoordinator', () => {
           timeoutMs: 1000, // 1 second
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         // Simulate time passing by manipulating startTime
         const state = coordinator.getStatus(specPath);
         if (state) {
@@ -825,7 +911,7 @@ describe('AutoExecutionCoordinator', () => {
           timeoutMs: 60000, // 1 minute
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const isTimedOut = coordinator.checkTimeout(specPath);
         expect(isTimedOut).toBe(false);
       });
@@ -836,7 +922,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.handleTimeout(specPath);
 
@@ -848,7 +934,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.handleTimeout(specPath);
 
@@ -861,7 +947,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         coordinator.on('execution-error', eventHandler);
         coordinator.handleTimeout(specPath);
@@ -887,7 +973,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.handleSpecReadError(specPath, new Error('File not found'));
 
         const state = coordinator.getStatus(specPath);
@@ -898,7 +984,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.handleSpecReadError(specPath, new Error('Permission denied'));
 
         const state = coordinator.getStatus(specPath);
@@ -910,7 +996,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('status-changed', eventHandler);
         coordinator.handleSpecReadError(specPath, new Error('File not found'));
 
@@ -935,7 +1021,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -949,7 +1035,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         const errorDetails = coordinator.getErrorDetails(specPath);
         expect(errorDetails).toBeNull();
@@ -961,7 +1047,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -980,7 +1066,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -996,7 +1082,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -1011,7 +1097,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
         await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -1043,7 +1129,7 @@ describe('AutoExecutionCoordinator', () => {
       coordinator.on('state-changed', stateChangedHandler);
       coordinator.on('status-changed', statusChangedHandler);
 
-      await coordinator.start(specPath, 'test-feature', options);
+      await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
       // state-changed should be emitted
       expect(stateChangedHandler).toHaveBeenCalled();
@@ -1057,7 +1143,7 @@ describe('AutoExecutionCoordinator', () => {
       coordinator.on('state-changed', () => eventOrder.push('state-changed'));
       coordinator.on('status-changed', () => eventOrder.push('status-changed'));
 
-      await coordinator.start(specPath, 'test-feature', options);
+      await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
       coordinator.setCurrentPhase(specPath, 'requirements');
       await coordinator.handleAgentCompleted('agent-123', specPath, 'failed');
 
@@ -1077,7 +1163,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
 
         const snapshot = coordinator.getStatusSnapshot(specPath);
@@ -1099,8 +1185,8 @@ describe('AutoExecutionCoordinator', () => {
         const specPath2 = '/test/project/.kiro/specs/feature-2';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath1, 'feature-1', options);
-        await coordinator.start(specPath2, 'feature-2', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath1, 'feature-1', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath2, 'feature-2', options);
 
         const snapshots = coordinator.getAllStatusSnapshots();
         expect(snapshots.size).toBe(2);
@@ -1121,7 +1207,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Should not throw
         expect(() => {
@@ -1133,7 +1219,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.handleSpecFileChange(specPath, 'design.md', 'modified');
 
         const state = coordinator.getStatus(specPath);
@@ -1145,7 +1231,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('file-changed', eventHandler);
         coordinator.handleSpecFileChange(specPath, 'design.md', 'modified');
 
@@ -1170,7 +1256,7 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.on('state-changed', handler1);
         coordinator.on('state-changed', handler2);
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         expect(handler1).toHaveBeenCalled();
         expect(handler2).toHaveBeenCalled();
@@ -1180,7 +1266,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements');
 
         const status1 = coordinator.getStatus(specPath);
@@ -1198,7 +1284,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Should return false (consistent) for normal state
         const hasInconsistency = coordinator.detectInconsistency(specPath);
@@ -1225,7 +1311,7 @@ describe('AutoExecutionCoordinator', () => {
         // requirements: true, design: true, tasks: true, impl: false
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
         coordinator.on('execute-next-phase', eventHandler);
 
@@ -1256,7 +1342,7 @@ describe('AutoExecutionCoordinator', () => {
         };
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
         coordinator.on('execute-next-phase', eventHandler);
 
@@ -1275,7 +1361,7 @@ describe('AutoExecutionCoordinator', () => {
         const options = createDefaultOptions();
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'requirements', 'agent-123');
         coordinator.on('execute-next-phase', eventHandler);
 
@@ -1300,7 +1386,7 @@ describe('AutoExecutionCoordinator', () => {
         const executedPhases: WorkflowPhase[] = [];
         let documentReviewTriggered = false;
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         coordinator.on('execute-next-phase', (_specPath, phase) => {
           executedPhases.push(phase);
@@ -1339,7 +1425,7 @@ describe('AutoExecutionCoordinator', () => {
         const eventHandler = vi.fn();
 
         coordinator.on('execute-next-phase', eventHandler);
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // 最初の許可フェーズ(requirements)を実行するイベントが発火されるべき
         expect(eventHandler).toHaveBeenCalledWith(
@@ -1367,7 +1453,7 @@ describe('AutoExecutionCoordinator', () => {
         const eventHandler = vi.fn();
 
         coordinator.on('execute-next-phase', eventHandler);
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // requirements はスキップされて design から開始
         expect(eventHandler).toHaveBeenCalledWith(
@@ -1394,7 +1480,7 @@ describe('AutoExecutionCoordinator', () => {
         const eventHandler = vi.fn();
 
         coordinator.on('execute-next-phase', eventHandler);
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // 許可されたフェーズがないのでイベントは発火されない
         expect(eventHandler).not.toHaveBeenCalled();
@@ -1430,7 +1516,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         // Initially undefined
         const initialState = coordinator.getStatus(specPath);
         expect(initialState).not.toBeNull();
@@ -1455,7 +1541,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.continueDocumentReviewLoop(specPath, 2);
 
         const state = coordinator.getStatus(specPath);
@@ -1470,7 +1556,7 @@ describe('AutoExecutionCoordinator', () => {
         };
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('execute-document-review', eventHandler);
         coordinator.continueDocumentReviewLoop(specPath, 2);
 
@@ -1487,7 +1573,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Spy on handleDocumentReviewCompleted
         const spy = vi.spyOn(coordinator, 'handleDocumentReviewCompleted');
@@ -1503,7 +1589,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         // No assertion needed - just verify no errors occur
         expect(() => coordinator.continueDocumentReviewLoop(specPath, 3)).not.toThrow();
       });
@@ -1528,7 +1614,7 @@ describe('AutoExecutionCoordinator', () => {
         };
         const eventHandler = vi.fn();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.on('execute-next-phase', eventHandler);
 
         // Simulate tasks phase completed
@@ -1558,7 +1644,7 @@ describe('AutoExecutionCoordinator', () => {
           validationOptions: { gap: false, design: false, impl: false },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Handle document review not approved (needs discussion)
         coordinator.handleDocumentReviewCompleted(specPath, false);
@@ -1580,7 +1666,7 @@ describe('AutoExecutionCoordinator', () => {
           validationOptions: { gap: false, design: false, impl: false },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Set round to max
         coordinator.continueDocumentReviewLoop(specPath, 7);
@@ -1598,7 +1684,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
         // Try to continue beyond max
         coordinator.continueDocumentReviewLoop(specPath, 8);
@@ -1618,7 +1704,7 @@ describe('AutoExecutionCoordinator', () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options = createDefaultOptions();
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         const round = coordinator.getCurrentDocumentReviewRound(specPath);
 
         expect(round).toBeUndefined();
@@ -1631,7 +1717,7 @@ describe('AutoExecutionCoordinator', () => {
           documentReviewFlag: 'run',
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.continueDocumentReviewLoop(specPath, 3);
 
         const round = coordinator.getCurrentDocumentReviewRound(specPath);
@@ -1700,7 +1786,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
         await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
 
@@ -1735,7 +1821,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'impl', 'agent-1');
         await coordinator.handleAgentCompleted('agent-1', specPath, 'completed');
 
@@ -1771,7 +1857,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
 
         // Simulate inspection completion with GO status
@@ -1806,7 +1892,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
 
         // Simulate inspection completion with NOGO status
@@ -1842,7 +1928,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
 
         // Simulate inspection completion with GO status
@@ -1878,7 +1964,7 @@ describe('AutoExecutionCoordinator', () => {
           },
         };
 
-        await coordinator.start(specPath, 'test-feature', options);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
         coordinator.setCurrentPhase(specPath, 'inspection', 'agent-1');
 
         // Simulate inspection completion with GO status
@@ -1889,6 +1975,148 @@ describe('AutoExecutionCoordinator', () => {
           specId: 'test-feature',
         }));
       });
+    });
+  });
+
+  // ============================================================
+  // Task 1.3 (auto-execution-projectpath-fix): logAutoExecutionEvent uses state.projectPath
+  // Requirements: 1.4, 1.5
+  // ============================================================
+
+  describe('Task 1.3: logAutoExecutionEvent uses state.projectPath', () => {
+    beforeEach(() => {
+      mockLogEvent.mockClear();
+    });
+
+    /**
+     * Task 1.3 (auto-execution-projectpath-fix): logAutoExecutionEvent should use state.projectPath
+     * Requirement 1.4: logAutoExecutionEvent()がstate.projectPathを使用してEventLogService.logEvent()を呼び出すこと
+     * Requirement 1.5: 既存のspecPathからの逆算ロジックが削除されること
+     *
+     * Worktree環境では、specPathから.kiro/specs/で分割するとworktree内パスになってしまう。
+     * start()で渡されたprojectPathを状態として保持し、それをEventLogServiceに渡すことで
+     * 常にメインリポジトリの正しい場所にログを記録する。
+     */
+    it('should use state.projectPath instead of extracting from specPath for event logging', async () => {
+      // Worktree scenario: specPath is inside worktree, but projectPath points to main repo
+      const mainProjectPath = '/original/project';
+      const worktreeSpecPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+      const specId = 'feature-x';
+
+      // The old extraction logic would give: '/original/project/.kiro/worktrees/specs/feature-x'
+      // But we want: '/original/project' (the explicitly provided projectPath)
+
+      const options = createDefaultOptions();
+
+      // Start auto-execution with explicit projectPath
+      await coordinator.start(mainProjectPath, worktreeSpecPath, specId, options);
+
+      // Verify that logEvent was called with the correct projectPath (not extracted from specPath)
+      expect(mockLogEvent).toHaveBeenCalled();
+
+      // Find the auto-execution:start event call
+      const calls = mockLogEvent.mock.calls;
+      const startEventCall = calls.find(
+        (call: unknown[]) => call[2]?.type === 'auto-execution:start'
+      );
+
+      expect(startEventCall).toBeDefined();
+      // First argument should be the projectPath from state, NOT extracted from specPath
+      expect(startEventCall![0]).toBe(mainProjectPath);
+      // Verify it's NOT the wrongly extracted path
+      expect(startEventCall![0]).not.toContain('worktrees');
+    });
+
+    it('should log events with state.projectPath when stopping auto-execution', async () => {
+      const mainProjectPath = '/original/project';
+      const worktreeSpecPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+      const specId = 'feature-x';
+
+      const options = createDefaultOptions();
+
+      await coordinator.start(mainProjectPath, worktreeSpecPath, specId, options);
+      await coordinator.stop(worktreeSpecPath);
+
+      // Find the auto-execution:stop event call
+      const calls = mockLogEvent.mock.calls;
+      const stopEventCall = calls.find(
+        (call: unknown[]) => call[2]?.type === 'auto-execution:stop'
+      );
+
+      expect(stopEventCall).toBeDefined();
+      expect(stopEventCall![0]).toBe(mainProjectPath);
+    });
+
+    it('should log events with state.projectPath when agent crashes', async () => {
+      const mainProjectPath = '/original/project';
+      const worktreeSpecPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+      const specId = 'feature-x';
+
+      const options = createDefaultOptions();
+
+      await coordinator.start(mainProjectPath, worktreeSpecPath, specId, options);
+      coordinator.setCurrentPhase(worktreeSpecPath, 'requirements');
+      coordinator.handleAgentCrash(worktreeSpecPath, 'agent-123', 1);
+
+      // Find the auto-execution:fail event call
+      const calls = mockLogEvent.mock.calls;
+      const failEventCall = calls.find(
+        (call: unknown[]) => call[2]?.type === 'auto-execution:fail'
+      );
+
+      expect(failEventCall).toBeDefined();
+      expect(failEventCall![0]).toBe(mainProjectPath);
+    });
+
+    it('should log events with state.projectPath when execution completes', async () => {
+      const mainProjectPath = '/original/project';
+      const worktreeSpecPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+      const specId = 'feature-x';
+
+      const options: AutoExecutionOptions = {
+        permissions: {
+          requirements: true,
+          design: false,
+          tasks: false,
+          impl: false,
+        },
+        documentReviewFlag: 'run',
+        validationOptions: { gap: false, design: false, impl: false },
+      };
+
+      await coordinator.start(mainProjectPath, worktreeSpecPath, specId, options);
+      coordinator.setCurrentPhase(worktreeSpecPath, 'requirements', 'agent-1');
+      await coordinator.handleAgentCompleted('agent-1', worktreeSpecPath, 'completed');
+
+      // Find the auto-execution:complete event call
+      const calls = mockLogEvent.mock.calls;
+      const completeEventCall = calls.find(
+        (call: unknown[]) => call[2]?.type === 'auto-execution:complete'
+      );
+
+      expect(completeEventCall).toBeDefined();
+      expect(completeEventCall![0]).toBe(mainProjectPath);
+    });
+
+    it('should log events with state.projectPath when timeout occurs', async () => {
+      const mainProjectPath = '/original/project';
+      const worktreeSpecPath = '/original/project/.kiro/worktrees/specs/feature-x/.kiro/specs/feature-x';
+      const specId = 'feature-x';
+
+      const options = createDefaultOptions();
+
+      await coordinator.start(mainProjectPath, worktreeSpecPath, specId, options);
+      coordinator.setCurrentPhase(worktreeSpecPath, 'requirements');
+      coordinator.handleTimeout(worktreeSpecPath);
+
+      // Find the auto-execution:fail event call for timeout
+      const calls = mockLogEvent.mock.calls;
+      const failEventCall = calls.find(
+        (call: unknown[]) => call[2]?.type === 'auto-execution:fail' && call[2]?.message?.includes('Timeout')
+      );
+
+      expect(failEventCall).toBeDefined();
+      expect(failEventCall![0]).toBe(mainProjectPath);
     });
   });
 });

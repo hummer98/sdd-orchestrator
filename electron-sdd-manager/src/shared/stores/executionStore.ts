@@ -78,6 +78,7 @@ export const useSharedExecutionStore = create<SharedExecutionStore>((set, get) =
   error: null,
 
   // Actions
+  // auto-execution-projectpath-fix Task 4.5: Use projectPath from apiClient
   startAutoExecution: async (
     apiClient: ApiClient,
     specPath: string,
@@ -86,7 +87,9 @@ export const useSharedExecutionStore = create<SharedExecutionStore>((set, get) =
   ) => {
     set({ isLoading: true, error: null });
 
-    const result = await apiClient.startAutoExecution(specPath, specId, options);
+    // auto-execution-projectpath-fix Task 4.5: Get projectPath from API client
+    const projectPath = apiClient.getProjectPath?.() ?? '';
+    const result = await apiClient.startAutoExecution(projectPath, specPath, specId, options);
 
     if (result.ok) {
       set((state) => {

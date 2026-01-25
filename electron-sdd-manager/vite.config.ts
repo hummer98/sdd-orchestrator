@@ -14,7 +14,7 @@ export default defineConfig({
         entry: 'src/main/index.ts',
         onstart(options) {
           // Enable remote debugging for Electron MCP integration
-          options.startup(['.', '--remote-debugging-port=9222']);
+          options.startup(['--remote-debugging-port=9222']);
         },
         vite: {
           build: {

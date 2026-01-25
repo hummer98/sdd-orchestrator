@@ -35,12 +35,16 @@ argument-hint: <initial-idea>
 ### Phase 1: Initial Understanding
 
 1. **Acknowledge the input**: `$ARGUMENTS`
-2. **Quick analysis**:
+2. **Parse flags**:
+   - Check for `--worktree` flag in $ARGUMENTS
+   - Remove flag from arguments before processing description
+   - Store worktree mode flag for Phase 4
+3. **Quick analysis**:
    - What is the user trying to achieve?
    - What domain/area does this touch?
    - What are obvious questions that need answers?
 
-3. **Load context**:
+4. **Load context**:
    - Glob `.kiro/steering/*.md` and read all steering files for project context
    - Check `.kiro/specs/` for related existing specs
    - Identify relevant existing code if mentioned
@@ -92,9 +96,19 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
-1. **Create directory**: `.kiro/specs/{feature-name}/`
+1. **Worktree mode check**:
+   - If `--worktree` flag was detected in Phase 1:
+     - Execute `.kiro/scripts/create-spec-worktree.sh {feature-name}`
+     - If exit code is non-zero, display error message and **abort spec creation**
+     - Set spec directory to `.kiro/worktrees/specs/{feature-name}/.kiro/specs/{feature-name}/`
+   - Otherwise:
+     - Set spec directory to `.kiro/specs/{feature-name}/`
 
-2. **Generate spec.json** (get current UTC timestamp first):
+2. **Create directory**: `{spec-directory}`
+
+3. **Generate spec.json** (get current UTC timestamp first):
+
+**Without worktree** (standard mode):
 ```json
 {
   "feature_name": "{feature-name}",
@@ -119,9 +133,40 @@ When dialogue converges:
 }
 ```
 
+**With worktree** (worktree mode):
+```json
+{
+  "feature_name": "{feature-name}",
+  "created_at": "{timestamp-from-step-1}",
+  "updated_at": "{timestamp-from-step-1}",
+  "language": "ja",
+  "phase": "requirements-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "worktree": {
+    "path": ".kiro/worktrees/specs/{feature-name}",
+    "branch": "feature/{feature-name}",
+    "created_at": "{timestamp-from-step-1}",
+    "enabled": true
+  }
+}
+```
+
 ### Phase 5: Requirements Generation
 
-Generate `.kiro/specs/{feature-name}/requirements.md` with the following structure:
+Generate `{spec-directory}/requirements.md` with the following structure:
 
 ```markdown
 # Requirements: {Feature Name}

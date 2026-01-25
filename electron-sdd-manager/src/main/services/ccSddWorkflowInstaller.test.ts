@@ -911,7 +911,14 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
       const { HELPER_SCRIPTS } = await import('./ccSddWorkflowInstaller');
       expect(HELPER_SCRIPTS).toContain('update-spec-for-deploy.sh');
       expect(HELPER_SCRIPTS).toContain('update-bug-for-deploy.sh');
-      expect(HELPER_SCRIPTS.length).toBe(2);
+      expect(HELPER_SCRIPTS.length).toBe(4);
+    });
+
+    it('should include worktree creation scripts', async () => {
+      // Import constant to test - Requirements: 4.3
+      const { HELPER_SCRIPTS } = await import('./ccSddWorkflowInstaller');
+      expect(HELPER_SCRIPTS).toContain('create-spec-worktree.sh');
+      expect(HELPER_SCRIPTS).toContain('create-bug-worktree.sh');
     });
   });
 });

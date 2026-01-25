@@ -127,6 +127,8 @@ export const CC_SDD_SETTINGS = [
 export const HELPER_SCRIPTS = [
   'update-spec-for-deploy.sh',
   'update-bug-for-deploy.sh',
+  'create-spec-worktree.sh',
+  'create-bug-worktree.sh',
 ] as const;
 
 /**

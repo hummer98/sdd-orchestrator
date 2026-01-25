@@ -19,6 +19,7 @@ vi.mock('../main/ipc/remoteAccessHandlers', () => ({
   setupAgentLogsProvider: vi.fn(),
   setupSpecDetailProvider: vi.fn(),
   setupBugDetailProvider: vi.fn(),
+  setupFileService: vi.fn(),
 }));
 
 // Mock main SSH handlers

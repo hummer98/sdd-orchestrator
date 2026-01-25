@@ -280,9 +280,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         specId: specDetail.metadata.name,
         featureName: specDetail.metadata.name,
         commandPrefix: workflowStore.commandPrefix,
+        scheme: documentReviewScheme,
       });
     });
-  }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
+  }, [specDetail, workflowStore.commandPrefix, wrapExecution, documentReviewScheme]);
 
   const handleExecuteDocumentReviewReply = useCallback(async (roundNumber: number) => {
     if (!specDetail) return;

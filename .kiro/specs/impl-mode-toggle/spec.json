@@ -1,0 +1,43 @@
+{
+  "feature_name": "impl-mode-toggle",
+  "created_at": "2026-01-25T09:51:29Z",
+  "updated_at": "2026-01-25T11:41:36Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "scheme": "claude-code",
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-25T11:11:28Z"
+      }
+    ]
+  }
+}

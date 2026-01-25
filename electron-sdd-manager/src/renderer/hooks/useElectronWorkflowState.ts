@@ -22,6 +22,7 @@ import { useHumanActivity } from './useHumanActivity';
 import { notify } from '../stores';
 import { hasWorktreePath } from '../types/worktree';
 import { normalizeInspectionState } from '../types/inspection';
+import { getImplMode } from '../types/implMode';
 import {
   ALL_WORKFLOW_PHASES,
   getPhaseStatus,
@@ -157,6 +158,12 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   const parallelTaskCount = useMemo(() => {
     return specDetail?.parallelTaskInfo?.parallelTasks ?? 0;
   }, [specDetail?.parallelTaskInfo?.parallelTasks]);
+
+  // Implementation Mode (impl-mode-toggle: Task 1.2, 4.1)
+  // Requirements: 1.3 - デフォルト値 'sequential'
+  const implMode = useMemo(() => {
+    return getImplMode(specJson ?? {});
+  }, [specJson]);
 
   // ---------------------------------------------------------------------------
   // Effects
@@ -426,6 +433,22 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     toggleParallelMode();
   }, [toggleParallelMode]);
 
+  // impl-mode-toggle: Task 4.1 - Toggle impl mode handler
+  // Requirements: 2.4 - spec.json の impl.mode を更新
+  const handleToggleImplMode = useCallback(async () => {
+    if (!specDetail) return;
+
+    const newMode = implMode === 'sequential' ? 'parallel' : 'sequential';
+    try {
+      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
+        impl: { mode: newMode },
+      });
+    } catch (error) {
+      console.error('Failed to update impl mode:', error);
+      notify.error('実装モードの更新に失敗しました');
+    }
+  }, [specDetail, implMode]);
+
   const handleShowEventLog = useCallback(async () => {
     if (!specDetail) return;
 
@@ -493,6 +516,9 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     hasParallelTasks: specHasParallelTasks,
     parallelTaskCount,
 
+    // Implementation Mode (impl-mode-toggle: Task 1.2)
+    implMode,
+
     // Metrics
     currentMetrics: currentMetrics ? {
       aiTimeSeconds: currentMetrics.totalAiTimeMs ? currentMetrics.totalAiTimeMs / 1000 : undefined,
@@ -524,6 +550,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     parallelModeEnabled,
     specHasParallelTasks,
     parallelTaskCount,
+    implMode,
     currentMetrics,
     launching,
   ]);
@@ -550,6 +577,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     handleExecuteTask,
     handleParallelExecute,
     handleToggleParallelMode,
+    handleToggleImplMode,
     handleConvertToWorktree,
     handleShowEventLog,
     handleShowAgentLog,
@@ -571,6 +599,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     handleExecuteTask,
     handleParallelExecute,
     handleToggleParallelMode,
+    handleToggleImplMode,
     handleConvertToWorktree,
     handleShowEventLog,
     handleShowAgentLog,

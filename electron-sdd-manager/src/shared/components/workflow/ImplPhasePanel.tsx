@@ -3,12 +3,14 @@
  * impl-flow-hierarchy-fix: Task 2.1, 2.2, 2.3, 2.4
  * spec-worktree-early-creation: Task 7.1 - Simplified props
  * parallel-task-impl: Inspection Fix Task 9.1, 9.2 - ParallelModeToggle integration
+ * impl-mode-toggle: Task 3.3 - New implMode and onToggleImplMode props
  *
  * Specialized component for the impl phase:
  * - Shows status (pending/executing/approved)
  * - Applies purple accent color in worktree mode (read from spec.json)
  * - Worktree mode is determined at spec creation, not impl time
  * - Integrates ParallelModeToggle for parallel task execution
+ * - impl-mode-toggle: Supports new implMode prop for sequential/parallel selection
  */
 
 import React, { useState } from 'react';
@@ -25,6 +27,7 @@ import {
 import type { PhaseStatus } from './PhaseItem';
 import { AgentIcon, AgentBranchIcon } from '../ui/AgentIcon';
 import { ParallelModeToggle } from './ParallelModeToggle';
+import type { ImplMode } from '@renderer/types/implMode';
 
 // =============================================================================
 // Types
@@ -51,17 +54,48 @@ export interface ImplPhasePanelProps {
   className?: string;
 
   // ==========================================================================
+  // impl-mode-toggle: Task 3.3 - New simplified props
+  // Requirements: 2.1, 2.4, 3.1, 3.2, 3.3
+  // ==========================================================================
+
+  /**
+   * Implementation mode (impl-mode-toggle)
+   * - 'sequential': Uses spec-impl for step-by-step execution
+   * - 'parallel': Uses spec-auto-impl for batch execution
+   * When provided, takes precedence over parallelModeEnabled
+   */
+  implMode?: ImplMode;
+  /**
+   * Callback when impl mode toggle is clicked (impl-mode-toggle)
+   * Updates spec.json impl.mode field
+   */
+  onToggleImplMode?: () => void;
+
+  // ==========================================================================
   // parallel-task-impl: Inspection Fix Task 9.1, 9.2 - Parallel mode props
+  // @deprecated Use implMode and onToggleImplMode instead
   // Requirements: 1.1, 1.5, 1.6
   // ==========================================================================
 
-  /** Whether the spec has parallel tasks (P) markers */
+  /**
+   * Whether the spec has parallel tasks (P) markers
+   * @deprecated Ignored when implMode is provided - toggle always visible
+   */
   hasParallelTasks?: boolean;
-  /** Number of parallel tasks in the spec */
+  /**
+   * Number of parallel tasks in the spec
+   * @deprecated Not displayed in new impl-mode-toggle design
+   */
   parallelTaskCount?: number;
-  /** Whether parallel mode is enabled */
+  /**
+   * Whether parallel mode is enabled
+   * @deprecated Use implMode instead
+   */
   parallelModeEnabled?: boolean;
-  /** Callback when parallel mode toggle is clicked */
+  /**
+   * Callback when parallel mode toggle is clicked
+   * @deprecated Use onToggleImplMode instead
+   */
   onToggleParallelMode?: () => void;
   /** Callback for parallel execution (when parallel mode is ON) */
   onExecuteParallel?: () => void;
@@ -97,9 +131,14 @@ export function ImplPhasePanel({
   onExecute,
   onToggleAutoPermission,
   className,
-  // parallel-task-impl: Inspection Fix Task 9.1, 9.2 props
+  // impl-mode-toggle: Task 3.3 - New props
+  implMode,
+  onToggleImplMode,
+  // parallel-task-impl: Inspection Fix Task 9.1, 9.2 props (legacy)
   hasParallelTasks = false,
-  parallelTaskCount = 0,
+  // parallelTaskCount is intentionally unused (deprecated, Req 5.4)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  parallelTaskCount: _parallelTaskCount = 0,
   parallelModeEnabled = false,
   onToggleParallelMode,
   onExecuteParallel,
@@ -114,16 +153,34 @@ export function ImplPhasePanel({
   // Button disabled state
   const isButtonDisabled = !canExecute || isExecuting;
 
-  // parallel-task-impl: Execute handler selection based on parallel mode
-  // Requirements: 1.5, 1.6
+  // impl-mode-toggle: Determine if using new API or legacy
+  // New implMode prop takes precedence over legacy parallelModeEnabled
+  const useNewApi = implMode !== undefined;
+  const effectiveMode: ImplMode = useNewApi
+    ? implMode
+    : (parallelModeEnabled ? 'parallel' : 'sequential');
+  const isParallelMode = effectiveMode === 'parallel';
+
+  // impl-mode-toggle: Determine toggle handler
+  const handleToggle = useNewApi
+    ? (onToggleImplMode ?? (() => {}))
+    : (onToggleParallelMode ?? (() => {}));
+
+  // impl-mode-toggle: Determine if toggle should be visible
+  // New API: always visible (Req 2.1)
+  // Legacy API: visible only when hasParallelTasks is true
+  const showToggle = useNewApi || hasParallelTasks;
+
+  // impl-mode-toggle: Execute handler selection based on mode
+  // Requirements: 3.1, 3.2, 3.3
   // When parallel mode is ON and onExecuteParallel is provided, use it.
   // Otherwise, fallback to standard onExecute handler.
   const handleExecuteClick = () => {
-    if (parallelModeEnabled && onExecuteParallel) {
+    if (isParallelMode && onExecuteParallel) {
       // Parallel mode ON with handler: use parallel execution
       onExecuteParallel();
     } else {
-      // Parallel mode OFF, or no parallel handler: use standard execution
+      // Sequential mode, or no parallel handler: use standard execution
       onExecute();
     }
   };
@@ -213,14 +270,14 @@ export function ImplPhasePanel({
           )}
         </button>
 
-        {/* parallel-task-impl: Parallel mode toggle */}
-        {/* Requirements: 1.1 - Parallel toggle next to execute button */}
-        <ParallelModeToggle
-          parallelModeEnabled={parallelModeEnabled}
-          hasParallelTasks={hasParallelTasks}
-          parallelTaskCount={parallelTaskCount}
-          onToggle={onToggleParallelMode ?? (() => {})}
-        />
+        {/* impl-mode-toggle: Implementation mode toggle */}
+        {/* Requirements: 2.1, 2.4 - Toggle always visible with new API */}
+        {showToggle && (
+          <ParallelModeToggle
+            mode={effectiveMode}
+            onToggle={handleToggle}
+          />
+        )}
 
         {/* Execute button */}
         {/* Requirement 2.7: Execute button with worktree-aware behavior */}

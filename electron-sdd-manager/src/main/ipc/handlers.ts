@@ -633,17 +633,51 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
       if (!window) return;
       coordinator.setCurrentPhase(specPath, phase);
 
+      // ============================================================
+      // impl-mode-toggle: Read impl.mode from spec.json to determine execution type
+      // - 'sequential' (default): Use type: 'impl' for sequential execution
+      // - 'parallel': Use type: 'auto-impl' for parallel batch execution
+      // Requirements: 4.1, 4.2, 4.3, 4.4
+      // ============================================================
       if (phase === 'impl') {
-        const result = await service.execute({ type: 'auto-impl', specId: context.specId, featureName: context.featureName, commandPrefix: 'kiro' });
+        // Read spec.json to get impl.mode
+        const specJsonResult = await fileService.readSpecJson(specPath);
+        let implMode: 'sequential' | 'parallel' = 'sequential'; // Default to sequential (Req 4.4)
+        if (specJsonResult.ok && specJsonResult.value.impl?.mode) {
+          const mode = specJsonResult.value.impl.mode;
+          if (mode === 'parallel' || mode === 'sequential') {
+            implMode = mode;
+          }
+        }
+        logger.info('[handlers] execute-next-phase: impl mode determined', { specPath, implMode });
+
+        // Choose execution type based on impl.mode
+        const executeType = implMode === 'parallel' ? 'auto-impl' : 'impl';
+        const result = await service.execute({
+          type: executeType,
+          specId: context.specId,
+          featureName: context.featureName,
+          commandPrefix: 'kiro',
+        });
+
         if (result.ok) {
-          coordinator.setCurrentPhase(specPath, 'impl', result.value.agentId);
-          setupAgentCompletionListener(service, result.value.agentId, specPath, coordinator);
+          const agentId = result.value.agentId;
+          logger.info('[handlers] execute-next-phase: impl started successfully', { specPath, agentId, implMode, executeType });
+
+          // Update coordinator with agent ID
+          coordinator.setCurrentPhase(specPath, 'impl', agentId);
+
+          // Listen for this agent's completion
+          setupAgentCompletionListener(service, agentId, specPath, coordinator);
         } else {
+          // Error handling: Call handleAgentCompleted with failed status
+          logger.error('[handlers] execute-next-phase: impl start failed', { specPath, implMode, executeType, error: result.error });
           coordinator.handleAgentCompleted('', specPath, 'failed');
         }
-        return;
+        return; // Early return for impl phase
       }
 
+      // Execute other phases (non-impl) using unified execute
       const result = await service.execute({ type: phase, specId: context.specId, featureName: context.featureName, commandPrefix: 'kiro' } as import('../../shared/types/executeOptions').ExecuteOptions);
       if (result.ok) {
         coordinator.setCurrentPhase(specPath, phase, result.value.agentId);

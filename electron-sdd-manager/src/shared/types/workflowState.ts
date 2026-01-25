@@ -18,6 +18,7 @@ import type {
   DocumentReviewAutoExecutionFlag,
 } from './review';
 import type { AutoExecutionStatus } from './execution';
+import type { ImplMode } from '@renderer/types/implMode';
 
 // =============================================================================
 // Phase Status Types
@@ -103,6 +104,17 @@ export interface WorkflowState {
   parallelTaskCount: number;
 
   // ---------------------------------------------------------------------------
+  // Implementation Mode State (impl-mode-toggle feature)
+  // ---------------------------------------------------------------------------
+  /**
+   * 実装モード
+   * impl-mode-toggle: Requirements 1.3
+   * - 'sequential': spec-impl を使用（デフォルト）
+   * - 'parallel': spec-auto-impl を使用
+   */
+  implMode: ImplMode;
+
+  // ---------------------------------------------------------------------------
   // Metrics State
   // ---------------------------------------------------------------------------
   /** 現在のメトリクス */
@@ -183,6 +195,12 @@ export interface WorkflowHandlers {
   handleParallelExecute: () => Promise<void>;
   /** 並列モードをトグル */
   handleToggleParallelMode: () => void;
+  /**
+   * 実装モードをトグル
+   * impl-mode-toggle: Requirements 2.4
+   * sequential <-> parallel を切り替え、spec.json を更新
+   */
+  handleToggleImplMode: () => Promise<void>;
 
   // ---------------------------------------------------------------------------
   // Worktree

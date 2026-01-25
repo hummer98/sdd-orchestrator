@@ -278,6 +278,7 @@ export function WorkflowViewCore({
         </div>
 
         {/* ImplPhasePanel */}
+        {/* impl-mode-toggle: Pass implMode and onToggleImplMode props */}
         <ImplPhasePanel
           worktreeModeSelected={state.isWorktreeModeSelected}
           status={state.phaseStatuses.impl}
@@ -287,6 +288,10 @@ export function WorkflowViewCore({
           isAutoPhase={state.isAutoExecuting && state.currentAutoPhase === 'impl'}
           onExecute={handlers.handleImplExecute}
           onToggleAutoPermission={() => handlers.handleToggleAutoPermission('impl')}
+          // impl-mode-toggle: New simplified props (Task 5.1)
+          implMode={state.implMode}
+          onToggleImplMode={handlers.handleToggleImplMode}
+          // Legacy props for backward compatibility
           hasParallelTasks={state.hasParallelTasks}
           parallelTaskCount={state.parallelTaskCount}
           parallelModeEnabled={state.parallelModeEnabled}

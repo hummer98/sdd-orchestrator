@@ -29,6 +29,8 @@ import type { MultiRoundInspectionState, LegacyInspectionState } from './inspect
 import type { WorktreeConfig } from './worktree';
 // gemini-document-review: ReviewerScheme for scheme field
 import type { ReviewerScheme } from './documentReview';
+// impl-mode-toggle: ImplConfig for impl mode selection
+import type { ImplConfig } from './implMode';
 
 export interface SpecJson {
   feature_name: string;
@@ -64,6 +66,14 @@ export interface SpecJson {
    * - Field absence indicates normal mode
    */
   worktree?: WorktreeConfig;
+  /**
+   * Implementation mode configuration (optional for backward compatibility)
+   * impl-mode-toggle: Requirements 1.1, 1.2, 1.3
+   * - 'sequential': Use spec-impl for sequential execution
+   * - 'parallel': Use spec-auto-impl for parallel batch execution
+   * - Field absence defaults to 'sequential'
+   */
+  impl?: ImplConfig;
 }
 
 /**
@@ -395,3 +405,9 @@ export * from './bugJson';
 // Requirements: 7.1, 7.2
 // ============================================================
 export * from './documentReview';
+
+// ============================================================
+// Implementation Mode Types (impl-mode-toggle feature)
+// Requirements: 1.1, 1.2, 1.3
+// ============================================================
+export * from './implMode';

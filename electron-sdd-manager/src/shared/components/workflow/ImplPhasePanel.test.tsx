@@ -274,9 +274,12 @@ describe('ImplPhasePanel', () => {
       expect(toggle).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('should show parallel task count in toggle', () => {
+    // impl-mode-toggle: Task count display removed (Req 5.4)
+    // The new ParallelModeToggle no longer shows task counts
+    it('should not show parallel task count in toggle (impl-mode-toggle: Req 5.4)', () => {
       render(<ImplPhasePanel {...parallelProps} parallelTaskCount={5} />);
-      expect(screen.getByText('5')).toBeInTheDocument();
+      // Task count is no longer displayed
+      expect(screen.queryByText('5')).not.toBeInTheDocument();
     });
   });
 
@@ -348,6 +351,120 @@ describe('ImplPhasePanel', () => {
       fireEvent.click(button);
 
       expect(onExecute).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ==========================================================================
+  // impl-mode-toggle: Task 3.3 - New implMode and onToggleImplMode props
+  // Requirements: 2.1, 2.4, 3.1, 3.2, 3.3
+  // ==========================================================================
+  describe('impl mode toggle integration (impl-mode-toggle)', () => {
+    const implModeProps = {
+      ...defaultProps,
+      implMode: 'sequential' as const,
+      onToggleImplMode: vi.fn(),
+    };
+
+    // Requirement 2.1: Toggle always visible
+    it('should always render ParallelModeToggle when implMode is provided', () => {
+      render(<ImplPhasePanel {...implModeProps} />);
+      expect(screen.getByTestId('parallel-mode-toggle')).toBeInTheDocument();
+    });
+
+    it('should render ParallelModeToggle with sequential mode', () => {
+      render(<ImplPhasePanel {...implModeProps} implMode="sequential" />);
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('should render ParallelModeToggle with parallel mode', () => {
+      render(<ImplPhasePanel {...implModeProps} implMode="parallel" />);
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    // Requirement 2.4: Toggle calls onToggleImplMode
+    it('should call onToggleImplMode when toggle is clicked', () => {
+      const onToggle = vi.fn();
+      render(<ImplPhasePanel {...implModeProps} onToggleImplMode={onToggle} />);
+
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      fireEvent.click(toggle);
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    // Requirement 3.1: sequential mode uses onExecute
+    it('should call onExecute when implMode is sequential', () => {
+      const onExecute = vi.fn();
+      const onExecuteParallel = vi.fn();
+      render(
+        <ImplPhasePanel
+          {...implModeProps}
+          implMode="sequential"
+          onExecute={onExecute}
+          onExecuteParallel={onExecuteParallel}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecute).toHaveBeenCalledTimes(1);
+      expect(onExecuteParallel).not.toHaveBeenCalled();
+    });
+
+    // Requirement 3.2: parallel mode uses onExecuteParallel
+    it('should call onExecuteParallel when implMode is parallel', () => {
+      const onExecute = vi.fn();
+      const onExecuteParallel = vi.fn();
+      render(
+        <ImplPhasePanel
+          {...implModeProps}
+          implMode="parallel"
+          onExecute={onExecute}
+          onExecuteParallel={onExecuteParallel}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecuteParallel).toHaveBeenCalledTimes(1);
+      expect(onExecute).not.toHaveBeenCalled();
+    });
+
+    // Requirement 3.3: Fallback to onExecute when onExecuteParallel not provided
+    it('should fallback to onExecute when implMode is parallel but onExecuteParallel is not provided', () => {
+      const onExecute = vi.fn();
+      render(
+        <ImplPhasePanel
+          {...implModeProps}
+          implMode="parallel"
+          onExecute={onExecute}
+          onExecuteParallel={undefined}
+        />
+      );
+
+      const button = screen.getByTestId('impl-execute-button');
+      fireEvent.click(button);
+
+      expect(onExecute).toHaveBeenCalledTimes(1);
+    });
+
+    // New API should work alongside legacy props (backward compatibility)
+    it('should prefer implMode over parallelModeEnabled when both provided', () => {
+      render(
+        <ImplPhasePanel
+          {...implModeProps}
+          implMode="parallel"
+          parallelModeEnabled={false} // Legacy prop says false
+        />
+      );
+
+      const toggle = screen.getByTestId('parallel-mode-toggle');
+      // implMode should take precedence
+      expect(toggle).toHaveAttribute('aria-pressed', 'true');
     });
   });
 });

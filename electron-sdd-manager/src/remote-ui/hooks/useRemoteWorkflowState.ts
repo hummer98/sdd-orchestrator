@@ -11,6 +11,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLaunchingState } from '@shared/hooks';
 import { useParallelModeStore } from '@shared/stores/parallelModeStore';
 import { parseTasksContent } from '@shared/utils/taskParallelParser';
+import { getImplMode } from '@renderer/types/implMode';
 import type {
   ApiClient,
   SpecMetadataWithPath,
@@ -225,6 +226,12 @@ export function useRemoteWorkflowState(
     return result?.parallelTasks ?? 0;
   }, [spec?.name, getParseResult, parseResults]);
 
+  // Implementation Mode (impl-mode-toggle: Task 1.2)
+  // Requirements: 1.3 - デフォルト値 'sequential'
+  const implMode = useMemo(() => {
+    return getImplMode(specDetail?.specJson ?? {});
+  }, [specDetail?.specJson]);
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -385,6 +392,12 @@ export function useRemoteWorkflowState(
     toggleParallelMode();
   }, [toggleParallelMode]);
 
+  // impl-mode-toggle: Task 4.1 - Toggle impl mode handler
+  // Remote UI would need API to update spec.json
+  const handleToggleImplMode = useCallback(async () => {
+    console.log('Toggle impl mode - not implemented in Remote UI');
+  }, []);
+
   const handleConvertToWorktree = useCallback(async () => {
     // Remote UI doesn't have worktree conversion API yet
     console.log('Convert to worktree - not implemented in Remote UI');
@@ -445,6 +458,9 @@ export function useRemoteWorkflowState(
     hasParallelTasks: specHasParallelTasks,
     parallelTaskCount,
 
+    // Implementation Mode (impl-mode-toggle: Task 1.2)
+    implMode,
+
     // Metrics
     currentMetrics: null, // Not implemented in Remote UI
 
@@ -467,6 +483,7 @@ export function useRemoteWorkflowState(
     parallelModeEnabled,
     specHasParallelTasks,
     parallelTaskCount,
+    implMode,
     launching,
   ]);
 
@@ -492,6 +509,7 @@ export function useRemoteWorkflowState(
     handleExecuteTask,
     handleParallelExecute,
     handleToggleParallelMode,
+    handleToggleImplMode,
     handleConvertToWorktree,
     handleShowEventLog,
     handleShowAgentLog,
@@ -513,6 +531,7 @@ export function useRemoteWorkflowState(
     handleExecuteTask,
     handleParallelExecute,
     handleToggleParallelMode,
+    handleToggleImplMode,
     handleConvertToWorktree,
     handleShowEventLog,
     handleShowAgentLog,

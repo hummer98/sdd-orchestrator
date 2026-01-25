@@ -36,8 +36,21 @@ vi.mock('../services/logger', () => ({
   },
 }));
 
-// We don't mock child_process because spawn is used inside the handler.
-// Instead, we'll test the observable behavior of the handler.
+// Mock child_process to prevent actual command execution (e.g. code /path/to/project)
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return {
+    ...actual,
+    spawn: vi.fn().mockReturnValue({
+      unref: vi.fn(),
+      on: vi.fn(),
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      stdin: { end: vi.fn() },
+      kill: vi.fn(),
+    }),
+  };
+});
 
 // Mock path module
 vi.mock('path', async (importOriginal) => {

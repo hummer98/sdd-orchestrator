@@ -528,7 +528,9 @@ describe('bugStore - startWatching/stopWatching', () => {
     useSharedBugStore.getState().startWatching(mockApiClient);
 
     expect(useSharedBugStore.getState().isWatching).toBe(true);
-    expect(mockApiClient.startBugsWatcher).toHaveBeenCalled();
+    // Note: startBugsWatcher is NOT called here - Watcher is started by Main Process in SELECT_PROJECT IPC handler
+    // Renderer side only registers event listener (same pattern as specWatcherService)
+    expect(mockApiClient.startBugsWatcher).not.toHaveBeenCalled();
     expect(mockApiClient.onBugsChanged).toHaveBeenCalled();
   });
 

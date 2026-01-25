@@ -289,6 +289,8 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
 
   // bugs-view-unification Task 2.3: startWatching
   // Requirements: 3.7
+  // Note: Watcher is started by Main Process in SELECT_PROJECT IPC handler
+  // Here we only register the event listener on Renderer side (same pattern as specWatcherService)
   startWatching: (apiClient: ApiClient) => {
     // Clean up existing subscription
     if (watcherUnsubscribe) {
@@ -296,10 +298,8 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
       watcherUnsubscribe = null;
     }
 
-    // Start bugs watcher
-    apiClient.startBugsWatcher();
-
     // Subscribe to bug change events
+    // Note: Main Process watcher is already started in SELECT_PROJECT handler
     watcherUnsubscribe = apiClient.onBugsChanged((event: BugsChangeEvent) => {
       console.log('[useSharedBugStore] Bugs changed:', event);
       get().handleBugsChanged(apiClient, event);

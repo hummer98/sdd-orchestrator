@@ -454,16 +454,19 @@ describe('BugsView', () => {
       render(<BugsView apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        // With useSharedBugStore, we use startWatching which calls onBugsChanged
-        expect(mockApiClient.startBugsWatcher).toHaveBeenCalled();
+        // With useSharedBugStore, we use startWatching which only registers event listener
+        // Main Process watcher is already started in SELECT_PROJECT handler
+        expect(mockApiClient.onBugsChanged).toHaveBeenCalled();
       });
+      // startBugsWatcher should NOT be called from Renderer side
+      expect(mockApiClient.startBugsWatcher).not.toHaveBeenCalled();
     });
 
     it('stops watching on unmount', async () => {
       const { unmount } = render(<BugsView apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(mockApiClient.startBugsWatcher).toHaveBeenCalled();
+        expect(mockApiClient.onBugsChanged).toHaveBeenCalled();
       });
 
       unmount();

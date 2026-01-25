@@ -8,6 +8,10 @@
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import { logger } from '../logger';
+// MCP SDK uses package.json exports which TypeScript's bundler mode doesn't fully resolve
+// The module is marked as external in vite.config.ts, so it's resolved at runtime by Node.js
+// @ts-expect-error: MCP SDK subpath exports not resolved by TypeScript bundler mode
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 
 /**
  * Default port for MCP server
@@ -52,18 +56,6 @@ export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type McpServerInstance = any;
-
-/**
- * Load MCP SDK dynamically to avoid TypeScript module resolution issues
- * The SDK uses package.json exports which TypeScript's bundler mode doesn't fully resolve
- */
-async function loadMcpSdk(): Promise<{ McpServer: new (config: { name: string; version: string }) => McpServerInstance }> {
-  // Dynamic import works at runtime - verified by mcpSdkImport.test.ts
-  // TypeScript can't resolve the subpath exports but the import succeeds at runtime
-  // @ts-expect-error: MCP SDK subpath exports not resolved by TypeScript bundler mode
-  const module = await import('@modelcontextprotocol/sdk/server/mcp');
-  return module;
-}
 
 /**
  * MCP Server Service
@@ -116,8 +108,7 @@ export class McpServerService {
       this.port = preferredPort;
       this.url = `http://localhost:${this.port}`;
 
-      // Initialize MCP server via dynamic import
-      const { McpServer } = await loadMcpSdk();
+      // Initialize MCP server
       this.mcpServer = new McpServer({
         name: 'sdd-orchestrator-mcp',
         version: '1.0.0',

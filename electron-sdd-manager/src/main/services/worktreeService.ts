@@ -184,7 +184,7 @@ export class WorktreeService {
   }
 
   /**
-   * Check if currently on main/master branch
+   * Check if currently on main/master/dev branch
    * Requirements: 1.1, 1.2
    */
   async isOnMainBranch(): Promise<WorktreeServiceResult<boolean>> {
@@ -193,7 +193,7 @@ export class WorktreeService {
       return result;
     }
     const branch = result.value;
-    return { ok: true, value: branch === 'main' || branch === 'master' };
+    return { ok: true, value: branch === 'main' || branch === 'master' || branch === 'dev' };
   }
 
   /**
@@ -233,7 +233,7 @@ export class WorktreeService {
     }
 
     const currentBranch = branchResult.value;
-    if (currentBranch !== 'main' && currentBranch !== 'master') {
+    if (currentBranch !== 'main' && currentBranch !== 'master' && currentBranch !== 'dev') {
       return {
         ok: false,
         error: { type: 'NOT_ON_MAIN_BRANCH', currentBranch },
@@ -443,7 +443,7 @@ export class WorktreeService {
     }
 
     const currentBranch = branchResult.value;
-    if (currentBranch !== 'main' && currentBranch !== 'master') {
+    if (currentBranch !== 'main' && currentBranch !== 'master' && currentBranch !== 'dev') {
       return {
         ok: false,
         error: { type: 'NOT_ON_MAIN_BRANCH', currentBranch },
@@ -581,7 +581,7 @@ export class WorktreeService {
     }
 
     const currentBranch = branchResult.value;
-    if (currentBranch !== 'main' && currentBranch !== 'master') {
+    if (currentBranch !== 'main' && currentBranch !== 'master' && currentBranch !== 'dev') {
       return {
         ok: false,
         error: { type: 'NOT_ON_MAIN_BRANCH', currentBranch },

@@ -127,6 +127,20 @@ describe('WorktreeService', () => {
       }
     });
 
+    it('should return true when on dev branch', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'dev\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.isOnMainBranch();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe(true);
+      }
+    });
+
     it('should return false when on feature branch', async () => {
       const mockExec = createMockExec([
         { pattern: /branch --show-current/, stdout: 'feature/my-feature\n' },

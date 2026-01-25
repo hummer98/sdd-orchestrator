@@ -1399,73 +1399,24 @@ export class SpecManagerService {
       // Also notify UI via output callbacks
       this.outputCallbacks.forEach((cb) => cb(agentId, 'stdout', userEventJson + '\n'));
 
-      // Set up event handlers (same as startAgent)
+      // Set up event handlers using shared methods
       process.onOutput((stream, data) => {
-        // agent-state-file-ssot: Update activity in file (fire and forget)
-        this.recordService.updateRecord(agent.specId, agentId, {
-          lastActivityAt: new Date().toISOString(),
-        }).catch(() => {});
-
-        if (stream === 'stdout' && data.includes('"type":"result"')) {
-          setTimeout(() => {
-            if (this.processes.has(agentId)) {
-              logger.warn('[SpecManagerService] Force killing hanging process after result', { agentId });
-              this.forcedKillSuccess.add(agentId);
-              process.kill();
-            }
-          }, 5000);
-        }
-
-        // Save log to file (append to existing logs)
-        const logEntry: LogEntry = {
-          timestamp: new Date().toISOString(),
-          stream,
-          data,
-        };
-        this.logService.appendLog(agent.specId, agentId, logEntry).catch((err) => {
-          logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
-        });
-
-        this.outputCallbacks.forEach((cb) => cb(agentId, stream, data));
+        this.handleAgentOutput(agentId, agent.specId, process, stream, data);
       });
 
       process.onExit((code) => {
-        // agent-state-file-ssot: Check current status from file
-        this.recordService.readRecord(agent.specId, agentId).then((currentRecord) => {
-          if (currentRecord?.status === 'interrupted') {
-            this.processes.delete(agentId);
-            this.forcedKillSuccess.delete(agentId);
-            this.sessionIdParseBuffers.delete(agentId);
-            return;
-          }
-
-          const isForcedSuccess = this.forcedKillSuccess.has(agentId);
-          this.forcedKillSuccess.delete(agentId);
-          this.sessionIdParseBuffers.delete(agentId);
-
-          const newStatus: AgentStatus = (code === 0 || isForcedSuccess) ? 'completed' : 'failed';
-          this.statusCallbacks.forEach((cb) => cb(agentId, newStatus));
-          this.processes.delete(agentId);
-
-          // agent-state-file-ssot: Update agent record (SSOT)
-          return this.recordService.updateRecord(agent.specId, agentId, {
-            status: newStatus,
-            lastActivityAt: new Date().toISOString(),
-          });
-        }).catch(() => {});
+        this.handleAgentExit(agentId, agent.specId, code);
       });
 
       process.onError(() => {
-        this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
-        this.processes.delete(agentId);
-        this.sessionIdParseBuffers.delete(agentId);
-
-        // agent-state-file-ssot: Update agent record on error (SSOT)
-        this.recordService.updateRecord(agent.specId, agentId, {
-          status: 'failed',
-          lastActivityAt: new Date().toISOString(),
-        }).catch(() => {});
+        this.handleAgentError(agentId, agent.specId);
       });
+
+      // spec-productivity-metrics: Direct metrics tracking
+      // Track AI session start for ALL agent phases (not just core phases)
+      const metricsService = getDefaultMetricsService();
+      metricsService.startAiSession(agent.specId, agent.phase);
+      logger.debug('[SpecManagerService] AI session started for metrics (resume)', { specId: agent.specId, phase: agent.phase });
 
       // Notify status change
       this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));

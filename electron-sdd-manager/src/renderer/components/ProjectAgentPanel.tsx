@@ -59,14 +59,16 @@ export function ProjectAgentPanel() {
     });
 
   /**
-   * Task 2.3: isReleaseRunning calculation logic
-   * Requirements: 6.1, 6.2, 6.3
-   * - Uses getProjectAgents selector to get agent list (6.3)
-   * - Detects agents with args?.includes('/release') (6.1)
-   * - Only considers running agents (status === 'running') (6.2)
+   * Task 6.3: isReleaseRunning判定ロジックを更新
+   * release-button-api-fix feature
+   * Requirements: 5.1, 5.2, 2.2, 2.3
+   * - Uses phase === 'release' && status === 'running' for detection (5.1)
+   * - Replaced args?.includes('/release') detection with phase-based detection (5.2)
+   * - Agent is displayed with title 'release' in the list (2.2)
+   * - Prevents duplicate release execution (2.3)
    */
   const isReleaseRunning = projectAgents.some(
-    (agent) => agent.status === 'running' && agent.args?.includes('/release')
+    (agent) => agent.phase === 'release' && agent.status === 'running'
   );
 
   // project-agent-panel-always-visible feature: 0件でもパネルを表示（return nullを削除）
@@ -101,11 +103,20 @@ export function ProjectAgentPanel() {
     setIsAskDialogOpen(true);
   };
 
+  /**
+   * Task 6.2: handleAskExecute new API migration
+   * release-button-api-fix feature
+   * Requirements: 3.1, 3.2, 3.3
+   * - Calls executeProjectCommand(path, '/kiro:project-ask "${prompt}"', 'ask')
+   * - Maintains existing Ask functionality
+   * - Agent displays with title 'ask' in the list
+   */
   const handleAskExecute = async (prompt: string) => {
     if (!currentProject) return;
 
     try {
-      const agentInfo = await window.electronAPI.executeAskProject(currentProject, prompt);
+      const command = `/kiro:project-ask "${prompt}"`;
+      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, command, 'ask');
       addAgent('', agentInfo);
       selectForProjectAgents();
       selectAgent(agentInfo.agentId);
@@ -133,9 +144,10 @@ export function ProjectAgentPanel() {
   };
 
   /**
-   * Task 2.2: handleRelease handler implementation
-   * Requirements: 5.1, 5.2, 5.3, 5.4
-   * - Calls executeAskProject with /release as prompt
+   * Task 6.1: handleRelease new API migration
+   * release-button-api-fix feature
+   * Requirements: 2.1
+   * - Calls executeProjectCommand(path, '/release', 'release')
    * - Adds agent to store with addAgent
    * - Updates selection state with selectForProjectAgents and selectAgent
    * - Shows success/error notification
@@ -144,7 +156,7 @@ export function ProjectAgentPanel() {
     if (!currentProject) return;
 
     try {
-      const agentInfo = await window.electronAPI.executeAskProject(currentProject, '/release');
+      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, '/release', 'release');
       addAgent('', agentInfo);
       selectForProjectAgents();
       selectAgent(agentInfo.agentId);

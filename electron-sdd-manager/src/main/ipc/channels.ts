@@ -237,8 +237,11 @@ export const IPC_CHANNELS = {
 
   // Ask Agent Execution (agent-ask-execution feature)
   // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
-  EXECUTE_ASK_PROJECT: 'ipc:execute-ask-project',
   EXECUTE_ASK_SPEC: 'ipc:execute-ask-spec',
+
+  // release-button-api-fix: Project Command Execution
+  // Requirements: 1.1
+  EXECUTE_PROJECT_COMMAND: 'ipc:execute-project-command',
 
   // Renderer Logging (renderer-error-logging feature)
   // Fire-and-forget logging from renderer to main process

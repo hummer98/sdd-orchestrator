@@ -59,6 +59,49 @@ describe('IpcApiClient', () => {
   });
 
   // ===========================================================================
+  // release-button-api-fix: Task 5.2 - executeProjectCommand
+  // Requirements: 1.1, 4.4
+  // ===========================================================================
+
+  describe('executeProjectCommand method', () => {
+    it('should implement executeProjectCommand method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async executeProjectCommand(');
+    });
+
+    it('should call window.electronAPI.executeProjectCommand', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('window.electronAPI.executeProjectCommand');
+    });
+
+    it('should pass command and title parameters to IPC', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should invoke executeProjectCommand with projectPath, command, title
+      expect(content).toMatch(/executeProjectCommand[\s\S]*?projectPath[\s\S]*?command[\s\S]*?title/);
+    });
+
+    it('should return AgentInfo on success', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should return result wrapped in Result type with AgentInfo structure
+      expect(content).toMatch(/executeProjectCommand[\s\S]*?wrapResult/);
+    });
+
+    it('should handle NO_PROJECT error when no project is selected', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Method should check for current project and return NO_PROJECT error if none
+      expect(content).toMatch(/executeProjectCommand[\s\S]*?NO_PROJECT/);
+    });
+  });
+
+  describe('executeAskProject removal', () => {
+    it('should NOT contain executeAskProject implementation', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // The old executeAskProject should be removed
+      expect(content).not.toContain('async executeAskProject(');
+    });
+  });
+
+  // ===========================================================================
   // bugs-view-unification: Task 1.2 - Bug monitoring methods
   // Requirements: 4.5, 4.7
   // ===========================================================================

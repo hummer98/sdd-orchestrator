@@ -232,9 +232,15 @@ export function AgentsTabView({
   /**
    * Execute project-level prompt
    * Requirement 5.4: プロジェクトレベルプロンプト実行機能
+   * release-button-api-fix: executeAskProject is optional (deprecated, kept for backward compatibility)
    */
   const handleAskExecute = useCallback(async (prompt: string) => {
     try {
+      if (!apiClient.executeAskProject) {
+        console.warn('executeAskProject is not available');
+        setIsAskDialogOpen(false);
+        return;
+      }
       const result = await apiClient.executeAskProject(prompt);
       if (result.ok) {
         // Add the new agent to the store with empty specId (project-level)

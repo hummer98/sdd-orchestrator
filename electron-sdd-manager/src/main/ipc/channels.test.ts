@@ -1,12 +1,38 @@
 /**
  * @file channels.test.ts
- * @description Tests for MCP-related IPC channel definitions
+ * @description Tests for IPC channel definitions
  * Task 6.1: MCP関連IPCチャンネル定義
  * Requirements: 6.3, 6.4, 6.5
+ *
+ * release-button-api-fix Task 1.1: EXECUTE_PROJECT_COMMAND channel
+ * Requirements: 1.1, 4.1
  */
 
 import { describe, it, expect } from 'vitest';
 import { IPC_CHANNELS } from './channels';
+
+describe('IPC_CHANNELS - Project Command Execution', () => {
+  describe('EXECUTE_PROJECT_COMMAND channel (release-button-api-fix Task 1.1)', () => {
+    it('should define EXECUTE_PROJECT_COMMAND channel for executing project-level commands', () => {
+      // Requirement 1.1: executeProjectCommand API must be provided via IPC
+      expect(IPC_CHANNELS.EXECUTE_PROJECT_COMMAND).toBe('ipc:execute-project-command');
+    });
+
+    it('should use ipc: prefix for consistency with other execution channels', () => {
+      // Verify naming convention consistency
+      expect(IPC_CHANNELS.EXECUTE_PROJECT_COMMAND).toMatch(/^ipc:/);
+    });
+
+    it('should NOT define EXECUTE_ASK_PROJECT channel (deprecated)', () => {
+      // Requirement 4.1: EXECUTE_ASK_PROJECT must be deleted
+      // Type assertion to check the key doesn't exist
+      expect(
+        'EXECUTE_ASK_PROJECT' in IPC_CHANNELS &&
+          (IPC_CHANNELS as Record<string, string>).EXECUTE_ASK_PROJECT
+      ).toBeFalsy();
+    });
+  });
+});
 
 describe('IPC_CHANNELS - MCP Server', () => {
   describe('MCP Server Control Channels', () => {

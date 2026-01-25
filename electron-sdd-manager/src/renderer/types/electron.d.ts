@@ -548,20 +548,6 @@ export interface ElectronAPI {
   // ============================================================
 
   /**
-   * Execute Project Ask agent with custom prompt
-   * Loads steering files as context
-   * @param projectPath Project root path
-   * @param prompt User's custom prompt
-   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
-   * @returns AgentInfo on success
-   */
-  executeAskProject(
-    projectPath: string,
-    prompt: string,
-    commandPrefix?: 'kiro' | 'spec-manager'
-  ): Promise<AgentInfo>;
-
-  /**
    * Execute Spec Ask agent with custom prompt
    * Loads steering files and spec files as context
    * @param specId Spec directory name
@@ -575,6 +561,24 @@ export interface ElectronAPI {
     featureName: string,
     prompt: string,
     commandPrefix?: 'kiro' | 'spec-manager'
+  ): Promise<AgentInfo>;
+
+  // ============================================================
+  // release-button-api-fix: Project Command Execution
+  // Requirements: 1.1, 4.3
+  // ============================================================
+
+  /**
+   * Execute project-level command
+   * @param projectPath Project root path
+   * @param command Command string to execute (e.g., '/release', '/kiro:project-ask "prompt"')
+   * @param title Display title for Agent list
+   * @returns AgentInfo on success
+   */
+  executeProjectCommand(
+    projectPath: string,
+    command: string,
+    title: string
   ): Promise<AgentInfo>;
 
   // Agent Events (Task 27.2)

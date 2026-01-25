@@ -63,6 +63,35 @@ describe('WebSocketApiClient', () => {
   });
 
   // ===========================================================================
+  // release-button-api-fix: Task 5.3 - executeProjectCommand stub
+  // Requirements: 1.1
+  // ===========================================================================
+
+  describe('executeProjectCommand stub', () => {
+    it('should implement executeProjectCommand method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async executeProjectCommand(');
+    });
+
+    it('should return NOT_IMPLEMENTED error for Remote UI compatibility', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Verify the stub returns NOT_IMPLEMENTED error
+      // The error message mentions executeProjectCommand
+      expect(content).toContain("type: 'NOT_IMPLEMENTED'");
+      expect(content).toContain('executeProjectCommand is not yet supported via WebSocket');
+    });
+
+    it('should keep executeAskProject for Remote UI backward compatibility', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // executeAskProject is kept for Remote UI backward compatibility (Out of Scope)
+      // Remote UI migration is a separate task, so the deprecated method is preserved
+      // See design.md: "Remote UI side is not in scope"
+      expect(content).toContain('async executeAskProject(');
+      expect(content).toContain('@deprecated');
+    });
+  });
+
+  // ===========================================================================
   // bugs-view-unification: Task 1.3 - Bug monitoring methods
   // Requirements: 4.6, 4.7
   // ===========================================================================

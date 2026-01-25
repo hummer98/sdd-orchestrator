@@ -590,8 +590,36 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<LogEntry[]>('GET_AGENT_LOGS', { specId, agentId });
   }
 
+  /**
+   * Execute project-level command
+   * release-button-api-fix: Task 5.3 - Stub implementation
+   * Requirements: 1.1
+   * Remote UI support is out of scope - returns NOT_IMPLEMENTED error
+   * @param _command - Command string to execute (unused in stub)
+   * @param _title - Display title for Agent list (unused in stub)
+   */
+  async executeProjectCommand(
+    _command: string,
+    _title: string
+  ): Promise<Result<AgentInfo, ApiError>> {
+    return {
+      ok: false,
+      error: {
+        type: 'NOT_IMPLEMENTED',
+        message: 'executeProjectCommand is not yet supported via WebSocket',
+      },
+    };
+  }
+
+  /**
+   * Execute project-level ask command (DEPRECATED)
+   * release-button-api-fix: Kept for Remote UI backward compatibility
+   * Remote UI migration is out of scope - will be migrated in a future release
+   * @deprecated Use executeProjectCommand with '/kiro:project-ask "${prompt}"' instead
+   * @param prompt - Question/prompt to ask
+   */
   async executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('ASK_PROJECT', { prompt });
+    return this.wrapRequest<AgentInfo>('EXECUTE_ASK_PROJECT', { prompt });
   }
 
   // ===========================================================================

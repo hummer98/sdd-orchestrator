@@ -70,6 +70,9 @@ vi.mock('../main/ipc/channels', () => ({
     SCHEDULE_TASK_STATUS_CHANGED: 'schedule-task:status-changed',
     // Idle Time Sync (Task 7.1)
     SCHEDULE_TASK_REPORT_IDLE_TIME: 'schedule-task:report-idle-time',
+    // release-button-api-fix: Project Command Execution
+    // Requirements: 1.1, 4.3
+    EXECUTE_PROJECT_COMMAND: 'ipc:execute-project-command',
   },
 }));
 
@@ -793,6 +796,95 @@ describe('Preload API - Task 3.3: Schedule Task API', () => {
       registeredHandler!({}, event);
 
       expect(callback).toHaveBeenCalledWith(event);
+    });
+  });
+});
+
+// ============================================================
+// release-button-api-fix: Task 2.1 - executeProjectCommand API
+// Requirements: 1.1, 4.3
+// ============================================================
+describe('Preload API - Task 2.1: executeProjectCommand API', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('executeProjectCommand', () => {
+    it('should expose executeProjectCommand function', () => {
+      expect(typeof exposedAPI.executeProjectCommand).toBe('function');
+    });
+
+    it('should invoke ipc:execute-project-command with correct parameters', async () => {
+      const mockAgentInfo = {
+        agentId: 'agent-123',
+        specId: '',
+        phase: 'release',
+        pid: 12345,
+        sessionId: 'session-abc',
+        status: 'running',
+        startedAt: '2026-01-24T00:00:00Z',
+        lastActivityAt: '2026-01-24T00:00:00Z',
+        command: 'claude',
+        args: '/release',
+      };
+      mockIpcRenderer.invoke.mockResolvedValue(mockAgentInfo);
+
+      const result = await (exposedAPI.executeProjectCommand as Function)(
+        '/path/to/project',
+        '/release',
+        'release'
+      );
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'ipc:execute-project-command',
+        '/path/to/project',
+        '/release',
+        'release'
+      );
+      expect(result).toEqual(mockAgentInfo);
+    });
+
+    it('should return AgentInfo on success', async () => {
+      const mockAgentInfo = {
+        agentId: 'agent-456',
+        specId: '',
+        phase: 'ask',
+        pid: 54321,
+        sessionId: 'session-xyz',
+        status: 'running',
+        startedAt: '2026-01-24T00:01:00Z',
+        lastActivityAt: '2026-01-24T00:01:00Z',
+        command: 'claude',
+        args: '/kiro:project-ask "prompt"',
+      };
+      mockIpcRenderer.invoke.mockResolvedValue(mockAgentInfo);
+
+      const result = await (exposedAPI.executeProjectCommand as Function)(
+        '/path/to/project',
+        '/kiro:project-ask "prompt"',
+        'ask'
+      );
+
+      expect(result).toHaveProperty('agentId', 'agent-456');
+      expect(result).toHaveProperty('phase', 'ask');
+      expect(result).toHaveProperty('status', 'running');
+    });
+  });
+
+  describe('executeAskProject removal', () => {
+    it('should NOT expose executeAskProject function (removed)', () => {
+      // Requirements: 4.3 - executeAskProject must be removed from preload
+      expect(exposedAPI.executeAskProject).toBeUndefined();
     });
   });
 });

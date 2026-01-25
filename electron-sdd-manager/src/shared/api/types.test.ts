@@ -136,6 +136,25 @@ describe('API types', () => {
       expect(content).toContain('executeSpecPlan?(');
     });
 
+    // =========================================================================
+    // release-button-api-fix: Task 5.1 - executeProjectCommand method
+    // Requirements: 1.1, 4.2
+    // =========================================================================
+
+    it('should have executeProjectCommand method with projectPath, command, and title params', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      // New API: executeProjectCommand(command: string, title: string)
+      expect(content).toContain('executeProjectCommand(');
+      expect(content).toMatch(/executeProjectCommand\([^)]*command:\s*string/);
+      expect(content).toMatch(/executeProjectCommand\([^)]*title:\s*string/);
+    });
+
+    it('should NOT have executeAskProject method (deprecated)', () => {
+      const content = readFileSync(typesPath, 'utf-8');
+      // executeAskProject should be removed as per Task 5.1, Requirements 4.2
+      expect(content).not.toContain('executeAskProject(');
+    });
+
     // Event subscriptions
     it('should have onSpecsUpdated subscription', () => {
       const content = readFileSync(typesPath, 'utf-8');

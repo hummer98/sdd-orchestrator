@@ -362,23 +362,23 @@ describe('ProjectAgentPanel', () => {
   });
 
   // ============================================================
-  // Task 2.2: handleReleaseハンドラの実装
-  // project-agent-release-footer feature
-  // Requirements: 5.1, 5.2, 5.3, 5.4
+  // Task 6.1: handleReleaseハンドラの新API移行
+  // release-button-api-fix feature
+  // Requirements: 2.1
   // ============================================================
-  describe('Task 2.2: handleRelease implementation', () => {
+  describe('Task 6.1: handleRelease new API migration', () => {
     beforeEach(async () => {
       // Setup currentProject
       const { useProjectStore } = await import('../stores');
       useProjectStore.setState({ currentProject: '/test/project' });
 
-      // Mock electronAPI.executeAskProject
+      // Mock electronAPI.executeProjectCommand (new API)
       vi.stubGlobal('window', {
         electronAPI: {
-          executeAskProject: vi.fn().mockResolvedValue({
+          executeProjectCommand: vi.fn().mockResolvedValue({
             agentId: 'release-agent-1',
             specId: '',
-            phase: 'ask',
+            phase: 'release',  // Now phase is 'release', not 'ask'
             sessionId: 'release-session-1',
             status: 'running' as AgentStatus,
             startedAt: '2024-01-01T00:00:00Z',
@@ -390,22 +390,24 @@ describe('ProjectAgentPanel', () => {
       });
     });
 
-    it('should call executeAskProject with /release prompt when release button clicked (Requirement 5.1, 5.2)', async () => {
+    it('should call executeProjectCommand with /release command and release title when release button clicked (Requirement 2.1)', async () => {
       render(<ProjectAgentPanel />);
 
       const releaseButton = screen.getByTestId('release-button');
       fireEvent.click(releaseButton);
 
-      // Verify executeAskProject was called with /release
+      // Verify executeProjectCommand was called with correct parameters
+      // executeProjectCommand(projectPath, command, title)
       await vi.waitFor(() => {
-        expect(window.electronAPI.executeAskProject).toHaveBeenCalledWith(
+        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalledWith(
           '/test/project',
-          '/release'
+          '/release',
+          'release'
         );
       });
     });
 
-    it('should add agent with addAgent after successful executeAskProject (Requirement 5.3)', async () => {
+    it('should add agent with addAgent after successful executeProjectCommand (Requirement 2.1)', async () => {
       const addAgentSpy = vi.spyOn(useAgentStore.getState(), 'addAgent');
 
       render(<ProjectAgentPanel />);
@@ -421,7 +423,7 @@ describe('ProjectAgentPanel', () => {
       });
     });
 
-    it('should call selectForProjectAgents after successful release (Requirement 5.3)', async () => {
+    it('should call selectForProjectAgents after successful release', async () => {
       const selectForProjectAgentsSpy = vi.spyOn(useAgentStore.getState(), 'selectForProjectAgents');
 
       render(<ProjectAgentPanel />);
@@ -434,7 +436,7 @@ describe('ProjectAgentPanel', () => {
       });
     });
 
-    it('should call selectAgent with new agent ID after successful release (Requirement 5.4)', async () => {
+    it('should call selectAgent with new agent ID after successful release', async () => {
       const selectAgentSpy = vi.spyOn(useAgentStore.getState(), 'selectAgent');
 
       render(<ProjectAgentPanel />);
@@ -461,11 +463,11 @@ describe('ProjectAgentPanel', () => {
       });
     });
 
-    it('should show error notification when executeAskProject fails', async () => {
+    it('should show error notification when executeProjectCommand fails', async () => {
       // Override mock to throw error
       vi.stubGlobal('window', {
         electronAPI: {
-          executeAskProject: vi.fn().mockRejectedValue(new Error('Release failed')),
+          executeProjectCommand: vi.fn().mockRejectedValue(new Error('Release failed')),
         },
       });
 
@@ -492,32 +494,215 @@ describe('ProjectAgentPanel', () => {
       const releaseButton = screen.getByTestId('release-button');
       fireEvent.click(releaseButton);
 
-      // executeAskProject should not be called
-      expect(window.electronAPI.executeAskProject).not.toHaveBeenCalled();
+      // executeProjectCommand should not be called
+      expect(window.electronAPI.executeProjectCommand).not.toHaveBeenCalled();
     });
   });
 
   // ============================================================
-  // Task 2.3: isReleaseRunning状態の算出ロジック
-  // project-agent-release-footer feature
-  // Requirements: 6.1, 6.2, 6.3
+  // Task 6.2: handleAskExecute新API移行 (release-button-api-fix)
+  // Requirements: 3.1, 3.2, 3.3
   // ============================================================
-  describe('Task 2.3: isReleaseRunning calculation logic', () => {
+  describe('Task 6.2: handleAskExecute migration to executeProjectCommand', () => {
+    beforeEach(async () => {
+      // Setup currentProject
+      const { useProjectStore } = await import('../stores');
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      // Mock electronAPI.executeProjectCommand (new API)
+      vi.stubGlobal('window', {
+        electronAPI: {
+          executeProjectCommand: vi.fn().mockResolvedValue({
+            agentId: 'ask-agent-1',
+            specId: '',
+            phase: 'ask', // title parameter becomes phase
+            sessionId: 'ask-session-1',
+            status: 'running' as AgentStatus,
+            startedAt: '2024-01-01T00:00:00Z',
+            lastActivityAt: '2024-01-01T00:00:00Z',
+            command: 'claude',
+            args: '/kiro:project-ask "test prompt"',
+          }),
+        },
+      });
+    });
+
     /**
-     * Create a mock release agent for testing
-     * Requirements: 6.1 - Detect release agents from Project Agent list
+     * Helper to get execute button within dialog
+     */
+    const getDialogExecuteButton = () => {
+      const dialog = screen.getByTestId('dialog-content');
+      // Find button with 実行 text within the dialog
+      const buttons = dialog.querySelectorAll('button');
+      return Array.from(buttons).find(btn => btn.textContent?.includes('実行'));
+    };
+
+    it('should call executeProjectCommand with correct parameters (Requirement 3.1)', async () => {
+      render(<ProjectAgentPanel />);
+
+      // Open the Ask dialog
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      // Find the input field in the dialog and enter a prompt
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
+      // Submit the form (get execute button within dialog)
+      const executeButton = getDialogExecuteButton();
+      expect(executeButton).toBeTruthy();
+      fireEvent.click(executeButton!);
+
+      // Verify executeProjectCommand was called with correct parameters
+      await vi.waitFor(() => {
+        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalledWith(
+          '/test/project',
+          '/kiro:project-ask "test prompt"',
+          'ask'
+        );
+      });
+    });
+
+    it('should maintain existing Ask functionality with new API (Requirement 3.2)', async () => {
+      const addAgentSpy = vi.spyOn(useAgentStore.getState(), 'addAgent');
+
+      render(<ProjectAgentPanel />);
+
+      // Open Ask dialog and submit
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'architecture question' } });
+
+      const executeButton = getDialogExecuteButton();
+      fireEvent.click(executeButton!);
+
+      // Verify addAgent is called with the returned AgentInfo
+      await vi.waitFor(() => {
+        expect(addAgentSpy).toHaveBeenCalledWith('', expect.objectContaining({
+          agentId: 'ask-agent-1',
+          phase: 'ask',
+        }));
+      });
+    });
+
+    it('should display agent with title "ask" in Agent list (Requirement 3.3)', async () => {
+      render(<ProjectAgentPanel />);
+
+      // Open Ask dialog and submit
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'test' } });
+
+      const executeButton = getDialogExecuteButton();
+      fireEvent.click(executeButton!);
+
+      // Wait for the agent to be added
+      await vi.waitFor(() => {
+        expect(window.electronAPI.executeProjectCommand).toHaveBeenCalled();
+      });
+
+      // The phase (title) should be 'ask' in the returned AgentInfo
+      const callResult = await (window.electronAPI.executeProjectCommand as ReturnType<typeof vi.fn>).mock.results[0].value;
+      expect(callResult.phase).toBe('ask');
+    });
+
+    it('should close dialog on successful Ask execution', async () => {
+      render(<ProjectAgentPanel />);
+
+      // Open Ask dialog
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      // Verify dialog is open
+      expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'test' } });
+
+      const executeButton = getDialogExecuteButton();
+      fireEvent.click(executeButton!);
+
+      // Dialog should close after successful execution
+      await vi.waitFor(() => {
+        expect(screen.queryByTestId('ask-agent-dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show error notification when executeProjectCommand fails', async () => {
+      // Override mock to throw error
+      vi.stubGlobal('window', {
+        electronAPI: {
+          executeProjectCommand: vi.fn().mockRejectedValue(new Error('Ask failed')),
+        },
+      });
+
+      const { notify } = await import('../stores');
+      const errorSpy = vi.spyOn(notify, 'error');
+
+      render(<ProjectAgentPanel />);
+
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'test' } });
+
+      const executeButton = getDialogExecuteButton();
+      fireEvent.click(executeButton!);
+
+      await vi.waitFor(() => {
+        expect(errorSpy).toHaveBeenCalledWith('Ask failed');
+      });
+    });
+
+    it('should show success notification on successful Ask execution', async () => {
+      const { notify } = await import('../stores');
+      const successSpy = vi.spyOn(notify, 'success');
+
+      render(<ProjectAgentPanel />);
+
+      const askButton = screen.getByTestId('project-ask-button');
+      fireEvent.click(askButton);
+
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'test' } });
+
+      const executeButton = getDialogExecuteButton();
+      fireEvent.click(executeButton!);
+
+      await vi.waitFor(() => {
+        expect(successSpy).toHaveBeenCalledWith('Project Askを開始しました');
+      });
+    });
+  });
+
+  // ============================================================
+  // Task 6.3: isReleaseRunning判定ロジックを更新
+  // release-button-api-fix feature
+  // Requirements: 5.1, 5.2, 2.2, 2.3
+  // - phase === 'release' && status === 'running'で判定
+  // - 既存のargs?.includes('/release')判定を置き換え
+  // ============================================================
+  describe('Task 6.3: isReleaseRunning phase-based detection', () => {
+    /**
+     * Create a mock release agent with phase='release' for testing
+     * Requirements: 5.1 - title==='release' (phase field) かつ status==='running' 判定
      */
     const createReleaseAgent = (status: AgentStatus): AgentInfo => ({
       agentId: 'release-agent-1',
       specId: '', // Project agent (specId = '')
-      phase: 'ask',
+      phase: 'release', // NEW: phase is 'release', not 'ask'
       pid: 12350,
       sessionId: 'release-session-1',
       status,
       startedAt: '2024-01-01T00:00:00Z',
       lastActivityAt: '2024-01-01T00:00:00Z',
       command: 'claude',
-      args: '/release', // args contains /release
+      args: '/release',
     });
 
     /**
@@ -526,7 +711,7 @@ describe('ProjectAgentPanel', () => {
     const createNonReleaseAgent = (status: AgentStatus): AgentInfo => ({
       agentId: 'ask-agent-1',
       specId: '', // Project agent (specId = '')
-      phase: 'ask',
+      phase: 'ask', // phase is 'ask', not 'release'
       pid: 12351,
       sessionId: 'ask-session-1',
       status,
@@ -536,7 +721,7 @@ describe('ProjectAgentPanel', () => {
       args: '/kiro:project-ask "What is the architecture?"',
     });
 
-    it('should set isReleaseRunning=true when a release agent is running (Requirement 6.2)', async () => {
+    it('should set isReleaseRunning=true when phase=release and status=running (Requirement 5.1)', async () => {
       // Set up currentProject first (needed for proper button state)
       const { useProjectStore } = await import('../stores');
       useProjectStore.setState({ currentProject: '/test/project' });
@@ -554,7 +739,7 @@ describe('ProjectAgentPanel', () => {
       expect(releaseButton).toHaveAttribute('title', 'release実行中');
     });
 
-    it('should set isReleaseRunning=false when no release agent exists (Requirement 6.1)', async () => {
+    it('should set isReleaseRunning=false when no release agent exists', async () => {
       const agents = new Map<string, AgentInfo[]>();
       // No agents at all
       setAgentsInStores(agents);
@@ -571,7 +756,7 @@ describe('ProjectAgentPanel', () => {
       expect(releaseButton).not.toHaveAttribute('title', 'release実行中');
     });
 
-    it('should set isReleaseRunning=false when release agent is not running (completed) (Requirement 6.2)', async () => {
+    it('should set isReleaseRunning=false when phase=release but status is not running (Requirement 5.1)', async () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [createReleaseAgent('completed')]);
       setAgentsInStores(agents);
@@ -588,7 +773,7 @@ describe('ProjectAgentPanel', () => {
       expect(releaseButton).not.toHaveAttribute('title', 'release実行中');
     });
 
-    it('should set isReleaseRunning=false when only non-release agents are running (Requirement 6.1)', async () => {
+    it('should set isReleaseRunning=false when only non-release agents are running (phase != release)', async () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [createNonReleaseAgent('running')]);
       setAgentsInStores(agents);
@@ -605,45 +790,65 @@ describe('ProjectAgentPanel', () => {
       expect(releaseButton).not.toHaveAttribute('title', 'release実行中');
     });
 
-    it('should detect /release in args even when surrounded by other text (Requirement 6.1)', async () => {
-      // Set up currentProject first
+    it('should NOT detect release based on args - only phase matters (Requirement 5.2)', async () => {
+      // This test verifies that args?.includes('/release') is NO LONGER used
+      // Instead, only phase === 'release' is checked
       const { useProjectStore } = await import('../stores');
       useProjectStore.setState({ currentProject: '/test/project' });
 
       const agents = new Map<string, AgentInfo[]>();
-      const agentWithRelease: AgentInfo = {
-        agentId: 'release-agent-2',
+      // Agent with /release in args but phase is 'ask' (old pattern)
+      const agentWithReleaseInArgs: AgentInfo = {
+        agentId: 'old-release-agent',
         specId: '',
-        phase: 'ask',
+        phase: 'ask', // NOT 'release'
         pid: 12352,
-        sessionId: 'release-session-2',
+        sessionId: 'old-release-session',
         status: 'running' as AgentStatus,
         startedAt: '2024-01-01T00:02:00Z',
         lastActivityAt: '2024-01-01T00:02:00Z',
         command: 'claude',
-        args: '/kiro:project-ask "/release"', // /release is within a larger command
+        args: '/release', // has /release in args, but phase is not 'release'
       };
-      agents.set('', [agentWithRelease]);
+      agents.set('', [agentWithReleaseInArgs]);
       setAgentsInStores(agents);
 
       render(<ProjectAgentPanel />);
 
       const releaseButton = screen.getByTestId('release-button');
-      // Button should be disabled when release is running
-      expect(releaseButton).toBeDisabled();
-      expect(releaseButton).toHaveAttribute('title', 'release実行中');
+      // Button should NOT be disabled - phase is 'ask', not 'release'
+      // Even though args contains '/release', we now use phase-based detection
+      expect(releaseButton).not.toBeDisabled();
+      expect(releaseButton).not.toHaveAttribute('title', 'release実行中');
     });
 
-    it('should use getProjectAgents selector to get agent list (Requirement 6.3)', async () => {
+    it('should display agent with "release" title in Agent list (Requirement 2.2)', async () => {
+      const { useProjectStore } = await import('../stores');
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      const agents = new Map<string, AgentInfo[]>();
+      agents.set('', [createReleaseAgent('running')]);
+      setAgentsInStores(agents);
+
+      render(<ProjectAgentPanel />);
+
+      // Agent should be displayed with 'release' as the title (phase)
+      // The agent item should contain 'release' text in the agent list
+      const agentItem = screen.getByTestId('agent-item-release-agent-1');
+      expect(agentItem).toBeInTheDocument();
+      expect(agentItem).toHaveTextContent('release');
+    });
+
+    it('should use getProjectAgents selector to get agent list', async () => {
       // This test verifies that the implementation uses getProjectAgents selector
       // by checking that only specId='' agents are considered
 
       const agents = new Map<string, AgentInfo[]>();
-      // Add a spec-bound agent with /release in args (should be ignored)
+      // Add a spec-bound agent with phase='release' (should be ignored)
       const specAgent: AgentInfo = {
         agentId: 'spec-release-agent',
         specId: 'some-spec', // NOT a project agent
-        phase: 'ask',
+        phase: 'release',
         pid: 12353,
         sessionId: 'spec-session',
         status: 'running' as AgentStatus,
@@ -667,6 +872,21 @@ describe('ProjectAgentPanel', () => {
       // Button should NOT be disabled - spec-bound agent should be ignored
       expect(releaseButton).not.toBeDisabled();
       expect(releaseButton).not.toHaveAttribute('title', 'release実行中');
+    });
+
+    it('should prevent duplicate release execution when release is already running (Requirement 2.3)', async () => {
+      const { useProjectStore } = await import('../stores');
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      const agents = new Map<string, AgentInfo[]>();
+      agents.set('', [createReleaseAgent('running')]);
+      setAgentsInStores(agents);
+
+      render(<ProjectAgentPanel />);
+
+      const releaseButton = screen.getByTestId('release-button');
+      // Button should be disabled to prevent duplicate execution
+      expect(releaseButton).toBeDisabled();
     });
   });
 });

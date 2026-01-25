@@ -197,6 +197,36 @@ export function getBugAgentEffectiveCwd(
   return worktreeCwd;
 }
 
+// ============================================================
+// release-button-api-fix: Project Command Execution
+// Task 4.1: Parameter validation for executeProjectCommand
+// Requirements: 1.1, 1.5
+// ============================================================
+
+/**
+ * Validate parameters for executeProjectCommand
+ * @param projectPath - Project root path
+ * @param command - Command string to execute
+ * @param title - Display title for Agent list
+ * @returns Result with success or error message
+ */
+export function validateProjectCommandParams(
+  projectPath: string,
+  command: string,
+  title: string
+): { ok: true } | { ok: false; error: string } {
+  if (!projectPath || projectPath.trim() === '') {
+    return { ok: false, error: 'projectPath is required' };
+  }
+  if (!command || command.trim() === '') {
+    return { ok: false, error: 'command is required' };
+  }
+  if (!title || title.trim() === '') {
+    return { ok: false, error: 'title is required' };
+  }
+  return { ok: true };
+}
+
 /**
  * Set initial project path (called from main process)
  */
@@ -1326,16 +1356,28 @@ export function registerIpcHandlers(): void {
   );
 
   // ============================================================
-  // Ask Agent Execution (agent-ask-execution feature)
-  // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  // Project Command Execution (release-button-api-fix feature)
+  // Task 4.1: EXECUTE_PROJECT_COMMAND handler
+  // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 4.4
   // ============================================================
 
-  // Execute Project Ask: Launch project-ask agent with prompt
-  // Loads steering files as context
+  // Execute Project Command: Launch project-level agent with any command
+  // Command is passed directly without wrapping, title is used as phase (display name)
   ipcMain.handle(
-    IPC_CHANNELS.EXECUTE_ASK_PROJECT,
-    async (event, projectPath: string, prompt: string, commandPrefix: CommandPrefix = 'kiro') => {
-      logger.info('[handlers] EXECUTE_ASK_PROJECT called', { projectPath, prompt: prompt.substring(0, 100), commandPrefix });
+    IPC_CHANNELS.EXECUTE_PROJECT_COMMAND,
+    async (event, projectPath: string, command: string, title: string) => {
+      // Requirement 1.5: Validate parameters
+      const validation = validateProjectCommandParams(projectPath, command, title);
+      if (!validation.ok) {
+        throw new Error(validation.error);
+      }
+
+      // NOTE: projectPath is used for logging only.
+      // The working directory (cwd) for agent execution is managed by
+      // SpecManagerService, which receives projectPath at construction time.
+      // startAgent does not need projectPath as a parameter.
+      logger.info('[handlers] EXECUTE_PROJECT_COMMAND called', { projectPath, command, title });
+
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -1344,27 +1386,34 @@ export function registerIpcHandlers(): void {
         registerEventCallbacks(service, window);
       }
 
-      // Start agent with specId='' (project agent)
-      // Uses /kiro:project-ask or equivalent command
-      const slashCommand = `/${commandPrefix}:project-ask`;
+      // Requirement 1.2: command is passed directly to args (no wrapping)
+      // Requirement 1.3: title is used as phase for Agent display name
       const result = await service.startAgent({
         specId: '', // Empty specId for project agent
-        phase: 'ask',
+        phase: title, // title is used as phase for display (Requirement 1.3)
         command: 'claude',
-        args: [`${slashCommand} "${prompt.replace(/"/g, '\\"')}"`],
+        args: [command], // command passed directly without wrapping (Requirement 1.2)
         group: 'doc',
       });
 
       if (!result.ok) {
-        logger.error('[handlers] executeAskProject failed', { error: result.error });
+        logger.error('[handlers] executeProjectCommand failed', { error: result.error });
         const errorMessage = getErrorMessage(result.error);
         throw new Error(errorMessage);
       }
 
-      logger.info('[handlers] executeAskProject succeeded', { agentId: result.value.agentId });
+      // Requirement 1.4: Return AgentInfo on success
+      logger.info('[handlers] executeProjectCommand succeeded', { agentId: result.value.agentId });
       return result.value;
     }
   );
+
+  // ============================================================
+  // Ask Agent Execution (agent-ask-execution feature)
+  // Requirements: 2.5, 3.1-3.4, 4.1-4.5, 5.1-5.6
+  // NOTE: EXECUTE_ASK_PROJECT has been removed (Requirement 4.4)
+  // Use EXECUTE_PROJECT_COMMAND instead with '/kiro:project-ask "${prompt}"'
+  // ============================================================
 
   // Execute Spec Ask: Launch spec-ask agent with feature name and prompt
   // Loads steering files and spec files as context

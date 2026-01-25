@@ -170,6 +170,11 @@ function LeftSidebar({
   }, []);
 
   const handleAskExecute = useCallback(async (prompt: string) => {
+    // release-button-api-fix: executeAskProject is optional (deprecated, kept for backward compatibility)
+    if (!apiClient.executeAskProject) {
+      console.warn('executeAskProject is not available');
+      return;
+    }
     const result = await apiClient.executeAskProject(prompt);
     if (result.ok) {
       setIsAskDialogOpen(false);

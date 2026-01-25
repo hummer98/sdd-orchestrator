@@ -197,21 +197,6 @@ const electronAPI = {
   // ============================================================
 
   /**
-   * Execute Project Ask agent with custom prompt
-   * Loads steering files as context
-   * @param projectPath Project root path
-   * @param prompt User's custom prompt
-   * @param commandPrefix Command prefix ('kiro' or 'spec-manager')
-   * @returns AgentInfo on success
-   */
-  executeAskProject: (
-    projectPath: string,
-    prompt: string,
-    commandPrefix?: 'kiro' | 'spec-manager'
-  ): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_ASK_PROJECT, projectPath, prompt, commandPrefix),
-
-  /**
    * Execute Spec Ask agent with custom prompt
    * Loads steering files and spec files as context
    * @param specId Spec directory name
@@ -227,6 +212,25 @@ const electronAPI = {
     commandPrefix?: 'kiro' | 'spec-manager'
   ): Promise<AgentInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_ASK_SPEC, specId, featureName, prompt, commandPrefix),
+
+  // ============================================================
+  // release-button-api-fix: Project Command Execution
+  // Requirements: 1.1, 4.3
+  // ============================================================
+
+  /**
+   * Execute project-level command
+   * @param projectPath Project root path
+   * @param command Command string to execute (e.g., '/release', '/kiro:project-ask "prompt"')
+   * @param title Display title for Agent list
+   * @returns AgentInfo on success
+   */
+  executeProjectCommand: (
+    projectPath: string,
+    command: string,
+    title: string
+  ): Promise<AgentInfo> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXECUTE_PROJECT_COMMAND, projectPath, command, title),
 
   // Agent Events (Task 27.2, 28.1)
   // Requirements: 9.1-9.10

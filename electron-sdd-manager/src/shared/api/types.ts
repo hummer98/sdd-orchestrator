@@ -357,10 +357,22 @@ export interface ApiClient {
   getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>>;
 
   /**
-   * Execute Project Ask - ask a question in project context
-   * @param prompt - The question/prompt to send to the agent
+   * Execute a project-level command
+   * release-button-api-fix: Task 5.1
+   * Requirements: 1.1 - executeProjectCommand API
+   * @param command - Command string to execute (e.g., '/release', '/kiro:project-ask "prompt"')
+   * @param title - Display title for Agent list (e.g., 'release', 'ask')
    */
-  executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>>;
+  executeProjectCommand(command: string, title: string): Promise<Result<AgentInfo, ApiError>>;
+
+  /**
+   * Execute project-level ask command (DEPRECATED)
+   * release-button-api-fix: Kept for Remote UI backward compatibility
+   * Remote UI migration is out of scope - this method will be removed in a future release
+   * @deprecated Use executeProjectCommand with '/kiro:project-ask "${prompt}"' instead
+   * @param prompt - Question/prompt to ask
+   */
+  executeAskProject?(prompt: string): Promise<Result<AgentInfo, ApiError>>;
 
   // ===========================================================================
   // Review Operations

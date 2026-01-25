@@ -99,6 +99,20 @@ This check ensures every acceptance criterion has concrete implementation tasks,
 - **Infrastructure**: "Create structure", "Extract to shared/", "Define types", "Set up config"
 - **Feature**: "Implement view displaying...", "Add panel with...", "Create UI with..."
 
+**Integration Test Coverage (CRITICAL CHECK)**:
+
+When Design.md contains cross-boundary communication (IPC, events, store sync):
+
+| Check | Validation | Report if Missing |
+|-------|------------|-------------------|
+| IPC Liaison | Integration test tasks exist for IPC channels | CRITICAL: IPC integration test missing |
+| Store Sync | Tasks exist to verify state propagation | CRITICAL: Store sync test missing |
+| Event Chains | Tasks verify full event lifecycle | WARNING: Event chain verification missing |
+
+**Safety Check**:
+- If integration tests are theoretically impossible or skipped, is there an explicit **Fallback Strategy** (e.g., E2E test task, detailed manual verification log task)?
+- If NO test and NO fallback: **CRITICAL**
+
 **Refactoring Integrity Check (CRITICAL)**:
 
 When design.md indicates replacement or deprecation:
@@ -224,7 +238,21 @@ Report file: `.kiro/specs/$1/document-review-{n}.md`
 - [ ] User-facing criteria have Feature Implementation tasks
 - [ ] No criterion relies solely on Infrastructure tasks
 
-### 1.5 Cross-Document Contradictions
+### 1.5 Integration Test Coverage
+
+{CRITICAL CHECK: Verify integration tests for cross-boundary communication}
+
+| Integration Point | Design Section | Test Task | Status |
+|-------------------|----------------|-----------|--------|
+| MCP Status Sync | "Remote UI Synchronization" | (none) | ❌ CRITICAL |
+| Remote Server | "Server Lifecycle" | 5.3 | ✅ |
+
+**Validation Results**:
+- [ ] All sequence diagrams have corresponding integration tests
+- [ ] All IPC channels have delivery verification tests
+- [ ] All store sync flows have state propagation tests
+
+### 1.6 Cross-Document Contradictions
 
 {List of contradictions between documents}
 

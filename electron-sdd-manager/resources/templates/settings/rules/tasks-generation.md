@@ -135,6 +135,32 @@ Delivering user-facing functionality:
 - "Add Bug detail panel with phase execution buttons"
 - "Create Agent control UI with stop/resume/delete actions"
 
+### Integration Test Tasks (Required for Cross-Boundary)
+Verifying interaction between components (IPC, Store sync, Event chains):
+- "Integration test: MCP status broadcast to Renderer"
+- "Integration test: Store state propagation on event emission"
+
+**Generation Criteria**:
+| Design Element | Required Test |
+|----------------|---------------|
+| IPC channel definition | IPC delivery test |
+| Store synchronization flow | State propagation test |
+| Event/callback chains | Chain execution test |
+
+**Task Format Example**:
+```markdown
+- [ ] 8.1 Integration test: MCP status broadcast
+  - Verify McpServerService.onStatusChange triggers IPC
+  - Verify Renderer receives mcp:status-changed event
+  - _Requirements: 6.9_
+  - _Integration Point: Design.md "Remote UI Synchronization Flow"_
+```
+
+**Testing Best Practices (MANDATORY)**:
+- **No Flaky Tests**: Never use fixed delays (`sleep(1000)`). Use `waitFor` patterns or event listeners to detect state changes.
+- **Prerequisites**: If project lacks test helpers for IPC/Store mocking, create a "Test Infrastructure" task BEFORE the integration test task.
+- **Mock Boundaries**: Follow the "Integration Test Strategy" in design.md.
+
 ### Validation Rule
 
 **CRITICAL**: A requirement with user-facing acceptance criteria MUST have at least one Feature Implementation Task, not just Infrastructure Tasks.

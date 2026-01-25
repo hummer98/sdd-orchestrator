@@ -41,6 +41,12 @@ Conduct interactive quality review of technical design documents to ensure they 
 - Clear API boundaries and data structures
 - Input validation and error handling coverage
 
+### 5. Integration Test Strategy (Critical for Cross-Boundary)
+- **Integration Points**: Are IPC/Store sync points clearly identified?
+- **Mock Boundaries**: Are boundaries for mocking vs. real implementation defined?
+- **Robustness**: Does the strategy handle async timing (e.g., explicit wait patterns) to prevent flaky tests?
+- **Prerequisites**: Are necessary test helpers identified?
+
 ## Review Process
 
 ### Step 1: Analyze

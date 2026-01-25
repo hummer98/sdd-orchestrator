@@ -50,6 +50,14 @@ CRITICAL: Generate "Integration & Deprecation Strategy" (結合・廃止戦略) 
 - List existing files that must be deleted (cleanup) as part of this change
 - For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
 - If no files need modification or deletion, explicitly state "No existing files affected"
+
+CRITICAL: Generate "Integration Test Strategy" section if design includes cross-boundary communication (IPC, events, store synchronization):
+- **Components**: List modules involved in integration
+- **Data Flow**: Describe the flow to be tested
+- **Mock Boundaries**: Explicitly define where to mock vs. real implementation (e.g., "Mock IPC transport, use real Store")
+- **Verification Points**: Specific state changes or events to assert
+- **Robustness Strategy**: Explicitly state how to handle async timing to avoid flaky tests (e.g., "Use `waitFor` patterns instead of fixed sleeps", "Monitor state transitions")
+- **Prerequisites**: Identify if any new test infrastructure or helpers are needed before writing these tests
 """
 )
 ```

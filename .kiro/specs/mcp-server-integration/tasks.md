@@ -275,8 +275,3 @@ MCPサーバー機能をSDD Orchestratorに統合し、Claude Code等のMCPク�
 | 6.9 | ステータスインジケータ | 7.1, 7.3, 7.5 | Feature |
 | 6.10 | Remote UIでのステータス表示のみ | 7.3 | Feature |
 
-### Coverage Validation Checklist
-- [x] Every criterion ID from requirements.md appears above
-- [x] Tasks are leaf tasks (e.g., 1.1), not container tasks (e.g., 1)
-- [x] User-facing criteria have at least one Feature task
-- [x] No criterion is covered only by Infrastructure tasks

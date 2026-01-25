@@ -1,9 +1,11 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.47.1",
+  "version": "0.47.2",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
+    "clean": "rm -rf dist release",
+    "prebuild": "rm -rf dist",
     "dev": "vite",
     "dev:electron": "electron .",
     "dev:remote": "vite --config vite.config.remote.ts",
@@ -42,10 +44,10 @@
     "tailwind-merge": "^3.4.0",
     "ws": "^8.18.3",
     "zod": "^3.24.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@modelcontextprotocol/sdk": "^1.12.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -82,7 +84,31 @@
     },
     "files": [
       "dist/**/*",
-      "!node_modules/**/*"
+      "!node_modules/**/*",
+      "node_modules/@modelcontextprotocol/**/*",
+      "node_modules/@hono/**/*",
+      "node_modules/ajv/**/*",
+      "node_modules/ajv-formats/**/*",
+      "node_modules/content-type/**/*",
+      "node_modules/cors/**/*",
+      "node_modules/cross-spawn/**/*",
+      "node_modules/eventsource/**/*",
+      "node_modules/eventsource-parser/**/*",
+      "node_modules/express-rate-limit/**/*",
+      "node_modules/jose/**/*",
+      "node_modules/json-schema-typed/**/*",
+      "node_modules/pkce-challenge/**/*",
+      "node_modules/raw-body/**/*",
+      "node_modules/zod-to-json-schema/**/*",
+      "node_modules/uri-js/**/*",
+      "node_modules/fast-deep-equal/**/*",
+      "node_modules/json-schema-traverse/**/*",
+      "node_modules/require-from-string/**/*",
+      "node_modules/shebang-command/**/*",
+      "node_modules/shebang-regex/**/*",
+      "node_modules/which/**/*",
+      "node_modules/isexe/**/*",
+      "node_modules/path-key/**/*"
     ],
     "extraResources": [
       {

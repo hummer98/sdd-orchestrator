@@ -69,9 +69,35 @@ CHANGELOG.mdのフォーマット:
 
 ```bash
 cd electron-sdd-manager
-npm run build
+rm -rf release  # 古いパッケージをクリーン
+npm run build   # prebuildでdistもクリーンされる
 npx electron-builder --mac
 ```
+
+### 5.1. パッケージング後のスモークテスト
+
+**重要**: パッケージングしたアプリが正常に起動するか確認します。
+
+```bash
+# アプリを起動して5秒以内にクラッシュしないか確認
+open "release/mac-arm64/SDD Orchestrator.app" &
+sleep 5
+
+# プロセスが生きているか確認
+if pgrep -f "SDD Orchestrator" > /dev/null; then
+  echo "✅ スモークテスト成功: アプリが正常に起動しました"
+  pkill -f "SDD Orchestrator"
+else
+  echo "❌ スモークテスト失敗: アプリが起動時にクラッシュしました"
+  # ここでリリースを中止し、エラーを報告
+fi
+```
+
+**スモークテストが失敗した場合:**
+1. エラーダイアログの内容を確認
+2. Console.appでクラッシュログを確認
+3. 問題を修正してから再ビルド
+4. **リリースを続行しないこと**
 
 ### 6. 変更のコミット＆プッシュ
 

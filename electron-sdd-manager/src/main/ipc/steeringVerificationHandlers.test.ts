@@ -52,6 +52,21 @@ vi.mock('../menu', () => ({
   updateWindowTitle: vi.fn(),
 }));
 
+// Mock MCP services to avoid MCP SDK import errors
+vi.mock('../services/mcp/mcpServerService', () => ({
+  McpServerService: vi.fn().mockImplementation(() => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+    getStatus: vi.fn(),
+    onStatusChange: vi.fn(),
+  })),
+}));
+
+vi.mock('./mcpHandlers', () => ({
+  registerMcpHandlers: vi.fn(),
+  getMcpServerService: vi.fn(),
+}));
+
 // Mock specManagerService - need to mock the entire module to control startAgent
 vi.mock('../services/specManagerService', () => {
   return {

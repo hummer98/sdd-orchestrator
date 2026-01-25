@@ -47,6 +47,21 @@ vi.mock('../menu', () => ({
   updateWindowTitle: vi.fn(),
 }));
 
+// Mock MCP services to avoid MCP SDK import errors
+vi.mock('../services/mcp/mcpServerService', () => ({
+  McpServerService: vi.fn().mockImplementation(() => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+    getStatus: vi.fn(),
+    onStatusChange: vi.fn(),
+  })),
+}));
+
+vi.mock('./mcpHandlers', () => ({
+  registerMcpHandlers: vi.fn(),
+  getMcpServerService: vi.fn(),
+}));
+
 describe('IPC Handlers - Agent Management (Task 27.1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

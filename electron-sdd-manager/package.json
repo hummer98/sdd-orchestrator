@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.48.0",
+  "version": "0.48.1",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
@@ -11,6 +11,8 @@
     "dev:remote": "vite --config vite.config.remote.ts",
     "build": "tsc && vite build && npm run build:remote",
     "build:electron": "npm run build && electron-builder",
+    "build:electron:fast": "npm run build && electron-builder --config.compression=store --config.mac.target=dmg",
+    "build:electron:release": "npm run build && electron-builder --config.compression=normal",
     "build:remote": "vite build --config vite.config.remote.ts",
     "preview": "vite preview",
     "preview:remote": "vite preview --config vite.config.remote.ts",
@@ -80,12 +82,16 @@
   "build": {
     "appId": "com.sdd-orchestrator.app",
     "productName": "SDD Orchestrator",
+    "compression": "store",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "!node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node"
     ],
     "extraResources": [
       {

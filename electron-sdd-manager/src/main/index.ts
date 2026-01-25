@@ -68,6 +68,14 @@ process.on('uncaughtException', (error: Error) => {
   }
 });
 
+// Handle unhandled promise rejections
+// Log to file so smoke tests can detect these issues
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  logger.error('[main] Unhandled promise rejection', { reason: message, stack });
+});
+
 let mainWindow: BrowserWindow | null = null;
 
 // Task 10.2: Parse CLI arguments using cliArgsParser

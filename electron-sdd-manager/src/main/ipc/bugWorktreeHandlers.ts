@@ -19,7 +19,6 @@ import type {
   WorktreeInfo,
   WorktreeServiceResult,
 } from '../../renderer/types/worktree';
-import type { BugPhase } from '../../renderer/types/bug';
 
 /**
  * Handle bug-worktree:create IPC call
@@ -297,39 +296,6 @@ export function registerBugWorktreeHandlers(): void {
         ok: true as const,
         value: createResult.value,
       };
-    }
-  );
-
-  // bug-deploy-phase: bug-phase:update
-  // Requirements: 2.4
-  ipcMain.handle(
-    IPC_CHANNELS.BUG_PHASE_UPDATE,
-    async (_event, bugName: string, phase: BugPhase) => {
-      logger.info('[bugWorktreeHandlers] bug-phase:update called', { bugName, phase });
-
-      const projectPath = getCurrentProjectPath();
-      if (!projectPath) {
-        logger.error('[bugWorktreeHandlers] No project path set');
-        return {
-          ok: false as const,
-          error: { type: 'NOT_FOUND' as const, message: 'No project path set' },
-        };
-      }
-
-      const bugService = new BugService();
-      const bugPath = `${projectPath}/.kiro/bugs/${bugName}`;
-
-      const result = await bugService.updateBugJsonPhase(bugPath, phase);
-      if (!result.ok) {
-        logger.error('[bugWorktreeHandlers] Failed to update bug phase', { error: result.error });
-        return {
-          ok: false as const,
-          error: { type: result.error.type, message: 'Failed to update bug phase' },
-        };
-      }
-
-      logger.info('[bugWorktreeHandlers] Bug phase updated successfully', { bugName, phase });
-      return { ok: true as const, value: undefined };
     }
   );
 

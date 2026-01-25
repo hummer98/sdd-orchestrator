@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.48.1] - 2026-01-25
+
+### Fixed
+- **bug-phase-update**: IPCハンドラーの二重登録を修正（起動時のUnhandledPromiseRejectionWarning解消）
+- **release-smoke-test**: スモークテストでUnhandled promise rejectionをログファイルから検出するよう改善
+- **unhandled-rejection-logging**: 未処理のPromise rejectionをログファイルに記録するハンドラーを追加
+
 ## [0.48.0] - 2026-01-25
 
 ### Added

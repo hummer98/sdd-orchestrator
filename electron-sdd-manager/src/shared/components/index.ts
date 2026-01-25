@@ -29,5 +29,8 @@ export * from './execution';
 // Project components
 export * from './project';
 
+// Schedule Task components
+export * from './schedule';
+
 // Component categories will be added as they are migrated
 // export * from './tabs';

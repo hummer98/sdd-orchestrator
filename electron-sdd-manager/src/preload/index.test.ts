@@ -58,6 +58,18 @@ vi.mock('../main/ipc/channels', () => ({
     MCP_GET_SETTINGS: 'mcp:get-settings',
     MCP_SET_ENABLED: 'mcp:set-enabled',
     MCP_SET_PORT: 'mcp:set-port',
+    // Schedule Task channels (Task 3.3)
+    SCHEDULE_TASK_GET_ALL: 'schedule-task:get-all',
+    SCHEDULE_TASK_GET: 'schedule-task:get',
+    SCHEDULE_TASK_CREATE: 'schedule-task:create',
+    SCHEDULE_TASK_UPDATE: 'schedule-task:update',
+    SCHEDULE_TASK_DELETE: 'schedule-task:delete',
+    SCHEDULE_TASK_EXECUTE_IMMEDIATELY: 'schedule-task:execute-immediately',
+    SCHEDULE_TASK_GET_QUEUE: 'schedule-task:get-queue',
+    SCHEDULE_TASK_GET_RUNNING: 'schedule-task:get-running',
+    SCHEDULE_TASK_STATUS_CHANGED: 'schedule-task:status-changed',
+    // Idle Time Sync (Task 7.1)
+    SCHEDULE_TASK_REPORT_IDLE_TIME: 'schedule-task:report-idle-time',
   },
 }));
 
@@ -555,6 +567,236 @@ describe('Preload API - Task 6.3: MCP Server API', () => {
   });
 });
 
+describe('Preload API - Task 3.3: Schedule Task API', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('scheduleTaskGetAll', () => {
+    it('should expose scheduleTaskGetAll function', () => {
+      expect(typeof exposedAPI.scheduleTaskGetAll).toBe('function');
+    });
+
+    it('should invoke schedule-task:get-all with projectPath', async () => {
+      const mockTasks = [
+        { id: 'task-1', name: 'Task 1', enabled: true },
+        { id: 'task-2', name: 'Task 2', enabled: false },
+      ];
+      mockIpcRenderer.invoke.mockResolvedValue(mockTasks);
+
+      const result = await (exposedAPI.scheduleTaskGetAll as Function)('/path/to/project');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:get-all',
+        { projectPath: '/path/to/project' }
+      );
+      expect(result).toEqual(mockTasks);
+    });
+  });
+
+  describe('scheduleTaskGet', () => {
+    it('should expose scheduleTaskGet function', () => {
+      expect(typeof exposedAPI.scheduleTaskGet).toBe('function');
+    });
+
+    it('should invoke schedule-task:get with projectPath and taskId', async () => {
+      const mockTask = { id: 'task-1', name: 'Task 1', enabled: true };
+      mockIpcRenderer.invoke.mockResolvedValue(mockTask);
+
+      const result = await (exposedAPI.scheduleTaskGet as Function)('/path/to/project', 'task-1');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:get',
+        { projectPath: '/path/to/project', taskId: 'task-1' }
+      );
+      expect(result).toEqual(mockTask);
+    });
+  });
+
+  describe('scheduleTaskCreate', () => {
+    it('should expose scheduleTaskCreate function', () => {
+      expect(typeof exposedAPI.scheduleTaskCreate).toBe('function');
+    });
+
+    it('should invoke schedule-task:create with projectPath and task input', async () => {
+      const taskInput = {
+        name: 'New Task',
+        enabled: true,
+        schedule: { type: 'interval', hoursInterval: 24, waitForIdle: false },
+        prompts: [{ order: 0, content: 'Test prompt' }],
+        avoidance: { targets: [], behavior: 'skip' },
+        workflow: { enabled: false },
+        behavior: 'wait',
+      };
+      const mockResult = { ok: true, value: { id: 'task-new', ...taskInput } };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const result = await (exposedAPI.scheduleTaskCreate as Function)('/path/to/project', taskInput);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:create',
+        { projectPath: '/path/to/project', task: taskInput }
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('scheduleTaskUpdate', () => {
+    it('should expose scheduleTaskUpdate function', () => {
+      expect(typeof exposedAPI.scheduleTaskUpdate).toBe('function');
+    });
+
+    it('should invoke schedule-task:update with projectPath, taskId and updates', async () => {
+      const updates = { enabled: false };
+      const mockResult = { ok: true, value: { id: 'task-1', name: 'Task 1', enabled: false } };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const result = await (exposedAPI.scheduleTaskUpdate as Function)('/path/to/project', 'task-1', updates);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:update',
+        { projectPath: '/path/to/project', taskId: 'task-1', updates }
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('scheduleTaskDelete', () => {
+    it('should expose scheduleTaskDelete function', () => {
+      expect(typeof exposedAPI.scheduleTaskDelete).toBe('function');
+    });
+
+    it('should invoke schedule-task:delete with projectPath and taskId', async () => {
+      const mockResult = { ok: true, value: undefined };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const result = await (exposedAPI.scheduleTaskDelete as Function)('/path/to/project', 'task-1');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:delete',
+        { projectPath: '/path/to/project', taskId: 'task-1' }
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('scheduleTaskExecuteImmediately', () => {
+    it('should expose scheduleTaskExecuteImmediately function', () => {
+      expect(typeof exposedAPI.scheduleTaskExecuteImmediately).toBe('function');
+    });
+
+    it('should invoke schedule-task:execute-immediately with projectPath, taskId and optional force', async () => {
+      const mockResult = { ok: true, value: { taskId: 'task-1', startedAt: 1234567890, agentIds: ['agent-1'] } };
+      mockIpcRenderer.invoke.mockResolvedValue(mockResult);
+
+      const result = await (exposedAPI.scheduleTaskExecuteImmediately as Function)('/path/to/project', 'task-1', true);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:execute-immediately',
+        { projectPath: '/path/to/project', taskId: 'task-1', force: true }
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('scheduleTaskGetQueue', () => {
+    it('should expose scheduleTaskGetQueue function', () => {
+      expect(typeof exposedAPI.scheduleTaskGetQueue).toBe('function');
+    });
+
+    it('should invoke schedule-task:get-queue with projectPath', async () => {
+      const mockQueue = [{ taskId: 'task-1', queuedAt: 1234567890, reason: 'schedule' }];
+      mockIpcRenderer.invoke.mockResolvedValue(mockQueue);
+
+      const result = await (exposedAPI.scheduleTaskGetQueue as Function)('/path/to/project');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:get-queue',
+        { projectPath: '/path/to/project' }
+      );
+      expect(result).toEqual(mockQueue);
+    });
+  });
+
+  describe('scheduleTaskGetRunning', () => {
+    it('should expose scheduleTaskGetRunning function', () => {
+      expect(typeof exposedAPI.scheduleTaskGetRunning).toBe('function');
+    });
+
+    it('should invoke schedule-task:get-running with projectPath', async () => {
+      const mockRunning = [{ taskId: 'task-1', promptIndex: 0, agentId: 'agent-1' }];
+      mockIpcRenderer.invoke.mockResolvedValue(mockRunning);
+
+      const result = await (exposedAPI.scheduleTaskGetRunning as Function)('/path/to/project');
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:get-running',
+        { projectPath: '/path/to/project' }
+      );
+      expect(result).toEqual(mockRunning);
+    });
+  });
+
+  describe('onScheduleTaskStatusChanged', () => {
+    it('should expose onScheduleTaskStatusChanged function', () => {
+      expect(typeof exposedAPI.onScheduleTaskStatusChanged).toBe('function');
+    });
+
+    it('should register listener for schedule-task:status-changed', () => {
+      const callback = vi.fn();
+
+      (exposedAPI.onScheduleTaskStatusChanged as Function)(callback);
+
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        'schedule-task:status-changed',
+        expect.any(Function)
+      );
+    });
+
+    it('should return cleanup function that removes listener', () => {
+      const callback = vi.fn();
+
+      const cleanup = (exposedAPI.onScheduleTaskStatusChanged as Function)(callback);
+
+      expect(typeof cleanup).toBe('function');
+
+      cleanup();
+
+      expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
+        'schedule-task:status-changed',
+        expect.any(Function)
+      );
+    });
+
+    it('should call callback with status event', () => {
+      const callback = vi.fn();
+      let registeredHandler: Function;
+
+      mockIpcRenderer.on.mockImplementation((_channel, handler) => {
+        registeredHandler = handler;
+      });
+
+      (exposedAPI.onScheduleTaskStatusChanged as Function)(callback);
+
+      // Simulate IPC event
+      const event = { type: 'task-queued', timestamp: 1234567890, taskId: 'task-1', reason: 'schedule' };
+      registeredHandler!({}, event);
+
+      expect(callback).toHaveBeenCalledWith(event);
+    });
+  });
+});
+
 describe('Preload API - Task 13.1: SSH Remote Project API', () => {
   let exposedAPI: Record<string, unknown>;
 
@@ -704,6 +946,53 @@ describe('Preload API - Task 13.1: SSH Remote Project API', () => {
         'ssh:status-changed',
         expect.any(Function)
       );
+    });
+  });
+});
+
+// ============================================================
+// Task 7.1: Idle Time Sync API
+// Requirements: 4.3 (アイドル検出時キュー追加)
+// ============================================================
+
+describe('Preload API - Task 7.1: Idle Time Sync', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('reportIdleTime', () => {
+    it('should expose reportIdleTime function', () => {
+      expect(typeof exposedAPI.reportIdleTime).toBe('function');
+    });
+
+    it('should invoke schedule-task:report-idle-time with lastActivityTime', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const lastActivityTime = Date.now();
+      await (exposedAPI.reportIdleTime as Function)(lastActivityTime);
+
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(
+        'schedule-task:report-idle-time',
+        lastActivityTime
+      );
+    });
+
+    it('should return Promise<void>', async () => {
+      mockIpcRenderer.invoke.mockResolvedValue(undefined);
+
+      const result = await (exposedAPI.reportIdleTime as Function)(Date.now());
+
+      expect(result).toBeUndefined();
     });
   });
 });

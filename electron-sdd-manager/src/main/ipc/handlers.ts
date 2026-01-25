@@ -41,6 +41,9 @@ import { registerBugAutoExecutionHandlers } from './bugAutoExecutionHandlers';
 import { registerMetricsHandlers } from './metricsHandlers';
 // mcp-server-integration: Task 6.2 - MCP handlers registration
 import { registerMcpHandlers } from './mcpHandlers';
+// schedule-task-execution: Task 3.2 - Schedule task handlers registration
+// schedule-task-execution: Task 8.3 - Main Process integration (coordinator lifecycle)
+import { registerScheduleTaskHandlers, initScheduleTaskCoordinator } from './scheduleTaskHandlers';
 import { getBugAutoExecutionCoordinator } from '../services/bugAutoExecutionCoordinator';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { AutoExecutionCoordinator, MAX_DOCUMENT_REVIEW_ROUNDS } from '../services/autoExecutionCoordinator';
@@ -628,6 +631,19 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   setupBugDetailProvider(projectPath);
   setupFileService(projectPath);
   logger.info('[handlers] Remote Access StateProvider, WorkflowController, AgentLogsProvider, SpecDetailProvider, BugDetailProvider, and FileService set up');
+
+  // schedule-task-execution: Task 8.3 - Initialize ScheduleTaskCoordinator
+  // Requirements: 9.3 (consistency check on project open), 10.1 (queue/execution separation)
+  // The coordinator manages schedule task execution and is disposed/re-initialized on project change
+  try {
+    await initScheduleTaskCoordinator(projectPath);
+    logger.info('[handlers] ScheduleTaskCoordinator initialized');
+  } catch (error) {
+    // Log error but don't fail project selection
+    logger.error('[handlers] Failed to initialize ScheduleTaskCoordinator', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 /**
@@ -2395,6 +2411,14 @@ export function registerIpcHandlers(): void {
   // ============================================================
   registerMcpHandlers();
   logger.info('[handlers] MCP handlers registered');
+
+  // ============================================================
+  // Schedule Task Handlers (schedule-task-execution feature)
+  // Task 3.2: Register schedule task IPC handlers
+  // Requirements: All IPC (design.md scheduleTaskHandlers API Contract)
+  // ============================================================
+  registerScheduleTaskHandlers(getCurrentProjectPath);
+  logger.info('[handlers] Schedule Task handlers registered');
 
   // ============================================================
   // Steering Verification Handlers (steering-verification-integration feature)

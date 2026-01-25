@@ -75,3 +75,24 @@ export { InstallCloudflaredDialog } from './InstallCloudflaredDialog';
 export type { InstallInstructions } from './InstallCloudflaredDialog';
 // debatex-document-review Task 4.1: Project Settings Dialog
 export { ProjectSettingsDialog } from './ProjectSettingsDialog';
+// schedule-task-execution Task 8.2: Re-export ScheduleTask components from shared
+export {
+  ScheduleTaskSettingView,
+  type ScheduleTaskSettingViewProps,
+  ScheduleTaskListItem,
+  type ScheduleTaskListItemProps,
+  ImmediateExecutionWarningDialog,
+  type ImmediateExecutionWarningDialogProps,
+  ScheduleTaskEditPage,
+  type ScheduleTaskEditPageProps,
+  ScheduleTypeSelector,
+  type ScheduleTypeSelectorProps,
+  PromptListEditor,
+  type PromptListEditorProps,
+  AvoidanceRuleEditor,
+  type AvoidanceRuleEditorProps,
+  WorkflowModeEditor,
+  type WorkflowModeEditorProps,
+  AgentBehaviorEditor,
+  type AgentBehaviorEditorProps,
+} from '@shared/components/schedule';

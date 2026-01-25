@@ -8,6 +8,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProjectAgentFooter } from './ProjectAgentFooter';
 
+// Mock schedule task store
+vi.mock('@shared/stores/scheduleTaskStore', () => ({
+  useScheduleTaskStore: () => ({
+    tasks: [],
+    editingTask: null,
+    isCreatingNew: false,
+    startEditing: vi.fn(),
+    startNewTask: vi.fn(),
+    cancelEditing: vi.fn(),
+  }),
+}));
+
 describe('ProjectAgentFooter', () => {
   const defaultProps = {
     onRelease: vi.fn(),
@@ -135,6 +147,61 @@ describe('ProjectAgentFooter', () => {
       render(<ProjectAgentFooter {...defaultProps} isReleaseRunning={true} currentProject={null} />);
       const button = screen.getByTestId('release-button');
       expect(button.getAttribute('title')).toBe('release実行中');
+    });
+  });
+
+  // Task 8.1: Timer icon for schedule task
+  // Requirement 1.1: タイマーアイコンクリックでScheduleTaskSettingViewダイアログを表示
+  describe('Task 8.1: Schedule Task Timer Icon', () => {
+    it('should render timer icon button in the footer', () => {
+      // Requirement 1.1: Timer icon should be present
+      render(<ProjectAgentFooter {...defaultProps} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      expect(timerButton).toBeInTheDocument();
+      // Should have Clock/Timer icon (SVG element)
+      expect(timerButton.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('should call onScheduleTaskClick when timer icon is clicked', () => {
+      // Requirement 1.1: Click opens ScheduleTaskSettingView
+      const onScheduleTaskClick = vi.fn();
+      render(<ProjectAgentFooter {...defaultProps} onScheduleTaskClick={onScheduleTaskClick} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      fireEvent.click(timerButton);
+      expect(onScheduleTaskClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('should disable timer button when currentProject is null', () => {
+      // Timer button should be disabled when no project is selected
+      render(<ProjectAgentFooter {...defaultProps} currentProject={null} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      expect(timerButton).toBeDisabled();
+    });
+
+    it('should show "プロジェクト未選択" tooltip on timer button when currentProject is null', () => {
+      render(<ProjectAgentFooter {...defaultProps} currentProject={null} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      expect(timerButton.getAttribute('title')).toBe('プロジェクト未選択');
+    });
+
+    it('should enable timer button when currentProject is set', () => {
+      render(<ProjectAgentFooter {...defaultProps} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      expect(timerButton).not.toBeDisabled();
+    });
+
+    it('should not call onScheduleTaskClick when timer button is disabled', () => {
+      const onScheduleTaskClick = vi.fn();
+      render(<ProjectAgentFooter {...defaultProps} onScheduleTaskClick={onScheduleTaskClick} currentProject={null} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      fireEvent.click(timerButton);
+      expect(onScheduleTaskClick).not.toHaveBeenCalled();
+    });
+
+    it('should have appropriate aria-label for accessibility', () => {
+      render(<ProjectAgentFooter {...defaultProps} />);
+      const timerButton = screen.getByTestId('schedule-task-button');
+      expect(timerButton.getAttribute('aria-label')).toBe('スケジュールタスク設定');
     });
   });
 });

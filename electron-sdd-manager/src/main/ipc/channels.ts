@@ -350,6 +350,24 @@ export const IPC_CHANNELS = {
   MCP_GET_SETTINGS: 'mcp:get-settings',
   MCP_SET_ENABLED: 'mcp:set-enabled',
   MCP_SET_PORT: 'mcp:set-port',
+
+  // Schedule Task (schedule-task-execution feature)
+  // Requirements: All IPC (design.md API Contract)
+  // Idle Time Sync (Task 7.1)
+  // Requirements: 4.3 (アイドル検出時キュー追加)
+  SCHEDULE_TASK_REPORT_IDLE_TIME: 'schedule-task:report-idle-time',
+  // CRUD operations
+  SCHEDULE_TASK_GET_ALL: 'schedule-task:get-all',
+  SCHEDULE_TASK_GET: 'schedule-task:get',
+  SCHEDULE_TASK_CREATE: 'schedule-task:create',
+  SCHEDULE_TASK_UPDATE: 'schedule-task:update',
+  SCHEDULE_TASK_DELETE: 'schedule-task:delete',
+  // Execution control
+  SCHEDULE_TASK_EXECUTE_IMMEDIATELY: 'schedule-task:execute-immediately',
+  SCHEDULE_TASK_GET_QUEUE: 'schedule-task:get-queue',
+  SCHEDULE_TASK_GET_RUNNING: 'schedule-task:get-running',
+  // Events (Main -> Renderer)
+  SCHEDULE_TASK_STATUS_CHANGED: 'schedule-task:status-changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

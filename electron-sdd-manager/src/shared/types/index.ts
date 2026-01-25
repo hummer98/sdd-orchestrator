@@ -27,3 +27,7 @@ export * from './spec';
 
 // Workflow state types (workflow-view-unification feature)
 export * from './workflowState';
+
+// Schedule task types (schedule-task-execution feature)
+// Requirements: 2.4, 3.1, 3.2, 4.1, 5.1, 6.1, 6.2, 8.1, 9.3
+export * from './scheduleTask';

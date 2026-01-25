@@ -13,6 +13,8 @@ import { useConnectionStore } from './connectionStore';
 import { useVersionStatusStore } from './versionStatusStore';
 // bugs-view-unification Task 6.1: Import shared bugStore instead of renderer-specific
 import { useSharedBugStore } from '../../shared/stores/bugStore';
+// schedule-task-execution Task 8.2: Import shared scheduleTaskStore
+import { useScheduleTaskStore } from '../../shared/stores/scheduleTaskStore';
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
@@ -39,6 +41,18 @@ export type { ConnectionStatus, ProjectType, ConnectionInfo, RecentRemoteProject
 // Version Status Store (commandset-version-detection feature)
 // Requirements: 3.1
 export { useVersionStatusStore } from './versionStatusStore';
+// schedule-task-execution Task 8.2: Re-export scheduleTaskStore from shared
+export {
+  useScheduleTaskStore,
+  resetScheduleTaskStore,
+  getScheduleTaskStore,
+} from '../../shared/stores/scheduleTaskStore';
+export type {
+  ScheduleTaskState,
+  ScheduleTaskActions,
+  ScheduleTaskStore,
+  ScheduleTaskElectronAPI,
+} from '../../shared/stores/scheduleTaskStore';
 
 /**
  * Expose stores to window for E2E testing and debugging via MCP
@@ -49,7 +63,7 @@ export { useVersionStatusStore } from './versionStatusStore';
  *   window.__STORES__.project.setState({...})   // Update state
  *   window.__STORES__.spec.getState().specs     // Access specific field
  *
- * Available stores: project, spec, editor, notification, agent, workflow, remoteAccess, bug, connection, versionStatus
+ * Available stores: project, spec, editor, notification, agent, workflow, remoteAccess, bug, connection, versionStatus, scheduleTask
  */
 (window as any).__STORES__ = {
   // Each store exposes getState() and setState() for MCP compatibility
@@ -103,5 +117,11 @@ export { useVersionStatusStore } from './versionStatusStore';
     getState: () => useVersionStatusStore.getState(),
     setState: (state: Parameters<typeof useVersionStatusStore.setState>[0]) => useVersionStatusStore.setState(state),
     subscribe: useVersionStatusStore.subscribe,
+  },
+  // schedule-task-execution Task 8.2: Add scheduleTask store for E2E testing
+  scheduleTask: {
+    getState: () => useScheduleTaskStore.getState(),
+    setState: (state: Parameters<typeof useScheduleTaskStore.setState>[0]) => useScheduleTaskStore.setState(state),
+    subscribe: useScheduleTaskStore.subscribe,
   },
 };

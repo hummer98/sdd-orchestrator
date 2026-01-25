@@ -1501,6 +1501,118 @@ export interface ElectronAPI {
      */
     setPort(port: number): Promise<void>;
   };
+
+  // ============================================================
+  // Schedule Task (schedule-task-execution feature)
+  // Task 3.3: preload APIを公開
+  // Requirements: All IPC (design.md scheduleTaskHandlers API Contract)
+  // ============================================================
+
+  // Task 7.1: Idle Time Sync - Report last activity time to Main Process
+  /**
+   * Report last activity time to Main Process
+   * Used by useIdleTimeSync hook to sync idle time with Main Process
+   * @param lastActivityTime Unix timestamp in milliseconds
+   */
+  reportIdleTime(lastActivityTime: number): Promise<void>;
+
+  /**
+   * Get all schedule tasks for a project
+   * @param projectPath Project root path
+   * @returns Array of ScheduleTask
+   */
+  scheduleTaskGetAll(projectPath: string): Promise<import('../../shared/types/scheduleTask').ScheduleTask[]>;
+
+  /**
+   * Get a single schedule task by ID
+   * @param projectPath Project root path
+   * @param taskId Task identifier
+   * @returns ScheduleTask or null if not found
+   */
+  scheduleTaskGet(projectPath: string, taskId: string): Promise<import('../../shared/types/scheduleTask').ScheduleTask | null>;
+
+  /**
+   * Create a new schedule task
+   * @param projectPath Project root path
+   * @param task Task input data
+   * @returns Result with created ScheduleTask on success, or validation error
+   */
+  scheduleTaskCreate(
+    projectPath: string,
+    task: import('../../shared/types/scheduleTask').ScheduleTaskInput
+  ): Promise<
+    | { ok: true; value: import('../../shared/types/scheduleTask').ScheduleTask }
+    | { ok: false; error: import('../../shared/types/scheduleTask').ScheduleTaskServiceError }
+  >;
+
+  /**
+   * Update an existing schedule task
+   * @param projectPath Project root path
+   * @param taskId Task identifier
+   * @param updates Partial task updates
+   * @returns Result with updated ScheduleTask on success, or error
+   */
+  scheduleTaskUpdate(
+    projectPath: string,
+    taskId: string,
+    updates: Partial<import('../../shared/types/scheduleTask').ScheduleTaskInput>
+  ): Promise<
+    | { ok: true; value: import('../../shared/types/scheduleTask').ScheduleTask }
+    | { ok: false; error: import('../../shared/types/scheduleTask').ScheduleTaskServiceError }
+  >;
+
+  /**
+   * Delete a schedule task
+   * @param projectPath Project root path
+   * @param taskId Task identifier
+   * @returns Result with void on success, or TaskNotFoundError
+   */
+  scheduleTaskDelete(
+    projectPath: string,
+    taskId: string
+  ): Promise<
+    | { ok: true; value: void }
+    | { ok: false; error: import('../../shared/types/scheduleTask').TaskNotFoundError }
+  >;
+
+  /**
+   * Execute a schedule task immediately
+   * @param projectPath Project root path
+   * @param taskId Task identifier
+   * @param force Skip avoidance rules if true
+   * @returns Result with ExecutionResult on success, or ExecutionError
+   */
+  scheduleTaskExecuteImmediately(
+    projectPath: string,
+    taskId: string,
+    force?: boolean
+  ): Promise<
+    | { ok: true; value: import('../../shared/types/scheduleTask').ExecutionResult }
+    | { ok: false; error: import('../../shared/types/scheduleTask').ExecutionError }
+  >;
+
+  /**
+   * Get queued schedule tasks
+   * @param projectPath Project root path
+   * @returns Array of QueuedTask
+   */
+  scheduleTaskGetQueue(projectPath: string): Promise<import('../../shared/types/scheduleTask').QueuedTask[]>;
+
+  /**
+   * Get currently running schedule tasks
+   * @param projectPath Project root path
+   * @returns Array of RunningTaskInfo
+   */
+  scheduleTaskGetRunning(projectPath: string): Promise<import('../../shared/types/scheduleTask').RunningTaskInfo[]>;
+
+  /**
+   * Subscribe to schedule task status changes
+   * @param callback Function called when status changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onScheduleTaskStatusChanged(
+    callback: (event: import('../../shared/types/scheduleTask').ScheduleTaskStatusEvent) => void
+  ): () => void;
 }
 
 declare global {

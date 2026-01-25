@@ -77,6 +77,16 @@ export class HumanActivityTracker {
     return this._currentSpecId;
   }
 
+  /**
+   * Get the last activity time as Unix timestamp (ms)
+   * Task 7.1: Used for idle time sync with Main Process
+   * Requirements: 4.3
+   * @returns Last activity time in milliseconds, or null if no activity recorded
+   */
+  getLastActivityTime(): number | null {
+    return this.lastActivityTime?.getTime() ?? null;
+  }
+
   // ===========================================================================
   // Lifecycle Methods
   // ===========================================================================

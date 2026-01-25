@@ -7,6 +7,9 @@
  * project-agent-release-footer Task 2.1: Layout integration
  * - Header / AgentList / Footer flex structure
  * - Footer fixed at bottom (shrink-0), AgentList scrollable (flex-1 overflow-y-auto)
+ *
+ * schedule-task-execution Task 8.1: ScheduleTaskSettingView統合
+ * - タイマーアイコンクリックでダイアログを表示
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
@@ -16,6 +19,7 @@ import { clsx } from 'clsx';
 import { useState } from 'react';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
+import { ScheduleTaskSettingView } from '@shared/components/schedule';
 import { ProjectAgentFooter } from './ProjectAgentFooter';
 
 // =============================================================================
@@ -41,6 +45,8 @@ export function ProjectAgentPanel() {
   const { currentProject } = useProjectStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+  // Task 8.1: Schedule Task Setting dialog state
+  const [isScheduleTaskDialogOpen, setIsScheduleTaskDialogOpen] = useState(false);
 
   const projectAgents = getProjectAgents()
     // Sort: running first, then by startedAt descending (newest first)
@@ -115,6 +121,18 @@ export function ProjectAgentPanel() {
   };
 
   /**
+   * Task 8.1: Schedule Task dialog handlers
+   * Requirement 1.1: タイマーアイコンクリックでScheduleTaskSettingViewダイアログを表示
+   */
+  const handleScheduleTaskClick = () => {
+    setIsScheduleTaskDialogOpen(true);
+  };
+
+  const handleScheduleTaskClose = () => {
+    setIsScheduleTaskDialogOpen(false);
+  };
+
+  /**
    * Task 2.2: handleRelease handler implementation
    * Requirements: 5.1, 5.2, 5.3, 5.4
    * - Calls executeAskProject with /release as prompt
@@ -186,10 +204,12 @@ export function ProjectAgentPanel() {
 
       {/* Footer - project-agent-release-footer Task 2.1, 2.2, 2.3 */}
       {/* Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 6.1, 6.2, 6.3 */}
+      {/* Task 8.1: onScheduleTaskClick追加 */}
       <ProjectAgentFooter
         onRelease={handleRelease}
         isReleaseRunning={isReleaseRunning}
         currentProject={currentProject}
+        onScheduleTaskClick={handleScheduleTaskClick}
       />
 
       {/* 削除確認ダイアログ */}
@@ -226,6 +246,13 @@ export function ProjectAgentPanel() {
         agentType="project"
         onExecute={handleAskExecute}
         onCancel={handleAskCancel}
+      />
+
+      {/* Task 8.1: Schedule Task Setting Dialog */}
+      {/* Requirement 1.1: タイマーアイコンクリックでScheduleTaskSettingViewダイアログを表示 */}
+      <ScheduleTaskSettingView
+        isOpen={isScheduleTaskDialogOpen}
+        onClose={handleScheduleTaskClose}
       />
     </div>
   );

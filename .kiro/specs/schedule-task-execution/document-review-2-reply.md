@@ -1,0 +1,186 @@
+# Response to Document Review #2
+
+**Feature**: schedule-task-execution
+**Review Date**: 2026-01-24
+**Reply Date**: 2026-01-24
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 0      | 0            | 0             | 0                |
+| Warning  | 2      | 0            | 2             | 0                |
+| Info     | 3      | 3            | 0             | 0                |
+
+---
+
+## Response to Warnings
+
+### W1: AgentRegistry種別識別
+
+**Issue**: 回避ルール判定で「spec-merge」「commit」「bug-merge」「schedule-task」を識別する必要があるが、AgentRegistryに種別フィールドが存在するか確認が必要
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+既存の `AgentRecordService` (`src/main/services/agentRecordService.ts`) を確認した結果：
+
+```typescript
+export interface AgentRecord {
+  agentId: string;
+  specId: string;
+  phase: string;  // ワークフローフェーズ (requirements, design, tasks, impl, inspection)
+  pid: number;
+  sessionId: string;
+  status: AgentStatus;
+  startedAt: string;
+  lastActivityAt: string;
+  command: string;  // ← ここでコマンド/種別を識別可能
+  cwd?: string;
+  prompt?: string;
+}
+```
+
+- `phase` フィールドはワークフローフェーズを表し、コマンド種別ではない
+- `command` フィールドに実行コマンドが記録されており、ここから種別を推論可能
+- ただし「spec-merge」「commit」「bug-merge」「schedule-task」を明示的に識別するフィールドは存在しない
+
+**結論**:
+- 設計書には「AgentRegistryと連携した回避対象チェック」(design.md 6.3) と記載済み
+- 実装時にAgentRecordに `operationType` などのフィールドを追加するか、`command` から推論するかは**実装時の判断事項**
+- 仕様書の修正は不要。実装タスク 2.4 で対応する想定
+
+---
+
+### W2: scheduleTaskStoreの役割明確化
+
+**Issue**: structure.mdでは「Domain State (SSOT)は`src/shared/stores/`」とあるが、scheduleTaskStoreは `src/renderer/stores/` に配置予定
+
+**Judgment**: **No Fix Needed** ❌
+
+**Evidence**:
+`structure.md` の State Management Rules を確認：
+
+```markdown
+### 2. UI State
+**Location**: `src/renderer/stores/` (Electron), `src/remote-ui/stores/` (Web)
+**Content**: UIの一時的な状態、表示制御
+**Examples**: `editorStore` (スクロール位置), `modalStore` (ダイアログ開閉)
+**Rule**: ドメインデータを含めてはならない。ドメインデータが必要な場合は `shared` ストアを参照するか、Selectorを使用する。
+```
+
+また、structure.md の「正しい実装パターン」：
+
+```markdown
+[Renderer Process]
+├── UIステート（表示制御、フォーム入力中の値）
+├── Main Processステートの読み取り専用キャッシュ  ← これ
+└── ステート変更はIPC経由でMainに依頼
+```
+
+**design.md での明記内容**:
+- Components and Interfaces表で `scheduleTaskStore` は「State/Renderer」層に配置
+- 「Renderer側状態管理（UIキャッシュ）」と明記
+
+**結論**:
+- scheduleTaskStoreは「Main Processからの同期データの読み取り専用キャッシュ」として機能
+- ドメインデータのSSoTはMain Processの `ScheduleTaskCoordinator`
+- この設計は structure.md のルールに完全に準拠している
+- 仕様書の修正は不要
+
+---
+
+## Response to Info (Low Priority)
+
+| #    | Issue                         | Judgment      | Reason                                                       |
+| ---- | ----------------------------- | ------------- | ------------------------------------------------------------ |
+| I1   | Open Questionsの整理          | Fix Required  | 「キュー可視化UI」はReview #1で「現時点では不要」と判断済み。Out of Scopeへ移動 |
+| I2   | スケジュールチェック間隔の明示 | Fix Required  | 「1分間隔のチェックにより最大1分の遅延が発生しうる」を明記   |
+| I3   | Header/Footerタスク分割       | No Fix Needed | 現時点でタスク5.1に含める設計で問題なし。実装時に複雑であれば分割検討 |
+
+---
+
+## Files to Modify
+
+| File             | Changes                                                                    |
+| ---------------- | -------------------------------------------------------------------------- |
+| requirements.md  | Open Questions から「キュー可視化UI」を削除し、Out of Scope に移動         |
+| design.md        | スケジュールチェック間隔の詳細（最大1分の遅延）を明記                      |
+
+---
+
+## Conclusion
+
+**Critical課題**: なし
+**Warning課題**: 2件とも「実装時の確認事項」であり、仕様書の修正は不要
+**Info課題**: 3件中2件を修正（Open Questions整理、スケジュールチェック間隔明示）
+
+すべての課題が解決または対応不要と判断されました。`--autofix` モードのため、Info課題の修正を適用します。
+
+---
+
+## Applied Fixes
+
+**Applied Date**: 2026-01-24
+**Applied By**: --autofix
+
+### Summary
+
+| File | Changes Applied |
+| ---- | --------------- |
+| requirements.md | Open Questionsから「キュー可視化UI」をOut of Scopeへ移動 |
+| design.md | スケジュールチェック間隔の詳細（最大1分の遅延）を明記 |
+
+### Details
+
+#### requirements.md
+
+**Issue(s) Addressed**: I1 (Open Questionsの整理)
+
+**Changes**:
+- Open Questionsから「キューイングされたタスクの可視化UI（必要に応じて設計フェーズで検討）」を削除
+- Out of Scopeに「キューイングされたタスクの可視化UI（Document Review #1で「現時点では不要」と判断）」を追加
+
+**Diff Summary**:
+```diff
+ ## Out of Scope
+
+ - 実行履歴の詳細保存・閲覧（最終実行開始時間のみ記録）
+ - プロンプト内の変数/プレースホルダー機能
+ - グローバル（アプリ全体）でのスケジュールタスク管理
+ - 複数スケジュール条件のAND/OR組み合わせ（1タスク1スケジュール）
+ - worktree実行後の自動クリーンアップ
++- キューイングされたタスクの可視化UI（Document Review #1で「現時点では不要」と判断）
+
+ ## Open Questions
+
+ - Electron側のローカルストレージとプロジェクト内ファイルの同期タイミングと競合解決の詳細
+ - アイドル検出の既存実装（humanActivityTracker.ts）との統合方法
+-- キューイングされたタスクの可視化UI（必要に応じて設計フェーズで検討）
+```
+
+#### design.md
+
+**Issue(s) Addressed**: I2 (スケジュールチェック間隔の明示)
+
+**Changes**:
+- ScheduleTaskCoordinatorの「Responsibilities & Constraints」セクションに、1分間隔チェックによる最大1分の遅延についての注意書きを追加
+
+**Diff Summary**:
+```diff
+ **Responsibilities & Constraints**
+-- スケジュール条件の定期チェック（1分間隔）
++- スケジュール条件の定期チェック（1分間隔）
++  - **注意**: 1分間隔のチェックにより、固定スケジュール（曜日・時刻指定）では最大1分の遅延が発生しうる。これは許容範囲として設計されている
+ - タスクキューの管理（キューイング条件と実行条件の分離）
+```
+
+---
+
+_Fixes applied by document-review-reply command._
+
+---
+
+_This reply was generated by the document-review-reply command._

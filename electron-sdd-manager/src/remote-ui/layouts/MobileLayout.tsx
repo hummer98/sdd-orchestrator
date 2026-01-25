@@ -108,7 +108,8 @@ export function MobileLayout({
           - pb-16 when tab bar is visible (space for tab bar)
           - pb-0 when tab bar is hidden (full height content)
       */}
-      <main className={`flex-1 overflow-y-auto ${showTabBar ? 'pb-16' : 'pb-0'}`}>
+      {/* pb-[calc(4rem+env(safe-area-inset-bottom))] = h-16 (4rem) + safe-area */}
+      <main className={`flex-1 overflow-y-auto ${showTabBar ? 'pb-[calc(4rem+env(safe-area-inset-bottom))]' : 'pb-[env(safe-area-inset-bottom)]'}`}>
         {children}
       </main>
 
@@ -259,10 +260,11 @@ function MobileTabBar({
     <nav
       data-testid="mobile-bottom-tabs"
       className={`
-        fixed bottom-0 left-0 right-0 h-16
+        fixed bottom-0 left-0 right-0 min-h-16
         bg-white dark:bg-gray-800
         border-t border-gray-200 dark:border-gray-700
         flex items-stretch
+        pb-[env(safe-area-inset-bottom)]
         transition-transform duration-200 ease-in-out
         ${showTabBar ? 'translate-y-0' : 'translate-y-full'}
       `}

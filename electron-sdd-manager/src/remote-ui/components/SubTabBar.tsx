@@ -58,7 +58,7 @@ export function SubTabBar({
   return (
     <nav
       data-testid={testId}
-      className="flex items-stretch h-12 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+      className="flex items-stretch min-h-12 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pb-[env(safe-area-inset-bottom)]"
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;

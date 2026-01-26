@@ -72,6 +72,12 @@ export interface SpecDetailPageProps {
   onRefresh?: () => Promise<void>;
   /** Whether refresh is in progress (Task 7.2, 7.3: Req 5.4, 6.5) */
   isRefreshing?: boolean;
+  /** Whether on main branch (for Convert to Worktree button) */
+  isOnMain?: boolean;
+  /** Callback to convert to worktree mode */
+  onConvertToWorktree?: () => void;
+  /** Whether worktree conversion is in progress */
+  isConverting?: boolean;
   /** Test ID for E2E testing */
   testId?: string;
 }
@@ -107,6 +113,9 @@ export function SpecDetailPage({
   hasRunningAgents = false,
   onRefresh,
   isRefreshing = false,
+  isOnMain = false,
+  onConvertToWorktree,
+  isConverting = false,
   testId,
 }: SpecDetailPageProps): React.ReactElement {
   // ---------------------------------------------------------------------------
@@ -199,6 +208,9 @@ export function SpecDetailPage({
                   isAutoExecuting={isAutoExecuting}
                   onAutoExecution={onAutoExecution}
                   hasRunningAgents={hasRunningAgents}
+                  isOnMain={isOnMain}
+                  onConvertToWorktree={onConvertToWorktree}
+                  isConverting={isConverting}
                 />
               </MobilePullToRefresh>
             ) : (
@@ -209,6 +221,9 @@ export function SpecDetailPage({
                 isAutoExecuting={isAutoExecuting}
                 onAutoExecution={onAutoExecution}
                 hasRunningAgents={hasRunningAgents}
+                isOnMain={isOnMain}
+                onConvertToWorktree={onConvertToWorktree}
+                isConverting={isConverting}
               />
             )
           ) : (
@@ -280,6 +295,12 @@ interface SpecTabContentProps {
   onAutoExecution?: () => void;
   /** Whether any agents are currently running */
   hasRunningAgents?: boolean;
+  /** Whether on main branch (for Convert to Worktree button) */
+  isOnMain?: boolean;
+  /** Callback to convert to worktree mode */
+  onConvertToWorktree?: () => void;
+  /** Whether worktree conversion is in progress */
+  isConverting?: boolean;
 }
 
 function SpecTabContent({
@@ -289,6 +310,9 @@ function SpecTabContent({
   isAutoExecuting = false,
   onAutoExecution,
   hasRunningAgents = false,
+  isOnMain = false,
+  onConvertToWorktree,
+  isConverting = false,
 }: SpecTabContentProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State for AgentDetailDrawer (Task 5.2, Req 3.4)
@@ -447,6 +471,10 @@ function SpecTabContent({
         isAutoExecuting={isAutoExecuting}
         hasRunningAgents={hasRunningAgents}
         onAutoExecution={onAutoExecution ?? (() => {})}
+        isOnMain={isOnMain}
+        specJson={specDetail.specJson}
+        onConvertToWorktree={onConvertToWorktree}
+        isConverting={isConverting}
       />
 
       {/* AgentDetailDrawer - Opens when agent is tapped (Req 3.4) */}

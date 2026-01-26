@@ -2024,6 +2024,8 @@ export class SpecManagerService {
       case 'document-review': {
         const { scheme } = options;
         const engine = getReviewEngine(scheme);
+        // Bug fix: gemini-document-review-engineid-missing - Get engineId from scheme
+        const engineId = getEngineIdFromScheme(scheme);
 
         // For Claude Code (default), use the standard slash command format
         if (scheme === 'claude-code' || scheme === undefined) {
@@ -2034,6 +2036,7 @@ export class SpecManagerService {
             command: getClaudeCommand(),
             args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
             group: 'doc',
+            engineId,
           });
         }
 
@@ -2063,6 +2066,7 @@ export class SpecManagerService {
             command: cmdString,
             args: cmdArgs,
             group: 'doc',
+            engineId,
           });
         }
 
@@ -2078,6 +2082,7 @@ export class SpecManagerService {
           command: cmdString,
           args: cmdArgs,
           group: 'doc',
+          engineId,
         });
       }
 

@@ -217,31 +217,30 @@ components/
 
 ## Runtime Agents Directory Structure
 
-Agent state and logs are stored in `.kiro/runtime/agents/` with a category-based structure:
+Agent state and logs are stored in `.kiro/runtime/agents/` with a flat entity-based structure:
 
 ```
 .kiro/runtime/agents/
-├── specs/{specId}/              # Spec-bound agents
+├── {specId}/                   # Spec-bound agents (e.g., my-feature/)
 │   ├── agent-{id}.json         # Agent metadata
 │   └── logs/
 │       └── agent-{id}.log      # Agent logs (JSONL format)
-├── bugs/{bugId}/                # Bug-bound agents
+├── bug:{bugId}/                # Bug-bound agents (e.g., bug:fix-issue/)
 │   ├── agent-{id}.json
 │   └── logs/
 │       └── agent-{id}.log
-└── project/                     # Project-level agents
-    ├── agent-{id}.json
+└── agent-{id}.json             # Project-level agents (at root of agents/)
     └── logs/
         └── agent-{id}.log
 ```
 
 ### Agent Category Rules
 
-| specId Pattern | Category | Storage Path |
-|----------------|----------|--------------|
-| `""` (empty) | project | `runtime/agents/project/` |
-| `bug:{bugId}` | bugs | `runtime/agents/bugs/{bugId}/` |
-| `{specId}` | specs | `runtime/agents/specs/{specId}/` |
+| entityId (specId) Pattern | Category | Storage Path |
+|---------------------------|----------|--------------|
+| `""` (empty)              | project  | `runtime/agents/` |
+| `bug:{bugId}`             | bugs     | `runtime/agents/bug:{bugId}/` |
+| `{specId}`                | specs    | `runtime/agents/{specId}/` |
 
 ### Agent Metadata Format (agent-{id}.json)
 

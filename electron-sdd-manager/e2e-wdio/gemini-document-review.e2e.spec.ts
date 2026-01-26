@@ -59,6 +59,18 @@ describe('Gemini Document Review - engineId Propagation', function () {
     }
 
     await browser.pause(500);
+
+    // Initialize with Claude scheme to verify switching works
+    await browser.execute(() => {
+      const stores = (window as any).__STORES__;
+      if (stores?.spec?.getState) {
+        const specStore = stores.spec.getState();
+        if (specStore.updateDocumentReviewState) {
+          specStore.updateDocumentReviewState({ scheme: 'claude-code' });
+        }
+      }
+    });
+    await browser.pause(200);
   });
 
   afterEach(async () => {
@@ -115,6 +127,39 @@ describe('Gemini Document Review - engineId Propagation', function () {
         // Close dropdown
         await browser.keys('Escape');
       }
+    });
+  });
+
+  // ============================================================
+  // Test 1.5: Verify Initial State (Claude)
+  // ============================================================
+  describe('Initial State Verification', () => {
+    it('should initially have Claude selected', async () => {
+      // Wait for store to update
+      const isClaude = await waitForCondition(
+        async () => {
+          const scheme = await browser.execute(() => {
+            const stores = (window as any).__STORES__;
+            if (stores?.spec?.getState) {
+              const state = stores.spec.getState();
+              // Check both transient state and persistent spec detail
+              return state.documentReviewState?.scheme ||
+                     state.specDetail?.documentReview?.scheme ||
+                     'undefined'; // treat undefined/null as default (Claude)
+            }
+            return 'not-ready';
+          });
+          
+          console.log(`[E2E] Current scheme check: ${scheme}`);
+          // 'undefined' or 'claude-code' means Claude is active
+          return scheme === 'claude-code' || scheme === 'undefined' || scheme === null;
+        },
+        5000,
+        500,
+        'initial-scheme-claude'
+      );
+
+      expect(isClaude).toBe(true);
     });
   });
 

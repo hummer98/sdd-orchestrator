@@ -23,9 +23,12 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Bot, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
+import { MobilePullToRefresh } from './MobilePullToRefresh';
+import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { AskAgentDialog } from '@shared/components/project';
 import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type { ApiClient } from '@shared/api/types';
 
 // =============================================================================
@@ -35,10 +38,15 @@ import type { ApiClient } from '@shared/api/types';
 /**
  * AgentsTabView Props
  * Matches design.md AgentsTabViewProps specification
+ * Task 7.1, 7.2, 7.3: Added refresh functionality
  */
 export interface AgentsTabViewProps {
   /** API Client for agent operations */
   apiClient: ApiClient;
+  /** Callback to refresh agents (Task 7.1: Req 4.2, 4.3) */
+  onRefresh?: () => Promise<void>;
+  /** Whether refresh is in progress (Task 7.1: Req 5.4, 6.5) */
+  isRefreshing?: boolean;
   /** Test ID for E2E testing */
   testId?: string;
 }
@@ -100,6 +108,8 @@ function sortAgents(agents: AgentInfo[]): AgentInfo[] {
  */
 export function AgentsTabView({
   apiClient,
+  onRefresh,
+  isRefreshing = false,
   testId = 'agents-tab-view',
 }: AgentsTabViewProps): React.ReactElement {
   // ---------------------------------------------------------------------------
@@ -114,6 +124,9 @@ export function AgentsTabView({
 
   /** Whether the AskAgentDialog is open (Req 5.4) */
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+
+  // Task 7.1: Device type detection for conditional UI
+  const { isMobile } = useDeviceType();
 
   // ---------------------------------------------------------------------------
   // Agent Store Integration
@@ -264,15 +277,48 @@ export function AgentsTabView({
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Refresh Handler (Task 7.1, 7.2, 7.3)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Handle refresh request
+   * Used by both MobilePullToRefresh and RefreshButton
+   * Requirement 4.2, 4.3: Agent一覧再取得
+   */
+  const handleRefresh = useCallback(async () => {
+    if (onRefresh) {
+      await onRefresh();
+    }
+  }, [onRefresh]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  /**
+   * Agent List Content (extracted for reuse)
+   * Task 7.2: Used by both mobile and desktop views
+   */
+  const agentListContent = (
+    <div className="flex-1 overflow-y-auto p-2">
+      <AgentList
+        agents={agentItems}
+        selectedAgentId={selectedAgentId}
+        onSelect={handleSelectAgent}
+        onStop={handleStopAgent}
+        onRemove={handleRemoveAgent}
+        emptyMessage="プロジェクトエージェントなし"
+        testId="project-agent-list"
+      />
+    </div>
+  );
 
   return (
     <div
       data-testid={testId}
       className="flex flex-col h-full bg-white dark:bg-gray-900"
     >
-      {/* Header with Agent count, running badge, and Ask button (Req 5.3, 5.4) */}
+      {/* Header with Agent count, running badge, refresh button, and Ask button (Req 5.3, 5.4, 4.3) */}
       <div
         data-testid={`${testId}-header`}
         className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
@@ -293,8 +339,16 @@ export function AgentsTabView({
             {runningCount}
           </span>
         )}
-        {/* Spacer to push Ask button to the right */}
+        {/* Spacer to push buttons to the right */}
         <div className="flex-1" />
+        {/* Task 7.3: Desktop Refresh Button (Req 4.3, 6.5) - only shown on desktop */}
+        {!isMobile && onRefresh && (
+          <RefreshButton
+            onRefresh={handleRefresh}
+            isLoading={isRefreshing}
+            testId="agents-refresh-button"
+          />
+        )}
         {/* Ask Button - Req 5.4 */}
         <button
           onClick={handleAskClick}
@@ -310,18 +364,18 @@ export function AgentsTabView({
         </button>
       </div>
 
-      {/* Agent List */}
-      <div className="flex-1 overflow-y-auto p-2">
-        <AgentList
-          agents={agentItems}
-          selectedAgentId={selectedAgentId}
-          onSelect={handleSelectAgent}
-          onStop={handleStopAgent}
-          onRemove={handleRemoveAgent}
-          emptyMessage="プロジェクトエージェントなし"
-          testId="project-agent-list"
-        />
-      </div>
+      {/* Task 7.1, 7.2: Agent List with conditional Pull-to-Refresh for mobile (Req 4.2, 5.4) */}
+      {isMobile && onRefresh ? (
+        <MobilePullToRefresh
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          testId="agents-pull-to-refresh"
+        >
+          {agentListContent}
+        </MobilePullToRefresh>
+      ) : (
+        agentListContent
+      )}
 
       {/* AgentDetailDrawer - Opens when agent is tapped (Req 5.2) */}
       {selectedAgent && (

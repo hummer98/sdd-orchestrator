@@ -28,10 +28,13 @@ import { SubTabBar } from './SubTabBar';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
 // Task 6.4: Import RemoteBugArtifactEditor for Artifact tab (Req 4.5)
 import { RemoteBugArtifactEditor } from './RemoteBugArtifactEditor';
+import { MobilePullToRefresh } from './MobilePullToRefresh';
+import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 // Task 6.3: Import BugWorkflowFooter for Bug tab (Req 4.6)
 import { BugWorkflowFooter } from '@shared/components/bug';
 import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
   BugMetadataWithPath,
@@ -53,6 +56,7 @@ export type BugSubTab = 'bug' | 'artifact';
  * BugDetailPage Props
  * Matches design.md BugDetailPageProps specification
  * Task 6.3: Added auto-execution and worktree props (Req 4.2, 4.6)
+ * Task 8.2, 8.3: Added refresh functionality (Req 5.3, 6.3)
  */
 export interface BugDetailPageProps {
   /** Selected Bug metadata */
@@ -75,6 +79,10 @@ export interface BugDetailPageProps {
   onConvertToWorktree?: () => void;
   /** Whether worktree conversion is in progress (Task 6.3: Req 4.6) */
   isConverting?: boolean;
+  /** Callback to refresh agents (Task 8.2, 8.3: Req 5.3, 6.3) */
+  onRefresh?: () => Promise<void>;
+  /** Whether refresh is in progress (Task 8.2, 8.3: Req 5.4, 6.5) */
+  isRefreshing?: boolean;
   /** Test ID for E2E testing */
   testId?: string;
 }
@@ -111,6 +119,8 @@ export function BugDetailPage({
   isOnMain = false,
   onConvertToWorktree,
   isConverting = false,
+  onRefresh,
+  isRefreshing = false,
   testId,
 }: BugDetailPageProps): React.ReactElement {
   // ---------------------------------------------------------------------------
@@ -123,6 +133,9 @@ export function BugDetailPage({
    */
   const [activeSubTab, setActiveSubTab] = useState<BugSubTab>('bug');
 
+  // Task 8.2, 8.3: Device type detection for conditional UI
+  const { isMobile } = useDeviceType();
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -134,6 +147,17 @@ export function BugDetailPage({
     setActiveSubTab(tabId as BugSubTab);
   }, []);
 
+  /**
+   * Handle refresh request (Task 8.2, 8.3)
+   * Used by both MobilePullToRefresh and RefreshButton
+   * Requirement 5.3, 6.3: Agent一覧再取得
+   */
+  const handleRefresh = useCallback(async () => {
+    if (onRefresh) {
+      await onRefresh();
+    }
+  }, [onRefresh]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -143,7 +167,7 @@ export function BugDetailPage({
       data-testid={testId}
       className="flex flex-col h-full bg-white dark:bg-gray-900"
     >
-      {/* Header with Back Button (Req 2.3) */}
+      {/* Header with Back Button (Req 2.3) and RefreshButton (Task 8.3: Req 6.3) */}
       <header
         data-testid="bug-detail-header"
         className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
@@ -157,9 +181,17 @@ export function BugDetailPage({
           <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
         <Bug className="w-5 h-5 text-red-500" />
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate flex-1">
           {bug.name}
         </h1>
+        {/* Task 8.3: Desktop RefreshButton (Req 6.3, 6.4) - only shown on desktop */}
+        {!isMobile && onRefresh && (
+          <RefreshButton
+            onRefresh={handleRefresh}
+            isLoading={isRefreshing}
+            testId="bug-refresh-button"
+          />
+        )}
       </header>
 
       {/* Main Content Area */}
@@ -167,17 +199,38 @@ export function BugDetailPage({
         {/* Tab Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {activeSubTab === 'bug' ? (
-            <BugTabContent
-              bug={bug}
-              bugDetail={bugDetail}
-              apiClient={apiClient}
-              isAutoExecuting={isAutoExecuting}
-              onAutoExecution={onAutoExecution}
-              hasRunningAgents={hasRunningAgents}
-              isOnMain={isOnMain}
-              onConvertToWorktree={onConvertToWorktree}
-              isConverting={isConverting}
-            />
+            /* Task 8.2: Mobile版 MobilePullToRefresh wrapper (Req 5.3) */
+            isMobile && onRefresh ? (
+              <MobilePullToRefresh
+                onRefresh={handleRefresh}
+                isRefreshing={isRefreshing}
+                testId="bug-pull-to-refresh"
+              >
+                <BugTabContent
+                  bug={bug}
+                  bugDetail={bugDetail}
+                  apiClient={apiClient}
+                  isAutoExecuting={isAutoExecuting}
+                  onAutoExecution={onAutoExecution}
+                  hasRunningAgents={hasRunningAgents}
+                  isOnMain={isOnMain}
+                  onConvertToWorktree={onConvertToWorktree}
+                  isConverting={isConverting}
+                />
+              </MobilePullToRefresh>
+            ) : (
+              <BugTabContent
+                bug={bug}
+                bugDetail={bugDetail}
+                apiClient={apiClient}
+                isAutoExecuting={isAutoExecuting}
+                onAutoExecution={onAutoExecution}
+                hasRunningAgents={hasRunningAgents}
+                isOnMain={isOnMain}
+                onConvertToWorktree={onConvertToWorktree}
+                isConverting={isConverting}
+              />
+            )
           ) : (
             <BugArtifactTabContent
               bug={bug}

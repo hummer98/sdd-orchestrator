@@ -9,10 +9,23 @@
  * Requirements: 3.1, 2.3
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SpecDetailPage } from './SpecDetailPage';
+import { resetSharedAgentStore, useSharedAgentStore } from '@shared/stores/agentStore';
 import type { ApiClient, SpecMetadataWithPath, SpecDetail } from '@shared/api/types';
+
+// Mock useDeviceType hook for testing
+vi.mock('@shared/hooks/useDeviceType', () => ({
+  useDeviceType: vi.fn(() => ({
+    deviceType: 'desktop',
+    isMobile: false,
+    isTablet: false,
+    isDesktop: true,
+    width: 1024,
+    height: 768,
+  })),
+}));
 
 // =============================================================================
 // Mock API Client
@@ -104,6 +117,12 @@ describe('SpecDetailPage', () => {
 
   beforeEach(() => {
     mockApiClient = createMockApiClient();
+    resetSharedAgentStore();
+  });
+
+  afterEach(() => {
+    resetSharedAgentStore();
+    vi.clearAllMocks();
   });
 
   describe('Sub-tab structure (Req 3.1)', () => {
@@ -937,6 +956,279 @@ describe('SpecDetailPage', () => {
         expect(artifactContent).toBeInTheDocument();
         expect(artifactContent).toHaveClass('h-full');
       });
+    });
+  });
+
+  // =============================================================================
+  // Task 7.2: Mobile版：MobilePullToRefreshでラップ (SpecDetailPage)
+  // Requirements: 5.2 (SpecDetailPageでPull to Refresh操作)
+  // Method: MobilePullToRefresh
+  // =============================================================================
+
+  describe('MobilePullToRefresh integration (Req 5.2, Task 7.2)', () => {
+    it('should render MobilePullToRefresh wrapper on mobile when onRefresh is provided', async () => {
+      // Mock useDeviceType to return mobile
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'mobile',
+        isMobile: true,
+        isTablet: false,
+        isDesktop: false,
+        width: 375,
+        height: 667,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={false}
+        />
+      );
+
+      // MobilePullToRefresh should be rendered
+      expect(screen.getByTestId('spec-pull-to-refresh')).toBeInTheDocument();
+    });
+
+    it('should not render MobilePullToRefresh on desktop', async () => {
+      // Mock useDeviceType to return desktop
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        width: 1024,
+        height: 768,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={false}
+        />
+      );
+
+      // MobilePullToRefresh should NOT be rendered on desktop
+      expect(screen.queryByTestId('spec-pull-to-refresh')).not.toBeInTheDocument();
+    });
+
+    it('should pass isRefreshing prop to MobilePullToRefresh', async () => {
+      // Mock useDeviceType to return mobile
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'mobile',
+        isMobile: true,
+        isTablet: false,
+        isDesktop: false,
+        width: 375,
+        height: 667,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={true}
+        />
+      );
+
+      // When isRefreshing is true, the indicator should be visible
+      expect(screen.getByTestId('spec-pull-to-refresh-indicator')).toBeInTheDocument();
+    });
+
+    it('should not render MobilePullToRefresh when onRefresh is not provided on mobile', async () => {
+      // Mock useDeviceType to return mobile
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'mobile',
+        isMobile: true,
+        isTablet: false,
+        isDesktop: false,
+        width: 375,
+        height: 667,
+      });
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      // MobilePullToRefresh should NOT be rendered when onRefresh is not provided
+      expect(screen.queryByTestId('spec-pull-to-refresh')).not.toBeInTheDocument();
+    });
+  });
+
+  // =============================================================================
+  // Task 7.3: Desktop版：RefreshButtonを追加 (SpecDetailPage)
+  // Requirements: 6.2 (SpecDetailPageにリフレッシュボタン表示), 6.4 (クリック時に再取得)
+  // Method: RefreshButton
+  // =============================================================================
+
+  describe('RefreshButton integration (Req 6.2, 6.4, Task 7.3)', () => {
+    it('should render RefreshButton on desktop when onRefresh is provided', async () => {
+      // Mock useDeviceType to return desktop
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        width: 1024,
+        height: 768,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={false}
+        />
+      );
+
+      // RefreshButton should be rendered on desktop
+      expect(screen.getByTestId('spec-refresh-button')).toBeInTheDocument();
+    });
+
+    it('should not render RefreshButton on mobile', async () => {
+      // Mock useDeviceType to return mobile
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'mobile',
+        isMobile: true,
+        isTablet: false,
+        isDesktop: false,
+        width: 375,
+        height: 667,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={false}
+        />
+      );
+
+      // RefreshButton should NOT be rendered on mobile
+      expect(screen.queryByTestId('spec-refresh-button')).not.toBeInTheDocument();
+    });
+
+    it('should call onRefresh when RefreshButton is clicked (Req 6.4)', async () => {
+      // Mock useDeviceType to return desktop
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        width: 1024,
+        height: 768,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={false}
+        />
+      );
+
+      const refreshButton = screen.getByTestId('spec-refresh-button');
+      fireEvent.click(refreshButton);
+
+      await waitFor(() => {
+        expect(onRefresh).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('should show loading state on RefreshButton when isRefreshing is true (Req 6.5)', async () => {
+      // Mock useDeviceType to return desktop
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        width: 1024,
+        height: 768,
+      });
+
+      const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+          onRefresh={onRefresh}
+          isRefreshing={true}
+        />
+      );
+
+      const refreshButton = screen.getByTestId('spec-refresh-button');
+      expect(refreshButton).toBeDisabled();
+    });
+
+    it('should not render RefreshButton when onRefresh is not provided', async () => {
+      // Mock useDeviceType to return desktop
+      const { useDeviceType } = await import('@shared/hooks/useDeviceType');
+      vi.mocked(useDeviceType).mockReturnValue({
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        width: 1024,
+        height: 768,
+      });
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      // RefreshButton should NOT be rendered without onRefresh prop
+      expect(screen.queryByTestId('spec-refresh-button')).not.toBeInTheDocument();
     });
   });
 });

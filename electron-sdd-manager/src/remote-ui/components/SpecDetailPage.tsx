@@ -25,9 +25,12 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { SubTabBar } from './SubTabBar';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { RemoteArtifactEditor } from './RemoteArtifactEditor';
+import { MobilePullToRefresh } from './MobilePullToRefresh';
+import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { SpecWorkflowFooter } from '@shared/components/workflow';
 import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
   SpecMetadataWithPath,
@@ -48,6 +51,7 @@ export type SpecSubTab = 'spec' | 'artifact';
 /**
  * SpecDetailPage Props
  * Matches design.md SpecDetailPageProps specification
+ * Task 7.2, 7.3: Added refresh functionality
  */
 export interface SpecDetailPageProps {
   /** Selected Spec metadata */
@@ -64,6 +68,10 @@ export interface SpecDetailPageProps {
   onAutoExecution?: () => void;
   /** Whether any agents are currently running (for button disable state) */
   hasRunningAgents?: boolean;
+  /** Callback to refresh agents (Task 7.2, 7.3: Req 5.2, 6.2) */
+  onRefresh?: () => Promise<void>;
+  /** Whether refresh is in progress (Task 7.2, 7.3: Req 5.4, 6.5) */
+  isRefreshing?: boolean;
   /** Test ID for E2E testing */
   testId?: string;
 }
@@ -97,6 +105,8 @@ export function SpecDetailPage({
   isAutoExecuting = false,
   onAutoExecution,
   hasRunningAgents = false,
+  onRefresh,
+  isRefreshing = false,
   testId,
 }: SpecDetailPageProps): React.ReactElement {
   // ---------------------------------------------------------------------------
@@ -109,6 +119,9 @@ export function SpecDetailPage({
    */
   const [activeSubTab, setActiveSubTab] = useState<SpecSubTab>('spec');
 
+  // Task 7.2, 7.3: Device type detection for conditional UI
+  const { isMobile } = useDeviceType();
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -120,6 +133,17 @@ export function SpecDetailPage({
     setActiveSubTab(tabId as SpecSubTab);
   }, []);
 
+  /**
+   * Handle refresh request (Task 7.2, 7.3)
+   * Used by both MobilePullToRefresh and RefreshButton
+   * Requirement 5.2, 6.2: Agent一覧再取得
+   */
+  const handleRefresh = useCallback(async () => {
+    if (onRefresh) {
+      await onRefresh();
+    }
+  }, [onRefresh]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -129,7 +153,7 @@ export function SpecDetailPage({
       data-testid={testId}
       className="flex flex-col h-full bg-white dark:bg-gray-900"
     >
-      {/* Header with Back Button (Req 2.3) */}
+      {/* Header with Back Button (Req 2.3) and RefreshButton (Task 7.3: Req 6.2) */}
       <header
         data-testid="spec-detail-header"
         className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
@@ -143,9 +167,17 @@ export function SpecDetailPage({
           <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
         <FileText className="w-5 h-5 text-blue-500" />
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate flex-1">
           {spec.name}
         </h1>
+        {/* Task 7.3: Desktop RefreshButton (Req 6.2, 6.4) - only shown on desktop */}
+        {!isMobile && onRefresh && (
+          <RefreshButton
+            onRefresh={handleRefresh}
+            isLoading={isRefreshing}
+            testId="spec-refresh-button"
+          />
+        )}
       </header>
 
       {/* Main Content Area */}
@@ -153,14 +185,32 @@ export function SpecDetailPage({
         {/* Tab Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {activeSubTab === 'spec' ? (
-            <SpecTabContent
-              spec={spec}
-              specDetail={specDetail}
-              apiClient={apiClient}
-              isAutoExecuting={isAutoExecuting}
-              onAutoExecution={onAutoExecution}
-              hasRunningAgents={hasRunningAgents}
-            />
+            /* Task 7.2: Mobile版 MobilePullToRefresh wrapper (Req 5.2) */
+            isMobile && onRefresh ? (
+              <MobilePullToRefresh
+                onRefresh={handleRefresh}
+                isRefreshing={isRefreshing}
+                testId="spec-pull-to-refresh"
+              >
+                <SpecTabContent
+                  spec={spec}
+                  specDetail={specDetail}
+                  apiClient={apiClient}
+                  isAutoExecuting={isAutoExecuting}
+                  onAutoExecution={onAutoExecution}
+                  hasRunningAgents={hasRunningAgents}
+                />
+              </MobilePullToRefresh>
+            ) : (
+              <SpecTabContent
+                spec={spec}
+                specDetail={specDetail}
+                apiClient={apiClient}
+                isAutoExecuting={isAutoExecuting}
+                onAutoExecution={onAutoExecution}
+                hasRunningAgents={hasRunningAgents}
+              />
+            )
           ) : (
             <ArtifactTabContent
               spec={spec}

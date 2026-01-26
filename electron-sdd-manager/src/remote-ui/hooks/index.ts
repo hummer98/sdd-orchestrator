@@ -20,3 +20,8 @@ export type {
 // Workflow state for Remote UI
 export { useRemoteWorkflowState } from './useRemoteWorkflowState';
 export type { UseRemoteWorkflowStateConfig } from './useRemoteWorkflowState';
+
+// Agent store initialization for Remote UI
+// remote-ui-agent-store-init: Task 2.1
+export { useAgentStoreInit } from './useAgentStoreInit';
+export type { UseAgentStoreInitReturn } from './useAgentStoreInit';

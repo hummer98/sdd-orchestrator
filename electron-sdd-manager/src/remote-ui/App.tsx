@@ -17,6 +17,8 @@ import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../s
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
 import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView } from './views';
 import { AgentsTabView } from './components/AgentsTabView';
+import { ToastContainer } from './components/ToastContainer';
+import { RefreshButton } from './components/RefreshButton';
 import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecDetailPage } from './components/SpecDetailPage';
 import { BugDetailPage } from './components/BugDetailPage';
@@ -31,6 +33,7 @@ import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
 import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 import { useNavigationStack } from './hooks/useNavigationStack';
+import { useAgentStoreInit } from './hooks/useAgentStoreInit';
 
 // =============================================================================
 // Types
@@ -92,6 +95,10 @@ interface LeftSidebarProps {
   onSelectSpec: (spec: SpecMetadataWithPath) => void;
   onSelectBug: (bug: BugMetadataWithPath) => void;
   deviceType: 'desktop' | 'smartphone';
+  /** Task 7.3: Callback to refresh agents (Req 4.3) */
+  onRefreshAgents?: () => Promise<void>;
+  /** Task 7.3: Whether refresh is in progress (Req 6.5) */
+  isRefreshingAgents?: boolean;
 }
 
 function LeftSidebar({
@@ -102,6 +109,8 @@ function LeftSidebar({
   onSelectSpec,
   onSelectBug,
   deviceType,
+  onRefreshAgents,
+  isRefreshingAgents = false,
 }: LeftSidebarProps) {
   const apiClient = useApi();
 
@@ -273,6 +282,14 @@ function LeftSidebar({
             ({projectAgents.length})
           </span>
           <div className="flex-1" />
+          {/* Task 7.3: RefreshButton for Desktop (Req 4.3, 6.5) */}
+          {onRefreshAgents && (
+            <RefreshButton
+              onRefresh={onRefreshAgents}
+              isLoading={isRefreshingAgents}
+              testId="project-agent-refresh-button"
+            />
+          )}
           <button
             onClick={() => setIsAskDialogOpen(true)}
             className={clsx(
@@ -603,6 +620,11 @@ function DesktopAppContent() {
   // Auto execution state
   const [isAutoExecuting, setIsAutoExecuting] = useState(false);
 
+  // Task 5.2: Initialize AgentStore with WebSocket events
+  // Requirements: 1.2 - DesktopAppContentマウント時にloadAgents呼び出し
+  // Task 7.3: Get refreshAgents and isLoading for RefreshButton
+  const { refreshAgents, isLoading: isAgentRefreshing } = useAgentStoreInit(apiClient);
+
   // Initialize WebSocket listeners
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
@@ -678,6 +700,8 @@ function DesktopAppContent() {
           onSelectSpec={handleSelectSpec}
           onSelectBug={handleSelectBug}
           deviceType="desktop"
+          onRefreshAgents={refreshAgents}
+          isRefreshingAgents={isAgentRefreshing}
         />
       }
       rightSidebar={
@@ -727,6 +751,11 @@ function MobileAppContent() {
 
   // Extract state from navigation hook
   const { activeTab, detailContext, showTabBar } = navigationState;
+
+  // Task 5.1: Initialize AgentStore with WebSocket events
+  // Requirements: 1.1 - MobileAppContentマウント時にloadAgents呼び出し
+  // Task 7.1, 7.2: Get refreshAgents and isLoading for Pull-to-Refresh
+  const { refreshAgents, isLoading: isAgentRefreshing } = useAgentStoreInit(apiClient);
 
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
@@ -824,8 +853,16 @@ function MobileAppContent() {
       // Task 8.4: AgentsタブをMobileAppContentに統合する (Req 1.2)
       // AgentsTabViewを使用してプロジェクトレベルAgent一覧を表示
       // Task 7.1-7.3で実装されたAgentsTabViewコンポーネントを統合
+      // Task 7.1, 7.2: Pass onRefresh and isRefreshing for Pull-to-Refresh (Req 4.2, 5.4)
       case 'agents':
-        return <AgentsTabView apiClient={apiClient} testId="agents-tab-view" />;
+        return (
+          <AgentsTabView
+            apiClient={apiClient}
+            onRefresh={refreshAgents}
+            isRefreshing={isAgentRefreshing}
+            testId="agents-tab-view"
+          />
+        );
 
       default:
         return null;
@@ -868,6 +905,8 @@ export default function App() {
     <ApiClientProvider>
       <PlatformProvider>
         <AppContent />
+        {/* Task 1.2: ToastContainer for displaying notifications */}
+        <ToastContainer />
       </PlatformProvider>
     </ApiClientProvider>
   );

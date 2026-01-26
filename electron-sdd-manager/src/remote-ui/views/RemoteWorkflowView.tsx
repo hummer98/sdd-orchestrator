@@ -28,6 +28,8 @@ export interface RemoteWorkflowViewProps {
   onPhaseExecuted?: (phase: WorkflowPhase, agentId: string) => void;
   /** Called after approval update */
   onApprovalUpdated?: (phase: Phase, approved: boolean) => void;
+  /** フッターのセーフエリアパディングを無効化（親がセーフエリアを処理する場合） */
+  disableFooterSafeArea?: boolean;
 }
 
 // =============================================================================
@@ -40,6 +42,7 @@ export function RemoteWorkflowView({
   specDetail: initialSpecDetail,
   onPhaseExecuted,
   onApprovalUpdated,
+  disableFooterSafeArea = false,
 }: RemoteWorkflowViewProps): React.ReactElement {
   const { state, handlers } = useRemoteWorkflowState({
     apiClient,
@@ -56,6 +59,7 @@ export function RemoteWorkflowView({
     <WorkflowViewCore
       state={state}
       handlers={handlers}
+      disableFooterSafeArea={disableFooterSafeArea}
     />
   );
 }

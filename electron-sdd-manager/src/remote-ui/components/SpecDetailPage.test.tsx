@@ -654,11 +654,11 @@ describe('SpecDetailPage', () => {
       );
 
       const workflowArea = screen.getByTestId('spec-workflow-area');
-      // Should have overflow-y-auto for scrollable content
-      expect(workflowArea).toHaveClass('overflow-y-auto');
+      // Should have overflow-hidden to allow WorkflowViewCore internal scroll
+      expect(workflowArea).toHaveClass('overflow-hidden');
     });
 
-    it('should render SpecWorkflowFooter with auto-execute button (Req 3.7)', () => {
+    it('should render SpecWorkflowFooter with auto-execute button inside WorkflowViewCore (Req 3.7)', () => {
       render(
         <SpecDetailPage
           spec={mockSpec}
@@ -668,61 +668,12 @@ describe('SpecDetailPage', () => {
         />
       );
 
-      // SpecWorkflowFooter should be present with auto-execute button
+      // SpecWorkflowFooter is now inside WorkflowViewCore (RemoteWorkflowView)
+      // The auto-execute button should be present via WorkflowViewCore
       expect(screen.getByTestId('auto-execute-button')).toBeInTheDocument();
     });
 
-    it('should display correct auto execution button state when not auto executing', () => {
-      render(
-        <SpecDetailPage
-          spec={mockSpec}
-          specDetail={mockSpecDetail}
-          apiClient={mockApiClient}
-          onBack={() => {}}
-          isAutoExecuting={false}
-        />
-      );
-
-      const autoExecuteButton = screen.getByTestId('auto-execute-button');
-      // Button should show "auto execute" text when not executing
-      expect(autoExecuteButton).toHaveTextContent('自動実行');
-    });
-
-    it('should display stop button when auto executing', () => {
-      render(
-        <SpecDetailPage
-          spec={mockSpec}
-          specDetail={mockSpecDetail}
-          apiClient={mockApiClient}
-          onBack={() => {}}
-          isAutoExecuting={true}
-        />
-      );
-
-      const autoExecuteButton = screen.getByTestId('auto-execute-button');
-      // Button should show "stop" text when executing
-      expect(autoExecuteButton).toHaveTextContent('停止');
-    });
-
-    it('should call onAutoExecution when auto-execute button is clicked', () => {
-      const onAutoExecution = vi.fn();
-      render(
-        <SpecDetailPage
-          spec={mockSpec}
-          specDetail={mockSpecDetail}
-          apiClient={mockApiClient}
-          onBack={() => {}}
-          onAutoExecution={onAutoExecution}
-        />
-      );
-
-      const autoExecuteButton = screen.getByTestId('auto-execute-button');
-      fireEvent.click(autoExecuteButton);
-
-      expect(onAutoExecution).toHaveBeenCalledTimes(1);
-    });
-
-    it('should render WorkflowFooter below WorkflowArea (Req 3.2)', () => {
+    it('should render layout with AgentList at top and WorkflowArea (Req 3.2)', () => {
       render(
         <SpecDetailPage
           spec={mockSpec}
@@ -732,22 +683,7 @@ describe('SpecDetailPage', () => {
         />
       );
 
-      // Both elements should be present in the Spec tab content
-      expect(screen.getByTestId('spec-workflow-area')).toBeInTheDocument();
-      expect(screen.getByTestId('auto-execute-button')).toBeInTheDocument();
-    });
-
-    it('should render layout with AgentList at top, WorkflowArea in middle, and Footer at bottom (Req 3.2)', () => {
-      render(
-        <SpecDetailPage
-          spec={mockSpec}
-          specDetail={mockSpecDetail}
-          apiClient={mockApiClient}
-          onBack={() => {}}
-        />
-      );
-
-      // All three areas should be present in order (top to bottom)
+      // All areas should be present
       const specTabContent = screen.getByTestId('spec-tab-content');
       expect(specTabContent).toBeInTheDocument();
 
@@ -755,11 +691,11 @@ describe('SpecDetailPage', () => {
       const agentListContainer = screen.getByTestId('spec-agent-list-container');
       expect(agentListContainer).toBeInTheDocument();
 
-      // Workflow area
+      // Workflow area (contains WorkflowViewCore with footer)
       const workflowArea = screen.getByTestId('spec-workflow-area');
       expect(workflowArea).toBeInTheDocument();
 
-      // Auto execute button (part of footer)
+      // Auto execute button (now inside WorkflowViewCore)
       const autoExecuteButton = screen.getByTestId('auto-execute-button');
       expect(autoExecuteButton).toBeInTheDocument();
     });

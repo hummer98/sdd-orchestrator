@@ -27,8 +27,8 @@ import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { RemoteArtifactEditor } from './RemoteArtifactEditor';
 import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
+import { RemoteWorkflowView } from '../views/RemoteWorkflowView';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
-import { SpecWorkflowFooter } from '@shared/components/workflow';
 import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
@@ -62,22 +62,10 @@ export interface SpecDetailPageProps {
   apiClient: ApiClient;
   /** Back button click callback */
   onBack: () => void;
-  /** Auto execution status (Task 5.3: Req 3.7) */
-  isAutoExecuting?: boolean;
-  /** Auto execution toggle callback (Task 5.3: Req 3.7) */
-  onAutoExecution?: () => void;
-  /** Whether any agents are currently running (for button disable state) */
-  hasRunningAgents?: boolean;
   /** Callback to refresh agents (Task 7.2, 7.3: Req 5.2, 6.2) */
   onRefresh?: () => Promise<void>;
   /** Whether refresh is in progress (Task 7.2, 7.3: Req 5.4, 6.5) */
   isRefreshing?: boolean;
-  /** Whether on main branch (for Convert to Worktree button) */
-  isOnMain?: boolean;
-  /** Callback to convert to worktree mode */
-  onConvertToWorktree?: () => void;
-  /** Whether worktree conversion is in progress */
-  isConverting?: boolean;
   /** Test ID for E2E testing */
   testId?: string;
 }
@@ -108,14 +96,8 @@ export function SpecDetailPage({
   specDetail,
   apiClient,
   onBack,
-  isAutoExecuting = false,
-  onAutoExecution,
-  hasRunningAgents = false,
   onRefresh,
   isRefreshing = false,
-  isOnMain = false,
-  onConvertToWorktree,
-  isConverting = false,
   testId,
 }: SpecDetailPageProps): React.ReactElement {
   // ---------------------------------------------------------------------------
@@ -205,12 +187,6 @@ export function SpecDetailPage({
                   spec={spec}
                   specDetail={specDetail}
                   apiClient={apiClient}
-                  isAutoExecuting={isAutoExecuting}
-                  onAutoExecution={onAutoExecution}
-                  hasRunningAgents={hasRunningAgents}
-                  isOnMain={isOnMain}
-                  onConvertToWorktree={onConvertToWorktree}
-                  isConverting={isConverting}
                 />
               </MobilePullToRefresh>
             ) : (
@@ -218,12 +194,6 @@ export function SpecDetailPage({
                 spec={spec}
                 specDetail={specDetail}
                 apiClient={apiClient}
-                isAutoExecuting={isAutoExecuting}
-                onAutoExecution={onAutoExecution}
-                hasRunningAgents={hasRunningAgents}
-                isOnMain={isOnMain}
-                onConvertToWorktree={onConvertToWorktree}
-                isConverting={isConverting}
               />
             )
           ) : (
@@ -289,30 +259,12 @@ interface SpecTabContentProps {
   spec: SpecMetadataWithPath;
   specDetail: SpecDetail;
   apiClient: ApiClient;
-  /** Auto execution status (Task 5.3: Req 3.7) */
-  isAutoExecuting?: boolean;
-  /** Auto execution toggle callback (Task 5.3: Req 3.7) */
-  onAutoExecution?: () => void;
-  /** Whether any agents are currently running */
-  hasRunningAgents?: boolean;
-  /** Whether on main branch (for Convert to Worktree button) */
-  isOnMain?: boolean;
-  /** Callback to convert to worktree mode */
-  onConvertToWorktree?: () => void;
-  /** Whether worktree conversion is in progress */
-  isConverting?: boolean;
 }
 
 function SpecTabContent({
   spec,
   specDetail,
   apiClient,
-  isAutoExecuting = false,
-  onAutoExecution,
-  hasRunningAgents = false,
-  isOnMain = false,
-  onConvertToWorktree,
-  isConverting = false,
 }: SpecTabContentProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State for AgentDetailDrawer (Task 5.2, Req 3.4)
@@ -440,42 +392,19 @@ function SpecTabContent({
       </div>
 
       {/* WorkflowArea - Scrollable workflow progress display (Task 5.3: Req 3.2) */}
+      {/* Mobile版でもDesktop版と同じRemoteWorkflowViewを使用 */}
+      {/* overflow-hiddenでWorkflowViewCore内部のスクロールを有効化 */}
       <div
         data-testid="spec-workflow-area"
-        className="flex-1 overflow-y-auto p-4"
+        className="flex-1 overflow-hidden"
       >
-        {/* Workflow progress will be rendered here */}
-        {/* For now, show spec phase status */}
-        <div className="space-y-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">Phase:</span> {specDetail.specJson?.phase ?? 'unknown'}
-          </div>
-          {specDetail.specJson?.approvals && (
-            <div className="space-y-1">
-              <div className="text-xs text-gray-500 dark:text-gray-500">Approvals:</div>
-              {Object.entries(specDetail.specJson.approvals).map(([phase, approval]) => (
-                <div key={phase} className="flex items-center gap-2 text-xs">
-                  <span className="capitalize">{phase}:</span>
-                  <span className={approval?.approved ? 'text-green-600' : approval?.generated ? 'text-yellow-600' : 'text-gray-400'}>
-                    {approval?.approved ? 'Approved' : approval?.generated ? 'Generated' : 'Pending'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <RemoteWorkflowView
+          apiClient={apiClient}
+          spec={spec}
+          specDetail={specDetail}
+          disableFooterSafeArea
+        />
       </div>
-
-      {/* WorkflowFooter with auto-execution button (Task 5.3: Req 3.7) */}
-      <SpecWorkflowFooter
-        isAutoExecuting={isAutoExecuting}
-        hasRunningAgents={hasRunningAgents}
-        onAutoExecution={onAutoExecution ?? (() => {})}
-        isOnMain={isOnMain}
-        specJson={specDetail.specJson}
-        onConvertToWorktree={onConvertToWorktree}
-        isConverting={isConverting}
-      />
 
       {/* AgentDetailDrawer - Opens when agent is tapped (Req 3.4) */}
       {selectedAgent && (

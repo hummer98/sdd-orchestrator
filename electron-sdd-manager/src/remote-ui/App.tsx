@@ -757,9 +757,6 @@ function MobileAppContent() {
   // Task 7.1, 7.2: Get refreshAgents and isLoading for Pull-to-Refresh
   const { refreshAgents, isLoading: isAgentRefreshing } = useAgentStoreInit(apiClient);
 
-  // Worktree conversion state
-  const [isConverting, setIsConverting] = useState(false);
-
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
     return cleanup;
@@ -796,30 +793,6 @@ function MobileAppContent() {
     }
   }, [setActiveTab]);
 
-  // Handle convert to worktree for Spec
-  const handleConvertSpecToWorktree = useCallback(async () => {
-    if (!detailContext || detailContext.type !== 'spec') return;
-    if (!apiClient.convertToWorktree) return;
-
-    const { spec } = detailContext;
-    setIsConverting(true);
-    try {
-      const result = await apiClient.convertToWorktree(spec.name, spec.name);
-      if (result.ok) {
-        // Refresh spec detail after conversion
-        const detailResult = await apiClient.getSpecDetail(spec.name);
-        if (detailResult.ok) {
-          pushSpecDetail(spec, detailResult.value);
-        }
-      } else {
-        console.error('Failed to convert to worktree:', result.error);
-        // TODO: Show error toast
-      }
-    } finally {
-      setIsConverting(false);
-    }
-  }, [detailContext, apiClient, pushSpecDetail]);
-
   const renderContent = () => {
     // Task 8.1: detailContextを使用した詳細画面表示判定
     // Task 8.2: SpecsタブでSpecDetailPageへのプッシュ遷移を実装
@@ -835,9 +808,6 @@ function MobileAppContent() {
             specDetail={specDetail}
             apiClient={apiClient}
             onBack={handleBackToList}
-            isOnMain={true}
-            onConvertToWorktree={handleConvertSpecToWorktree}
-            isConverting={isConverting}
             testId="spec-detail-page"
           />
         );

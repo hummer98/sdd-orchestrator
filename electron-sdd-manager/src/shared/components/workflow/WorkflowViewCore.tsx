@@ -41,6 +41,8 @@ export interface WorkflowViewCoreProps {
   renderTaskProgress?: () => React.ReactNode;
   /** EventLogViewerModalをレンダリングする関数（オプション） */
   renderEventLogModal?: () => React.ReactNode;
+  /** フッターのセーフエリアパディングを無効化（親がセーフエリアを処理する場合） */
+  disableFooterSafeArea?: boolean;
 }
 
 export interface TaskItem {
@@ -186,6 +188,7 @@ export function WorkflowViewCore({
   renderMetrics,
   renderTaskProgress,
   renderEventLogModal,
+  disableFooterSafeArea = false,
 }: WorkflowViewCoreProps): React.ReactElement {
   // Derived values
   const isReviewExecuting = useMemo(() => {
@@ -377,6 +380,7 @@ export function WorkflowViewCore({
         onConvertToWorktree={handlers.handleConvertToWorktree}
         isConverting={state.isConverting}
         onShowEventLog={handlers.handleShowEventLog}
+        disableSafeArea={disableFooterSafeArea}
       />
 
       {/* Event Log Modal (custom render) */}

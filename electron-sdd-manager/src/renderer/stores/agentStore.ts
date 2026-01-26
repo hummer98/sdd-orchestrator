@@ -26,6 +26,7 @@ import {
   type AgentStatus as SharedAgentStatus,
   type LogEntry,
 } from '@shared/stores/agentStore';
+import type { LLMEngineId } from '@shared/registry';
 import {
   agentOperations,
   setupAgentEventListeners,
@@ -75,6 +76,13 @@ export interface AgentInfo {
   // Contains the prompt/command string used to start the agent
   // Used to detect release agents via args?.includes('/release')
   args?: string;
+
+  /**
+   * LLM engine ID for parser selection and UI labels
+   * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
+   * Requirements: 4.1, 4.2
+   */
+  engineId?: LLMEngineId;
 }
 
 /**
@@ -104,6 +112,8 @@ function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
     retryCount: shared.retryCount,
     // project-agent-release-footer: Task 2.3 - Map args for release detection
     args: shared.args,
+    // llm-stream-log-parser: Task 6.1 - Map engineId for parser selection
+    engineId: shared.engineId,
   };
 }
 
@@ -125,6 +135,8 @@ function toSharedAgentInfo(renderer: AgentInfo): SharedAgentInfo {
     retryCount: renderer.retryCount,
     // project-agent-release-footer: Task 2.3 - Preserve args for release detection
     args: renderer.args,
+    // llm-stream-log-parser: Task 6.1 - Preserve engineId for parser selection
+    engineId: renderer.engineId,
   };
 }
 

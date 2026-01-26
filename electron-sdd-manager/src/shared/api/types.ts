@@ -28,6 +28,7 @@ import type {
 import type { WorktreeConfig } from '@shared/types/worktree';
 
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
+import type { LLMEngineId } from '@shared/registry';
 
 // =============================================================================
 // spec-path-ssot-refactor: Remote UI specific types with path
@@ -171,6 +172,12 @@ export interface AgentInfo {
   // Requirements: 6.1, 6.2, 6.3
   /** Args/prompt used to start the agent (e.g., "/release" or "/kiro:project-ask ...") */
   args?: string;
+  /**
+   * LLM engine ID for parser selection and UI labels
+   * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
+   * Requirements: 4.1, 4.2
+   */
+  engineId?: LLMEngineId;
 }
 
 // =============================================================================

@@ -73,6 +73,8 @@ export function AgentLogPanel() {
       status: agent.status,
       command: agent.command,
       logFilePath,
+      // llm-stream-log-parser: Task 6.1 - Pass engineId for parser selection
+      engineId: agent.engineId,
     };
   }, [agent, currentProject]);
 

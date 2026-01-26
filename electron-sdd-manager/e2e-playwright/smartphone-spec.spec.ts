@@ -45,6 +45,31 @@ test.describe('Smartphone Remote UI - Spec Management', () => {
     });
 
     /**
+     * Test: ページリロード後にWebSocket接続が再確立される
+     *
+     * スマートフォン版Remote UIでページをリロードした際に、
+     * WebSocket接続が自動的に再確立されることを検証する。
+     */
+    test('should reconnect WebSocket after page reload', async ({ page }) => {
+      // 1. 初回接続が確立されていることを確認
+      const statusText = page.locator('[data-testid="remote-status-text"]');
+      await expect(statusText).toHaveText('Connected');
+
+      // 2. ページをリロード
+      await page.reload();
+
+      // 3. リロード後にWebSocket接続が再確立されることを確認
+      await waitForConnection(page);
+
+      // 4. 接続状態が「Connected」になっていることを確認
+      await expect(statusText).toHaveText('Connected');
+
+      // 5. 接続インジケータが緑色であることを確認
+      const statusDot = page.locator('[data-testid="remote-status-dot"]');
+      await expect(statusDot).toHaveClass(/bg-green-500/);
+    });
+
+    /**
      * Test: プロジェクトパスが表示される
      */
     test('should display project path', async ({ page }) => {

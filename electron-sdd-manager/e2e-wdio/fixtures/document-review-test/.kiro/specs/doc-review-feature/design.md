@@ -1,7 +1,10 @@
 # Design Document
 
 ## Overview
-Document Review UI状態テスト用設計。
+Document Reviewワークフローのテスト用設計。
+
+## Architecture
+テスト用の簡易的なアーキテクチャ。
 
 ## Approval Status
 - Generated: Yes

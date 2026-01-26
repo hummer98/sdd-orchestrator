@@ -18,6 +18,7 @@ import { clsx } from 'clsx';
 import { SpecListItem } from '@shared/components/spec/SpecListItem';
 import { Spinner } from '@shared/components/ui/Spinner';
 import { useSpecListLogic } from '@shared/hooks';
+import { useSharedAgentStore } from '@shared/stores/agentStore';
 import type { ApiClient, SpecMetadataWithPath } from '@shared/api/types';
 
 // =============================================================================
@@ -50,12 +51,24 @@ export function SpecsView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // remote-ui-spec-list-agent-count: Use shared agentStore for running agent counts
+  const { getAgentsForSpec } = useSharedAgentStore();
+
   // spec-list-unification: Use shared hook for sorting/filtering
   // remote-ui-spec-list-optimization: specs already include phase/updatedAt, no specJsonMap needed
   const { filteredSpecs, searchQuery, setSearchQuery } = useSpecListLogic({
     specs,
     enableTextSearch: true,
   });
+
+  // remote-ui-spec-list-agent-count: Get running agent count for a spec
+  const getRunningAgentCount = useCallback(
+    (specName: string): number => {
+      const agents = getAgentsForSpec(specName);
+      return agents.filter((a) => a.status === 'running').length;
+    },
+    [getAgentsForSpec]
+  );
 
   // Load specs on mount
   // remote-ui-spec-list-optimization: No need to call GET_SPEC_DETAIL for each spec
@@ -208,6 +221,7 @@ export function SpecsView({
                       isSelected={selectedSpecId === specWithPhase.name}
                       onSelect={() => originalSpec && handleSelectSpec(originalSpec)}
                       worktree={worktree}
+                      runningAgentCount={getRunningAgentCount(specWithPhase.name)}
                     />
                   </div>
                 );

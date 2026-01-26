@@ -328,6 +328,9 @@ export class SpecsWatcherService {
    * Handle artifact file generation (requirements.md, design.md, tasks.md)
    * Updates spec.json updated_at when these files are created by user-initiated skill execution
    * This is a user action, so we update the timestamp (unlike auto-corrections which skip it)
+   *
+   * Note: Skips update for deploy-complete specs to avoid unnecessary updated_at changes
+   * after spec-merge (git squash merge causes 'add' events for existing artifacts)
    */
   private async handleArtifactGeneration(
     filePath: string,
@@ -345,6 +348,17 @@ export class SpecsWatcherService {
 
       const specJsonContent = await readFile(specJsonPath, 'utf-8');
       const specJson = JSON.parse(specJsonContent);
+
+      // Skip update for deploy-complete specs
+      // After spec-merge, artifacts appear via git and trigger 'add' events,
+      // but these are not user-initiated generations - no need to update timestamp
+      if (specJson.phase === 'deploy-complete') {
+        logger.debug('[SpecsWatcherService] Skipping artifact generation for deploy-complete spec', {
+          specId,
+          artifact: fileName,
+        });
+        return;
+      }
 
       // Determine the expected phase based on the artifact file
       const expectedPhase = ARTIFACT_TO_PHASE[fileName as keyof typeof ARTIFACT_TO_PHASE];

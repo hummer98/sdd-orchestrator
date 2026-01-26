@@ -37,20 +37,25 @@ vi.mock('../services/logger', () => ({
 }));
 
 // Mock child_process to prevent actual command execution (e.g. code /path/to/project)
-vi.mock('child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('child_process')>();
+vi.mock('child_process', () => {
+  const mockSpawn = vi.fn().mockReturnValue({
+    unref: vi.fn(),
+    on: vi.fn(),
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    stdin: { end: vi.fn() },
+    kill: vi.fn(),
+  });
   return {
-    ...actual,
-    spawn: vi.fn().mockReturnValue({
-      unref: vi.fn(),
-      on: vi.fn(),
-      stdout: { on: vi.fn() },
-      stderr: { on: vi.fn() },
-      stdin: { end: vi.fn() },
-      kill: vi.fn(),
-    }),
+    spawn: mockSpawn,
+    default: {
+      spawn: mockSpawn,
+    },
   };
 });
+
+// Import spawn after mocking to verify it
+import { spawn } from 'child_process';
 
 // Mock path module
 vi.mock('path', async (importOriginal) => {
@@ -498,6 +503,12 @@ describe('fileHandlers', () => {
       // The actual spawn behavior is tested at integration level
       // Here we verify the handler returns without error
       await expect(handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project')).resolves.toBeUndefined();
+
+      // Verify spawn was called with correct arguments
+      expect(spawn).toHaveBeenCalledWith('code', ['/path/to/project'], expect.objectContaining({
+        detached: true,
+        stdio: 'ignore',
+      }));
     });
   });
 

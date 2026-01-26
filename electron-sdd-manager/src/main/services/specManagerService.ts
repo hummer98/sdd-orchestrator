@@ -129,12 +129,15 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   if (options.resumeSessionId) {
     args.push('--resume', options.resumeSessionId);
     if (options.resumePrompt) {
-      args.push(options.resumePrompt);
+      // -- セパレータを追加して、プロンプトがオプションとして解釈されるのを防ぐ
+      // 例: "-test" で始まるプロンプトが "unknown option" エラーになるのを回避
+      args.push('--', options.resumePrompt);
     }
   }
 
   if (options.command) {
-    args.push(options.command);
+    // -- セパレータを追加して、コマンド/プロンプトがオプションとして解釈されるのを防ぐ
+    args.push('--', options.command);
   }
 
   return args;

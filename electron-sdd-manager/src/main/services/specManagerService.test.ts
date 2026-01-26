@@ -862,7 +862,8 @@ describe('buildClaudeArgs', () => {
 
   it('should build args with command only', () => {
     const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
-    expect(args).toEqual([...BASE_FLAGS, '/kiro:spec-requirements my-feature']);
+    // -- セパレータでプロンプトがオプションとして解釈されるのを防ぐ
+    expect(args).toEqual([...BASE_FLAGS, '--', '/kiro:spec-requirements my-feature']);
   });
 
   it('should build args with resume session and prompt', () => {
@@ -870,7 +871,8 @@ describe('buildClaudeArgs', () => {
       resumeSessionId: 'session-123',
       resumePrompt: 'continue',
     });
-    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-123', 'continue']);
+    // -- セパレータでプロンプトがオプションとして解釈されるのを防ぐ
+    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-123', '--', 'continue']);
   });
 
   it('should build args with resume session and Japanese prompt', () => {
@@ -878,7 +880,8 @@ describe('buildClaudeArgs', () => {
       resumeSessionId: 'session-456',
       resumePrompt: '続けて',
     });
-    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-456', '続けて']);
+    // -- セパレータでプロンプトがオプションとして解釈されるのを防ぐ
+    expect(args).toEqual([...BASE_FLAGS, '--resume', 'session-456', '--', '続けて']);
   });
 
   it('should include base flags without any options', () => {
@@ -915,7 +918,7 @@ describe('buildClaudeArgs', () => {
         skipPermissions: false,
       });
       expect(args).not.toContain('--dangerously-skip-permissions');
-      expect(args).toEqual([...BASE_FLAGS, '/kiro:spec-requirements my-feature']);
+      expect(args).toEqual([...BASE_FLAGS, '--', '/kiro:spec-requirements my-feature']);
     });
 
     it('should NOT include --dangerously-skip-permissions when skipPermissions is undefined', () => {
@@ -995,6 +998,67 @@ describe('buildClaudeArgs', () => {
       // --disallowedTools= should come before --resume
       expect(disallowedIndex).toBeLessThan(resumeIndex);
       expect(disallowedIndex).toBeGreaterThan(0); // After base flags
+    });
+  });
+
+  // ============================================================
+  // -- separator tests (positional argument marker)
+  // Prevents prompts starting with "-" from being interpreted as options
+  // ============================================================
+  describe('-- separator for positional arguments', () => {
+    it('should include -- before command to prevent option parsing', () => {
+      const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
+      const separatorIndex = args.indexOf('--');
+      expect(separatorIndex).toBeGreaterThan(-1);
+      // Command should come after --
+      const commandIndex = args.indexOf('/kiro:spec-requirements my-feature');
+      expect(commandIndex).toBeGreaterThan(separatorIndex);
+    });
+
+    it('should handle prompts starting with dash correctly', () => {
+      const args = buildClaudeArgs({ command: '-this starts with dash' });
+      const separatorIndex = args.indexOf('--');
+      expect(separatorIndex).toBeGreaterThan(-1);
+      expect(args[separatorIndex + 1]).toBe('-this starts with dash');
+    });
+
+    it('should include -- before resumePrompt', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: '-continue with dash',
+      });
+      const separatorIndex = args.indexOf('--');
+      expect(separatorIndex).toBeGreaterThan(-1);
+      // resumePrompt should come after --
+      const promptIndex = args.indexOf('-continue with dash');
+      expect(promptIndex).toBeGreaterThan(separatorIndex);
+    });
+
+    it('should place -- after --resume flag but before the prompt', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: 'normal prompt',
+      });
+      const resumeIndex = args.indexOf('--resume');
+      const sessionIdIndex = args.indexOf('session-123');
+      const separatorIndex = args.indexOf('--');
+      const promptIndex = args.indexOf('normal prompt');
+      // Order: --resume, session-123, --, prompt
+      expect(resumeIndex).toBeLessThan(sessionIdIndex);
+      expect(sessionIdIndex).toBeLessThan(separatorIndex);
+      expect(separatorIndex).toBeLessThan(promptIndex);
+    });
+
+    it('should not include -- when no command or resumePrompt is provided', () => {
+      const args = buildClaudeArgs({});
+      expect(args).not.toContain('--');
+    });
+
+    it('should not include -- when only resumeSessionId is provided without prompt', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+      });
+      expect(args).not.toContain('--');
     });
   });
 });

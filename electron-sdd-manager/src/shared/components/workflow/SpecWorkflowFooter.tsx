@@ -94,7 +94,7 @@ export function SpecWorkflowFooter({
   const showConvertButton = canShowConvertButton(isOnMain, specJson);
 
   return (
-    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+    <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-gray-200 dark:border-gray-700 flex gap-2">
       {/* spec-event-log: Event Log Button (Task 6.1) */}
       {onShowEventLog && (
         <EventLogButton onClick={onShowEventLog} />

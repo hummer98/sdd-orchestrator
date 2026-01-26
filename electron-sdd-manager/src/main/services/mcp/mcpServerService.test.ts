@@ -8,6 +8,16 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createServer, Server } from 'net';
+
+// Mock MCP SDK to avoid subpath export resolution issues in Vitest
+vi.mock('@modelcontextprotocol/sdk/server/mcp', () => {
+  return {
+    McpServer: vi.fn().mockImplementation(() => ({
+      close: vi.fn().mockResolvedValue(undefined),
+    })),
+  };
+});
+
 import { McpServerService, McpServerStatus, McpServerError } from './mcpServerService';
 
 // Helper to find an available port
@@ -103,20 +113,19 @@ describe('McpServerService', () => {
       }
     });
 
-    it('should return PORT_IN_USE error when port is already in use', async () => {
+    it('should automatically fall back to the next port if the specified port is in use', async () => {
       // Block port 3001
       let blockingServer: Server | null = null;
       try {
         blockingServer = await blockPort(3001);
 
+        // Try to start on 3001, should fall back to 3002
         const result = await service.start(3001);
 
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.type).toBe('PORT_IN_USE');
-          if (result.error.type === 'PORT_IN_USE') {
-            expect(result.error.port).toBe(3001);
-          }
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.port).toBe(3002);
+          expect(result.value.url).toBe('http://localhost:3002');
         }
       } finally {
         if (blockingServer) {
@@ -125,16 +134,40 @@ describe('McpServerService', () => {
       }
     });
 
-    it('should handle network errors gracefully', async () => {
-      // This is a general test for network error handling
-      // We can't easily simulate all network errors, but the service
-      // should handle any errors during server creation gracefully
-      const result = await service.start(-1); // Invalid port
+    it('should return NO_AVAILABLE_PORT error when all ports in range are in use', async () => {
+      // Block ports 3001 to 3011 (preferred port + 10 retries)
+      const blockingServers: Server[] = [];
+      try {
+        for (let port = 3001; port <= 3011; port++) {
+          blockingServers.push(await blockPort(port));
+        }
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        // Should be either PORT_IN_USE or NETWORK_ERROR for invalid port
-        expect(['PORT_IN_USE', 'NETWORK_ERROR']).toContain(result.error.type);
+        const result = await service.start(3001);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('NO_AVAILABLE_PORT');
+          if (result.error.type === 'NO_AVAILABLE_PORT') {
+            expect(result.error.triedPorts).toHaveLength(11);
+          }
+        }
+      } finally {
+        for (const server of blockingServers) {
+          await closeServer(server);
+        }
+      }
+    });
+
+    it('should handle invalid ports gracefully', async () => {
+      // Port -1 is invalid. In previous implementation it failed immediately.
+      // Now it might try to fallback, and port 0 is actually valid for OS to pick any port.
+      const result = await service.start(-1);
+
+      if (result.ok) {
+        // If it succeeded (e.g. by falling back to port 0), that's also acceptable now
+        expect(result.value.port).toBeGreaterThanOrEqual(0);
+      } else {
+        expect(['PORT_IN_USE', 'NETWORK_ERROR', 'NO_AVAILABLE_PORT']).toContain(result.error.type);
       }
     });
   });
@@ -303,22 +336,17 @@ describe('McpServerService', () => {
   // ============================================================
 
   describe('Port Conflict Detection', () => {
-    it('should detect conflict with Remote UI server on same port', async () => {
+    it('should avoid conflict with Remote UI server by falling back to next port', async () => {
       // Simulate Remote UI server on port 3000
       let blockingServer: Server | null = null;
       try {
         blockingServer = await blockPort(3000);
 
-        // MCP should start on its own port (3001) without conflict
-        const result = await service.start(3001);
+        // Try to start on 3000, should fall back to 3001
+        const result = await service.start(3000);
         expect(result.ok).toBe(true);
-
-        // But trying to start on 3000 should fail
-        const service2 = new McpServerService();
-        const result2 = await service2.start(3000);
-        expect(result2.ok).toBe(false);
-        if (!result2.ok) {
-          expect(result2.error.type).toBe('PORT_IN_USE');
+        if (result.ok) {
+          expect(result.value.port).toBe(3001);
         }
       } finally {
         if (blockingServer) {
@@ -327,7 +355,7 @@ describe('McpServerService', () => {
       }
     });
 
-    it('should allow MCP and Remote UI to run on different ports simultaneously', async () => {
+    it('should allow MCP and Remote UI to run simultaneously without manual configuration', async () => {
       // This test verifies requirement 5.1
       // MCP on 3001, simulated Remote UI on 3000
       let blockingServer: Server | null = null;

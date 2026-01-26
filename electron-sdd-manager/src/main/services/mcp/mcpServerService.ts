@@ -92,20 +92,35 @@ export class McpServerService {
       };
     }
 
-    // Check if port is available
-    const isAvailable = await this.isPortAvailable(preferredPort);
+    // Try to find an available port starting from preferredPort
+    const MAX_RETRIES = 10;
+    let selectedPort = preferredPort;
+    let isAvailable = false;
+    const triedPorts: number[] = [];
+
+    for (let i = 0; i <= MAX_RETRIES; i++) {
+      const currentPort = preferredPort + i;
+      triedPorts.push(currentPort);
+      
+      if (await this.isPortAvailable(currentPort)) {
+        selectedPort = currentPort;
+        isAvailable = true;
+        break;
+      }
+    }
+
     if (!isAvailable) {
       return {
         ok: false,
-        error: { type: 'PORT_IN_USE', port: preferredPort },
+        error: { type: 'NO_AVAILABLE_PORT', triedPorts },
       };
     }
 
     // Create and start HTTP server
     try {
-      await this.createServer(preferredPort);
+      await this.createServer(selectedPort);
 
-      this.port = preferredPort;
+      this.port = selectedPort;
       this.url = `http://localhost:${this.port}`;
 
       // Initialize MCP server

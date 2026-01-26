@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
+import { useMcpStore } from '../../shared/stores/mcpStore';
 
 /**
  * McpSettingsPanel Props
@@ -54,6 +55,7 @@ interface McpSettings {
  */
 export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
   const { currentProject } = useProjectStore();
+  const { isRunning, port: runningPort } = useMcpStore();
 
   // Settings state
   const [settings, setSettings] = useState<McpSettings | null>(null);
@@ -89,11 +91,15 @@ export function McpSettingsPanel({ className }: McpSettingsPanelProps) {
   }, [currentProject]);
 
   // Generate claude mcp add command
+  // If server is running, use the actual running port. Otherwise use the configured port.
   const mcpAddCommand = useMemo(() => {
     if (!projectName) return null;
-    const currentPort = port || '3001';
-    return `claude mcp add ${projectName} --url http://localhost:${currentPort}`;
-  }, [projectName, port]);
+    
+    // Prioritize running port if available, otherwise use input value or default
+    const targetPort = isRunning && runningPort ? runningPort.toString() : (port || '3001');
+    
+    return `claude mcp add ${projectName} --url http://localhost:${targetPort}`;
+  }, [projectName, port, isRunning, runningPort]);
 
   // Handle enabled toggle
   const handleToggleEnabled = useCallback(async () => {

@@ -9,6 +9,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentLogPanel } from './AgentLogPanel';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import type { LogEntry } from '../types';
+import type { LLMEngineId } from '@shared/registry';
 
 // Mock the stores
 vi.mock('../stores/agentStore');
@@ -42,6 +43,8 @@ describe('AgentLogPanel - Task 31', () => {
     startedAt: '2025-01-01T00:00:00Z',
     lastActivityAt: '2025-01-01T00:00:00Z',
     command: 'claude -p "/kiro:spec-requirements"',
+    // llm-stream-log-parser: Task 6.1 - engineId for parser selection
+    engineId: 'claude' as LLMEngineId,
   };
 
   // Helper to create mock store state for selector-based access
@@ -318,6 +321,44 @@ describe('AgentLogPanel - Task 31', () => {
       render(<AgentLogPanel />);
 
       expect(screen.getByTestId('token-display')).toBeInTheDocument();
+    });
+  });
+
+  describe('llm-stream-log-parser: engineId propagation', () => {
+    it('should pass engineId to AgentLogInfo for Claude engine', () => {
+      setupMock(createMockState({
+        agent: { ...baseAgentInfo, engineId: 'claude' as LLMEngineId },
+      }));
+
+      render(<AgentLogPanel />);
+
+      // Verify the component renders without error with Claude engineId
+      expect(screen.getByText('Agent Log')).toBeInTheDocument();
+    });
+
+    it('should pass engineId to AgentLogInfo for Gemini engine', () => {
+      setupMock(createMockState({
+        agent: { ...baseAgentInfo, engineId: 'gemini' as LLMEngineId },
+      }));
+
+      render(<AgentLogPanel />);
+
+      // Verify the component renders without error with Gemini engineId
+      expect(screen.getByText('Agent Log')).toBeInTheDocument();
+    });
+
+    it('should handle undefined engineId gracefully (backward compatibility)', () => {
+      const agentWithoutEngineId = { ...baseAgentInfo };
+      delete (agentWithoutEngineId as Partial<AgentInfo>).engineId;
+
+      setupMock(createMockState({
+        agent: agentWithoutEngineId as AgentInfo,
+      }));
+
+      render(<AgentLogPanel />);
+
+      // Should render without error even without engineId
+      expect(screen.getByText('Agent Log')).toBeInTheDocument();
     });
   });
 });

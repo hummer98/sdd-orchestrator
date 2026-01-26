@@ -145,7 +145,7 @@ export function SchemeSelector({
         <div
           data-testid="scheme-selector-dropdown"
           className={clsx(
-            'absolute z-50 mt-1 py-1 w-36',
+            'absolute z-50 mt-1 py-1 w-36 right-0',
             'bg-white dark:bg-gray-800',
             'border border-gray-200 dark:border-gray-700',
             'rounded-md shadow-lg'

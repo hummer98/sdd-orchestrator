@@ -230,3 +230,35 @@ export function getEngineArgs(engine: ReviewEngineConfig, featureName: string): 
   }
   return baseArgs;
 }
+
+// ============================================================
+// ReviewerScheme to LLMEngineId Mapping
+// Bug fix: gemini-document-review-engineid-missing
+// ============================================================
+
+// Import LLMEngineId from llmEngineRegistry to avoid circular dependency
+import type { LLMEngineId } from './llmEngineRegistry';
+
+/**
+ * Mapping from ReviewerScheme to LLMEngineId
+ * Used for log parser selection
+ */
+const SCHEME_TO_ENGINE_ID: Record<ReviewerScheme, LLMEngineId> = {
+  'claude-code': 'claude',
+  'gemini-cli': 'gemini',
+  'debatex': 'claude', // debatex uses Claude for log parsing (text output, not JSONL)
+};
+
+/**
+ * Get LLMEngineId from ReviewerScheme
+ * Falls back to 'claude' for unknown schemes
+ *
+ * @param scheme - Reviewer scheme (undefined falls back to 'claude')
+ * @returns LLMEngineId for log parser selection
+ */
+export function getEngineIdFromScheme(scheme?: ReviewerScheme): LLMEngineId {
+  if (!scheme || !(scheme in SCHEME_TO_ENGINE_ID)) {
+    return 'claude';
+  }
+  return SCHEME_TO_ENGINE_ID[scheme];
+}

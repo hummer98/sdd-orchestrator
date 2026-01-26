@@ -9,6 +9,7 @@ import {
   REVIEW_ENGINES,
   getReviewEngine,
   getAvailableEngines,
+  getEngineIdFromScheme,
   type ReviewerScheme,
   type ReviewEngineConfig,
   DEFAULT_REVIEWER_SCHEME,
@@ -298,6 +299,32 @@ describe('ReviewEngineRegistry', () => {
       const error = new Error('Some other error');
       const info = getDebatexErrorInfo(error);
       expect(info).toBeNull();
+    });
+  });
+
+  // ============================================================
+  // Bug fix: gemini-document-review-engineid-missing
+  // getEngineIdFromScheme tests
+  // ============================================================
+  describe('getEngineIdFromScheme', () => {
+    it('should return "claude" for claude-code scheme', () => {
+      expect(getEngineIdFromScheme('claude-code')).toBe('claude');
+    });
+
+    it('should return "gemini" for gemini-cli scheme', () => {
+      expect(getEngineIdFromScheme('gemini-cli')).toBe('gemini');
+    });
+
+    it('should return "claude" for debatex scheme (uses text output, not JSONL)', () => {
+      expect(getEngineIdFromScheme('debatex')).toBe('claude');
+    });
+
+    it('should return "claude" for undefined scheme (default)', () => {
+      expect(getEngineIdFromScheme(undefined)).toBe('claude');
+    });
+
+    it('should return "claude" for unknown scheme (fallback)', () => {
+      expect(getEngineIdFromScheme('unknown' as any)).toBe('claude');
     });
   });
 });

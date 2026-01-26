@@ -25,7 +25,8 @@ import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
 import { BugService } from './bugService';
 // gemini-document-review Task 4.1, 4.2: Multi-engine support
 // debatex-document-review Task 2.1: BuildArgsContext support
-import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
+// Bug fix: gemini-document-review-engineid-missing - Added getEngineIdFromScheme
+import { getReviewEngine, getEngineIdFromScheme, type ReviewerScheme, type BuildArgsContext } from '../../shared/registry/reviewEngineRegistry';
 // llm-engine-abstraction: LLM Engine resolution
 // Requirements: 7.1, 7.2
 import { engineConfigService, type EngineConfigPhase } from './engineConfigService';
@@ -1655,6 +1656,9 @@ export class SpecManagerService {
       engineLabel: engine.label,
     });
 
+    // Bug fix: gemini-document-review-engineid-missing - Get engineId from scheme
+    const engineId = getEngineIdFromScheme(scheme);
+
     // For Claude Code, use the standard slash command format
     if (scheme === 'claude-code' || scheme === undefined) {
       const slashCommand = commandPrefix === 'kiro' ? '/kiro:document-review' : '/spec-manager:document-review';
@@ -1664,6 +1668,7 @@ export class SpecManagerService {
         command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
         group: 'doc',
+        engineId,
       });
     }
 
@@ -1703,6 +1708,7 @@ export class SpecManagerService {
         command: cmdString,
         args: cmdArgs,
         group: 'doc',
+        engineId,
       });
     }
 
@@ -1718,6 +1724,7 @@ export class SpecManagerService {
       command: cmdString,
       args: cmdArgs,
       group: 'doc',
+      engineId,
     });
   }
 

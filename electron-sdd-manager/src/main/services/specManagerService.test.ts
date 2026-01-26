@@ -1741,6 +1741,65 @@ describe('executeDocumentReview - multi-engine support', () => {
     startAgentSpy.mockRestore();
   });
 
+  // ============================================================
+  // Bug fix: gemini-document-review-engineid-missing
+  // engineId propagation tests for log parser selection
+  // ============================================================
+
+  it('should pass engineId: "gemini" to startAgent when scheme is gemini-cli', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'gemini-cli',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engineId: 'gemini',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should pass engineId: "claude" to startAgent when scheme is claude-code', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      scheme: 'claude-code',
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engineId: 'claude',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
+  it('should pass engineId: "claude" to startAgent when scheme is undefined (default)', async () => {
+    const startAgentSpy = vi.spyOn(service, 'startAgent');
+
+    await service.executeDocumentReview({
+      specId: 'test-spec',
+      featureName: 'my-feature',
+      // No scheme specified - should default to claude
+    });
+
+    expect(startAgentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engineId: 'claude',
+      })
+    );
+
+    startAgentSpy.mockRestore();
+  });
+
   it('should use debatex CLI for debatex scheme', async () => {
     const startAgentSpy = vi.spyOn(service, 'startAgent');
 

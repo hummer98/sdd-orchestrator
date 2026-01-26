@@ -45,6 +45,7 @@ Conduct interactive quality review of technical design documents to ensure they 
 - **Integration Points**: Are IPC/Store sync points clearly identified?
 - **Mock Boundaries**: Are boundaries for mocking vs. real implementation defined?
 - **Robustness**: Does the strategy handle async timing (e.g., explicit wait patterns) to prevent flaky tests?
+- **E2E Scenario Coverage**: Do tests cover the full flow from user action to result (not just point-to-point)?
 - **Prerequisites**: Are necessary test helpers identified?
 
 ## Review Process

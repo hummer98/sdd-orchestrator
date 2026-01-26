@@ -146,6 +146,7 @@ Verifying interaction between components (IPC, Store sync, Event chains):
 | IPC channel definition | IPC delivery test |
 | Store synchronization flow | State propagation test |
 | Event/callback chains | Chain execution test |
+| **Interface Change** | **Caller Update Tasks** (Must exist for every changed signature) |
 
 **Task Format Example**:
 ```markdown
@@ -158,6 +159,7 @@ Verifying interaction between components (IPC, Store sync, Event chains):
 
 **Testing Best Practices (MANDATORY)**:
 - **No Flaky Tests**: Never use fixed delays (`sleep(1000)`). Use `waitFor` patterns or event listeners to detect state changes.
+- **E2E Scenario Coverage**: Tests must verify the *full flow* from user action to result (e.g., "Select Scheme A -> Verify Logic B uses Param A -> Verify Result C"). Don't just test the function call in isolation.
 - **Prerequisites**: If project lacks test helpers for IPC/Store mocking, create a "Test Infrastructure" task BEFORE the integration test task.
 - **Mock Boundaries**: Follow the "Integration Test Strategy" in design.md.
 

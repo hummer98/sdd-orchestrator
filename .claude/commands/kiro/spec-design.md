@@ -51,6 +51,11 @@ CRITICAL: Generate "Integration & Deprecation Strategy" (結合・廃止戦略) 
 - For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
 - If no files need modification or deletion, explicitly state "No existing files affected"
 
+CRITICAL: Generate "Interface Changes & Impact Analysis" (インターフェース変更と影響分析) section:
+- If any existing method signature or API interface is modified (e.g., adding parameters), explicitly list ALL existing call sites (Callers) that need updates.
+- Explicitly state if a parameter is optional or required, and how existing callers should handle it.
+- **Rule**: For every "Callee" modification, there must be corresponding "Caller" update tasks.
+
 CRITICAL: Generate "Integration Test Strategy" section if design includes cross-boundary communication (IPC, events, store synchronization):
 - **Components**: List modules involved in integration
 - **Data Flow**: Describe the flow to be tested

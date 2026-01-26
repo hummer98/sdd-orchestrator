@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.51.0] - 2026-01-26
+
+### Added
+- **remote-ui**: ドキュメントレビューのスキーマ選択APIを追加
+- **llm-stream-log-parser**: LLMストリームログパーサーのリファクタリングと拡張
+- **remote-ui-agent-store-init**: リモートUIにAgentStore初期化機能を追加
+- **remote-dialog-tab-layout**: リモートアクセスダイアログにタブレイアウト機能を追加
+- **worktree**: devブランチでもWorktree変換を許可
+
+### Fixed
+- **SchemeSelector**: ドロップダウンメニューの横オーバーフローを修正
+- **autoExecution**: NOGOフェーズでスキップせず停止するように修正
+- **buildClaudeArgs**: プロンプトの先頭が - の場合の unknown option エラーを防止
+- **specsWatcherService**: spec-merge後のupdated_at無意味な更新を防止
+- **ipc**: resolve require is not defined error in renderer IpcApiClient by using window.__STORES__
+- **remote-ui**: SpecsViewにrunningAgentCountを追加
+- **remote-ui**: スマホ版でフッターがURLバーの裏に隠れる問題を修正
+
+### Changed
+- **style**: ScheduleTaskSettingViewダイアログサイズを拡大
+- **chore**: レイアウト設定の更新
+- **docs**: GEMINI.md for Gemini CLI configuration追加
+
 ## [0.50.0] - 2026-01-25
 
 ### Added

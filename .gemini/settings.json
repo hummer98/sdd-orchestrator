@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "electron": {
+      "command": "/opt/homebrew/bin/electron-mcp-server",
+      "args": [],
+      "env": {
+        "SECURITY_LEVEL": "balanced",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "SCREENSHOT_ENCRYPTION_KEY": "bc302a6b957084f50ca8d33551e1a4cfb1756888f2796114e85a548d6405e755"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "env": {}
+    }
+  }
+}

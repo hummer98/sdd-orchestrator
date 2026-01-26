@@ -457,10 +457,10 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
 
         this.emit('phase-completed', bugPath, currentPhase);
 
-        // 次フェーズを自動実行
+        // 次フェーズを自動実行（NOGOフェーズではスキップせず停止）
         const options = this.executionOptions.get(bugPath);
         if (options) {
-          const nextPhase = this.getNextPermittedPhase(currentPhase, options.permissions);
+          const nextPhase = this.getImmediateNextPhase(currentPhase, options.permissions);
           if (nextPhase) {
             this.emit('execute-next-phase', bugPath, nextPhase, {
               bugName: state.bugName,
@@ -541,6 +541,55 @@ export class BugAutoExecutionCoordinator extends EventEmitter {
     }
 
     return null;
+  }
+
+  /**
+   * 直接次のフェーズを取得する（NOGOフェーズをスキップしない）
+   *
+   * getNextPermittedPhaseとの違い:
+   * - getNextPermittedPhase: NOGOフェーズをスキップして次のGOフェーズを返す
+   * - getImmediateNextPhase: 直接次のフェーズのみをチェックし、NOGOなら停止（nullを返す）
+   *
+   * @param currentPhase 現在のフェーズ
+   * @param permissions 許可設定
+   * @returns 次のフェーズ or null（次のフェーズがNOGOまたは存在しない場合）
+   */
+  getImmediateNextPhase(
+    currentPhase: BugWorkflowPhase | null,
+    permissions: BugAutoExecutionPermissions
+  ): BugWorkflowPhase | null {
+    const autoPhases = BUG_AUTO_EXECUTION_PHASES;
+    let startIndex = 0;
+
+    if (currentPhase !== null) {
+      if (currentPhase === 'report') {
+        startIndex = 0;
+      } else {
+        const currentIndex = autoPhases.indexOf(currentPhase);
+        if (currentIndex === -1) return null;
+        startIndex = currentIndex + 1;
+      }
+    }
+
+    // 直接次のフェーズがない場合
+    if (startIndex >= autoPhases.length) {
+      return null;
+    }
+
+    const nextPhase = autoPhases[startIndex];
+    const phaseKey = nextPhase as keyof BugAutoExecutionPermissions;
+
+    // 直接次のフェーズが許可されていない場合は停止（スキップしない）
+    if (!permissions[phaseKey]) {
+      logger.info('[BugAutoExecutionCoordinator] Stopping at NOGO phase', {
+        currentPhase,
+        nextPhase,
+        reason: 'next phase is not permitted (NOGO)',
+      });
+      return null;
+    }
+
+    return nextPhase;
   }
 
   /**

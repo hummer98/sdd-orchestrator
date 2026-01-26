@@ -783,17 +783,9 @@ export class AutoExecutionCoordinator extends EventEmitter {
                 featureName: state.specId,
               });
             } else {
-              // document-review is not permitted (NOGO), skip to impl if permitted
-              logger.info('[AutoExecutionCoordinator] Tasks completed, document-review is NOGO', { specPath });
-              const nextPhase = this.getImmediateNextPhase('document-review', options.permissions, latestApprovals);
-              if (nextPhase) {
-                this.emit('execute-next-phase', specPath, nextPhase, {
-                  specId: state.specId,
-                  featureName: state.specId,
-                });
-              } else {
-                this.completeExecution(specPath);
-              }
+              // document-review is not permitted (NOGO), stop execution (do not skip)
+              logger.info('[AutoExecutionCoordinator] Tasks completed, document-review is NOGO, stopping execution', { specPath });
+              this.completeExecution(specPath);
             }
             return;
           }

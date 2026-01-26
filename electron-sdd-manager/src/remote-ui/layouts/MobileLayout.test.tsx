@@ -144,14 +144,16 @@ describe('MobileLayout', () => {
       renderMobileLayout({ showTabBar: true });
 
       const mainContent = screen.getByRole('main');
-      expect(mainContent).toHaveClass('pb-16');
+      // safe-area-inset対応: pb-[calc(4rem+env(safe-area-inset-bottom))]
+      expect(mainContent).toHaveClass('pb-[calc(4rem+env(safe-area-inset-bottom))]');
     });
 
     it('should remove bottom padding when showTabBar=false', () => {
       renderMobileLayout({ showTabBar: false });
 
       const mainContent = screen.getByRole('main');
-      expect(mainContent).toHaveClass('pb-0');
+      // safe-area-inset対応: pb-[env(safe-area-inset-bottom)]
+      expect(mainContent).toHaveClass('pb-[env(safe-area-inset-bottom)]');
     });
   });
 

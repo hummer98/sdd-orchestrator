@@ -8,23 +8,9 @@
 
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
-import { McpServerService } from '../services/mcp/mcpServerService';
+import { getMcpServerService } from '../services/mcp/mcpAutoStart';
 import { getConfigStore } from '../services/configStore';
 import { logger } from '../services/logger';
-
-// Singleton McpServerService instance
-let mcpServerService: McpServerService | null = null;
-
-/**
- * Get McpServerService singleton instance
- * @returns McpServerService instance
- */
-export function getMcpServerService(): McpServerService {
-  if (!mcpServerService) {
-    mcpServerService = new McpServerService();
-  }
-  return mcpServerService;
-}
 
 /**
  * Register MCP IPC handlers

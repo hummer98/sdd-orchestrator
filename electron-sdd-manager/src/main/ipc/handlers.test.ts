@@ -59,7 +59,6 @@ vi.mock('../services/mcp/mcpServerService', () => ({
 
 vi.mock('./mcpHandlers', () => ({
   registerMcpHandlers: vi.fn(),
-  getMcpServerService: vi.fn(),
 }));
 
 describe('IPC Handlers - Agent Management (Task 27.1)', () => {

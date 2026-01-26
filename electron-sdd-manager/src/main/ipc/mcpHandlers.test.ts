@@ -6,7 +6,7 @@
  * @file mcpHandlers.test.ts
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 
@@ -35,8 +35,9 @@ const mockMcpServerService = {
   onStatusChange: vi.fn(),
 };
 
-vi.mock('../services/mcp/mcpServerService', () => ({
-  McpServerService: vi.fn().mockImplementation(() => mockMcpServerService),
+// Mock mcpAutoStart module (provides singleton McpServerService)
+vi.mock('../services/mcp/mcpAutoStart', () => ({
+  getMcpServerService: vi.fn(() => mockMcpServerService),
 }));
 
 // Mock ConfigStore
@@ -108,11 +109,10 @@ describe('mcpHandlers', () => {
 
   describe('MCP_START handler', () => {
     it('should start MCP server with preferred port', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
-      const service = getMcpServerService();
-      (service.start as Mock).mockResolvedValue({
+      mockMcpServerService.start.mockResolvedValue({
         ok: true,
         value: { port: 3001, url: 'http://localhost:3001' },
       });
@@ -122,7 +122,7 @@ describe('mcpHandlers', () => {
 
       const result = await handler!({}, 3001);
 
-      expect(service.start).toHaveBeenCalledWith(3001);
+      expect(mockMcpServerService.start).toHaveBeenCalledWith(3001);
       expect(result).toEqual({
         ok: true,
         value: { port: 3001, url: 'http://localhost:3001' },
@@ -130,11 +130,10 @@ describe('mcpHandlers', () => {
     });
 
     it('should return error when port is in use', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
-      const service = getMcpServerService();
-      (service.start as Mock).mockResolvedValue({
+      mockMcpServerService.start.mockResolvedValue({
         ok: false,
         error: { type: 'PORT_IN_USE', port: 3001 },
       });
@@ -151,28 +150,26 @@ describe('mcpHandlers', () => {
 
   describe('MCP_STOP handler', () => {
     it('should stop MCP server', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
-      const service = getMcpServerService();
-      (service.stop as Mock).mockResolvedValue(undefined);
+      mockMcpServerService.stop.mockResolvedValue(undefined);
 
       const handler = mockHandlers.get(IPC_CHANNELS.MCP_STOP);
       expect(handler).toBeDefined();
 
       await handler!({});
 
-      expect(service.stop).toHaveBeenCalled();
+      expect(mockMcpServerService.stop).toHaveBeenCalled();
     });
   });
 
   describe('MCP_GET_STATUS handler', () => {
     it('should return current server status', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
-      const service = getMcpServerService();
-      (service.getStatus as Mock).mockReturnValue({
+      mockMcpServerService.getStatus.mockReturnValue({
         isRunning: true,
         port: 3001,
         url: 'http://localhost:3001',
@@ -183,7 +180,7 @@ describe('mcpHandlers', () => {
 
       const result = await handler!({});
 
-      expect(service.getStatus).toHaveBeenCalled();
+      expect(mockMcpServerService.getStatus).toHaveBeenCalled();
       expect(result).toEqual({
         isRunning: true,
         port: 3001,
@@ -217,7 +214,7 @@ describe('mcpHandlers', () => {
 
   describe('MCP_SET_ENABLED handler', () => {
     it('should update enabled setting and start server when enabled', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
       mockConfigStore.getMcpSettings.mockReturnValue({
@@ -225,8 +222,7 @@ describe('mcpHandlers', () => {
         port: 3001,
       });
 
-      const service = getMcpServerService();
-      (service.start as Mock).mockResolvedValue({
+      mockMcpServerService.start.mockResolvedValue({
         ok: true,
         value: { port: 3001, url: 'http://localhost:3001' },
       });
@@ -240,11 +236,11 @@ describe('mcpHandlers', () => {
         enabled: true,
         port: 3001,
       });
-      expect(service.start).toHaveBeenCalledWith(3001);
+      expect(mockMcpServerService.start).toHaveBeenCalledWith(3001);
     });
 
     it('should update enabled setting and stop server when disabled', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
       mockConfigStore.getMcpSettings.mockReturnValue({
@@ -252,8 +248,7 @@ describe('mcpHandlers', () => {
         port: 3001,
       });
 
-      const service = getMcpServerService();
-      (service.stop as Mock).mockResolvedValue(undefined);
+      mockMcpServerService.stop.mockResolvedValue(undefined);
 
       const handler = mockHandlers.get(IPC_CHANNELS.MCP_SET_ENABLED);
       await handler!({}, false);
@@ -262,13 +257,13 @@ describe('mcpHandlers', () => {
         enabled: false,
         port: 3001,
       });
-      expect(service.stop).toHaveBeenCalled();
+      expect(mockMcpServerService.stop).toHaveBeenCalled();
     });
   });
 
   describe('MCP_SET_PORT handler', () => {
     it('should update port setting in ConfigStore', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
       mockConfigStore.getMcpSettings.mockReturnValue({
@@ -276,9 +271,8 @@ describe('mcpHandlers', () => {
         port: 3001,
       });
 
-      const service = getMcpServerService();
       // Server is not running, so no restart needed
-      (service.getStatus as Mock).mockReturnValue({ isRunning: false, port: null, url: null });
+      mockMcpServerService.getStatus.mockReturnValue({ isRunning: false, port: null, url: null });
 
       const handler = mockHandlers.get(IPC_CHANNELS.MCP_SET_PORT);
       expect(handler).toBeDefined();
@@ -292,7 +286,7 @@ describe('mcpHandlers', () => {
     });
 
     it('should restart server if running when port changes', async () => {
-      const { registerMcpHandlers, getMcpServerService } = await import('./mcpHandlers');
+      const { registerMcpHandlers } = await import('./mcpHandlers');
       registerMcpHandlers();
 
       mockConfigStore.getMcpSettings.mockReturnValue({
@@ -300,10 +294,9 @@ describe('mcpHandlers', () => {
         port: 3001,
       });
 
-      const service = getMcpServerService();
-      (service.getStatus as Mock).mockReturnValue({ isRunning: true, port: 3001, url: 'http://localhost:3001' });
-      (service.stop as Mock).mockResolvedValue(undefined);
-      (service.start as Mock).mockResolvedValue({
+      mockMcpServerService.getStatus.mockReturnValue({ isRunning: true, port: 3001, url: 'http://localhost:3001' });
+      mockMcpServerService.stop.mockResolvedValue(undefined);
+      mockMcpServerService.start.mockResolvedValue({
         ok: true,
         value: { port: 4000, url: 'http://localhost:4000' },
       });
@@ -311,19 +304,8 @@ describe('mcpHandlers', () => {
       const handler = mockHandlers.get(IPC_CHANNELS.MCP_SET_PORT);
       await handler!({}, 4000);
 
-      expect(service.stop).toHaveBeenCalled();
-      expect(service.start).toHaveBeenCalledWith(4000);
-    });
-  });
-
-  describe('getMcpServerService()', () => {
-    it('should return singleton McpServerService instance', async () => {
-      const { getMcpServerService } = await import('./mcpHandlers');
-
-      const service1 = getMcpServerService();
-      const service2 = getMcpServerService();
-
-      expect(service1).toBe(service2);
+      expect(mockMcpServerService.stop).toHaveBeenCalled();
+      expect(mockMcpServerService.start).toHaveBeenCalledWith(4000);
     });
   });
 });

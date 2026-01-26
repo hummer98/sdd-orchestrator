@@ -18,7 +18,7 @@ import { PhaseItem } from '@shared/components/workflow/PhaseItem';
 import { DocumentReviewPanel } from '@shared/components/review/DocumentReviewPanel';
 import { InspectionPanel } from '@shared/components/review/InspectionPanel';
 import type { ReviewerScheme } from '@shared/components/review/SchemeSelector';
-import type { ApiClient, SpecDetail, AgentInfo, SpecJson, WorkflowPhase, Phase } from '@shared/api/types';
+import type { ApiClient, SpecDetail, AgentInfo, WorkflowPhase, Phase } from '@shared/api/types';
 import type {
   DocumentReviewState,
   DocumentReviewAutoExecutionFlag,
@@ -313,8 +313,6 @@ export function SpecActionsView({
 
   // gemini-document-review: Handle scheme change
   // Requirements: 7.2, 7.3, 7.4
-  // spec-path-ssot-refactor: Remote UI doesn't have path in SpecMetadata
-  // This feature is not fully supported in Remote UI - scheme changes need server-side API
   const handleSchemeChange = useCallback(
     async (newScheme: ReviewerScheme) => {
       const previousScheme = optimisticScheme;
@@ -324,26 +322,19 @@ export function SpecActionsView({
       setIsSavingScheme(true);
 
       try {
-        // spec-path-ssot-refactor: Remote UI scheme update requires server-side implementation
-        // For now, log a warning and revert to previous scheme
-        console.warn('[SpecActionsView] Scheme change not fully supported in Remote UI');
-
-        // Create updated spec.json content (for future server-side API)
-        const updatedSpecJson: SpecJson = {
-          ...specDetail.specJson,
-          documentReview: {
-            ...specDetail.specJson.documentReview,
-            status: specDetail.specJson.documentReview?.status ?? 'pending',
-            scheme: newScheme,
-          },
-        };
-
-        // TODO: Implement server-side API for scheme update
-        // For now, just log the change
-        console.log('[SpecActionsView] Scheme would be updated to:', newScheme, updatedSpecJson);
-
-        // Rollback for now until server-side API is implemented
-        setOptimisticScheme(previousScheme);
+        // Call server-side API to update scheme
+        if (apiClient.updateDocumentReviewScheme) {
+          const result = await apiClient.updateDocumentReviewScheme(specPath, newScheme);
+          if (!result.ok) {
+            // Rollback on error
+            setOptimisticScheme(previousScheme);
+            console.error('[SpecActionsView] Failed to update scheme:', result.error);
+          }
+        } else {
+          // Fallback: API not available, rollback
+          console.warn('[SpecActionsView] updateDocumentReviewScheme not available');
+          setOptimisticScheme(previousScheme);
+        }
       } catch (err) {
         // Rollback on error
         setOptimisticScheme(previousScheme);
@@ -352,7 +343,7 @@ export function SpecActionsView({
         setIsSavingScheme(false);
       }
     },
-    [apiClient, specDetail.specJson, optimisticScheme]
+    [apiClient, specPath, optimisticScheme]
   );
 
   // Phase list for workflow

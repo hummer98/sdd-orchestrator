@@ -412,6 +412,17 @@ export interface ApiClient {
    */
   executeInspection(specId: string): Promise<Result<AgentInfo, ApiError>>;
 
+  /**
+   * Update document review scheme for a spec
+   * gemini-document-review: Remote UI scheme change support
+   * @param specPath - Full path to spec directory
+   * @param scheme - New reviewer scheme
+   */
+  updateDocumentReviewScheme?(
+    specPath: string,
+    scheme: string
+  ): Promise<Result<void, ApiError>>;
+
   // ===========================================================================
   // Auto Execution Operations
   // ===========================================================================

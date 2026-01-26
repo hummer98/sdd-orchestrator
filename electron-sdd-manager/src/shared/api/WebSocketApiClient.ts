@@ -634,6 +634,19 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<AgentInfo>('EXECUTE_INSPECTION', { specId });
   }
 
+  /**
+   * Update document review scheme for a spec
+   * gemini-document-review: Remote UI scheme change support
+   * @param specPath - Full path to spec directory
+   * @param scheme - New reviewer scheme
+   */
+  async updateDocumentReviewScheme(
+    specPath: string,
+    scheme: string
+  ): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('UPDATE_DOCUMENT_REVIEW_SCHEME', { specPath, scheme });
+  }
+
   // ===========================================================================
   // Auto Execution Operations
   // auto-execution-projectpath-fix: Task 4.4 - Added projectPath parameter

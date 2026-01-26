@@ -883,6 +883,10 @@ export class WebSocketHandler {
       case 'GET_EVENT_LOG':
         await this.handleGetEventLog(client, message);
         break;
+      // Document review scheme handler (gemini-document-review feature)
+      case 'UPDATE_DOCUMENT_REVIEW_SCHEME':
+        await this.handleUpdateDocumentReviewScheme(client, message);
+        break;
       default:
         this.send(client.id, {
           type: 'ERROR',
@@ -2540,6 +2544,102 @@ export class WebSocketHandler {
         payload: {
           code: result.error.type,
           message: result.error.message || 'File save failed',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Document Review Scheme Handler (gemini-document-review feature)
+  // ============================================================
+
+  /**
+   * Handle UPDATE_DOCUMENT_REVIEW_SCHEME message
+   * Updates documentReview.scheme in spec.json
+   */
+  private async handleUpdateDocumentReviewScheme(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.fileService) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'File service not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specPath = payload.specPath as string;
+    const scheme = payload.scheme as string;
+
+    if (!specPath || !scheme) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specPath or scheme' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    // Validate scheme value
+    const validSchemes = ['claude-code', 'gemini-cli', 'debatex'];
+    if (!validSchemes.includes(scheme)) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_SCHEME', message: `Invalid scheme: ${scheme}. Valid values: ${validSchemes.join(', ')}` },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      // Import FileService to use updateSpecJson
+      const { FileService } = await import('./fileService');
+      const fileService = new FileService();
+
+      // Read current spec.json to preserve existing documentReview fields
+      const { readFile } = await import('fs/promises');
+      const { join } = await import('path');
+      const specJsonPath = join(specPath, 'spec.json');
+      const content = await readFile(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      // Update documentReview.scheme while preserving other fields
+      const result = await fileService.updateSpecJson(specPath, {
+        documentReview: {
+          ...specJson.documentReview,
+          scheme,
+        },
+      });
+
+      if (result.ok) {
+        this.send(client.id, {
+          type: 'DOCUMENT_REVIEW_SCHEME_UPDATED',
+          payload: { specPath, scheme, success: true },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: {
+            code: result.error.type,
+            message: 'message' in result.error ? result.error.message : 'Failed to update scheme',
+          },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: 'UPDATE_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to update scheme',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

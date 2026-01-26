@@ -292,11 +292,11 @@ export function RemoteArtifactEditor({
         <div className="flex-1 min-w-[100px]" />
 
         {/* Mode toggle */}
-        <div className="flex items-center mr-4">
+        <div className="flex items-center mr-2">
           <button
             onClick={() => setMode('edit')}
             className={clsx(
-              'px-3 py-1 text-sm rounded-l-md border',
+              'px-3 py-1.5 text-sm rounded-l-md border',
               mode === 'edit'
                 ? 'bg-blue-500 text-white border-blue-500'
                 : 'bg-gray-100 text-gray-600 border-gray-200'
@@ -307,7 +307,7 @@ export function RemoteArtifactEditor({
           <button
             onClick={() => setMode('preview')}
             className={clsx(
-              'px-3 py-1 text-sm rounded-r-md border-t border-r border-b',
+              'px-3 py-1.5 text-sm rounded-r-md border-t border-r border-b',
               mode === 'preview'
                 ? 'bg-blue-500 text-white border-blue-500'
                 : 'bg-gray-100 text-gray-600 border-gray-200'
@@ -322,7 +322,7 @@ export function RemoteArtifactEditor({
           onClick={handleSave}
           disabled={!isDirty || isSaving}
           className={clsx(
-            'flex items-center gap-2 px-4 py-2 mr-4 rounded-md text-sm',
+            'flex items-center gap-1.5 px-3 py-1.5 mr-4 rounded-md text-sm',
             'bg-blue-500 hover:bg-blue-600 text-white',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}

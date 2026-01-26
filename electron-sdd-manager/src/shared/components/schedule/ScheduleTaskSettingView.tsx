@@ -142,7 +142,7 @@ function ScheduleTaskList({
   return (
     <div
       data-testid="schedule-task-list"
-      className="space-y-3 overflow-y-auto max-h-[50vh]"
+      className="space-y-3 overflow-y-auto max-h-[60vh]"
     >
       {tasks.map((task) => (
         <ScheduleTaskListItem
@@ -345,9 +345,8 @@ export function ScheduleTaskSettingView({
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        size="lg"
+        size="4xl"
         aria-labelledby="schedule-task-dialog-title"
-        className="max-w-2xl"
       >
         <ModalHeader>
           <ScheduleTaskHeader

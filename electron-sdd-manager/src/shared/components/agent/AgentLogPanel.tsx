@@ -4,12 +4,16 @@
  * Shared component for displaying agent logs.
  * Used by both Electron (renderer) and Remote UI.
  *
+ * llm-stream-log-parser Task 7.2: engineId propagation for parser selection and UI labels
+ * Requirements: 4.1, 4.2
+ *
  * Features:
  * - Log parsing and display using LogEntryBlock
  * - Auto-scroll to bottom on new logs
  * - Header with phase, session ID, running indicator
  * - Optional token usage display
  * - Copy/Clear actions
+ * - Engine-specific parsing and display labels
  */
 
 import React, { useRef, useEffect, useMemo } from 'react';
@@ -22,6 +26,7 @@ import { useIncrementalTokenAggregator } from '@shared/hooks/useIncrementalToken
 import { LogEntryBlock } from './LogEntryBlock';
 import type { LogEntry, AgentStatus } from '@shared/api/types';
 import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
+import type { LLMEngineId } from '@shared/registry';
 
 // =============================================================================
 // Types
@@ -29,6 +34,7 @@ import type { ActivityEventType } from '../../../renderer/services/humanActivity
 
 /**
  * Agent info required for log panel display
+ * llm-stream-log-parser Task 7.2: Added engineId field
  */
 export interface AgentLogInfo {
   /** Agent identifier */
@@ -43,6 +49,12 @@ export interface AgentLogInfo {
   command?: string;
   /** Log file path for copy functionality */
   logFilePath?: string;
+  /**
+   * LLM engine ID for parser selection and UI labels
+   * llm-stream-log-parser Task 7.2: engineId support
+   * Requirements: 4.1, 4.2
+   */
+  engineId?: LLMEngineId;
 }
 
 export interface AgentLogPanelProps {
@@ -81,8 +93,8 @@ export function AgentLogPanel({
   tokenUsage: providedTokenUsage,
   onCopy,
   onClear,
-  noAgentMessage = 'Agentを選択してください',
-  emptyLogsMessage = 'ログがありません',
+  noAgentMessage = 'Select an Agent',
+  emptyLogsMessage = 'No logs available',
   showSessionId = true,
   testId = 'agent-log-panel',
   onActivity,
@@ -109,8 +121,8 @@ export function AgentLogPanel({
   const tokenUsage = providedTokenUsage ?? calculatedTokenUsage;
 
   // Performance fix: Incremental log parsing
-  // Only parses new logs instead of re-parsing all logs on each update
-  const parsedEntries = useIncrementalLogParser(logs, agent?.command);
+  // llm-stream-log-parser Task 7.2: Pass engineId for engine-specific parsing
+  const parsedEntries = useIncrementalLogParser(logs, agent?.command, agent?.engineId);
 
   // Track if user is near bottom of scroll area
   useEffect(() => {
@@ -154,7 +166,7 @@ export function AgentLogPanel({
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Agentログ
+            Agent Log
           </span>
           {agent && (
             <>
@@ -166,11 +178,11 @@ export function AgentLogPanel({
                 <>
                   <span className="text-sm text-gray-400 dark:text-gray-500">|</span>
                   <span className="text-sm text-gray-500 dark:text-gray-500 font-mono flex items-center gap-1">
-                    {agent.agentId} - セッションID: {agent.sessionId}
+                    {agent.agentId} - Session: {agent.sessionId}
                     <button
                       onClick={() => navigator.clipboard.writeText(agent.sessionId || '')}
                       className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                      title="セッションIDをコピー"
+                      title="Copy session ID"
                       data-testid="copy-session-id"
                     >
                       <Copy className="w-3 h-3" />
@@ -194,9 +206,9 @@ export function AgentLogPanel({
               data-testid="token-display"
             >
               <BarChart3 className="w-3 h-3" />
-              <span>入力: {tokenUsage.inputTokens.toLocaleString()}</span>
+              <span>Input: {tokenUsage.inputTokens.toLocaleString()}</span>
               <span className="text-gray-400 dark:text-gray-600">|</span>
-              <span>出力: {tokenUsage.outputTokens.toLocaleString()}</span>
+              <span>Output: {tokenUsage.outputTokens.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -211,7 +223,7 @@ export function AgentLogPanel({
               'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
-            title={agent?.logFilePath ? 'ログファイルパスをコピー' : 'ログをコピー'}
+            title={agent?.logFilePath ? 'Copy log file path' : 'Copy logs'}
           >
             <Copy className="w-4 h-4" />
           </button>
@@ -225,7 +237,7 @@ export function AgentLogPanel({
                 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
-              title="ログをクリア"
+              title="Clear logs"
             >
               <Trash2 className="w-4 h-4" />
             </button>

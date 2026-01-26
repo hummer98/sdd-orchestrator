@@ -197,4 +197,101 @@ describe('useIncrementalLogParser', () => {
       expect(result.current).toHaveLength(2);
     });
   });
+
+  /**
+   * Task 5.1: engineId support tests
+   * Requirements: 2.2
+   */
+  describe('engineId support', () => {
+    it('should pass engineId to parseLogData when provided', () => {
+      const logs: LogEntry[] = [
+        createLog('log-1', 'Hello', 1000),
+      ];
+
+      vi.clearAllMocks();
+
+      renderHook(() => useIncrementalLogParser(logs, undefined, 'claude'));
+
+      // Verify parseLogData was called with engineId
+      expect(logFormatter.parseLogData).toHaveBeenCalledWith(
+        expect.any(String),
+        'claude'
+      );
+    });
+
+    it('should pass gemini engineId to parseLogData', () => {
+      // Create a Gemini-style log
+      const geminiLog: LogEntry = {
+        id: 'log-1',
+        stream: 'stdout',
+        data: JSON.stringify({
+          type: 'message',
+          role: 'assistant',
+          content: 'Hello from Gemini',
+        }),
+        timestamp: 1000,
+      };
+
+      vi.clearAllMocks();
+
+      const { result } = renderHook(() =>
+        useIncrementalLogParser([geminiLog], undefined, 'gemini')
+      );
+
+      expect(logFormatter.parseLogData).toHaveBeenCalledWith(
+        expect.any(String),
+        'gemini'
+      );
+
+      // Verify the result has gemini engineId
+      expect(result.current).toHaveLength(1);
+      expect(result.current[0].engineId).toBe('gemini');
+    });
+
+    it('should use undefined engineId when not provided for backward compatibility', () => {
+      const logs: LogEntry[] = [createLog('log-1', 'Hello', 1000)];
+
+      vi.clearAllMocks();
+
+      renderHook(() => useIncrementalLogParser(logs));
+
+      // Should be called with undefined engineId
+      expect(logFormatter.parseLogData).toHaveBeenCalledWith(
+        expect.any(String),
+        undefined
+      );
+    });
+
+    it('should maintain engineId through incremental parsing', () => {
+      const initialLogs: LogEntry[] = [createLog('log-1', 'First', 1000)];
+
+      vi.clearAllMocks();
+
+      const { result, rerender } = renderHook(
+        ({ logs, engineId }) => useIncrementalLogParser(logs, undefined, engineId),
+        { initialProps: { logs: initialLogs, engineId: 'claude' as const } }
+      );
+
+      // Append a new log
+      const updatedLogs = [
+        ...initialLogs,
+        createLog('log-2', 'Second', 2000),
+      ];
+
+      vi.clearAllMocks();
+
+      rerender({ logs: updatedLogs, engineId: 'claude' as const });
+
+      // Both calls should have used claude engineId
+      expect(logFormatter.parseLogData).toHaveBeenCalledWith(
+        expect.any(String),
+        'claude'
+      );
+
+      // All entries should have claude engineId
+      result.current.forEach(entry => {
+        expect(entry.engineId).toBe('claude');
+      });
+    });
+  });
 });

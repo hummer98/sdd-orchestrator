@@ -775,4 +775,141 @@ describe('AgentRecordService', () => {
       });
     });
   });
+
+  // =============================================================================
+  // llm-stream-log-parser: Task 6.1 - engineId field support
+  // Requirements: 2.1 - engineId in AgentRecord
+  // =============================================================================
+  describe('engineId field support (Task 6.1)', () => {
+    it('should write and read engineId field', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-uuid-001',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        engineId: 'claude',
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-a', 'agent-001');
+
+      expect(result).not.toBeNull();
+      expect(result?.engineId).toBe('claude');
+    });
+
+    it('should write and read gemini engineId', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-b',
+        phase: 'requirements',
+        pid: 12346,
+        sessionId: 'session-uuid-002',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'gemini -p "/kiro:spec-requirements"',
+        engineId: 'gemini',
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-b', 'agent-002');
+
+      expect(result).not.toBeNull();
+      expect(result?.engineId).toBe('gemini');
+    });
+
+    it('should handle records without engineId (backward compatibility)', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-003',
+        specId: 'spec-c',
+        phase: 'requirements',
+        pid: 12347,
+        sessionId: 'session-uuid-003',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        // No engineId - for backward compatibility
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-c', 'agent-003');
+
+      expect(result).not.toBeNull();
+      expect(result?.engineId).toBeUndefined();
+    });
+
+    it('should persist engineId in file content', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-004',
+        specId: 'spec-d',
+        phase: 'design',
+        pid: 12348,
+        sessionId: 'session-uuid-004',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        engineId: 'gemini',
+      };
+
+      await service.writeRecord(record);
+
+      // Read file directly to verify JSON content
+      const filePath = path.join(testDir, 'spec-d', 'agent-004.json');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+
+      expect(parsed.engineId).toBe('gemini');
+    });
+
+    it('should preserve engineId in readRecordsForSpec', async () => {
+      const record1: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-e',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        engineId: 'claude',
+      };
+
+      const record2: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-e',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'gemini',
+        engineId: 'gemini',
+      };
+
+      await service.writeRecord(record1);
+      await service.writeRecord(record2);
+
+      const records = await service.readRecordsForSpec('spec-e');
+
+      expect(records).toHaveLength(2);
+
+      const claudeRecord = records.find((r) => r.agentId === 'agent-001');
+      const geminiRecord = records.find((r) => r.agentId === 'agent-002');
+
+      expect(claudeRecord?.engineId).toBe('claude');
+      expect(geminiRecord?.engineId).toBe('gemini');
+    });
+  });
 });

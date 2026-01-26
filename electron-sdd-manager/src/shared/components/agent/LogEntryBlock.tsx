@@ -3,7 +3,8 @@
  * Routes parsed log entries to appropriate display components
  *
  * Task 2.1: LogEntryBlockコンポーネントを作成
- * Requirements: 1.1, 1.2
+ * llm-stream-log-parser Task 7.2: Pass engineId to TextBlock for dynamic labels
+ * Requirements: 1.1, 1.2, 4.1, 4.2
  */
 
 import React from 'react';
@@ -24,15 +25,18 @@ export function LogEntryBlock({
   entry,
   defaultExpanded = false,
 }: LogEntryBlockProps): React.ReactElement | null {
+  // llm-stream-log-parser Task 7.2: Extract engineId from entry for propagation
+  const { engineId } = entry;
+
   switch (entry.type) {
     case 'system':
       // System type with session info shows SessionInfoBlock
       if (entry.session) {
-        return <SessionInfoBlock session={entry.session} />;
+        return <SessionInfoBlock session={entry.session} engineId={engineId} />;
       }
       // System without session - fallback to text if available
       if (entry.text) {
-        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} />;
+        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} engineId={engineId} />;
       }
       return null;
 
@@ -53,7 +57,7 @@ export function LogEntryBlock({
     case 'text':
     case 'assistant':
       if (entry.text) {
-        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} />;
+        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} engineId={engineId} />;
       }
       return null;
 
@@ -67,14 +71,14 @@ export function LogEntryBlock({
     case 'input':
       // User input - display as text block with user role
       if (entry.text) {
-        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} />;
+        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} engineId={engineId} />;
       }
       return null;
 
     default:
       // Unknown type - try to display as text if available
       if (entry.text) {
-        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} />;
+        return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} engineId={engineId} />;
       }
       return null;
   }

@@ -1,7 +1,8 @@
 /**
  * logFormatter tests
  * Task 5.1: parseLogData function tests for each event type
- * Requirements: 1.3
+ * Task 4.1: engineId facade tests
+ * Requirements: 1.3, 2.2, 2.3
  */
 
 import { describe, it, expect } from 'vitest';
@@ -333,6 +334,127 @@ describe('logFormatter', () => {
     it('should handle dark mode classes', () => {
       const textClass = getColorClass('system', 'text');
       expect(textClass).toContain('dark:');
+    });
+  });
+
+  /**
+   * Task 4.1: engineId facade tests
+   * Requirements: 2.2, 2.3
+   */
+  describe('engineId support', () => {
+    it('should use Claude parser by default when engineId not provided (Requirements: 2.3)', () => {
+      const data = JSON.stringify({
+        type: 'assistant',
+        message: {
+          content: [{ type: 'text', text: 'Hello' }],
+        },
+      });
+
+      const result = parseLogData(data);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].engineId).toBe('claude');
+    });
+
+    it('should use Claude parser when engineId is "claude" (Requirements: 2.2)', () => {
+      const data = JSON.stringify({
+        type: 'assistant',
+        message: {
+          content: [{ type: 'text', text: 'Claude response' }],
+        },
+      });
+
+      const result = parseLogData(data, 'claude');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].engineId).toBe('claude');
+    });
+
+    it('should use Gemini parser when engineId is "gemini" (Requirements: 2.2)', () => {
+      const data = JSON.stringify({
+        type: 'message',
+        role: 'assistant',
+        content: 'Gemini response',
+      });
+
+      const result = parseLogData(data, 'gemini');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].engineId).toBe('gemini');
+    });
+
+    it('should fallback to Claude parser for unknown engineId (Requirements: 2.3)', () => {
+      const data = JSON.stringify({
+        type: 'assistant',
+        message: {
+          content: [{ type: 'text', text: 'Test' }],
+        },
+      });
+
+      // @ts-expect-error Testing unknown engineId
+      const result = parseLogData(data, 'unknown-engine');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].engineId).toBe('claude');
+    });
+
+    it('should parse Claude init event correctly', () => {
+      const data = JSON.stringify({
+        type: 'system',
+        subtype: 'init',
+        cwd: '/home/user',
+        message: { model: 'claude-3-opus' },
+      });
+
+      const result = parseLogData(data, 'claude');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('system');
+      expect(result[0].session?.model).toBe('claude-3-opus');
+    });
+
+    it('should parse Gemini init event correctly', () => {
+      const data = JSON.stringify({
+        type: 'init',
+        model: 'gemini-pro',
+        cwd: '/home/user',
+      });
+
+      const result = parseLogData(data, 'gemini');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('system');
+      expect(result[0].session?.model).toBe('gemini-pro');
+    });
+
+    it('should parse Claude result event', () => {
+      const data = JSON.stringify({
+        type: 'result',
+        result: 'Done',
+        is_error: false,
+        cost_usd: 0.01,
+      });
+
+      const result = parseLogData(data, 'claude');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('result');
+      expect(result[0].result?.costUsd).toBe(0.01);
+    });
+
+    it('should parse Gemini result event', () => {
+      const data = JSON.stringify({
+        type: 'result',
+        message: 'Done',
+        status: 'success',
+        stats: { input_tokens: 100, output_tokens: 50 },
+      });
+
+      const result = parseLogData(data, 'gemini');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('result');
+      expect(result[0].result?.inputTokens).toBe(100);
     });
   });
 });

@@ -1,14 +1,16 @@
 /**
  * TextBlock Component
- * Displays Claude text responses with line-based folding
+ * Displays LLM text responses with line-based folding
  *
  * Task 2.4: TextBlockコンポーネントを作成
+ * llm-stream-log-parser Task 7.1: engineId support for dynamic display name
  * Requirements: 4.1, 4.2, 4.4, 7.1, 7.2, 7.3
  */
 
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, User } from 'lucide-react';
 import { clsx } from 'clsx';
+import { getLLMEngine, type LLMEngineId } from '@shared/registry';
 
 export interface TextBlockProps {
   text: {
@@ -18,14 +20,35 @@ export interface TextBlockProps {
   /** Fold threshold (default: 10 lines) */
   foldThreshold?: number;
   defaultExpanded?: boolean;
+  /**
+   * LLM engine ID for display name lookup
+   * llm-stream-log-parser Task 7.1: engineId support
+   * Requirements: 4.1, 4.2
+   */
+  engineId?: LLMEngineId;
 }
 
 const DEFAULT_FOLD_THRESHOLD = 10;
+
+/**
+ * Get assistant display label based on engineId
+ * Requirements: 4.1, 4.2 - Dynamic engine label display
+ */
+function getAssistantLabel(engineId?: LLMEngineId): string {
+  if (!engineId) {
+    // Backward compatibility: default to "Claude" when no engineId
+    return 'Claude';
+  }
+
+  const engine = getLLMEngine(engineId);
+  return engine?.label ?? 'Claude';
+}
 
 export function TextBlock({
   text,
   foldThreshold = DEFAULT_FOLD_THRESHOLD,
   defaultExpanded = false,
+  engineId,
 }: TextBlockProps): React.ReactElement | null {
   const { content, role } = text;
 
@@ -48,6 +71,9 @@ export function TextBlock({
 
   const isAssistant = role === 'assistant';
   const Icon = isAssistant ? MessageSquare : User;
+
+  // llm-stream-log-parser Task 7.1: Dynamic label based on engineId
+  const assistantLabel = getAssistantLabel(engineId);
 
   return (
     <div
@@ -84,7 +110,7 @@ export function TextBlock({
               : 'text-blue-700 dark:text-blue-300'
           )}
         >
-          {isAssistant ? 'Claude' : 'ユーザー'}
+          {isAssistant ? assistantLabel : 'User'}
         </span>
       </div>
 
@@ -117,12 +143,12 @@ export function TextBlock({
             {isExpanded ? (
               <>
                 <ChevronDown className="w-3.5 h-3.5" />
-                折りたたむ
+                Collapse
               </>
             ) : (
               <>
                 <ChevronRight className="w-3.5 h-3.5" />
-                展開 (+{lineCount - foldThreshold + 1}行)
+                Expand (+{lineCount - foldThreshold + 1} lines)
               </>
             )}
           </button>

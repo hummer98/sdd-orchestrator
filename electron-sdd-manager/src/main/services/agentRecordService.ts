@@ -14,6 +14,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { type AgentCategory, getCategoryBasePath, getMetadataPath } from './agentCategory';
+import type { LLMEngineId } from '@shared/registry';
 
 // Agent status types - SSOT for agent state
 // agent-state-file-ssot: Moved from agentRegistry.ts
@@ -35,6 +36,12 @@ export interface AgentInfo {
   readonly cwd?: string;
   /** Prompt used to start the agent */
   readonly prompt?: string;
+  /**
+   * LLM engine ID used for this agent
+   * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
+   * Requirements: 2.1
+   */
+  readonly engineId?: LLMEngineId;
 }
 
 export interface AgentRecord {
@@ -51,6 +58,12 @@ export interface AgentRecord {
   cwd?: string;
   /** Prompt used to start the agent */
   prompt?: string;
+  /**
+   * LLM engine ID used for this agent
+   * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
+   * Requirements: 2.1
+   */
+  engineId?: LLMEngineId;
 }
 
 export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;

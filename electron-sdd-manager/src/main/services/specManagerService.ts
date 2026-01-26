@@ -29,7 +29,7 @@ import { getReviewEngine, type ReviewerScheme, type BuildArgsContext } from '../
 // llm-engine-abstraction: LLM Engine resolution
 // Requirements: 7.1, 7.2
 import { engineConfigService, type EngineConfigPhase } from './engineConfigService';
-import { getLLMEngine, type LLMEngine } from '../../shared/registry/llmEngineRegistry';
+import { getLLMEngine, type LLMEngine, type LLMEngineId } from '../../shared/registry/llmEngineRegistry';
 import { DocumentReviewService } from './documentReviewService';
 // spec-event-log: Event logging for agent activities
 import { getDefaultEventLogService } from './eventLogService';
@@ -313,6 +313,12 @@ export interface StartAgentOptions {
   worktreeCwd?: string;
   /** Prompt used to start the agent (for recording in agent metadata) */
   prompt?: string;
+  /**
+   * LLM engine ID for this agent
+   * llm-stream-log-parser: Task 6.2 - engineId in StartAgentOptions
+   * Requirements: 2.1
+   */
+  engineId?: LLMEngineId;
 }
 
 /** Document Review execution options (Requirements: 6.1) */
@@ -761,7 +767,7 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd } = options;
+    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd, engineId } = options;
     const effectiveProviderType = providerType ?? this.providerType;
     // Extract prompt from options or args
     const effectivePrompt = options.prompt ?? extractPromptFromArgs(args);
@@ -902,6 +908,7 @@ export class SpecManagerService {
 
       // Create agent info
       // Bug fix: agent-resume-cwd-mismatch - Include cwd for consistency
+      // llm-stream-log-parser: Task 6.2 - Include engineId for log parsing
       const agentInfo: AgentInfo = {
         agentId,
         specId,
@@ -914,6 +921,7 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
         cwd: effectiveCwd,
         prompt: effectivePrompt,
+        engineId,
       };
 
       // agent-state-file-ssot: Store process handle for stdin/kill operations
@@ -954,6 +962,7 @@ export class SpecManagerService {
 
       // agent-state-file-ssot: Write agent record to file (SSOT)
       // Bug fix: agent-resume-cwd-mismatch - Save cwd for resume operations
+      // llm-stream-log-parser: Task 6.2 - Save engineId for log parsing
       await this.recordService.writeRecord({
         agentId,
         specId,
@@ -966,6 +975,7 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
         cwd: effectiveCwd,
         prompt: effectivePrompt,
+        engineId,
       });
 
       // Mark file as written and process any pending events

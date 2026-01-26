@@ -1,238 +1,46 @@
 /**
  * Log Formatter Utility
- * Parses Claude CLI stream-json output and formats it for structured display
+ * Facade for engine-specific stream log parsers
  *
- * Task 1.1: Move to shared/utils and extend ParsedLogEntry type
- * Requirements: 1.3, 4.3 (no truncate)
+ * Task 4.1: Facade pattern with engineId-based parser selection
+ * Requirements: 2.2 (engineId selection), 2.3 (fallback to Claude)
  */
 
-// Claude stream-json event type definitions
-interface ClaudeEvent {
-  type: 'system' | 'assistant' | 'user' | 'result';
-  subtype?: string;
-  session_id?: string;
-  cwd?: string;
-  version?: string;
-  message?: {
-    role?: string;
-    model?: string;
-    content?: ContentBlock[];
-    stop_reason?: string;
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-    };
-  };
-  result?: string;
-  cost_usd?: number;
-  duration_ms?: number;
-  is_error?: boolean;
-  num_turns?: number;
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-  };
-}
+import type { LLMEngineId } from '@shared/registry';
+import { claudeParser } from './claudeParser';
+import { geminiParser } from './geminiParser';
+import type { ParsedLogEntry, LogStreamParser } from './parserTypes';
 
-interface ContentBlock {
-  type: string;
-  text?: string;
-  id?: string;           // tool_use ID
-  tool_use_id?: string;  // tool_result ID reference
-  name?: string;         // tool name for tool_use
-  input?: Record<string, unknown>;
-  content?: string;      // tool_result content
-  is_error?: boolean;    // tool_result error flag
-}
+// Re-export ParsedLogEntry from parserTypes for backward compatibility
+export type { ParsedLogEntry } from './parserTypes';
 
 /**
- * Parsed log entry type for structured rendering
- * Requirements: 1.3 - Extended type definition for session/tool/toolResult/text/result
+ * Get the appropriate parser for the given engine ID
+ * Requirements: 2.2, 2.3
+ * @param engineId - LLM engine ID (defaults to 'claude' for backward compatibility)
  */
-export interface ParsedLogEntry {
-  id: string;
-  type: 'system' | 'assistant' | 'tool_use' | 'tool_result' | 'result' | 'text' | 'error' | 'input';
-  timestamp?: number;
-  // system/init
-  session?: {
-    cwd?: string;
-    model?: string;
-    version?: string;
-  };
-  // tool_use
-  tool?: {
-    name: string;
-    toolUseId?: string;
-    input?: Record<string, unknown>;
-  };
-  // tool_result
-  toolResult?: {
-    toolUseId: string;
-    content: string;
-    isError: boolean;
-  };
-  // text (assistant/user)
-  text?: {
-    content: string;
-    role: 'assistant' | 'user';
-  };
-  // result
-  result?: {
-    content: string;
-    isError: boolean;
-    costUsd?: number;
-    durationMs?: number;
-    numTurns?: number;
-    inputTokens?: number;
-    outputTokens?: number;
-  };
-}
-
-let idCounter = 0;
-
-function generateId(): string {
-  return `log-${Date.now()}-${++idCounter}`;
-}
-
-/**
- * Parse a single Claude stream-json line and return parsed entries
- */
-function parseClaudeEvent(jsonLine: string): ParsedLogEntry[] {
-  const entries: ParsedLogEntry[] = [];
-
-  try {
-    const event = JSON.parse(jsonLine) as ClaudeEvent;
-
-    switch (event.type) {
-      case 'system':
-        if (event.subtype === 'init') {
-          entries.push({
-            id: generateId(),
-            type: 'system',
-            timestamp: Date.now(),
-            session: {
-              cwd: event.cwd,
-              model: event.message?.model,
-              version: event.version,
-            },
-          });
-        }
-        break;
-
-      case 'assistant':
-        if (event.message?.content) {
-          for (const block of event.message.content) {
-            if (block.type === 'text' && block.text) {
-              // Text content - no truncation (Requirement 4.3)
-              const normalizedText = block.text.replace(/\\n/g, '\n');
-              entries.push({
-                id: generateId(),
-                type: 'text',
-                timestamp: Date.now(),
-                text: {
-                  content: normalizedText,
-                  role: 'assistant',
-                },
-              });
-            } else if (block.type === 'tool_use' && block.name) {
-              entries.push({
-                id: generateId(),
-                type: 'tool_use',
-                timestamp: Date.now(),
-                tool: {
-                  name: block.name,
-                  toolUseId: block.id,
-                  input: block.input,
-                },
-              });
-            }
-          }
-        }
-        break;
-
-      case 'user':
-        if (event.message?.content) {
-          for (const block of event.message.content) {
-            if (block.tool_use_id && block.type === 'tool_result') {
-              entries.push({
-                id: generateId(),
-                type: 'tool_result',
-                timestamp: Date.now(),
-                toolResult: {
-                  toolUseId: block.tool_use_id,
-                  content: block.content || '',
-                  isError: block.is_error ?? false,
-                },
-              });
-            } else if (block.type === 'text' && block.text) {
-              // User input text
-              const normalizedText = block.text.replace(/\\n/g, '\n');
-              entries.push({
-                id: generateId(),
-                type: 'input',
-                timestamp: Date.now(),
-                text: {
-                  content: normalizedText,
-                  role: 'user',
-                },
-              });
-            }
-          }
-        }
-        break;
-
-      case 'result':
-        entries.push({
-          id: generateId(),
-          type: event.is_error ? 'error' : 'result',
-          timestamp: Date.now(),
-          result: {
-            content: event.result?.replace(/\\n/g, '\n') || '',
-            isError: event.is_error ?? false,
-            costUsd: event.cost_usd,
-            durationMs: event.duration_ms,
-            numTurns: event.num_turns,
-            inputTokens: event.usage?.input_tokens,
-            outputTokens: event.usage?.output_tokens,
-          },
-        });
-        break;
-    }
-  } catch {
-    // JSON parse failure - handle gracefully
-    const trimmed = jsonLine.trim();
-    if (trimmed) {
-      // Return as text entry for graceful degradation
-      entries.push({
-        id: generateId(),
-        type: 'text',
-        timestamp: Date.now(),
-        text: {
-          content: trimmed,
-          role: 'assistant',
-        },
-      });
-    }
+function getParser(engineId?: LLMEngineId): LogStreamParser {
+  switch (engineId) {
+    case 'gemini':
+      return geminiParser;
+    case 'claude':
+    default:
+      // Requirements: 2.3 - Default to Claude parser for backward compatibility
+      return claudeParser;
   }
-
-  return entries;
 }
 
 /**
- * Parse raw log data (may contain multiple JSON lines) and return parsed entries
- * Requirements: 1.3 - Maintains parse functionality
+ * Parse raw log data with engine-specific parser
+ * Requirements: 2.2 (engineId selection), 2.3 (fallback)
+ *
+ * @param data - Raw JSONL data
+ * @param engineId - LLM engine ID (defaults to 'claude' for backward compatibility)
+ * @returns Array of parsed log entries
  */
-export function parseLogData(data: string): ParsedLogEntry[] {
-  const entries: ParsedLogEntry[] = [];
-
-  // Handle multiple JSONL lines
-  const dataLines = data.split('\n').filter((l) => l.trim());
-
-  for (const line of dataLines) {
-    entries.push(...parseClaudeEvent(line));
-  }
-
-  return entries;
+export function parseLogData(data: string, engineId?: LLMEngineId): ParsedLogEntry[] {
+  const parser = getParser(engineId);
+  return parser.parseData(data);
 }
 
 /**
@@ -290,5 +98,5 @@ export function getColorClass(
   return colors[variant];
 }
 
-// Re-export for backward compatibility
-export type { ClaudeEvent, ContentBlock };
+// Re-export types from claudeParser for backward compatibility
+export type { ClaudeEvent, ContentBlock } from './claudeParser';

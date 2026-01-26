@@ -35,12 +35,12 @@ describe('Shared AgentLogPanel', () => {
   describe('Basic rendering', () => {
     it('should display "select agent" message when no agent provided', () => {
       render(<AgentLogPanel logs={[]} />);
-      expect(screen.getByText('Agentを選択してください')).toBeInTheDocument();
+      expect(screen.getByText('Select an Agent')).toBeInTheDocument();
     });
 
     it('should display empty logs message when agent has no logs', () => {
       render(<AgentLogPanel agent={{ ...baseAgent, command: '' }} logs={[]} />);
-      expect(screen.getByText('ログがありません')).toBeInTheDocument();
+      expect(screen.getByText('No logs available')).toBeInTheDocument();
     });
 
     it('should display agent phase in header', () => {
@@ -188,8 +188,8 @@ describe('Shared AgentLogPanel', () => {
 
       expect(screen.getByTestId('token-display')).toBeInTheDocument();
       // Check token display specifically contains formatted numbers
-      expect(screen.getByText(/入力: 100/)).toBeInTheDocument();
-      expect(screen.getByText(/出力: 50/)).toBeInTheDocument();
+      expect(screen.getByText(/Input: 100/)).toBeInTheDocument();
+      expect(screen.getByText(/Output: 50/)).toBeInTheDocument();
     });
 
     it('should not display tokens when showTokens is false', () => {
@@ -216,7 +216,7 @@ describe('Shared AgentLogPanel', () => {
       ];
       render(<AgentLogPanel agent={baseAgent} logs={logs} onCopy={onCopy} />);
 
-      const copyButton = screen.getByTitle('ログをコピー');
+      const copyButton = screen.getByTitle('Copy logs');
       fireEvent.click(copyButton);
 
       expect(onCopy).toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe('Shared AgentLogPanel', () => {
       ];
       render(<AgentLogPanel agent={baseAgent} logs={logs} onClear={onClear} />);
 
-      const clearButton = screen.getByTitle('ログをクリア');
+      const clearButton = screen.getByTitle('Clear logs');
       fireEvent.click(clearButton);
 
       expect(onClear).toHaveBeenCalled();
@@ -239,8 +239,8 @@ describe('Shared AgentLogPanel', () => {
       const onClear = vi.fn();
       render(<AgentLogPanel agent={baseAgent} logs={[]} onClear={onClear} />);
 
-      expect(screen.getByTitle('ログをコピー')).toBeDisabled();
-      expect(screen.getByTitle('ログをクリア')).toBeDisabled();
+      expect(screen.getByTitle('Copy logs')).toBeDisabled();
+      expect(screen.getByTitle('Clear logs')).toBeDisabled();
     });
   });
 
@@ -249,7 +249,7 @@ describe('Shared AgentLogPanel', () => {
       render(<AgentLogPanel agent={baseAgent} logs={[]} />);
 
       // Command is shown in SessionInfoBlock
-      expect(screen.getByText('作業ディレクトリ:')).toBeInTheDocument();
+      expect(screen.getByText('Working Directory:')).toBeInTheDocument();
       expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });

@@ -108,7 +108,7 @@ describe('AgentLogPanel - Task 31', () => {
 
       // Virtual scrolling doesn't render items without proper container size
       // We verify that the log panel is rendered and the agent info is displayed
-      expect(screen.getByText('Agentログ')).toBeInTheDocument();
+      expect(screen.getByText('Agent Log')).toBeInTheDocument();
       expect(screen.getByText('requirements')).toBeInTheDocument();
     });
 
@@ -151,7 +151,7 @@ describe('AgentLogPanel - Task 31', () => {
 
       render(<AgentLogPanel />);
 
-      expect(screen.getByText('Agentを選択してください')).toBeInTheDocument();
+      expect(screen.getByText('Select an Agent')).toBeInTheDocument();
     });
 
     it('should show empty log message when logs are empty and no command', () => {
@@ -163,7 +163,7 @@ describe('AgentLogPanel - Task 31', () => {
 
       render(<AgentLogPanel />);
 
-      expect(screen.getByText('ログがありません')).toBeInTheDocument();
+      expect(screen.getByText('No logs available')).toBeInTheDocument();
     });
 
     it('should show command line when logs are empty but command exists', () => {
@@ -174,7 +174,7 @@ describe('AgentLogPanel - Task 31', () => {
       render(<AgentLogPanel />);
 
       // New implementation uses SessionInfoBlock for command display
-      expect(screen.getByText('作業ディレクトリ:')).toBeInTheDocument();
+      expect(screen.getByText('Working Directory:')).toBeInTheDocument();
       expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });
@@ -183,7 +183,7 @@ describe('AgentLogPanel - Task 31', () => {
     it('should display agentId and sessionId in header', () => {
       render(<AgentLogPanel />);
 
-      expect(screen.getByText('agent-1 - セッションID: session-1')).toBeInTheDocument();
+      expect(screen.getByText('agent-1 - Session: session-1')).toBeInTheDocument();
     });
 
     it('should not display agentId-sessionId when no agent is selected', () => {
@@ -203,13 +203,13 @@ describe('AgentLogPanel - Task 31', () => {
     it('should have copy button', () => {
       render(<AgentLogPanel />);
 
-      expect(screen.getByTitle('ログをコピー')).toBeInTheDocument();
+      expect(screen.getByTitle('Copy logs')).toBeInTheDocument();
     });
 
     it('should copy logs to clipboard when copy button is clicked', async () => {
       render(<AgentLogPanel />);
 
-      const copyButton = screen.getByTitle('ログをコピー');
+      const copyButton = screen.getByTitle('Copy logs');
       fireEvent.click(copyButton);
 
       expect(mockWriteText).toHaveBeenCalled();
@@ -218,13 +218,13 @@ describe('AgentLogPanel - Task 31', () => {
     it('should have clear button', () => {
       render(<AgentLogPanel />);
 
-      expect(screen.getByTitle('ログをクリア')).toBeInTheDocument();
+      expect(screen.getByTitle('Clear logs')).toBeInTheDocument();
     });
 
     it('should call clearLogs when clear button is clicked', () => {
       render(<AgentLogPanel />);
 
-      const clearButton = screen.getByTitle('ログをクリア');
+      const clearButton = screen.getByTitle('Clear logs');
       fireEvent.click(clearButton);
 
       expect(mockClearLogs).toHaveBeenCalledWith('agent-1');
@@ -237,7 +237,7 @@ describe('AgentLogPanel - Task 31', () => {
 
       render(<AgentLogPanel />);
 
-      const copyButton = screen.getByTitle('ログをコピー');
+      const copyButton = screen.getByTitle('Copy logs');
       expect(copyButton).toBeDisabled();
     });
 
@@ -248,7 +248,7 @@ describe('AgentLogPanel - Task 31', () => {
 
       render(<AgentLogPanel />);
 
-      const clearButton = screen.getByTitle('ログをクリア');
+      const clearButton = screen.getByTitle('Clear logs');
       expect(clearButton).toBeDisabled();
     });
   });
@@ -298,7 +298,7 @@ describe('AgentLogPanel - Task 31', () => {
       render(<AgentLogPanel />);
 
       // Token display should not be present when there are no tokens
-      expect(screen.queryByText(/入力:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Input:/)).not.toBeInTheDocument();
     });
 
     it('should display token icon when tokens are present', () => {

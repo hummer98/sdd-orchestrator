@@ -27,23 +27,11 @@ import type {
   BugsChangeEvent,
 } from './types';
 
-// Get project store for current project path
-// Lazy import to avoid circular dependencies
-let _projectStore: { getState: () => { currentProject: { path: string } | null } } | null = null;
-
-function getProjectStore() {
-  if (!_projectStore) {
-    // Dynamic import to avoid circular dependency issues
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useProjectStore } = require('@renderer/stores/projectStore');
-    _projectStore = useProjectStore;
-  }
-  return _projectStore;
-}
-
 function getCurrentProjectPath(): string | null {
-  const store = getProjectStore();
-  return store?.getState().currentProject?.path ?? null;
+  if (typeof window === 'undefined') return null;
+  // Use globally exposed stores to avoid circular dependency and require() issues in renderer
+  const stores = (window as any).__STORES__;
+  return stores?.project?.getState().currentProject ?? null;
 }
 
 /**

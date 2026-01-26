@@ -42,15 +42,16 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
 
 /**
  * Helper: Get bugs list from bugStore
+ * Note: __STORES__.bug is the correct accessor (not bugStore)
  */
 async function getBugsList(): Promise<{ name: string; phase: string }[]> {
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.bugStore?.getState) {
+      if (!stores?.bug?.getState) {
         return [];
       }
-      const bugs = stores.bugStore.getState().bugs;
+      const bugs = stores.bug.getState().bugs;
       return bugs.map((b: any) => ({ name: b.name, phase: b.phase }));
     } catch (e) {
       return [];
@@ -60,13 +61,14 @@ async function getBugsList(): Promise<{ name: string; phase: string }[]> {
 
 /**
  * Helper: Check if bugs watcher is active
+ * Note: __STORES__.bug is the correct accessor (not bugStore)
  */
 async function isBugsWatcherActive(): Promise<boolean> {
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.bugStore?.getState) return false;
-      return stores.bugStore.getState().isWatching === true;
+      if (!stores?.bug?.getState) return false;
+      return stores.bug.getState().isWatching === true;
     } catch {
       return false;
     }
@@ -199,6 +201,107 @@ describe('Bugs File Watcher E2E', () => {
       const initialBugNames = initialBugs.map(b => b.name);
       console.log('[E2E] Initial bug names:', initialBugNames);
 
+      // DEBUG: isWatchingの状態を確認
+      const isWatching = await isBugsWatcherActive();
+      console.log('[E2E] isWatching after project select:', isWatching);
+
+      // DEBUG: 直接イベントリスナーをテスト
+      const hasOnBugsChanged = await browser.execute(() => {
+        const api = (window as any).electronAPI;
+        return typeof api?.onBugsChanged === 'function';
+      });
+      console.log('[E2E] hasOnBugsChanged:', hasOnBugsChanged);
+
+      // DEBUG: currentProjectの状態を確認
+      const currentProject = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        return stores?.project?.getState()?.currentProject;
+      });
+      console.log('[E2E] currentProject:', JSON.stringify(currentProject));
+
+      // DEBUG: 追加でリスナーを登録してイベントを確認 + bugStoreの状態を確認
+      // Also manually call readBugs to see if it works
+      await browser.execute(async () => {
+        const api = (window as any).electronAPI;
+        const projectPath = '/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/e2e-wdio/fixtures/bugs-pane-test';
+        try {
+          const result = await api.readBugs(projectPath);
+          console.log('[E2E-DEBUG] Direct readBugs result:', JSON.stringify(result));
+          (window as any).__DIRECT_READ_BUGS_RESULT__ = result;
+        } catch (err: any) {
+          console.log('[E2E-DEBUG] Direct readBugs error:', err?.message);
+          (window as any).__DIRECT_READ_BUGS_RESULT__ = { error: err?.message };
+        }
+
+        if (api?.onBugsChanged) {
+          api.onBugsChanged(async (event: any) => {
+            console.log('[E2E-DEBUG] Received bugs change event:', JSON.stringify(event));
+            (window as any).__LAST_BUGS_EVENT__ = event;
+            // Also manually trigger a getBugs call to see what happens
+            const stores = (window as any).__STORES__;
+            if (stores?.bug?.getState) {
+              const state = stores.bug.getState();
+              console.log('[E2E-DEBUG] bugStore state before refresh:', {
+                isWatching: state.isWatching,
+                bugsCount: state.bugs.length,
+              });
+            }
+            // Try refreshing bugs manually
+            try {
+              const refreshResult = await api.readBugs(projectPath);
+              console.log('[E2E-DEBUG] readBugs after event:', JSON.stringify(refreshResult?.bugs?.map((b: any) => b.name)));
+              (window as any).__READ_BUGS_AFTER_EVENT__ = refreshResult;
+            } catch (err: any) {
+              console.log('[E2E-DEBUG] readBugs after event error:', err?.message);
+            }
+          });
+        }
+      });
+
+      // Check readBugs result
+      const directReadBugsResult = await browser.execute(() => (window as any).__DIRECT_READ_BUGS_RESULT__);
+      console.log('[E2E] Direct readBugs result:', JSON.stringify(directReadBugsResult));
+
+      // DEBUG: Force call handleBugsChanged to see if it updates the store
+      // IMPORTANT: handleBugsChanged is async, so we need to await it
+      await browser.executeAsync(async (done: (result: any) => void) => {
+        const stores = (window as any).__STORES__;
+        if (stores?.bug?.getState) {
+          const state = stores.bug.getState();
+          // Manually call handleBugsChanged with a mock event
+          console.log('[E2E-DEBUG] Manually calling handleBugsChanged...');
+          // We need an ApiClient - create a simple mock
+          const mockApiClient = {
+            getBugs: async () => {
+              const api = (window as any).electronAPI;
+              const projectPath = '/Users/yamamoto/git/sdd-orchestrator/electron-sdd-manager/e2e-wdio/fixtures/bugs-pane-test';
+              const result = await api.readBugs(projectPath);
+              console.log('[E2E-DEBUG] mockApiClient.getBugs result:', JSON.stringify(result.bugs.map((b: any) => b.name)));
+              return { ok: true, value: result.bugs };
+            },
+          };
+          try {
+            await state.handleBugsChanged(mockApiClient, { type: 'add', bugName: 'test-manual', path: '/test' });
+            console.log('[E2E-DEBUG] handleBugsChanged completed');
+            const newState = stores.bug.getState();
+            done({ bugsCount: newState.bugs.length, bugNames: newState.bugs.map((b: any) => b.name) });
+          } catch (err: any) {
+            console.log('[E2E-DEBUG] handleBugsChanged error:', err?.message);
+            done({ error: err?.message });
+          }
+        } else {
+          done({ error: 'stores not available' });
+        }
+      });
+      await browser.pause(500);
+      const bugStoreAfterManual = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.bug?.getState) return null;
+        const state = stores.bug.getState();
+        return { bugsCount: state.bugs.length, bugNames: state.bugs.map((b: any) => b.name) };
+      });
+      console.log('[E2E] bugStore after manual handleBugsChanged:', JSON.stringify(bugStoreAfterManual));
+
       // 3. 新しいbugフォルダを作成（/kiro:bug-createと同等の操作）
       const newBugName = 'e2e-new-bug';
       createBugFolder(newBugName);
@@ -207,11 +310,36 @@ describe('Bugs File Watcher E2E', () => {
       // 4. ファイル監視による自動更新を待つ
       // chokidar: awaitWriteFinish 200ms + debounce 300ms = 約500ms
       // 余裕を持って最大15秒待機
+      let iteration = 0;
       const updated = await waitForCondition(async () => {
+        iteration++;
         const bugs = await getBugsList();
         const hasNewBug = bugs.some(b => b.name === newBugName);
         if (!hasNewBug) {
           console.log('[E2E] Waiting for bugs update... current count:', bugs.length, 'has new bug:', hasNewBug);
+          // Check if event was received
+          const lastEvent = await browser.execute(() => (window as any).__LAST_BUGS_EVENT__);
+          if (lastEvent) {
+            console.log('[E2E] Last bugs event received:', JSON.stringify(lastEvent));
+          }
+          // Also check if bugStore refreshed
+          const bugStoreState = await browser.execute(() => {
+            const stores = (window as any).__STORES__;
+            if (!stores?.bug?.getState) return null;
+            const state = stores.bug.getState();
+            return { isWatching: state.isWatching, bugsCount: state.bugs.length, bugNames: state.bugs.map((b: any) => b.name) };
+          });
+          console.log('[E2E] bugStore state:', JSON.stringify(bugStoreState));
+          // Check readBugs after event
+          const readBugsAfterEvent = await browser.execute(() => (window as any).__READ_BUGS_AFTER_EVENT__);
+          if (readBugsAfterEvent) {
+            console.log('[E2E] readBugs after event:', JSON.stringify(readBugsAfterEvent?.bugs?.map((b: any) => b.name)));
+          }
+          // Dump browser console logs periodically
+          if (iteration === 3 || iteration === 10) {
+            const logs = await browser.getLogs('browser');
+            console.log('[E2E] Browser console logs:', JSON.stringify(logs, null, 2));
+          }
         }
         return hasNewBug;
       }, 15000, 500, 'bugs-list-update');

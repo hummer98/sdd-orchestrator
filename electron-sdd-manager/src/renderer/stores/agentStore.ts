@@ -82,7 +82,7 @@ export interface AgentInfo {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
    * Requirements: 4.1, 4.2
    */
-  engineId?: LLMEngineId;
+  engineId: LLMEngineId;
 }
 
 /**

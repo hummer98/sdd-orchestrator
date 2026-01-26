@@ -26,6 +26,7 @@ describe('Shared AgentLogPanel', () => {
     phase: 'requirements',
     status: 'running',
     command: 'claude -p "/kiro:spec-requirements"',
+    engineId: 'claude',
   };
 
   beforeEach(() => {
@@ -67,6 +68,33 @@ describe('Shared AgentLogPanel', () => {
       );
       expect(screen.queryByTestId('running-indicator')).not.toBeInTheDocument();
     });
+
+    it('should display engine tag when engineId is provided', () => {
+      render(
+        <AgentLogPanel
+          agent={{ ...baseAgent, engineId: 'claude' }}
+          logs={[]}
+        />
+      );
+      const engineTag = screen.getByTestId('engine-tag');
+      expect(engineTag).toBeInTheDocument();
+      expect(engineTag).toHaveTextContent('Claude');
+      expect(engineTag).toHaveClass('bg-blue-100');
+    });
+
+    it('should display Gemini engine tag with correct styling', () => {
+      render(
+        <AgentLogPanel
+          agent={{ ...baseAgent, engineId: 'gemini' }}
+          logs={[]}
+        />
+      );
+      const engineTag = screen.getByTestId('engine-tag');
+      expect(engineTag).toBeInTheDocument();
+      expect(engineTag).toHaveTextContent('Gemini');
+      expect(engineTag).toHaveClass('bg-purple-100');
+    });
+
   });
 
   describe('Bug fix: stdin duplicate input prevention', () => {

@@ -104,6 +104,7 @@ export class HangDetector {
           startedAt: record.startedAt,
           lastActivityAt: record.lastActivityAt,
           command: record.command,
+          engineId: record.engineId,
         };
         this.callbacks.forEach((cb) => cb(agentInfo));
       }

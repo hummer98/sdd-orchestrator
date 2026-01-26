@@ -76,6 +76,7 @@ function mapAgentInfoToLogInfo(agent: AgentInfo): AgentLogInfo {
     phase: agent.phase,
     status: agent.status,
     command: agent.command,
+    engineId: agent.engineId,
   };
 }
 

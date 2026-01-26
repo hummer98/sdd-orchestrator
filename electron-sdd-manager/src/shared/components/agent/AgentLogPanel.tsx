@@ -26,6 +26,7 @@ import { useIncrementalTokenAggregator } from '@shared/hooks/useIncrementalToken
 import { LogEntryBlock } from './LogEntryBlock';
 import type { LogEntry, AgentStatus } from '@shared/api/types';
 import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
+import { getLLMEngine } from '@shared/registry';
 import type { LLMEngineId } from '@shared/registry';
 
 // =============================================================================
@@ -54,7 +55,7 @@ export interface AgentLogInfo {
    * llm-stream-log-parser Task 7.2: engineId support
    * Requirements: 4.1, 4.2
    */
-  engineId?: LLMEngineId;
+  engineId: LLMEngineId;
 }
 
 export interface AgentLogPanelProps {
@@ -173,6 +174,16 @@ export function AgentLogPanel({
               <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 {agent.phase}
+              </span>
+              {/* Engine tag - shows Claude/Gemini badge */}
+              <span
+                data-testid="engine-tag"
+                className={clsx(
+                  'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                  getLLMEngine(agent.engineId).colorClass
+                )}
+              >
+                {getLLMEngine(agent.engineId).label}
               </span>
               {showSessionId && agent.sessionId && (
                 <>

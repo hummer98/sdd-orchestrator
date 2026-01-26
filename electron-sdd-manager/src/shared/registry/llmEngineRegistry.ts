@@ -60,6 +60,8 @@ export interface LLMEngine {
   readonly id: LLMEngineId;
   /** Display name */
   readonly label: string;
+  /** Tag color class (Tailwind) for UI display */
+  readonly colorClass: string;
   /** Executable command */
   readonly command: string;
   /** Build command line arguments */
@@ -152,6 +154,7 @@ function parseJSONLResult(data: string): ParsedOutput {
 const CLAUDE_ENGINE: LLMEngine = {
   id: 'claude',
   label: 'Claude',
+  colorClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   command: 'claude',
 
   buildArgs(options: BuildArgsOptions): string[] {
@@ -193,6 +196,7 @@ const CLAUDE_ENGINE: LLMEngine = {
 const GEMINI_ENGINE: LLMEngine = {
   id: 'gemini',
   label: 'Gemini',
+  colorClass: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   command: 'gemini',
 
   buildArgs(options: BuildArgsOptions): string[] {

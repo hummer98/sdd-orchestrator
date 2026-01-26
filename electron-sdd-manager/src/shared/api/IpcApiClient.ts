@@ -242,6 +242,7 @@ export class IpcApiClient implements ApiClient {
             // Include command and sessionId for agent log display
             command: agent.command,
             sessionId: agent.sessionId,
+            engineId: agent.engineId,
           });
         }
       }

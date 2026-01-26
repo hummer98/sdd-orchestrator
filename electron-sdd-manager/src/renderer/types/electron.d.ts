@@ -380,6 +380,8 @@ export interface AgentInfo {
   // project-agent-release-footer: Task 2.3 - Args field for release detection
   // Requirements: 6.1, 6.2, 6.3
   readonly args?: string;
+  // llm-stream-log-parser: engineId for UI display
+  readonly engineId: LLMEngineId;
 }
 
 /**

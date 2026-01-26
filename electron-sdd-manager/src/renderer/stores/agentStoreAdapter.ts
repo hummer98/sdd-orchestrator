@@ -40,6 +40,7 @@ function toSharedAgentInfo(rendererAgent: RendererAgentInfo): SharedAgentInfo {
     // The main process stores the command string in 'prompt' field (via extractPromptFromArgs)
     // We map it to 'args' in the renderer for release detection
     args: rendererAgent.prompt,
+    engineId: rendererAgent.engineId,
   };
 }
 
@@ -60,6 +61,8 @@ interface RendererAgentInfo {
   readonly startedAt: string;
   readonly lastActivityAt: string;
   readonly command: string;
+  // llm-stream-log-parser: engineId for UI display
+  readonly engineId: import('@shared/registry').LLMEngineId;
 }
 
 // =============================================================================

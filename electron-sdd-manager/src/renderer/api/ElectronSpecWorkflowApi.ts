@@ -25,6 +25,7 @@ import type {
   AutoExecutionState,
 } from '@shared/api/types';
 import type { EventLogEntry, EventLogError } from '@shared/types';
+import { DEFAULT_LLM_ENGINE } from '@shared/registry';
 
 // =============================================================================
 // ElectronSpecWorkflowApi Implementation
@@ -71,6 +72,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
           phase,
           status: 'running',
           startedAt: Date.now(),
+          engineId: result.engineId ?? DEFAULT_LLM_ENGINE,
         },
       };
     } catch (error) {
@@ -116,6 +118,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
           phase: 'document-review',
           status: 'running',
           startedAt: Date.now(),
+          engineId: result.engineId ?? DEFAULT_LLM_ENGINE,
         },
       };
     } catch (error) {
@@ -146,6 +149,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
           phase: 'inspection',
           status: 'running',
           startedAt: Date.now(),
+          engineId: result.engineId ?? DEFAULT_LLM_ENGINE,
         },
       };
     } catch (error) {
@@ -413,6 +417,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
           phase,
           status: 'running',
           startedAt: Date.now(),
+          engineId: result.engineId ?? DEFAULT_LLM_ENGINE,
         },
       };
     } catch (error) {

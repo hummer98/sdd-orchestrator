@@ -385,6 +385,7 @@ export function AgentDetailDrawer({
               phase: agent.phase,
               status: agent.status,
               command: agent.command,
+              engineId: agent.engineId,
             }}
             logs={logs}
             showSessionId={false}

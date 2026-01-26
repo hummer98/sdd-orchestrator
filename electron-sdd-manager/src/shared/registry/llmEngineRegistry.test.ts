@@ -98,12 +98,14 @@ describe('LLM Engine Types', () => {
       const engine: LLMEngine = {
         id: 'claude',
         label: 'Claude',
+        colorClass: 'bg-blue-100 text-blue-800',
         command: 'claude',
         buildArgs: (options) => ['-p', options.prompt],
         parseOutput: () => ({ type: 'success' }),
       };
       expect(engine.id).toBe('claude');
       expect(engine.label).toBe('Claude');
+      expect(engine.colorClass).toBe('bg-blue-100 text-blue-800');
       expect(engine.command).toBe('claude');
       expect(typeof engine.buildArgs).toBe('function');
       expect(typeof engine.parseOutput).toBe('function');
@@ -130,6 +132,10 @@ describe('Claude Engine', () => {
 
     it('should have correct command', () => {
       expect(claudeEngine.command).toBe('claude');
+    });
+
+    it('should have correct colorClass', () => {
+      expect(claudeEngine.colorClass).toBe('bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200');
     });
   });
 
@@ -254,6 +260,10 @@ describe('Gemini Engine', () => {
     it('should have correct command', () => {
       expect(geminiEngine.command).toBe('gemini');
     });
+
+    it('should have correct colorClass', () => {
+      expect(geminiEngine.colorClass).toBe('bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200');
+    });
   });
 
   describe('buildArgs', () => {
@@ -353,6 +363,7 @@ describe('LLM Engine Registry', () => {
       for (const [id, engine] of Object.entries(LLM_ENGINES)) {
         expect(engine.id).toBe(id);
         expect(typeof engine.label).toBe('string');
+        expect(typeof engine.colorClass).toBe('string');
         expect(typeof engine.command).toBe('string');
         expect(typeof engine.buildArgs).toBe('function');
         expect(typeof engine.parseOutput).toBe('function');

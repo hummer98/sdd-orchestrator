@@ -30,7 +30,7 @@ import { getReviewEngine, getEngineIdFromScheme, type ReviewerScheme, type Build
 // llm-engine-abstraction: LLM Engine resolution
 // Requirements: 7.1, 7.2
 import { engineConfigService, type EngineConfigPhase } from './engineConfigService';
-import { getLLMEngine, type LLMEngine, type LLMEngineId } from '../../shared/registry/llmEngineRegistry';
+import { getLLMEngine, DEFAULT_LLM_ENGINE, type LLMEngine, type LLMEngineId } from '../../shared/registry/llmEngineRegistry';
 import { DocumentReviewService } from './documentReviewService';
 // spec-event-log: Event logging for agent activities
 import { getDefaultEventLogService } from './eventLogService';
@@ -771,7 +771,9 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd, engineId } = options;
+    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd } = options;
+    // engineId: デフォルト適用 - 以降は必須として扱う
+    const engineId: LLMEngineId = options.engineId ?? DEFAULT_LLM_ENGINE;
     const effectiveProviderType = providerType ?? this.providerType;
     // Extract prompt from options or args
     const effectivePrompt = options.prompt ?? extractPromptFromArgs(args);
@@ -1583,6 +1585,7 @@ export class SpecManagerService {
       command: record.command,
       // Bug fix: agent-resume-cwd-mismatch - Preserve cwd for resume operations
       cwd: record.cwd,
+      engineId: record.engineId,
     };
   }
 

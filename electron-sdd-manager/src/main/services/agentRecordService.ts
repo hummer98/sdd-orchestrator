@@ -41,7 +41,7 @@ export interface AgentInfo {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
    * Requirements: 2.1
    */
-  readonly engineId?: LLMEngineId;
+  readonly engineId: LLMEngineId;
 }
 
 export interface AgentRecord {
@@ -63,7 +63,7 @@ export interface AgentRecord {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
    * Requirements: 2.1
    */
-  engineId?: LLMEngineId;
+  engineId: LLMEngineId;
 }
 
 export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;

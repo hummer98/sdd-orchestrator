@@ -47,6 +47,8 @@ const createMockApiClient = (specDetail?: SpecDetail | null): ApiClient => ({
   // Bug-related methods
   listBugs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
   getBugDetail: vi.fn().mockResolvedValue({ ok: true, value: null }),
+  // auto-execution-ssot: updateSpecJson for auto permission toggle
+  updateSpecJson: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
 });
 
 const createMockSpec = (name: string): SpecMetadataWithPath => ({
@@ -319,6 +321,122 @@ describe('useRemoteWorkflowState', () => {
       });
 
       expect(result.current.state.parallelModeEnabled).toBe(false);
+    });
+  });
+
+  // auto-execution-ssot: Tests for handleToggleAutoPermission
+  describe('auto execution permission toggle (SSOT)', () => {
+    it('should call updateSpecJson when toggling auto permission', async () => {
+      const specName = 'auto-permission-feature';
+      const specDetail = createMockSpecDetail(specName, TASKS_WITHOUT_PARALLEL);
+      const apiClient = createMockApiClient(specDetail);
+      const spec = createMockSpec(specName);
+
+      const { result } = renderHook(() =>
+        useRemoteWorkflowState({
+          apiClient,
+          spec,
+          initialSpecDetail: specDetail,
+        })
+      );
+
+      // Toggle requirements permission
+      await act(async () => {
+        await result.current.handlers.handleToggleAutoPermission('requirements');
+      });
+
+      // Should call updateSpecJson with the toggled permission
+      expect(apiClient.updateSpecJson).toHaveBeenCalledWith(specName, {
+        autoExecution: expect.objectContaining({
+          permissions: expect.objectContaining({
+            requirements: false, // Default is true, toggled to false
+          }),
+        }),
+      });
+    });
+
+    it('should not call updateSpecJson when apiClient.updateSpecJson is not available', async () => {
+      const specName = 'no-update-feature';
+      const specDetail = createMockSpecDetail(specName, TASKS_WITHOUT_PARALLEL);
+      // Create apiClient without updateSpecJson
+      const apiClient = {
+        ...createMockApiClient(specDetail),
+        updateSpecJson: undefined,
+      } as unknown as ApiClient;
+      const spec = createMockSpec(specName);
+
+      const { result } = renderHook(() =>
+        useRemoteWorkflowState({
+          apiClient,
+          spec,
+          initialSpecDetail: specDetail,
+        })
+      );
+
+      // Should not throw when toggling
+      await act(async () => {
+        await result.current.handlers.handleToggleAutoPermission('requirements');
+      });
+
+      // No error should occur
+    });
+
+    it('should toggle document-review permission via handleDocumentReviewAutoExecutionFlagChange', async () => {
+      const specName = 'doc-review-toggle-feature';
+      const specDetail = createMockSpecDetail(specName, TASKS_WITHOUT_PARALLEL);
+      const apiClient = createMockApiClient(specDetail);
+      const spec = createMockSpec(specName);
+
+      const { result } = renderHook(() =>
+        useRemoteWorkflowState({
+          apiClient,
+          spec,
+          initialSpecDetail: specDetail,
+        })
+      );
+
+      // Toggle via document review flag change handler
+      await act(async () => {
+        await result.current.handlers.handleDocumentReviewAutoExecutionFlagChange('pause');
+      });
+
+      // Should call updateSpecJson with document-review toggled
+      expect(apiClient.updateSpecJson).toHaveBeenCalledWith(specName, {
+        autoExecution: expect.objectContaining({
+          permissions: expect.objectContaining({
+            'document-review': false, // Default is true, toggled to false
+          }),
+        }),
+      });
+    });
+
+    it('should toggle inspection permission via handleToggleInspectionAutoPermission', async () => {
+      const specName = 'inspection-toggle-feature';
+      const specDetail = createMockSpecDetail(specName, TASKS_WITHOUT_PARALLEL);
+      const apiClient = createMockApiClient(specDetail);
+      const spec = createMockSpec(specName);
+
+      const { result } = renderHook(() =>
+        useRemoteWorkflowState({
+          apiClient,
+          spec,
+          initialSpecDetail: specDetail,
+        })
+      );
+
+      // Toggle via inspection permission handler
+      await act(async () => {
+        await result.current.handlers.handleToggleInspectionAutoPermission();
+      });
+
+      // Should call updateSpecJson with inspection toggled
+      expect(apiClient.updateSpecJson).toHaveBeenCalledWith(specName, {
+        autoExecution: expect.objectContaining({
+          permissions: expect.objectContaining({
+            inspection: false, // Default is true, toggled to false
+          }),
+        }),
+      });
     });
   });
 });

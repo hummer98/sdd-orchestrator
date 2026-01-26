@@ -3419,3 +3419,313 @@ describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons
     });
   });
 });
+
+// ============================================================
+// auto-execution-ssot feature: UPDATE_SPEC_JSON Handler Tests
+// Requirements: SSOT for auto-execution permissions
+// ============================================================
+
+describe('WebSocketHandler - UPDATE_SPEC_JSON Handler (auto-execution-ssot)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('UPDATE_SPEC_JSON message handling', () => {
+    it('should update spec.json and send SPEC_JSON_UPDATED on success', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+
+      const mockFileService = {
+        writeFile: vi.fn(),
+        resolveEntityPath: vi.fn(),
+        readArtifact: vi.fn(),
+        updateSpecJson: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+      };
+      handler.setFileService(mockFileService as any);
+
+      const mockStateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([]),
+        getAgents: vi.fn().mockResolvedValue([]),
+      };
+      handler.setStateProvider(mockStateProvider);
+
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      const message = JSON.stringify({
+        type: 'UPDATE_SPEC_JSON',
+        payload: {
+          specId: 'test-feature',
+          updates: {
+            autoExecution: {
+              permissions: {
+                requirements: false,
+                design: true,
+              },
+            },
+          },
+        },
+        requestId: 'req-update-1',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockFileService.updateSpecJson).toHaveBeenCalledWith(
+        '/test/project/.kiro/specs/test-feature',
+        {
+          autoExecution: {
+            permissions: {
+              requirements: false,
+              design: true,
+            },
+          },
+        }
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"SPEC_JSON_UPDATED"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"requestId":"req-update-1"')
+      );
+    });
+
+    it('should send ERROR when fileService is not configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+      // No fileService set
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      const message = JSON.stringify({
+        type: 'UPDATE_SPEC_JSON',
+        payload: {
+          specId: 'test-feature',
+          updates: { autoExecution: {} },
+        },
+        requestId: 'req-update-2',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_CONFIGURED"')
+      );
+    });
+
+    it('should send ERROR when stateProvider is not configured', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+
+      const mockFileService = {
+        writeFile: vi.fn(),
+        resolveEntityPath: vi.fn(),
+        readArtifact: vi.fn(),
+        updateSpecJson: vi.fn(),
+      };
+      handler.setFileService(mockFileService as any);
+      // No stateProvider set
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      const message = JSON.stringify({
+        type: 'UPDATE_SPEC_JSON',
+        payload: {
+          specId: 'test-feature',
+          updates: { autoExecution: {} },
+        },
+        requestId: 'req-update-3',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"NOT_CONFIGURED"')
+      );
+    });
+
+    it('should send ERROR when specId or updates is missing', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+
+      const mockFileService = {
+        writeFile: vi.fn(),
+        resolveEntityPath: vi.fn(),
+        readArtifact: vi.fn(),
+        updateSpecJson: vi.fn(),
+      };
+      handler.setFileService(mockFileService as any);
+
+      const mockStateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([]),
+        getAgents: vi.fn().mockResolvedValue([]),
+      };
+      handler.setStateProvider(mockStateProvider);
+
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      // Missing updates
+      const message = JSON.stringify({
+        type: 'UPDATE_SPEC_JSON',
+        payload: {
+          specId: 'test-feature',
+        },
+        requestId: 'req-update-4',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"INVALID_PAYLOAD"')
+      );
+    });
+
+    it('should send ERROR when updateSpecJson fails', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler();
+
+      const mockFileService = {
+        writeFile: vi.fn(),
+        resolveEntityPath: vi.fn(),
+        readArtifact: vi.fn(),
+        updateSpecJson: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'WRITE_ERROR', message: 'Permission denied' },
+        }),
+      };
+      handler.setFileService(mockFileService as any);
+
+      const mockStateProvider = {
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+        getSpecs: vi.fn().mockResolvedValue([]),
+        getBugs: vi.fn().mockResolvedValue([]),
+        getAgents: vi.fn().mockResolvedValue([]),
+      };
+      handler.setStateProvider(mockStateProvider);
+
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      let mockMessageHandler: ((data: string) => void) | null = null;
+      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
+        if (event === 'message') {
+          mockMessageHandler = handlerFn;
+        }
+      });
+
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear INIT message
+      await new Promise(resolve => setTimeout(resolve, 50));
+      mockWs.send.mockClear();
+
+      const message = JSON.stringify({
+        type: 'UPDATE_SPEC_JSON',
+        payload: {
+          specId: 'test-feature',
+          updates: { autoExecution: {} },
+        },
+        requestId: 'req-update-5',
+        timestamp: Date.now(),
+      });
+      mockMessageHandler!(message);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"ERROR"')
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"code":"WRITE_ERROR"')
+      );
+    });
+  });
+});

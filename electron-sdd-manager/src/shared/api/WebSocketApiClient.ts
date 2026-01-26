@@ -859,6 +859,23 @@ export class WebSocketApiClient implements ApiClient {
     });
   }
 
+  // ===========================================================================
+  // Spec JSON Operations (auto-execution-ssot feature)
+  // ===========================================================================
+
+  /**
+   * Update spec.json with partial updates
+   * auto-execution-ssot: Enable Remote UI to update spec.json directly
+   * @param specId - Spec identifier (feature name)
+   * @param updates - Partial spec.json updates to apply
+   */
+  async updateSpecJson(
+    specId: string,
+    updates: Record<string, unknown>
+  ): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('UPDATE_SPEC_JSON', { specId, updates });
+  }
+
   async convertToWorktree(specId: string, featureName: string): Promise<Result<{
     path: string;
     absolutePath: string;

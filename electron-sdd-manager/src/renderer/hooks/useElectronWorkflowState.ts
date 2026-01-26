@@ -11,7 +11,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useSpecStore } from '../stores/specStore';
 import { useProjectStore } from '../stores/projectStore';
-import { useWorkflowStore } from '../stores/workflowStore';
+import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/workflowStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
@@ -249,9 +249,33 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     await handleExecutePhase(phase);
   }, [handleApprovePhase, handleExecutePhase]);
 
-  const handleToggleAutoPermission = useCallback((phase: WorkflowPhase) => {
-    workflowStore.toggleAutoPermission(phase);
-  }, [workflowStore]);
+  // auto-execution-ssot: Get permissions from spec.json (Single Source of Truth)
+  const autoExecutionPermissions = useMemo(() => {
+    return specJson?.autoExecution?.permissions ?? DEFAULT_AUTO_EXECUTION_PERMISSIONS;
+  }, [specJson?.autoExecution?.permissions]);
+
+  const handleToggleAutoPermission = useCallback(async (phase: WorkflowPhase) => {
+    if (!specDetail) return;
+
+    // auto-execution-ssot: Update spec.json directly (SSOT)
+    const currentPermissions = specJson?.autoExecution?.permissions ?? DEFAULT_AUTO_EXECUTION_PERMISSIONS;
+    const newPermissions = {
+      ...currentPermissions,
+      [phase]: !currentPermissions[phase],
+    };
+
+    try {
+      await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
+        autoExecution: {
+          ...specJson?.autoExecution,
+          permissions: newPermissions,
+        },
+      });
+    } catch (error) {
+      console.error('[useElectronWorkflowState] Failed to toggle auto permission:', error);
+      notify.error('自動実行許可の更新に失敗しました');
+    }
+  }, [specDetail, specJson?.autoExecution]);
 
   // auto-execution-projectpath-fix Task 4.5: Pass projectPath to startAutoExecution
   const handleAutoExecution = useCallback(async () => {
@@ -270,13 +294,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     } else {
       // auto-execution-projectpath-fix Task 4.5: Include projectPath in start call
       const projectPath = currentProject ?? '';
+      // auto-execution-ssot: Use permissions from spec.json (SSOT)
+      const permissions = specJson?.autoExecution?.permissions ?? DEFAULT_AUTO_EXECUTION_PERMISSIONS;
       const result = await autoExecution.startAutoExecution(
         projectPath,
         specDetail.metadata.name,
         specDetail.metadata.name,
         {
-          permissions: workflowStore.autoExecutionPermissions,
-          // document-review-phase: documentReviewFlag removed - use permissions['document-review'] instead
+          permissions,
           approvals: specDetail.specJson.approvals,
         }
       );
@@ -284,7 +309,7 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
         notify.error('自動実行を開始できませんでした。許可フェーズを確認してください。');
       }
     }
-  }, [autoExecutionRuntime, specDetail, autoExecution, currentProject, workflowStore.autoExecutionPermissions]);
+  }, [autoExecutionRuntime, specDetail, specJson?.autoExecution?.permissions, autoExecution, currentProject]);
 
   const handleStartDocumentReview = useCallback(async () => {
     if (!specDetail) return;
@@ -345,11 +370,12 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   }, [specDetail]);
 
   // document-review-phase Task 7.3: documentReviewAutoExecutionFlag now controlled via permissions['document-review']
+  // auto-execution-ssot: Use handleToggleAutoPermission which updates spec.json directly
   const handleDocumentReviewAutoExecutionFlagChange = useCallback((_flag: 'run' | 'pause') => {
     // Toggle permissions['document-review'] based on flag
     // 'run' -> true (GO), 'pause' -> false (NOGO)
-    workflowStore.toggleAutoPermission('document-review');
-  }, [workflowStore]);
+    handleToggleAutoPermission('document-review');
+  }, [handleToggleAutoPermission]);
 
   const handleStartInspection = useCallback(async () => {
     if (!specDetail) return;
@@ -378,9 +404,10 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     });
   }, [specDetail, workflowStore.commandPrefix, wrapExecution]);
 
+  // auto-execution-ssot: Use handleToggleAutoPermission which updates spec.json directly
   const handleToggleInspectionAutoPermission = useCallback(() => {
-    workflowStore.toggleAutoPermission('inspection');
-  }, [workflowStore]);
+    handleToggleAutoPermission('inspection');
+  }, [handleToggleAutoPermission]);
 
   const handleImplExecute = useCallback(async () => {
     if (!specDetail) return;
@@ -506,13 +533,14 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     isAutoExecuting: autoExecutionRuntime.isAutoExecuting,
     currentAutoPhase: autoExecutionRuntime.currentAutoPhase,
     autoExecutionStatus: autoExecutionRuntime.autoExecutionStatus,
-    autoExecutionPermissions: workflowStore.autoExecutionPermissions,
+    // auto-execution-ssot: Use permissions from spec.json (SSOT)
+    autoExecutionPermissions,
 
     // Document Review
     documentReviewState,
     documentReviewScheme,
-    // document-review-phase Task 7.3: documentReviewAutoExecutionFlag derived from permissions['document-review']
-    documentReviewAutoExecutionFlag: workflowStore.autoExecutionPermissions['document-review'] ? 'run' : 'pause',
+    // auto-execution-ssot: documentReviewAutoExecutionFlag derived from spec.json permissions
+    documentReviewAutoExecutionFlag: autoExecutionPermissions['document-review'] ? 'run' : 'pause',
 
     // Inspection
     inspectionState,
@@ -549,8 +577,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     phaseStatuses,
     runningPhases,
     autoExecutionRuntime,
-    workflowStore.autoExecutionPermissions,
-    // document-review-phase: documentReviewOptions removed - use permissions['document-review'] instead
+    // auto-execution-ssot: Use permissions from spec.json (SSOT)
+    autoExecutionPermissions,
     workflowStore.commandPrefix,
     documentReviewState,
     documentReviewScheme,

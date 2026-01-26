@@ -654,6 +654,19 @@ export interface ApiClient {
     description: string,
     worktreeMode: boolean
   ): Promise<Result<AgentInfo, ApiError>>;
+
+  // ===========================================================================
+  // Spec JSON Operations (auto-execution-ssot feature)
+  // Requirements: SSOT for auto-execution permissions
+  // ===========================================================================
+
+  /**
+   * Update spec.json with partial updates
+   * auto-execution-ssot: Enable Remote UI to update spec.json directly
+   * @param specId - Spec identifier (feature name)
+   * @param updates - Partial spec.json updates to apply
+   */
+  updateSpecJson?(specId: string, updates: Record<string, unknown>): Promise<Result<void, ApiError>>;
 }
 
 // =============================================================================

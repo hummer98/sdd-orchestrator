@@ -34,6 +34,7 @@ import type {
 import type { ReviewerScheme } from '@shared/components/review';
 import type { AutoExecutionStatus } from '@shared/types/execution';
 import { hasWorktreePath } from '@renderer/types/worktree';
+import { DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '@renderer/stores/workflowStore';
 
 // =============================================================================
 // Types
@@ -275,11 +276,33 @@ export function useRemoteWorkflowState(
     await handleExecutePhase(phase);
   }, [handleApprovePhase, handleExecutePhase]);
 
-  const handleToggleAutoPermission = useCallback((_phase: WorkflowPhase) => {
-    // Remote UI doesn't have local auto execution permissions
-    // This would need to be stored in spec.json and synced
-    console.log('Toggle auto permission - not implemented in Remote UI');
-  }, []);
+  // auto-execution-ssot: Update spec.json directly via ApiClient
+  const handleToggleAutoPermission = useCallback(async (phase: WorkflowPhase) => {
+    if (!spec || !apiClient.updateSpecJson) {
+      console.warn('[useRemoteWorkflowState] updateSpecJson not available');
+      return;
+    }
+
+    const currentPermissions = specDetail?.specJson?.autoExecution?.permissions ?? DEFAULT_AUTO_EXECUTION_PERMISSIONS;
+    const newPermissions = {
+      ...currentPermissions,
+      [phase]: !currentPermissions[phase],
+    };
+
+    const result = await apiClient.updateSpecJson(spec.name, {
+      autoExecution: {
+        ...specDetail?.specJson?.autoExecution,
+        permissions: newPermissions,
+      },
+    });
+
+    if (result.ok) {
+      // Refresh spec detail to get the updated permissions
+      await refreshSpecDetail();
+    } else {
+      console.error('[useRemoteWorkflowState] Failed to toggle auto permission:', result.error);
+    }
+  }, [apiClient, spec, specDetail?.specJson?.autoExecution, refreshSpecDetail]);
 
   const handleAutoExecution = useCallback(async () => {
     if (!spec || !specDetail) return;
@@ -342,10 +365,10 @@ export function useRemoteWorkflowState(
     console.log('Scheme change - not implemented in Remote UI');
   }, []);
 
+  // auto-execution-ssot: Use handleToggleAutoPermission to update spec.json
   const handleDocumentReviewAutoExecutionFlagChange = useCallback((_flag: DocumentReviewAutoExecutionFlag) => {
-    // Remote UI doesn't have local settings
-    console.log('Document review auto execution flag change - not implemented in Remote UI');
-  }, []);
+    handleToggleAutoPermission('document-review');
+  }, [handleToggleAutoPermission]);
 
   const handleStartInspection = useCallback(async () => {
     if (!spec) return;
@@ -364,10 +387,10 @@ export function useRemoteWorkflowState(
     console.log('Execute inspection fix - not implemented in Remote UI');
   }, []);
 
+  // auto-execution-ssot: Use handleToggleAutoPermission to update spec.json
   const handleToggleInspectionAutoPermission = useCallback(() => {
-    // Remote UI doesn't have local settings
-    console.log('Toggle inspection auto permission - not implemented in Remote UI');
-  }, []);
+    handleToggleAutoPermission('inspection');
+  }, [handleToggleAutoPermission]);
 
   const handleImplExecute = useCallback(async () => {
     if (!spec) return;
@@ -402,10 +425,28 @@ export function useRemoteWorkflowState(
     console.log('Toggle impl mode - not implemented in Remote UI');
   }, []);
 
+  // isConverting state for worktree conversion
+  const [isConverting, setIsConverting] = useState(false);
+
   const handleConvertToWorktree = useCallback(async () => {
-    // Remote UI doesn't have worktree conversion API yet
-    console.log('Convert to worktree - not implemented in Remote UI');
-  }, []);
+    if (!spec || !apiClient.convertToWorktree) {
+      console.log('Convert to worktree - API not available');
+      return;
+    }
+
+    setIsConverting(true);
+    try {
+      const result = await apiClient.convertToWorktree(spec.name, spec.name);
+      if (result.ok) {
+        // Refresh spec detail after conversion
+        await refreshSpecDetail();
+      } else {
+        console.error('Failed to convert to worktree:', result.error);
+      }
+    } finally {
+      setIsConverting(false);
+    }
+  }, [apiClient, spec, refreshSpecDetail]);
 
   const handleShowEventLog = useCallback(async () => {
     // Remote UI doesn't have event log API yet
@@ -458,7 +499,7 @@ export function useRemoteWorkflowState(
     isWorktreeModeSelected,
     hasExistingWorktree,
     isOnMain: true, // Remote UI doesn't know about git state
-    isConverting: false,
+    isConverting,
 
     // Parallel Execution
     parallelModeEnabled,
@@ -487,6 +528,7 @@ export function useRemoteWorkflowState(
     inspectionState,
     isWorktreeModeSelected,
     hasExistingWorktree,
+    isConverting,
     parallelModeEnabled,
     specHasParallelTasks,
     parallelTaskCount,

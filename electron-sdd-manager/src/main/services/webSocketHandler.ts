@@ -349,6 +349,15 @@ export interface FileServiceInterface {
   readArtifact(
     artifactPath: string
   ): Promise<{ ok: true; value: string } | { ok: false; error: { type: string; path: string } }>;
+
+  /**
+   * Update spec.json with partial updates
+   * auto-execution-ssot: For updating spec settings from Remote UI
+   */
+  updateSpecJson(
+    specPath: string,
+    updates: Record<string, unknown>
+  ): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; path?: string; message?: string } }>;
 }
 
 /**
@@ -886,6 +895,10 @@ export class WebSocketHandler {
       // Document review scheme handler (gemini-document-review feature)
       case 'UPDATE_DOCUMENT_REVIEW_SCHEME':
         await this.handleUpdateDocumentReviewScheme(client, message);
+        break;
+      // Spec JSON update handler (auto-execution-ssot feature)
+      case 'UPDATE_SPEC_JSON':
+        await this.handleUpdateSpecJson(client, message);
         break;
       default:
         this.send(client.id, {
@@ -2640,6 +2653,101 @@ export class WebSocketHandler {
         payload: {
           code: 'UPDATE_FAILED',
           message: error instanceof Error ? error.message : 'Failed to update scheme',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Spec JSON Update Handler (auto-execution-ssot feature)
+  // ============================================================
+
+  /**
+   * Handle UPDATE_SPEC_JSON message
+   * auto-execution-ssot: Enable Remote UI to update spec.json directly
+   * Updates spec.json with partial updates
+   */
+  private async handleUpdateSpecJson(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.fileService) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'File service not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.stateProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'State provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const updates = payload.updates as Record<string, unknown>;
+
+    if (!specId || !updates) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or updates' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      // Get project path from state provider
+      const projectPath = this.stateProvider.getProjectPath();
+      if (!projectPath) {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'NO_PROJECT', message: 'No project selected' },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
+      // Resolve spec path from specId
+      const { join } = await import('path');
+      const specPath = join(projectPath, '.kiro', 'specs', specId);
+
+      // Update spec.json
+      const result = await this.fileService.updateSpecJson(specPath, updates);
+
+      if (result.ok) {
+        this.send(client.id, {
+          type: 'SPEC_JSON_UPDATED',
+          payload: { specId, success: true },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: {
+            code: result.error.type,
+            message: 'message' in result.error ? result.error.message : 'Failed to update spec.json',
+          },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: 'UPDATE_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to update spec.json',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

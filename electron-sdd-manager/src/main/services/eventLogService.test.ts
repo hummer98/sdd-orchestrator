@@ -264,4 +264,124 @@ describe('EventLogService', () => {
       expect(eventsPath).toBe(expectedEventsPath);
     });
   });
+
+  describe('getBugEventsFilePath', () => {
+    it('should return correct path for bug events', () => {
+      const bugName = 'test-bug';
+      const expectedBugEventsPath = path.join(mockProjectPath, '.kiro', 'bugs', bugName, 'events.jsonl');
+      const eventsPath = service.getBugEventsFilePath(mockProjectPath, bugName);
+      expect(eventsPath).toBe(expectedBugEventsPath);
+    });
+  });
+
+  describe('logBugEvent', () => {
+    const mockBugName = 'test-bug';
+    const expectedBugEventsPath = path.join(mockProjectPath, '.kiro', 'bugs', mockBugName, 'events.jsonl');
+
+    it('should append event to JSON Lines file for bug', async () => {
+      const mockAppendFile = vi.mocked(fs.appendFile).mockResolvedValue();
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+
+      const event: EventLogInput = {
+        type: 'worktree:create',
+        message: 'Worktree created for bug',
+        worktreePath: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+      };
+
+      await service.logBugEvent(mockProjectPath, mockBugName, event);
+
+      expect(mockAppendFile).toHaveBeenCalledOnce();
+      const [filePath, content] = mockAppendFile.mock.calls[0];
+      expect(filePath).toBe(expectedBugEventsPath);
+
+      // Verify JSON Lines format
+      const lines = (content as string).split('\n').filter(Boolean);
+      expect(lines).toHaveLength(1);
+      const parsed = JSON.parse(lines[0]);
+      expect(parsed.type).toBe('worktree:create');
+      expect(parsed.message).toBe('Worktree created for bug');
+      expect(parsed.worktreePath).toBe('.kiro/worktrees/bugs/test-bug');
+      expect(parsed.branch).toBe('bugfix/test-bug');
+    });
+
+    it('should auto-generate UTC timestamp for bug event', async () => {
+      vi.mocked(fs.appendFile).mockResolvedValue();
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+
+      const event: EventLogInput = {
+        type: 'worktree:create',
+        message: 'Worktree created',
+        worktreePath: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+      };
+
+      const beforeTime = new Date().toISOString();
+      await service.logBugEvent(mockProjectPath, mockBugName, event);
+      const afterTime = new Date().toISOString();
+
+      const content = vi.mocked(fs.appendFile).mock.calls[0][1] as string;
+      const parsed = JSON.parse(content.trim());
+
+      expect(parsed.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(parsed.timestamp >= beforeTime).toBe(true);
+      expect(parsed.timestamp <= afterTime).toBe(true);
+    });
+
+    it('should auto-create bug directory if not exists', async () => {
+      const mockMkdir = vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.appendFile).mockResolvedValue();
+
+      const event: EventLogInput = {
+        type: 'worktree:create',
+        message: 'Worktree created',
+        worktreePath: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+      };
+
+      await service.logBugEvent(mockProjectPath, mockBugName, event);
+
+      expect(mockMkdir).toHaveBeenCalledWith(
+        path.dirname(expectedBugEventsPath),
+        { recursive: true }
+      );
+    });
+
+    it('should not throw on file write error for bug event', async () => {
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.appendFile).mockRejectedValue(new Error('Write failed'));
+
+      const event: EventLogInput = {
+        type: 'worktree:create',
+        message: 'Worktree created',
+        worktreePath: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+      };
+
+      await expect(service.logBugEvent(mockProjectPath, mockBugName, event)).resolves.not.toThrow();
+    });
+
+    it('should include extended worktree fields (specStatus, copiedFiles, notes)', async () => {
+      vi.mocked(fs.appendFile).mockResolvedValue();
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+
+      const event: EventLogInput = {
+        type: 'worktree:create',
+        message: 'Worktreeモードに変換: Bugファイルをコピー',
+        worktreePath: '.kiro/worktrees/bugs/test-bug',
+        branch: 'bugfix/test-bug',
+        specStatus: 'untracked',
+        copiedFiles: ['bug.json', 'report.md', 'analysis.md'],
+        notes: 'Test note',
+      };
+
+      await service.logBugEvent(mockProjectPath, mockBugName, event);
+
+      const content = vi.mocked(fs.appendFile).mock.calls[0][1] as string;
+      const parsed = JSON.parse(content.trim());
+      expect(parsed.specStatus).toBe('untracked');
+      expect(parsed.copiedFiles).toEqual(['bug.json', 'report.md', 'analysis.md']);
+      expect(parsed.notes).toBe('Test note');
+    });
+  });
 });

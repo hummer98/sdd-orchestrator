@@ -105,6 +105,12 @@ export interface WorktreeEventData {
   readonly worktreePath?: string;
   /** Git branch name */
   readonly branch?: string;
+  /** Spec commit status (untracked, committed-clean, committed-dirty) */
+  readonly specStatus?: string;
+  /** List of files copied during conversion (for untracked specs) */
+  readonly copiedFiles?: string[];
+  /** Additional metadata or notes */
+  readonly notes?: string;
 }
 
 /**

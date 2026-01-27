@@ -56,6 +56,17 @@ export class EventLogService {
   }
 
   /**
+   * Get the path to the events file for a bug
+   *
+   * @param projectPath - Project root path
+   * @param bugName - Bug name
+   * @returns Path to the events.jsonl file
+   */
+  getBugEventsFilePath(projectPath: string, bugName: string): string {
+    return join(projectPath, '.kiro', 'bugs', bugName, EventLogService.EVENTS_FILE);
+  }
+
+  /**
    * Log an event to the spec's event log file
    * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 6.4
    *
@@ -96,6 +107,52 @@ export class EventLogService {
       // Requirement 6.4: Errors should not affect the caller
       logger.error('[EventLogService] Failed to log event', {
         specId,
+        type: event.type,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Log an event to the bug's event log file
+   *
+   * This method is fire-and-forget: errors are logged internally
+   * but do not propagate to the caller.
+   *
+   * @param projectPath - Project root path
+   * @param bugName - Bug name
+   * @param event - Event data (without timestamp)
+   */
+  async logBugEvent(
+    projectPath: string,
+    bugName: string,
+    event: EventLogInput
+  ): Promise<void> {
+    try {
+      const eventsPath = this.getBugEventsFilePath(projectPath, bugName);
+
+      // Ensure directory exists
+      await mkdir(dirname(eventsPath), { recursive: true });
+
+      // Build full event with timestamp
+      const fullEvent: EventLogEntry = {
+        ...event,
+        timestamp: new Date().toISOString(),
+      } as EventLogEntry;
+
+      // Append as JSON Line
+      const jsonLine = JSON.stringify(fullEvent) + '\n';
+      await appendFile(eventsPath, jsonLine, 'utf-8');
+
+      logger.debug('[EventLogService] Bug event logged', {
+        bugName,
+        type: event.type,
+        message: event.message,
+      });
+    } catch (error) {
+      // Errors should not affect the caller
+      logger.error('[EventLogService] Failed to log bug event', {
+        bugName,
         type: event.type,
         error: error instanceof Error ? error.message : String(error),
       });

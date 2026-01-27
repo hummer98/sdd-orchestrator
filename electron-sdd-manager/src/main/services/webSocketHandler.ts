@@ -3365,11 +3365,13 @@ export class WebSocketHandler {
       // Use the ConvertWorktreeService via WorktreeService
       const { WorktreeService } = await import('./worktreeService');
       const { FileService } = await import('./fileService');
+      const { getDefaultEventLogService } = await import('./eventLogService');
       const { ConvertWorktreeService, getConvertErrorMessage } = await import('./convertWorktreeService');
 
       const worktreeService = new WorktreeService(projectPath);
       const fileService = new FileService();
-      const convertService = new ConvertWorktreeService(worktreeService, fileService);
+      const eventLogService = getDefaultEventLogService();
+      const convertService = new ConvertWorktreeService(worktreeService, fileService, undefined, eventLogService);
 
       const result = await convertService.convertToWorktree(projectPath, resolvedSpecPath, featureName);
 

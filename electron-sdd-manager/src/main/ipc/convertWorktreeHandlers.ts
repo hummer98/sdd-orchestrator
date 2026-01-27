@@ -11,6 +11,7 @@ import { getCurrentProjectPath } from './handlers';
 import { ConvertWorktreeService, type ConvertResult } from '../services/convertWorktreeService';
 import { WorktreeService } from '../services/worktreeService';
 import { FileService } from '../services/fileService';
+import { getDefaultEventLogService } from '../services/eventLogService';
 import type { WorktreeInfo } from '../../renderer/types/worktree';
 
 /**
@@ -20,7 +21,8 @@ import type { WorktreeInfo } from '../../renderer/types/worktree';
 function createConvertService(projectPath: string): ConvertWorktreeService {
   const worktreeService = new WorktreeService(projectPath);
   const fileService = new FileService();
-  return new ConvertWorktreeService(worktreeService, fileService);
+  const eventLogService = getDefaultEventLogService();
+  return new ConvertWorktreeService(worktreeService, fileService, undefined, eventLogService);
 }
 
 /**

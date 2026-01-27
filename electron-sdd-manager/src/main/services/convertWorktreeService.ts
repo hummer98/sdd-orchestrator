@@ -13,6 +13,7 @@ import * as fsPromises from 'fs/promises';
 import { logger } from './logger';
 import type { WorktreeService } from './worktreeService';
 import type { FileService } from './fileService';
+import type { EventLogService } from './eventLogService';
 import type { WorktreeInfo } from '../../renderer/types/worktree';
 import { hasWorktreePath, isImplStarted } from '../../renderer/types/worktree';
 
@@ -108,15 +109,18 @@ export function getConvertErrorMessage(error: ConvertError): string {
 export class ConvertWorktreeService {
   private worktreeService: WorktreeService;
   private fileService: FileService;
+  private eventLogService: EventLogService | null;
   private fs: FsPromisesInterface;
 
   constructor(
     worktreeService: WorktreeService,
     fileService: FileService,
-    fsPromisesOverride?: FsPromisesInterface
+    fsPromisesOverride?: FsPromisesInterface,
+    eventLogService?: EventLogService
   ) {
     this.worktreeService = worktreeService;
     this.fileService = fileService;
+    this.eventLogService = eventLogService || null;
     this.fs = fsPromisesOverride || fsPromises;
   }
 
@@ -383,6 +387,7 @@ export class ConvertWorktreeService {
 
     // Step 3: Spec file handling based on status
     // worktree-convert-spec-optimization: Requirements 2.1-2.3, 3.1-3.3
+    let copiedFiles: string[] = [];
     if (specStatus === 'untracked') {
       // Task 3.1: 未コミットspecの移動処理
       // Requirements: 2.1, 2.2, 2.3
@@ -393,12 +398,16 @@ export class ConvertWorktreeService {
         // Copy spec directory to worktree
         await this.fs.cp(specPath, worktreeSpecPath, { recursive: true });
 
+        // Collect list of copied files (relative to spec directory)
+        copiedFiles = ['spec.json', 'requirements.md', 'design.md', 'tasks.md', 'research.md', 'events.jsonl'];
+
         // Remove original spec directory (after successful copy)
         await this.fs.rm(specPath, { recursive: true, force: true });
 
         logger.info('[ConvertWorktreeService] Spec files moved to worktree (untracked)', {
           from: specPath,
           to: worktreeSpecPath,
+          copiedFiles,
         });
       } catch (error) {
         // Rollback: remove worktree
@@ -506,6 +515,19 @@ export class ConvertWorktreeService {
       featureName,
       worktreePath: worktreeInfo.path,
     });
+
+    // Log worktree:create event with conversion details
+    if (this.eventLogService) {
+      await this.eventLogService.logEvent(projectPath, featureName, {
+        type: 'worktree:create',
+        message: `Worktreeモードに変換: ${specStatus === 'untracked' ? 'Specファイルをコピー' : 'コミット済みSpecを利用'}`,
+        worktreePath: worktreeInfo.path,
+        branch: worktreeInfo.branch,
+        specStatus,
+        copiedFiles: copiedFiles.length > 0 ? copiedFiles : undefined,
+        notes: specStatus === 'committed-clean' ? 'コミット済みSpecはgit worktreeに自動的に含まれます' : undefined,
+      });
+    }
 
     return { ok: true, value: worktreeInfo };
   }

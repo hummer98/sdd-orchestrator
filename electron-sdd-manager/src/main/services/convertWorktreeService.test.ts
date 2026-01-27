@@ -1129,4 +1129,193 @@ describe('ConvertWorktreeService', () => {
       });
     });
   });
+
+  // ============================================================
+  // Event Log Tests
+  // Tests for worktree:create event emission
+  // ============================================================
+  describe('Event logging', () => {
+    let mockEventLogService: {
+      logEvent: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockEventLogService = {
+        logEvent: vi.fn().mockResolvedValue(undefined),
+      };
+
+      // Setup default success mocks
+      (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: true,
+      });
+      mockFsPromises.access.mockResolvedValue(undefined);
+      (mockFileService.readSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          feature_name: 'my-feature',
+          phase: 'tasks-generated',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: true },
+            tasks: { generated: true, approved: true },
+          },
+        } as SpecJson,
+      });
+      (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/specs/my-feature',
+          absolutePath: '/test/project/.kiro/worktrees/specs/my-feature',
+          branch: 'feature/my-feature',
+          created_at: '2026-01-19T12:00:00Z',
+        },
+      });
+      mockFsPromises.mkdir.mockResolvedValue(undefined);
+      mockFsPromises.cp.mockResolvedValue(undefined);
+      mockFsPromises.rm.mockResolvedValue(undefined);
+      (mockWorktreeService.createSymlinksForWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+      (mockFileService.updateSpecJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+    });
+
+    it('should log worktree:create event on successful conversion (untracked spec)', async () => {
+      // Arrange - mock untracked status
+      (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['spec.json'],
+          statusOutput: '?? .kiro/specs/my-feature/spec.json',
+        },
+      });
+
+      const serviceWithEventLog = new ConvertWorktreeService(
+        mockWorktreeService,
+        mockFileService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, specPath, featureName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logEvent).toHaveBeenCalledOnce();
+      expect(mockEventLogService.logEvent).toHaveBeenCalledWith(
+        projectPath,
+        featureName,
+        expect.objectContaining({
+          type: 'worktree:create',
+          message: expect.stringContaining('Worktreeモードに変換'),
+          worktreePath: '.kiro/worktrees/specs/my-feature',
+          branch: 'feature/my-feature',
+          specStatus: 'untracked',
+          copiedFiles: expect.arrayContaining(['spec.json', 'requirements.md']),
+        })
+      );
+    });
+
+    it('should log worktree:create event on successful conversion (committed-clean spec)', async () => {
+      // Arrange - mock committed-clean status
+      (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: false,
+          files: [],
+          statusOutput: '',
+        },
+      });
+      // For committed-clean, we need to verify spec in worktree
+      mockFsPromises.access.mockResolvedValue(undefined);
+
+      const serviceWithEventLog = new ConvertWorktreeService(
+        mockWorktreeService,
+        mockFileService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, specPath, featureName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logEvent).toHaveBeenCalledOnce();
+      expect(mockEventLogService.logEvent).toHaveBeenCalledWith(
+        projectPath,
+        featureName,
+        expect.objectContaining({
+          type: 'worktree:create',
+          message: expect.stringContaining('コミット済みSpec'),
+          worktreePath: '.kiro/worktrees/specs/my-feature',
+          branch: 'feature/my-feature',
+          specStatus: 'committed-clean',
+          notes: expect.stringContaining('git worktreeに自動的に含まれます'),
+        })
+      );
+    });
+
+    it('should not log event when EventLogService is not provided', async () => {
+      // Arrange - mock untracked status
+      (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['spec.json'],
+          statusOutput: '?? .kiro/specs/my-feature/spec.json',
+        },
+      });
+
+      const serviceWithoutEventLog = new ConvertWorktreeService(
+        mockWorktreeService,
+        mockFileService,
+        mockFsPromises
+        // No eventLogService
+      );
+
+      // Act
+      const result = await serviceWithoutEventLog.convertToWorktree(projectPath, specPath, featureName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logEvent).not.toHaveBeenCalled();
+    });
+
+    it('should not log event when conversion fails', async () => {
+      // Arrange - make conversion fail at worktree creation
+      (mockWorktreeService.checkUncommittedSpecChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['spec.json'],
+          statusOutput: '?? .kiro/specs/my-feature/spec.json',
+        },
+      });
+      (mockWorktreeService.createWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        error: { type: 'GIT_ERROR', message: 'worktree creation failed' },
+      });
+
+      const serviceWithEventLog = new ConvertWorktreeService(
+        mockWorktreeService,
+        mockFileService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, specPath, featureName);
+
+      // Assert
+      expect(result.ok).toBe(false);
+      expect(mockEventLogService.logEvent).not.toHaveBeenCalled();
+    });
+  });
 });

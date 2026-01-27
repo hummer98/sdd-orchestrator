@@ -13,6 +13,7 @@ import { BugService } from '../services/bugService';
 import { getConfigStore } from '../services/configStore';
 import { BugWorkflowService } from '../services/bugWorkflowService';
 import { ConvertBugWorktreeService } from '../services/convertBugWorktreeService';
+import { getDefaultEventLogService } from '../services/eventLogService';
 import { getCurrentProjectPath } from './handlers';
 import { logger } from '../services/logger';
 import type {
@@ -49,7 +50,8 @@ export async function handleBugWorktreeCreate(
 
   const worktreeService = new WorktreeService(projectPath);
   const bugService = new BugService();
-  const convertService = new ConvertBugWorktreeService(worktreeService, bugService);
+  const eventLogService = getDefaultEventLogService();
+  const convertService = new ConvertBugWorktreeService(worktreeService, bugService, undefined, eventLogService);
 
   // Use ConvertBugWorktreeService for the conversion
   // This handles commit status checking and conditional file handling

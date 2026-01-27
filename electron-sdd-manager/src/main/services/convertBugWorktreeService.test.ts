@@ -864,4 +864,191 @@ describe('ConvertBugWorktreeService', () => {
       });
     });
   });
+
+  // ============================================================
+  // Event Log Tests
+  // Tests for worktree:create event emission for bugs
+  // ============================================================
+  describe('Event logging', () => {
+    let mockEventLogService: {
+      logBugEvent: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockEventLogService = {
+        logBugEvent: vi.fn().mockResolvedValue(undefined),
+      };
+
+      // Setup default success mocks
+      (mockWorktreeService.isOnMainBranch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: true,
+      });
+      mockFsPromises.access.mockResolvedValue(undefined);
+      (mockBugService.readBugJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          id: 'my-bug',
+          title: 'Test Bug',
+          description: 'Test description',
+          status: 'analyze',
+          created_at: '2026-01-22T10:00:00Z',
+        },
+      });
+      (mockWorktreeService.createBugWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/bugs/my-bug',
+          absolutePath: '/test/project/.kiro/worktrees/bugs/my-bug',
+          branch: 'bugfix/my-bug',
+          created_at: '2026-01-22T12:00:00Z',
+        },
+      });
+      mockFsPromises.mkdir.mockResolvedValue(undefined);
+      mockFsPromises.cp.mockResolvedValue(undefined);
+      mockFsPromises.rm.mockResolvedValue(undefined);
+      (mockWorktreeService.createSymlinksForWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+      (mockBugService.addWorktreeField as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+    });
+
+    it('should log worktree:create event on successful conversion (untracked bug)', async () => {
+      // Arrange - mock untracked status
+      (mockWorktreeService.checkUncommittedBugChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['bug.json'],
+          statusOutput: '?? .kiro/bugs/my-bug/bug.json',
+        },
+      });
+
+      const serviceWithEventLog = new ConvertBugWorktreeService(
+        mockWorktreeService,
+        mockBugService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, bugPath, bugName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logBugEvent).toHaveBeenCalledOnce();
+      expect(mockEventLogService.logBugEvent).toHaveBeenCalledWith(
+        projectPath,
+        bugName,
+        expect.objectContaining({
+          type: 'worktree:create',
+          message: expect.stringContaining('Worktreeモードに変換'),
+          worktreePath: '.kiro/worktrees/bugs/my-bug',
+          branch: 'bugfix/my-bug',
+          specStatus: 'untracked',
+          copiedFiles: expect.arrayContaining(['bug.json', 'report.md']),
+        })
+      );
+    });
+
+    it('should log worktree:create event on successful conversion (committed-clean bug)', async () => {
+      // Arrange - mock committed-clean status
+      (mockWorktreeService.checkUncommittedBugChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: false,
+          files: [],
+          statusOutput: '',
+        },
+      });
+      // For committed-clean, we need to verify bug in worktree
+      mockFsPromises.access.mockResolvedValue(undefined);
+
+      const serviceWithEventLog = new ConvertBugWorktreeService(
+        mockWorktreeService,
+        mockBugService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, bugPath, bugName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logBugEvent).toHaveBeenCalledOnce();
+      expect(mockEventLogService.logBugEvent).toHaveBeenCalledWith(
+        projectPath,
+        bugName,
+        expect.objectContaining({
+          type: 'worktree:create',
+          message: expect.stringContaining('コミット済みBug'),
+          worktreePath: '.kiro/worktrees/bugs/my-bug',
+          branch: 'bugfix/my-bug',
+          specStatus: 'committed-clean',
+          notes: expect.stringContaining('git worktreeに自動的に含まれます'),
+        })
+      );
+    });
+
+    it('should not log event when EventLogService is not provided', async () => {
+      // Arrange - mock untracked status
+      (mockWorktreeService.checkUncommittedBugChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['bug.json'],
+          statusOutput: '?? .kiro/bugs/my-bug/bug.json',
+        },
+      });
+
+      const serviceWithoutEventLog = new ConvertBugWorktreeService(
+        mockWorktreeService,
+        mockBugService,
+        mockFsPromises
+        // No eventLogService
+      );
+
+      // Act
+      const result = await serviceWithoutEventLog.convertToWorktree(projectPath, bugPath, bugName);
+
+      // Assert
+      expect(result.ok).toBe(true);
+      expect(mockEventLogService.logBugEvent).not.toHaveBeenCalled();
+    });
+
+    it('should not log event when conversion fails', async () => {
+      // Arrange - make conversion fail at worktree creation
+      (mockWorktreeService.checkUncommittedBugChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        value: {
+          hasChanges: true,
+          files: ['bug.json'],
+          statusOutput: '?? .kiro/bugs/my-bug/bug.json',
+        },
+      });
+      (mockWorktreeService.createBugWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        error: { type: 'GIT_ERROR', message: 'worktree creation failed' },
+      });
+
+      const serviceWithEventLog = new ConvertBugWorktreeService(
+        mockWorktreeService,
+        mockBugService,
+        mockFsPromises,
+        mockEventLogService as any
+      );
+
+      // Act
+      const result = await serviceWithEventLog.convertToWorktree(projectPath, bugPath, bugName);
+
+      // Assert
+      expect(result.ok).toBe(false);
+      expect(mockEventLogService.logBugEvent).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -11,6 +11,7 @@ import * as fsPromises from 'fs/promises';
 import { logger } from './logger';
 import type { WorktreeService } from './worktreeService';
 import type { BugService } from './bugService';
+import type { EventLogService } from './eventLogService';
 import type { WorktreeInfo } from '../../renderer/types/worktree';
 
 /**
@@ -95,15 +96,18 @@ export function getConvertBugErrorMessage(error: ConvertBugError): string {
 export class ConvertBugWorktreeService {
   private worktreeService: WorktreeService;
   private bugService: BugService;
+  private eventLogService: EventLogService | null;
   private fs: FsPromisesInterface;
 
   constructor(
     worktreeService: WorktreeService,
     bugService: BugService,
-    fsPromisesOverride?: FsPromisesInterface
+    fsPromisesOverride?: FsPromisesInterface,
+    eventLogService?: EventLogService
   ) {
     this.worktreeService = worktreeService;
     this.bugService = bugService;
+    this.eventLogService = eventLogService || null;
     this.fs = fsPromisesOverride || fsPromises;
   }
 
@@ -360,6 +364,7 @@ export class ConvertBugWorktreeService {
     );
 
     // Step 3: Bug file handling based on status
+    let copiedFiles: string[] = [];
     if (bugStatus === 'untracked') {
       // Task 2.5: 未コミット bug の移動処理
       // Requirements: 2.1, 2.2, 2.3
@@ -370,12 +375,16 @@ export class ConvertBugWorktreeService {
         // Copy bug directory to worktree
         await this.fs.cp(bugPath, worktreeBugPath, { recursive: true });
 
+        // Collect list of copied files (relative to bug directory)
+        copiedFiles = ['bug.json', 'report.md', 'analysis.md', 'fix.md', 'verification.md', 'events.jsonl'];
+
         // Remove original bug directory (after successful copy)
         await this.fs.rm(bugPath, { recursive: true, force: true });
 
         logger.info('[ConvertBugWorktreeService] Bug files moved to worktree (untracked)', {
           from: bugPath,
           to: worktreeBugPath,
+          copiedFiles,
         });
       } catch (error) {
         // Rollback: remove worktree
@@ -471,6 +480,19 @@ export class ConvertBugWorktreeService {
       bugName,
       worktreePath: worktreeInfo.path,
     });
+
+    // Log worktree:create event with conversion details
+    if (this.eventLogService) {
+      await this.eventLogService.logBugEvent(projectPath, bugName, {
+        type: 'worktree:create',
+        message: `Worktreeモードに変換: ${bugStatus === 'untracked' ? 'Bugファイルをコピー' : 'コミット済みBugを利用'}`,
+        worktreePath: worktreeInfo.path,
+        branch: worktreeInfo.branch,
+        specStatus: bugStatus,
+        copiedFiles: copiedFiles.length > 0 ? copiedFiles : undefined,
+        notes: bugStatus === 'committed-clean' ? 'コミット済みBugはgit worktreeに自動的に含まれます' : undefined,
+      });
+    }
 
     return { ok: true, value: worktreeInfo };
   }

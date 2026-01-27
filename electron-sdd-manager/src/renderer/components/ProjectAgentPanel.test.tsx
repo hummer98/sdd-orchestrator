@@ -162,6 +162,60 @@ describe('ProjectAgentPanel', () => {
       expect(screen.getByText('(3)')).toBeInTheDocument();
     });
 
+    it('should sort agents by running status first, then by lastActivityAt descending', () => {
+      // Create agents with different lastActivityAt times
+      const runningAgent: AgentInfo = {
+        agentId: 'running-1',
+        specId: '',
+        phase: 'ask',
+        pid: 1001,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2024-01-01T00:00:00Z',
+        lastActivityAt: '2024-01-01T00:05:00Z', // Most recent
+        command: 'claude',
+      };
+
+      const completedAgent1: AgentInfo = {
+        agentId: 'completed-1',
+        specId: '',
+        phase: 'release',
+        pid: 1002,
+        sessionId: 'session-2',
+        status: 'completed',
+        startedAt: '2024-01-01T00:01:00Z',
+        lastActivityAt: '2024-01-01T00:04:00Z', // Second most recent
+        command: 'claude',
+      };
+
+      const completedAgent2: AgentInfo = {
+        agentId: 'completed-2',
+        specId: '',
+        phase: 'steering',
+        pid: 1003,
+        sessionId: 'session-3',
+        status: 'completed',
+        startedAt: '2024-01-01T00:02:00Z',
+        lastActivityAt: '2024-01-01T00:03:00Z', // Third most recent
+        command: 'claude',
+      };
+
+      // Add agents in random order
+      const agents = new Map<string, AgentInfo[]>();
+      agents.set('', [completedAgent2, runningAgent, completedAgent1]);
+      setAgentsInStores(agents);
+
+      render(<ProjectAgentPanel />);
+
+      // Get all agent items
+      const agentItems = screen.getAllByTestId(/^agent-item-/);
+
+      // Expected order: running-1 (running), completed-1 (latest activity), completed-2 (oldest activity)
+      expect(agentItems[0]).toHaveAttribute('data-testid', 'agent-item-running-1');
+      expect(agentItems[1]).toHaveAttribute('data-testid', 'agent-item-completed-1');
+      expect(agentItems[2]).toHaveAttribute('data-testid', 'agent-item-completed-2');
+    });
+
     it('should display status icon for running agent', () => {
       const agents = new Map<string, AgentInfo[]>();
       agents.set('', [mockProjectAgent1]); // status: running

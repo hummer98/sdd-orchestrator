@@ -49,13 +49,13 @@ export function ProjectAgentPanel() {
   const [isScheduleTaskDialogOpen, setIsScheduleTaskDialogOpen] = useState(false);
 
   const projectAgents = getProjectAgents()
-    // Sort: running first, then by startedAt descending (newest first)
+    // Sort: running first, then by lastActivityAt descending (most recently active first)
     .sort((a, b) => {
       // Running agents first
       if (a.status === 'running' && b.status !== 'running') return -1;
       if (a.status !== 'running' && b.status === 'running') return 1;
-      // Then by startedAt descending
-      return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+      // Then by lastActivityAt descending (most recently active first)
+      return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
     });
 
   /**

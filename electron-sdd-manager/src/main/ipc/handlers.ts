@@ -501,6 +501,61 @@ export function registerIpcHandlers(): void {
   registerSteeringHandlers();
 
   // ============================================================
+  // jj Support Handlers (jj-merge-support feature)
+  // Task 12.3: IPC handlers for jj installation and configuration
+  // ============================================================
+
+  // CHECK_JJ_AVAILABILITY: Check if jj is installed
+  ipcMain.handle(IPC_CHANNELS.CHECK_JJ_AVAILABILITY, async () => {
+    logger.info('[handlers] CHECK_JJ_AVAILABILITY called');
+    const result = await projectChecker.checkJjAvailability();
+    logger.info('[handlers] CHECK_JJ_AVAILABILITY result', { available: result.available });
+    return result;
+  });
+
+  // INSTALL_JJ: Install jj via brew
+  ipcMain.handle(IPC_CHANNELS.INSTALL_JJ, async () => {
+    logger.info('[handlers] INSTALL_JJ called');
+
+    try {
+      const { execAsync } = await import('../utils/execAsync');
+      await execAsync('brew install jj');
+
+      // After installation, check if jj is now available
+      const checkResult = await projectChecker.checkJjAvailability();
+
+      if (checkResult.available) {
+        logger.info('[handlers] INSTALL_JJ succeeded', { version: checkResult.version });
+        return { success: true };
+      } else {
+        logger.warn('[handlers] INSTALL_JJ completed but jj is not available');
+        return { success: false, error: 'Installation completed but jj is not available. Please verify Homebrew installation.' };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('[handlers] INSTALL_JJ failed', { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // IGNORE_JJ_INSTALL: Set jjInstallIgnored flag in .kiro/sdd-orchestrator.json
+  ipcMain.handle(IPC_CHANNELS.IGNORE_JJ_INSTALL, async (_event, projectPath: string, ignored: boolean) => {
+    logger.info('[handlers] IGNORE_JJ_INSTALL called', { projectPath, ignored });
+
+    const { SettingsFileManager } = await import('../services/settingsFileManager');
+    const settingsManager = new SettingsFileManager();
+    const result = await settingsManager.setJjInstallIgnored(projectPath, ignored);
+
+    if (!result.ok) {
+      logger.error('[handlers] IGNORE_JJ_INSTALL failed', { error: result.error });
+      return { success: false, error: result.error.message };
+    }
+
+    logger.info('[handlers] IGNORE_JJ_INSTALL succeeded');
+    return { success: true };
+  });
+
+  // ============================================================
   // Migration Service Handlers (runtime-agents-restructure feature)
   // Task 10.2: Integrate MigrationService into IPC handlers
   // Requirements: 5.1, 5.2, 5.4

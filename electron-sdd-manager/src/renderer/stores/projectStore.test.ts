@@ -601,4 +601,212 @@ describe('useProjectStore', () => {
       expect(useProjectStore.getState().releaseGenerateLoading).toBe(false);
     });
   });
+
+  // ============================================================
+  // jj Installation (jj-merge-support feature)
+  // Task 12.5: ProjectStore への jj関連 state 追加
+  // Requirements: 3.5, 4.1, 9.1, 9.2, 9.3, 9.4
+  // ============================================================
+
+  describe('jj installation management', () => {
+    it('should have null jjCheck initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.jjCheck).toBeNull();
+    });
+
+    it('should have jjInstallIgnored false initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.jjInstallIgnored).toBe(false);
+    });
+
+    it('should have jjInstallLoading false initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.jjInstallLoading).toBe(false);
+    });
+
+    it('should have jjInstallError null initially', () => {
+      const state = useProjectStore.getState();
+      expect(state.jjInstallError).toBeNull();
+    });
+
+    it('should check jj availability after project selection', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      const mockJjCheck = { name: 'jj', available: false, installGuidance: 'brew install jj' };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue(mockJjCheck);
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue({
+        jjInstallIgnored: false,
+      });
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(window.electronAPI.checkJjAvailability).toHaveBeenCalled();
+      expect(state.jjCheck).toEqual(mockJjCheck);
+    });
+
+    it('should skip jj check when jjInstallIgnored is true', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.checkJjAvailability = vi.fn();
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue({
+        jjInstallIgnored: true,
+      });
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      const state = useProjectStore.getState();
+      expect(window.electronAPI.checkJjAvailability).not.toHaveBeenCalled();
+      expect(state.jjCheck).toBeNull();
+      expect(state.jjInstallIgnored).toBe(true);
+    });
+
+    it('should install jj via brew and re-check availability', async () => {
+      const mockJjCheckBefore = { name: 'jj', available: false, installGuidance: 'brew install jj' };
+      const mockJjCheckAfter = { name: 'jj', available: true, version: '0.10.0' };
+
+      useProjectStore.setState({
+        currentProject: '/test/project',
+        jjCheck: mockJjCheckBefore,
+      });
+
+      window.electronAPI.installJj = vi.fn().mockResolvedValue({ success: true });
+      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue(mockJjCheckAfter);
+
+      await useProjectStore.getState().installJj();
+
+      expect(window.electronAPI.installJj).toHaveBeenCalled();
+      expect(window.electronAPI.checkJjAvailability).toHaveBeenCalled();
+
+      const state = useProjectStore.getState();
+      expect(state.jjCheck).toEqual(mockJjCheckAfter);
+      expect(state.jjInstallLoading).toBe(false);
+      expect(state.jjInstallError).toBeNull();
+    });
+
+    it('should set loading state during jj installation', async () => {
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      let loadingDuringInstall = false;
+      window.electronAPI.installJj = vi.fn().mockImplementation(async () => {
+        loadingDuringInstall = useProjectStore.getState().jjInstallLoading;
+        return { success: true };
+      });
+      window.electronAPI.checkJjAvailability = vi.fn().mockResolvedValue({
+        name: 'jj',
+        available: true,
+        version: '0.10.0'
+      });
+
+      await useProjectStore.getState().installJj();
+
+      expect(loadingDuringInstall).toBe(true);
+      expect(useProjectStore.getState().jjInstallLoading).toBe(false);
+    });
+
+    it('should handle jj installation error', async () => {
+      useProjectStore.setState({ currentProject: '/test/project' });
+
+      window.electronAPI.installJj = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Homebrew not found'
+      });
+
+      await useProjectStore.getState().installJj();
+
+      const state = useProjectStore.getState();
+      expect(state.jjInstallError).toBe('Homebrew not found');
+      expect(state.jjInstallLoading).toBe(false);
+    });
+
+    it('should ignore jj installation and update state', async () => {
+      useProjectStore.setState({
+        currentProject: '/test/project',
+        jjInstallIgnored: false,
+      });
+
+      window.electronAPI.ignoreJjInstall = vi.fn().mockResolvedValue({ success: true });
+
+      await useProjectStore.getState().ignoreJjInstall();
+
+      expect(window.electronAPI.ignoreJjInstall).toHaveBeenCalledWith('/test/project', true);
+
+      const state = useProjectStore.getState();
+      expect(state.jjInstallIgnored).toBe(true);
+    });
+
+    it('should not install jj when no project selected', async () => {
+      useProjectStore.setState({ currentProject: null });
+      window.electronAPI.installJj = vi.fn();
+
+      await useProjectStore.getState().installJj();
+
+      expect(window.electronAPI.installJj).not.toHaveBeenCalled();
+    });
+
+    it('should not ignore jj install when no project selected', async () => {
+      useProjectStore.setState({ currentProject: null });
+      window.electronAPI.ignoreJjInstall = vi.fn();
+
+      await useProjectStore.getState().ignoreJjInstall();
+
+      expect(window.electronAPI.ignoreJjInstall).not.toHaveBeenCalled();
+    });
+
+    it('should clear jj state when clearing project', () => {
+      useProjectStore.setState({
+        currentProject: '/test/project',
+        jjCheck: { name: 'jj', available: true, version: '0.10.0' },
+        jjInstallIgnored: true,
+        jjInstallLoading: false,
+        jjInstallError: 'some error',
+      });
+
+      useProjectStore.getState().clearProject();
+
+      const state = useProjectStore.getState();
+      expect(state.jjCheck).toBeNull();
+      expect(state.jjInstallIgnored).toBe(false);
+      expect(state.jjInstallLoading).toBe(false);
+      expect(state.jjInstallError).toBeNull();
+    });
+  });
 });

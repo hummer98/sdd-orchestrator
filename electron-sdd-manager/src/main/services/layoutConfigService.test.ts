@@ -1124,4 +1124,88 @@ describe('projectConfigService', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('jjInstallIgnored設定', () => {
+    it('jjInstallIgnoredがtrueの場合、設定を読み込む', async () => {
+      const existingConfig = {
+        version: 3,
+        settings: { jjInstallIgnored: true },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+
+      const result = await projectConfigService.loadJjInstallIgnored(testProjectPath);
+
+      expect(result).toBe(true);
+    });
+
+    it('jjInstallIgnoredがfalseの場合、falseを返す', async () => {
+      const existingConfig = {
+        version: 3,
+        settings: { jjInstallIgnored: false },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+
+      const result = await projectConfigService.loadJjInstallIgnored(testProjectPath);
+
+      expect(result).toBe(false);
+    });
+
+    it('jjInstallIgnoredが存在しない場合、falseを返す', async () => {
+      const existingConfig = {
+        version: 3,
+        settings: {},
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+
+      const result = await projectConfigService.loadJjInstallIgnored(testProjectPath);
+
+      expect(result).toBe(false);
+    });
+
+    it('設定ファイルが存在しない場合、falseを返す', async () => {
+      const error = new Error('ENOENT') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      mockFs.readFile.mockRejectedValue(error);
+
+      const result = await projectConfigService.loadJjInstallIgnored(testProjectPath);
+
+      expect(result).toBe(false);
+    });
+
+    it('jjInstallIgnoredを保存する', async () => {
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          version: 3,
+        })
+      );
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await projectConfigService.saveJjInstallIgnored(testProjectPath, true);
+
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        configFilePath,
+        expect.stringContaining('"jjInstallIgnored": true'),
+        'utf-8'
+      );
+    });
+
+    it('既存の settings を保持しつつ jjInstallIgnored を更新', async () => {
+      const existingConfig = {
+        version: 3,
+        profile: { name: 'cc-sdd', installedAt: '2024-01-01T00:00:00Z' },
+        layout: DEFAULT_LAYOUT,
+        settings: { skipPermissions: true },
+      };
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingConfig));
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      await projectConfigService.saveJjInstallIgnored(testProjectPath, true);
+
+      const writtenContent = mockFs.writeFile.mock.calls[0][1] as string;
+      const writtenConfig = JSON.parse(writtenContent);
+
+      expect(writtenConfig.settings.skipPermissions).toBe(true);
+      expect(writtenConfig.settings.jjInstallIgnored).toBe(true);
+    });
+  });
 });

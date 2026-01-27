@@ -9,6 +9,7 @@ import { useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { InstallError } from '../stores/projectStore';
 import { SteeringSection, ReleaseSection } from '@shared/components/project';
+import { JjInstallSection } from './JjInstallSection';
 
 export function ProjectValidationPanel() {
   const {
@@ -33,6 +34,13 @@ export function ProjectValidationPanel() {
     releaseCheck,
     releaseGenerateLoading,
     generateReleaseMd,
+    // jj-merge-support feature
+    jjCheck,
+    jjInstallIgnored,
+    jjInstallLoading,
+    jjInstallError,
+    installJj,
+    ignoreJjInstall,
   } = useProjectStore();
 
   // Check if there's anything to display
@@ -43,9 +51,11 @@ export function ProjectValidationPanel() {
   const hasSteeringIssues = steeringCheck && !steeringCheck.verificationMdExists;
   // steering-release-integration feature
   const hasReleaseIssues = releaseCheck && !releaseCheck.releaseMdExists;
+  // jj-merge-support feature: Requirements 10.1, 10.4, 10.5
+  const hasJjIssues = jjCheck && !jjCheck.available && !jjInstallIgnored;
 
   // If nothing to display, render nothing
-  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues && !hasSteeringIssues && !hasReleaseIssues) {
+  if (!hasKiroIssues && !hasSpecManagerIssues && !hasPermissionIssues && !hasSteeringIssues && !hasReleaseIssues && !hasJjIssues) {
     return null;
   }
 
@@ -99,6 +109,18 @@ export function ProjectValidationPanel() {
           check={permissionsCheck}
           loading={permissionsFixLoading}
           onFix={fixPermissions}
+        />
+      )}
+
+      {/* jj Installation Check (jj-merge-support feature) */}
+      {/* Requirements: 3.2, 3.4, 10.1, 10.4, 10.5 */}
+      {jjCheck && !jjInstallIgnored && (
+        <JjInstallSection
+          jjCheck={jjCheck}
+          jjInstallLoading={jjInstallLoading}
+          jjInstallError={jjInstallError}
+          onInstall={installJj}
+          onIgnore={ignoreJjInstall}
         />
       )}
 

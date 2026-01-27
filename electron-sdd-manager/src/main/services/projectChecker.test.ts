@@ -364,4 +364,33 @@ describe('ProjectChecker - Tool Availability', () => {
       }
     });
   });
+
+  describe('checkJjAvailability', () => {
+    it('should return ToolCheck result with name "jj"', async () => {
+      const result = await checker.checkJjAvailability();
+      expect(result.name).toBe('jj');
+    });
+
+    it('should return boolean available field', async () => {
+      const result = await checker.checkJjAvailability();
+      expect(typeof result.available).toBe('boolean');
+    });
+
+    it('should include installGuidance when jj is not available', async () => {
+      const result = await checker.checkJjAvailability();
+      // If not available, should have installGuidance
+      if (!result.available) {
+        expect(result.installGuidance).toBeDefined();
+        expect(result.installGuidance).toBe('brew install jj');
+      }
+    });
+
+    it('should include version when jj is available', async () => {
+      const result = await checker.checkJjAvailability();
+      // If available, should have version
+      if (result.available) {
+        expect(result.version).toBeDefined();
+      }
+    });
+  });
 });

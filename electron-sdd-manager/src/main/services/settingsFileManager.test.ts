@@ -189,4 +189,132 @@ describe('SettingsFileManager', () => {
       expect(combinedFiles.length).toBeGreaterThanOrEqual(Math.max(ccSddFiles.length, bugFiles.length));
     });
   });
+
+  describe('jjInstallIgnored settings', () => {
+    /**
+     * Helper to create sdd-orchestrator.json
+     */
+    async function createConfigFile(config: Record<string, unknown>): Promise<void> {
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
+      await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+
+    /**
+     * Helper to read sdd-orchestrator.json
+     */
+    async function readConfigFile(): Promise<Record<string, unknown>> {
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const content = await fs.readFile(configPath, 'utf-8');
+      return JSON.parse(content);
+    }
+
+    describe('setJjInstallIgnored', () => {
+      it('should set jjInstallIgnored to true in settings', async () => {
+        await createConfigFile({ settings: {} });
+
+        const result = await manager.setJjInstallIgnored(tempDir, true);
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).jjInstallIgnored).toBe(true);
+      });
+
+      it('should set jjInstallIgnored to false in settings', async () => {
+        await createConfigFile({ settings: { jjInstallIgnored: true } });
+
+        const result = await manager.setJjInstallIgnored(tempDir, false);
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).jjInstallIgnored).toBe(false);
+      });
+
+      it('should create settings object if it does not exist', async () => {
+        await createConfigFile({});
+
+        const result = await manager.setJjInstallIgnored(tempDir, true);
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect(config.settings).toBeDefined();
+        expect((config.settings as Record<string, unknown>).jjInstallIgnored).toBe(true);
+      });
+
+      it('should preserve existing settings fields', async () => {
+        await createConfigFile({ settings: { existingField: 'value' } });
+
+        const result = await manager.setJjInstallIgnored(tempDir, true);
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).existingField).toBe('value');
+        expect((config.settings as Record<string, unknown>).jjInstallIgnored).toBe(true);
+      });
+
+      it('should return error if config file does not exist', async () => {
+        const result = await manager.setJjInstallIgnored(tempDir, true);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('READ_ERROR');
+        }
+      });
+    });
+
+    describe('getJjInstallIgnored', () => {
+      it('should return true when jjInstallIgnored is true', async () => {
+        await createConfigFile({ settings: { jjInstallIgnored: true } });
+
+        const result = await manager.getJjInstallIgnored(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe(true);
+        }
+      });
+
+      it('should return false when jjInstallIgnored is false', async () => {
+        await createConfigFile({ settings: { jjInstallIgnored: false } });
+
+        const result = await manager.getJjInstallIgnored(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe(false);
+        }
+      });
+
+      it('should return false when jjInstallIgnored is not set', async () => {
+        await createConfigFile({ settings: {} });
+
+        const result = await manager.getJjInstallIgnored(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe(false);
+        }
+      });
+
+      it('should return false when settings object does not exist', async () => {
+        await createConfigFile({});
+
+        const result = await manager.getJjInstallIgnored(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe(false);
+        }
+      });
+
+      it('should return error if config file does not exist', async () => {
+        const result = await manager.getJjInstallIgnored(tempDir);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('READ_ERROR');
+        }
+      });
+    });
+  });
 });

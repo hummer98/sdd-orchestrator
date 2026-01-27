@@ -2446,6 +2446,34 @@ const electronAPI = {
    */
   declineMigration: (projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DECLINE_MIGRATION, projectPath, specId),
+
+  // ============================================================
+  // jj Support APIs (jj-merge-support feature)
+  // Task 12.4: preload API for jj installation and configuration
+  // ============================================================
+
+  /**
+   * Check if jj is installed and available
+   * @returns ToolCheck with availability status and version
+   */
+  checkJjAvailability: (): Promise<import('../shared/types').ToolCheck> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_JJ_AVAILABILITY),
+
+  /**
+   * Install jj via Homebrew
+   * @returns Success status with optional error message
+   */
+  installJj: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_JJ),
+
+  /**
+   * Set jjInstallIgnored flag in .kiro/sdd-orchestrator.json
+   * @param projectPath Project root path
+   * @param ignored Whether to ignore jj installation warnings
+   * @returns Success status with optional error message
+   */
+  ignoreJjInstall: (projectPath: string, ignored: boolean): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.IGNORE_JJ_INSTALL, projectPath, ignored),
 };
 
 // Expose API to renderer

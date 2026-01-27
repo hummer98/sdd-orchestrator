@@ -70,9 +70,11 @@ export type CommandsetVersionRecord = z.infer<typeof CommandsetVersionRecordSche
 /**
  * プロジェクト設定のスキーマ
  * Bug fix: persist-skip-permission-per-project
+ * Feature: jj-merge-support
  */
 export const ProjectSettingsSchema = z.object({
   skipPermissions: z.boolean().optional(),
+  jjInstallIgnored: z.boolean().optional(),
 });
 
 export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
@@ -433,6 +435,41 @@ export const projectConfigService = {
       settings: {
         ...(existing?.settings ?? {}),
         skipPermissions,
+      },
+      defaults: existing?.defaults,
+    };
+    await saveProjectConfigV3(projectPath, config);
+  },
+
+  /**
+   * jjInstallIgnored設定を読み込む
+   * Feature: jj-merge-support
+   * Requirements: 5.1, 5.2
+   * @param projectPath プロジェクトルートパス
+   * @returns jjInstallIgnored設定（存在しない場合はfalse）
+   */
+  async loadJjInstallIgnored(projectPath: string): Promise<boolean> {
+    const config = await loadProjectConfigV3(projectPath);
+    return config?.settings?.jjInstallIgnored ?? false;
+  },
+
+  /**
+   * jjInstallIgnored設定を保存
+   * Feature: jj-merge-support
+   * Requirements: 5.1, 5.3
+   * @param projectPath プロジェクトルートパス
+   * @param jjInstallIgnored 設定値
+   */
+  async saveJjInstallIgnored(projectPath: string, jjInstallIgnored: boolean): Promise<void> {
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
+      profile: existing?.profile,
+      layout: existing?.layout,
+      commandsets: existing?.commandsets,
+      settings: {
+        ...(existing?.settings ?? {}),
+        jjInstallIgnored,
       },
       defaults: existing?.defaults,
     };

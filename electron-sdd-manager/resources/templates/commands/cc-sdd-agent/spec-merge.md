@@ -170,70 +170,52 @@ cd "$PROJECT_ROOT"
 > **Note**: All changes (implementation + spec.json update) are already committed in the worktree.
 > Squash merge will include everything - no `git add` needed on main branch.
 
-1. Verify main branch is clean:
-   ```bash
-   git status --porcelain
-   ```
-   - If there are uncommitted changes, warn and continue (they will NOT be included in merge)
-2. Merge the feature branch with squash:
-   ```bash
-   git merge --squash {worktree.branch}
-   ```
-3. If merge succeeds without conflicts:
-   - Generate commit message (see Step 3.5)
-   - Create merge commit with generated message
-4. If merge has conflicts:
-   - Attempt AI-powered conflict resolution (see Step 4)
+**jj-merge-support**: Use the helper script to execute merge with jj/git fallback.
 
-### Step 3.5: Generate Commit Message
-
-Generate a meaningful commit message by analyzing the staged changes (same logic as `/commit`).
-
-#### 3.5.1: Analyze Changes
-1. Get list of changed files:
-   ```bash
-   git diff --cached --name-only
-   ```
-2. Get change statistics:
-   ```bash
-   git diff --cached --stat
-   ```
-3. Review the changes to understand what was implemented
-
-#### 3.5.2: Determine Change Type
-Analyze the nature of changes:
-- `feat`: New feature or functionality
-- `fix`: Bug fix
-- `refactor`: Code restructuring without behavior change
-- `perf`: Performance improvement
-- `test`: Test additions or modifications
-- `docs`: Documentation updates
-- `chore`: Build, configuration, or maintenance
-
-**Default**: Use `feat` for spec implementations (most common case)
-
-#### 3.5.3: Generate Message
-Create a commit message following this format:
-
-```
-<type>(<feature-name>): <concise description of what was implemented>
-```
-
-**Guidelines**:
-- Subject should describe WHAT was implemented, not HOW it was merged
-- Keep subject line under 72 characters
-- Use Japanese or English based on project convention
-- Focus on user-visible or developer-visible changes
-
-**Examples**:
-- `feat(submit-shortcut-key): Ctrl+Enterでフォーム送信のショートカットキー機能を追加`
-- `feat(remote-ui-create-buttons): リモートUIにSpec/Bug作成ボタンを追加`
-- `fix(metrics-tracking): メトリクス計測の二重カウント問題を修正`
-
-#### 3.5.4: Create Commit
+#### 3.1: Check Script Existence
+Verify merge-spec.sh script is installed:
 ```bash
-git commit -m "<generated-message>"
+[ -f ".kiro/scripts/merge-spec.sh" ] && echo "OK" || echo "NOT_FOUND"
 ```
+
+**IF** script not found:
+- **Error**: "merge-spec.sh not found at .kiro/scripts/merge-spec.sh"
+- **Suggested Action**: "Run commandset install to deploy helper scripts"
+- **EXIT** (do not proceed)
+
+#### 3.2: Execute Merge Script
+Run the merge script with feature name:
+```bash
+bash .kiro/scripts/merge-spec.sh $1
+```
+
+The script will:
+- Check if jj is available
+- If jj exists: Use `jj squash --from {branch} --into {main}` for merge
+- If jj not found: Fallback to `git merge --squash {branch}`
+- If merge succeeds: Commit, remove worktree, delete branch
+- Return exit code: 0 (success), 1 (conflict), 2+ (error)
+
+#### 3.3: Check Exit Code
+Capture the exit code and handle accordingly:
+
+**Exit Code 0 (Success)**:
+- Log: "Merge completed successfully"
+- **Go to Step 6** (Report Success)
+
+**Exit Code 1 (Conflict)**:
+- Log: "Merge has conflicts - attempting AI-powered resolution"
+- **Go to Step 4** (Conflict Resolution)
+
+**Exit Code 2+ (Error)**:
+- **Error**: "Merge script failed with exit code {exit_code}"
+- Display script error output (stderr)
+- **Suggested Action**:
+  - If jq missing: "Install jq: brew install jq"
+  - If spec.json missing: "spec.json not found in expected location"
+  - If permission denied: "Grant execute permission: chmod +x .kiro/scripts/merge-spec.sh"
+- **EXIT** (do not proceed)
+
 
 ### Step 4: Conflict Resolution (if needed)
 **Maximum 7 attempts** - Track attempt count and exit after 7 failures.
@@ -283,7 +265,10 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 
 #### 4.3: Post-Resolution
 **IF** all conflicts resolved (no conflicted files remain):
-- Generate commit message using Step 3.5 logic
+- Generate commit message by analyzing staged changes:
+  - Get changed files: `git diff --cached --name-only`
+  - Determine change type (usually `feat` for spec implementations)
+  - Format: `feat($1): <description>`
 - Create merge commit with generated message
 - Proceed to Step 5
 
@@ -315,9 +300,15 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 - **EXIT** (do not continue to Step 5)
 
 ### Step 5: Cleanup Worktree
-Only proceed if merge was successful (Step 3 or Step 4 completed).
+**jj-merge-support**: Cleanup is handled by merge-spec.sh script in Step 3.
 
-Use `WORKTREE_ABSOLUTE_PATH` resolved in Step 2.1.
+**IF** Step 3 returned exit code 0:
+- Script already cleaned up worktree and deleted branch
+- **Skip this step** (Go to Step 6)
+
+**IF** Step 4 (Conflict Resolution) succeeded:
+- Conflicts resolved manually, need to cleanup
+- Use `WORKTREE_ABSOLUTE_PATH` resolved in Step 2.1
 
 #### 5.1: Remove Worktree Directory
 ```bash

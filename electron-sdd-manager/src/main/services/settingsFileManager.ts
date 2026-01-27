@@ -107,6 +107,18 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
+ * sdd-orchestrator.json config schema
+ * jj-merge-support: Added jjInstallIgnored to settings
+ */
+interface SddOrchestratorConfig {
+  settings?: {
+    jjInstallIgnored?: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+/**
  * SettingsFileManager
  * 設定ファイルの競合検出とマージを管理
  * Requirements: 6.1, 6.2, 6.3, 6.4
@@ -248,5 +260,71 @@ export class SettingsFileManager {
 
     // Deduplicate
     return [...new Set(files)];
+  }
+
+  /**
+   * Set jjInstallIgnored flag in .kiro/sdd-orchestrator.json
+   * jj-merge-support Task 12.1
+   * @param projectPath - Project root path
+   * @param ignored - Whether to ignore jj installation
+   */
+  async setJjInstallIgnored(projectPath: string, ignored: boolean): Promise<Result<void, MergeError>> {
+    const configPath = join(projectPath, '.kiro', 'sdd-orchestrator.json');
+
+    try {
+      // Read existing config
+      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const config: SddOrchestratorConfig = JSON.parse(content);
+
+      // Ensure settings object exists
+      if (!config.settings) {
+        config.settings = {};
+      }
+
+      // Update jjInstallIgnored
+      config.settings.jjInstallIgnored = ignored;
+
+      // Write back
+      await import('fs/promises').then(fs => fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8'));
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: configPath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Get jjInstallIgnored flag from .kiro/sdd-orchestrator.json
+   * jj-merge-support Task 12.1
+   * @param projectPath - Project root path
+   * @returns jjInstallIgnored flag (defaults to false)
+   */
+  async getJjInstallIgnored(projectPath: string): Promise<Result<boolean, MergeError>> {
+    const configPath = join(projectPath, '.kiro', 'sdd-orchestrator.json');
+
+    try {
+      // Read existing config
+      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const config: SddOrchestratorConfig = JSON.parse(content);
+
+      // Return jjInstallIgnored (default to false)
+      return { ok: true, value: config.settings?.jjInstallIgnored ?? false };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: configPath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
   }
 }

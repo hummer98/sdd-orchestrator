@@ -12,6 +12,8 @@ import { useSpecStore } from './specStore';
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 import { IpcApiClient } from '../../shared/api/IpcApiClient';
 import { useAgentStore } from './agentStore';
+// jj-merge-support Task 12.5: Import ToolCheck type
+import type { ToolCheck } from '../../shared/types';
 
 /** spec-managerファイルチェック結果 */
 export interface FileCheckResult {
@@ -97,6 +99,12 @@ interface ProjectState {
   // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
   releaseCheck: ReleaseCheckResult | null;
   releaseGenerateLoading: boolean;
+  // jj-merge-support feature
+  // Requirements: 3.5, 4.1, 9.1, 9.2, 9.3, 9.4
+  jjCheck: ToolCheck | null;
+  jjInstallIgnored: boolean;
+  jjInstallLoading: boolean;
+  jjInstallError: string | null;
 }
 
 /** シェル許可追加結果 */
@@ -128,6 +136,10 @@ interface ProjectActions {
   // steering-release-integration feature
   checkReleaseFiles: (projectPath: string) => Promise<void>;
   generateReleaseMd: () => Promise<void>;
+  // jj-merge-support feature
+  // Requirements: 4.1, 5.1
+  installJj: () => Promise<void>;
+  ignoreJjInstall: () => Promise<void>;
 }
 
 type ProjectStore = ProjectState & ProjectActions;
@@ -156,6 +168,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // steering-release-integration feature
   releaseCheck: null,
   releaseGenerateLoading: false,
+  // jj-merge-support feature
+  jjCheck: null,
+  jjInstallIgnored: false,
+  jjInstallLoading: false,
+  jjInstallError: null,
 
   // Actions
   // ============================================================
@@ -179,6 +196,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       steeringCheck: null,
       // steering-release-integration feature
       releaseCheck: null,
+      // jj-merge-support feature
+      jjCheck: null,
+      jjInstallIgnored: false,
+      jjInstallLoading: false,
+      jjInstallError: null,
     });
 
     try {
@@ -314,6 +336,35 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // regardless of which code path triggers project selection (menu, RecentProjects, etc.)
       await useAgentStore.getState().loadSkipPermissions(path);
 
+      // jj-merge-support feature: Check jj availability
+      // Requirements: 3.1, 9.1, 9.4
+      // Load jjInstallIgnored setting from the project settings
+      let jjInstallIgnored = false;
+      try {
+        const skipPermissions = await window.electronAPI.loadSkipPermissions(path);
+        // skipPermissions can be a boolean (old format) or an object with jjInstallIgnored (new format)
+        if (typeof skipPermissions === 'object' && skipPermissions !== null) {
+          jjInstallIgnored = (skipPermissions as unknown as { jjInstallIgnored?: boolean }).jjInstallIgnored || false;
+        }
+      } catch (error) {
+        console.error('[projectStore] Failed to load jjInstallIgnored:', error);
+      }
+
+      // Only check jj if not explicitly ignored
+      if (!jjInstallIgnored) {
+        try {
+          const jjCheck = await window.electronAPI.checkJjAvailability();
+          set({ jjCheck, jjInstallIgnored });
+        } catch (error) {
+          console.error('[projectStore] Failed to check jj availability:', error);
+          // Don't fail project selection if jj check fails
+          set({ jjCheck: null, jjInstallIgnored });
+        }
+      } else {
+        // jj check is ignored, skip the check
+        set({ jjCheck: null, jjInstallIgnored: true });
+      }
+
       // ============================================================
       // debatex-document-review Inspection Fix 7.2: Load project default scheme
       // Requirements: 4.2 - spec.json未設定時のプロジェクトデフォルト適用
@@ -383,6 +434,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // steering-release-integration feature
       releaseCheck: null,
       releaseGenerateLoading: false,
+      // jj-merge-support feature
+      jjCheck: null,
+      jjInstallIgnored: false,
+      jjInstallLoading: false,
+      jjInstallError: null,
     });
   },
 
@@ -719,6 +775,65 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       console.error('[projectStore] Failed to generate release.md:', error);
       set({ releaseGenerateLoading: false });
+    }
+  },
+
+  // ============================================================
+  // jj Installation (jj-merge-support feature)
+  // Task 12.5: ProjectStore への jj関連 state 追加
+  // Requirements: 4.1, 9.1, 9.3
+  // ============================================================
+
+  /**
+   * Install jj via Homebrew and re-check availability
+   * Requirements: 4.1, 4.3
+   */
+  installJj: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    set({ jjInstallLoading: true, jjInstallError: null });
+
+    try {
+      const result = await window.electronAPI.installJj();
+
+      if (result.success) {
+        // Installation succeeded, re-check jj availability
+        const jjCheck = await window.electronAPI.checkJjAvailability();
+        set({ jjCheck, jjInstallLoading: false, jjInstallError: null });
+      } else {
+        // Installation failed
+        set({
+          jjInstallError: result.error || 'Installation failed',
+          jjInstallLoading: false,
+        });
+      }
+    } catch (error) {
+      set({
+        jjInstallError: error instanceof Error ? error.message : 'Unknown error',
+        jjInstallLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Ignore jj installation warnings for this project
+   * Requirements: 5.1
+   */
+  ignoreJjInstall: async () => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    try {
+      const result = await window.electronAPI.ignoreJjInstall(currentProject, true);
+
+      if (result.success) {
+        set({ jjInstallIgnored: true });
+      } else {
+        console.error('[projectStore] Failed to ignore jj install:', result.error);
+      }
+    } catch (error) {
+      console.error('[projectStore] Failed to ignore jj install:', error);
     }
   },
 }));

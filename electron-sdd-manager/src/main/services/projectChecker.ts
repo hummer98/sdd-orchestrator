@@ -440,4 +440,31 @@ export class ProjectChecker {
       };
     }
   }
+
+  /**
+   * Check if jj command is available on the system
+   * Requirements: 3.1, 7.1, 7.2, 7.3, 7.4
+   *
+   * @returns ToolCheck result for jj
+   */
+  async checkJjAvailability(): Promise<ToolCheck> {
+    const name = 'jj';
+    const installGuidance = 'brew install jj';
+
+    try {
+      const { stdout } = await execAsync('jj --version');
+      const version = stdout.trim();
+      return {
+        name,
+        available: true,
+        version,
+      };
+    } catch {
+      return {
+        name,
+        available: false,
+        installGuidance,
+      };
+    }
+  }
 }

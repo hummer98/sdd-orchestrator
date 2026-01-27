@@ -384,6 +384,12 @@ export const IPC_CHANNELS = {
   LOAD_ENGINE_CONFIG: 'ipc:load-engine-config',
   SAVE_ENGINE_CONFIG: 'ipc:save-engine-config',
   GET_AVAILABLE_LLM_ENGINES: 'ipc:get-available-llm-engines',
+
+  // jj Support (jj-merge-support feature)
+  // Task 12.2: IPC channels for jj installation and configuration
+  CHECK_JJ_AVAILABILITY: 'ipc:check-jj-availability',
+  INSTALL_JJ: 'ipc:install-jj',
+  IGNORE_JJ_INSTALL: 'ipc:ignore-jj-install',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

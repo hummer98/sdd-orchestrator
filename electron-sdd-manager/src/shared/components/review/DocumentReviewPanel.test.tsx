@@ -151,8 +151,8 @@ describe('DocumentReviewPanel', () => {
       expect(screen.getByText(/replyを適用.*Round 2/)).toBeInTheDocument();
     });
 
-    it('最新ラウンドがappliedの場合「replyを適用」ボタンを表示する（再レビュー待ち）', () => {
-      // 修正が適用され、再レビューが必要な状態
+    it('最新ラウンドがappliedの場合「レビュー開始」ボタンを表示する（次ラウンドのレビュー待ち）', () => {
+      // 修正が適用され、次のレビューラウンドを開始できる状態
       const reviewState: DocumentReviewState = {
         status: 'in_progress',
         roundDetails: [
@@ -162,8 +162,10 @@ describe('DocumentReviewPanel', () => {
 
       render(<DocumentReviewPanel {...defaultProps} reviewState={reviewState} />);
 
-      expect(screen.getByTestId('apply-fix-button')).toBeInTheDocument();
-      expect(screen.getByText(/replyを適用.*Round 1/)).toBeInTheDocument();
+      // fixStatus: 'applied' の場合は次のラウンドのレビューを開始できる
+      expect(screen.queryByTestId('apply-fix-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('start-review-button')).toBeInTheDocument();
+      expect(screen.getByText('レビュー開始')).toBeInTheDocument();
     });
   });
 

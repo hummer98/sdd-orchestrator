@@ -176,12 +176,13 @@ export function DocumentReviewPanel({
   const pendingReplyRound =
     latestRound?.status === 'review_complete' ? latestRound.roundNumber : null;
 
-  // Check if the latest reply needs action (fixStatus is 'pending' or 'applied')
-  // 'pending' = fixes/discussion needed, 'applied' = awaiting re-review
-  // 'not_required' = no action needed, can proceed to next review round
+  // Check if the latest reply needs manual fix application (fixStatus is 'pending')
+  // 'pending' = fixes/discussion needed, show "replyを適用" button
+  // 'applied' = fixes already applied, ready to start next review round
+  // 'not_required' = no action needed, can proceed to impl
   const pendingFixRound =
     latestRound?.status === 'reply_complete' &&
-    (latestRound.fixStatus === 'pending' || latestRound.fixStatus === 'applied')
+    latestRound.fixStatus === 'pending'
       ? latestRound.roundNumber
       : null;
 

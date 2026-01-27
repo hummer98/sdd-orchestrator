@@ -177,7 +177,13 @@ export interface AgentInfo {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
    * Requirements: 4.1, 4.2
    */
-  engineId: LLMEngineId;
+  engineId?: LLMEngineId;
+  // agent-lifecycle-management: Task 9.1 - Reattached and exit reason fields
+  // Requirements: 6.2, 8.3
+  /** Whether this agent was reattached after app restart (limited capabilities) */
+  isReattached?: boolean;
+  /** Reason for agent termination (completed, stopped_by_user, failed, etc.) */
+  exitReason?: string;
 }
 
 // =============================================================================

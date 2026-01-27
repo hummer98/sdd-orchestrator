@@ -36,6 +36,11 @@ export interface AgentItemInfo {
   startedAt: string;
   /** 最終アクティビティ時刻（ISO文字列） */
   lastActivityAt: string;
+  // agent-lifecycle-management: Task 9.2, 9.3
+  /** 再接続済みエージェントかどうか（制限付き機能モード） */
+  isReattached?: boolean;
+  /** 終了理由（completed, stopped_by_user, exited_while_app_closed, etc.） */
+  exitReason?: string;
 }
 
 /**
@@ -81,6 +86,35 @@ function formatDuration(ms: number): string {
     return `${minutes}分${seconds}秒`;
   }
   return `${seconds}秒`;
+}
+
+/**
+ * agent-lifecycle-management Task 9.3: 終了理由を日本語に変換
+ * Requirements: 8.3, 8.4
+ */
+function getExitReasonLabel(exitReason: string | undefined): string | null {
+  if (!exitReason) return null;
+
+  switch (exitReason) {
+    case 'completed':
+    case 'stopped_by_user':
+      // 正常終了やユーザー停止は特別な表示なし
+      return null;
+    case 'exited_while_app_closed':
+      return 'アプリ停止中に終了';
+    case 'orphaned':
+      return 'Watchdogにより検出';
+    case 'pid_reused':
+      return 'PID再利用を検出';
+    case 'timed_out':
+      return 'タイムアウト';
+    case 'crashed':
+      return 'クラッシュ';
+    case 'failed':
+      return '失敗';
+    default:
+      return null;
+  }
 }
 
 // =============================================================================
@@ -133,6 +167,9 @@ export function AgentListItem({
   const showStopButton = agent.status === 'running' || agent.status === 'hang';
   const showRemoveButton = agent.status !== 'running' && agent.status !== 'hang';
   const isRunning = agent.status === 'running';
+  // agent-lifecycle-management Task 9.2, 9.3
+  const isReattached = agent.isReattached === true;
+  const exitReasonLabel = getExitReasonLabel(agent.exitReason);
 
   // 実行中エージェントの経過時間を動的に更新
   const [elapsed, setElapsed] = useState(() => {
@@ -150,6 +187,7 @@ export function AgentListItem({
   }, [isRunning, agent.startedAt]);
 
   // 経過時間を計算
+  // agent-lifecycle-management Task 9.2: 再接続エージェントは実行時間が「不明」(Requirement 6.4)
   const duration = isRunning
     ? elapsed
     : new Date(agent.lastActivityAt).getTime() - new Date(agent.startedAt).getTime();
@@ -188,10 +226,28 @@ export function AgentListItem({
           <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
             {agent.phase}
           </span>
+          {/* agent-lifecycle-management Task 9.2: 再接続バッジ */}
+          {isReattached && (
+            <span
+              className="shrink-0 px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+              title="再接続済み（制限付き機能）"
+            >
+              再接続
+            </span>
+          )}
           <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            {formatDateTime(agent.startedAt)} ({formatDuration(duration)}
-            {isRunning && '...'})
+            {formatDateTime(agent.startedAt)} ({isReattached && isRunning ? '不明' : formatDuration(duration)}
+            {isRunning && !isReattached && '...'})
           </span>
+          {/* agent-lifecycle-management Task 9.3: 終了理由表示 */}
+          {exitReasonLabel && !isRunning && (
+            <span
+              className="shrink-0 px-1.5 py-0.5 text-xs rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+              title={`終了理由: ${exitReasonLabel}`}
+            >
+              {exitReasonLabel}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1 ml-2">

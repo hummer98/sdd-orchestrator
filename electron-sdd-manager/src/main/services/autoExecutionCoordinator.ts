@@ -16,6 +16,8 @@ import { FileService } from './fileService';
 // spec-event-log: Event logging for auto-execution activities
 import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
+// Task 7.2: Agent Lifecycle Management integration (agent-lifecycle-management feature)
+import { getAgentLifecycleManager } from './agentLifecycleSetup';
 
 // ============================================================
 // Constants
@@ -1260,6 +1262,8 @@ export class AutoExecutionCoordinator extends EventEmitter {
 
   /**
    * タイムアウト発生時の処理
+   * Task 7.2: AgentLifecycleManager連携 (agent-lifecycle-management feature)
+   * Requirement: 1.5, 3.1, 3.5, 9.2
    * @param specPath specのパス
    */
   handleTimeout(specPath: string): void {
@@ -1272,7 +1276,38 @@ export class AutoExecutionCoordinator extends EventEmitter {
       specPath,
       specId: state.specId,
       currentPhase: state.currentPhase,
+      currentAgentId: state.currentAgentId,
     });
+
+    // Task 7.2: Stop the running agent via AgentLifecycleManager
+    // Requirement: 1.5, 3.1 - タイムアウト時にstopAgent(agentId, 'timeout')を呼び出し
+    if (state.currentAgentId) {
+      const lifecycleManager = getAgentLifecycleManager();
+      if (lifecycleManager) {
+        lifecycleManager.stopAgent(state.currentAgentId, 'timeout')
+          .then((result) => {
+            if (result.ok) {
+              logger.info('[AutoExecutionCoordinator] Agent stopped due to timeout', {
+                agentId: state.currentAgentId,
+                specPath,
+              });
+            } else {
+              logger.warn('[AutoExecutionCoordinator] Failed to stop agent on timeout', {
+                agentId: state.currentAgentId,
+                error: result.error,
+              });
+            }
+          })
+          .catch((error) => {
+            logger.error('[AutoExecutionCoordinator] Error stopping agent on timeout', {
+              agentId: state.currentAgentId,
+              error,
+            });
+          });
+      } else {
+        logger.warn('[AutoExecutionCoordinator] AgentLifecycleManager not initialized, cannot stop agent');
+      }
+    }
 
     // エラー状態に更新
     this.updateState(specPath, {
@@ -1289,10 +1324,10 @@ export class AutoExecutionCoordinator extends EventEmitter {
     };
     this.emit('execution-error', specPath, error);
 
-    // spec-event-log: Log auto-execution:fail event (Requirement 1.5)
+    // spec-event-log: Log auto-execution:fail event with timeout message (Requirement 3.5)
     this.logAutoExecutionEvent(specPath, state.specId, {
       type: 'auto-execution:fail',
-      message: `Auto-execution failed: Timeout at phase ${state.currentPhase ?? 'unknown'}`,
+      message: `Auto-execution timed out at phase ${state.currentPhase ?? 'unknown'}`,
       status: 'failed',
       endPhase: state.currentPhase ?? undefined,
       errorMessage: `Timeout at phase: ${state.currentPhase ?? 'unknown'}`,

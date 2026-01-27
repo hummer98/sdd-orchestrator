@@ -218,4 +218,155 @@ describe('AgentListItem', () => {
       expect(screen.getByText(/\d{2}\/\d{2} \d{2}:\d{2}/)).toBeInTheDocument();
     });
   });
+
+  // =============================================================================
+  // Task 9.2: agent-lifecycle-management - 再接続ステータス表示
+  // Requirements: 6.2, 6.4
+  // =============================================================================
+  describe('再接続ステータス表示 (Task 9.2)', () => {
+    it('再接続エージェントに「再接続」バッジを表示する', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'running',
+        isReattached: true,
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.getByText('再接続')).toBeInTheDocument();
+    });
+
+    it('通常のエージェントには「再接続」バッジを表示しない', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'running',
+        isReattached: false,
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.queryByText('再接続')).not.toBeInTheDocument();
+    });
+
+    it('isReattachedがundefinedの場合は「再接続」バッジを表示しない', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'running',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.queryByText('再接続')).not.toBeInTheDocument();
+    });
+
+    it('再接続エージェントの実行時間を「不明」と表示する (Requirement 6.4)', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'running',
+        isReattached: true,
+        startedAt: new Date().toISOString(),
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      // 再接続エージェントは実行時間が不明
+      expect(screen.getByText(/不明/)).toBeInTheDocument();
+    });
+  });
+
+  // =============================================================================
+  // Task 9.3: agent-lifecycle-management - 終了理由表示
+  // Requirements: 8.3, 8.4
+  // =============================================================================
+  describe('終了理由表示 (Task 9.3)', () => {
+    it('正常完了の場合は終了理由を表示しない（デフォルト表示）', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'completed',
+        exitReason: 'completed',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      // 正常完了は特別な表示なし
+      expect(screen.queryByText(/アプリ停止中/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Watchdog/)).not.toBeInTheDocument();
+    });
+
+    it('アプリ停止中の終了の場合、警告アイコンと「アプリ停止中に終了」を表示する', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'interrupted',
+        exitReason: 'exited_while_app_closed',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.getByText(/アプリ停止中に終了/)).toBeInTheDocument();
+    });
+
+    it('孤児検出の場合、「Watchdogにより検出」を表示する', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'interrupted',
+        exitReason: 'orphaned',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.getByText(/Watchdogにより検出/)).toBeInTheDocument();
+    });
+
+    it('PID再利用の場合、「PID再利用を検出」を表示する', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'interrupted',
+        exitReason: 'pid_reused',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.getByText(/PID再利用を検出/)).toBeInTheDocument();
+    });
+
+    it('ユーザー停止の場合は特別な表示なし', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'interrupted',
+        exitReason: 'stopped_by_user',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      // ユーザー停止は通常の中断表示
+      expect(screen.queryByText(/アプリ停止中/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Watchdog/)).not.toBeInTheDocument();
+    });
+
+    it('タイムアウトの場合、「タイムアウト」を表示する', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'interrupted',
+        exitReason: 'timed_out',
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.getByText(/タイムアウト/)).toBeInTheDocument();
+    });
+
+    it('実行中エージェントには終了理由を表示しない', () => {
+      const agent: AgentItemInfo = {
+        ...mockAgent,
+        status: 'running',
+        exitReason: undefined,
+      };
+
+      render(<AgentListItem {...defaultProps} agent={agent} />);
+
+      expect(screen.queryByText(/アプリ停止中/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Watchdog/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/タイムアウト/)).not.toBeInTheDocument();
+    });
+  });
 });

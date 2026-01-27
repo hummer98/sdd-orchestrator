@@ -21,6 +21,8 @@ import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser'
 import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
+// Task 7.4: Agent Lifecycle Management (agent-lifecycle-management feature)
+import { getAgentWatchdog, initializeAgentLifecycleManager } from './services/agentLifecycleSetup';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -227,6 +229,21 @@ app.whenReady().then(async () => {
 
   await initializeMcpServer(() => configStore.getMcpSettings());
 
+  // Task 7.4: Initialize Agent Lifecycle Management (agent-lifecycle-management feature)
+  // Requirement: 7.5 - Watchdog lifecycle linked to app
+  // Requirement: 5.1 - State synchronization on startup
+  try {
+    const { lifecycleManager, watchdog } = await initializeAgentLifecycleManager();
+    // Synchronize state on startup (detect interrupted agents, reattach running ones)
+    const syncResult = await lifecycleManager.synchronizeOnStartup();
+    logger.info('[main] Agent state synchronized', syncResult);
+    // Start watchdog for periodic health checks
+    watchdog.start();
+    logger.info('[main] Agent watchdog started');
+  } catch (error) {
+    logger.error('[main] Failed to initialize agent lifecycle management', { error });
+  }
+
   // Initialize with project path from command line if provided
   if (initialProjectPath) {
     logger.info('[main] Initial project path from command line', { initialProjectPath });
@@ -331,6 +348,20 @@ app.on('window-all-closed', () => {
     app.quit();
   } else {
     logger.info('[main] macOS, keeping app running');
+  }
+});
+
+// Task 7.4: Stop watchdog on app quit (Requirement: 7.5)
+app.on('will-quit', () => {
+  logger.info('[main] will-quit event fired, stopping agent watchdog');
+  try {
+    const watchdog = getAgentWatchdog();
+    if (watchdog) {
+      watchdog.stop();
+      logger.info('[main] Agent watchdog stopped');
+    }
+  } catch (error) {
+    logger.warn('[main] Error stopping agent watchdog', { error });
   }
 });
 

@@ -21,6 +21,8 @@ import { getDefaultAgentRecordService } from '../services/agentRecordService';
 import { getDefaultLogFileService } from '../services/logFileService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import { getClaudeCommand } from '../services/agentProcess';
+// Task 7.3: Agent Lifecycle Management integration (agent-lifecycle-management feature)
+import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
 
 // Module-level state for agent record watcher
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
@@ -141,9 +143,39 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
     }
   );
 
+  // Task 7.3: Use AgentLifecycleManager for stop agent (agent-lifecycle-management feature)
+  // Requirement: 1.5 - Route through AgentLifecycleManager
   ipcMain.handle(
     IPC_CHANNELS.STOP_AGENT,
     async (_event, agentId: string) => {
+      logger.info('[agentHandlers] STOP_AGENT called', { agentId });
+
+      // Try AgentLifecycleManager first (if initialized)
+      const lifecycleManager = getAgentLifecycleManager();
+      if (lifecycleManager) {
+        const agent = lifecycleManager.getAgent(agentId);
+        if (agent) {
+          // Use graceful shutdown for normal agents, kill for reattached
+          if (agent.isReattached) {
+            const result = await lifecycleManager.killAgent(agentId);
+            if (!result.ok) {
+              throw new Error(`Failed to kill agent: ${result.error}`);
+            }
+            logger.info('[agentHandlers] Agent killed via AgentLifecycleManager', { agentId });
+            return;
+          } else {
+            const result = await lifecycleManager.stopAgent(agentId, 'user_request');
+            if (!result.ok) {
+              throw new Error(`Failed to stop agent: ${result.error}`);
+            }
+            logger.info('[agentHandlers] Agent stopped via AgentLifecycleManager', { agentId });
+            return;
+          }
+        }
+      }
+
+      // Fallback to SpecManagerService for agents not managed by AgentLifecycleManager
+      logger.debug('[agentHandlers] Falling back to SpecManagerService.stopAgent', { agentId });
       const service = getSpecManagerService();
       const result = await service.stopAgent(agentId);
 

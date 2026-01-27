@@ -623,4 +623,137 @@ describe('SharedAgentStore', () => {
       expect(freshStore.selectedAgentIdBySpec.size).toBe(0);
     });
   });
+
+  // =============================================================================
+  // Task 9.1: agent-lifecycle-management - isReattached と exitReason の状態追加
+  // Requirements: 6.2, 8.3
+  // =============================================================================
+  describe('Task 9.1: isReattached and exitReason fields (agent-lifecycle-management)', () => {
+    // Helper to create agent with lifecycle fields
+    const createAgentWithLifecycleFields = (
+      id: string,
+      specId: string,
+      status: 'running' | 'completed' | 'interrupted' | 'hang' | 'failed',
+      isReattached?: boolean,
+      exitReason?: string
+    ): AgentInfo => ({
+      id,
+      specId,
+      status,
+      startedAt: new Date().toISOString(),
+      command: 'test',
+      phase: 'requirements',
+      sessionId: `session-${id}`,
+      lastActivityAt: new Date().toISOString(),
+      isReattached,
+      exitReason,
+    });
+
+    describe('isReattached field', () => {
+      it('should store isReattached=true for reattached agents', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'running', true);
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.isReattached).toBe(true);
+      });
+
+      it('should store isReattached=false for normal agents', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'running', false);
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.isReattached).toBe(false);
+      });
+
+      it('should store undefined isReattached for backwards compatibility', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.isReattached).toBeUndefined();
+      });
+    });
+
+    describe('exitReason field', () => {
+      it('should store exitReason for completed agents', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'completed', false, 'completed');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.exitReason).toBe('completed');
+      });
+
+      it('should store exitReason=exited_while_app_closed for agents terminated during app shutdown', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'interrupted', false, 'exited_while_app_closed');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.exitReason).toBe('exited_while_app_closed');
+      });
+
+      it('should store exitReason=orphaned for agents detected by watchdog', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'interrupted', false, 'orphaned');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.exitReason).toBe('orphaned');
+      });
+
+      it('should store exitReason=pid_reused for PID reuse detection', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'interrupted', false, 'pid_reused');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.exitReason).toBe('pid_reused');
+      });
+
+      it('should store undefined exitReason for running agents', () => {
+        const store = getSharedAgentStore();
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'running');
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.exitReason).toBeUndefined();
+      });
+    });
+
+    describe('combined fields', () => {
+      it('should support reattached agent with limited capabilities indication', () => {
+        const store = getSharedAgentStore();
+        // Reattached agents have limited capabilities (no stdout/stderr, SIGKILL only)
+        const agent = createAgentWithLifecycleFields('agent-1', 'spec-a', 'running', true);
+
+        store.addAgent('spec-a', agent);
+
+        const freshState = getSharedAgentStore();
+        const storedAgent = freshState.getAgentById('agent-1');
+        expect(storedAgent?.isReattached).toBe(true);
+        expect(storedAgent?.status).toBe('running');
+      });
+    });
+  });
 });

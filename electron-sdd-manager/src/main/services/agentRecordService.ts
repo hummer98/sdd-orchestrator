@@ -15,10 +15,21 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { type AgentCategory, getCategoryBasePath, getMetadataPath } from './agentCategory';
 import type { LLMEngineId } from '@shared/registry';
+import type { ExitReason } from './agentLifecycleTypes';
 
 // Agent status types - SSOT for agent state
 // agent-state-file-ssot: Moved from agentRegistry.ts
-export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'failed';
+// Extended for agent-lifecycle-management: added timed_out, stopping, killing, stopped
+export type AgentStatus =
+  | 'running'
+  | 'completed'
+  | 'interrupted'
+  | 'hang'
+  | 'failed'
+  | 'timed_out'
+  | 'stopping'
+  | 'killing'
+  | 'stopped';
 
 /**
  * Execution history entry for agent lifecycle tracking
@@ -72,6 +83,10 @@ export interface AgentInfo {
    * 1-3 = auto-resume attempt in progress
    */
   readonly autoResumeCount?: number;
+  /** OS-level process start time (Requirement: 4.1) */
+  readonly processStartTime?: string;
+  /** Reason for agent termination (Requirement: 8.2) */
+  readonly exitReason?: ExitReason;
 }
 
 export interface AgentRecord {
@@ -111,15 +126,20 @@ export interface AgentRecord {
    * 1-3 = auto-resume attempt in progress
    */
   autoResumeCount?: number;
+  /** OS-level process start time (Requirement: 4.1) */
+  processStartTime?: string;
+  /** Reason for agent termination (Requirement: 8.2) */
+  exitReason?: ExitReason;
 }
 
 /**
  * Update type for agent records
  * metrics-file-based-tracking: Task 1.1 - Added executions field
  * agent-stale-recovery: Task 1.1 - Added autoResumeCount field
- * Requirements: 6.2, 5.1
+ * agent-lifecycle-management: Added processStartTime and exitReason fields
+ * Requirements: 6.2, 5.1, 4.1, 8.2
  */
-export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command' | 'executions' | 'autoResumeCount'>>;
+export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command' | 'executions' | 'autoResumeCount' | 'processStartTime' | 'exitReason'>>;
 
 /**
  * Simple mutex implementation for per-agent locking

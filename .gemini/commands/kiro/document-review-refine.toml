@@ -1,0 +1,97 @@
+description = "Review spec documents for consistency, gaps, and alignment with steering (Refined)"
+
+prompt = '''
+# Spec Document Review
+
+# !!! CRITICAL INSTRUCTION !!!
+# The PRIMARY GOAL of this task is to CREATE A REPORT FILE.
+# You MUST use the `write_file` tool to save the review report.
+# IF YOU DO NOT WRITE THE FILE, THE TASK IS FAILED.
+# Do NOT update `spec.json` status unless the report file is successfully written.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+## Target Feature
+Feature name: `{{args}}`
+
+## 1. Preparation
+1. **Validate**: Verify `.kiro/specs/{{args}}/` and core documents (requirements/design/tasks) exist.
+2. **Read**:
+   - Read ALL files in `.kiro/specs/{{args}}/`.
+   - Read relevant steering documents in `.kiro/steering/`.
+
+## 2. Review Analysis
+Conduct a deep analysis focusing on the following core pillars.
+*Do not get lost in micro-details; focus on structural integrity and coverage.*
+
+### A. Consistency & Alignment
+- **Reqs ↔ Design**: Are all requirements covered by design components?
+- **Design ↔ Tasks**: Do tasks implement every design component?
+- **Completeness**: Are UI, Services, and Data Models fully defined and task-mapped?
+
+### B. Critical Coverage Checks (High Priority)
+- **Acceptance Criteria**: Verify EVERY criterion has concrete "Feature" implementation tasks. (Infrastructure/Setup tasks are insufficient for user-facing criteria).
+- **Integration Tests**: Verify tasks exist to test cross-boundary comms (IPC, Store Sync).
+- **Refactoring**: If replacing code, ensure specific "Delete" tasks exist to prevent zombie code.
+
+### C. Gaps & Steering
+- **Technical**: Error handling, Security, Performance, Logging.
+- **Steering**: Alignment with project structure and tech stack guidelines.
+
+## 3. Execution Workflow (MANDATORY)
+You must follow this exact sequence:
+
+1.  **Determine Report Path**:
+    - Check existing `document-review-*.md` files.
+    - Determine the next number `{n}`.
+    - Path: `.kiro/specs/{{args}}/document-review-{n}.md`.
+
+2.  **Generate & Save Report**:
+    - Create the report content using the structure below (WRITE IN JAPANESE).
+    - **EXECUTE `write_file`** to save it.
+    - *Wait for success confirmation.*
+
+3.  **Update Status**:
+    - ONLY AFTER the file is written, update `spec.json` (documentReview status/roundDetails).
+
+## Report Structure Template
+
+```markdown
+# Specification Review Report #{n}
+
+**Feature**: {feature-name}
+**Review Date**: {YYYY-MM-DD}
+**Documents Reviewed**: {list}
+
+## Executive Summary
+{承認可否の要約。Critical/Warningの件数を含めること。}
+
+## 1. 整合性と完全性 (Alignment & Completeness)
+### 1.1 要件のカバレッジ (Requirements Coverage)
+{分析結果}
+
+### 1.2 タスクのカバレッジ (Task Coverage)
+{分析結果 - 特に受入基準がタスクで網羅されているかを明記}
+
+### 1.3 重要チェック (Critical Checks)
+| Check | Status | Notes |
+|-------|--------|-------|
+| Acceptance Criteria mapped to Feature Tasks | ✅/❌ | ... |
+| Integration Tests defined | ✅/❌ | ... |
+| Refactoring Safety (Delete tasks) | ✅/❌ | ... |
+
+## 2. ギャップと技術的懸念 (Gaps & Technical Concerns)
+{技術的・運用的なギャップの指摘}
+
+## 3. ステアリング整合性 (Steering Alignment)
+{アーキテクチャや規約との整合性}
+
+## 4. 推奨アクション (Action Items & Recommendations)
+| Priority | Issue | Recommended Action |
+| -------- | ----- | ------------------ |
+| Critical | ... | ... |
+| Warning  | ... | ... |
+```
+
+## Output
+After completion, output the path of the created report file.
+'''

@@ -1,0 +1,56 @@
+{
+  "feature_name": "agent-lifecycle-management",
+  "created_at": "2026-01-25T10:33:32Z",
+  "updated_at": "2026-01-27T23:19:07Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "go",
+        "inspectedAt": "2026-01-27T21:20:20Z"
+      }
+    ]
+  },
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "scheme": "gemini-cli",
+    "reviewed_at": "2026-01-28T10:05:00Z",
+    "status": "approved",
+    "reportPath": ".kiro/specs/agent-lifecycle-management/document-review-1.md",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "autoExecution": {
+    "permissions": {
+      "requirements": true,
+      "design": false,
+      "tasks": false,
+      "document-review": true,
+      "impl": true,
+      "inspection": true,
+      "deploy": false
+    }
+  }
+}

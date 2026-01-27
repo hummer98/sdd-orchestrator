@@ -13,7 +13,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WorkflowPhase } from '../types/workflow';
 import { ALL_WORKFLOW_PHASES } from '../types/workflow';
-import type { SpecAutoExecutionState } from '../types';
 import type { BugWorkflowPhase } from '../types/bug';
 import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
 import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';

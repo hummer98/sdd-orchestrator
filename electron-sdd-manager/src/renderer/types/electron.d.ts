@@ -1718,6 +1718,31 @@ export interface ElectronAPI {
    * @returns Result success or error
    */
   declineMigration(projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }>;
+
+  // ============================================================
+  // jj (Jujutsu) Support (jj-merge-support feature)
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+
+  /**
+   * Check if jj is available on the system
+   * @returns ToolCheck result for jj
+   */
+  checkJjAvailability(): Promise<import('@shared/types').ToolCheck>;
+
+  /**
+   * Install jj via Homebrew
+   * @returns Result with success flag
+   */
+  installJj(): Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * Ignore jj installation prompt for this project
+   * @param projectPath Project root path
+   * @param ignored Whether to ignore jj install prompts
+   * @returns Result with success flag
+   */
+  ignoreJjInstall(projectPath: string, ignored: boolean): Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

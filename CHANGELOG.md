@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.0] - 2026-01-27
+
+### Added
+- **jj-merge-support**: jujutsuコマンド検出とプロジェクトバリデーション機能を追加
+- **safari-websocket-stability**: Safari向けWebSocket接続安定性向上のためのPING/PONGハートビート機能を実装
+- **release-auto-option**: リリースコマンドに自動実行オプション(--auto)を追加
+- **metrics-file-based-tracking**: Agent実行履歴をファイルベースで追跡する機能を追加
+- **remote-ui**: モバイル版にWorktree変換ボタンを追加
+- **gemini**: Gemini版document-reviewコマンドをcc-sdd版と同等に更新
+
+### Fixed
+- **spec-merge**: 非標準ベースブランチのサポートとskipPermissionsフラグの厳密化
+- **document-review**: fixStatus: applied状態で次のレビューラウンドに進めない問題を修正
+- **auto-execution**: スペック自動実行時のフラグ汚染バグを修正
+- **spec-workflow**: worktree環境でのディレクトリ認識を改善
+- **bug-workflow**: worktree環境でのディレクトリ認識を改善
+- **gemini**: enforce report file creation in document-review and reply commands
+- **remote-ui**: スマホ版Spec詳細画面の重複フッター問題を修正
+- **mobile**: モバイル版ワークフローフッターのセーフエリア対応
+
+### Changed
+- **refactor(jj-merge-support)**: テストファイルをtemplatesから適切な場所に移動
+- **refactor**: 自動実行設定をspec.jsonをSSOTとして統一
+- **style**: Remote UI Artifactエディターのボタンサイズを統一
+
+### Documentation
+- Electronレイアウト図の階層構造を修正
+
 ## [0.51.3] - 2026-01-26
 
 ### Fixed

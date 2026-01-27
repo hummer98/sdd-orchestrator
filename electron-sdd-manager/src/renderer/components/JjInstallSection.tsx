@@ -5,6 +5,7 @@
  * Requirements: 3.2, 3.3, 4.2, 4.4, 10.2, 10.3
  */
 
+import type { ReactElement } from 'react';
 import { AlertCircle, Download, Loader2, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ToolCheck } from '@shared/types';
@@ -23,7 +24,7 @@ export function JjInstallSection({
   jjInstallError,
   onInstall,
   onIgnore,
-}: JjInstallSectionProps): JSX.Element | null {
+}: JjInstallSectionProps): ReactElement | null {
   // Don't render if jj is available
   if (jjCheck.available) {
     return null;

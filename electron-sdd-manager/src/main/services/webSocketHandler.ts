@@ -920,6 +920,17 @@ export class WebSocketHandler {
    * Note: timestamp is optional for client-sent messages (clients may omit it)
    */
   private isValidMessage(message: unknown): message is WebSocketMessage {
+    if (typeof message !== 'object' || message === null) {
+      return false;
+    }
+    const msg = message as Record<string, unknown>;
+    // Type is required, timestamp is optional for incoming messages
+    return (
+      typeof msg.type === 'string' &&
+      (msg.timestamp === undefined || typeof msg.timestamp === 'number')
+    );
+  }
+
   // ===========================================================================
   // safari-websocket-stability: PING/PONG Heartbeat Handler
   // Requirements: 4.1, 4.2, 4.3, 4.4
@@ -943,16 +954,6 @@ export class WebSocketHandler {
       payload: { timestamp },
       timestamp: Date.now(),
     });
-  }
-    if (typeof message !== 'object' || message === null) {
-      return false;
-    }
-    const msg = message as Record<string, unknown>;
-    // Type is required, timestamp is optional for incoming messages
-    return (
-      typeof msg.type === 'string' &&
-      (msg.timestamp === undefined || typeof msg.timestamp === 'number')
-    );
   }
 
   /**

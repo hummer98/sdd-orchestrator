@@ -144,10 +144,10 @@ export function ProjectAgentPanel() {
   };
 
   /**
-   * Task 6.1: handleRelease new API migration
-   * release-button-api-fix feature
-   * Requirements: 2.1
-   * - Calls executeProjectCommand(path, '/release', 'release')
+   * Task 2.1: handleRelease updated to use --auto flag
+   * release-auto-option feature
+   * Requirement: 4.1
+   * - Calls executeProjectCommand(path, '/release --auto', 'release')
    * - Adds agent to store with addAgent
    * - Updates selection state with selectForProjectAgents and selectAgent
    * - Shows success/error notification
@@ -156,7 +156,7 @@ export function ProjectAgentPanel() {
     if (!currentProject) return;
 
     try {
-      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, '/release', 'release');
+      const agentInfo = await window.electronAPI.executeProjectCommand(currentProject, '/release --auto', 'release');
       addAgent('', agentInfo);
       selectForProjectAgents();
       selectAgent(agentInfo.agentId);

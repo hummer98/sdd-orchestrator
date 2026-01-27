@@ -62,8 +62,14 @@ mkdir -p .claude/commands
 ## Step 5: Generate release.md
 
 Generate content based on project type with these sections:
+- **--auto Option**: Document automated release mode
+  - Usage: `/release --auto` for non-interactive execution
+  - Behavior differences: skip user prompts, auto-detect version from commits, skip doc-only uncommitted changes
+  - Auto-detection rules: BREAKING CHANGE → major, feat: → minor, fix:/docs:/chore: → patch
+  - Uncommitted changes handling: block source code (.ts/.tsx/.js), skip docs (.md/.json)
 - Prerequisites (git clean, main branch, tests pass)
 - Version Decision (semantic versioning)
+  - Support both manual (interactive) and auto (from commit messages) modes
 - CHANGELOG Update
 - Build & Package
 - Commit & Tag

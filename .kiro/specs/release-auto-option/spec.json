@@ -1,0 +1,67 @@
+{
+  "feature_name": "release-auto-option",
+  "created_at": "2026-01-26T16:10:15Z",
+  "updated_at": "2026-01-27T07:12:47Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "autoExecution": {
+    "enabled": true,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "document-review": true,
+      "impl": true,
+      "inspection": true,
+      "deploy": false
+    }
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-27T06:29:12Z",
+        "fixedAt": "2026-01-27T06:35:49Z"
+      },
+      {
+        "number": 2,
+        "result": "go",
+        "inspectedAt": "2026-01-27T06:50:18Z"
+      }
+    ]
+  }
+}

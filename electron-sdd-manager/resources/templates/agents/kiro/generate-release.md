@@ -88,6 +88,29 @@ allowed-tools: Bash, Read, Write, Glob, Grep
 
 # Release Workflow
 
+## --auto Option
+
+`/release --auto` で実行すると、対話なしの完全自動リリースが実行されます。
+
+### 動作の違い
+
+| 項目 | 通常モード | 自動モード (`--auto`) |
+|------|-----------|---------------------|
+| 未コミット変更 | ユーザーに確認 | ドキュメント変更のみスキップ、ソースコードはエラー |
+| バージョン番号 | ユーザーに提案 | コミットログから自動判定 |
+| 確認プロンプト | 各ステップで確認 | 全てスキップ |
+
+### 自動判定ルール
+
+**バージョン番号の自動判定（Semantic Versioning）:**
+- `BREAKING CHANGE:` を含むコミット → **major** インクリメント
+- `feat:` プレフィックスのコミット → **minor** インクリメント
+- `fix:`, `docs:`, `chore:` のみ → **patch** インクリメント
+
+**未コミット変更の扱い:**
+- `.md`, `.json` ファイルのみ → 警告してスキップ
+- `.ts`, `.tsx`, `.js` 等のソースコード → エラー終了
+
 ## Prerequisites
 
 Before starting the release process:
@@ -120,6 +143,8 @@ Determine the next version using semantic versioning:
 - **patch**: Bug fixes
 
 Current version: Check `package.json`
+
+**Auto Mode**: When `--auto` is used, version is automatically determined from git commit messages.
 
 ## CHANGELOG Update
 
@@ -163,6 +188,21 @@ allowed-tools: Bash, Read, Write, Glob, Grep
 
 # Release Workflow
 
+## --auto Option
+
+`/release --auto` で実行すると、対話なしの完全自動リリースが実行されます。
+
+### 自動判定ルール
+
+- `BREAKING CHANGE:` → **major** インクリメント
+- `feat:` → **minor** インクリメント
+- `fix:`, `docs:`, `chore:` → **patch** インクリメント
+
+### 未コミット変更の扱い
+
+- ドキュメント変更のみ → スキップ
+- ソースコード変更あり → エラー終了
+
 ## Prerequisites
 
 1. Ensure working directory is clean: `git status`
@@ -172,6 +212,8 @@ allowed-tools: Bash, Read, Write, Glob, Grep
 ## Version Decision
 
 Determine semantic version: major, minor, or patch
+
+**Auto Mode**: Version is automatically determined from git commit messages when `--auto` is used.
 
 ## CHANGELOG Update
 

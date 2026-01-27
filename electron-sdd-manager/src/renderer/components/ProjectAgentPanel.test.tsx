@@ -390,7 +390,7 @@ describe('ProjectAgentPanel', () => {
       });
     });
 
-    it('should call executeProjectCommand with /release command and release title when release button clicked (Requirement 2.1)', async () => {
+    it('should call executeProjectCommand with /release --auto command and release title when release button clicked (Requirement 4.1)', async () => {
       render(<ProjectAgentPanel />);
 
       const releaseButton = screen.getByTestId('release-button');
@@ -398,10 +398,11 @@ describe('ProjectAgentPanel', () => {
 
       // Verify executeProjectCommand was called with correct parameters
       // executeProjectCommand(projectPath, command, title)
+      // release-auto-option Task 2.1: Changed from '/release' to '/release --auto'
       await vi.waitFor(() => {
         expect(window.electronAPI.executeProjectCommand).toHaveBeenCalledWith(
           '/test/project',
-          '/release',
+          '/release --auto',
           'release'
         );
       });

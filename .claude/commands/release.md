@@ -2,6 +2,29 @@
 
 このコマンドは、SDD Orchestratorの新バージョンをリリースするための一連の手順を自動化します。
 
+## --auto オプション
+
+`/release --auto` で実行すると、対話なしの完全自動リリースが実行されます。
+
+### 動作の違い
+
+| 項目 | 通常モード (`/release`) | 自動モード (`/release --auto`) |
+|------|-------------------------|-------------------------------|
+| 未コミット変更 | ユーザーに確認を求める | ドキュメント変更のみスキップ、ソースコードはエラー |
+| バージョン番号 | ユーザーに提案して確認 | コミットログから自動判定 |
+| 確認プロンプト | 各ステップで確認 | 全てスキップ |
+
+### 自動判定ルール
+
+**バージョン番号の自動判定（Semantic Versioning）:**
+- `BREAKING CHANGE:` を含むコミット → **major** インクリメント (0.5.0 → 1.0.0)
+- `feat:` プレフィックスのコミット → **minor** インクリメント (0.5.0 → 0.6.0)
+- `fix:`, `docs:`, `chore:` のみ → **patch** インクリメント (0.5.0 → 0.5.1)
+
+**未コミット変更の扱い:**
+- `.md`, `.json` ファイルのみ → 警告してスキップ
+- `.ts`, `.tsx`, `.js` 等のソースコード → エラー終了
+
 ## 実行手順
 
 以下の順序で実行してください：
@@ -11,13 +34,36 @@
 まず、未コミットの変更があるか確認します：
 
 ```bash
-git status --porcelain
-```
+UNCOMMITTED=$(git status --porcelain)
 
-**未コミットの変更がある場合:**
-- ユーザーに確認してください
-- 必要であれば `/commit` コマンドを実行してコミットを作成
-- コミット後、このコマンドを再実行
+if [ -n "$UNCOMMITTED" ]; then
+  # --auto モードの場合はファイル種別を判定
+  if [[ "$1" == "--auto" ]]; then
+    # ソースコード変更があるかチェック
+    SOURCE_CHANGES=$(echo "$UNCOMMITTED" | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$')
+
+    if [ -n "$SOURCE_CHANGES" ]; then
+      echo "❌ エラー: ソースコードに未コミット変更があります。--autoモードではリリースできません。"
+      echo "$SOURCE_CHANGES"
+      exit 1
+    fi
+
+    # ドキュメント変更のみの場合はスキップ
+    DOC_CHANGES=$(echo "$UNCOMMITTED" | grep -E '\.(md|json)$')
+    if [ -n "$DOC_CHANGES" ]; then
+      echo "⚠️  以下のドキュメント変更をスキップします:"
+      echo "$DOC_CHANGES"
+    fi
+  else
+    # 通常モード: ユーザーに確認
+    echo "⚠️  未コミットの変更があります:"
+    echo "$UNCOMMITTED"
+    echo ""
+    echo "必要であれば /commit コマンドを実行してコミットを作成してください。"
+    exit 1
+  fi
+fi
+```
 
 ### 2. バージョン決定
 
@@ -25,22 +71,84 @@ git status --porcelain
 
 ```bash
 # 現在のバージョン確認
-cat electron-sdd-manager/package.json | grep '"version"'
+CURRENT_VERSION=$(cat electron-sdd-manager/package.json | grep '"version"' | sed 's/.*"version": "\(.*\)".*/\1/')
+echo "現在のバージョン: $CURRENT_VERSION"
 
-# 最近のコミットを確認してバージョンタイプを判定
-git log --oneline -10
+# 前回のリリースタグを取得
+LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+echo "前回のリリースタグ: $LATEST_TAG"
+
+# --auto モードの場合は自動判定
+if [[ "$1" == "--auto" ]]; then
+  # コミットメッセージを解析
+  COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline)
+
+  # バージョンタイプを判定
+  if echo "$COMMITS" | grep -qi "BREAKING CHANGE:"; then
+    VERSION_TYPE="major"
+  elif echo "$COMMITS" | grep -qE "^[a-f0-9]+ feat:"; then
+    VERSION_TYPE="minor"
+  else
+    VERSION_TYPE="patch"
+  fi
+
+  echo "📦 自動判定されたバージョンタイプ: $VERSION_TYPE"
+
+  # バージョン番号を計算
+  IFS='.' read -r -a VERSION_PARTS <<< "${CURRENT_VERSION}"
+  MAJOR="${VERSION_PARTS[0]}"
+  MINOR="${VERSION_PARTS[1]}"
+  PATCH="${VERSION_PARTS[2]}"
+
+  case "$VERSION_TYPE" in
+    major)
+      MAJOR=$((MAJOR + 1))
+      MINOR=0
+      PATCH=0
+      ;;
+    minor)
+      MINOR=$((MINOR + 1))
+      PATCH=0
+      ;;
+    patch)
+      PATCH=$((PATCH + 1))
+      ;;
+  esac
+
+  NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+  echo "✅ 次のバージョン: $NEXT_VERSION"
+else
+  # 通常モード: 最近のコミットを表示してユーザーに提案
+  echo ""
+  echo "最近のコミット:"
+  git log --oneline -10
+
+  echo ""
+  echo "**バージョンタイプの判定基準:**"
+  echo "- **patch**: バグ修正のみ（fix:, docs: など）"
+  echo "- **minor**: 新機能追加（feat: など）"
+  echo "- **major**: 破壊的変更（BREAKING CHANGE）"
+  echo ""
+  echo "次のバージョンを決定してください（例: 0.52.0）"
+  exit 1  # ユーザーに確認を促すため一旦終了
+fi
 ```
-
-**バージョンタイプの判定基準:**
-- **patch (0.5.0 → 0.5.1)**: バグ修正のみ（`fix:`, `docs:` など）
-- **minor (0.5.0 → 0.6.0)**: 新機能追加（`feat:` など）
-- **major (0.5.0 → 1.0.0)**: 破壊的変更（`BREAKING CHANGE`）
-
-ユーザーに次のバージョンを提案し、確認を取ってください。
 
 ### 3. package.jsonバージョン更新
 
 決定したバージョンで `electron-sdd-manager/package.json` を更新します。
+
+```bash
+# --auto モードの場合は $NEXT_VERSION を使用、通常モードの場合はユーザーに確認
+if [[ "$1" != "--auto" ]]; then
+  echo "package.jsonのバージョンを更新するバージョンを入力してください（例: 0.52.0）:"
+  exit 1  # ユーザー入力待ち
+fi
+
+# バージョンを更新
+sed -i '' "s/\"version\": \".*\"/\"version\": \"$NEXT_VERSION\"/" electron-sdd-manager/package.json
+echo "✅ package.jsonを $NEXT_VERSION に更新しました"
+```
 
 ### 4. CHANGELOG.md更新
 
@@ -48,21 +156,57 @@ git log --oneline -10
 
 ```bash
 # 前回のリリースタグから現在までのコミットを取得
-git log $(git describe --tags --abbrev=0)..HEAD --oneline
-```
+COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline)
 
-CHANGELOG.mdのフォーマット:
-```markdown
-## [X.Y.Z] - YYYY-MM-DD
+# 現在の日付を取得
+RELEASE_DATE=$(date +"%Y-%m-%d")
 
-### Added
-- 新機能の説明
+# CHANGELOGエントリを生成
+echo "## [$NEXT_VERSION] - $RELEASE_DATE" > /tmp/changelog_entry.md
+echo "" >> /tmp/changelog_entry.md
 
-### Fixed
-- バグ修正の説明
+# featコミットを抽出
+FEAT_COMMITS=$(echo "$COMMITS" | grep -E "^[a-f0-9]+ feat:" || true)
+if [ -n "$FEAT_COMMITS" ]; then
+  echo "### Added" >> /tmp/changelog_entry.md
+  echo "$FEAT_COMMITS" | sed 's/^[a-f0-9]* feat: /- /' >> /tmp/changelog_entry.md
+  echo "" >> /tmp/changelog_entry.md
+fi
 
-### Changed
-- 変更内容の説明
+# fixコミットを抽出
+FIX_COMMITS=$(echo "$COMMITS" | grep -E "^[a-f0-9]+ fix:" || true)
+if [ -n "$FIX_COMMITS" ]; then
+  echo "### Fixed" >> /tmp/changelog_entry.md
+  echo "$FIX_COMMITS" | sed 's/^[a-f0-9]* fix: /- /' >> /tmp/changelog_entry.md
+  echo "" >> /tmp/changelog_entry.md
+fi
+
+# その他の変更を抽出
+OTHER_COMMITS=$(echo "$COMMITS" | grep -vE "^[a-f0-9]+ (feat|fix):" || true)
+if [ -n "$OTHER_COMMITS" ]; then
+  echo "### Changed" >> /tmp/changelog_entry.md
+  echo "$OTHER_COMMITS" | sed 's/^[a-f0-9]* /- /' >> /tmp/changelog_entry.md
+  echo "" >> /tmp/changelog_entry.md
+fi
+
+# CHANGELOG.mdの先頭に追加（既存の # CHANGELOG の後に挿入）
+if [ -f CHANGELOG.md ]; then
+  # 一時ファイルを作成
+  echo "# CHANGELOG" > /tmp/new_changelog.md
+  echo "" >> /tmp/new_changelog.md
+  cat /tmp/changelog_entry.md >> /tmp/new_changelog.md
+  # 既存のCHANGELOGから # CHANGELOG を除いた部分を追加
+  tail -n +2 CHANGELOG.md >> /tmp/new_changelog.md
+  mv /tmp/new_changelog.md CHANGELOG.md
+else
+  # CHANGELOG.mdが存在しない場合は新規作成
+  echo "# CHANGELOG" > CHANGELOG.md
+  echo "" >> CHANGELOG.md
+  cat /tmp/changelog_entry.md >> CHANGELOG.md
+fi
+
+rm /tmp/changelog_entry.md
+echo "✅ CHANGELOG.mdを更新しました"
 ```
 
 ### 5. ビルド＆パッケージング
@@ -130,12 +274,13 @@ kill "$NEW_PID" 2>/dev/null
 
 ```bash
 git add electron-sdd-manager/package.json CHANGELOG.md
-git commit -m "chore: bump version to vX.Y.Z
+git commit -m "chore: bump version to v$NEXT_VERSION
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 git push origin master
+echo "✅ 変更をコミット＆プッシュしました"
 ```
 
 ### 7. Gitタグの作成＆プッシュ
@@ -143,8 +288,9 @@ git push origin master
 バージョンタグを作成してリモートにプッシュ：
 
 ```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
+git tag v$NEXT_VERSION
+git push origin v$NEXT_VERSION
+echo "✅ タグ v$NEXT_VERSION を作成＆プッシュしました"
 ```
 
 **注意**: タグはコミット後に作成し、GitHubリリース作成前にプッシュする必要があります。
@@ -154,9 +300,14 @@ git push origin vX.Y.Z
 リリースノートをCHANGELOGから抽出し、GitHubリリースを作成：
 
 ```bash
-gh release create vX.Y.Z \
-  --title "SDD Orchestrator vX.Y.Z" \
-  --notes "[CHANGELOGから抽出したリリースノート]"
+# /tmp/changelog_entry.md から再生成（すでに削除済みのため、CHANGELOGから抽出）
+RELEASE_NOTES=$(sed -n "/## \[$NEXT_VERSION\]/,/## \[/p" CHANGELOG.md | sed '$ d' | tail -n +2)
+
+gh release create v$NEXT_VERSION \
+  --title "SDD Orchestrator v$NEXT_VERSION" \
+  --notes "$RELEASE_NOTES"
+
+echo "✅ GitHubリリースを作成しました"
 ```
 
 ### 9. バイナリの添付
@@ -164,9 +315,11 @@ gh release create vX.Y.Z \
 ビルドしたバイナリをリリースに添付：
 
 ```bash
-gh release upload vX.Y.Z \
-  "release/SDD Orchestrator-X.Y.Z-arm64.dmg" \
-  "release/SDD Orchestrator-X.Y.Z-arm64-mac.zip"
+gh release upload v$NEXT_VERSION \
+  "release/SDD Orchestrator-$NEXT_VERSION-arm64.dmg" \
+  "release/SDD Orchestrator-$NEXT_VERSION-arm64-mac.zip"
+
+echo "✅ バイナリをリリースに添付しました"
 ```
 
 ### 10. Applicationsフォルダへデプロイ
@@ -178,10 +331,17 @@ cp -R "release/mac-arm64/SDD Orchestrator.app" /Applications/
 
 ### 11. 完了報告
 
-ユーザーに以下を報告：
-- リリースバージョン
-- リリースページURL
-- 主な変更内容のサマリー
+```bash
+echo ""
+echo "✅ リリース完了！"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📦 バージョン: v$NEXT_VERSION"
+echo "🔗 リリースページ: https://github.com/USER/REPO/releases/tag/v$NEXT_VERSION"
+echo ""
+echo "📝 主な変更内容:"
+echo "$RELEASE_NOTES" | head -20
+echo ""
+```
 
 ## 注意事項
 

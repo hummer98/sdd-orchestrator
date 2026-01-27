@@ -15,6 +15,22 @@ argument-hint: [bug-name]
 - **Workflow Position**: Report → **Analyze** → Fix → Verify
 </background_information>
 
+<environment_context>
+**Current Working Directory**: The directory where this command is executed
+**CRITICAL**: All file operations MUST be performed relative to the current working directory.
+
+- Bug directory: `.kiro/bugs/$1/` (relative to current directory)
+- Source files: All paths are relative to current directory
+- DO NOT navigate to parent directories or git root
+- DO NOT use absolute paths from git root
+
+**Worktree Awareness**:
+If you are in a worktree (check `bug.json` for `worktree` field):
+- All bug files are in `$PWD/.kiro/bugs/`
+- All source files are in the worktree, not the main repository
+- Stay within the worktree boundaries
+</environment_context>
+
 <instructions>
 ## Core Task
 Analyze the bug specified by $ARGUMENTS (or auto-detect from context) and document findings.

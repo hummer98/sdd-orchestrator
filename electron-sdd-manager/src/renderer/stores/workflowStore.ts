@@ -21,51 +21,11 @@ import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecutio
 // InspectionAutoExecutionFlag is deprecated - use permissions.inspection instead
 
 // ============================================================
-// Bug Fix: auto-execution-settings-not-persisted
-// Helper function to persist settings to spec.json
+// Bug Fix: auto-execution-flag-cross-spec-contamination
+// Removed persistSettingsToSpec() function
+// spec.json is now the Single Source of Truth for auto-execution settings
+// Settings are persisted directly via useElectronWorkflowState hook
 // ============================================================
-
-/**
- * Persist current workflow settings to spec.json
- * Called after each setting change to ensure spec-scoped persistence
- * inspection-permission-unification Task 4.3: Removed inspectionFlag from persistence
- * document-review-phase Task 6.2: Removed documentReviewFlag from persistence
- * Requirements: 3.6, 6.1, 6.2
- */
-async function persistSettingsToSpec(): Promise<void> {
-  // Dynamic import to avoid circular dependency
-  const { useSpecStore } = await import('./specStore');
-  const specStore = useSpecStore.getState();
-  const specDetail = specStore.specDetail;
-
-  if (!specDetail) {
-    // No spec selected, skip persistence
-    return;
-  }
-
-  // Get current state from workflowStore
-  const workflowState = useWorkflowStore.getState();
-
-  // Build the autoExecution state object
-  // document-review-phase: documentReviewFlag removed - use permissions['document-review']
-  // inspection-permission-unification: inspectionFlag removed - use permissions.inspection
-  const autoExecutionState: SpecAutoExecutionState = {
-    enabled: true, // Enable when user explicitly changes settings
-    permissions: { ...workflowState.autoExecutionPermissions },
-    // documentReviewFlag removed - use permissions['document-review'] instead
-    // inspectionFlag removed - inspection permission is now handled via permissions.inspection
-  };
-
-  try {
-    // spec-path-ssot-refactor: Use spec.name instead of spec.path
-    await window.electronAPI.updateSpecJson(specDetail.metadata.name, {
-      autoExecution: autoExecutionState,
-    });
-    console.log('[workflowStore] Settings persisted to spec.json');
-  } catch (error) {
-    console.error('[workflowStore] Failed to persist settings to spec.json:', error);
-  }
-}
 
 // ============================================================
 // Task 2.1: Auto Execution Permissions
@@ -331,7 +291,9 @@ export const useWorkflowStore = create<WorkflowStore>()(
       // worktreeModeSelection has been moved to spec.json.worktree.enabled
 
       // Task 2.1: Auto Execution Permissions
-      // Bug Fix: auto-execution-settings-not-persisted - persist to spec.json
+      // Bug Fix: auto-execution-flag-cross-spec-contamination
+      // Removed persistSettingsToSpec() call - workflowStore now only manages global defaults
+      // Spec-scoped settings are persisted via useElectronWorkflowState hook
       toggleAutoPermission: (phase: WorkflowPhase) => {
         set((state) => ({
           autoExecutionPermissions: {
@@ -339,8 +301,6 @@ export const useWorkflowStore = create<WorkflowStore>()(
             [phase]: !state.autoExecutionPermissions[phase],
           },
         }));
-        // Persist to spec.json after state update
-        persistSettingsToSpec();
       },
 
       // NOTE: startAutoExecution, stopAutoExecution, setCurrentAutoPhase removed

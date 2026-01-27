@@ -216,33 +216,9 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         parallelTaskInfo,
       };
 
-      // Bug fix: spec-json-to-workflowstore-sync-missing
-      // Sync autoExecution settings from spec.json to workflowStore
-      // This ensures UI reflects the spec-scoped settings when switching specs
-      if (specJson.autoExecution) {
-        const t4 = performance.now();
-        const { useWorkflowStore } = await import('../workflowStore');
-        timings['importWorkflowStore'] = performance.now() - t4;
-        const wf = useWorkflowStore.getState();
-        if (specJson.autoExecution.permissions) {
-          wf.setAutoExecutionPermissions(specJson.autoExecution.permissions);
-        }
-        // document-review-phase Task 7.1: documentReviewFlag removed - use permissions['document-review'] instead
-        // Migration: if old documentReviewFlag exists, convert to permissions['document-review']
-        const oldDocReviewFlag = (specJson.autoExecution as any).documentReviewFlag;
-        if (oldDocReviewFlag && !specJson.autoExecution.permissions?.['document-review']) {
-          // Old format: 'run' -> true, 'pause' -> false
-          const docReviewPermission = oldDocReviewFlag === 'run';
-          wf.setAutoExecutionPermissions({
-            ...wf.autoExecutionPermissions,
-            'document-review': docReviewPermission,
-          });
-        }
-        console.log('[specDetailStore] Synced autoExecution settings to workflowStore:', {
-          spec: spec.name,
-          permissions: specJson.autoExecution.permissions,
-        });
-      }
+      // Bug fix: auto-execution-flag-cross-spec-contamination
+      // Removed workflowStore sync code - spec.json is now the Single Source of Truth
+      // UI reads directly from spec.json via useElectronWorkflowState hook
 
       timings['total'] = performance.now() - startTotal;
       console.log('[specDetailStore] selectSpec timings:', { spec: spec.name, timings });

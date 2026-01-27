@@ -1,0 +1,67 @@
+{
+  "feature_name": "auto-execution-nogo-stop",
+  "created_at": "2026-01-27T10:35:32Z",
+  "updated_at": "2026-01-27T18:38:05Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "document-review": true,
+      "impl": true,
+      "inspection": true,
+      "deploy": false
+    },
+    "enabled": false
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 2,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-27T18:03:15Z",
+        "fixedAt": "2026-01-27T18:07:36Z"
+      },
+      {
+        "number": 2,
+        "result": "go",
+        "inspectedAt": "2026-01-27T18:13:35Z"
+      }
+    ]
+  }
+}

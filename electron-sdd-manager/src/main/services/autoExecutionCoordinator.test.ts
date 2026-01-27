@@ -743,6 +743,84 @@ describe('AutoExecutionCoordinator', () => {
       });
     });
 
+    describe('getImmediateNextPhase()', () => {
+      /**
+       * Task 2.1 (auto-execution-nogo-stop): NOGO停止動作のテストケース
+       * Requirements: 3.1
+       *
+       * Given: requirements完了、design=NOGO
+       * When: getImmediateNextPhase('requirements', permissions, approvals)
+       * Then: nullを返す（NOGOで停止）
+       */
+      it('should return null when next phase is NOGO', () => {
+        const permissions = {
+          requirements: true,
+          design: false, // NOGO
+          tasks: true,
+          'document-review': true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        };
+        const approvals = {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        };
+
+        expect(coordinator.getImmediateNextPhase('requirements', permissions, approvals)).toBeNull();
+      });
+
+      /**
+       * Task 2.2 (auto-execution-nogo-stop): GO動作のテストケース
+       * Requirements: 3.1
+       *
+       * Given: requirements完了、design=GO、承認済み
+       * When: getImmediateNextPhase('requirements', permissions, approvals)
+       * Then: 'design'を返す
+       */
+      it('should return next phase when it is GO and approved', () => {
+        const permissions = {
+          requirements: true,
+          design: true, // GO
+          tasks: true,
+          'document-review': true,
+          impl: false,
+          inspection: false,
+          deploy: false,
+        };
+        const approvals = {
+          requirements: { generated: true, approved: true },
+          design: { generated: false, approved: false },
+          tasks: { generated: false, approved: false },
+        };
+
+        expect(coordinator.getImmediateNextPhase('requirements', permissions, approvals)).toBe('design');
+      });
+
+      it('should return null when at the end of phase order', () => {
+        const permissions = {
+          requirements: true,
+          design: true,
+          tasks: true,
+          'document-review': true,
+          impl: true,
+          inspection: true,
+          deploy: false,
+        };
+        const approvals = {
+          requirements: { generated: true, approved: true },
+          design: { generated: true, approved: true },
+          tasks: { generated: true, approved: true },
+          'document-review': { generated: false, approved: false },
+          impl: { generated: true, approved: true },
+          inspection: { generated: true, approved: true },
+        };
+
+        expect(coordinator.getImmediateNextPhase('inspection', permissions, approvals)).toBeNull();
+      });
+    });
+
     describe('PHASE_ORDER constant', () => {
       /**
        * document-review-phase Task 1.1: PHASE_ORDER の順序変更
@@ -1468,12 +1546,17 @@ describe('AutoExecutionCoordinator', () => {
         );
       });
 
-      it('should emit execute-next-phase for first permitted phase (skipping disabled)', async () => {
+      /**
+       * Task 4.1 (auto-execution-nogo-stop): Updated test to reflect new behavior
+       * Previously: skipped disabled phases and started from first enabled phase
+       * Now: stops immediately when first phase is NOGO (disabled)
+       */
+      it('should complete immediately when first phase is disabled (NOGO)', async () => {
         const specPath = '/test/project/.kiro/specs/test-feature';
         const options: AutoExecutionOptions = {
           permissions: {
-            requirements: false, // disabled
-            design: true,       // first enabled
+            requirements: false, // NOGO - first phase disabled
+            design: true,
             tasks: true,
             impl: false,
           },
@@ -1485,14 +1568,12 @@ describe('AutoExecutionCoordinator', () => {
         coordinator.on('execute-next-phase', eventHandler);
         await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
 
-        // requirements はスキップされて design から開始
-        expect(eventHandler).toHaveBeenCalledWith(
-          specPath,
-          'design',
-          expect.objectContaining({
-            specId: 'test-feature',
-          })
-        );
+        // New behavior: no execution when first phase is NOGO
+        expect(eventHandler).not.toHaveBeenCalled();
+
+        // Execution should complete immediately
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
       });
 
       it('should NOT emit execute-next-phase when no phases permitted', async () => {
@@ -1518,6 +1599,128 @@ describe('AutoExecutionCoordinator', () => {
         // 即座に完了状態になる
         const state = coordinator.getStatus(specPath);
         expect(state?.status).toBe('completed');
+      });
+    });
+
+    describe('start() NOGO phase handling (auto-execution-nogo-stop)', () => {
+      /**
+       * Task 3.1 (auto-execution-nogo-stop): 最初のフェーズがNOGOの場合のテスト
+       * Requirements: 3.2, 1.1
+       *
+       * Given: requirements=NOGO
+       * When: start(specPath, options)
+       * Then: execute-next-phaseイベントを発火しない、completeExecution()を呼び出す
+       */
+      it('should complete immediately when first phase is NOGO', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: false, // NOGO
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // execute-next-phaseイベントは発火されない
+        expect(eventHandler).not.toHaveBeenCalled();
+
+        // 即座に完了状態になる
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
+      });
+
+      /**
+       * Task 3.2 (auto-execution-nogo-stop): 途中から再開時に次フェーズがNOGOの場合のテスト
+       * Requirements: 3.3, 1.2
+       *
+       * Given: requirements完了、design=NOGO
+       * When: start(specPath, options)
+       * Then: execute-next-phaseイベントを発火しない、completeExecution()を呼び出す
+       */
+      it('should complete immediately when resuming and next phase is NOGO', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: false, // NOGO
+            tasks: true,
+            'document-review': true,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+          approvals: {
+            requirements: { generated: true, approved: true }, // 既に完了
+            design: { generated: false, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        };
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // execute-next-phaseイベントは発火されない
+        expect(eventHandler).not.toHaveBeenCalled();
+
+        // 即座に完了状態になる
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('completed');
+      });
+
+      /**
+       * Task 3.3 (auto-execution-nogo-stop): 最初のフェーズがGOの場合のテスト（回帰テスト）
+       * Requirements: 2.2
+       *
+       * Given: requirements=GO
+       * When: start(specPath, options)
+       * Then: execute-next-phaseイベントをrequirementsで発火
+       */
+      it('should execute first phase when it is GO', async () => {
+        const specPath = '/test/project/.kiro/specs/test-feature';
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true, // GO
+            design: true,
+            tasks: true,
+            'document-review': true,
+            impl: false,
+            inspection: false,
+            deploy: false,
+          },
+          documentReviewFlag: 'run',
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+        const eventHandler = vi.fn();
+
+        coordinator.on('execute-next-phase', eventHandler);
+        await coordinator.start(TEST_PROJECT_PATH, specPath, 'test-feature', options);
+
+        // execute-next-phaseイベントがrequirementsで発火される
+        expect(eventHandler).toHaveBeenCalledWith(
+          specPath,
+          'requirements',
+          expect.objectContaining({
+            specId: 'test-feature',
+            featureName: 'test-feature',
+          })
+        );
+
+        // 状態は'running'
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('running');
       });
     });
   });

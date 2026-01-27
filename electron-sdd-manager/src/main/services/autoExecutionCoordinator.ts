@@ -545,9 +545,10 @@ export class AutoExecutionCoordinator extends EventEmitter {
       });
     }
 
-    // lastCompletedPhase の次から開始（既に完了しているフェーズはスキップ）
-    // 前フェーズが未承認の場合はそのフェーズをスキップする
-    const firstPhase = this.getNextPermittedPhase(lastCompletedPhase, options.permissions, approvals);
+    // auto-execution-nogo-stop Task 1.1: getImmediateNextPhaseに変更
+    // NOGOフェーズをスキップせず、即座に停止する動作に統一
+    // Requirements: 1.1, 1.2, 1.3, 2.2, 2.3
+    const firstPhase = this.getImmediateNextPhase(lastCompletedPhase, options.permissions, approvals);
     if (firstPhase) {
       this.emit('execute-next-phase', specPath, firstPhase, {
         specId,
@@ -556,11 +557,14 @@ export class AutoExecutionCoordinator extends EventEmitter {
       logger.info('[AutoExecutionCoordinator] Triggering initial phase', {
         specPath,
         firstPhase,
-        skippedFrom: lastCompletedPhase,
+        startedFrom: lastCompletedPhase,
       });
     } else {
-      // 許可されたフェーズがない場合は即座に完了
-      logger.info('[AutoExecutionCoordinator] No permitted phases, completing immediately', { specPath });
+      // 次のフェーズがNOGOまたは全フェーズ完了の場合は即座に完了
+      logger.info('[AutoExecutionCoordinator] No next phase (NOGO or all completed), completing immediately', {
+        specPath,
+        lastCompletedPhase
+      });
       this.completeExecution(specPath);
     }
 

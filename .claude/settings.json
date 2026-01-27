@@ -1,5 +1,14 @@
 {
   "permissions": {
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(sudo rm:*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Write(.env)",
+      "Edit(.env)"
+    ],
     "additionalDirectories": [
       "/Users/yamamoto/git/sdd-orchestrator/.claude/agents/kiro"
     ]

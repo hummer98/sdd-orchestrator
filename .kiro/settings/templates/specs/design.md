@@ -95,7 +95,23 @@ Provide only the diagrams needed to explain non-trivial flows. Use pure Mermaid 
 - Data / event flow (pipelines, async messaging)
 
 Skip this section entirely for simple CRUD changes.
-> Describe flow-level decisions (e.g., gating conditions, retries) briefly after the diagram instead of restating each step.
+
+> After each diagram, provide ONLY 3-5 bullet points of key decisions/trade-offs. Do NOT narrate the diagram step-by-step. Focus on WHY (rationale, constraints) not WHAT (already visible in diagram).
+
+**Example** (good):
+```mermaid
+[diagram]
+```
+**Key Decisions**:
+- Circuit breaker pattern chosen for external API reliability (alternative: simple retry rejected due to cascading failure risk)
+- Async event publish to avoid blocking user response
+- Idempotency key required for payment operations
+
+**Anti-pattern** (bad - do NOT do this):
+- Step 1: User submits form
+- Step 2: Validator checks input
+- Step 3: Service processes request
+[... narrating every box in the diagram ...]
 
 ## Requirements Traceability
 
@@ -131,7 +147,23 @@ Provide a quick reference before diving into per-component details.
   | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies (P0/P1) | Contracts |
   |-----------|--------------|--------|--------------|--------------------------|-----------|
   | ExampleComponent | UI | Displays XYZ | 1, 2 | GameProvider (P0), MapPanel (P1) | Service, State |
-- Only components introducing new boundaries (e.g., logic hooks, external integrations, persistence) require full detail blocks. Simple presentation components can rely on the summary row plus a short Implementation Note.
+
+**CRITICAL RULE - Component Detail Levels**:
+
+**Full Detail Block Required** (use detailed format below):
+- Components introducing new architectural boundaries
+- External service integrations
+- Persistence layers
+- Complex business logic services
+- Stateful components with lifecycle management
+
+**Summary Row ONLY** (no detailed block):
+- Simple presentation components (display-only UI)
+- Straightforward utility functions
+- Standard CRUD operations following existing patterns
+- Components with obvious implementation from interface
+
+**Rule of Thumb**: If you can implement it correctly from just the interface definition + steering context, use summary-only format.
 
 Group detailed blocks by domain or architectural layer. For each detailed component, list requirement IDs as `2.1, 2.3` (omit “Requirement”). When multiple UI components share the same contract, reference a base interface/props definition instead of duplicating code blocks.
 
@@ -165,6 +197,13 @@ interface [ComponentName]Service {
   methodName(input: InputType): Result<OutputType, ErrorType>;
 }
 ```
+
+**PROHIBITED**: Do NOT include implementation examples, sample code, or detailed operational procedures here. Service Interface sections must contain ONLY:
+- Type definitions (interfaces, function signatures)
+- Preconditions, postconditions, invariants (semantic contracts)
+
+For implementation guidance, use research.md or defer to implementation phase.
+
 - Preconditions:
 - Postconditions:
 - Invariants:

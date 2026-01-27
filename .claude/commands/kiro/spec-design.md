@@ -59,6 +59,16 @@ Discovery: auto-detect based on requirements
 Mode: {generate or merge based on design.md existence}
 Language: respect spec.json language for design.md/research.md outputs
 
+CRITICAL - Design Document Conciseness (prevent bloat):
+- PROHIBITED: Do NOT include Implementation Examples or sample code in Service Interface sections
+- Interface Definition Only: Service Interface sections must contain ONLY type definitions (TypeScript interfaces, function signatures, preconditions/postconditions/invariants)
+- Implementation details belong in research.md: Move detailed implementation guidance, code examples, and operational procedures to research.md
+- Component Detail Levels:
+  - Full Detail Block: ONLY for components introducing new architectural boundaries (e.g., new service layers, external integrations, persistence)
+  - Summary Row + Brief Note: For simple presentation components, utility functions, and straightforward integrations
+  - Rule of Thumb: If a component's implementation is obvious from its interface, use summary-only format
+- Visual Communication: Mermaid diagrams carry structural detail; text explanations limited to 3-5 bullet points of key decisions per diagram; do NOT narrate the diagram step-by-step
+
 CRITICAL: Generate "Design Decisions" section documenting WHY each major architectural choice was made, including alternatives considered and trade-offs.
 
 CRITICAL: Generate "Integration & Deprecation Strategy" (結合・廃止戦略) section:

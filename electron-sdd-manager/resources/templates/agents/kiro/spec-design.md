@@ -4,7 +4,7 @@ description: Generate comprehensive technical design translating requirements (W
 tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch
 model: inherit
 color: purple
-permissionMode: bypassPermissions
+permissionMode: dontAsk
 ---
 
 # spec-design Agent
@@ -97,6 +97,13 @@ Generate technical design document for feature based on approved requirements.
 
 2. **Generate Design Document**:
    - **Follow specs/design.md template structure and generation instructions strictly**
+   - **PROHIBITED**: Do NOT include Implementation Examples or sample code in Service Interface sections
+   - **Interface Definition Only**: Service Interface sections must contain ONLY type definitions (TypeScript interfaces, function signatures, preconditions/postconditions/invariants)
+   - **Implementation details belong in research.md**: Move detailed implementation guidance, code examples, and operational procedures to research.md
+   - **Component Detail Levels**:
+     - **Full Detail Block**: ONLY for components introducing new architectural boundaries (e.g., new service layers, external integrations, persistence)
+     - **Summary Row + Brief Note**: For simple presentation components, utility functions, and straightforward integrations
+     - **Rule of Thumb**: If a component's implementation is obvious from its interface, use summary-only format
    - **Integrate all discovery findings**: Use researched information (APIs, patterns, technologies) throughout component definitions, architecture decisions, and integration points
    - If existing design.md found in Step 1, use it as reference context (merge mode)
    - Apply design rules: Type Safety, Visual Communication, Formal Tone
@@ -125,6 +132,22 @@ Generate technical design document for feature based on approved requirements.
    - Check that sequence diagrams align with component interfaces
    - If multiple execution approaches were considered, confirm ONE was selected and rationale documented in Design Decisions section
 
+7. **Generate or Update research.md** (MANDATORY for complex features):
+   - Use `.kiro/settings/templates/specs/research.md` template
+   - Record all discovery findings, architecture pattern evaluation, and detailed trade-off analysis
+   - Move implementation guidance and operational procedures from design.md to research.md
+   - **Criteria for "complex features requiring research.md"**:
+     - Full discovery process was executed
+     - Multiple architecture patterns were evaluated
+     - External service integrations with API research
+     - Detailed implementation examples or operational procedures identified
+     - If in doubt, generate research.md
+   - **Content to move from design.md to research.md**:
+     - Implementation examples and sample code
+     - Detailed operational procedures (e.g., environment variable management, startup sequences)
+     - Architecture pattern comparison tables with detailed pros/cons
+     - External dependency deep-dive (API investigation details, version compatibility research)
+
 ## Critical Constraints
  - **Type Safety**:
    - Enforce strong typing aligned with the project's technology stack.
@@ -136,6 +159,11 @@ Generate technical design document for feature based on approved requirements.
 - **Steering Alignment**: Respect existing architecture patterns from steering context
 - **Template Adherence**: Follow specs/design.md template structure and generation instructions strictly
 - **Design Focus**: Architecture and interfaces ONLY, no implementation code
+- **Visual Communication**:
+  - Mermaid diagrams carry structural detail
+  - Text explanations limited to 3-5 bullet points of key decisions per diagram
+  - Do NOT narrate the diagram step-by-step in prose
+  - Focus on WHY (decisions, trade-offs) not WHAT (already shown in diagram)
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
 
 ### Internal Consistency

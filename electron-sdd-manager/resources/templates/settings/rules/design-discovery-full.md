@@ -91,3 +91,24 @@ Capture all findings that impact design decisions in `research.md` using the sha
 - Updated domain boundaries that inform Components & Interface Contracts
 - Risks and mitigation strategies
 - Gaps requiring further investigation during implementation
+
+## design.md vs research.md Separation
+
+### design.md (Design Decisions - WHAT & HOW)
+- **Architecture pattern selected** (1-2 sentences: "We chose X because Y")
+- **Component interfaces** (type definitions only)
+- **Data models** (schema definitions)
+- **Integration points** (which systems connect, via what contracts)
+- **Design decisions** (DD-NNN format: Context, Decision, Rationale)
+
+### research.md (Discovery Process - WHY & ALTERNATIVES)
+- **Discovery investigation log** (sources consulted, findings)
+- **Architecture pattern evaluation table** (all options considered with pros/cons)
+- **Detailed trade-off analysis** (performance benchmarks, cost analysis)
+- **Implementation guidance** (code examples, operational procedures)
+- **External dependency deep-dive** (API investigation details, version compatibility)
+
+### Rule of Thumb
+If a reviewer asks "Why did you choose X over Y?":
+- **Brief answer (2-3 sentences)**: Include in design.md Design Decisions section
+- **Detailed investigation**: Reference research.md for complete analysis

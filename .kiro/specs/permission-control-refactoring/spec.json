@@ -1,0 +1,72 @@
+{
+  "feature_name": "permission-control-refactoring",
+  "created_at": "2026-01-27T07:49:33Z",
+  "updated_at": "2026-01-27T16:00:26Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "complete",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 3,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "review_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "clean"
+      }
+    ],
+    "completedAt": "2026-01-27T12:10:41Z"
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-27T08:34:58Z",
+        "fixedAt": "2026-01-27T08:37:33Z"
+      },
+      {
+        "number": 2,
+        "result": "go",
+        "inspectedAt": "2026-01-27T08:37:33Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-28T06:15:00Z"
+      }
+    ]
+  },
+  "autoExecution": {
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "document-review": true,
+      "impl": false,
+      "inspection": true,
+      "deploy": false
+    }
+  }
+}

@@ -192,7 +192,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
             className="w-3 h-3 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
             aria-label="Skip Permissions"
           />
-          <span className="select-none">Skip Permissions</span>
+          <span className="select-none">Skip Permissions (非推奨)</span>
         </label>
         {/* Ask Button */}
         {showAskButton && (

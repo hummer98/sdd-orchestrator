@@ -1,10 +1,10 @@
 ---
 name: spec-inspection-agent
 description: Comprehensive inspection of implementation against specifications
-tools: Read, Bash, Grep, Glob, Write, Task
+tools: Read, Grep, Glob, Write, Skill, Task
 model: inherit
 color: cyan
-permissionMode: bypassPermissions
+permissionMode: dontAsk
 ---
 
 # spec-inspection Agent

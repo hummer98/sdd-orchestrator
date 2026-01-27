@@ -11,7 +11,7 @@ tools:
   - mcp__electron__send_command_to_electron
   - mcp__electron__read_electron_logs
 model: sonnet
-permissionMode: bypassPermissions
+permissionMode: dontAsk
 ---
 
 # Debug Agent

@@ -4,7 +4,7 @@ description: Generate verification-commands.md with project-specific verificatio
 tools: Read, Write, Glob, Grep, Bash
 model: inherit
 color: green
-permissionMode: bypassPermissions
+permissionMode: dontAsk
 ---
 
 # steering-verification Agent

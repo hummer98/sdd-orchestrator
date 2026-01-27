@@ -1,10 +1,10 @@
 ---
 name: steering-custom-agent
 description: Create custom steering documents for specialized project contexts
-tools: Read, Write, Edit, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep
 model: inherit
 color: green
-permissionMode: bypassPermissions
+permissionMode: dontAsk
 ---
 
 # steering-custom Agent

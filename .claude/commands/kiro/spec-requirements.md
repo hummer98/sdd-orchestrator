@@ -6,6 +6,22 @@ argument-hint: <feature-name>
 
 # Requirements Generation
 
+<environment_context>
+**Current Working Directory**: The directory where this command is executed
+**CRITICAL**: All file operations MUST be performed relative to the current working directory.
+
+- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Source files: All paths are relative to current directory
+- DO NOT navigate to parent directories or git root
+- DO NOT use absolute paths from git root
+
+**Worktree Awareness**:
+If you are in a worktree (check `spec.json` for `worktree` field):
+- All spec files are in `$PWD/.kiro/specs/`
+- All source files are in the worktree, not the main repository
+- Stay within the worktree boundaries
+</environment_context>
+
 ## Parse Arguments
 - Feature name: `$1`
 

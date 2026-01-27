@@ -6,6 +6,22 @@ argument-hint: <feature-name>
 
 # Spec Document Review
 
+<environment_context>
+**Current Working Directory**: The directory where this command is executed
+**CRITICAL**: All file operations MUST be performed relative to the current working directory.
+
+- Spec directory: `.kiro/specs/$1/` (relative to current directory)
+- Source files: All paths are relative to current directory
+- DO NOT navigate to parent directories or git root
+- DO NOT use absolute paths from git root
+
+**Worktree Awareness**:
+If you are in a worktree (check `spec.json` for `worktree` field):
+- All spec files are in `$PWD/.kiro/specs/`
+- All source files are in the worktree, not the main repository
+- Stay within the worktree boundaries
+</environment_context>
+
 Review specification documents for consistency, identify contradictions, gaps, and ambiguities, then generate a comprehensive report.
 
 **Output Language**: Follow the language configuration in CLAUDE.md. Generate the review report in the target language specified there.

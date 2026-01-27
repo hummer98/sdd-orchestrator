@@ -147,4 +147,187 @@ describe('WebSocketApiClient', () => {
       expect(content).toContain('detectBugsChanges');
     });
   });
+
+  // ===========================================================================
+  // safari-websocket-stability: Task 3.1 - Heartbeat tests
+  // Requirements: 5.1, 5.2
+  // ===========================================================================
+
+  describe('Heartbeat functionality', () => {
+    it('should implement startHeartbeat method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('startHeartbeat');
+    });
+
+    it('should implement stopHeartbeat method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('stopHeartbeat');
+    });
+
+    it('should implement handlePong method for PONG response handling', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('handlePong');
+    });
+
+    it('should implement sendPing method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('sendPing');
+    });
+
+    it('should define HEARTBEAT_INTERVAL constant (20 seconds)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('HEARTBEAT_INTERVAL');
+      // 20 seconds = 20000ms
+      expect(content).toMatch(/HEARTBEAT_INTERVAL\s*=\s*20000/);
+    });
+
+    it('should define MAX_MISSED_PONGS constant (2)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('MAX_MISSED_PONGS');
+      expect(content).toMatch(/MAX_MISSED_PONGS\s*=\s*2/);
+    });
+
+    it('should track missedPongCount for connection dead detection', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('missedPongCount');
+    });
+
+    it('should handle PONG message type in handlePushMessage', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // PONG messages should be handled
+      expect(content).toMatch(/case\s*['"]PONG['"]/);
+    });
+
+    it('should send PING message with correct format', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // PING format: { type: 'PING', timestamp: <number> }
+      expect(content).toMatch(/type:\s*['"]PING['"]/);
+    });
+
+    it('should start heartbeat on successful connection', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // After connect succeeds, startHeartbeat should be called
+      // Check that connect method calls startHeartbeat
+      expect(content).toMatch(/connect[\s\S]*startHeartbeat/);
+    });
+
+    it('should stop heartbeat on disconnect', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // disconnect should call stopHeartbeat
+      expect(content).toMatch(/disconnect[\s\S]*stopHeartbeat/);
+    });
+
+    it('should force reconnect when MAX_MISSED_PONGS is reached', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // When missedPongCount >= MAX_MISSED_PONGS, force reconnect
+      expect(content).toMatch(/missedPongCount\s*>=\s*MAX_MISSED_PONGS/);
+    });
+  });
+
+  // ===========================================================================
+  // safari-websocket-stability: Task 3.2 - visibilitychange tests
+  // Requirements: 5.3
+  // ===========================================================================
+
+  describe('Visibility change handling', () => {
+    it('should implement handleVisibilityChange method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('handleVisibilityChange');
+    });
+
+    it('should implement sendImmediatePing method for visibility recovery', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('sendImmediatePing');
+    });
+
+    it('should define VISIBILITY_PING_TIMEOUT constant (10 seconds)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('VISIBILITY_PING_TIMEOUT');
+      // 10 seconds = 10000ms
+      expect(content).toMatch(/VISIBILITY_PING_TIMEOUT\s*=\s*10000/);
+    });
+
+    it('should register visibilitychange event listener', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should add event listener for visibilitychange
+      expect(content).toContain('visibilitychange');
+    });
+
+    it('should check document.visibilityState for visible state', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('visibilityState');
+      expect(content).toMatch(/visibilityState\s*===\s*['"]visible['"]/);
+    });
+
+    it('should track visibilityPingTimeout for timeout handling', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('visibilityPingTimeout');
+    });
+
+    it('should implement startVisibilityMonitor method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('startVisibilityMonitor');
+    });
+
+    it('should implement stopVisibilityMonitor method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('stopVisibilityMonitor');
+    });
+  });
+
+  // ===========================================================================
+  // safari-websocket-stability: Task 3.3 - Exponential backoff tests
+  // Requirements: 5.4
+  // ===========================================================================
+
+  describe('Exponential backoff', () => {
+    it('should define INITIAL_BACKOFF constant (1 second)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('INITIAL_BACKOFF');
+      // 1 second = 1000ms
+      expect(content).toMatch(/INITIAL_BACKOFF\s*=\s*1000/);
+    });
+
+    it('should define MAX_BACKOFF constant (30 seconds)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('MAX_BACKOFF');
+      // 30 seconds = 30000ms
+      expect(content).toMatch(/MAX_BACKOFF\s*=\s*30000/);
+    });
+
+    it('should define BACKOFF_MULTIPLIER constant (2)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('BACKOFF_MULTIPLIER');
+      expect(content).toMatch(/BACKOFF_MULTIPLIER\s*=\s*2/);
+    });
+
+    it('should implement calculateBackoffDelay method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('calculateBackoffDelay');
+    });
+
+    it('should use Math.min to cap backoff at MAX_BACKOFF', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should cap at MAX_BACKOFF
+      expect(content).toMatch(/Math\.min[\s\S]*MAX_BACKOFF/);
+    });
+
+    it('should use exponential calculation with BACKOFF_MULTIPLIER', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should use Math.pow or ** for exponential calculation
+      expect(content).toMatch(/Math\.pow|BACKOFF_MULTIPLIER\s*\*\*|\*\*\s*reconnectAttempts/);
+    });
+
+    it('should reset backoff counter on successful connection', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // reconnectAttempts should be reset to 0 on success
+      expect(content).toMatch(/reconnectAttempts\s*=\s*0/);
+    });
+
+    it('should maintain MAX_RECONNECT_ATTEMPTS limit (5)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('MAX_RECONNECT_ATTEMPTS');
+      expect(content).toMatch(/MAX_RECONNECT_ATTEMPTS\s*=\s*5/);
+    });
+  });
 });

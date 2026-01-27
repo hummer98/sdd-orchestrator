@@ -900,6 +900,11 @@ export class WebSocketHandler {
       case 'UPDATE_SPEC_JSON':
         await this.handleUpdateSpecJson(client, message);
         break;
+      // safari-websocket-stability: PING/PONG Heartbeat handler
+      // Requirements: 4.1, 4.2, 4.3, 4.4
+      case 'PING':
+        this.handlePing(client, message);
+        break;
       default:
         this.send(client.id, {
           type: 'ERROR',
@@ -915,6 +920,30 @@ export class WebSocketHandler {
    * Note: timestamp is optional for client-sent messages (clients may omit it)
    */
   private isValidMessage(message: unknown): message is WebSocketMessage {
+  // ===========================================================================
+  // safari-websocket-stability: PING/PONG Heartbeat Handler
+  // Requirements: 4.1, 4.2, 4.3, 4.4
+  // ===========================================================================
+
+  /**
+   * Handle PING message from client and respond with PONG
+   * Echoes back the timestamp for RTT calculation
+   * @param client - Client information
+   * @param message - PING message with optional timestamp payload
+   */
+  private handlePing(client: ClientInfo, message: WebSocketMessage): void {
+    // Do NOT log PING/PONG messages to reduce noise (Requirement 4.4)
+    // Extract timestamp from payload if present
+    const payload = message.payload as { timestamp?: number } | undefined;
+    const timestamp = payload?.timestamp ?? message.timestamp;
+
+    // Send PONG response with echoed timestamp
+    this.send(client.id, {
+      type: 'PONG',
+      payload: { timestamp },
+      timestamp: Date.now(),
+    });
+  }
     if (typeof message !== 'object' || message === null) {
       return false;
     }

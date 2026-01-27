@@ -3729,3 +3729,168 @@ describe('WebSocketHandler - UPDATE_SPEC_JSON Handler (auto-execution-ssot)', ()
     });
   });
 });
+
+// safari-websocket-stability: Task 3.4 - PING/PONG Heartbeat Tests
+// Requirements: 5.5 (WebSocketHandler PING/PONG tests)
+// ============================================================
+
+describe('WebSocketHandler - PING/PONG Heartbeat (safari-websocket-stability Task 3.4)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  describe('PING message handling', () => {
+    it('should respond with PONG when receiving PING', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      // Clear initial INIT message
+      await vi.runAllTimersAsync();
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      const pingTimestamp = Date.now();
+      await messageHandler!(JSON.stringify({
+        type: 'PING',
+        timestamp: pingTimestamp,
+        payload: { timestamp: pingTimestamp },
+      }));
+
+      await vi.runAllTimersAsync();
+
+      // Should respond with PONG
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"PONG"')
+      );
+    });
+
+    it('should echo back the timestamp in PONG response', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      await vi.runAllTimersAsync();
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      const pingTimestamp = 1706123456789;
+      await messageHandler!(JSON.stringify({
+        type: 'PING',
+        timestamp: pingTimestamp,
+        payload: { timestamp: pingTimestamp },
+      }));
+
+      await vi.runAllTimersAsync();
+
+      // Find the PONG message
+      const pongCall = mockWs.send.mock.calls.find((call: unknown[]) => {
+        const msg = JSON.parse(call[0] as string);
+        return msg.type === 'PONG';
+      });
+
+      expect(pongCall).toBeDefined();
+      const pongMessage = JSON.parse(pongCall![0] as string);
+      expect(pongMessage.payload.timestamp).toBe(pingTimestamp);
+    });
+
+    it('should not log PING/PONG messages (noise reduction)', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      await vi.runAllTimersAsync();
+
+      // Spy on console.log to verify PING/PONG are not logged
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      await messageHandler!(JSON.stringify({
+        type: 'PING',
+        timestamp: Date.now(),
+        payload: { timestamp: Date.now() },
+      }));
+
+      await vi.runAllTimersAsync();
+
+      // Verify no log calls contain PING or PONG (debug logging should skip these)
+      const logCalls = consoleSpy.mock.calls;
+      const pingPongLogs = logCalls.filter((call: unknown[]) =>
+        String(call[0]).includes('PING') || String(call[0]).includes('PONG')
+      );
+
+      // With debug disabled by default, there should be no PING/PONG logs
+      expect(pingPongLogs.length).toBe(0);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle PING without payload gracefully', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const { RateLimiter } = await import('../utils/rateLimiter');
+      const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+      const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+      handler.initialize(mockWss);
+
+      const mockWs = createMockWebSocket();
+      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+      await vi.runAllTimersAsync();
+      mockWs.send.mockClear();
+
+      const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+      // Send PING without payload
+      await messageHandler!(JSON.stringify({
+        type: 'PING',
+        timestamp: Date.now(),
+      }));
+
+      await vi.runAllTimersAsync();
+
+      // Should still respond with PONG
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"PONG"')
+      );
+    });
+  });
+});

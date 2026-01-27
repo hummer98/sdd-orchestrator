@@ -52,8 +52,31 @@ interface WebSocketResponse {
 // =============================================================================
 
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
-const RECONNECT_DELAY = 1000; // 1 second
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+// =============================================================================
+// safari-websocket-stability: Heartbeat Configuration
+// Requirements: 1.1, 1.5, 1.6, 1.7
+// =============================================================================
+
+/** Heartbeat interval in milliseconds (20 seconds) */
+const HEARTBEAT_INTERVAL = 20000;
+/** Maximum consecutive missed PONGs before forcing reconnect (2) */
+const MAX_MISSED_PONGS = 2;
+/** Visibility change PING timeout in milliseconds (10 seconds) */
+const VISIBILITY_PING_TIMEOUT = 10000;
+
+// =============================================================================
+// safari-websocket-stability: Exponential Backoff Configuration
+// Requirements: 3.1, 3.2, 3.3
+// =============================================================================
+
+/** Initial backoff delay in milliseconds (1 second) */
+const INITIAL_BACKOFF = 1000;
+/** Maximum backoff delay in milliseconds (30 seconds) */
+const MAX_BACKOFF = 30000;
+/** Backoff multiplier for exponential growth */
+const BACKOFF_MULTIPLIER = 2;
 
 // =============================================================================
 // Debug Logging
@@ -163,6 +186,23 @@ export class WebSocketApiClient implements ApiClient {
   // bugs-view-unification: Track previous bugs for differential update detection
   private previousBugs: BugMetadata[] = [];
 
+  // ===========================================================================
+  // safari-websocket-stability: Heartbeat State
+  // Requirements: 1.1, 1.5, 1.6, 1.7
+  // ===========================================================================
+  /** Heartbeat interval timer */
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  /** Count of consecutive missed PONG responses */
+  private missedPongCount = 0;
+  /** Timestamp of last PING sent (for RTT calculation in handlePong) */
+  private lastPingTime: number | null = null;
+  /** Visibility change PING timeout */
+  private visibilityPingTimeout: ReturnType<typeof setTimeout> | null = null;
+  /** Flag for pending visibility PING */
+  private pendingVisibilityPing = false;
+  /** Bound visibility change handler for cleanup */
+  private boundVisibilityHandler: (() => void) | null = null;
+
   constructor(url: string, token: string) {
     this.url = url;
     this.token = token;
@@ -208,6 +248,9 @@ export class WebSocketApiClient implements ApiClient {
       await this.connectionPromise;
       this.reconnectAttempts = 0;
       debugLog('CONNECT', 'connection established successfully');
+      // safari-websocket-stability: Start heartbeat and visibility monitor on successful connection
+      this.startHeartbeat();
+      this.startVisibilityMonitor();
       return { ok: true, value: undefined };
     } catch (error) {
       debugLog('CONNECT', 'connection failed', error);
@@ -248,6 +291,10 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   disconnect(): void {
+    // safari-websocket-stability: Stop heartbeat and visibility monitor on disconnect
+    this.stopHeartbeat();
+    this.stopVisibilityMonitor();
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -265,12 +312,36 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   private handleDisconnect(): void {
+    // safari-websocket-stability: Stop heartbeat on disconnect
+    this.stopHeartbeat();
+
     if (this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       this.reconnectAttempts++;
+      // safari-websocket-stability: Use exponential backoff for reconnection delay
+      const delay = this.calculateBackoffDelay(this.reconnectAttempts);
+      debugLog('RECONNECT', `scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+      this.emit('reconnectScheduled', { attempt: this.reconnectAttempts, delay });
       setTimeout(() => {
         this.reconnect();
-      }, RECONNECT_DELAY * this.reconnectAttempts);
+      }, delay);
     }
+  }
+
+  // ===========================================================================
+  // safari-websocket-stability: Exponential Backoff
+  // Requirements: 3.1, 3.2, 3.3
+  // ===========================================================================
+
+  /**
+   * Calculate backoff delay using exponential backoff
+   * Formula: min(INITIAL_BACKOFF * BACKOFF_MULTIPLIER^(attempt-1), MAX_BACKOFF)
+   * Result: 1s -> 2s -> 4s -> 8s -> 16s -> 30s (capped)
+   * @param attempt - Current reconnection attempt number (1-based)
+   * @returns Delay in milliseconds
+   */
+  private calculateBackoffDelay(attempt: number): number {
+    const delay = INITIAL_BACKOFF * Math.pow(BACKOFF_MULTIPLIER, attempt - 1);
+    return Math.min(delay, MAX_BACKOFF);
   }
 
   private async reconnect(): Promise<void> {
@@ -395,6 +466,13 @@ export class WebSocketApiClient implements ApiClient {
       case 'PROFILE_UPDATED':
         this.emit('profileUpdated', message.payload);
         break;
+      // safari-websocket-stability: Handle PONG response for heartbeat
+      // Requirements: 1.3, 1.4
+      case 'PONG': {
+        const pongPayload = message.payload as { timestamp?: number } | undefined;
+        this.handlePong(pongPayload?.timestamp);
+        break;
+      }
     }
   }
 
@@ -473,6 +551,242 @@ export class WebSocketApiClient implements ApiClient {
           message: error instanceof Error ? error.message : String(error),
         },
       };
+    }
+  }
+
+  // ===========================================================================
+  // safari-websocket-stability: Heartbeat Management
+  // Requirements: 1.1, 1.2, 1.5, 1.6, 1.7
+  // ===========================================================================
+
+  /**
+   * Start heartbeat timer to send PING every HEARTBEAT_INTERVAL
+   * Should be called after successful connection
+   */
+  private startHeartbeat(): void {
+    // Stop any existing heartbeat first
+    this.stopHeartbeat();
+
+    debugLog('HEARTBEAT', 'starting heartbeat timer');
+    this.missedPongCount = 0;
+
+    this.heartbeatTimer = setInterval(() => {
+      this.sendPing();
+    }, HEARTBEAT_INTERVAL);
+  }
+
+  /**
+   * Stop heartbeat timer
+   * Should be called on disconnect or before reconnection
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      debugLog('HEARTBEAT', 'stopping heartbeat timer');
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    // Also clear visibility ping timeout
+    if (this.visibilityPingTimeout) {
+      clearTimeout(this.visibilityPingTimeout);
+      this.visibilityPingTimeout = null;
+    }
+    this.pendingVisibilityPing = false;
+  }
+
+  /**
+   * Send a PING message to the server
+   * Format: { type: 'PING', timestamp: <number> }
+   */
+  private sendPing(): void {
+    if (!this.isConnected()) {
+      debugLog('HEARTBEAT', 'cannot send PING - not connected');
+      return;
+    }
+
+    const timestamp = Date.now();
+    this.lastPingTime = timestamp;
+    this.missedPongCount++;
+
+    debugLog('HEARTBEAT', `sending PING (missedPongCount: ${this.missedPongCount})`, { timestamp });
+
+    // Check if connection is dead (consecutive PONG misses)
+    if (this.missedPongCount >= MAX_MISSED_PONGS) {
+      debugLog('HEARTBEAT', 'connection dead - forcing reconnect');
+      this.emit('connectionDead', undefined);
+      this.forceReconnect();
+      return;
+    }
+
+    // Send PING message
+    const message = {
+      type: 'PING',
+      timestamp,
+    };
+
+    try {
+      this.ws!.send(JSON.stringify(message));
+    } catch (error) {
+      debugLog('HEARTBEAT', 'failed to send PING', error);
+    }
+  }
+
+  /**
+   * Handle PONG response from server
+   * Resets the missed PONG counter
+   * @param timestamp - The timestamp echoed back from PING (optional)
+   */
+  private handlePong(timestamp?: number): void {
+    // Calculate latency using echoed timestamp or lastPingTime
+    const pingTime = timestamp ?? this.lastPingTime;
+    const latency = pingTime ? Date.now() - pingTime : null;
+    debugLog('HEARTBEAT', 'received PONG', { timestamp, latency });
+
+    // Clear lastPingTime after processing
+    this.lastPingTime = null;
+
+    // Reset missed count on successful PONG
+    this.missedPongCount = 0;
+
+    // Clear visibility ping timeout if waiting for PONG
+    if (this.pendingVisibilityPing) {
+      this.pendingVisibilityPing = false;
+      if (this.visibilityPingTimeout) {
+        clearTimeout(this.visibilityPingTimeout);
+        this.visibilityPingTimeout = null;
+      }
+      debugLog('HEARTBEAT', 'visibility ping confirmed - connection healthy');
+    }
+  }
+
+  /**
+   * Send immediate PING for visibility recovery
+   * Used when page becomes visible to quickly verify connection
+   * @param timeoutMs - Timeout for PONG response (default: VISIBILITY_PING_TIMEOUT)
+   * @returns Promise that resolves to true if PONG received, false if timeout
+   */
+  private sendImmediatePing(timeoutMs: number = VISIBILITY_PING_TIMEOUT): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.isConnected()) {
+        resolve(false);
+        return;
+      }
+
+      this.pendingVisibilityPing = true;
+      const timestamp = Date.now();
+
+      debugLog('HEARTBEAT', 'sending immediate PING for visibility check', { timestamp, timeoutMs });
+
+      // Set timeout for PONG response
+      this.visibilityPingTimeout = setTimeout(() => {
+        if (this.pendingVisibilityPing) {
+          debugLog('HEARTBEAT', 'visibility ping timeout - forcing reconnect');
+          this.pendingVisibilityPing = false;
+          this.forceReconnect();
+          resolve(false);
+        }
+      }, timeoutMs);
+
+      // Send PING
+      const message = {
+        type: 'PING',
+        timestamp,
+      };
+
+      try {
+        this.ws!.send(JSON.stringify(message));
+        // Note: handlePong will clear timeout and resolve true
+        // This promise just tracks the timeout case
+      } catch (error) {
+        debugLog('HEARTBEAT', 'failed to send immediate PING', error);
+        this.pendingVisibilityPing = false;
+        if (this.visibilityPingTimeout) {
+          clearTimeout(this.visibilityPingTimeout);
+          this.visibilityPingTimeout = null;
+        }
+        resolve(false);
+      }
+    });
+  }
+
+  /**
+   * Force reconnection by closing current connection
+   */
+  private forceReconnect(): void {
+    debugLog('RECONNECT', 'forcing reconnection');
+    this.stopHeartbeat();
+
+    if (this.ws) {
+      this.ws.close();
+      // Note: onclose handler will trigger handleDisconnect -> reconnect
+    }
+  }
+
+  // ===========================================================================
+  // safari-websocket-stability: Visibility Change Monitor
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+  // ===========================================================================
+
+  /**
+   * Start monitoring document visibility changes
+   * Used to detect when page becomes visible after being hidden
+   */
+  private startVisibilityMonitor(): void {
+    if (typeof document === 'undefined') {
+      debugLog('VISIBILITY', 'document not available - skipping visibility monitor');
+      return;
+    }
+
+    // Clean up existing handler if any
+    this.stopVisibilityMonitor();
+
+    this.boundVisibilityHandler = () => {
+      this.handleVisibilityChange();
+    };
+
+    document.addEventListener('visibilitychange', this.boundVisibilityHandler);
+    debugLog('VISIBILITY', 'started visibility monitor');
+  }
+
+  /**
+   * Stop monitoring document visibility changes
+   */
+  private stopVisibilityMonitor(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    if (this.boundVisibilityHandler) {
+      document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+      this.boundVisibilityHandler = null;
+      debugLog('VISIBILITY', 'stopped visibility monitor');
+    }
+  }
+
+  /**
+   * Handle document visibility change event
+   * When page becomes visible:
+   * - If disconnected: immediately try to reconnect
+   * - If connected: send immediate PING to verify connection health
+   */
+  private handleVisibilityChange(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const visibilityState = document.visibilityState;
+    debugLog('VISIBILITY', `visibility changed to: ${visibilityState}`);
+
+    if (visibilityState === 'visible') {
+      // Page became visible - check connection
+      if (!this.isConnected()) {
+        // Connection is down - try to reconnect immediately
+        debugLog('VISIBILITY', 'page visible but disconnected - reconnecting');
+        this.reconnect();
+      } else {
+        // Connection appears up - send immediate PING to verify
+        debugLog('VISIBILITY', 'page visible and connected - verifying with PING');
+        this.sendImmediatePing();
+      }
     }
   }
 

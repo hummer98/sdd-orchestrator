@@ -1,4 +1,15 @@
-# Changelog
+# CHANGELOG
+
+## [0.52.1] - 2026-01-28
+
+### Fixed
+- improve agent completion detection and error handling
+
+### Changed
+- skipPermissionsフラグ処理の厳密化とバリデーション強化
+- add safety permissions to deny list in settings
+- 統合テスト/E2Eテストのドキュメント参照を改善
+
 
 All notable changes to this project will be documented in this file.
 

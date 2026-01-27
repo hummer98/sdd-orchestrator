@@ -168,10 +168,8 @@ class AgentProcessImpl implements AgentProcess {
   kill(): void {
     this._isRunning = false;
     this.process.kill();
-    // Clear callback arrays to prevent memory leaks
-    this.outputCallbacks.length = 0;
-    this.exitCallbacks.length = 0;
-    this.errorCallbacks.length = 0;
+    // Note: Callback arrays are cleared in close/error event handlers
+    // to ensure exit callbacks are invoked before cleanup
   }
 
   onOutput(callback: (stream: 'stdout' | 'stderr', data: string) => void): void {

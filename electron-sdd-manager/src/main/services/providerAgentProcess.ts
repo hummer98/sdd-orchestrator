@@ -140,10 +140,8 @@ class ProviderAgentProcessImpl implements AgentProcess {
     if (this.handle) {
       this.handle.kill('SIGTERM');
     }
-    // Clear callback arrays to prevent memory leaks
-    this.outputCallbacks.length = 0;
-    this.exitCallbacks.length = 0;
-    this.errorCallbacks.length = 0;
+    // Note: Callback arrays are cleared in exit event handler
+    // to ensure exit callbacks are invoked before cleanup
   }
 
   onOutput(callback: (stream: 'stdout' | 'stderr', data: string) => void): void {

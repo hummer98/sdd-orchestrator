@@ -310,47 +310,6 @@ export class DocumentReviewService {
   }
 
   // ============================================================
-  // Task 5.2: Skip review
-  // Requirements: 1.3
-  // ============================================================
-
-  /**
-   * Skip the document review workflow
-   */
-  async skipReview(specPath: string): Promise<Result<void, ReviewError>> {
-    try {
-      const specJson = await this.readSpecJsonInternal(specPath) as SpecJsonWithReview;
-
-      // Check if already approved
-      if (specJson.documentReview?.status === 'approved') {
-        return {
-          ok: false,
-          error: { type: 'ALREADY_APPROVED' },
-        };
-      }
-
-      // Initialize if not exists and set to skipped
-      if (!specJson.documentReview) {
-        specJson.documentReview = createInitialReviewState();
-      }
-      specJson.documentReview.status = 'skipped';
-      specJson.updated_at = new Date().toISOString();
-
-      await this.writeSpecJson(specPath, specJson);
-      return { ok: true, value: undefined };
-    } catch (error) {
-      logger.error('[DocumentReviewService] Error skipping review', { error });
-      return {
-        ok: false,
-        error: {
-          type: 'AGENT_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-      };
-    }
-  }
-
-  // ============================================================
   // Task 4.2: Retry round
   // Requirements: 8.3
   // ============================================================
@@ -538,8 +497,8 @@ export class DocumentReviewService {
     try {
       const reviewState = await this.getReviewState(specPath);
 
-      // Cannot add if approved or skipped
-      if (reviewState?.status === 'approved' || reviewState?.status === 'skipped') {
+      // Cannot add if approved (document-review-skip-removal: 'skipped' status removed)
+      if (reviewState?.status === 'approved') {
         return false;
       }
 
@@ -762,11 +721,26 @@ export class DocumentReviewService {
 
   /**
    * Read spec.json from spec directory (internal use)
+   * document-review-skip-removal: Logs warning for legacy 'skipped' status
    */
   private async readSpecJsonInternal(specPath: string): Promise<SpecJsonWithReview> {
     const specJsonPath = join(specPath, 'spec.json');
     const content = await readFile(specJsonPath, 'utf-8');
-    return JSON.parse(content);
+    const specJson: SpecJsonWithReview = JSON.parse(content);
+
+    // document-review-skip-removal: Warn about legacy 'skipped' status (Requirements: 7.1, 7.2, 7.3)
+    // Type assertion needed because 'skipped' is removed from ReviewStatus but may exist in legacy data
+    const docReview = specJson.documentReview;
+    if (docReview && (docReview.status as string) === 'skipped') {
+      const specName = specPath.split('/').pop() || specPath;
+      logger.warn('[DocumentReviewService] Legacy skipped status detected', {
+        spec: specName,
+        status: docReview.status,
+        recommendation: 'Update documentReview.status to "pending" or "approved" and re-run document review',
+      });
+    }
+
+    return specJson;
   }
 
   /**

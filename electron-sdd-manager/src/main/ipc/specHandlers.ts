@@ -10,7 +10,7 @@
  * - Spec更新: UPDATE_APPROVAL, UPDATE_SPEC_JSON, SYNC_SPEC_PHASE
  * - Watcher: START_SPECS_WATCHER, STOP_SPECS_WATCHER
  * - 実行系: EXECUTE_SPEC_INIT, EXECUTE_SPEC_PLAN, EXECUTE
- * - ドキュメントレビュー: EXECUTE_DOCUMENT_REVIEW*, APPROVE_DOCUMENT_REVIEW, SKIP_DOCUMENT_REVIEW
+ * - ドキュメントレビュー: EXECUTE_DOCUMENT_REVIEW*, APPROVE_DOCUMENT_REVIEW (SKIP_DOCUMENT_REVIEW removed)
  * - Inspection: EXECUTE_INSPECTION*, SET_INSPECTION_AUTO_EXECUTION_FLAG
  * - Ask系: EXECUTE_ASK_PROJECT, EXECUTE_ASK_SPEC
  * - マージ: EXECUTE_SPEC_MERGE
@@ -562,19 +562,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
-    IPC_CHANNELS.SKIP_DOCUMENT_REVIEW,
-    async (_event, specPath: string) => {
-      logger.info('[specHandlers] SKIP_DOCUMENT_REVIEW called', { specPath });
-      const { DocumentReviewService } = await import('../services/documentReviewService');
-      const currentProjectPath = getCurrentProjectPath();
-      const service = new DocumentReviewService(currentProjectPath || '');
-      const result = await service.skipReview(specPath);
-      if (!result.ok) {
-        throw new Error(`Failed to skip document review: ${result.error.type}`);
-      }
-    }
-  );
+  // document-review-skip-removal: SKIP_DOCUMENT_REVIEW handler removed
 
   // ============================================================
   // Inspection Workflow (inspection-workflow-ui feature)

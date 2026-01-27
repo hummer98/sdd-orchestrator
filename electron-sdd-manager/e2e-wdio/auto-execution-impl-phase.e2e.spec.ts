@@ -65,6 +65,7 @@ const ALL_PHASES_COMPLETED_SPEC_JSON = {
 };
 
 // Spec.json with only requirements and design completed
+// document-review-skip-removal: Added documentReview.status = 'approved' to skip document review
 const DESIGN_COMPLETED_SPEC_JSON = {
   feature_name: 'impl-feature',
   name: 'impl-feature',
@@ -76,6 +77,7 @@ const DESIGN_COMPLETED_SPEC_JSON = {
     design: { generated: true, approved: true },
     tasks: { generated: false, approved: false },
   },
+  documentReview: { status: 'approved' as const },
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -273,8 +275,9 @@ async function getExecutedAgentSkills(): Promise<string[]> {
 
 /**
  * Helper: Set document review flag
+ * document-review-skip-removal: 'skip' option removed
  */
-async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<boolean> {
+async function setDocumentReviewFlag(flag: 'run' | 'pause'): Promise<boolean> {
   return browser.execute((f: string) => {
     try {
       const stores = (window as any).__STORES__;
@@ -343,7 +346,7 @@ describe('Auto Execution impl Phase E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review for this test
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
     });
 
     it('should verify initial state shows all prerequisite phases approved', async () => {
@@ -462,7 +465,7 @@ describe('Auto Execution impl Phase E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review for this test
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
     });
 
     it('should execute tasks then impl in sequence', async () => {

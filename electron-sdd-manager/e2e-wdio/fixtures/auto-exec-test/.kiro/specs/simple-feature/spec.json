@@ -1,7 +1,7 @@
 {
   "feature_name": "simple-feature",
   "name": "simple-feature",
-  "description": "E2E test for agent log streaming",
+  "description": "E2Eテスト用のシンプルな機能",
   "phase": "initialized",
   "language": "ja",
   "approvals": {

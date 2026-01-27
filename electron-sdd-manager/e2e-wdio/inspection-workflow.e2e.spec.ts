@@ -634,7 +634,7 @@ describe('Inspection Workflow E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
     });
 
     it('should execute inspection when inspection permission is ON', async () => {
@@ -772,7 +772,7 @@ describe('Inspection Workflow E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
     });
 
     it('should execute inspection with --autofix in auto-execution flow', async () => {

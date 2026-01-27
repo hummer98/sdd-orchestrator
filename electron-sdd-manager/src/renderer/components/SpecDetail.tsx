@@ -67,9 +67,9 @@ export function SpecDetail() {
     );
   }
 
+  // document-review-skip-removal: 'skipped' status removed
   const isReadyForImplementation =
-    specJson.documentReview?.status === 'approved' ||
-    specJson.documentReview?.status === 'skipped';
+    specJson.documentReview?.status === 'approved';
 
   return (
     <div className="p-6 space-y-6">

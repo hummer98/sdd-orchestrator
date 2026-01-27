@@ -156,8 +156,8 @@ describe('Auto Execution Flow E2E Tests', () => {
     const workflowView = await $('[data-testid="workflow-view"]');
     await workflowView.waitForExist({ timeout: 5000 });
 
-    // Skip document review to avoid paused state after tasks completion
-    await setDocumentReviewFlag('skip');
+    // document-review-skip-removal: Use 'run' mode; fixture has documentReview pre-approved when needed
+    await setDocumentReviewFlag('run');
   });
 
   afterEach(async () => {

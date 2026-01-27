@@ -251,8 +251,9 @@ function readSpecJson(): typeof DESIGN_COMPLETED_SPEC_JSON & { documentReview?: 
 
 /**
  * Helper: Set document review flag via workflowStore
+ * document-review-skip-removal: 'skip' option removed
  */
-async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<boolean> {
+async function setDocumentReviewFlag(flag: 'run' | 'pause'): Promise<boolean> {
   return browser.execute((f: string) => {
     try {
       const stores = (window as any).__STORES__;
@@ -270,16 +271,17 @@ async function setDocumentReviewFlag(flag: 'run' | 'pause' | 'skip'): Promise<bo
 
 /**
  * Helper: Get document review flag from workflowStore
+ * document-review-skip-removal: Default changed from 'skip' to 'run'
  */
 async function getDocumentReviewFlag(): Promise<string> {
   return browser.execute(() => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return 'skip';
+      if (!stores?.workflow?.getState) return 'run';
       // Bug fix: Use correct property path documentReviewOptions.autoExecutionFlag
-      return stores.workflow.getState().documentReviewOptions?.autoExecutionFlag || 'skip';
+      return stores.workflow.getState().documentReviewOptions?.autoExecutionFlag || 'run';
     } catch (e) {
-      return 'skip';
+      return 'run';
     }
   });
 }
@@ -347,68 +349,8 @@ describe('Auto Execution Document Review Integration E2E', () => {
   });
 
   // ============================================================
-  // Scenario 1: Document Review with 'skip' flag
+  // document-review-skip-removal: Scenario 1 (Document Review skipped) removed
   // ============================================================
-  describe('Scenario 1: Document Review skipped', () => {
-    beforeEach(async () => {
-      // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
-
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
-
-      // Set document review flag to 'skip'
-      await setDocumentReviewFlag('skip');
-    });
-
-    it('should not trigger document review when flag is skip', async () => {
-      // Verify flag is set to skip
-      const flag = await getDocumentReviewFlag();
-      expect(flag).toBe('skip');
-
-      // Set permissions: impl enabled (to see full flow)
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: true,
-        impl: true,
-        inspection: false,
-        deploy: false,
-      });
-
-      // Start auto-execution (from tasks since tasks is already completed)
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for completion
-      const completed = await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        return !s.isAutoExecuting;
-      }, 60000, 500, 'auto-execution-complete');
-
-      console.log(`[E2E] Auto-execution completed: ${completed}`);
-
-      // Check that no document-review agents were executed
-      const docReviewAgents = await getDocumentReviewAgents();
-      console.log(`[E2E] Document review agents: ${JSON.stringify(docReviewAgents)}`);
-
-      // When skip is set, no document-review agents should be started
-      const docReviewCount = docReviewAgents.filter(a =>
-        a.skill.includes('document-review') && !a.skill.includes('document-review-reply')
-      ).length;
-      expect(docReviewCount).toBe(0);
-    });
-  });
 
   // ============================================================
   // Scenario 2: Document Review with 'run' flag
@@ -470,7 +412,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
 
         // Document review status should be in_progress or have rounds
         if (specJson.documentReview) {
-          expect(['in_progress', 'pending', 'approved', 'skipped']).toContain(specJson.documentReview.status);
+          expect(['in_progress', 'pending', 'approved']).toContain(specJson.documentReview.status);
         }
       }
 

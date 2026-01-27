@@ -890,12 +890,7 @@ const electronAPI = {
   approveDocumentReview: (specPath: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.APPROVE_DOCUMENT_REVIEW, specPath),
 
-  /**
-   * Skip document review (set status to 'skipped')
-   * @param specPath Full path to spec directory
-   */
-  skipDocumentReview: (specPath: string): Promise<void> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW, specPath),
+  // document-review-skip-removal: skipDocumentReview removed
 
   // ============================================================
   // SSH Remote Project (Requirements: 1.1, 2.1, 6.1, 7.1, 7.2, 8.1, 8.2, 8.5)

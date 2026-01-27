@@ -38,6 +38,7 @@ const SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/specs', SPEC_NAME);
 const RUNTIME_AGENTS_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents', SPEC_NAME);
 
 // Initial spec.json content with tasks approved
+// document-review-skip-removal: Added documentReview.status = 'approved' for tests that skip review
 const TASKS_APPROVED_SPEC_JSON = {
   feature_name: 'test-feature',
   name: 'test-feature',
@@ -49,12 +50,14 @@ const TASKS_APPROVED_SPEC_JSON = {
     design: { generated: true, approved: true },
     tasks: { generated: true, approved: true },
   },
+  documentReview: { status: 'approved' as const },
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
 // Spec.json with design completed (tasks will be executed next)
 // Document review is triggered AFTER tasks phase EXECUTION completes
+// document-review-skip-removal: Added documentReview.status = 'approved' for tests that skip review
 const DESIGN_COMPLETED_SPEC_JSON = {
   feature_name: 'test-feature',
   name: 'test-feature',
@@ -66,6 +69,7 @@ const DESIGN_COMPLETED_SPEC_JSON = {
     design: { generated: true, approved: true },
     tasks: { generated: false, approved: false },
   },
+  documentReview: { status: 'approved' as const },
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -502,7 +506,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review for faster testing
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
 
       // Configure mock: impl marks all tasks as complete
       await configureMockClaude({
@@ -592,7 +596,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review for faster testing
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
 
       // Configure mock: impl marks all tasks as complete
       await configureMockClaude({
@@ -690,7 +694,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       await workflowView.waitForExist({ timeout: 5000 });
 
       // Skip document review for faster testing
-      await setDocumentReviewFlag('skip');
+      await setDocumentReviewFlag('run');
 
       // Configure mock: impl does NOT mark tasks as complete
       await configureMockClaude({

@@ -12,13 +12,12 @@
 // =============================================================================
 
 /**
- * Review status constants
+ * Review status constants (3 values - skipped removed: document-review-skip-removal)
  */
 export const REVIEW_STATUS = {
   PENDING: 'pending',
   IN_PROGRESS: 'in_progress',
   APPROVED: 'approved',
-  SKIPPED: 'skipped',
 } as const;
 
 /**

@@ -48,7 +48,7 @@ vi.mock('../services/specsWatcherService', () => ({
 vi.mock('../services/documentReviewService', () => ({
   DocumentReviewService: vi.fn().mockImplementation(() => ({
     approveReview: vi.fn().mockResolvedValue({ ok: true }),
-    skipReview: vi.fn().mockResolvedValue({ ok: true }),
+    // document-review-skip-removal: skipReview removed
     syncReviewState: vi.fn().mockResolvedValue({ ok: true }),
     getNextRoundNumber: vi.fn().mockResolvedValue(1),
     readSpecJson: vi.fn().mockResolvedValue({ ok: true, value: {} }),
@@ -176,7 +176,7 @@ describe('specHandlers', () => {
       expect(registeredChannels).toContain(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY);
       expect(registeredChannels).toContain(IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_FIX);
       expect(registeredChannels).toContain(IPC_CHANNELS.APPROVE_DOCUMENT_REVIEW);
-      expect(registeredChannels).toContain(IPC_CHANNELS.SKIP_DOCUMENT_REVIEW);
+      // document-review-skip-removal: SKIP_DOCUMENT_REVIEW removed
 
       // Inspection
       expect(registeredChannels).toContain(IPC_CHANNELS.EXECUTE_INSPECTION);

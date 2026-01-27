@@ -27,11 +27,13 @@ describe('Document Review Types', () => {
   // ============================================================
   describe('Task 1.1: DocumentReviewState type', () => {
     describe('REVIEW_STATUS constants', () => {
-      it('should define all review status values', () => {
+      it('should define all review status values (3 values, skipped removed)', () => {
         expect(REVIEW_STATUS.PENDING).toBe('pending');
         expect(REVIEW_STATUS.IN_PROGRESS).toBe('in_progress');
         expect(REVIEW_STATUS.APPROVED).toBe('approved');
-        expect(REVIEW_STATUS.SKIPPED).toBe('skipped');
+        // Task 1.1: SKIPPED removed - document-review-skip-removal feature
+        expect(Object.keys(REVIEW_STATUS)).toEqual(['PENDING', 'IN_PROGRESS', 'APPROVED']);
+        expect(Object.values(REVIEW_STATUS)).toEqual(['pending', 'in_progress', 'approved']);
       });
     });
 

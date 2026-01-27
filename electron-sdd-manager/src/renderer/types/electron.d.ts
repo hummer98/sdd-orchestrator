@@ -812,7 +812,7 @@ export interface ElectronAPI {
   executeDocumentReviewReply(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager', autofix?: boolean): Promise<AgentInfo>;
   executeDocumentReviewFix(specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager'): Promise<AgentInfo>;
   approveDocumentReview(specPath: string): Promise<void>;
-  skipDocumentReview(specPath: string): Promise<void>;
+  // document-review-skip-removal: skipDocumentReview removed
 
   // Task 2.2: parseReplyFile IPC (auto-execution-document-review-autofix)
   parseReplyFile(specPath: string, roundNumber: number): Promise<{ fixRequiredCount: number }>;

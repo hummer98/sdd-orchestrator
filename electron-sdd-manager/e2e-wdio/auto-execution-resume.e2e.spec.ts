@@ -34,6 +34,7 @@ const SPEC_DIR = path.join(FIXTURE_PATH, '.kiro/specs', SPEC_NAME);
 const RUNTIME_AGENTS_DIR = path.join(FIXTURE_PATH, '.kiro/runtime/agents', SPEC_NAME);
 
 // Initial spec.json content with requirements COMPLETED
+// document-review-skip-removal: Added documentReview.status = 'approved' to skip document review
 const REQUIREMENTS_COMPLETED_SPEC_JSON = {
   feature_name: 'resume-feature',
   name: 'resume-feature',
@@ -45,11 +46,13 @@ const REQUIREMENTS_COMPLETED_SPEC_JSON = {
     design: { generated: false, approved: false },
     tasks: { generated: false, approved: false },
   },
+  documentReview: { status: 'approved' as const },
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
 // Initial spec.json content with requirements + design COMPLETED
+// document-review-skip-removal: Added documentReview.status = 'approved' to skip document review
 const DESIGN_COMPLETED_SPEC_JSON = {
   feature_name: 'resume-feature',
   name: 'resume-feature',
@@ -61,6 +64,7 @@ const DESIGN_COMPLETED_SPEC_JSON = {
     design: { generated: true, approved: true },
     tasks: { generated: false, approved: false },
   },
+  documentReview: { status: 'approved' as const },
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -302,8 +306,9 @@ describe('Auto Execution Resume E2E Tests', () => {
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
 
-      // Skip document review to avoid paused state after tasks completion
-      await setDocumentReviewFlag('skip');
+      // document-review-skip-removal: Use 'run' with pre-approved documentReview in fixture
+      // instead of 'skip'. The fixture already has documentReview.status = 'approved'
+      await setDocumentReviewFlag('run');
     });
 
     it('should verify initial state shows requirements as approved', async () => {
@@ -475,8 +480,8 @@ describe('Auto Execution Resume E2E Tests', () => {
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
 
-      // Skip document review to avoid paused state after tasks completion
-      await setDocumentReviewFlag('skip');
+      // document-review-skip-removal: Use 'run' with pre-approved documentReview in fixture
+      await setDocumentReviewFlag('run');
     });
 
     it('should verify initial state shows requirements and design as approved', async () => {

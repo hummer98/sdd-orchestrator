@@ -123,7 +123,7 @@ export const IPC_CHANNELS = {
   EXECUTE_DOCUMENT_REVIEW_REPLY: 'ipc:execute-document-review-reply',
   EXECUTE_DOCUMENT_REVIEW_FIX: 'ipc:execute-document-review-fix',
   APPROVE_DOCUMENT_REVIEW: 'ipc:approve-document-review',
-  SKIP_DOCUMENT_REVIEW: 'ipc:skip-document-review',
+  // document-review-skip-removal: SKIP_DOCUMENT_REVIEW removed
   // cc-sdd Workflow Install (cc-sdd-command-installer feature)
   CHECK_CC_SDD_WORKFLOW_STATUS: 'ipc:check-cc-sdd-workflow-status',
   INSTALL_CC_SDD_WORKFLOW: 'ipc:install-cc-sdd-workflow',

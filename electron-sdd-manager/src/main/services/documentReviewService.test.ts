@@ -367,41 +367,6 @@ describe('DocumentReviewService', () => {
   });
 
   // ============================================================
-  // Task 5.2: Skip review
-  // Requirements: 1.3
-  // ============================================================
-  describe('Task 5.2: skipReview', () => {
-    it('should set status to skipped', async () => {
-      const specJson = createMockSpecJson();
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
-      const result = await service.skipReview(mockSpecPath);
-      expect(result.ok).toBe(true);
-
-      const writeCall = vi.mocked(fs.writeFile).mock.calls[0];
-      const writtenContent = JSON.parse(writeCall[1] as string);
-      expect(writtenContent.documentReview.status).toBe('skipped');
-    });
-
-    it('should return error if already approved', async () => {
-      const specJson = {
-        ...createMockSpecJson(),
-        documentReview: {
-          status: 'approved' as const,
-        },
-      };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(specJson));
-
-      const result = await service.skipReview(mockSpecPath);
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.type).toBe('ALREADY_APPROVED');
-      }
-    });
-  });
-
-  // ============================================================
   // Task 4.2: Retry round
   // Requirements: 8.3
   // ============================================================

@@ -5,7 +5,7 @@
  * These tests verify that the UI correctly reflects the document review state.
  *
  * Document Review States:
- * - status: pending | in_progress | approved | skipped
+ * - status: pending | in_progress | approved
  * - roundStatus: review_complete | reply_complete | incomplete
  * - fixStatus: not_required | pending | applied
  *
@@ -140,12 +140,6 @@ const DOC_REVIEW_STATES = {
           needsDiscussion: 0,
         },
       ],
-    },
-  },
-  skipped: {
-    ...TASKS_APPROVED_BASE,
-    documentReview: {
-      status: 'skipped',
     },
   },
   multi_round: {
@@ -618,43 +612,6 @@ describe('Document Review UI States E2E', () => {
 
       // All buttons should be disabled or not shown when approved
       // (implementation may hide buttons entirely rather than disable them)
-    });
-  });
-
-  // ============================================================
-  // Status: skipped
-  // ============================================================
-  describe('Status: skipped', () => {
-    beforeEach(async () => {
-      setFixtureState('skipped');
-
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
-    });
-
-    it('should show skipped indicator in panel', async () => {
-      const panel = await $('[data-testid="document-review-panel"]');
-      const panelExists = await panel.isExisting();
-      expect(panelExists).toBe(true);
-
-      // Check for skipped visual indicator
-      const uiState = await getDocumentReviewUIState();
-      console.log(`[E2E] UI state (skipped): ${JSON.stringify(uiState)}`);
-
-      // Look for skipped badge
-      const skippedIndicator = await $('[data-testid="document-review-skipped-indicator"]');
-      const hasSkippedIndicator = await skippedIndicator.isExisting();
-      console.log(`[E2E] Skipped indicator exists: ${hasSkippedIndicator}`);
     });
   });
 

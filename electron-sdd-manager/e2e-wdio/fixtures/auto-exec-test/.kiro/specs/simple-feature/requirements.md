@@ -1,7 +1,7 @@
 # Requirements Document
 
 ## Project Description (Input)
-E2E test for agent log streaming.
+E2Eテスト用のシンプルな機能を実装します。
 
 ## Requirements
 <!-- Will be generated in /kiro:spec-requirements phase -->

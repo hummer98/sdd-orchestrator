@@ -57,3 +57,12 @@ export type {
   ScheduleTaskElectronAPI,
 } from './scheduleTaskStore';
 
+// GitView store (git-diff-viewer feature)
+// Task 10.5: Move gitViewStore to shared
+// Requirements: 4.1, 4.2, 10.3, 10.4
+export {
+  useSharedGitViewStore,
+  resetSharedGitViewStore,
+  getSharedGitViewStore,
+} from './gitViewStore';
+

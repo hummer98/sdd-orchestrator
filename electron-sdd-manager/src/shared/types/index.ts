@@ -35,3 +35,8 @@ export * from './scheduleTask';
 // Tool check types (jj-merge-support feature)
 // Requirements: 9.1, 9.2
 export * from './toolCheck';
+
+// Result type for consistent error handling (git-diff-viewer feature)
+export type Result<T, E> =
+  | { success: true; data: T }
+  | { success: false; error: E };

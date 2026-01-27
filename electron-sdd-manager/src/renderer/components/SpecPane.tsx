@@ -3,25 +3,22 @@
  * Main + Right pane container for Spec workflow
  * Bug fix: bugs-tab-agent-list-missing
  * Bug fix: bugs-tab-spec-editing-feature (shared ArtifactEditor)
+ * git-diff-viewer Task 9.1: CenterPaneContainer integration
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSpecStore } from '../stores';
 import {
-  ArtifactEditor,
   AgentListPanel,
   ResizeHandle,
 } from './index';
+import { CenterPaneContainer } from './CenterPaneContainer';
 // workflow-view-unification: Use unified workflow view
 import { ElectronWorkflowView as WorkflowView } from './ElectronWorkflowView';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
 import { normalizeInspectionState } from '../types/inspection';
-import { SPEC_ARTIFACT_TABS } from '../../shared/constants/artifacts';
-
-/** Spec artifact tabs - use shared constant cast to local TabInfo type */
-const SPEC_TABS: TabInfo[] = SPEC_ARTIFACT_TABS as unknown as TabInfo[];
 
 interface SpecPaneProps {
   /** Right pane width */
@@ -49,6 +46,39 @@ export function SpecPane({
   onResizeEnd,
 }: SpecPaneProps): React.ReactElement {
   const { selectedSpec, specDetail, isDetailLoading } = useSpecStore();
+
+  // git-diff-viewer Task 9.1: View mode state (artifacts or git-diff)
+  const [viewMode, setViewMode] = useState<'artifacts' | 'git-diff'>('artifacts');
+
+  // Handle view mode change with layout persistence
+  const handleViewModeChange = useCallback(async (mode: 'artifacts' | 'git-diff') => {
+    setViewMode(mode);
+    // Save to layout config (fire-and-forget for UX)
+    // Read current config first, then update viewMode
+    try {
+      const currentConfig = await window.electronAPI?.loadLayoutConfig?.();
+      if (currentConfig) {
+        await window.electronAPI?.saveLayoutConfig?.({ ...currentConfig, viewMode: mode });
+      }
+    } catch (err) {
+      console.error('[SpecPane] Failed to save viewMode:', err);
+    }
+  }, []);
+
+  // Load view mode from layout config on mount
+  useEffect(() => {
+    const loadViewMode = async () => {
+      try {
+        const config = await window.electronAPI?.loadLayoutConfig?.();
+        if (config?.viewMode) {
+          setViewMode(config.viewMode);
+        }
+      } catch (err) {
+        console.error('[SpecPane] Failed to load viewMode:', err);
+      }
+    };
+    loadViewMode();
+  }, []);
 
   // Build document review tabs from roundDetails
   const documentReviewTabs = useMemo((): TabInfo[] => {
@@ -130,17 +160,16 @@ export function SpecPane({
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Center - Editor */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* spec-path-ssot-refactor: Changed basePath to baseName */}
-        <ArtifactEditor
-          tabs={SPEC_TABS}
-          baseName={selectedSpec.name}
-          placeholder="仕様を選択してエディターを開始"
-          dynamicTabs={dynamicTabs}
-          artifacts={artifacts}
-        />
-      </div>
+      {/* Center - CenterPaneContainer (ArtifactEditor / GitView switch) */}
+      {/* git-diff-viewer Task 9.1: Replace direct ArtifactEditor with CenterPaneContainer */}
+      <CenterPaneContainer
+        dynamicTabs={dynamicTabs}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        baseName={selectedSpec.name}
+        placeholder="仕様を選択してエディターを開始"
+        artifacts={artifacts}
+      />
 
       {/* Right resize handle */}
       <ResizeHandle direction="horizontal" onResize={onRightResize} onResizeEnd={onResizeEnd} />

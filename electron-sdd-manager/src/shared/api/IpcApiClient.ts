@@ -506,4 +506,53 @@ export class IpcApiClient implements ApiClient {
       listener(event);
     });
   }
+
+  // ===========================================================================
+  // Git Diff Viewer Operations (Task 15.7)
+  // Requirements: 10.2
+  // ===========================================================================
+
+  async getGitStatus(projectPath: string): Promise<Result<import('./types').GitStatusResult, ApiError>> {
+    checkElectronAPI();
+    // Convert from shared/types Result format (success/data) to shared/api/types Result format (ok/value)
+    const result = await window.electronAPI.git.getGitStatus(projectPath);
+    if (result.success) {
+      return { ok: true, value: result.data };
+    } else {
+      return { ok: false, error: result.error };
+    }
+  }
+
+  async getGitDiff(projectPath: string, filePath: string): Promise<Result<string, ApiError>> {
+    checkElectronAPI();
+    // Convert from shared/types Result format (success/data) to shared/api/types Result format (ok/value)
+    const result = await window.electronAPI.git.getGitDiff(projectPath, filePath);
+    if (result.success) {
+      return { ok: true, value: result.data };
+    } else {
+      return { ok: false, error: result.error };
+    }
+  }
+
+  async startWatching(projectPath: string): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    // Convert from shared/types Result format (success/data) to shared/api/types Result format (ok/value)
+    const result = await window.electronAPI.git.startWatching(projectPath);
+    if (result.success) {
+      return { ok: true, value: result.data };
+    } else {
+      return { ok: false, error: result.error };
+    }
+  }
+
+  async stopWatching(projectPath: string): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    // Convert from shared/types Result format (success/data) to shared/api/types Result format (ok/value)
+    const result = await window.electronAPI.git.stopWatching(projectPath);
+    if (result.success) {
+      return { ok: true, value: result.data };
+    } else {
+      return { ok: false, error: result.error };
+    }
+  }
 }

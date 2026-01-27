@@ -59,6 +59,8 @@ import { registerProjectHandlers, validateProjectPath as validateProjectPathImpl
 import { registerSpecHandlers, startSpecsWatcher as startSpecsWatcherImpl, stopSpecsWatcher as stopSpecsWatcherImpl } from './specHandlers';
 // runtime-agents-restructure: Migration service
 import { MigrationService, type MigrationInfo } from '../services/migrationService';
+// git-diff-viewer: Git handlers
+import { registerGitHandlers } from './gitHandlers';
 
 // Types
 import type { SelectProjectResult } from '../../renderer/types';
@@ -443,6 +445,9 @@ export function registerIpcHandlers(): void {
   registerMetricsHandlers(getCurrentProjectPath);
   registerMcpHandlers();
   registerScheduleTaskHandlers(getCurrentProjectPath);
+
+  // Git Diff Viewer Handlers (git-diff-viewer feature)
+  registerGitHandlers();
 
   // ============================================================
   // Project Command Execution (release-button-api-fix feature)

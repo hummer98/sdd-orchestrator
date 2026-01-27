@@ -1,0 +1,94 @@
+{
+  "feature_name": "git-diff-viewer",
+  "created_at": "2026-01-27T08:13:04Z",
+  "updated_at": "2026-01-27T23:31:24Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "autoExecution": {
+    "enabled": false,
+    "permissions": {
+      "requirements": true,
+      "design": true,
+      "tasks": true,
+      "impl": true,
+      "inspection": true,
+      "deploy": false,
+      "document-review": true
+    }
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-27T08:34:24Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-01-27T18:26:36Z",
+        "fixedAt": "2026-01-27T18:38:20Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-27T23:22:08Z"
+      }
+    ]
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 5,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 3,
+        "status": "review_complete"
+      },
+      {
+        "roundNumber": 4,
+        "status": "reply_complete",
+        "fixRequired": 8,
+        "needsDiscussion": 1,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 5,
+        "status": "reply_complete",
+        "fixRequired": 4,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 6,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  }
+}

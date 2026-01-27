@@ -12,6 +12,9 @@ import { LogBuffer, defaultLogBuffer } from './logBuffer';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
 // spec-event-log: Event log service import
 import { getDefaultEventLogService } from './eventLogService';
+// git-diff-viewer: Git services import (Task 15.9)
+import { GitService } from './GitService';
+import { GitFileWatcherService } from './GitFileWatcherService';
 
 /**
  * WebSocket message structure for communication
@@ -904,6 +907,20 @@ export class WebSocketHandler {
       // Requirements: 4.1, 4.2, 4.3, 4.4
       case 'PING':
         this.handlePing(client, message);
+        break;
+      // Git Diff Viewer (Task 15.9)
+      // Requirements: 10.4
+      case 'GIT_GET_STATUS':
+        await this.handleGitGetStatus(client, message);
+        break;
+      case 'GIT_GET_DIFF':
+        await this.handleGitGetDiff(client, message);
+        break;
+      case 'GIT_WATCH_CHANGES':
+        await this.handleGitWatchChanges(client, message);
+        break;
+      case 'GIT_UNWATCH_CHANGES':
+        await this.handleGitUnwatchChanges(client, message);
         break;
       default:
         this.send(client.id, {
@@ -3484,6 +3501,222 @@ export class WebSocketHandler {
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'IO_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Git Diff Viewer Handlers (Task 15.9)
+  // Requirements: 10.4
+  // ============================================================
+
+  /**
+   * Handle GIT_GET_STATUS request
+   * Returns git status for a project
+   */
+  private async handleGitGetStatus(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { projectPath?: string } | undefined;
+    const projectPath = payload?.projectPath;
+
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_PROJECT_PATH', message: 'projectPath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const gitService = new GitService();
+      const result = await gitService.getStatus(projectPath);
+
+      if (result.success) {
+        this.send(client.id, {
+          type: 'GIT_STATUS_RESULT',
+          payload: result.data as unknown as Record<string, unknown>,
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'GIT_ERROR', message: result.error.message },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'GIT_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GIT_GET_DIFF request
+   * Returns diff for a specific file
+   */
+  private async handleGitGetDiff(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { projectPath?: string; filePath?: string } | undefined;
+    const projectPath = payload?.projectPath;
+    const filePath = payload?.filePath;
+
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_PROJECT_PATH', message: 'projectPath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!filePath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_FILE_PATH', message: 'filePath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const gitService = new GitService();
+      const result = await gitService.getDiff(projectPath, filePath);
+
+      if (result.success) {
+        this.send(client.id, {
+          type: 'GIT_DIFF_RESULT',
+          payload: { diff: result.data },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'GIT_ERROR', message: result.error.message },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'GIT_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GIT_WATCH_CHANGES request
+   * Starts file watching for git changes
+   */
+  private async handleGitWatchChanges(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { projectPath?: string } | undefined;
+    const projectPath = payload?.projectPath;
+
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_PROJECT_PATH', message: 'projectPath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const gitService = new GitService();
+      const gitFileWatcherService = new GitFileWatcherService(gitService);
+
+      // Set up event callback to broadcast changes to all clients
+      gitFileWatcherService.setEventCallback((projectPath, status) => {
+        this.broadcast({
+          type: 'GIT_CHANGES_DETECTED',
+          payload: { projectPath, status } as unknown as Record<string, unknown>,
+          timestamp: Date.now(),
+        });
+      });
+
+      const result = await gitFileWatcherService.startWatching(projectPath);
+
+      if (result.success) {
+        this.send(client.id, {
+          type: 'GIT_WATCH_STARTED',
+          payload: { projectPath },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'WATCH_ERROR', message: result.error.message },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'WATCH_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle GIT_UNWATCH_CHANGES request
+   * Stops file watching
+   */
+  private async handleGitUnwatchChanges(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { projectPath?: string } | undefined;
+    const projectPath = payload?.projectPath;
+
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_PROJECT_PATH', message: 'projectPath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const gitService = new GitService();
+      const gitFileWatcherService = new GitFileWatcherService(gitService);
+      const result = await gitFileWatcherService.stopWatching(projectPath);
+
+      if (result.success) {
+        this.send(client.id, {
+          type: 'GIT_WATCH_STOPPED',
+          payload: { projectPath },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      } else {
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: { code: 'UNWATCH_ERROR', message: result.error.message },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'UNWATCH_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });

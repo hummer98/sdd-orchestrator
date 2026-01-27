@@ -30,6 +30,7 @@ export type ProfileConfig = z.infer<typeof ProfileConfigSchema>;
  * 各ペインのサイズを0以上の数値として検証
  * projectAgentPanelHeightは後方互換のためoptional
  * globalAgentPanelHeight（旧名）も後方互換のため受け入れる
+ * viewMode: git-diff-viewer feature (optional for backward compatibility)
  */
 export const LayoutValuesSchema = z.object({
   leftPaneWidth: z.number().min(0),
@@ -39,6 +40,8 @@ export const LayoutValuesSchema = z.object({
   projectAgentPanelHeight: z.number().min(0).optional(),
   // 後方互換: globalAgentPanelHeight（旧名）も受け入れる
   globalAgentPanelHeight: z.number().min(0).optional(),
+  // git-diff-viewer: view mode state
+  viewMode: z.enum(['artifacts', 'git-diff']).optional(),
 });
 
 export type LayoutValues = z.infer<typeof LayoutValuesSchema>;
@@ -148,6 +151,7 @@ export const DEFAULT_LAYOUT: LayoutValues = {
   bottomPaneHeight: 240, // h-60 = 15rem = 240px
   agentListHeight: 200,  // Agent一覧パネルの高さ（右サイドバー）
   projectAgentPanelHeight: 160, // ProjectAgentPanelの高さ（左サイドバー）
+  viewMode: 'artifacts', // git-diff-viewer: デフォルトはArtifactsビュー
 };
 
 /**

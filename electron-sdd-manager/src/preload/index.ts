@@ -2469,6 +2469,62 @@ const electronAPI = {
    */
   ignoreJjInstall: (projectPath: string, ignored: boolean): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.IGNORE_JJ_INSTALL, projectPath, ignored),
+
+  // ============================================================
+  // Git Diff Viewer (git-diff-viewer feature)
+  // Task 3.3: Expose git operations API via preload
+  // Requirements: 3.2
+  // ============================================================
+
+  git: {
+    /**
+     * Get git status for a project
+     * Returns list of changed files with their status (A/M/D/??)
+     */
+    getGitStatus: (projectPath: string): Promise<import('../shared/types').Result<import('../shared/api/types').GitStatusResult, import('../shared/api/types').ApiError>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GIT_GET_STATUS, projectPath),
+
+    /**
+     * Get diff for a specific file
+     * Returns unified diff format string
+     */
+    getGitDiff: (projectPath: string, filePath: string): Promise<import('../shared/types').Result<string, import('../shared/api/types').ApiError>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GIT_GET_DIFF, projectPath, filePath),
+
+    /**
+     * Start watching for file changes in the project
+     * File changes will be broadcast via onChangesDetected event
+     */
+    startWatching: (projectPath: string): Promise<import('../shared/types').Result<void, import('../shared/api/types').ApiError>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GIT_WATCH_CHANGES, projectPath),
+
+    /**
+     * Stop watching for file changes
+     */
+    stopWatching: (projectPath: string): Promise<import('../shared/types').Result<void, import('../shared/api/types').ApiError>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GIT_UNWATCH_CHANGES, projectPath),
+
+    /**
+     * Subscribe to file change events
+     * @returns Cleanup function to remove the listener
+     */
+    onChangesDetected: (
+      callback: (event: { projectPath: string; status: import('../shared/api/types').GitStatusResult }) => void
+    ): (() => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        data: { projectPath: string; status: import('../shared/api/types').GitStatusResult }
+      ) => {
+        callback(data);
+      };
+      ipcRenderer.on(IPC_CHANNELS.GIT_CHANGES_DETECTED, handler);
+
+      // Return cleanup function
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.GIT_CHANGES_DETECTED, handler);
+      };
+    },
+  },
 };
 
 // Expose API to renderer

@@ -673,6 +673,41 @@ export interface ApiClient {
    * @param updates - Partial spec.json updates to apply
    */
   updateSpecJson?(specId: string, updates: Record<string, unknown>): Promise<Result<void, ApiError>>;
+
+  // ===========================================================================
+  // Git Diff Viewer Operations (git-diff-viewer feature)
+  // Requirements: 10.1, 10.2, 10.3, 10.4
+  // ===========================================================================
+
+  /**
+   * Get git status for the current project
+   * Returns list of changed files with status (A/M/D/??)
+   * @param projectPath - Project root path (use empty string for current project)
+   * @returns GitStatusResult with file list and mode
+   */
+  getGitStatus(projectPath: string): Promise<Result<GitStatusResult, ApiError>>;
+
+  /**
+   * Get git diff for a specific file
+   * Returns unified diff format string
+   * @param projectPath - Project root path (use empty string for current project)
+   * @param filePath - File path relative to project root
+   * @returns Diff content as string
+   */
+  getGitDiff(projectPath: string, filePath: string): Promise<Result<string, ApiError>>;
+
+  /**
+   * Start file watching for git changes
+   * Main process will broadcast 'git:changes-detected' events on file changes
+   * @param projectPath - Project root path (use empty string for current project)
+   */
+  startWatching(projectPath: string): Promise<Result<void, ApiError>>;
+
+  /**
+   * Stop file watching
+   * @param projectPath - Project root path (use empty string for current project)
+   */
+  stopWatching(projectPath: string): Promise<Result<void, ApiError>>;
 }
 
 // =============================================================================
@@ -702,3 +737,34 @@ export type { BugsChangeEvent };
 
 // Workflow types for shared components
 export type { RendererWorkflowPhase as WorkflowPhaseType, RendererPhaseStatus as PhaseStatusType };
+
+// =============================================================================
+// Git Diff Viewer Types (Task 10.1)
+// =============================================================================
+
+/**
+ * Git file change status
+ * - 'A': Added
+ * - 'M': Modified
+ * - 'D': Deleted
+ * - '??': Untracked
+ */
+export interface GitFileStatus {
+  /** File path (relative to project root) */
+  path: string;
+  /** Change status */
+  status: 'A' | 'M' | 'D' | '??';
+}
+
+/**
+ * Git status result
+ * Contains file list, base branch (for worktree), and detection mode
+ */
+export interface GitStatusResult {
+  /** List of changed files */
+  files: GitFileStatus[];
+  /** Base branch (worktree only) */
+  baseBranch?: string;
+  /** Detection mode */
+  mode: 'worktree' | 'normal';
+}

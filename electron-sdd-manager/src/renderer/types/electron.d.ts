@@ -16,6 +16,7 @@ import type {
  * Requirements: 1.1-1.4, 4.2-4.4
  * projectAgentPanelHeight: project-agent-panel-always-visible feature (optional for backward compatibility)
  * globalAgentPanelHeight: deprecated, kept for backward compatibility
+ * viewMode: git-diff-viewer feature (optional for backward compatibility)
  */
 export interface LayoutValues {
   leftPaneWidth: number;
@@ -25,6 +26,8 @@ export interface LayoutValues {
   projectAgentPanelHeight?: number;
   /** @deprecated Use projectAgentPanelHeight instead */
   globalAgentPanelHeight?: number;
+  /** git-diff-viewer: 'artifacts' | 'git-diff' */
+  viewMode?: 'artifacts' | 'git-diff';
 }
 
 /**
@@ -1746,6 +1749,57 @@ export interface ElectronAPI {
    * @returns Result with success flag
    */
   ignoreJjInstall(projectPath: string, ignored: boolean): Promise<{ success: boolean; error?: string }>;
+
+  // ============================================================
+  // Git Diff Viewer (git-diff-viewer feature)
+  // Task 15.6: Git API definition
+  // Requirements: 3.2
+  // ============================================================
+
+  /**
+   * Git operations API
+   */
+  git: {
+    /**
+     * Get git status for a project
+     * Returns list of changed files with their status (A/M/D/??)
+     * @param projectPath Project root path
+     * @returns GitStatusResult
+     */
+    getGitStatus(projectPath: string): Promise<import('../../shared/types').Result<import('../../shared/api/types').GitStatusResult, import('../../shared/api/types').ApiError>>;
+
+    /**
+     * Get diff for a specific file
+     * @param projectPath Project root path
+     * @param filePath File path relative to project root
+     * @returns Diff content as string
+     */
+    getGitDiff(projectPath: string, filePath: string): Promise<import('../../shared/types').Result<string, import('../../shared/api/types').ApiError>>;
+
+    /**
+     * Start file watching for git changes
+     * @param projectPath Project root path
+     * @returns Result
+     */
+    startWatching(projectPath: string): Promise<import('../../shared/types').Result<void, import('../../shared/api/types').ApiError>>;
+
+    /**
+     * Stop file watching
+     * @param projectPath Project root path
+     * @returns Result
+     */
+    stopWatching(projectPath: string): Promise<import('../../shared/types').Result<void, import('../../shared/api/types').ApiError>>;
+  };
+
+  /**
+   * Subscribe to git changes detected events
+   * Called when file watcher detects changes that affect git status
+   * @param callback Function called when git changes are detected
+   * @returns Cleanup function to unsubscribe
+   */
+  onGitChangesDetected(
+    callback: (event: unknown, data: { projectPath: string }) => void
+  ): () => void;
 }
 
 declare global {

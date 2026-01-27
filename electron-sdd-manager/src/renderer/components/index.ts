@@ -14,6 +14,9 @@ export { ApprovalPanel } from './ApprovalPanel';
 export { RejectDialog } from './RejectDialog';
 export { ArtifactEditor } from './ArtifactEditor';
 export type { TabInfo, ArtifactInfo, ArtifactEditorProps } from './ArtifactEditor';
+// git-diff-viewer Task 9.1: CenterPaneContainer for ArtifactEditor/GitView switch
+export { CenterPaneContainer } from './CenterPaneContainer';
+export type { CenterPaneContainerProps } from './CenterPaneContainer';
 export { UnsavedChangesDialog } from './UnsavedChangesDialog';
 export { NotificationProvider } from './NotificationProvider';
 export { ResizeHandle } from './ResizeHandle';
@@ -96,3 +99,5 @@ export {
   AgentBehaviorEditor,
   type AgentBehaviorEditorProps,
 } from '@shared/components/schedule';
+// git-diff-viewer Task 10.5: Git components (re-export from shared)
+export { GitView, GitFileTree, GitDiffViewer } from '@shared/components/git';

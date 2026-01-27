@@ -1273,4 +1273,25 @@ export class WebSocketApiClient implements ApiClient {
       }
     });
   }
+
+  // ===========================================================================
+  // Git Diff Viewer Operations (Task 15.8)
+  // Requirements: 10.3
+  // ===========================================================================
+
+  async getGitStatus(projectPath: string): Promise<Result<import('./types').GitStatusResult, ApiError>> {
+    return this.wrapRequest<import('./types').GitStatusResult>('GIT_GET_STATUS', { projectPath });
+  }
+
+  async getGitDiff(projectPath: string, filePath: string): Promise<Result<string, ApiError>> {
+    return this.wrapRequest<string>('GIT_GET_DIFF', { projectPath, filePath });
+  }
+
+  async startWatching(projectPath: string): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('GIT_WATCH_CHANGES', { projectPath });
+  }
+
+  async stopWatching(projectPath: string): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('GIT_UNWATCH_CHANGES', { projectPath });
+  }
 }

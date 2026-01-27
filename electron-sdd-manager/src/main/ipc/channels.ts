@@ -390,6 +390,15 @@ export const IPC_CHANNELS = {
   CHECK_JJ_AVAILABILITY: 'ipc:check-jj-availability',
   INSTALL_JJ: 'ipc:install-jj',
   IGNORE_JJ_INSTALL: 'ipc:ignore-jj-install',
+
+  // Git Diff Viewer (git-diff-viewer feature)
+  // Requirements: 3.1 (IPC通信層)
+  GIT_GET_STATUS: 'git:get-status',
+  GIT_GET_DIFF: 'git:get-diff',
+  GIT_WATCH_CHANGES: 'git:watch-changes',
+  GIT_UNWATCH_CHANGES: 'git:unwatch-changes',
+  // Events (Main -> Renderer)
+  GIT_CHANGES_DETECTED: 'git:changes-detected',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

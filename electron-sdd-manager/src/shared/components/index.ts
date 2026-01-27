@@ -35,5 +35,9 @@ export * from './schedule';
 // Migration components (runtime-agents-restructure feature)
 export * from './migration';
 
+// Git components (git-diff-viewer feature)
+// Task 10.5: Move git components to shared
+export * from './git';
+
 // Component categories will be added as they are migrated
 // export * from './tabs';

@@ -15,6 +15,8 @@ import { useVersionStatusStore } from './versionStatusStore';
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 // schedule-task-execution Task 8.2: Import shared scheduleTaskStore
 import { useScheduleTaskStore } from '../../shared/stores/scheduleTaskStore';
+// git-diff-viewer Task 4.1: Import gitViewStore
+import { useGitViewStore } from './gitViewStore';
 
 // Re-export all stores
 export { useProjectStore } from './projectStore';
@@ -53,6 +55,8 @@ export type {
   ScheduleTaskStore,
   ScheduleTaskElectronAPI,
 } from '../../shared/stores/scheduleTaskStore';
+// git-diff-viewer Task 4.1: Export gitViewStore
+export { useGitViewStore } from './gitViewStore';
 
 /**
  * Expose stores to window for E2E testing and debugging via MCP
@@ -123,5 +127,11 @@ export type {
     getState: () => useScheduleTaskStore.getState(),
     setState: (state: Parameters<typeof useScheduleTaskStore.setState>[0]) => useScheduleTaskStore.setState(state),
     subscribe: useScheduleTaskStore.subscribe,
+  },
+  // git-diff-viewer Task 4.1: Add gitView store for E2E testing
+  gitView: {
+    getState: () => useGitViewStore.getState(),
+    setState: (state: Parameters<typeof useGitViewStore.setState>[0]) => useGitViewStore.setState(state),
+    subscribe: useGitViewStore.subscribe,
   },
 };

@@ -9,6 +9,7 @@ spec-inspection 実行時に自動実行される検証コマンドを定義し�
 | build | npm run build | . | プロダクションビルド |
 | typecheck | npm run typecheck | . | TypeScript 型チェック |
 | test | npm run test:run | . | ユニットテスト |
+| e2e | npm run test:e2e | . | E2E統合テスト |
 | lint | npm run lint | . | ESLint 検証 |
 
 ## Notes

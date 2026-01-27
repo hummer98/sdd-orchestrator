@@ -105,6 +105,7 @@ Report → Analyze → Fix → Verify
 | 動作確認・MCP操作 | `operations.md`, `debugging.md` |
 | デバッグ・ログ調査 | `debugging.md` |
 | E2Eテスト作成 | `e2e-testing.md` |
+| 統合テスト実行、E2Eテスト実行 | `e2e-testing.md` |
 | Web E2Eテスト | `web-e2e-testing.md` |
 | 用語・ドメイン確認 | `symbol-semantic-map.md` |
 | プロファイル仕様確認 | `skill-reference.md` |

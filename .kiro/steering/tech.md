@@ -61,6 +61,8 @@ task electron:test -- "foo|bar|baz"   # 複数パターン
 
 **注意**: `--testPathPattern`はJest用オプション。Vitestでは位置引数でパターンを渡す。
 
+**E2E統合テストの詳細**: Mock Claude CLIを使用したワークフロー統合テストについては `.kiro/steering/e2e-testing.md` を参照。
+
 ## Development Environment
 
 ### Required Tools

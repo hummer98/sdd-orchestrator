@@ -30,10 +30,12 @@ import {
   addPermissionsToProject,
 } from '../services/permissionsService';
 import { REQUIRED_PERMISSIONS } from '../services/projectChecker';
+import type { OrphanDetector } from '../services/stale-recovery/OrphanDetector';
 
 /**
  * Dependencies required for project handlers
  * Requirements: 2.1, 2.2 - Dependency injection for testability
+ * agent-stale-recovery Task 14.1: Added orphanDetector dependency
  */
 export interface ProjectHandlersDependencies {
   /** FileService instance for file operations */
@@ -54,6 +56,8 @@ export interface ProjectHandlersDependencies {
   startAgentRecordWatcher: (window: BrowserWindow, getCurrentProjectPath: () => string | null) => void;
   /** Start bugs watcher for a window */
   startBugsWatcher: (window: BrowserWindow) => Promise<void>;
+  /** OrphanDetector instance for detecting orphan agents on project load */
+  orphanDetector?: OrphanDetector;
 }
 
 // ============================================================
@@ -156,6 +160,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
     startSpecsWatcher,
     startAgentRecordWatcher,
     startBugsWatcher,
+    orphanDetector,
   } = deps;
 
   // ============================================================
@@ -197,6 +202,17 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
           startAgentRecordWatcher(window, deps.getCurrentProjectPath);
           await startBugsWatcher(window);
           logger.info('[projectHandlers] File watchers started for project', { projectPath });
+        }
+
+        // agent-stale-recovery Task 14.1: Detect orphan agents after project selection
+        // Requirements: 1.1 - Trigger orphan detection on project load
+        if (orphanDetector) {
+          try {
+            await orphanDetector.detectOrphans(projectPath);
+          } catch (error) {
+            // Log error but don't fail project selection
+            logger.error('[projectHandlers] Orphan detection failed', { projectPath, error });
+          }
         }
       }
 

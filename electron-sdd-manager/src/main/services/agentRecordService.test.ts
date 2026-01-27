@@ -1165,4 +1165,187 @@ describe('AgentRecordService', () => {
       expect(agent2?.executions?.[0].prompt).toBe('prompt 2');
     });
   });
+
+  // agent-stale-recovery: Task 8.4 - autoResumeCount field tests
+  // Requirements: 5.1, 5.4
+  describe('autoResumeCount field', () => {
+    it('should write and read agent record with autoResumeCount', async () => {
+      // Requirements: 5.1
+      const record: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T00:00:00Z',
+        lastActivityAt: '2026-01-28T00:05:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        autoResumeCount: 1,
+      };
+
+      await service.writeRecord(record);
+      const readRecord = await service.readRecord('test-spec', 'agent-001');
+
+      expect(readRecord).not.toBeNull();
+      expect(readRecord?.autoResumeCount).toBe(1);
+    });
+
+    it('should treat undefined autoResumeCount as 0', async () => {
+      // Requirements: 5.1 - backward compatibility
+      const record: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 12346,
+        sessionId: 'session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T00:00:00Z',
+        lastActivityAt: '2026-01-28T00:05:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        // autoResumeCount is undefined (legacy record)
+      };
+
+      await service.writeRecord(record);
+      const readRecord = await service.readRecord('test-spec', 'agent-002');
+
+      expect(readRecord).not.toBeNull();
+      // undefined should be treated as 0 in application logic
+      const count = readRecord?.autoResumeCount ?? 0;
+      expect(count).toBe(0);
+    });
+
+    it('should update autoResumeCount via updateRecord', async () => {
+      // Requirements: 5.1
+      const initialRecord: AgentRecord = {
+        agentId: 'agent-003',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 12347,
+        sessionId: 'session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T00:00:00Z',
+        lastActivityAt: '2026-01-28T00:05:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        autoResumeCount: 0,
+      };
+
+      await service.writeRecord(initialRecord);
+
+      // Increment autoResumeCount
+      await service.updateRecord('test-spec', 'agent-003', {
+        autoResumeCount: 1,
+      });
+
+      const updatedRecord = await service.readRecord('test-spec', 'agent-003');
+      expect(updatedRecord?.autoResumeCount).toBe(1);
+    });
+
+    it('should preserve autoResumeCount when updating other fields', async () => {
+      // Requirements: 5.1
+      const initialRecord: AgentRecord = {
+        agentId: 'agent-004',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 12348,
+        sessionId: 'session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T00:00:00Z',
+        lastActivityAt: '2026-01-28T00:05:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        autoResumeCount: 2,
+      };
+
+      await service.writeRecord(initialRecord);
+
+      // Update status without changing autoResumeCount
+      await service.updateRecord('test-spec', 'agent-004', {
+        status: 'completed',
+      });
+
+      const updatedRecord = await service.readRecord('test-spec', 'agent-004');
+      expect(updatedRecord?.status).toBe('completed');
+      expect(updatedRecord?.autoResumeCount).toBe(2);
+    });
+  });
+
+  // agent-stale-recovery Task 14.2: autoResumeCount reset logic
+  describe('autoResumeCount reset logic', () => {
+    it('should reset autoResumeCount to 0 on new agent creation', async () => {
+      // Requirements: 5.4
+      const newAgentRecord: AgentRecord = {
+        agentId: 'agent-new',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 99999,
+        sessionId: 'new-session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T10:00:00Z',
+        lastActivityAt: '2026-01-28T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        // No autoResumeCount specified - should be set to 0
+      };
+
+      await service.writeRecord(newAgentRecord);
+
+      const record = await service.readRecord('test-spec', 'agent-new');
+      expect(record?.autoResumeCount).toBe(0);
+    });
+
+    it('should reset autoResumeCount to 0 when PID changes (new execution)', async () => {
+      // Requirements: 5.4
+      const existingRecord: AgentRecord = {
+        agentId: 'agent-resume-test',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 11111,
+        sessionId: 'old-session',
+        status: 'interrupted',
+        startedAt: '2026-01-28T09:00:00Z',
+        lastActivityAt: '2026-01-28T09:30:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        autoResumeCount: 3, // Had previous auto-resume attempts
+      };
+
+      await service.writeRecord(existingRecord);
+
+      // Simulate new execution (PID changed)
+      const newExecutionRecord: AgentRecord = {
+        ...existingRecord,
+        pid: 22222, // New PID
+        sessionId: 'new-session',
+        status: 'running',
+        startedAt: '2026-01-28T10:00:00Z',
+        lastActivityAt: '2026-01-28T10:00:00Z',
+        // autoResumeCount should be reset to 0
+      };
+
+      await service.writeRecord(newExecutionRecord);
+
+      const record = await service.readRecord('test-spec', 'agent-resume-test');
+      expect(record?.autoResumeCount).toBe(0);
+      expect(record?.pid).toBe(22222);
+    });
+
+    it('should allow explicit autoResumeCount in writeRecord (for auto-resume scenario)', async () => {
+      // Requirements: 5.1 - Allow RecoveryEngine to set autoResumeCount explicitly
+      const recordWithCount: AgentRecord = {
+        agentId: 'agent-with-count',
+        specId: 'test-spec',
+        phase: 'requirements',
+        pid: 33333,
+        sessionId: 'session-uuid',
+        status: 'running',
+        startedAt: '2026-01-28T10:00:00Z',
+        lastActivityAt: '2026-01-28T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        autoResumeCount: 1, // Explicitly set by RecoveryEngine
+      };
+
+      await service.writeRecord(recordWithCount);
+
+      const record = await service.readRecord('test-spec', 'agent-with-count');
+      expect(record?.autoResumeCount).toBe(1);
+    });
+  });
 });

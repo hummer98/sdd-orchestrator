@@ -254,4 +254,85 @@ describe('HangDetector', () => {
       expect(callback).not.toHaveBeenCalled();
     });
   });
+
+  // agent-stale-recovery: Task 5.1 - Recovery engine integration
+  // Requirements: 2.1, 2.2, 2.3
+  describe('recovery engine integration', () => {
+    it('should call recovery engine before marking as hang', async () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      const hangingRecord: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-001',
+        status: 'running',
+        startedAt: new Date(now - 600000).toISOString(),
+        lastActivityAt: new Date(now - 600000).toISOString(),
+        command: 'claude',
+        autoResumeCount: 0,
+      };
+
+      await recordService.writeRecord(hangingRecord);
+
+      // Mock recovery engine
+      const mockRecoverAgent = vi.fn().mockResolvedValue({
+        agentId: 'agent-001',
+        action: 'completed',
+      });
+
+      // @ts-ignore - accessing private field for testing
+      detector.recoveryEngine = {
+        recoverAgent: mockRecoverAgent,
+      };
+
+      detector.setThreshold(300000);
+
+      await detector.checkForHangingAgents();
+
+      // Verify recovery engine was called
+      // Requirements: 2.3
+      expect(mockRecoverAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ agentId: 'agent-001' })
+      );
+    });
+
+    it('should only mark as hang if recovery fails', async () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      const hangingRecord: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-b',
+        phase: 'requirements',
+        pid: 12346,
+        sessionId: 'session-002',
+        status: 'running',
+        startedAt: new Date(now - 600000).toISOString(),
+        lastActivityAt: new Date(now - 600000).toISOString(),
+        command: 'claude',
+        autoResumeCount: 0,
+      };
+
+      await recordService.writeRecord(hangingRecord);
+
+      // Mock recovery engine that throws error
+      const mockRecoverAgent = vi.fn().mockRejectedValue(new Error('Recovery failed'));
+
+      // @ts-ignore - accessing private field for testing
+      detector.recoveryEngine = {
+        recoverAgent: mockRecoverAgent,
+      };
+
+      detector.setThreshold(300000);
+
+      await detector.checkForHangingAgents();
+
+      // Verify status was marked as hang after recovery failure
+      const record = await recordService.readRecord('spec-b', 'agent-002');
+      expect(record?.status).toBe('hang');
+    });
+  });
 });

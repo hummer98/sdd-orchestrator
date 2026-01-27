@@ -382,6 +382,9 @@ export interface AgentInfo {
   readonly args?: string;
   // llm-stream-log-parser: engineId for UI display
   readonly engineId: LLMEngineId;
+  // agent-stale-recovery: Task 1.2 - autoResumeCount for stale agent recovery
+  // Requirements: 5.1
+  readonly autoResumeCount?: number;
 }
 
 /**

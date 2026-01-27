@@ -1476,12 +1476,15 @@ export class SpecManagerService {
 
       // agent-state-file-ssot: Update agent record (SSOT)
       // metrics-file-based-tracking: Task 4.1 - Include updated executions
+      // agent-stale-recovery Task 14.2: Reset autoResumeCount on manual resume
+      // Requirements: 5.4 - Manual resume should reset count to 0
       await this.recordService.updateRecord(agent.specId, agentId, {
         pid: process.pid,
         status: 'running',
         lastActivityAt: now,
         command: `${command} ${args.join(' ')}`,
         executions: updatedExecutions,
+        autoResumeCount: 0,
       });
 
       // Bug fix: Add resume prompt to log as user event

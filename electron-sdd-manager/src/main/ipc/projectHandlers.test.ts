@@ -674,3 +674,97 @@ describe('ProjectHandlersDependencies interface', () => {
     expect(() => registerProjectHandlers(deps)).not.toThrow();
   });
 });
+
+describe('agent-stale-recovery: Task 14.1 - OrphanDetector integration', () => {
+  let mockOrphanDetector: {
+    detectOrphans: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    mockOrphanDetector = {
+      detectOrphans: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  it('should call OrphanDetector.detectOrphans after successful project selection', async () => {
+    const { registerProjectHandlers } = await import('./projectHandlers');
+
+    registerProjectHandlers({
+      fileService: mockFileService as unknown as import('../services/fileService').FileService,
+      configStore: mockConfigStore as unknown as import('../services/configStore').ConfigStore,
+      getCurrentProjectPath: mockGetCurrentProjectPath,
+      setProjectPath: mockSetProjectPath,
+      selectProject: mockSelectProject,
+      getInitialProjectPath: mockGetInitialProjectPath,
+      startSpecsWatcher: mockStartSpecsWatcher,
+      startAgentRecordWatcher: mockStartAgentRecordWatcher,
+      startBugsWatcher: mockStartBugsWatcher,
+      orphanDetector: mockOrphanDetector as unknown as import('../services/stale-recovery/OrphanDetector').OrphanDetector,
+    });
+
+    const handler = registeredHandlers.get(IPC_CHANNELS.SELECT_PROJECT);
+    expect(handler).toBeDefined();
+
+    const mockEvent = { sender: {} } as IpcMainInvokeEvent;
+    await handler!(mockEvent, '/test/project');
+
+    // Should call OrphanDetector.detectOrphans with project path
+    expect(mockOrphanDetector.detectOrphans).toHaveBeenCalledWith('/test/project');
+  });
+
+  it('should not call OrphanDetector.detectOrphans if project selection fails', async () => {
+    const { registerProjectHandlers } = await import('./projectHandlers');
+
+    // Mock selectProject to return failure
+    mockSelectProject.mockResolvedValueOnce({
+      success: false,
+      error: { type: 'PATH_NOT_EXISTS', path: '/test/invalid' },
+    });
+
+    registerProjectHandlers({
+      fileService: mockFileService as unknown as import('../services/fileService').FileService,
+      configStore: mockConfigStore as unknown as import('../services/configStore').ConfigStore,
+      getCurrentProjectPath: mockGetCurrentProjectPath,
+      setProjectPath: mockSetProjectPath,
+      selectProject: mockSelectProject,
+      getInitialProjectPath: mockGetInitialProjectPath,
+      startSpecsWatcher: mockStartSpecsWatcher,
+      startAgentRecordWatcher: mockStartAgentRecordWatcher,
+      startBugsWatcher: mockStartBugsWatcher,
+      orphanDetector: mockOrphanDetector as unknown as import('../services/stale-recovery/OrphanDetector').OrphanDetector,
+    });
+
+    const handler = registeredHandlers.get(IPC_CHANNELS.SELECT_PROJECT);
+    const mockEvent = { sender: {} } as IpcMainInvokeEvent;
+    await handler!(mockEvent, '/test/invalid');
+
+    // Should not call OrphanDetector on failure
+    expect(mockOrphanDetector.detectOrphans).not.toHaveBeenCalled();
+  });
+
+  it('should handle OrphanDetector errors gracefully', async () => {
+    const { registerProjectHandlers } = await import('./projectHandlers');
+
+    // Mock OrphanDetector to throw error
+    mockOrphanDetector.detectOrphans.mockRejectedValueOnce(new Error('Orphan detection failed'));
+
+    registerProjectHandlers({
+      fileService: mockFileService as unknown as import('../services/fileService').FileService,
+      configStore: mockConfigStore as unknown as import('../services/configStore').ConfigStore,
+      getCurrentProjectPath: mockGetCurrentProjectPath,
+      setProjectPath: mockSetProjectPath,
+      selectProject: mockSelectProject,
+      getInitialProjectPath: mockGetInitialProjectPath,
+      startSpecsWatcher: mockStartSpecsWatcher,
+      startAgentRecordWatcher: mockStartAgentRecordWatcher,
+      startBugsWatcher: mockStartBugsWatcher,
+      orphanDetector: mockOrphanDetector as unknown as import('../services/stale-recovery/OrphanDetector').OrphanDetector,
+    });
+
+    const handler = registeredHandlers.get(IPC_CHANNELS.SELECT_PROJECT);
+    const mockEvent = { sender: {} } as IpcMainInvokeEvent;
+
+    // Should not throw - orphan detection errors should be caught
+    await expect(handler!(mockEvent, '/test/project')).resolves.toBeDefined();
+  });
+});

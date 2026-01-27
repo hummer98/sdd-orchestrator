@@ -63,6 +63,15 @@ export interface AgentInfo {
    * New records use this instead of startedAt for metrics calculation
    */
   readonly executions?: ExecutionEntry[];
+  /**
+   * Auto-resume attempt count
+   * agent-stale-recovery: Task 1.1 - autoResumeCount field in AgentInfo
+   * Requirements: 5.1
+   * undefined = count not started (backward compatibility with existing records)
+   * 0 = new execution or manual resume
+   * 1-3 = auto-resume attempt in progress
+   */
+  readonly autoResumeCount?: number;
 }
 
 export interface AgentRecord {
@@ -93,14 +102,24 @@ export interface AgentRecord {
    * New records use this field for metrics calculation instead of startedAt
    */
   executions?: ExecutionEntry[];
+  /**
+   * Auto-resume attempt count
+   * agent-stale-recovery: Task 1.1 - autoResumeCount field in AgentRecord
+   * Requirements: 5.1
+   * undefined = count not started (backward compatibility with existing records)
+   * 0 = new execution or manual resume
+   * 1-3 = auto-resume attempt in progress
+   */
+  autoResumeCount?: number;
 }
 
 /**
  * Update type for agent records
  * metrics-file-based-tracking: Task 1.1 - Added executions field
- * Requirements: 6.2
+ * agent-stale-recovery: Task 1.1 - Added autoResumeCount field
+ * Requirements: 6.2, 5.1
  */
-export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command' | 'executions'>>;
+export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command' | 'executions' | 'autoResumeCount'>>;
 
 /**
  * Simple mutex implementation for per-agent locking
@@ -172,6 +191,8 @@ export class AgentRecordService {
   /**
    * Write an agent record
    * Requirements: 5.5
+   * agent-stale-recovery Task 14.2: Reset autoResumeCount to 0 for new agent creation
+   * Requirements: 5.4 - Reset autoResumeCount on new execution
    */
   async writeRecord(record: AgentRecord): Promise<void> {
     const dirPath = path.join(this.basePath, record.specId);
@@ -180,8 +201,16 @@ export class AgentRecordService {
     // Ensure directory exists
     await fs.mkdir(dirPath, { recursive: true });
 
+    // agent-stale-recovery Task 14.2: Reset autoResumeCount to 0 for new agent creation
+    // Requirements: 5.4 - New execution or manual resume should reset count
+    // If autoResumeCount is not explicitly set, default to 0
+    const recordToWrite: AgentRecord = {
+      ...record,
+      autoResumeCount: record.autoResumeCount ?? 0,
+    };
+
     // Write file
-    await fs.writeFile(filePath, JSON.stringify(record, null, 2), 'utf-8');
+    await fs.writeFile(filePath, JSON.stringify(recordToWrite, null, 2), 'utf-8');
   }
 
   /**

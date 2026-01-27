@@ -19,21 +19,11 @@ import type {
   PhaseMetricsMap,
   PhaseStatus,
   ProjectMetrics,
-  ActiveAiSession,
 } from '../types/metrics';
 
 // =============================================================================
 // Internal Types
 // =============================================================================
-
-/**
- * Internal representation of active AI session
- */
-interface InternalAiSession {
-  specId: string;
-  phase: AgentPhase;
-  start: string;
-}
 
 /**
  * Internal representation of active spec lifecycle
@@ -58,19 +48,11 @@ export class MetricsService {
   private reader: MetricsFileReader;
 
   // Active session tracking
-  private activeAiSessions: Map<string, InternalAiSession> = new Map();
   private activeLifecycles: Map<string, InternalLifecycle> = new Map();
 
   constructor(writer?: MetricsFileWriter, reader?: MetricsFileReader) {
     this.writer = writer ?? getDefaultMetricsFileWriter();
     this.reader = reader ?? getDefaultMetricsFileReader();
-  }
-
-  /**
-   * Generate session key for AI session lookup
-   */
-  private getSessionKey(specId: string, phase: AgentPhase): string {
-    return `${specId}:${phase}`;
   }
 
   /**
@@ -80,7 +62,6 @@ export class MetricsService {
   setProjectPath(projectPath: string): void {
     this.projectPath = projectPath;
     // Clear active sessions when project changes
-    this.activeAiSessions.clear();
     this.activeLifecycles.clear();
   }
 
@@ -92,90 +73,49 @@ export class MetricsService {
   }
 
   // ===========================================================================
-  // AI Session Management (Requirements 1.1, 1.2, 1.3, 1.4)
+  // File-based AI Metrics (metrics-file-based-tracking)
+  // Requirements: 3.1, 3.2, 3.3
   // ===========================================================================
 
   /**
-   * Start an AI execution session
-   * Requirement 1.1: Record agent start timestamp
-   * Now supports all agent phases (not just core workflow phases)
+   * Record AI session from agent record executions data
+   * metrics-file-based-tracking: Task 3.2 - Direct file-based metrics recording
+   * Requirements: 3.2, 3.3
+   *
+   * This method writes AI metrics directly from agent record data,
+   * bypassing the in-memory session tracking used by startAiSession/endAiSession.
+   *
+   * @param specId - The spec ID
+   * @param phase - The workflow phase
+   * @param start - Session start timestamp (ISO 8601)
+   * @param end - Session end timestamp (ISO 8601)
    */
-  startAiSession(specId: string, phase: AgentPhase): void {
-    const key = this.getSessionKey(specId, phase);
-    const start = new Date().toISOString();
-
-    this.activeAiSessions.set(key, {
-      specId,
-      phase,
-      start,
-    });
-
-    logger.debug('[MetricsService] AI session started', { specId, phase, start });
-  }
-
-  /**
-   * End an AI execution session
-   * Requirements 1.2, 1.3, 1.4: Record end timestamp, calculate duration, persist
-   * Now supports all agent phases (not just core workflow phases)
-   */
-  async endAiSession(specId: string, phase: AgentPhase): Promise<void> {
-    const key = this.getSessionKey(specId, phase);
-    const session = this.activeAiSessions.get(key);
-
-    if (!session) {
-      logger.warn('[MetricsService] No active AI session to end', { specId, phase });
+  async recordAiSessionFromFile(
+    specId: string,
+    phase: AgentPhase,
+    start: string,
+    end: string
+  ): Promise<void> {
+    if (!this.projectPath) {
+      logger.warn('[MetricsService] Cannot record AI session from file: no project path set');
       return;
     }
 
-    const end = new Date().toISOString();
-    const startTime = new Date(session.start).getTime();
+    const startTime = new Date(start).getTime();
     const endTime = new Date(end).getTime();
     const ms = endTime - startTime;
 
-    // Remove from active sessions
-    this.activeAiSessions.delete(key);
-
-    // Create and persist record
-    if (this.projectPath) {
-      const record: AiMetricRecord = {
-        type: 'ai',
-        spec: specId,
-        phase,
-        start: session.start,
-        end,
-        ms,
-      };
-
-      await this.writer.appendRecord(this.projectPath, record);
-      logger.debug('[MetricsService] AI session ended', { specId, phase, ms });
-    }
-  }
-
-  /**
-   * Get active AI session for a spec and phase
-   */
-  getActiveAiSession(specId: string, phase: AgentPhase): ActiveAiSession | undefined {
-    const key = this.getSessionKey(specId, phase);
-    const session = this.activeAiSessions.get(key);
-
-    if (!session) return undefined;
-
-    return {
-      specId: session.specId,
-      phase: session.phase,
-      start: session.start,
+    const record: AiMetricRecord = {
+      type: 'ai',
+      spec: specId,
+      phase,
+      start,
+      end,
+      ms,
     };
-  }
 
-  /**
-   * Get all active AI sessions
-   */
-  getAllActiveAiSessions(): ActiveAiSession[] {
-    return Array.from(this.activeAiSessions.values()).map((s) => ({
-      specId: s.specId,
-      phase: s.phase,
-      start: s.start,
-    }));
+    await this.writer.appendRecord(this.projectPath, record);
+    logger.debug('[MetricsService] AI session recorded from file', { specId, phase, ms });
   }
 
   // ===========================================================================

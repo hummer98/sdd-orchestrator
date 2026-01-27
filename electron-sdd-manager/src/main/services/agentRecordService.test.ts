@@ -912,4 +912,257 @@ describe('AgentRecordService', () => {
       expect(geminiRecord?.engineId).toBe('gemini');
     });
   });
+
+  // =============================================================================
+  // metrics-file-based-tracking: Task 1.1 - ExecutionEntry type and executions field
+  // Requirements: 1.1, 1.2, 1.3
+  // =============================================================================
+  describe('executions field support (Task 1.1)', () => {
+    it('should write and read executions field', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-a',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-uuid-001',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude -p "/kiro:spec-requirements"',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            prompt: '/kiro:spec-requirements test-feature',
+          },
+        ],
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-a', 'agent-001');
+
+      expect(result).not.toBeNull();
+      expect(result?.executions).toBeDefined();
+      expect(result?.executions).toHaveLength(1);
+      expect(result?.executions?.[0].startedAt).toBe('2025-11-26T10:00:00Z');
+      expect(result?.executions?.[0].prompt).toBe('/kiro:spec-requirements test-feature');
+      expect(result?.executions?.[0].endedAt).toBeUndefined();
+    });
+
+    it('should write and read executions with endedAt', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-b',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-uuid-002',
+        status: 'completed',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:05:00Z',
+        command: 'claude -p "/kiro:spec-design"',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            endedAt: '2025-11-26T10:05:00Z',
+            prompt: '/kiro:spec-design test-feature',
+          },
+        ],
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-b', 'agent-002');
+
+      expect(result).not.toBeNull();
+      expect(result?.executions?.[0].endedAt).toBe('2025-11-26T10:05:00Z');
+    });
+
+    it('should handle multiple executions (resume scenarios)', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-003',
+        specId: 'spec-c',
+        phase: 'impl',
+        pid: 12347,
+        sessionId: 'session-uuid-003',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:30:00Z',
+        command: 'claude',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            endedAt: '2025-11-26T10:10:00Z',
+            prompt: '/kiro:spec-impl test-feature 1',
+          },
+          {
+            startedAt: '2025-11-26T10:15:00Z',
+            endedAt: '2025-11-26T10:25:00Z',
+            prompt: 'continue',
+          },
+          {
+            startedAt: '2025-11-26T10:30:00Z',
+            prompt: 'continue again',
+          },
+        ],
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-c', 'agent-003');
+
+      expect(result).not.toBeNull();
+      expect(result?.executions).toHaveLength(3);
+      expect(result?.executions?.[0].endedAt).toBe('2025-11-26T10:10:00Z');
+      expect(result?.executions?.[1].endedAt).toBe('2025-11-26T10:25:00Z');
+      expect(result?.executions?.[2].endedAt).toBeUndefined();
+    });
+
+    it('should handle records without executions (backward compatibility)', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-004',
+        specId: 'spec-d',
+        phase: 'requirements',
+        pid: 12348,
+        sessionId: 'session-uuid-004',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        // No executions - for backward compatibility
+      };
+
+      await service.writeRecord(record);
+
+      const result = await service.readRecord('spec-d', 'agent-004');
+
+      expect(result).not.toBeNull();
+      expect(result?.executions).toBeUndefined();
+    });
+
+    it('should persist executions in file content', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-005',
+        specId: 'spec-e',
+        phase: 'design',
+        pid: 12349,
+        sessionId: 'session-uuid-005',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            prompt: 'test prompt',
+          },
+        ],
+      };
+
+      await service.writeRecord(record);
+
+      // Read file directly to verify JSON content
+      const filePath = path.join(testDir, 'spec-e', 'agent-005.json');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+
+      expect(parsed.executions).toBeDefined();
+      expect(parsed.executions).toHaveLength(1);
+      expect(parsed.executions[0].startedAt).toBe('2025-11-26T10:00:00Z');
+      expect(parsed.executions[0].prompt).toBe('test prompt');
+    });
+
+    it('should update executions via updateRecord', async () => {
+      const record: AgentRecord = {
+        agentId: 'agent-006',
+        specId: 'spec-f',
+        phase: 'impl',
+        pid: 12350,
+        sessionId: 'session-uuid-006',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            prompt: 'initial prompt',
+          },
+        ],
+      };
+
+      await service.writeRecord(record);
+
+      // Update with new executions (simulating resume)
+      await service.updateRecord('spec-f', 'agent-006', {
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            endedAt: '2025-11-26T10:05:00Z',
+            prompt: 'initial prompt',
+          },
+          {
+            startedAt: '2025-11-26T10:10:00Z',
+            prompt: 'resume prompt',
+          },
+        ],
+      });
+
+      const result = await service.readRecord('spec-f', 'agent-006');
+
+      expect(result?.executions).toHaveLength(2);
+      expect(result?.executions?.[0].endedAt).toBe('2025-11-26T10:05:00Z');
+      expect(result?.executions?.[1].prompt).toBe('resume prompt');
+    });
+
+    it('should preserve executions in readRecordsForSpec', async () => {
+      const record1: AgentRecord = {
+        agentId: 'agent-001',
+        specId: 'spec-g',
+        phase: 'requirements',
+        pid: 12345,
+        sessionId: 'session-1',
+        status: 'running',
+        startedAt: '2025-11-26T10:00:00Z',
+        lastActivityAt: '2025-11-26T10:00:00Z',
+        command: 'claude',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:00:00Z',
+            prompt: 'prompt 1',
+          },
+        ],
+      };
+
+      const record2: AgentRecord = {
+        agentId: 'agent-002',
+        specId: 'spec-g',
+        phase: 'design',
+        pid: 12346,
+        sessionId: 'session-2',
+        status: 'running',
+        startedAt: '2025-11-26T10:05:00Z',
+        lastActivityAt: '2025-11-26T10:05:00Z',
+        command: 'claude',
+        executions: [
+          {
+            startedAt: '2025-11-26T10:05:00Z',
+            prompt: 'prompt 2',
+          },
+        ],
+      };
+
+      await service.writeRecord(record1);
+      await service.writeRecord(record2);
+
+      const records = await service.readRecordsForSpec('spec-g');
+
+      expect(records).toHaveLength(2);
+
+      const agent1 = records.find((r) => r.agentId === 'agent-001');
+      const agent2 = records.find((r) => r.agentId === 'agent-002');
+
+      expect(agent1?.executions?.[0].prompt).toBe('prompt 1');
+      expect(agent2?.executions?.[0].prompt).toBe('prompt 2');
+    });
+  });
 });

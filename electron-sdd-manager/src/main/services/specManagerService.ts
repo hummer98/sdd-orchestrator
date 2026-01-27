@@ -13,7 +13,7 @@ import {
   getProviderTypeFromPath,
   type AgentProcess as ProviderAgentProcess,
 } from './providerAgentProcess';
-import { AgentRecordService, AgentInfo, AgentStatus } from './agentRecordService';
+import { AgentRecordService, AgentInfo, AgentStatus, ExecutionEntry } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
 import { FileService } from './fileService';
 import { LogParserService, ResultSubtype } from './logParserService';
@@ -969,6 +969,8 @@ export class SpecManagerService {
       // agent-state-file-ssot: Write agent record to file (SSOT)
       // Bug fix: agent-resume-cwd-mismatch - Save cwd for resume operations
       // llm-stream-log-parser: Task 6.2 - Save engineId for log parsing
+      // metrics-file-based-tracking: Task 2.1 - Initialize executions array
+      // Requirements: 2.1, 2.2
       await this.recordService.writeRecord({
         agentId,
         specId,
@@ -982,6 +984,11 @@ export class SpecManagerService {
         cwd: effectiveCwd,
         prompt: effectivePrompt,
         engineId,
+        // metrics-file-based-tracking: Task 2.1 - executions array for metrics tracking
+        executions: [{
+          startedAt: now,
+          prompt: effectivePrompt || '',
+        }],
       });
 
       // Mark file as written and process any pending events
@@ -1011,11 +1018,9 @@ export class SpecManagerService {
         command: `${command} ${effectiveArgs.join(' ')}`,
       });
 
-      // spec-productivity-metrics: Direct metrics tracking
-      // Track AI session start for ALL agent phases (not just core phases)
-      const metricsService = getDefaultMetricsService();
-      metricsService.startAiSession(specId, phase);
-      logger.debug('[SpecManagerService] AI session started for metrics', { specId, phase });
+      // metrics-file-based-tracking: Task 2.2 - REMOVED startAiSession call
+      // AI session tracking is now file-based via executions array in agent records
+      // Requirements: 2.2
 
       this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
 
@@ -1084,7 +1089,8 @@ export class SpecManagerService {
    * Handle agent exit event
    * agent-state-file-ssot: Extracted for reuse with pending events
    * agent-exit-robustness: Added error handling with fallback and cleanup guarantee
-   * Requirements: 2.1, 2.2, 2.3, 2.4, 3.2
+   * metrics-file-based-tracking: Task 3.1, 3.2, 3.3 - Update executions and write metrics
+   * Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4
    */
   private handleAgentExit(agentId: string, specId: string, code: number): void {
     // Bug fix: agent-record-json-corruption - Clear throttle state on exit
@@ -1093,9 +1099,12 @@ export class SpecManagerService {
     // agent-exit-robustness: Get isForcedSuccess early for fallback handling
     const isForcedSuccess = this.forcedKillSuccess.has(agentId);
 
+    // metrics-file-based-tracking: Task 3.1 - Record exit timestamp
+    const exitTimestamp = new Date().toISOString();
+
     // agent-state-file-ssot: Check current status from file
     // agent-exit-robustness: Wrap in try-catch for robust error handling
-    this.recordService.readRecord(specId, agentId).then((currentRecord) => {
+    this.recordService.readRecord(specId, agentId).then(async (currentRecord) => {
       // If already interrupted (by stopAgent), don't change status
       if (currentRecord?.status === 'interrupted') {
         // agent-exit-robustness: Cleanup in finally-like pattern
@@ -1116,13 +1125,39 @@ export class SpecManagerService {
       // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
       const phase = currentRecord?.phase || 'unknown';
 
-      // spec-productivity-metrics: Direct metrics tracking
-      // Track AI session end for ALL agent phases (not just core phases)
-      const metricsService = getDefaultMetricsService();
-      metricsService.endAiSession(specId, phase).catch((err) => {
-        logger.warn('[SpecManagerService] Failed to end AI session for metrics', { specId, phase, error: err });
-      });
-      logger.debug('[SpecManagerService] AI session ended for metrics', { specId, phase });
+      // metrics-file-based-tracking: Task 3.1, 3.2 - Update executions and write AI metrics
+      // Requirements: 3.1, 3.2, 3.3
+      let updatedExecutions = currentRecord?.executions;
+      if (updatedExecutions && updatedExecutions.length > 0) {
+        // Task 3.1: Update last execution entry with endedAt
+        const lastIndex = updatedExecutions.length - 1;
+        updatedExecutions = [...updatedExecutions];
+        updatedExecutions[lastIndex] = {
+          ...updatedExecutions[lastIndex],
+          endedAt: exitTimestamp,
+        };
+
+        // Task 3.2, 3.3: Calculate AI time and write to metrics.jsonl
+        const lastExecution = updatedExecutions[lastIndex];
+        if (lastExecution.startedAt) {
+          const metricsService = getDefaultMetricsService();
+          try {
+            await metricsService.recordAiSessionFromFile(
+              specId,
+              phase,
+              lastExecution.startedAt,
+              exitTimestamp
+            );
+            logger.debug('[SpecManagerService] AI metrics recorded from executions', { specId, phase });
+          } catch (err) {
+            logger.warn('[SpecManagerService] Failed to record AI metrics', { specId, phase, error: err });
+          }
+        }
+      } else {
+        // metrics-file-based-tracking: Task 3.3 - Log warning and skip if executions missing
+        // Requirements: 3.3
+        logger.warn('[SpecManagerService] No executions array in record, skipping AI metrics recording', { specId, phase, agentId });
+      }
 
       if (newStatus === 'completed') {
         this.logAgentEvent(specId, {
@@ -1144,9 +1179,11 @@ export class SpecManagerService {
       }
 
       // agent-state-file-ssot: Update agent record (SSOT)
-      return this.recordService.updateRecord(specId, agentId, {
+      // metrics-file-based-tracking: Task 3.1 - Include updated executions
+      await this.recordService.updateRecord(specId, agentId, {
         status: newStatus,
-        lastActivityAt: new Date().toISOString(),
+        lastActivityAt: exitTimestamp,
+        executions: updatedExecutions,
       });
     }).catch((error) => {
       // agent-exit-robustness: Requirements 2.1, 2.2, 2.3
@@ -1414,23 +1451,36 @@ export class SpecManagerService {
       });
 
       // Update agent info (keep same agentId)
+      // metrics-file-based-tracking: Task 4.1 - Update executions array
+      const existingExecutions = agent.executions || [];
+      const updatedExecutions: ExecutionEntry[] = [
+        ...existingExecutions,
+        {
+          startedAt: now,
+          prompt: resumePrompt,
+        },
+      ];
+
       const updatedAgentInfo: AgentInfo = {
         ...agent,
         pid: process.pid,
         status: 'running',
         lastActivityAt: now,
         command: `${command} ${args.join(' ')}`,
+        executions: updatedExecutions,
       };
 
       // agent-state-file-ssot: Store process handle for stdin/kill operations
       this.processes.set(agentId, process);
 
       // agent-state-file-ssot: Update agent record (SSOT)
+      // metrics-file-based-tracking: Task 4.1 - Include updated executions
       await this.recordService.updateRecord(agent.specId, agentId, {
         pid: process.pid,
         status: 'running',
         lastActivityAt: now,
         command: `${command} ${args.join(' ')}`,
+        executions: updatedExecutions,
       });
 
       // Bug fix: Add resume prompt to log as user event
@@ -1465,12 +1515,6 @@ export class SpecManagerService {
       process.onError(() => {
         this.handleAgentError(agentId, agent.specId);
       });
-
-      // spec-productivity-metrics: Direct metrics tracking
-      // Track AI session start for ALL agent phases (not just core phases)
-      const metricsService = getDefaultMetricsService();
-      metricsService.startAiSession(agent.specId, agent.phase);
-      logger.debug('[SpecManagerService] AI session started for metrics (resume)', { specId: agent.specId, phase: agent.phase });
 
       // Notify status change
       this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));

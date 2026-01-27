@@ -20,6 +20,20 @@ import type { LLMEngineId } from '@shared/registry';
 // agent-state-file-ssot: Moved from agentRegistry.ts
 export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'failed';
 
+/**
+ * Execution history entry for agent lifecycle tracking
+ * metrics-file-based-tracking: Task 1.1 - ExecutionEntry type definition
+ * Requirements: 1.1, 1.2, 1.3
+ */
+export interface ExecutionEntry {
+  /** Execution start timestamp (ISO 8601 UTC) */
+  startedAt: string;
+  /** Execution end timestamp (ISO 8601 UTC). Undefined means running or abnormally terminated */
+  endedAt?: string;
+  /** Prompt used for this execution */
+  prompt: string;
+}
+
 // AgentInfo interface for compatibility with existing code
 // agent-state-file-ssot: This is the same as AgentRecord for read operations
 export interface AgentInfo {
@@ -41,7 +55,14 @@ export interface AgentInfo {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
    * Requirements: 2.1
    */
-  readonly engineId: LLMEngineId;
+  readonly engineId?: LLMEngineId;
+  /**
+   * Execution history for metrics tracking
+   * metrics-file-based-tracking: Task 1.1 - executions field in AgentInfo
+   * Requirements: 1.1, 1.3
+   * New records use this instead of startedAt for metrics calculation
+   */
+  readonly executions?: ExecutionEntry[];
 }
 
 export interface AgentRecord {
@@ -51,6 +72,7 @@ export interface AgentRecord {
   pid: number;
   sessionId: string;
   status: AgentStatus;
+  /** Legacy start timestamp. New records should use executions[0].startedAt instead */
   startedAt: string;
   lastActivityAt: string;
   command: string;
@@ -63,10 +85,22 @@ export interface AgentRecord {
    * llm-stream-log-parser: Task 6.1 - engineId in AgentRecord
    * Requirements: 2.1
    */
-  engineId: LLMEngineId;
+  engineId?: LLMEngineId;
+  /**
+   * Execution history for metrics tracking
+   * metrics-file-based-tracking: Task 1.1 - executions field in AgentRecord
+   * Requirements: 1.1, 1.2, 1.3
+   * New records use this field for metrics calculation instead of startedAt
+   */
+  executions?: ExecutionEntry[];
 }
 
-export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command'>>;
+/**
+ * Update type for agent records
+ * metrics-file-based-tracking: Task 1.1 - Added executions field
+ * Requirements: 6.2
+ */
+export type AgentRecordUpdate = Partial<Pick<AgentRecord, 'status' | 'lastActivityAt' | 'pid' | 'sessionId' | 'command' | 'executions'>>;
 
 /**
  * Simple mutex implementation for per-agent locking

@@ -9,7 +9,7 @@ import { mkdtemp, rm, readFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { MetricsService } from './metricsService';
-import type { HumanSessionData, WorkflowPhase } from '../types/metrics';
+import type { HumanSessionData } from '../types/metrics';
 
 describe('MetricsService', () => {
   let tempDir: string;
@@ -31,51 +31,15 @@ describe('MetricsService', () => {
   });
 
   // ==========================================================================
-  // Requirement 1.1: Agent start timestamp recording
+  // File-based AI Metrics (metrics-file-based-tracking)
+  // Requirements: 3.2, 3.3
   // ==========================================================================
-  describe('startAiSession (Requirement 1.1)', () => {
-    it('should record agent start timestamp', () => {
-      service.startAiSession('test-spec', 'requirements');
-
-      const session = service.getActiveAiSession('test-spec', 'requirements');
-      expect(session).toBeDefined();
-      expect(session?.specId).toBe('test-spec');
-      expect(session?.phase).toBe('requirements');
-      expect(session?.start).toBe('2025-01-15T10:00:00.000Z');
-    });
-
-    it('should allow multiple sessions for different specs', () => {
-      service.startAiSession('spec-1', 'requirements');
-      service.startAiSession('spec-2', 'design');
-
-      expect(service.getActiveAiSession('spec-1', 'requirements')).toBeDefined();
-      expect(service.getActiveAiSession('spec-2', 'design')).toBeDefined();
-    });
-
-    it('should allow multiple sessions for different phases of same spec', () => {
-      service.startAiSession('test-spec', 'requirements');
-      vi.advanceTimersByTime(60000);
-      service.startAiSession('test-spec', 'design');
-
-      expect(service.getActiveAiSession('test-spec', 'requirements')).toBeDefined();
-      expect(service.getActiveAiSession('test-spec', 'design')).toBeDefined();
-    });
-  });
-
-  // ==========================================================================
-  // Requirement 1.2: Agent end timestamp and duration calculation
-  // ==========================================================================
-  describe('endAiSession (Requirement 1.2)', () => {
-    it('should record end timestamp and calculate duration', async () => {
-      service.startAiSession('test-spec', 'requirements');
-
-      // Advance time by 5 minutes 30 seconds
-      vi.advanceTimersByTime(5 * 60 * 1000 + 30 * 1000);
-
-      await service.endAiSession('test-spec', 'requirements');
-
-      // Session should be ended
-      expect(service.getActiveAiSession('test-spec', 'requirements')).toBeUndefined();
+  describe('recordAiSessionFromFile (metrics-file-based-tracking)', () => {
+    it('should record AI metric from provided timestamps', async () => {
+      const start = '2025-01-15T10:00:00.000Z';
+      const end = '2025-01-15T10:05:30.000Z';
+      
+      await service.recordAiSessionFromFile('test-spec', 'requirements', start, end);
 
       // Check file was written
       const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
@@ -84,68 +48,23 @@ describe('MetricsService', () => {
       expect(record.type).toBe('ai');
       expect(record.spec).toBe('test-spec');
       expect(record.phase).toBe('requirements');
-      expect(record.start).toBe('2025-01-15T10:00:00.000Z');
-      expect(record.end).toBe('2025-01-15T10:05:30.000Z');
+      expect(record.start).toBe(start);
+      expect(record.end).toBe(end);
       expect(record.ms).toBe(330000); // 5 min 30 sec = 330000ms
     });
 
-    it('should do nothing when session does not exist', async () => {
-      // Should not throw
-      await service.endAiSession('non-existent', 'requirements');
-    });
-  });
-
-  // ==========================================================================
-  // Requirement 1.3: Record spec and phase information
-  // ==========================================================================
-  describe('spec and phase recording (Requirement 1.3)', () => {
-    it('should include spec and phase in AI metric record', async () => {
-      service.startAiSession('my-feature', 'design');
-      vi.advanceTimersByTime(60000);
-      await service.endAiSession('my-feature', 'design');
-
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const record = JSON.parse(content.trim());
-
-      expect(record.spec).toBe('my-feature');
-      expect(record.phase).toBe('design');
-    });
-
-    it('should support all workflow phases', async () => {
-      const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl'];
-
-      for (const phase of phases) {
-        service.startAiSession(`spec-${phase}`, phase);
-        vi.advanceTimersByTime(1000);
-        await service.endAiSession(`spec-${phase}`, phase);
-      }
-
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const lines = content.split('\n').filter((l) => l.trim());
-      expect(lines).toHaveLength(4);
-
-      for (let i = 0; i < phases.length; i++) {
-        const record = JSON.parse(lines[i]);
-        expect(record.phase).toBe(phases[i]);
-      }
-    });
-  });
-
-  // ==========================================================================
-  // Requirement 1.4: Save to metrics.jsonl (via MetricsFileWriter)
-  // ==========================================================================
-  describe('persistence (Requirement 1.4)', () => {
-    it('should persist AI metric to metrics.jsonl', async () => {
-      service.startAiSession('test-spec', 'requirements');
-      vi.advanceTimersByTime(10000);
-      await service.endAiSession('test-spec', 'requirements');
-
+    it('should do nothing when project path is not set', async () => {
+      const serviceWithoutPath = new MetricsService();
+      await serviceWithoutPath.recordAiSessionFromFile(
+        'test-spec', 
+        'requirements', 
+        '2025-01-15T10:00:00.000Z', 
+        '2025-01-15T10:01:00.000Z'
+      );
+      
+      // Should not throw and no file should be created
       const filePath = join(tempDir, '.kiro', 'metrics.jsonl');
-      const content = await readFile(filePath, 'utf-8');
-
-      expect(content).toBeTruthy();
-      const record = JSON.parse(content.trim());
-      expect(record.type).toBe('ai');
+      await expect(readFile(filePath, 'utf-8')).rejects.toThrow();
     });
   });
 
@@ -379,95 +298,6 @@ describe('MetricsService', () => {
   });
 
   // ==========================================================================
-  // Task 2.2: Agent integration with onStatusChange callback
-  // Requirements: 1.1, 1.2 (via agent lifecycle hooks)
-  // ==========================================================================
-  describe('agent lifecycle integration (Task 2.2)', () => {
-    it('should support ending AI session when agent completes', async () => {
-      // Simulate agent started (via onStatusChange 'running')
-      service.startAiSession('test-spec', 'requirements');
-
-      // Advance time
-      vi.advanceTimersByTime(120000); // 2 minutes
-
-      // Simulate agent completed (via onStatusChange 'completed')
-      await service.endAiSession('test-spec', 'requirements');
-
-      // Verify metrics were recorded
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const record = JSON.parse(content.trim());
-
-      expect(record.type).toBe('ai');
-      expect(record.spec).toBe('test-spec');
-      expect(record.phase).toBe('requirements');
-      expect(record.ms).toBe(120000);
-    });
-
-    it('should handle multiple concurrent agent sessions', async () => {
-      // Start multiple agents concurrently
-      service.startAiSession('spec-1', 'requirements');
-      vi.advanceTimersByTime(30000);
-      service.startAiSession('spec-2', 'design');
-      vi.advanceTimersByTime(30000);
-
-      // End first agent (60s total for spec-1)
-      await service.endAiSession('spec-1', 'requirements');
-
-      // End second agent (30s total for spec-2)
-      vi.advanceTimersByTime(30000);
-      await service.endAiSession('spec-2', 'design');
-
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const lines = content.split('\n').filter((l) => l.trim());
-      expect(lines).toHaveLength(2);
-
-      const record1 = JSON.parse(lines[0]);
-      const record2 = JSON.parse(lines[1]);
-
-      expect(record1.spec).toBe('spec-1');
-      expect(record1.ms).toBe(60000);
-      expect(record2.spec).toBe('spec-2');
-      expect(record2.ms).toBe(60000);
-    });
-
-    it('should handle agent failed status same as completed', async () => {
-      service.startAiSession('test-spec', 'impl');
-      vi.advanceTimersByTime(180000); // 3 minutes
-
-      // Agent failed - should still record AI time
-      await service.endAiSession('test-spec', 'impl');
-
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const record = JSON.parse(content.trim());
-
-      expect(record.type).toBe('ai');
-      expect(record.ms).toBe(180000);
-    });
-
-    it('should do nothing when ending non-existent session', async () => {
-      // Should not throw when ending a session that was never started
-      await service.endAiSession('non-existent', 'requirements');
-
-      // File should not exist
-      const filePath = join(tempDir, '.kiro', 'metrics.jsonl');
-      await expect(readFile(filePath, 'utf-8')).rejects.toThrow();
-    });
-
-    it('should track impl phase for agent sessions', async () => {
-      // Test impl phase - the primary implementation phase
-      service.startAiSession('test-spec', 'impl');
-      vi.advanceTimersByTime(300000); // 5 minutes
-      await service.endAiSession('test-spec', 'impl');
-
-      const content = await readFile(join(tempDir, '.kiro', 'metrics.jsonl'), 'utf-8');
-      const record = JSON.parse(content.trim());
-
-      expect(record.phase).toBe('impl');
-      expect(record.ms).toBe(300000);
-    });
-  });
-
-  // ==========================================================================
   // Task 8.1: Project metrics aggregation (Requirements 8.1, 8.2, 8.3)
   // ==========================================================================
   describe('getProjectMetrics (Task 8.1)', () => {
@@ -648,27 +478,6 @@ describe('MetricsService', () => {
       expect(projectMetrics.totalHumanTimeMs).toBe(300000);
       expect(projectMetrics.completedSpecCount).toBe(1);
       expect(projectMetrics.inProgressSpecCount).toBe(0);
-    });
-  });
-
-  // ==========================================================================
-  // Active session management
-  // ==========================================================================
-  describe('active session management', () => {
-    it('should return all active AI sessions', () => {
-      service.startAiSession('spec-1', 'requirements');
-      service.startAiSession('spec-2', 'design');
-
-      const sessions = service.getAllActiveAiSessions();
-      expect(sessions).toHaveLength(2);
-    });
-
-    it('should clear session state on setProjectPath', () => {
-      service.startAiSession('test-spec', 'requirements');
-      expect(service.getAllActiveAiSessions()).toHaveLength(1);
-
-      service.setProjectPath('/new/path');
-      expect(service.getAllActiveAiSessions()).toHaveLength(0);
     });
   });
 });

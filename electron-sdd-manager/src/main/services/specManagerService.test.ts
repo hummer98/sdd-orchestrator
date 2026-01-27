@@ -17,6 +17,7 @@ vi.mock('electron', () => ({
 }));
 
 import { SpecManagerService, ExecutionGroup, buildClaudeArgs, WORKTREE_LIFECYCLE_PHASES, extractPromptFromArgs } from './specManagerService';
+import { initDefaultMetricsService } from './metricsService';
 
 describe('SpecManagerService', () => {
   let testDir: string;
@@ -2978,5 +2979,223 @@ describe('extractPromptFromArgs', () => {
   it('should handle multiple slash commands and return the first one', () => {
     const args = ['-p', '/first-command', '/second-command'];
     expect(extractPromptFromArgs(args)).toBe('/first-command');
+  });
+});
+
+// =============================================================================
+// metrics-file-based-tracking: Task 2.1, 7.1 - startAgent with executions initialization
+// Requirements: 2.1, 2.2
+// =============================================================================
+describe('startAgent executions support (Task 2.1, 7.1)', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `spec-manager-executions-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    service = new SpecManagerService(testDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await service.stopAllAgents();
+    } catch {
+      // Ignore errors during cleanup
+    }
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should initialize executions array with startedAt and prompt', async () => {
+    const result = await service.startAgent({
+      specId: 'spec-a',
+      phase: 'requirements',
+      command: 'sleep',
+      args: ['5'],
+      prompt: '/kiro:spec-requirements my-feature',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Read the agent record file directly
+    const pidFilePath = path.join(pidDir, 'spec-a', `${result.value.agentId}.json`);
+    const content = await fs.readFile(pidFilePath, 'utf-8');
+    const record = JSON.parse(content);
+
+    expect(record.executions).toBeDefined();
+    expect(record.executions).toHaveLength(1);
+    expect(record.executions[0].startedAt).toBeTruthy();
+    expect(record.executions[0].prompt).toBe('/kiro:spec-requirements my-feature');
+    expect(record.executions[0].endedAt).toBeUndefined();
+  });
+
+  it('should extract prompt from args when prompt option is not provided', async () => {
+    const result = await service.startAgent({
+      specId: 'spec-b',
+      phase: 'design',
+      command: 'sleep',
+      args: ['5', '/kiro:spec-design another-feature'],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const pidFilePath = path.join(pidDir, 'spec-b', `${result.value.agentId}.json`);
+    const content = await fs.readFile(pidFilePath, 'utf-8');
+    const record = JSON.parse(content);
+
+    expect(record.executions).toBeDefined();
+    expect(record.executions[0].prompt).toBe('/kiro:spec-design another-feature');
+  });
+
+  it('should use empty string for prompt when args are only flags', async () => {
+    const result = await service.startAgent({
+      specId: 'spec-c',
+      phase: 'tasks',
+      command: 'sleep',
+      args: ['-p', '--verbose'],  // Only flags, no command/prompt
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const pidFilePath = path.join(pidDir, 'spec-c', `${result.value.agentId}.json`);
+    const content = await fs.readFile(pidFilePath, 'utf-8');
+    const record = JSON.parse(content);
+
+    expect(record.executions).toBeDefined();
+    // When extractPromptFromArgs returns undefined, prompt should be ''
+    expect(record.executions[0].prompt).toBe('');
+  });
+
+  it('should set executions[0].startedAt to match record startedAt', async () => {
+    const result = await service.startAgent({
+      specId: 'spec-d',
+      phase: 'impl',
+      command: 'sleep',
+      args: ['5'],
+      prompt: 'test prompt',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const pidFilePath = path.join(pidDir, 'spec-d', `${result.value.agentId}.json`);
+    const content = await fs.readFile(pidFilePath, 'utf-8');
+    const record = JSON.parse(content);
+
+    // startedAt and executions[0].startedAt should be the same
+    expect(record.executions[0].startedAt).toBe(record.startedAt);
+  });
+});
+
+// =============================================================================
+// metrics-file-based-tracking: Task 2.2 - Verify startAiSession is NOT called
+// Note: This is a structural verification - the actual removal of startAiSession
+// call will be verified by checking the source code.
+// Requirements: 2.2
+// =============================================================================
+// Structural test: The code should NOT contain metricsService.startAiSession in startAgent
+// This is verified via grep during implementation
+
+// =============================================================================
+// metrics-file-based-tracking: Task 3.1, 3.2, 3.3, 7.2 - handleAgentExit with metrics
+// Requirements: 3.1, 3.2, 3.3, 3.4
+// =============================================================================
+describe('handleAgentExit with executions (Task 3.1, 3.2, 3.3, 7.2)', () => {
+  let testDir: string;
+  let pidDir: string;
+  let service: SpecManagerService;
+
+  beforeEach(async () => {
+    testDir = path.join(os.tmpdir(), `spec-manager-exit-test-${Date.now()}`);
+    pidDir = path.join(testDir, '.kiro', 'runtime', 'agents');
+    await fs.mkdir(pidDir, { recursive: true });
+    // Also create metrics directory
+    await fs.mkdir(path.join(testDir, '.kiro'), { recursive: true });
+    service = new SpecManagerService(testDir);
+    // Initialize metrics service for file-based tracking tests
+    initDefaultMetricsService(testDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await service.stopAllAgents();
+    } catch {
+      // Ignore errors during cleanup
+    }
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should record endedAt in executions when agent exits (Task 3.1)', async () => {
+    // Start agent with very short command
+    const result = await service.startAgent({
+      specId: 'spec-exit-test',
+      phase: 'requirements',
+      command: 'echo',
+      args: ['hello'],
+      prompt: '/kiro:spec-requirements test',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Wait for agent to complete
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Read the agent record file
+    const pidFilePath = path.join(pidDir, 'spec-exit-test', `${result.value.agentId}.json`);
+    const content = await fs.readFile(pidFilePath, 'utf-8');
+    const record = JSON.parse(content);
+
+    // Verify endedAt is recorded
+    expect(record.executions).toBeDefined();
+    expect(record.executions[0].endedAt).toBeTruthy();
+    expect(new Date(record.executions[0].endedAt).getTime()).toBeGreaterThan(
+      new Date(record.executions[0].startedAt).getTime()
+    );
+  });
+
+  it('should write AI metrics to metrics.jsonl when agent exits (Task 3.2)', async () => {
+    // Start agent with very short command
+    const result = await service.startAgent({
+      specId: 'spec-metrics-test',
+      phase: 'design',
+      command: 'echo',
+      args: ['hello'],
+      prompt: '/kiro:spec-design test',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Wait for agent to complete
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Check metrics.jsonl
+    const metricsPath = path.join(testDir, '.kiro', 'metrics.jsonl');
+    const metricsContent = await fs.readFile(metricsPath, 'utf-8');
+    const lines = metricsContent.split('\n').filter((l) => l.trim());
+
+    // Find AI metric record for this spec
+    const aiMetric = lines
+      .map((l) => JSON.parse(l))
+      .find((r: { type: string; spec: string }) => r.type === 'ai' && r.spec === 'spec-metrics-test');
+
+    expect(aiMetric).toBeDefined();
+    expect(aiMetric.phase).toBe('design');
+    expect(aiMetric.start).toBeTruthy();
+    expect(aiMetric.end).toBeTruthy();
+    expect(aiMetric.ms).toBeGreaterThanOrEqual(0);
   });
 });

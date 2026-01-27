@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MERGE_SCRIPT="$SCRIPT_DIR/merge-spec.sh"
+MERGE_SCRIPT="$SCRIPT_DIR/../../resources/templates/scripts/merge-spec.sh"
 TEST_DIR="/tmp/merge-spec-test-$$"
 
 # Colors for output

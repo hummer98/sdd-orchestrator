@@ -30,9 +30,25 @@ Merge the feature branch from worktree to main branch, then cleanup the worktree
 #### 1.1: Verify Main Branch
 1. Verify current directory is the main project (not the worktree)
    - Run `git rev-parse --show-toplevel` and compare with pwd
-2. Verify current branch is main or master
+2. Check current branch:
    - Run `git branch --show-current`
-   - If not main/master, error: "spec-merge must be run from the main branch"
+   - If branch is `dev`, `main`, or `master`: proceed to Step 1.2
+   - If branch is any other name:
+     - **PAUSE EXECUTION** and ask user for confirmation:
+       ```
+       ## Warning: Non-standard Base Branch
+
+       現在のブランチ: {current_branch}
+
+       通常、spec-mergeは `dev`, `main`, `master` から実行されます。
+       このブランチにマージしてよろしいですか？
+
+       **Yes** を選択すると、このブランチにマージを実行します。
+       **No** を選択すると、操作をキャンセルします。
+       ```
+     - Wait for user response
+     - If user confirms: proceed to Step 1.2
+     - If user declines: **EXIT** with message "Operation cancelled by user"
 
 #### 1.2: Resolve Worktree Path and Read spec.json
 **spec-worktree-early-creation**: In early worktree creation mode, spec.json exists ONLY in the worktree, not in main.

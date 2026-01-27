@@ -110,7 +110,8 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   const args: string[] = [...CLAUDE_CLI_BASE_FLAGS];
 
   // --dangerously-skip-permissions は他のオプションより前に配置
-  if (options.skipPermissions) {
+  // skipPermissions === true の場合のみフラグを付与 (Requirement 9.2)
+  if (options.skipPermissions === true) {
     args.push('--dangerously-skip-permissions');
   }
 

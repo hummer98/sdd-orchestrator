@@ -119,7 +119,9 @@ For each Critical/Warning issue:
 
 ### Generate Reply
 
-Output file: `.kiro/specs/<feature-name>/document-review-{n}-reply.md`
+Target Reply File: `.kiro/specs/<feature-name>/document-review-{n}-reply.md`
+
+**MANDATORY ACTION**: You MUST use the `write_file` tool to save the reply document.
 
 #### Reply Structure
 
@@ -311,6 +313,8 @@ _Fixes applied by document-review-reply command._
 ---
 
 ## Output Summary
+
+**Verification**: confirm that `.kiro/specs/<feature-name>/document-review-{n}-reply.md` has been physically created using the `write_file` tool (or updated if `--fix`).
 
 Display to user:
 

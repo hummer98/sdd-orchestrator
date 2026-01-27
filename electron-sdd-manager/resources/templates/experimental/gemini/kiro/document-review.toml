@@ -9,22 +9,42 @@ Review specification documents for consistency, identify contradictions, gaps, a
 
 ## Target Feature
 
-{{args}}
+Feature name: `{{args}}`
 
-## Documents to Review
+## Validate
+
+Verify review target exists:
+
+- Verify `.kiro/specs/{{args}}/` exists
+- Verify at least one of the following exists:
+  - `.kiro/specs/{{args}}/requirements.md`
+  - `.kiro/specs/{{args}}/design.md`
+  - `.kiro/specs/{{args}}/tasks.md`
+
+If validation fails, inform user that the specification does not exist.
+
+## Collect Documents
 
 ### Spec Documents
 
-@{.kiro/specs/{{args}}/spec.json}
-@{.kiro/specs/{{args}}/requirements.md}
-@{.kiro/specs/{{args}}/design.md}
-@{.kiro/specs/{{args}}/tasks.md}
+Collect all `.md` and `.json` files from `.kiro/specs/{{args}}/` directory:
+
+- `spec.json` - Spec configuration
+- `requirements.md` - Requirements definition
+- `design.md` - Technical design
+- `tasks.md` - Implementation tasks
+- `research.md` - Research findings (if exists)
+- `STATUS.md` - Status (if exists)
+- Other markdown files
 
 ### Steering Documents
 
-@{.kiro/steering/product.md}
-@{.kiro/steering/tech.md}
-@{.kiro/steering/structure.md}
+Collect all `.md` files from `.kiro/steering/` directory:
+
+- `product.md` - Product context
+- `tech.md` - Technology stack
+- `structure.md` - Project structure
+- Other custom steering documents
 
 ## Review Process
 
@@ -32,56 +52,142 @@ Conduct review from the following perspectives:
 
 ### 1. Spec Document Consistency Check
 
-**Requirements - Design Alignment**:
+**Requirements ↔ Design Alignment**:
+
 - All requirements covered in Design
 - Design features traced back to requirements
 - Requirement ID traceability
 
-**Design - Tasks Alignment**:
+**Design ↔ Tasks Alignment**:
+
 - All Design components reflected in Tasks
 - Task implementation items consistent with Design
 - Technology choice consistency
 
-**Acceptance Criteria - Tasks Coverage (CRITICAL CHECK)**:
+**Design ↔ Tasks Completeness Check**:
+
+- All UI components defined in Design have corresponding Tasks
+- Tasks mentioning "UI連携" or "設定UI" have matching UI component definitions in Design
+- Requirements containing "設定", "オプション", "UI" keywords have corresponding UI components in Design
+- All service interfaces in Design have implementation tasks
+- All data types/models in Design have definition tasks
+
+**Acceptance Criteria → Tasks Coverage (CRITICAL CHECK)**:
+
+This check ensures every acceptance criterion has concrete implementation tasks, not just preparation tasks.
+
 1. Extract all criterion IDs from requirements.md (format: X.Y, e.g., 7.1, 7.2)
 2. For each criterion:
    - Find corresponding task(s) in tasks.md
-   - Classify each task as Infrastructure (preparation) or Feature (implementation)
+   - Classify each task as **Infrastructure** (preparation) or **Feature** (implementation)
    - Verify user-facing criteria have Feature tasks
+
+**Red Flags to Report as CRITICAL**:
+
+| Pattern | Problem | Example |
+|---------|---------|---------|
+| Criterion → Infrastructure only | Preparation ≠ Implementation | 7.1 → "共有化する" only |
+| Criterion → Container task | No concrete work defined | 7.1 → "4." without subtasks |
+| Criterion → Generic reference | Unverifiable coverage | 7.1 → "全SharedComponents" |
+| Multiple criteria → Same task | Likely incomplete | 7.1, 7.2, 7.3 → all "Task 4" |
+| Criterion → No task | Complete omission | 7.4 → (not found) |
+
+**Task Type Definitions**:
+- **Infrastructure**: "Create structure", "Extract to shared/", "Define types", "Set up config"
+- **Feature**: "Implement view displaying...", "Add panel with...", "Create UI with..."
+
+**Integration Test Coverage (CRITICAL CHECK)**:
+
+When Design.md contains cross-boundary communication (IPC, events, store sync):
+
+| Check | Validation | Report if Missing |
+|-------|------------|-------------------|
+| IPC Liaison | Integration test tasks exist for IPC channels | CRITICAL: IPC integration test missing |
+| Store Sync | Tasks exist to verify state propagation | CRITICAL: Store sync test missing |
+| Event Chains | Tasks verify full event lifecycle | WARNING: Event chain verification missing |
+
+**Safety Check**:
+- If integration tests are theoretically impossible or skipped, is there an explicit **Fallback Strategy** (e.g., E2E test task, detailed manual verification log task)?
+- If NO test and NO fallback: **CRITICAL**
+
+**Refactoring Integrity Check (CRITICAL)**:
+
+When design.md indicates replacement or deprecation:
+
+| Check | Validation | Report if Missing |
+|-------|------------|-------------------|
+| Deletion Tasks | Tasks exist to physically DELETE old files | CRITICAL: "Facade refactoring" - old files will remain |
+| Consumer Updates | Tasks exist to update all import paths in consumer files | CRITICAL: Integration incomplete - old imports persist |
+| No Parallel Implementation | Tasks replace (not add alongside) existing files | CRITICAL: Zombie code - new facade without old file removal |
+
+**Anti-Patterns to Flag as CRITICAL**:
+- Design says "replace X" but tasks only create new Y without deleting X
+- Design says "unify stores" but tasks create facade without updating consumers
+- Tasks mention "新規作成" for refactoring without corresponding "削除" tasks
+- Multiple files will exist for same responsibility after implementation
+
+**Cross-Document Contradiction Detection**:
+
+- Terminology inconsistencies
+- Numeric/specification conflicts
+- Dependency misalignments
 
 ### 2. Gap Detection
 
 **Technical Considerations**:
+
 - Error handling coverage
 - Security considerations
 - Performance requirements
+- Scalability
 - Testing strategy
+- Logging (see steering/logging.md)
 
 **Operational Considerations**:
+
 - Deployment procedures
 - Rollback strategy
 - Monitoring/logging
+- Documentation updates
 
 ### 3. Ambiguity Extraction
 
 - Vague descriptions
 - Undefined dependencies
 - Pending decisions
+- External integration details
 
 ### 4. Steering Alignment Check
+
+**Existing Specification Conflicts**:
 
 - Architecture compatibility
 - Technology stack/convention compliance
 - Naming convention/directory structure adherence
 
+**Integration Concerns**:
+
+- Impact on existing features
+- Shared resource conflicts
+- API compatibility
+
+**Migration Considerations**:
+
+- Data migration requirements
+- Phased rollout planning
+- Backward compatibility
+
 ## Generate Report
 
+**MANDATORY ACTION**: You MUST use the `write_file` tool to save the review report.
+
 Determine review number:
+
 1. Search for `document-review-*.md` files in `.kiro/specs/{{args}}/`
 2. Get maximum existing review number
 3. Determine next sequential number (start with `1` if none exist)
 
-Report file: `.kiro/specs/{{args}}/document-review-{n}.md`
+Target Report File: `.kiro/specs/{{args}}/document-review-{n}.md`
 
 ### Report Structure
 
@@ -98,33 +204,97 @@ Report file: `.kiro/specs/{{args}}/document-review-{n}.md`
 
 ## 1. Document Consistency Analysis
 
-### 1.1 Requirements - Design Alignment
+### 1.1 Requirements ↔ Design Alignment
+
 {Contradictions and gaps detail}
 
-### 1.2 Design - Tasks Alignment
+### 1.2 Design ↔ Tasks Alignment
+
 {Contradictions and gaps detail}
 
-### 1.3 Acceptance Criteria - Tasks Coverage
+### 1.3 Design ↔ Tasks Completeness
+
+{Missing components analysis}
+
+| Category | Design Definition | Task Coverage | Status |
+| -------- | ----------------- | ------------- | ------ |
+| UI Components | ... | ... | ✅/❌ |
+| Services | ... | ... | ✅/❌ |
+| Types/Models | ... | ... | ✅/❌ |
+
+### 1.4 Acceptance Criteria → Tasks Coverage
+
 {CRITICAL CHECK: Ensure every criterion has Feature Implementation tasks}
 
+| Criterion | Summary | Mapped Task(s) | Task Type | Status |
+|-----------|---------|----------------|-----------|--------|
+| 1.1 | ... | 1.1 | Infrastructure | ✅ |
+| 7.1 | ... | 4.2 | Infrastructure | ❌ CRITICAL: Feature task missing |
+| 7.2 | ... | 4.3 | Infrastructure | ❌ CRITICAL: Feature task missing |
+
+**Validation Results**:
+- [ ] All criterion IDs from requirements.md are mapped
+- [ ] User-facing criteria have Feature Implementation tasks
+- [ ] No criterion relies solely on Infrastructure tasks
+
+### 1.5 Integration Test Coverage
+
+{CRITICAL CHECK: Verify integration tests for cross-boundary communication}
+
+| Integration Point | Design Section | Test Task | Status |
+|-------------------|----------------|-----------|--------|
+| MCP Status Sync | "Remote UI Synchronization" | (none) | ❌ CRITICAL |
+| Remote Server | "Server Lifecycle" | 5.3 | ✅ |
+
+**Validation Results**:
+- [ ] All sequence diagrams have corresponding integration tests
+- [ ] All IPC channels have delivery verification tests
+- [ ] All store sync flows have state propagation tests
+
+### 1.6 Cross-Document Contradictions
+
+{List of contradictions between documents}
+
 ## 2. Gap Analysis
-{List of technical and operational gaps}
+
+### 2.1 Technical Considerations
+
+{List of technical gaps}
+
+### 2.2 Operational Considerations
+
+{List of operational gaps}
 
 ## 3. Ambiguities and Unknowns
+
 {List of vague descriptions and undefined items}
 
 ## 4. Steering Alignment
+
+### 4.1 Architecture Compatibility
+
 {Analysis of alignment with existing architecture}
+
+### 4.2 Integration Concerns
+
+{Concerns during integration}
+
+### 4.3 Migration Requirements
+
+{Migration requirements and considerations}
 
 ## 5. Recommendations
 
 ### Critical Issues (Must Fix)
+
 {List of critical issues}
 
 ### Warnings (Should Address)
+
 {List of issues that should be addressed}
 
 ### Suggestions (Nice to Have)
+
 {List of improvement suggestions}
 
 ## 6. Action Items
@@ -134,13 +304,40 @@ Report file: `.kiro/specs/{{args}}/document-review-{n}.md`
 | ...      | ...   | ...                | ...                |
 
 ---
+
 _This review was generated by the document-review command._
 ```
 
 ## Output
 
+**Verification**: confirm that `.kiro/specs/{{args}}/document-review-{n}.md` has been physically created using the `write_file` tool.
+
 After review completion, display:
+
 1. **Report Location**: `.kiro/specs/{{args}}/document-review-{n}.md`
 2. **Review Summary**: Critical/Warning/Info counts
-3. **Next Action**: Run `/kiro:document-review-reply {{args}} {n}` to respond to issues
+3. **Next Action Suggestions**:
+   - If Critical exists: Recommend requirements/design fixes
+   - If Warnings only: Recommend addressing before implementation
+   - If Info only: Safe to proceed with implementation
+
+### Next Steps Guidance
+
+**If Critical Issues Found**:
+
+- Run `/kiro:document-review-reply {{args}}` to generate responses to review issues
+- Address critical issues based on the response recommendations
+- Update relevant specification documents
+- Re-run `/kiro:document-review {{args}}` to verify fixes
+
+**If Warnings Only**:
+
+- Run `/kiro:document-review-reply {{args}}` to review and respond to warnings
+- Or document accepted risks and proceed
+- Run `/kiro:spec-impl {{args}}` when ready
+
+**If Clean Review**:
+
+- Specification is ready for implementation
+- Run `/kiro:spec-impl {{args}}` to start development
 '''

@@ -17,3 +17,6 @@ logs/
 
 # Playwright E2E artifacts
 **/.playwright-remote-port
+
+# Claude Code artifacts
+.config/

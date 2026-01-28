@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.52.1",
+  "version": "0.53.0",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
@@ -42,7 +42,7 @@
     "lucide-react": "^0.554.0",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
-    "react-diff-view": "^3.3.1",
+    "react-diff-view": "^3.3.2",
     "react-dom": "^19.1.0",
     "refractor": "^4.8.1",
     "ssh2": "^1.17.0",

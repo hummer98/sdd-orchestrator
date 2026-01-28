@@ -8,7 +8,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { Loader2, SplitSquareHorizontal, FileText } from 'lucide-react';
-import { parseDiff, Diff, Hunk } from 'react-diff-view';
+import { parseDiff, Diff, Hunk, HunkData } from 'react-diff-view';
 
 import { useSharedGitViewStore } from '@shared/stores/gitViewStore';
 
@@ -206,8 +206,8 @@ export function GitDiffViewer(): React.ReactElement {
             diffType={parsedDiff.type}
             hunks={parsedDiff.hunks}
           >
-            {(hunks) =>
-              hunks.map((hunk) => (
+            {(hunks: HunkData[]) =>
+              hunks.map((hunk: HunkData) => (
                 <Hunk
                   key={hunk.content}
                   hunk={hunk}

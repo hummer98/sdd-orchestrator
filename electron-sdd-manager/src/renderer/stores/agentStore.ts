@@ -81,8 +81,9 @@ export interface AgentInfo {
    * LLM engine ID for parser selection and UI labels
    * llm-stream-log-parser: Task 6.1 - engineId in AgentInfo
    * Requirements: 4.1, 4.2
+   * Made optional for backward compatibility - defaults to 'claude'
    */
-  engineId: LLMEngineId;
+  engineId?: LLMEngineId;
 }
 
 /**

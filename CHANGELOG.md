@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [0.53.0] - 2026-01-28
+
+### Added
+- Gitステータス・Diff表示機能を追加
+- Document ReviewのSKIP削除機能を実装
+- Agentライフサイクル管理機能を実装
+- worktree変換時にイベント履歴を発行
+- Agent停止検知・復旧機能を実装
+
+### Fixed
+- sort by lastActivityAt instead of startedAt
+
+### Changed
+- .configディレクトリをgitignoreに追加
+- document-review系コマンドのプロンプトを簡略化
+- AutoExecutionPermissions をSSOT化しPermission Control E2Eテスト追加
+- design.md肥大化対策の実装
+- NOGO判定時に即座停止する自動実行動作を実装
+
 ## [0.52.1] - 2026-01-28
 
 ### Fixed

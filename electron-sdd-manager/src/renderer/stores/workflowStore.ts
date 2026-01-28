@@ -18,6 +18,9 @@ import type { BugAutoExecutionPermissions } from '../types/bugAutoExecution';
 import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecution';
 // inspection-permission-unification Task 4: InspectionAutoExecutionFlag import removed
 // InspectionAutoExecutionFlag is deprecated - use permissions.inspection instead
+// SSOT: AutoExecutionPermissions and DEFAULT_AUTO_EXECUTION_PERMISSIONS are defined in types/index.ts
+import type { AutoExecutionPermissions } from '../types';
+import { DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../types';
 
 // ============================================================
 // Bug Fix: auto-execution-flag-cross-spec-contamination
@@ -26,24 +29,9 @@ import { DEFAULT_BUG_AUTO_EXECUTION_PERMISSIONS } from '../types/bugAutoExecutio
 // Settings are persisted directly via useElectronWorkflowState hook
 // ============================================================
 
-// ============================================================
-// Task 2.1: Auto Execution Permissions
-// Requirements: 5.1, 5.2, 5.3
-// ============================================================
-
-/**
- * document-review-phase Task 2.1: AutoExecutionPermissions に documentReview 追加
- * Requirements: 2.1 - documentReview フィールドの追加
- */
-export interface AutoExecutionPermissions {
-  requirements: boolean;
-  design: boolean;
-  tasks: boolean;
-  'document-review': boolean;
-  impl: boolean;
-  inspection: boolean;
-  deploy: boolean;
-}
+// Re-export for backward compatibility
+export type { AutoExecutionPermissions };
+export { DEFAULT_AUTO_EXECUTION_PERMISSIONS };
 
 // ============================================================
 // Command Prefix Configuration
@@ -64,22 +52,6 @@ export const COMMAND_PREFIXES: Record<CommandPrefix, { label: string; descriptio
 };
 
 export const DEFAULT_COMMAND_PREFIX: CommandPrefix = 'kiro';
-
-/**
- * document-review-phase Task 2.3: permissions.documentReview のデフォルト値 true
- * Requirements: 2.1, 2.3
- * Rationale: tasks完了後に自動的にdocument-reviewが実行される動作が期待される
- */
-export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
-  requirements: true, // デフォルトで許可
-  design: false,
-  tasks: false,
-  'document-review': true, // document-review-phase: デフォルトGO
-  impl: false,
-  inspection: true, // inspection-permission-unification: デフォルトGO
-  deploy: false,
-};
-
 
 // ============================================================
 // Task 7.1: Document Review Options

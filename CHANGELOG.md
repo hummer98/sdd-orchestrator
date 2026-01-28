@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.53.1] - 2026-01-28
+
+### Fixed
+- .git/indexのみ監視してEMFILEエラーを回避
+- ファイルツリーの視認性とデフォルト展開を改善
+- GitFileWatcherServiceのシングルトン化でEMFILEエラーを修正
+
 ## [0.53.0] - 2026-01-28
 
 ### Added

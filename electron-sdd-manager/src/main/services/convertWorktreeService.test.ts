@@ -1127,6 +1127,23 @@ describe('ConvertWorktreeService', () => {
         expect(message).toContain('Worktree内にSpec');
         expect(message).toContain('見つかりません');
       });
+
+      // no-commits-recovery: 空リポジトリエラーのテスト
+      it('should return recovery message for NO_COMMITS_IN_REPO', () => {
+        // Arrange
+        const error = {
+          type: 'NO_COMMITS_IN_REPO' as const,
+          message: 'リポジトリにコミットが存在しません。Worktreeを作成するには、最初のコミットが必要です。\n\n解決方法:\n  git add .\n  git commit -m "Initial commit"',
+        };
+
+        // Act
+        const message = getConvertErrorMessage(error);
+
+        // Assert
+        expect(message).toContain('リポジトリにコミットが存在しません');
+        expect(message).toContain('git add');
+        expect(message).toContain('git commit');
+      });
     });
   });
 

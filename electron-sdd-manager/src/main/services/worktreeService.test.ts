@@ -265,6 +265,27 @@ describe('WorktreeService', () => {
         expect(result.error.type).toBe('BRANCH_EXISTS');
       }
     });
+
+    // no-commits-recovery: 空リポジトリエラーのテスト
+    it('should return NO_COMMITS_IN_REPO when repository has no commits', async () => {
+      const mockExec = createMockExec([
+        { pattern: /branch --show-current/, stdout: 'main\n' },
+        { pattern: /branch feature\//, error: new Error("fatal: not a valid object name: 'main'") },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.createWorktree('new-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('NO_COMMITS_IN_REPO');
+        if (result.error.type === 'NO_COMMITS_IN_REPO') {
+          expect(result.error.message).toContain('リポジトリにコミットが存在しません');
+          expect(result.error.message).toContain('git add');
+          expect(result.error.message).toContain('git commit');
+        }
+      }
+    });
   });
 
   describe('removeWorktree', () => {

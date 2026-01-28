@@ -98,7 +98,9 @@ export type WorktreeError =
   | { type: 'SPEC_JSON_UPDATE_FAILED'; message: string }
   // worktree-rebase-from-main: Additional error types for rebase operations
   | { type: 'SCRIPT_NOT_FOUND'; message: string }
-  | { type: 'CONFLICT_RESOLUTION_FAILED'; message: string; reason: string };
+  | { type: 'CONFLICT_RESOLUTION_FAILED'; message: string; reason: string }
+  // no-commits-recovery: Error type for empty repository
+  | { type: 'NO_COMMITS_IN_REPO'; message: string };
 
 /**
  * Worktree info returned from WorktreeService.createWorktree

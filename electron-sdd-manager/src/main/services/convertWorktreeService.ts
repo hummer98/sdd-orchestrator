@@ -43,7 +43,8 @@ export type ConvertError =
   | { type: 'FILE_MOVE_FAILED'; message: string }
   | { type: 'SYMLINK_CREATE_FAILED'; message: string }
   | { type: 'SPEC_JSON_UPDATE_FAILED'; message: string }
-  | { type: 'SPEC_NOT_IN_WORKTREE'; specPath: string }; // worktree-convert-spec-optimization: 新規
+  | { type: 'SPEC_NOT_IN_WORKTREE'; specPath: string } // worktree-convert-spec-optimization: 新規
+  | { type: 'NO_COMMITS_IN_REPO'; message: string }; // no-commits-recovery: 空リポジトリエラー
 
 /**
  * Result type for ConvertWorktreeService operations
@@ -95,6 +96,9 @@ export function getConvertErrorMessage(error: ConvertError): string {
       return `シンボリックリンク作成に失敗しました: ${error.message}`;
     case 'SPEC_JSON_UPDATE_FAILED':
       return `spec.json更新に失敗しました: ${error.message}`;
+    // no-commits-recovery: リカバリー手段を提示
+    case 'NO_COMMITS_IN_REPO':
+      return error.message;
     default:
       return '不明なエラーが発生しました';
   }
@@ -364,13 +368,23 @@ export class ConvertWorktreeService {
     // Requirements: 2.1 (Step 1, 2)
     const createResult = await this.worktreeService.createWorktree(featureName);
     if (!createResult.ok) {
-      const errorMessage = 'message' in createResult.error
-        ? (createResult.error as { message: string }).message
-        : createResult.error.type;
       logger.error('[ConvertWorktreeService] Failed to create worktree', {
         featureName,
         error: createResult.error,
       });
+      // no-commits-recovery: 空リポジトリエラーを専用エラータイプで返す
+      if (createResult.error.type === 'NO_COMMITS_IN_REPO') {
+        return {
+          ok: false,
+          error: {
+            type: 'NO_COMMITS_IN_REPO',
+            message: createResult.error.message,
+          },
+        };
+      }
+      const errorMessage = 'message' in createResult.error
+        ? (createResult.error as { message: string }).message
+        : createResult.error.type;
       return {
         ok: false,
         error: { type: 'WORKTREE_CREATE_FAILED', message: errorMessage },

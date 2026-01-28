@@ -254,6 +254,17 @@ export class WorktreeService {
           error: { type: 'BRANCH_EXISTS', branch: branchName },
         };
       }
+      // no-commits-recovery: Check if repo has no commits
+      if (createBranchResult.error.type === 'GIT_ERROR' &&
+          createBranchResult.error.message.includes('not a valid object name')) {
+        return {
+          ok: false,
+          error: {
+            type: 'NO_COMMITS_IN_REPO',
+            message: 'リポジトリにコミットが存在しません。Worktreeを作成するには、最初のコミットが必要です。\n\n解決方法:\n  git add .\n  git commit -m "Initial commit"',
+          },
+        };
+      }
       return createBranchResult;
     }
 

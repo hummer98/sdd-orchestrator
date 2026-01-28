@@ -2,6 +2,7 @@
  * Worktree IPC Handlers
  * Git worktree operations via IPC for renderer process
  * Requirements: 1.1, 1.3, 1.6 (git-worktree-support)
+ * worktree-rebase-from-main: Task 13.1, 13.4 - Import getCurrentProjectPath for rebase handler
  */
 
 import { ipcMain } from 'electron';
@@ -9,6 +10,7 @@ import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
 import { logger } from '../services/logger';
 import { handleImplStartWithWorktree, handleImplStartNormalMode } from './worktreeImplHandlers';
+import { getCurrentProjectPath } from './handlers';
 import type {
   WorktreeInfo,
   WorktreeServiceResult,
@@ -138,6 +140,33 @@ export async function handleWorktreeResolvePath(
 }
 
 /**
+ * Handle worktree:rebase-from-main IPC call
+ * Rebase worktree branch from main branch
+ * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5 (worktree-rebase-from-main)
+ *
+ * @param projectPath - Project root path
+ * @param specOrBugPath - Relative path to spec or bug directory
+ * @returns Result with success and alreadyUpToDate flags
+ */
+export async function handleWorktreeRebaseFromMain(
+  projectPath: string,
+  specOrBugPath: string
+): Promise<WorktreeServiceResult<{ success: true; alreadyUpToDate?: boolean }>> {
+  logger.info('[worktreeHandlers] worktree:rebase-from-main called', { projectPath, specOrBugPath });
+
+  const service = new WorktreeService(projectPath);
+  const result = await service.executeRebaseFromMain(specOrBugPath);
+
+  if (!result.ok) {
+    logger.error('[worktreeHandlers] Rebase failed', { error: result.error });
+  } else {
+    logger.info('[worktreeHandlers] Rebase completed', { result: result.value });
+  }
+
+  return result;
+}
+
+/**
  * Register worktree IPC handlers
  * Should be called during app initialization
  */
@@ -200,6 +229,26 @@ export function registerWorktreeHandlers(): void {
         specPath,
       });
       return handleImplStartNormalMode(projectPath, specPath);
+    }
+  );
+
+  // worktree-rebase-from-main: Task 3.2, Task 13.1 - Rebase from main
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+  // Task 13.1: Updated to get projectPath from session state (spec-path-ssot-refactor compliance)
+  ipcMain.handle(
+    IPC_CHANNELS.WORKTREE_REBASE_FROM_MAIN,
+    async (_event, specOrBugPath: string) => {
+      const projectPath = getCurrentProjectPath();
+      if (!projectPath) {
+        return {
+          ok: false,
+          error: {
+            type: 'NO_PROJECT_SELECTED',
+            message: 'No project is currently selected',
+          },
+        };
+      }
+      return handleWorktreeRebaseFromMain(projectPath, specOrBugPath);
     }
   );
 

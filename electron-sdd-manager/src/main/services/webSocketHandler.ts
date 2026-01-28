@@ -925,6 +925,11 @@ export class WebSocketHandler {
       case 'CONVERT_TO_WORKTREE':
         await this.handleConvertToWorktree(client, message);
         break;
+      // Rebase from main handler (worktree-rebase-from-main feature)
+      // Requirements: 8.2 (Task 4.1)
+      case 'worktree:rebase-from-main':
+        await this.handleRebaseFromMain(client, message);
+        break;
       // Event Log handler (spec-event-log feature)
       // Requirements: 5.3
       case 'GET_EVENT_LOG':
@@ -3481,6 +3486,88 @@ export class WebSocketHandler {
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'CONVERT_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // ============================================================
+  // Rebase from main handler (worktree-rebase-from-main feature)
+  // Requirements: 8.2 (Task 4.1)
+  // ============================================================
+
+  /**
+   * Handle worktree:rebase-from-main message
+   * Rebase worktree branch from main
+   * Requirements: 8.2
+   */
+  private async handleRebaseFromMain(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { specOrBugPath?: string } | undefined;
+    const specOrBugPath = payload?.specOrBugPath;
+
+    if (!specOrBugPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'specOrBugPath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const projectPath = this.stateProvider?.getProjectPath();
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project path set' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      // Use the WorktreeService to execute rebase
+      const { WorktreeService } = await import('./worktreeService');
+      const worktreeService = new WorktreeService(projectPath);
+
+      const result = await worktreeService.executeRebaseFromMain(specOrBugPath);
+
+      if (!result.ok) {
+        // Extract error message from error - types with message: GIT_ERROR, SCRIPT_NOT_FOUND, CONFLICT_RESOLUTION_FAILED, etc.
+        const errorMessage = 'message' in result.error ? result.error.message : `Error: ${result.error.type}`;
+        this.send(client.id, {
+          type: 'ERROR',
+          payload: {
+            code: 'REBASE_FAILED',
+            message: errorMessage,
+            conflict: result.error.type === 'CONFLICT_RESOLUTION_FAILED',
+            error: errorMessage,
+          },
+          requestId: message.requestId,
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
+      this.send(client.id, {
+        type: 'worktree:rebase-from-main:result',
+        payload: {
+          success: true,
+          alreadyUpToDate: result.value.alreadyUpToDate,
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      console.error('[WebSocketHandler] Rebase from main failed', {
+        specOrBugPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'REBASE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });

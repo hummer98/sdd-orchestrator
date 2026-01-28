@@ -457,6 +457,32 @@ export function useRemoteWorkflowState(
     console.log('Show agent log - not implemented in Remote UI');
   }, []);
 
+  // worktree-rebase-from-main: Task 8.1b - Rebase from main handler for Remote UI
+  // Requirements: 8.1, 8.2, 8.3, 8.4
+  const [isRebasing, setIsRebasing] = useState(false);
+
+  const handleRebaseFromMain = useCallback(async () => {
+    if (!spec || !apiClient.rebaseFromMain) {
+      console.log('Rebase from main - API not available');
+      return;
+    }
+
+    setIsRebasing(true);
+    try {
+      const result = await apiClient.rebaseFromMain(spec.path);
+
+      if (result.ok) {
+        // Remote UI displays notifications via WebSocket or local state
+        // Success/error handling would be done in the UI layer
+        await refreshSpecDetail();
+      } else {
+        console.error('Failed to rebase from main:', result.error);
+      }
+    } finally {
+      setIsRebasing(false);
+    }
+  }, [apiClient, spec, refreshSpecDetail]);
+
   // ---------------------------------------------------------------------------
   // Build State Object
   // ---------------------------------------------------------------------------
@@ -500,6 +526,8 @@ export function useRemoteWorkflowState(
     hasExistingWorktree,
     isOnMain: true, // Remote UI doesn't know about git state
     isConverting,
+    // worktree-rebase-from-main: Task 8.1b - Rebase state for Remote UI
+    isRebasing,
 
     // Parallel Execution
     parallelModeEnabled,
@@ -560,6 +588,8 @@ export function useRemoteWorkflowState(
     handleToggleParallelMode,
     handleToggleImplMode,
     handleConvertToWorktree,
+    // worktree-rebase-from-main: Task 8.1b - Rebase handler for Remote UI
+    handleRebaseFromMain,
     handleShowEventLog,
     handleShowAgentLog,
   }), [
@@ -582,6 +612,8 @@ export function useRemoteWorkflowState(
     handleToggleParallelMode,
     handleToggleImplMode,
     handleConvertToWorktree,
+    // worktree-rebase-from-main: Task 8.1b - Rebase handler dependency
+    handleRebaseFromMain,
     handleShowEventLog,
     handleShowAgentLog,
   ]);

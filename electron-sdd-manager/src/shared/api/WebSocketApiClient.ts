@@ -1313,4 +1313,28 @@ export class WebSocketApiClient implements ApiClient {
   async stopWatching(projectPath: string): Promise<Result<void, ApiError>> {
     return this.wrapRequest<void>('GIT_UNWATCH_CHANGES', { projectPath });
   }
+
+  // ===========================================================================
+  // Worktree Operations (worktree-rebase-from-main)
+  // Task 5.1b: WebSocketApiClient.rebaseFromMain
+  // Requirements: 8.2
+  // ===========================================================================
+
+  async rebaseFromMain(specOrBugPath: string): Promise<Result<{
+    success: true;
+    alreadyUpToDate?: boolean;
+  } | {
+    success: false;
+    conflict?: boolean;
+    error?: string;
+  }, ApiError>> {
+    return this.wrapRequest<{
+      success: true;
+      alreadyUpToDate?: boolean;
+    } | {
+      success: false;
+      conflict?: boolean;
+      error?: string;
+    }>('worktree:rebase-from-main', { specOrBugPath });
+  }
 }

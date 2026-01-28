@@ -92,6 +92,11 @@ export interface WorkflowState {
   isOnMain: boolean;
   /** Worktree変換中フラグ */
   isConverting: boolean;
+  /**
+   * worktree-rebase-from-main: Rebase処理中フラグ
+   * Requirements: 1.5, 2.5 (Task 6.1, 6.2)
+   */
+  isRebasing?: boolean;
 
   // ---------------------------------------------------------------------------
   // Parallel Execution State
@@ -207,6 +212,11 @@ export interface WorkflowHandlers {
   // ---------------------------------------------------------------------------
   /** Worktreeに変換 */
   handleConvertToWorktree: () => Promise<void>;
+  /**
+   * worktree-rebase-from-main: mainブランチの変更を取り込み
+   * Requirements: 1.1 (Task 7.1)
+   */
+  handleRebaseFromMain?: () => Promise<void>;
 
   // ---------------------------------------------------------------------------
   // Event Log

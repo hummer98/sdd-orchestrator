@@ -3,6 +3,7 @@
  *
  * Task 5.2: 共有bugStoreを実装する
  * bugs-view-unification: Task 2.1, 2.2, 2.3 - Extended with bugDetail, handleBugsChanged, watching
+ * Task 12.3: handleRebaseResultに通知表示ロジック追加
  *
  * IPC依存を除去し、ApiClient経由でデータを取得する共有ストア。
  * Electron版とRemote UI版で同一storeを使用可能。
@@ -10,10 +11,38 @@
 
 import { create } from 'zustand';
 import type { ApiClient, BugMetadata, BugDetail, BugsChangeEvent } from '../api/types';
+import { useNotificationStore } from './notificationStore';
 
 // =============================================================================
 // Types
 // =============================================================================
+
+/**
+ * Rebase result success response
+ */
+export interface RebaseSuccessResult {
+  ok: true;
+  value: { success: true; alreadyUpToDate?: boolean };
+}
+
+/**
+ * Rebase result error response
+ */
+export interface RebaseErrorResult {
+  ok: false;
+  error: {
+    type: string;
+    message?: string;
+    reason?: string;
+  };
+}
+
+/**
+ * Rebase result response type (Result pattern)
+ * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+ * Task 12.3: Updated to Result pattern for consistent error handling
+ */
+export type RebaseFromMainResponse = RebaseSuccessResult | RebaseErrorResult;
 
 export interface SharedBugState {
   /** Bug一覧 */
@@ -35,6 +64,11 @@ export interface SharedBugState {
   isCreating: boolean;
   /** ファイル監視中フラグ (bugs-view-unification Task 2.3) */
   isWatching: boolean;
+  /**
+   * Rebase処理中フラグ
+   * Requirements: 7.1 (Task 6.2)
+   */
+  isRebasing: boolean;
 }
 
 export interface SharedBugActions {
@@ -87,6 +121,16 @@ export interface SharedBugActions {
    * Requirements: 3.7
    */
   stopWatching: (apiClient: ApiClient) => void;
+  /**
+   * Rebase処理中状態を設定
+   * Requirements: 7.1, 7.2 (Task 6.2)
+   */
+  setIsRebasing: (isRebasing: boolean) => void;
+  /**
+   * Rebase結果を処理し、通知を表示
+   * Requirements: 7.3, 7.4, 7.5 (Task 6.2)
+   */
+  handleRebaseResult: (result: RebaseFromMainResponse) => void;
 }
 
 export type SharedBugStore = SharedBugState & SharedBugActions;
@@ -108,6 +152,7 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   useWorktree: false,
   isCreating: false,
   isWatching: false,
+  isRebasing: false,
 
   // Actions
   loadBugs: async (apiClient: ApiClient) => {
@@ -324,6 +369,62 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
     set({ isWatching: false });
     console.log('[useSharedBugStore] Bugs watcher stopped');
   },
+
+  // Task 6.2: Rebase state management
+  // Requirements: 7.1, 7.2
+  setIsRebasing: (isRebasing: boolean) => {
+    set({ isRebasing });
+  },
+
+  // Task 6.2, Task 12.3: Rebase result handler with notification
+  // Requirements: 7.3, 7.4, 7.5
+  handleRebaseResult: (result: RebaseFromMainResponse) => {
+    // Always reset isRebasing flag
+    set({ isRebasing: false });
+
+    // Task 12.3: Show notification based on result
+    const { showNotification } = useNotificationStore.getState();
+
+    if (result.ok) {
+      // Success case
+      if (result.value.alreadyUpToDate) {
+        // Requirement 7.4: Already up to date info notification
+        showNotification({
+          type: 'info',
+          message: '既に最新です',
+        });
+      } else {
+        // Requirement 7.3: Success notification
+        showNotification({
+          type: 'success',
+          message: 'mainブランチの変更を取り込みました',
+        });
+      }
+    } else {
+      // Error case
+      const errorType = result.error.type;
+
+      if (errorType === 'CONFLICT_RESOLUTION_FAILED') {
+        // Requirement 7.5: Conflict resolution failed
+        showNotification({
+          type: 'error',
+          message: 'コンフリクトを解決できませんでした。手動で解決してください',
+        });
+      } else if (errorType === 'SCRIPT_NOT_FOUND') {
+        // Requirement 7.5: Script not found error
+        showNotification({
+          type: 'error',
+          message: 'スクリプトが見つかりません。commandsetを再インストールしてください',
+        });
+      } else {
+        // Requirement 7.5: Generic error with message
+        showNotification({
+          type: 'error',
+          message: result.error.message || 'Rebaseに失敗しました',
+        });
+      }
+    }
+  },
 }));
 
 // =============================================================================
@@ -333,6 +434,7 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
 /**
  * テスト用: ストアを初期状態にリセット
  * bugs-view-unification: Added bugDetail and isWatching reset
+ * worktree-rebase-from-main: Added isRebasing reset
  */
 export function resetSharedBugStore(): void {
   // Clean up watcher subscription
@@ -350,6 +452,7 @@ export function resetSharedBugStore(): void {
     useWorktree: false,
     isCreating: false,
     isWatching: false,
+    isRebasing: false,
   });
 }
 

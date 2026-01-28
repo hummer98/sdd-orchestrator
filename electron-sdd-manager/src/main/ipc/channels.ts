@@ -401,6 +401,10 @@ export const IPC_CHANNELS = {
   GIT_UNWATCH_CHANGES: 'git:unwatch-changes',
   // Events (Main -> Renderer)
   GIT_CHANGES_DETECTED: 'git:changes-detected',
+
+  // Worktree Rebase from Main (worktree-rebase-from-main feature)
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+  WORKTREE_REBASE_FROM_MAIN: 'worktree:rebase-from-main',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

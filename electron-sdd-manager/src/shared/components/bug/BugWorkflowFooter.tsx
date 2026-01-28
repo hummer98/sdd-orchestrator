@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { Bot, Square, GitBranch, Loader2 } from 'lucide-react';
+import { Bot, Square, GitBranch, Loader2, GitMerge } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // =============================================================================
@@ -53,6 +53,7 @@ export interface BugJson {
 /**
  * Props for BugWorkflowFooter
  * Requirements: 7.2 - maintain existing functionality
+ * worktree-rebase-from-main: Task 7.2 - Added rebase props
  */
 export interface BugWorkflowFooterProps {
   /** Current auto-execution state */
@@ -69,6 +70,16 @@ export interface BugWorkflowFooterProps {
   onConvertToWorktree: () => void;
   /** Whether worktree conversion is in progress */
   isConverting: boolean;
+  /**
+   * worktree-rebase-from-main: Rebase処理中かどうか
+   * Requirements: 2.5 (Task 7.2)
+   */
+  isRebasing?: boolean;
+  /**
+   * worktree-rebase-from-main: 「mainを取り込み」ボタンクリック時のハンドラ
+   * Requirements: 2.1 (Task 7.2)
+   */
+  onRebaseFromMain?: () => void;
 }
 
 // =============================================================================
@@ -107,10 +118,12 @@ export function canShowBugConvertButton(
 /**
  * BugWorkflowFooter Component
  * Requirements: 7.1, 7.2, 7.3
+ * worktree-rebase-from-main: Task 7.2 - Added rebase button
  *
  * Platform-agnostic footer component with:
  * - Auto-execution start/stop button
  * - Worktree conversion button (when applicable)
+ * - Rebase from main button (when in worktree mode)
  */
 export function BugWorkflowFooter({
   isAutoExecuting,
@@ -120,12 +133,17 @@ export function BugWorkflowFooter({
   bugJson,
   onConvertToWorktree,
   isConverting,
+  isRebasing = false,
+  onRebaseFromMain,
 }: BugWorkflowFooterProps): React.ReactElement {
   const showConvertButton = canShowBugConvertButton(isOnMain, bugJson);
+  // Task 7.2: Show rebase button when in worktree mode (Requirements: 2.1, 2.2)
+  const showRebaseButton = bugJson?.worktree && !isOnMain && onRebaseFromMain;
 
   // Disable when agents running
   const autoExecutionDisabled = hasRunningAgents && !isAutoExecuting;
   const convertDisabled = hasRunningAgents || isAutoExecuting || isConverting;
+  const rebaseDisabled = hasRunningAgents || isAutoExecuting || isRebasing;
 
   return (
     <div
@@ -190,6 +208,36 @@ export function BugWorkflowFooter({
             <>
               <GitBranch className="w-4 h-4" />
               <span>Worktreeに変換</span>
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Task 7.2: 「mainを取り込み」ボタン (worktree-rebase-from-main) */}
+      {/* Requirements: 2.1, 2.2, 2.3, 2.4, 2.5 */}
+      {showRebaseButton && (
+        <button
+          data-testid="bug-rebase-from-main-button"
+          onClick={onRebaseFromMain}
+          disabled={rebaseDisabled}
+          className={clsx(
+            'flex items-center justify-center gap-2 px-4 py-2 rounded-md',
+            'text-sm font-medium transition-colors',
+            !rebaseDisabled
+              ? 'bg-purple-500 text-white hover:bg-purple-600'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
+          )}
+          title="mainブランチの最新変更を取り込む"
+        >
+          {isRebasing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>取り込み中...</span>
+            </>
+          ) : (
+            <>
+              <GitMerge className="w-4 h-4" />
+              <span>mainを取り込み</span>
             </>
           )}
         </button>

@@ -580,4 +580,29 @@ export class IpcApiClient implements ApiClient {
       return { ok: false, error: result.error };
     }
   }
+
+  // ===========================================================================
+  // Worktree Operations (worktree-rebase-from-main)
+  // Task 5.1a: IpcApiClient.rebaseFromMain
+  // Requirements: 5.1
+  // ===========================================================================
+
+  async rebaseFromMain(specOrBugPath: string): Promise<Result<{
+    success: true;
+    alreadyUpToDate?: boolean;
+  } | {
+    success: false;
+    conflict?: boolean;
+    error?: string;
+  }, ApiError>> {
+    checkElectronAPI();
+    // Don't use wrapResult since electronAPI.rebaseFromMain already returns Result type
+    const result = await window.electronAPI.rebaseFromMain(specOrBugPath);
+    if (result.ok) {
+      return { ok: true, value: { success: true, alreadyUpToDate: result.value.alreadyUpToDate } };
+    } else {
+      const isConflict = result.error.type === 'CONFLICT_RESOLUTION_FAILED';
+      return { ok: true, value: { success: false, conflict: isConflict, error: result.error.message } };
+    }
+  }
 }

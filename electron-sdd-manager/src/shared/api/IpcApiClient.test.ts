@@ -151,4 +151,33 @@ describe('IpcApiClient', () => {
       expect(content).toMatch(/onBugsChanged[\s\S]*window\.electronAPI\.onBugsChanged/);
     });
   });
+
+  // ===========================================================================
+  // worktree-rebase-from-main: Task 5.1a - rebaseFromMain
+  // Requirements: 5.1
+  // ===========================================================================
+
+  describe('rebaseFromMain method', () => {
+    it('should implement rebaseFromMain method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async rebaseFromMain(');
+    });
+
+    it('should call window.electronAPI.rebaseFromMain', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('window.electronAPI.rebaseFromMain');
+    });
+
+    it('should pass specOrBugPath parameter to IPC', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should invoke rebaseFromMain with specOrBugPath
+      expect(content).toMatch(/window\.electronAPI\.rebaseFromMain\(specOrBugPath\)/);
+    });
+
+    it('should return Result type with success or error', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should wrap the result using wrapResult helper
+      expect(content).toMatch(/rebaseFromMain[\s\S]*?wrapResult/);
+    });
+  });
 });

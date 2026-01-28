@@ -657,6 +657,22 @@ export interface ApiClient {
     created_at: string;
   }, ApiError>>;
 
+  /**
+   * Rebase worktree branch from main
+   * worktree-rebase-from-main: Task 5.1a, 5.1b
+   * Requirements: 5.1, 8.2
+   * @param specOrBugPath - Full path to spec or bug directory (e.g., '.kiro/specs/my-feature' or '.kiro/bugs/my-bug')
+   * @returns Success with alreadyUpToDate flag, or conflict/error info
+   */
+  rebaseFromMain?(specOrBugPath: string): Promise<Result<{
+    success: true;
+    alreadyUpToDate?: boolean;
+  } | {
+    success: false;
+    conflict?: boolean;
+    error?: string;
+  }, ApiError>>;
+
   // ===========================================================================
   // Spec Plan Operations (remote-ui-create-buttons feature)
   // Requirements: 3.1

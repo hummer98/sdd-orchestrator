@@ -66,3 +66,8 @@ export {
   getSharedGitViewStore,
 } from './gitViewStore';
 
+// Notification store (worktree-rebase-from-main)
+// Task 12.2, 12.3: Shared notification interface for stores
+export { useNotificationStore, setNotificationHandler } from './notificationStore';
+export type { NotificationData, SharedNotificationStore } from './notificationStore';
+

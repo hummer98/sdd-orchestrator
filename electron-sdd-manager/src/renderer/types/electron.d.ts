@@ -1811,6 +1811,25 @@ export interface ElectronAPI {
   onGitChangesDetected(
     callback: (event: unknown, data: { projectPath: string }) => void
   ): () => void;
+
+  // ============================================================
+  // Worktree Rebase from Main (worktree-rebase-from-main feature)
+  // Task 13.1: Add rebaseFromMain to ElectronAPI type definition
+  // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+  // ============================================================
+
+  /**
+   * Rebase worktree branch from main branch
+   * @param specOrBugPath Path to spec or bug directory (e.g., .kiro/specs/my-feature or .kiro/bugs/my-bug)
+   * @returns Result with success and alreadyUpToDate flags
+   */
+  rebaseFromMain(specOrBugPath: string): Promise<{
+    ok: true;
+    value: { success: true; alreadyUpToDate?: boolean };
+  } | {
+    ok: false;
+    error: { type: string; message: string; reason?: string };
+  }>;
 }
 
 declare global {

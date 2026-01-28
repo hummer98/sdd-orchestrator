@@ -358,6 +358,43 @@ export function BugWorkflowView() {
     }
   }, [bugName, handleConvert, apiClient]);
 
+  // worktree-rebase-from-main: Task 8.1c - Rebase from main handler
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+  // Task 13.4: Construct bugPath from bugName (spec-path-ssot-refactor compliance)
+  const handleRebaseFromMain = useCallback(async () => {
+    if (!bugName || !bugDetail) return;
+
+    const bugStore = useSharedBugStore.getState();
+    bugStore.setIsRebasing(true);
+
+    try {
+      // Construct bug path from name (path field was removed in spec-path-ssot-refactor)
+      const bugPath = `.kiro/bugs/${bugName}`;
+      const result = await window.electronAPI.rebaseFromMain(bugPath);
+
+      // handleRebaseResult expects the full result (not just value)
+      bugStore.handleRebaseResult(result);
+
+      if (result.ok) {
+        // Success: display notification based on alreadyUpToDate flag
+        if (result.value.alreadyUpToDate) {
+          notify.info('既に最新です');
+        } else {
+          notify.success('mainブランチの変更を取り込みました');
+        }
+
+        // Refresh bug detail after rebase
+        await bugStore.selectBug(apiClient, bugName);
+      } else {
+        // Error: display error message
+        notify.error(result.error.message || 'Rebaseに失敗しました');
+      }
+    } catch (error) {
+      bugStore.setIsRebasing(false);
+      notify.error(error instanceof Error ? error.message : 'Rebaseに失敗しました');
+    }
+  }, [bugName, bugDetail, apiClient]);
+
   // If no bug is selected, show placeholder
   if (!selectedBug) {
     return (
@@ -435,6 +472,9 @@ export function BugWorkflowView() {
         } : null}
         onConvertToWorktree={handleConvertToWorktree}
         isConverting={isConverting}
+        // worktree-rebase-from-main: Task 8.1c - Rebase props
+        isRebasing={useSharedBugStore.getState().isRebasing}
+        onRebaseFromMain={handleRebaseFromMain}
       />
     </div>
   );

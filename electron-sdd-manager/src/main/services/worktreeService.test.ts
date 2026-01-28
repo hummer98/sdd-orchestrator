@@ -8,7 +8,24 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as path from 'path';
+import * as fs from 'fs';
 import { WorktreeService, isValidFeatureName, validateFeatureName, type ExecFunction } from './worktreeService';
+
+// Mock fs module for executeRebaseFromMain tests
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal() as typeof fs;
+  return {
+    ...actual,
+    existsSync: vi.fn((filePath: string) => {
+      // Mock rebase-worktree.sh as existing by default
+      if (filePath.includes('rebase-worktree.sh')) {
+        return true;
+      }
+      // Call original for other paths
+      return actual.existsSync(filePath);
+    }),
+  };
+});
 
 /**
  * Create a mock exec function that returns specified results based on command patterns
@@ -897,6 +914,278 @@ describe('WorktreeService', () => {
 
       expect(aliasResult.relative).toBe(entityResult.relative);
       expect(aliasResult.absolute).toBe(entityResult.absolute);
+    });
+  });
+
+  // ============================================================
+  // worktree-rebase-from-main: Task 2.1 - executeRebaseFromMain
+  // Requirements: 4.1, 5.1, 5.2, 5.3, 5.4, 10.1, 10.2
+  // ============================================================
+  describe('executeRebaseFromMain', () => {
+    it('should return success when rebase completes successfully', async () => {
+      const mockExec = createMockExec([
+        { pattern: /rebase-worktree\.sh/, stdout: 'Rebase completed successfully\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.success).toBe(true);
+        expect(result.value.alreadyUpToDate).toBeUndefined();
+      }
+    });
+
+    it('should return alreadyUpToDate: true when no new commits', async () => {
+      const mockExec = createMockExec([
+        { pattern: /rebase-worktree\.sh/, stdout: 'Already up to date\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.success).toBe(true);
+        expect(result.value.alreadyUpToDate).toBe(true);
+      }
+    });
+
+    it('should return SCRIPT_NOT_FOUND error when rebase-worktree.sh does not exist', async () => {
+      // Mock fs.existsSync to return false for rebase-worktree.sh
+      vi.mocked(fs.existsSync).mockImplementation((filePath: fs.PathLike) => {
+        if (String(filePath).includes('rebase-worktree.sh')) {
+          return false;
+        }
+        return true;
+      });
+
+      const mockExec = createMockExec([]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      const result = await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SCRIPT_NOT_FOUND');
+      }
+
+      // Restore mock for other tests
+      vi.mocked(fs.existsSync).mockImplementation((filePath: fs.PathLike) => {
+        if (String(filePath).includes('rebase-worktree.sh')) {
+          return true;
+        }
+        return true;
+      });
+    });
+
+    it('should trigger AI conflict resolution when exit code 1', async () => {
+      const mockExec = createMockExec([
+        {
+          pattern: /rebase-worktree\.sh/,
+          error: { message: 'Exit code 1', code: 1 } as any,
+          stderr: 'Conflict detected during rebase'
+        },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+      // Mock resolveConflictWithAI to succeed immediately
+      vi.spyOn(service as any, 'resolveConflictWithAI').mockResolvedValue({ ok: true, value: undefined });
+
+      const result = await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.success).toBe(true);
+      }
+      expect((service as any).resolveConflictWithAI).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return conflict error when AI resolution fails', async () => {
+      const mockExec = createMockExec([
+        {
+          pattern: /rebase-worktree\.sh/,
+          error: { message: 'Exit code 1', code: 1 } as any,
+          stderr: 'Conflict detected during rebase'
+        },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+      // Mock resolveConflictWithAI to fail
+      vi.spyOn(service as any, 'resolveConflictWithAI').mockResolvedValue({
+        ok: false,
+        error: { type: 'CONFLICT_RESOLUTION_FAILED', reason: 'max_retries_exceeded' }
+      });
+
+      const result = await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('CONFLICT_RESOLUTION_FAILED');
+      }
+    });
+
+    it('should handle bugs path correctly', async () => {
+      let capturedCommand = '';
+      const mockExec = (
+        command: string,
+        _options: { cwd: string },
+        callback: (error: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        capturedCommand = command;
+        callback(null, 'Rebase completed successfully\n', '');
+        return { kill: () => {} };
+      };
+      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
+
+      await service.executeRebaseFromMain('.kiro/bugs/my-bug');
+
+      expect(capturedCommand).toContain('rebase-worktree.sh');
+      expect(capturedCommand).toContain('bug:my-bug');
+    });
+
+    it('should handle specs path correctly', async () => {
+      let capturedCommand = '';
+      const mockExec = (
+        command: string,
+        _options: { cwd: string },
+        callback: (error: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        capturedCommand = command;
+        callback(null, 'Rebase completed successfully\n', '');
+        return { kill: () => {} };
+      };
+      const service = new WorktreeService(projectPath, mockExec as ExecFunction);
+
+      await service.executeRebaseFromMain('.kiro/specs/my-feature');
+
+      expect(capturedCommand).toContain('rebase-worktree.sh');
+      expect(capturedCommand).toContain('my-feature');
+      expect(capturedCommand).not.toContain('bug:');
+    });
+  });
+
+  // ============================================================
+  // worktree-rebase-from-main: Task 2.2 - resolveConflictWithAI
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 10.5
+  // ============================================================
+  describe('resolveConflictWithAI', () => {
+    it('should resolve conflict on first attempt and continue rebase with git', async () => {
+      const mockExec = createMockExec([
+        // First call: check if jj is available (not available)
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        // Second call: git rebase --continue (success)
+        { pattern: /git rebase --continue/, stdout: 'Rebase completed successfully\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Mock AI resolution to succeed immediately
+      const mockResolveConflict = vi.fn().mockResolvedValue(true);
+      (service as any).mockResolveConflict = mockResolveConflict;
+
+      const result = await (service as any).resolveConflictWithAI('.kiro/specs/my-feature', 7);
+
+      expect(result.ok).toBe(true);
+      expect(mockResolveConflict).toHaveBeenCalledTimes(1);
+    });
+
+    it('should resolve conflict on first attempt and continue rebase with jj', async () => {
+      const mockExec = createMockExec([
+        // First call: check if jj is available (available)
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        // Second call: jj squash (success)
+        { pattern: /jj squash/, stdout: 'Squash completed successfully\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Mock AI resolution to succeed immediately
+      const mockResolveConflict = vi.fn().mockResolvedValue(true);
+      (service as any).mockResolveConflict = mockResolveConflict;
+
+      const result = await (service as any).resolveConflictWithAI('.kiro/specs/my-feature', 7);
+
+      expect(result.ok).toBe(true);
+      expect(mockResolveConflict).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry up to maxRetries times and fail after 7 attempts with git', async () => {
+      const mockExec = createMockExec([
+        // 7 attempts: jj check (all fail)
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        // Final abort
+        { pattern: /git rebase --abort/, stdout: 'Rebase aborted\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Mock AI resolution to fail all attempts
+      const mockResolveConflict = vi.fn().mockResolvedValue(false);
+      (service as any).mockResolveConflict = mockResolveConflict;
+
+      const result = await (service as any).resolveConflictWithAI('.kiro/specs/my-feature', 7);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('CONFLICT_RESOLUTION_FAILED');
+        expect(result.error.reason).toBe('max_retries_exceeded');
+      }
+      expect(mockResolveConflict).toHaveBeenCalledTimes(7);
+    });
+
+    it('should abort with jj undo after max retries', async () => {
+      const mockExec = createMockExec([
+        // 7 attempts: jj check (all succeed, indicating jj is available)
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        { pattern: /command -v jj/, stdout: '/usr/local/bin/jj\n' },
+        // Final abort
+        { pattern: /jj undo/, stdout: 'Undo completed\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Mock AI resolution to fail all attempts
+      const mockResolveConflict = vi.fn().mockResolvedValue(false);
+      (service as any).mockResolveConflict = mockResolveConflict;
+
+      const result = await (service as any).resolveConflictWithAI('.kiro/specs/my-feature', 7);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.reason).toBe('max_retries_exceeded');
+      }
+      expect(mockResolveConflict).toHaveBeenCalledTimes(7);
+    });
+
+    it('should succeed on 3rd retry attempt', async () => {
+      const mockExec = createMockExec([
+        // First 2 attempts fail
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        // Third attempt succeeds
+        { pattern: /command -v jj/, stderr: 'jj not found', exitCode: 1 },
+        { pattern: /git rebase --continue/, stdout: 'Rebase completed successfully\n' },
+      ]);
+      const service = new WorktreeService(projectPath, mockExec);
+
+      // Mock AI resolution to fail twice, then succeed
+      const mockResolveConflict = vi.fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      (service as any).mockResolveConflict = mockResolveConflict;
+
+      const result = await (service as any).resolveConflictWithAI('.kiro/specs/my-feature', 7);
+
+      expect(result.ok).toBe(true);
+      expect(mockResolveConflict).toHaveBeenCalledTimes(3);
     });
   });
 });

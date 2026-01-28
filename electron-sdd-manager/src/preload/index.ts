@@ -1644,6 +1644,23 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_RESOLVE_PATH, projectPath, relativePath),
 
   /**
+   * Rebase worktree branch from main branch
+   * worktree-rebase-from-main Task 3.2, Task 13.1: IPC Handler and preload API
+   * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+   * Task 13.1: Updated to get projectPath from session state (spec-path-ssot-refactor compliance)
+   * @param specOrBugPath Relative path to spec or bug directory (e.g., .kiro/specs/my-feature)
+   * @returns Result with success and alreadyUpToDate flags
+   */
+  rebaseFromMain: (specOrBugPath: string): Promise<{
+    ok: true;
+    value: { success: true; alreadyUpToDate?: boolean };
+  } | {
+    ok: false;
+    error: { type: string; message: string; reason?: string };
+  }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.WORKTREE_REBASE_FROM_MAIN, specOrBugPath),
+
+  /**
    * Start impl in worktree mode
    * Task 14.3: Create worktree and prepare for impl execution
    * Requirements: 9.5, 9.6, 9.7

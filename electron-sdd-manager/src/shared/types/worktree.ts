@@ -43,11 +43,13 @@ export interface WithWorktree {
  * Check if spec has a worktree directory (actual worktree mode with path)
  * Use this to determine if spec-merge is needed instead of commit.
  *
- * @param specJson - Object with optional worktree field
+ * Task 13.5: Updated to accept null/undefined for safer usage in UI components
+ *
+ * @param specJson - Object with optional worktree field, or null/undefined
  * @returns true if spec.worktree.path exists and is non-empty
  */
-export function hasWorktreePath(specJson: WithWorktree): boolean {
-  if (!specJson.worktree || typeof specJson.worktree !== 'object') {
+export function hasWorktreePath(specJson: WithWorktree | null | undefined): boolean {
+  if (!specJson || !specJson.worktree || typeof specJson.worktree !== 'object') {
     return false;
   }
 
@@ -93,7 +95,10 @@ export type WorktreeError =
   | { type: 'WORKTREE_CREATE_FAILED'; message: string }
   | { type: 'FILE_MOVE_FAILED'; message: string }
   | { type: 'SYMLINK_CREATE_FAILED'; message: string }
-  | { type: 'SPEC_JSON_UPDATE_FAILED'; message: string };
+  | { type: 'SPEC_JSON_UPDATE_FAILED'; message: string }
+  // worktree-rebase-from-main: Additional error types for rebase operations
+  | { type: 'SCRIPT_NOT_FOUND'; message: string }
+  | { type: 'CONFLICT_RESOLUTION_FAILED'; message: string; reason: string };
 
 /**
  * Worktree info returned from WorktreeService.createWorktree

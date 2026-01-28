@@ -554,3 +554,59 @@ describe('bugStore - startWatching/stopWatching', () => {
     expect(unsubscribeMock).toHaveBeenCalled();
   });
 });
+
+// =============================================================================
+// Task 6.2: Rebase state management tests (worktree-rebase-from-main)
+// Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+// =============================================================================
+
+describe('bugStore - rebase state management (Task 6.2)', () => {
+  beforeEach(() => {
+    resetSharedBugStore();
+  });
+
+  it('isRebasingが初期状態でfalseである', () => {
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+
+  it('setIsRebasing(true)でisRebasingをtrueに設定する', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(true);
+  });
+
+  it('setIsRebasing(false)でisRebasingをfalseに設定する', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+    useSharedBugStore.getState().setIsRebasing(false);
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+
+  it('handleRebaseResult - 成功時にisRebasingをfalseにする', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+    useSharedBugStore.getState().handleRebaseResult({ ok: true, value: { success: true } });
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+
+  it('handleRebaseResult - Already up to date時にisRebasingをfalseにする', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+    useSharedBugStore.getState().handleRebaseResult({ ok: true, value: { success: true, alreadyUpToDate: true } });
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+
+  it('handleRebaseResult - エラー時にisRebasingをfalseにする', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+    useSharedBugStore.getState().handleRebaseResult({ ok: false, error: { type: 'SCRIPT_NOT_FOUND', message: 'Script not found' } });
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+
+  it('handleRebaseResult - コンフリクト時にisRebasingをfalseにする', () => {
+    useSharedBugStore.getState().setIsRebasing(true);
+    useSharedBugStore.getState().handleRebaseResult({ ok: false, error: { type: 'CONFLICT_RESOLUTION_FAILED', message: 'Conflict resolution failed' } });
+
+    expect(useSharedBugStore.getState().isRebasing).toBe(false);
+  });
+});

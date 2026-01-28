@@ -330,4 +330,34 @@ describe('WebSocketApiClient', () => {
       expect(content).toMatch(/MAX_RECONNECT_ATTEMPTS\s*=\s*5/);
     });
   });
+
+  // ===========================================================================
+  // worktree-rebase-from-main: Task 5.1b - rebaseFromMain
+  // Requirements: 8.2
+  // ===========================================================================
+
+  describe('rebaseFromMain method', () => {
+    it('should implement rebaseFromMain method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async rebaseFromMain(');
+    });
+
+    it('should send worktree:rebase-from-main message', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should use sendRequest or wrapRequest with the correct message type
+      expect(content).toMatch(/['"]worktree:rebase-from-main['"]/);
+    });
+
+    it('should pass specOrBugPath in payload', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should include specOrBugPath in the request payload
+      expect(content).toMatch(/rebaseFromMain[\s\S]*?specOrBugPath/);
+    });
+
+    it('should return Result type', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should use wrapRequest which returns Result type
+      expect(content).toMatch(/rebaseFromMain[\s\S]*?wrapRequest/);
+    });
+  });
 });

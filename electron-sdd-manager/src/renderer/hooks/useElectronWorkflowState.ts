@@ -17,6 +17,8 @@ import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
 import { useParallelModeStore } from '@shared/stores/parallelModeStore';
 import { useMetricsStore } from '../stores/metricsStore';
+// worktree-rebase-from-main Task 13.2: Import shared specStore for rebase operations
+import { useSharedSpecStore } from '@shared/stores/specStore';
 import { useLaunchingState } from '@shared/hooks';
 import { useAutoExecution } from './useAutoExecution';
 import { useConvertToWorktree } from './useConvertToWorktree';
@@ -515,6 +517,29 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     console.log('Show agent log for phase:', phase);
   }, []);
 
+  // worktree-rebase-from-main: Task 8.1a - Rebase from main handler
+  // Requirements: 1.1, 1.5
+  // Task 13.2, 13.4: Use shared specStore for rebase state and construct specPath from specName
+  const handleRebaseFromMain = useCallback(async () => {
+    if (!specDetail || !currentProject) return;
+
+    // Task 13.2: Use shared specStore which has setIsRebasing and handleRebaseResult
+    const sharedSpecStore = useSharedSpecStore.getState();
+    sharedSpecStore.setIsRebasing(true);
+
+    try {
+      // Construct spec path from name (path field was removed in spec-path-ssot-refactor)
+      const specPath = `.kiro/specs/${specDetail.metadata.name}`;
+      const result = await window.electronAPI.rebaseFromMain(specPath);
+
+      // Task 13.2: handleRebaseResult handles isRebasing reset and notifications
+      sharedSpecStore.handleRebaseResult(result);
+    } catch (error) {
+      sharedSpecStore.setIsRebasing(false);
+      notify.error(error instanceof Error ? error.message : 'Rebaseに失敗しました');
+    }
+  }, [specDetail, currentProject]);
+
   // ---------------------------------------------------------------------------
   // Build State Object
   // ---------------------------------------------------------------------------
@@ -550,6 +575,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     hasExistingWorktree,
     isOnMain,
     isConverting,
+    // worktree-rebase-from-main: Task 8.1a, Task 13.2 - Rebase state from shared store
+    isRebasing: useSharedSpecStore.getState().isRebasing,
 
     // Parallel Execution
     parallelModeEnabled,
@@ -619,6 +646,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     handleToggleParallelMode,
     handleToggleImplMode,
     handleConvertToWorktree,
+    // worktree-rebase-from-main: Task 8.1a - Rebase handler
+    handleRebaseFromMain,
     handleShowEventLog,
     handleShowAgentLog,
   }), [
@@ -641,6 +670,8 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     handleToggleParallelMode,
     handleToggleImplMode,
     handleConvertToWorktree,
+    // worktree-rebase-from-main: Task 8.1a - Rebase handler dependency
+    handleRebaseFromMain,
     handleShowEventLog,
     handleShowAgentLog,
   ]);

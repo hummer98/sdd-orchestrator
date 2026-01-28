@@ -263,4 +263,87 @@ describe('useSharedSpecStore', () => {
       expect(result.current.error).toBeNull();
     });
   });
+
+  describe('rebase state management (Task 6.1)', () => {
+    it('isRebasingが初期状態でfalseである', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+
+    it('setIsRebasing(true)でisRebasingをtrueに設定する', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+
+      expect(result.current.isRebasing).toBe(true);
+    });
+
+    it('setIsRebasing(false)でisRebasingをfalseに設定する', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+      act(() => {
+        result.current.setIsRebasing(false);
+      });
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+
+    it('handleRebaseResult - 成功時にisRebasingをfalseにする', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+      act(() => {
+        result.current.handleRebaseResult({ ok: true, value: { success: true } });
+      });
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+
+    it('handleRebaseResult - Already up to date時にisRebasingをfalseにする', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+      act(() => {
+        result.current.handleRebaseResult({ ok: true, value: { success: true, alreadyUpToDate: true } });
+      });
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+
+    it('handleRebaseResult - エラー時にisRebasingをfalseにする', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+      act(() => {
+        result.current.handleRebaseResult({ ok: false, error: { type: 'SCRIPT_NOT_FOUND', message: 'Script not found' } });
+      });
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+
+    it('handleRebaseResult - コンフリクト時にisRebasingをfalseにする', () => {
+      const { result } = renderHook(() => useSharedSpecStore());
+
+      act(() => {
+        result.current.setIsRebasing(true);
+      });
+      act(() => {
+        result.current.handleRebaseResult({ ok: false, error: { type: 'CONFLICT_RESOLUTION_FAILED', message: 'Conflict resolution failed' } });
+      });
+
+      expect(result.current.isRebasing).toBe(false);
+    });
+  });
 });

@@ -16,6 +16,18 @@ import { GitDiffViewer } from './GitDiffViewer';
 import { ResizeHandle } from '@shared/components/ui/ResizeHandle';
 
 /**
+ * Props for GitView component
+ */
+export interface GitViewProps {
+  /**
+   * Explicit working path for git operations (e.g., worktree path).
+   * When provided, takes precedence over apiClient.getProjectPath().
+   * Use this when viewing git diff for a worktree instead of the main project.
+   */
+  workingPath?: string;
+}
+
+/**
  * GitView - Main component for displaying git diffs
  *
  * Layout:
@@ -27,7 +39,7 @@ import { ResizeHandle } from '@shared/components/ui/ResizeHandle';
  * - On unmount: Stop file watching
  * - On file change event: Refresh status
  */
-export function GitView(): React.ReactElement {
+export function GitView({ workingPath }: GitViewProps): React.ReactElement {
   const apiClient = useApi();
   const {
     isLoading,
@@ -39,24 +51,24 @@ export function GitView(): React.ReactElement {
     clearError,
   } = useSharedGitViewStore();
 
-  // Get project path from apiClient
-  const projectPath = useMemo(() => {
-    return apiClient.getProjectPath?.() ?? '';
-  }, [apiClient]);
+  // Resolve effective path: workingPath > apiClient.getProjectPath()
+  const effectivePath = useMemo(() => {
+    return workingPath ?? apiClient.getProjectPath?.() ?? '';
+  }, [workingPath, apiClient]);
 
   // Initial load: fetch git status and start watching
   useEffect(() => {
     // Fetch initial status
-    refreshStatus(apiClient, projectPath);
+    refreshStatus(apiClient, effectivePath);
 
     // Start watching for changes
-    apiClient.startWatching(projectPath);
+    apiClient.startWatching(effectivePath);
 
     // Cleanup: stop watching on unmount
     return () => {
-      apiClient.stopWatching(projectPath);
+      apiClient.stopWatching(effectivePath);
     };
-  }, [apiClient, projectPath, refreshStatus]);
+  }, [apiClient, effectivePath, refreshStatus]);
 
   // Subscribe to git:changes-detected events from Electron main process
   useEffect(() => {
@@ -65,8 +77,8 @@ export function GitView(): React.ReactElement {
       const unsubscribe = window.electronAPI.onGitChangesDetected(
         (_event: unknown, data: { projectPath: string }) => {
           // Only refresh if the change is for our project
-          if (data.projectPath === projectPath) {
-            refreshStatus(apiClient, projectPath);
+          if (data.projectPath === effectivePath) {
+            refreshStatus(apiClient, effectivePath);
           }
         }
       );
@@ -75,7 +87,7 @@ export function GitView(): React.ReactElement {
         unsubscribe?.();
       };
     }
-  }, [apiClient, projectPath, refreshStatus]);
+  }, [apiClient, effectivePath, refreshStatus]);
 
   // Handle file tree resize
   const handleResize = useCallback((delta: number) => {
@@ -90,7 +102,7 @@ export function GitView(): React.ReactElement {
   // Show loading indicator
   if (isLoading && !cachedStatus) {
     return (
-      <div className="flex-1 flex items-center justify-center" data-testid="loading-indicator">
+      <div className="h-full flex items-center justify-center" data-testid="loading-indicator">
         <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         <span className="ml-2 text-gray-400">Git status を取得中...</span>
       </div>
@@ -101,14 +113,14 @@ export function GitView(): React.ReactElement {
   if (error && !cachedStatus) {
     return (
       <div
-        className="flex-1 flex flex-col items-center justify-center text-gray-400"
+        className="h-full flex flex-col items-center justify-center text-gray-400"
         data-testid="error-message"
       >
         <span className="text-red-500">{error}</span>
         <button
           onClick={() => {
             clearError();
-            refreshStatus(apiClient, projectPath);
+            refreshStatus(apiClient, effectivePath);
           }}
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
@@ -119,11 +131,11 @@ export function GitView(): React.ReactElement {
   }
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Left: GitFileTree */}
+    <div className="h-full flex overflow-hidden" data-testid="git-view-container">
+      {/* Left: GitFileTree - independent scrolling */}
       <div
         style={{ width: fileTreeWidth }}
-        className="shrink-0 overflow-hidden border-r border-gray-200 dark:border-gray-700"
+        className="h-full shrink-0 overflow-auto border-r border-gray-200 dark:border-gray-700"
         data-testid="git-file-tree"
       >
         <GitFileTree />
@@ -136,9 +148,9 @@ export function GitView(): React.ReactElement {
         onResizeEnd={handleResizeEnd}
       />
 
-      {/* Right: GitDiffViewer */}
+      {/* Right: GitDiffViewer - independent scrolling */}
       <div
-        className="flex-1 overflow-hidden"
+        className="h-full flex-1 overflow-auto"
         data-testid="git-diff-viewer"
       >
         <GitDiffViewer />

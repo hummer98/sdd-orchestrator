@@ -86,6 +86,136 @@ describe('GitView Component (Shared)', () => {
     vi.clearAllMocks();
   });
 
+  describe('workingPath prop (worktree support)', () => {
+    it('should use workingPath when provided instead of apiClient.getProjectPath()', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+      const worktreePath = '/test/project/.kiro/worktrees/specs/my-feature';
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView workingPath={worktreePath} />);
+
+      await waitFor(() => {
+        // Should call getGitStatus with worktreePath, not the default projectPath
+        expect(mockApiClient.getGitStatus).toHaveBeenCalledWith(worktreePath);
+        expect(mockApiClient.startWatching).toHaveBeenCalledWith(worktreePath);
+      });
+    });
+
+    it('should fall back to apiClient.getProjectPath() when workingPath is not provided', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView />);
+
+      await waitFor(() => {
+        // Should call getGitStatus with the default projectPath from apiClient
+        expect(mockApiClient.getGitStatus).toHaveBeenCalledWith('/test/project');
+        expect(mockApiClient.startWatching).toHaveBeenCalledWith('/test/project');
+      });
+    });
+
+    it('should use workingPath for stopWatching on unmount', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [],
+        mode: 'normal',
+      };
+      const worktreePath = '/test/project/.kiro/worktrees/specs/my-feature';
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+      vi.mocked(mockApiClient.stopWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      const { unmount } = render(<GitView workingPath={worktreePath} />);
+
+      await waitFor(() => {
+        expect(mockApiClient.startWatching).toHaveBeenCalledWith(worktreePath);
+      });
+
+      unmount();
+
+      expect(mockApiClient.stopWatching).toHaveBeenCalledWith(worktreePath);
+    });
+
+    it('should use workingPath for git:changes-detected event filtering', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [],
+        mode: 'normal',
+      };
+      const worktreePath = '/test/project/.kiro/worktrees/specs/my-feature';
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      // Capture the callback passed to onGitChangesDetected
+      let gitChangesCallback: ((event: unknown, data: { projectPath: string }) => void) | null = null;
+      mockOnGitChangesDetected.mockImplementation((callback) => {
+        gitChangesCallback = callback;
+        return () => {};
+      });
+
+      render(<GitView workingPath={worktreePath} />);
+
+      await waitFor(() => {
+        expect(mockOnGitChangesDetected).toHaveBeenCalled();
+      });
+
+      // Simulate git changes for the worktree path
+      vi.mocked(mockApiClient.getGitStatus).mockClear();
+      await act(async () => {
+        gitChangesCallback!(null, { projectPath: worktreePath });
+      });
+
+      // Should refresh because the path matches
+      expect(mockApiClient.getGitStatus).toHaveBeenCalledWith(worktreePath);
+
+      // Simulate git changes for a different path
+      vi.mocked(mockApiClient.getGitStatus).mockClear();
+      await act(async () => {
+        gitChangesCallback!(null, { projectPath: '/some/other/path' });
+      });
+
+      // Should NOT refresh because the path doesn't match
+      expect(mockApiClient.getGitStatus).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Requirement 10.3, 10.4: Shared Component', () => {
     it('should be importable from shared/components/git', async () => {
       const mockStatus: GitStatusResult = {
@@ -352,6 +482,107 @@ describe('GitView Component (Shared)', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Full Height Layout', () => {
+    it('should fill parent container height (h-full)', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView />);
+
+      await waitFor(() => {
+        const gitView = screen.getByTestId('git-view-container');
+        expect(gitView).toBeInTheDocument();
+        expect(gitView).toHaveClass('h-full');
+      });
+    });
+  });
+
+  describe('Independent Scrolling', () => {
+    it('should have GitFileTree with independent scroll (overflow-auto)', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView />);
+
+      await waitFor(() => {
+        const fileTree = screen.getByTestId('git-file-tree');
+        expect(fileTree).toBeInTheDocument();
+        expect(fileTree).toHaveClass('overflow-auto');
+      });
+    });
+
+    it('should have GitDiffViewer with independent scroll (overflow-auto)', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView />);
+
+      await waitFor(() => {
+        const diffViewer = screen.getByTestId('git-diff-viewer');
+        expect(diffViewer).toBeInTheDocument();
+        expect(diffViewer).toHaveClass('overflow-auto');
+      });
+    });
+
+    it('should have both panels with h-full to fill height', async () => {
+      const mockStatus: GitStatusResult = {
+        files: [{ path: 'src/file.ts', status: 'M' }],
+        mode: 'normal',
+      };
+
+      vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+        ok: true,
+        value: mockStatus,
+      });
+      vi.mocked(mockApiClient.startWatching).mockResolvedValue({
+        ok: true,
+        value: undefined,
+      });
+
+      render(<GitView />);
+
+      await waitFor(() => {
+        const fileTree = screen.getByTestId('git-file-tree');
+        const diffViewer = screen.getByTestId('git-diff-viewer');
+        expect(fileTree).toHaveClass('h-full');
+        expect(diffViewer).toHaveClass('h-full');
       });
     });
   });

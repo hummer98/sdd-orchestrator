@@ -1,4 +1,5 @@
 import chokidar, { FSWatcher } from 'chokidar';
+import path from 'path';
 import { GitService } from './GitService';
 import type { Result } from '../../shared/types';
 import type { ApiError, GitStatusResult } from '../../shared/api/types';
@@ -29,6 +30,10 @@ export class GitFileWatcherService {
   /**
    * Start watching a project directory
    * Idempotent: returns success if already watching
+   *
+   * Note: Watches .git/index file instead of entire project to avoid
+   * EMFILE errors (too many open files) on large projects.
+   * .git/index is updated whenever git status changes (staging, commits, etc.)
    */
   async startWatching(projectPath: string): Promise<Result<void, ApiError>> {
     try {
@@ -40,19 +45,17 @@ export class GitFileWatcherService {
         };
       }
 
-      // Create chokidar watcher
-      const watcher = chokidar.watch(projectPath, {
-        ignored: [
-          '**/node_modules/**',
-          '**/.git/**',
-          '**/.kiro/runtime/**',
-        ],
+      // Watch .git/index instead of entire project to avoid EMFILE errors
+      // .git/index is updated on staging, commits, and other git operations
+      const gitIndexPath = path.join(projectPath, '.git', 'index');
+
+      // Create chokidar watcher for .git/index only
+      const watcher = chokidar.watch(gitIndexPath, {
         persistent: true,
         ignoreInitial: true,
-        awaitWriteFinish: {
-          stabilityThreshold: 300,
-          pollInterval: 100,
-        },
+        // Use polling for .git/index as it's a single file
+        usePolling: true,
+        interval: 500,
       });
 
       // Set up event handlers

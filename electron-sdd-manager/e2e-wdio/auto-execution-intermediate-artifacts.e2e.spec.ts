@@ -145,26 +145,58 @@ async function selectSpecViaStore(specId: string): Promise<boolean> {
 }
 
 /**
- * Helper: Set auto-execution permissions via workflowStore
+ * Helper: Set auto-execution permissions via spec.json (SSOT)
+ *
+ * Note: Since spec-scoped-auto-execution-state feature, permissions are stored in
+ * spec.json.autoExecution.permissions, not in workflowStore.
  */
 async function setAutoExecutionPermissions(permissions: Record<string, boolean>): Promise<boolean> {
-  return browser.execute((perms: Record<string, boolean>) => {
+  return browser.executeAsync(async (perms: Record<string, boolean>, done: (result: boolean) => void) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return false;
-
-      const workflowStore = stores.workflow.getState();
-      const currentPermissions = workflowStore.autoExecutionPermissions;
-
-      for (const [phase, desired] of Object.entries(perms)) {
-        if (currentPermissions[phase] !== desired) {
-          workflowStore.toggleAutoPermission(phase);
-        }
+      if (!stores?.spec?.getState) {
+        done(false);
+        return;
       }
-      return true;
+
+      const specStore = stores.spec.getState();
+      const specDetail = specStore.specDetail;
+      if (!specDetail?.metadata?.name) {
+        console.error('[E2E] setAutoExecutionPermissions: no spec selected');
+        done(false);
+        return;
+      }
+
+      // Convert permission keys: 'document-review' uses hyphen in spec.json
+      const normalizedPerms: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(perms)) {
+        // documentReview -> document-review for spec.json
+        const normalizedKey = key === 'documentReview' ? 'document-review' : key;
+        normalizedPerms[normalizedKey] = value;
+      }
+
+      // Update spec.json via electronAPI (SSOT)
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI?.updateSpecJson) {
+        console.error('[E2E] setAutoExecutionPermissions: electronAPI.updateSpecJson not available');
+        done(false);
+        return;
+      }
+
+      await electronAPI.updateSpecJson(specDetail.metadata.name, {
+        autoExecution: {
+          enabled: true,
+          permissions: normalizedPerms,
+        },
+      });
+
+      // Refresh spec store to pick up changes
+      await specStore.refreshSpecs?.();
+
+      done(true);
     } catch (e) {
       console.error('[E2E] setAutoExecutionPermissions error:', e);
-      return false;
+      done(false);
     }
   }, permissions);
 }
@@ -504,9 +536,10 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
   // ============================================================
   describe('UI Element Visibility', () => {
     it('should display all phase items and auto-permission toggles', async () => {
-      const phases = ['requirements', 'design', 'tasks', 'impl'];
+      // PhaseItem components (requirements, design, tasks) use data-testid="phase-item-${phase}"
+      const phaseItemPhases = ['requirements', 'design', 'tasks'];
 
-      for (const phase of phases) {
+      for (const phase of phaseItemPhases) {
         const phaseItem = await $(`[data-testid="phase-item-${phase}"]`);
         expect(await phaseItem.isExisting()).toBe(true);
         expect(await phaseItem.isDisplayed()).toBe(true);
@@ -515,6 +548,15 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
         const toggle = await phaseItem.$('[data-testid="auto-permission-toggle"]');
         expect(await toggle.isExisting()).toBe(true);
       }
+
+      // impl phase uses ImplPhasePanel with data-testid="impl-phase-panel"
+      const implPanel = await $('[data-testid="impl-phase-panel"]');
+      expect(await implPanel.isExisting()).toBe(true);
+      expect(await implPanel.isDisplayed()).toBe(true);
+
+      // Check for auto-permission toggle within impl panel
+      const implToggle = await implPanel.$('[data-testid="auto-permission-toggle"]');
+      expect(await implToggle.isExisting()).toBe(true);
     });
   });
 });

@@ -111,28 +111,64 @@ export async function selectSpecViaStore(specId: string): Promise<boolean> {
 }
 
 /**
- * Helper: Set auto-execution permissions via workflowStore
+ * Helper: Set auto-execution permissions via spec.json (SSOT)
+ *
+ * Since spec-scoped-auto-execution-state feature, permissions are stored in
+ * spec.json.autoExecution.permissions, not in workflowStore.
+ *
+ * @param permissions Record of phase names to boolean (true = GO, false = NOGO)
  */
 export async function setAutoExecutionPermissions(
   permissions: Record<string, boolean>
 ): Promise<boolean> {
-  return browser.execute((perms: Record<string, boolean>) => {
+  return browser.executeAsync(async (perms: Record<string, boolean>, done: (result: boolean) => void) => {
     try {
       const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return false;
-
-      const workflowStore = stores.workflow.getState();
-      const currentPermissions = workflowStore.autoExecutionPermissions;
-
-      for (const [phase, desired] of Object.entries(perms)) {
-        if (currentPermissions[phase] !== desired) {
-          workflowStore.toggleAutoPermission(phase);
-        }
+      if (!stores?.spec?.getState) {
+        console.error('[E2E] setAutoExecutionPermissions: specStore not available');
+        done(false);
+        return;
       }
-      return true;
+
+      const specStore = stores.spec.getState();
+      const specDetail = specStore.specDetail;
+      if (!specDetail?.metadata?.name) {
+        console.error('[E2E] setAutoExecutionPermissions: no spec selected');
+        done(false);
+        return;
+      }
+
+      // Convert permission keys: 'documentReview' -> 'document-review' for spec.json
+      const normalizedPerms: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(perms)) {
+        const normalizedKey = key === 'documentReview' ? 'document-review' : key;
+        normalizedPerms[normalizedKey] = value;
+      }
+
+      // Update spec.json via electronAPI (SSOT)
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI?.updateSpecJson) {
+        console.error('[E2E] setAutoExecutionPermissions: electronAPI.updateSpecJson not available');
+        done(false);
+        return;
+      }
+
+      await electronAPI.updateSpecJson(specDetail.metadata.name, {
+        autoExecution: {
+          enabled: true,
+          permissions: normalizedPerms,
+        },
+      });
+
+      // Refresh spec store to pick up changes
+      if (specStore.refreshSpecs) {
+        await specStore.refreshSpecs();
+      }
+
+      done(true);
     } catch (e) {
       console.error('[E2E] setAutoExecutionPermissions error:', e);
-      return false;
+      done(false);
     }
   }, permissions);
 }
@@ -573,28 +609,21 @@ export async function fullAutoExecutionCleanup(): Promise<void> {
 /**
  * Helper: Set document review flag via workflowStore
  *
- * Controls the document review behavior after tasks phase completion:
- * - 'run': Run document review automatically and continue
- * - 'pause': Run document review and pause for manual action
+ * @deprecated document-review-phase Task 6.1: This function is DEPRECATED.
+ * documentReviewFlag has been removed. Use setAutoExecutionPermissions with
+ * 'document-review' permission instead.
  *
- * document-review-skip-removal: 'skip' option removed
+ * - permissions['document-review'] = true (GO): Run document review
+ * - permissions['document-review'] = false (NOGO): Stop at document-review phase
  *
- * @param flag The document review flag to set
+ * There is no skip option - document-review is mandatory between tasks and impl.
+ *
+ * @param flag The document review flag to set (ignored - function is a no-op)
  */
-export async function setDocumentReviewFlag(flag: 'run' | 'pause'): Promise<boolean> {
-  return browser.execute((f: string) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return false;
-
-      const workflowStore = stores.workflow.getState();
-      workflowStore.setDocumentReviewAutoExecutionFlag(f);
-      return true;
-    } catch (e) {
-      console.error('[E2E] setDocumentReviewFlag error:', e);
-      return false;
-    }
-  }, flag);
+export async function setDocumentReviewFlag(_flag: 'run' | 'pause'): Promise<boolean> {
+  console.warn('[E2E] setDocumentReviewFlag is DEPRECATED. Use setAutoExecutionPermissions instead.');
+  // No-op - this function is deprecated
+  return true;
 }
 
 /**

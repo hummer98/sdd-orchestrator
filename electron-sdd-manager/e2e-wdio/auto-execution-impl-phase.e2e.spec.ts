@@ -5,12 +5,15 @@
  * This is an important phase that was previously not tested.
  *
  * Test scenarios:
- * 1. Full workflow: requirements -> design -> tasks -> impl
- * 2. impl only (when other phases already completed)
- * 3. impl with document review integration
+ * 1. Full workflow: requirements -> design -> tasks -> document-review -> impl
+ * 2. impl only (when other phases already completed including document-review)
+ * 3. tasks -> document-review -> impl sequence
+ *
+ * Note: document-review phase is mandatory between tasks and impl.
+ * There is no skip option - it must be executed and approved.
  *
  * Relates to:
- * - autoExecutionCoordinator.ts (PHASE_ORDER includes 'impl')
+ * - autoExecutionCoordinator.ts (PHASE_ORDER includes 'document-review' between 'tasks' and 'impl')
  * - handlers.ts (execute-next-phase event)
  */
 
@@ -65,7 +68,7 @@ const ALL_PHASES_COMPLETED_SPEC_JSON = {
 };
 
 // Spec.json with only requirements and design completed
-// document-review-skip-removal: Added documentReview.status = 'approved' to skip document review
+// tasks and document-review phases are pending
 const DESIGN_COMPLETED_SPEC_JSON = {
   feature_name: 'impl-feature',
   name: 'impl-feature',
@@ -77,7 +80,7 @@ const DESIGN_COMPLETED_SPEC_JSON = {
     design: { generated: true, approved: true },
     tasks: { generated: false, approved: false },
   },
-  documentReview: { status: 'approved' as const },
+  // documentReview is not set - will be populated when document-review phase runs
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -273,23 +276,6 @@ async function getExecutedAgentSkills(): Promise<string[]> {
   });
 }
 
-/**
- * Helper: Set document review flag
- * document-review-skip-removal: 'skip' option removed
- */
-async function setDocumentReviewFlag(flag: 'run' | 'pause'): Promise<boolean> {
-  return browser.execute((f: string) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return false;
-      // Bug fix: Use correct method name setDocumentReviewAutoExecutionFlag
-      stores.workflow.getState().setDocumentReviewAutoExecutionFlag(f);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }, flag);
-}
 
 describe('Auto Execution impl Phase E2E', () => {
   before(async () => {
@@ -322,11 +308,11 @@ describe('Auto Execution impl Phase E2E', () => {
   });
 
   // ============================================================
-  // Scenario 1: impl phase only (all prerequisites completed)
+  // Scenario 1: impl phase only (all prerequisites completed including document-review)
   // ============================================================
   describe('Scenario 1: impl phase execution after all prerequisites', () => {
     beforeEach(async () => {
-      // Reset to all phases completed
+      // Reset to all phases completed (including document-review approved)
       resetFixtureToAllPhasesCompleted();
 
       // Select project and spec
@@ -344,9 +330,6 @@ describe('Auto Execution impl Phase E2E', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
-
-      // Skip document review for this test
-      await setDocumentReviewFlag('run');
     });
 
     it('should verify initial state shows all prerequisite phases approved', async () => {
@@ -359,11 +342,12 @@ describe('Auto Execution impl Phase E2E', () => {
     });
 
     it('should execute impl phase when all prerequisites are met', async () => {
-      // Set permissions: impl enabled
+      // Set permissions: impl enabled (document-review already completed in fixture)
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,
         tasks: true,
+        documentReview: true,
         impl: true,
         inspection: false,
         deploy: false,
@@ -408,11 +392,12 @@ describe('Auto Execution impl Phase E2E', () => {
     });
 
     it('should not execute impl when impl permission is OFF', async () => {
-      // Set permissions: impl disabled
+      // Set permissions: impl disabled (document-review already completed in fixture)
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,
         tasks: true,
+        documentReview: true,
         impl: false,  // Explicitly disabled
         inspection: false,
         deploy: false,
@@ -441,11 +426,11 @@ describe('Auto Execution impl Phase E2E', () => {
   });
 
   // ============================================================
-  // Scenario 2: tasks -> impl sequence
+  // Scenario 2: tasks -> document-review -> impl sequence
   // ============================================================
-  describe('Scenario 2: tasks to impl sequence', () => {
+  describe('Scenario 2: tasks to document-review to impl sequence', () => {
     beforeEach(async () => {
-      // Reset to design completed (tasks not done yet)
+      // Reset to design completed (tasks, document-review, impl not done yet)
       resetFixtureToDesignCompleted();
 
       // Select project and spec
@@ -463,17 +448,15 @@ describe('Auto Execution impl Phase E2E', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
-
-      // Skip document review for this test
-      await setDocumentReviewFlag('run');
     });
 
-    it('should execute tasks then impl in sequence', async () => {
-      // Set permissions: tasks and impl enabled
+    it('should execute tasks then document-review then impl in sequence', async () => {
+      // Set permissions: tasks, document-review, and impl enabled
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,
         tasks: true,
+        documentReview: true,
         impl: true,
         inspection: false,
         deploy: false,
@@ -508,9 +491,21 @@ describe('Auto Execution impl Phase E2E', () => {
       console.log(`[E2E] tasks.md exists: ${tasksExists}`);
       expect(tasksExists).toBe(true);
 
-      // Check if impl was attempted after tasks
+      // Verify document-review was executed before impl
       const executedSkills = await getExecutedAgentSkills();
       console.log(`[E2E] All executed skills: ${JSON.stringify(executedSkills)}`);
+
+      // Verify the phase sequence includes document-review between tasks and impl
+      const hasDocumentReview = phaseSequence.includes('document-review');
+      console.log(`[E2E] document-review phase executed: ${hasDocumentReview}`);
+      expect(hasDocumentReview).toBe(true);
+
+      // Verify document-review comes before impl in the sequence
+      const docReviewIndex = phaseSequence.indexOf('document-review');
+      const implIndex = phaseSequence.indexOf('impl');
+      if (implIndex >= 0) {
+        expect(docReviewIndex).toBeLessThan(implIndex);
+      }
     });
   });
 

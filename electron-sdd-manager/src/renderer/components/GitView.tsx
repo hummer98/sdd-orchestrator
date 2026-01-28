@@ -6,4 +6,4 @@
  * Task 10.5: Move to shared/components/git and re-export
  */
 
-export { GitView, default } from '@shared/components/git/GitView';
+export { GitView, default, type GitViewProps } from '@shared/components/git/GitView';

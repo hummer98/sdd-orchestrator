@@ -1,6 +1,6 @@
 ---
 description: Interactive planning and requirements generation through dialogue
-allowed-tools: Bash, Read, Write, Glob, Grep, WebSearch, WebFetch, Task
+allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task
 argument-hint: <initial-idea>
 ---
 
@@ -90,14 +90,18 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
-1. **Create directory**: `.kiro/specs/{feature-name}/`
+**IMPORTANT**: Do NOT use Bash commands (mkdir, date, etc.) - they require user approval and will fail.
 
-2. **Generate spec.json** (get current UTC timestamp first):
+1. **Generate timestamp**: Use JavaScript-style ISO 8601 format for current UTC time
+   - Format: `YYYY-MM-DDTHH:MM:SSZ` (e.g., `2026-01-29T12:00:00Z`)
+   - Estimate based on conversation timing or use a reasonable current timestamp
+
+2. **Write spec.json directly** (Write tool auto-creates parent directories):
 ```json
 {
   "feature_name": "{feature-name}",
-  "created_at": "{timestamp-from-step-1}",
-  "updated_at": "{timestamp-from-step-1}",
+  "created_at": "{utc-timestamp}",
+  "updated_at": "{utc-timestamp}",
   "language": "ja",
   "phase": "requirements-generated",
   "approvals": {
@@ -116,6 +120,8 @@ When dialogue converges:
   }
 }
 ```
+
+**Note**: The Write tool automatically creates `.kiro/specs/{feature-name}/` directory when writing the file.
 
 ### Phase 5: Requirements Generation
 
@@ -208,7 +214,12 @@ After file generation:
 - **Grep**: Search for relevant patterns in codebase
 - **WebSearch/WebFetch**: Technical research when needed
 - **Task**: Deep exploration via Explore agent if needed
-- **Write**: Create spec.json and requirements.md
+- **Write**: Create spec.json and requirements.md (auto-creates directories)
+
+**IMPORTANT - Bash is NOT available**:
+- Do NOT use `mkdir -p` - Write tool creates directories automatically
+- Do NOT use `date -u` - generate timestamps manually in ISO 8601 format
+- This command runs without Bash to avoid approval interruptions
 
 ## Safety & Fallback
 

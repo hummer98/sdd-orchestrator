@@ -93,17 +93,22 @@ When dialogue converges:
 
 ### Phase 4: Spec Directory Creation
 
+**IMPORTANT**: Minimize Bash usage to avoid approval interruptions.
+- Do NOT use `mkdir -p` - Write tool creates directories automatically
+- Do NOT use `date -u` - generate timestamps manually in ISO 8601 format (e.g., `2026-01-29T12:00:00Z`)
+- Only use Bash for worktree script execution (which requires shell)
+
 1. **Worktree mode check**:
    - If `--worktree` flag was detected:
-     - Execute `.kiro/scripts/create-spec-worktree.sh <feature-name>`
+     - Execute `.kiro/scripts/create-spec-worktree.sh {feature-name}` (Bash required here)
      - If exit code is non-zero, display error and abort spec creation
      - Set spec directory to `.kiro/worktrees/specs/{feature-name}/.kiro/specs/{feature-name}/`
    - Otherwise:
      - Set spec directory to `.kiro/specs/{feature-name}/`
 
-2. **Create directory**: `{spec-directory}`
+2. **Write spec.json directly** (Write tool auto-creates directories):
 
-3. **Generate spec.json** (get current UTC timestamp first):
+**Generate timestamp**: Use ISO 8601 format `YYYY-MM-DDTHH:MM:SSZ` based on current time.
 
 **Without worktree** (standard mode):
 ```json
@@ -283,7 +288,12 @@ After file generation:
 - **Grep**: Search for relevant patterns in codebase
 - **WebSearch/WebFetch**: Technical research when needed
 - **Task**: Deep exploration via Explore agent if needed
-- **Write**: Create spec.json and requirements.md
+- **Write**: Create spec.json and requirements.md (auto-creates directories)
+- **Bash**: ONLY for worktree script execution (`.kiro/scripts/create-spec-worktree.sh`)
+
+**Bash Avoidance**:
+- Do NOT use `mkdir -p` - Write tool creates directories automatically
+- Do NOT use `date -u` - generate timestamps manually in ISO 8601 format
 
 ## Safety & Fallback
 

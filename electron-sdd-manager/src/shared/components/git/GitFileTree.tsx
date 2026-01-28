@@ -233,7 +233,7 @@ function FileNode({
       data-testid={`file-node-${node.path}`}
     >
       <StatusIcon status={node.status!} />
-      <span className="ml-2 text-sm truncate">{node.name}</span>
+      <span className="ml-2 text-sm truncate text-gray-700 dark:text-gray-200">{node.name}</span>
     </div>
   );
 }
@@ -270,7 +270,7 @@ function DirectoryNodeFlat({
       ) : (
         <ChevronRight className="w-4 h-4 text-gray-500" data-testid="collapse-icon" />
       )}
-      <span className="ml-1 text-sm font-medium">{node.name}</span>
+      <span className="ml-1 text-sm font-medium text-gray-700 dark:text-gray-200">{node.name}</span>
       <span className="ml-2 text-xs text-gray-400">({fileCount})</span>
     </div>
   );
@@ -379,7 +379,7 @@ function DirectoryNode({
         ) : (
           <ChevronRight className="w-4 h-4 text-gray-500" data-testid="collapse-icon" />
         )}
-        <span className="ml-1 text-sm font-medium">{node.name}</span>
+        <span className="ml-1 text-sm font-medium text-gray-700 dark:text-gray-200">{node.name}</span>
         <span className="ml-2 text-xs text-gray-400">({fileCount})</span>
       </div>
       {isExpanded && (

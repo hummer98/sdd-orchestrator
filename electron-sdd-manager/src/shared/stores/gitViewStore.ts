@@ -12,7 +12,25 @@
  */
 
 import { create } from 'zustand';
-import type { ApiClient, GitStatusResult } from '@shared/api/types';
+import type { ApiClient, GitStatusResult, GitFileStatus } from '@shared/api/types';
+
+/**
+ * Extract all directory paths from file list
+ * Used to expand all directories by default
+ */
+function extractDirectoryPaths(files: GitFileStatus[]): string[] {
+  const dirs = new Set<string>();
+  for (const file of files) {
+    const parts = file.path.split('/');
+    let currentPath = '';
+    // Skip the last part (file name)
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+      dirs.add(currentPath);
+    }
+  }
+  return Array.from(dirs);
+}
 
 interface GitViewState {
   /** Selected file path */
@@ -127,13 +145,23 @@ export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
 
       if (result.ok) {
         const newStatus = result.value;
-        const { selectedFilePath } = get();
+        const { selectedFilePath, expandedDirs } = get();
 
         // Validate selected file still exists in new status
         const fileExists = newStatus.files.some(file => file.path === selectedFilePath);
 
+        // Expand all directories by default (only if expandedDirs is empty)
+        let newExpandedDirs = expandedDirs;
+        if (expandedDirs.size === 0 && newStatus.files.length > 0) {
+          newExpandedDirs = new Map<string, boolean>();
+          for (const dirPath of extractDirectoryPaths(newStatus.files)) {
+            newExpandedDirs.set(dirPath, true);
+          }
+        }
+
         set({
           cachedStatus: newStatus,
+          expandedDirs: newExpandedDirs,
           isLoading: false,
           // Clear selected file and diff if it no longer exists
           ...(selectedFilePath && !fileExists

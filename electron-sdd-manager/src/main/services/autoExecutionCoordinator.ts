@@ -33,6 +33,12 @@ export const MAX_CONCURRENT_EXECUTIONS = 5;
 export const MAX_DOCUMENT_REVIEW_ROUNDS = 7;
 
 /**
+ * impl-task-completion-guard Task 3.1: 最大impl再実行回数
+ * Requirements: 3.1
+ */
+export const MAX_IMPL_RETRY_COUNT = 7;
+
+/**
  * フェーズ順序（requirements -> design -> tasks -> document-review -> impl -> inspection）
  * document-review-phase Task 1.1: document-review を tasks と impl の間に追加
  * Requirements: 1.1
@@ -54,6 +60,7 @@ export type AutoExecutionStatus = 'idle' | 'running' | 'paused' | 'completed' | 
  * specPath単位での実行状態を保持
  * Requirements: 1.2
  * auto-execution-projectpath-fix Requirement 1.1: projectPathフィールド追加
+ * impl-task-completion-guard Task 1.1: implRetryCountフィールド追加
  */
 export interface AutoExecutionState {
   /** プロジェクトパス（メインリポジトリ）- worktree環境でも正しい場所にログを記録するために使用 */
@@ -80,6 +87,13 @@ export interface AutoExecutionState {
   timeoutId?: ReturnType<typeof setTimeout>;
   /** 現在のDocument Reviewループ回数 */
   currentDocumentReviewRound?: number;
+  /**
+   * impl-task-completion-guard Task 1.1: Impl phase retry count
+   * Incremented when impl Agent completes with incomplete tasks
+   * Reset on Electron restart (in-memory only)
+   * Requirements: 2.2, 2.3
+   */
+  implRetryCount?: number;
 }
 
 /**
@@ -744,6 +758,22 @@ export class AutoExecutionCoordinator extends EventEmitter {
     });
 
     if (status === 'completed') {
+      // impl-task-completion-guard: Check task completion before proceeding from impl phase
+      // Requirements: 1.1, 2.1, 3.1
+      if (currentPhase === 'impl') {
+        const taskCompletion = this.checkTasksCompletionFromFile(specPath);
+        if (!taskCompletion.isComplete) {
+          // Delegate to task check handler for retry logic
+          await this.handleAgentCompletedWithTasksCheck(agentId, specPath, status, taskCompletion);
+          return;
+        }
+        // Tasks complete - continue to normal flow
+        logger.info('[AutoExecutionCoordinator] Impl completed with all tasks complete', {
+          specPath,
+          taskCompletion,
+        });
+      }
+
       // フェーズ完了時の処理
       if (currentPhase) {
         const newExecutedPhases = [...state.executedPhases];
@@ -1692,6 +1722,206 @@ export class AutoExecutionCoordinator extends EventEmitter {
       message: `Auto-execution completed (${state.executedPhases.length} phases executed)`,
       status: 'completed',
       endPhase: lastPhase,
+    });
+  }
+
+  // ============================================================
+  // impl-task-completion-guard: Task Completion Parsing
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+
+  /**
+   * Task 2.1: Parse tasks.md content to determine completion status
+   * Uses same regex pattern as specsWatcherService for SSOT
+   *
+   * @param content tasks.md content
+   * @returns TaskCompletionResult with total, completed, and isComplete
+   *
+   * Requirements: 1.1 - impl完了時にtasks.md完了度を判定
+   */
+  parseTasksCompletion(content: string): { total: number; completed: number; isComplete: boolean } {
+    // Same pattern as specsWatcherService.checkTaskCompletion for consistency (SSOT)
+    // Pattern: - [x] or - [X] for completed, - [ ] for incomplete
+    const completedMatches = content.match(/^- \[x\]/gim) || [];
+    const pendingMatches = content.match(/^- \[ \]/gm) || [];
+
+    const total = completedMatches.length + pendingMatches.length;
+    const completed = completedMatches.length;
+
+    // total === 0 means no tasks (isComplete = true as per design)
+    const isComplete = total === 0 || completed === total;
+
+    return { total, completed, isComplete };
+  }
+
+  /**
+   * Task 3.1 & 3.2: Handle agent completion with explicit task completion status
+   * Used for testing and to separate task check logic from file I/O
+   *
+   * @param agentId Agent ID
+   * @param specPath Spec path
+   * @param status Agent completion status
+   * @param taskCompletion Task completion result (for testing or pre-parsed)
+   *
+   * Requirements: 2.1, 2.2, 3.1, 3.2, 3.3
+   */
+  async handleAgentCompletedWithTasksCheck(
+    agentId: string,
+    specPath: string,
+    status: 'completed' | 'failed' | 'interrupted',
+    taskCompletion: { total: number; completed: number; isComplete: boolean }
+  ): Promise<void> {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] handleAgentCompletedWithTasksCheck: state not found', { specPath });
+      return;
+    }
+
+    const currentPhase = state.currentPhase;
+
+    logger.info('[AutoExecutionCoordinator] Agent completed with task check', {
+      agentId,
+      specPath,
+      status,
+      currentPhase,
+      taskCompletion,
+    });
+
+    if (status === 'completed' && currentPhase === 'impl') {
+      // impl-task-completion-guard: Check if all tasks are complete
+      if (!taskCompletion.isComplete) {
+        // Tasks are incomplete - retry or error
+        const currentRetryCount = (state.implRetryCount ?? 0) + 1;
+
+        this.updateState(specPath, {
+          implRetryCount: currentRetryCount,
+          currentAgentId: undefined,
+        });
+
+        if (currentRetryCount >= MAX_IMPL_RETRY_COUNT) {
+          // Max retries exceeded - transition to error state
+          const errorMessage = `Impl phase failed: tasks incomplete after ${currentRetryCount} retries (${taskCompletion.completed}/${taskCompletion.total} tasks completed)`;
+          this.updateState(specPath, {
+            status: 'error',
+            errors: [...state.errors, errorMessage],
+            currentPhase: null,
+          });
+
+          const error: AutoExecutionError = {
+            type: 'PHASE_EXECUTION_FAILED',
+            phase: 'impl',
+            message: errorMessage,
+          };
+          this.emit('execution-error', specPath, error);
+
+          // Log event for task completion guard failure
+          this.logAutoExecutionEvent(specPath, state.specId, {
+            type: 'auto-execution:fail',
+            message: errorMessage,
+            status: 'failed',
+          });
+
+          logger.error('[AutoExecutionCoordinator] Impl max retries exceeded', {
+            specPath,
+            retryCount: currentRetryCount,
+            taskCompletion,
+          });
+          return;
+        }
+
+        // Retry impl - emit execute-next-phase with impl
+        logger.info('[AutoExecutionCoordinator] Retrying impl phase (tasks incomplete)', {
+          specPath,
+          retryCount: currentRetryCount,
+          taskCompletion,
+        });
+
+        // Log retry event (using agent:start since impl retry triggers new agent)
+        this.logAutoExecutionEvent(specPath, state.specId, {
+          type: 'agent:start',
+          message: `Retrying impl phase (${currentRetryCount}/${MAX_IMPL_RETRY_COUNT}, ${taskCompletion.completed}/${taskCompletion.total} tasks)`,
+          agentId: `impl-retry-${currentRetryCount}`,
+          phase: 'impl',
+        });
+
+        this.emit('execute-next-phase', specPath, 'impl', {
+          specId: state.specId,
+          featureName: state.specId,
+        });
+        return;
+      }
+      // else: Tasks are complete - fall through to normal completion handling
+    }
+
+    // Delegate to normal handleAgentCompleted for non-impl phases or complete tasks
+    await this.handleAgentCompleted(agentId, specPath, status);
+  }
+
+  /**
+   * Task 2.1 & 3.1: Check task completion by reading tasks.md from file system
+   * This is the production entry point that reads from disk
+   *
+   * @param specPath Spec path to read tasks.md from
+   * @returns TaskCompletionResult
+   *
+   * Requirements: 1.1 - impl完了時にtasks.md完了度を判定
+   */
+  checkTasksCompletionFromFile(specPath: string): { total: number; completed: number; isComplete: boolean } {
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const tasksPath = path.join(specPath, 'tasks.md');
+      const content = fs.readFileSync(tasksPath, 'utf-8');
+      return this.parseTasksCompletion(content);
+    } catch (error) {
+      // Fallback: treat as complete if file can't be read (per design: allow next phase)
+      logger.warn('[AutoExecutionCoordinator] Failed to read tasks.md, assuming complete', {
+        specPath,
+        error: String(error),
+      });
+      return { total: 0, completed: 0, isComplete: true };
+    }
+  }
+
+  /**
+   * Task 4.1: Reset impl retry count and clear error state
+   * Called when user manually resets from error state
+   *
+   * @param specPath Spec path
+   *
+   * Requirements: 3.4 - リセット操作でエラー解除
+   */
+  resetImplRetryCount(specPath: string): void {
+    const state = this.executionStates.get(specPath);
+    if (!state) {
+      logger.warn('[AutoExecutionCoordinator] resetImplRetryCount: state not found', { specPath });
+      return;
+    }
+
+    const updates: Partial<AutoExecutionState> = {
+      implRetryCount: 0,
+    };
+
+    // If in error state (likely from max retries exceeded), reset to idle
+    if (state.status === 'error') {
+      updates.status = 'idle';
+      // Clear errors related to impl retry
+      updates.errors = state.errors.filter(e => !e.includes('Impl phase failed'));
+    }
+
+    this.updateState(specPath, updates);
+
+    logger.info('[AutoExecutionCoordinator] Reset impl retry count', {
+      specPath,
+      previousStatus: state.status,
+      newStatus: updates.status ?? state.status,
+    });
+
+    // Log event for reset (using auto-execution:stop since reset halts execution)
+    this.logAutoExecutionEvent(specPath, state.specId, {
+      type: 'auto-execution:stop',
+      message: 'Impl retry count reset by user',
+      status: 'stopped',
     });
   }
 

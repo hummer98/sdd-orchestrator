@@ -220,6 +220,9 @@ export const IPC_CHANNELS = {
   AUTO_EXECUTION_RESET: 'auto-execution:reset',
   // E2E Test Support: Set mock environment variable
   SET_MOCK_ENV: 'e2e:set-mock-env',
+  // impl-task-completion-guard Task 4.2: Reset impl retry count IPC
+  // Requirements: 3.4
+  AUTO_EXECUTION_RESET_IMPL_RETRY: 'auto-execution:reset-impl-retry',
   // Events (Renderer -> Main)
   AUTO_EXECUTION_STATUS_CHANGED: 'auto-execution:status-changed',
   AUTO_EXECUTION_PHASE_COMPLETED: 'auto-execution:phase-completed',

@@ -12,6 +12,7 @@ import {
   AutoExecutionError,
   DEFAULT_AUTO_EXECUTION_TIMEOUT,
   MAX_CONCURRENT_EXECUTIONS,
+  MAX_IMPL_RETRY_COUNT,
 } from './autoExecutionCoordinator';
 import type { WorkflowPhase } from './specManagerService';
 
@@ -2381,11 +2382,683 @@ describe('AutoExecutionCoordinator', () => {
       // Find the auto-execution:fail event call for timeout
       const calls = mockLogEvent.mock.calls;
       const failEventCall = calls.find(
-        (call: unknown[]) => call[2]?.type === 'auto-execution:fail' && call[2]?.message?.includes('Timeout')
+        (call: unknown[]) => call[2]?.type === 'auto-execution:fail' && call[2]?.message?.includes('timed out')
       );
 
       expect(failEventCall).toBeDefined();
       expect(failEventCall![0]).toBe(mainProjectPath);
+    });
+  });
+
+  // ============================================================
+  // impl-task-completion-guard: Task Completion Guard Tests
+  // Requirements: 1.1-1.3, 2.1-2.3, 3.1-3.4, 4.1-4.4
+  // ============================================================
+
+  describe('impl-task-completion-guard: Task Completion Guard', () => {
+    describe('Task 1.1: AutoExecutionState implRetryCount field', () => {
+      /**
+       * Task 1.1: AutoExecutionStateにimplRetryCountフィールドを追加
+       * Requirements: 2.2, 2.3
+       *
+       * implRetryCountはオプショナルフィールドとして追加され、
+       * impl再実行時のカウントを保持する。Electron再起動でリセットされる。
+       */
+      it('should have optional implRetryCount field on AutoExecutionState', () => {
+        const state: AutoExecutionState = {
+          projectPath: '/test/project',
+          specPath: '/test/project/.kiro/specs/test-spec',
+          specId: 'test-spec',
+          status: 'idle',
+          currentPhase: null,
+          executedPhases: [],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+          // implRetryCount is optional, can be undefined
+        };
+
+        // Field should be accessible (even if undefined)
+        expect(state.implRetryCount).toBeUndefined();
+      });
+
+      it('should support implRetryCount as number when set', () => {
+        const state: AutoExecutionState = {
+          projectPath: '/test/project',
+          specPath: '/test/project/.kiro/specs/test-spec',
+          specId: 'test-spec',
+          status: 'running',
+          currentPhase: 'impl',
+          executedPhases: ['requirements', 'design', 'tasks'],
+          errors: [],
+          startTime: Date.now(),
+          lastActivityTime: Date.now(),
+          implRetryCount: 3,
+        };
+
+        expect(state.implRetryCount).toBe(3);
+      });
+    });
+
+    describe('Task 2.1 & 2.2: Tasks Completion Parsing', () => {
+      /**
+       * Task 2.1: parseTasksCompletion should parse tasks.md checkbox status
+       * Requirements: 1.1
+       */
+      it('parseTasksCompletion should return all complete when all tasks are checked', () => {
+        const tasksContent = `# Implementation Plan
+
+## Task 1. Feature A
+- [x] 1.1 First task
+- [x] 1.2 Second task
+
+## Task 2. Feature B
+- [x] 2.1 Third task
+`;
+        const result = coordinator.parseTasksCompletion(tasksContent);
+        expect(result).toEqual({
+          total: 3,
+          completed: 3,
+          isComplete: true,
+        });
+      });
+
+      it('parseTasksCompletion should detect incomplete tasks', () => {
+        const tasksContent = `# Implementation Plan
+
+## Task 1. Feature A
+- [x] 1.1 First task
+- [ ] 1.2 Second task (incomplete)
+
+## Task 2. Feature B
+- [x] 2.1 Third task
+`;
+        const result = coordinator.parseTasksCompletion(tasksContent);
+        expect(result).toEqual({
+          total: 3,
+          completed: 2,
+          isComplete: false,
+        });
+      });
+
+      it('parseTasksCompletion should return isComplete=true when no tasks exist', () => {
+        const tasksContent = `# Implementation Plan
+
+No tasks defined yet.
+`;
+        const result = coordinator.parseTasksCompletion(tasksContent);
+        expect(result).toEqual({
+          total: 0,
+          completed: 0,
+          isComplete: true,
+        });
+      });
+
+      it('parseTasksCompletion should handle empty content', () => {
+        const result = coordinator.parseTasksCompletion('');
+        expect(result).toEqual({
+          total: 0,
+          completed: 0,
+          isComplete: true,
+        });
+      });
+
+      it('parseTasksCompletion should handle mixed case checkboxes', () => {
+        const tasksContent = `# Tasks
+- [X] Task with uppercase X
+- [x] Task with lowercase x
+- [ ] Incomplete task
+`;
+        const result = coordinator.parseTasksCompletion(tasksContent);
+        expect(result).toEqual({
+          total: 3,
+          completed: 2,
+          isComplete: false,
+        });
+      });
+    });
+
+    describe('Task 3.1 & 3.2: Retry Control Logic', () => {
+      /**
+       * Task 3.1: impl retry when tasks incomplete
+       * Requirements: 2.1, 2.2, 3.1
+       */
+      it('should retry impl when tasks are incomplete (up to MAX_IMPL_RETRY_COUNT)', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Track execute-next-phase events
+        const executePhaseEvents: { specPath: string; phase: WorkflowPhase }[] = [];
+        coordinator.on('execute-next-phase', (sp: string, phase: WorkflowPhase) => {
+          executePhaseEvents.push({ specPath: sp, phase });
+        });
+
+        // Simulate impl completion with incomplete tasks
+        // checkTasksCompletion will be called internally, we need to mock fs
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl',
+          specPath,
+          'completed',
+          { total: 5, completed: 3, isComplete: false }
+        );
+
+        // Should have incremented implRetryCount
+        const state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBe(1);
+
+        // Should have emitted execute-next-phase(impl) to retry
+        expect(executePhaseEvents).toContainEqual({ specPath, phase: 'impl' });
+      });
+
+      /**
+       * Task 3.2: Error state when max retries exceeded
+       * Requirements: 3.2, 3.3
+       */
+      it('should transition to error state after MAX_IMPL_RETRY_COUNT retries', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Simulate 8 retries (exceeding MAX_IMPL_RETRY_COUNT = 7)
+        for (let i = 0; i < 8; i++) {
+          await coordinator.handleAgentCompletedWithTasksCheck(
+            `agent-impl-${i}`,
+            specPath,
+            'completed',
+            { total: 5, completed: 3, isComplete: false }
+          );
+        }
+
+        // Should be in error state after reaching max retries (7th retry, implRetryCount=7)
+        // The error triggers when currentRetryCount >= MAX_IMPL_RETRY_COUNT (7 >= 7)
+        // After error state, no further increments occur
+        const state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('error');
+        expect(state?.implRetryCount).toBe(7);  // Error at 7, no increment after
+      });
+
+      it('should proceed to next phase when all tasks are complete', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Track execute-next-phase events
+        const executePhaseEvents: { specPath: string; phase: WorkflowPhase }[] = [];
+        coordinator.on('execute-next-phase', (sp: string, phase: WorkflowPhase) => {
+          executePhaseEvents.push({ specPath: sp, phase });
+        });
+
+        // Simulate impl completion with all tasks complete
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl',
+          specPath,
+          'completed',
+          { total: 5, completed: 5, isComplete: true }
+        );
+
+        // Should NOT have incremented implRetryCount
+        const state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBeUndefined();
+
+        // Should proceed to inspection (next phase)
+        expect(executePhaseEvents).toContainEqual({ specPath, phase: 'inspection' });
+      });
+    });
+
+    describe('Task 4.1: Reset Impl Retry Count', () => {
+      /**
+       * Task 4.1: resetImplRetryCount should reset count and clear error state
+       * Requirements: 3.4
+       */
+      it('resetImplRetryCount should reset implRetryCount to 0', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Simulate some retries
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl-1',
+          specPath,
+          'completed',
+          { total: 5, completed: 3, isComplete: false }
+        );
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl-2',
+          specPath,
+          'completed',
+          { total: 5, completed: 3, isComplete: false }
+        );
+
+        let state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBe(2);
+
+        // Reset
+        coordinator.resetImplRetryCount(specPath);
+
+        state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBe(0);
+      });
+
+      it('resetImplRetryCount should clear error status to idle', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Exceed max retries to trigger error state
+        for (let i = 0; i < 8; i++) {
+          await coordinator.handleAgentCompletedWithTasksCheck(
+            `agent-impl-${i}`,
+            specPath,
+            'completed',
+            { total: 5, completed: 3, isComplete: false }
+          );
+        }
+
+        let state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('error');
+
+        // Reset
+        coordinator.resetImplRetryCount(specPath);
+
+        state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('idle');
+        expect(state?.implRetryCount).toBe(0);
+      });
+
+      it('resetImplRetryCount should emit state-changed event', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            impl: true,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl',
+          specPath,
+          'completed',
+          { total: 5, completed: 3, isComplete: false }
+        );
+
+        // Track state-changed events
+        const stateChangedEvents: AutoExecutionState[] = [];
+        coordinator.on('state-changed', (sp: string, state: AutoExecutionState) => {
+          if (sp === specPath) {
+            stateChangedEvents.push(state);
+          }
+        });
+
+        // Reset
+        coordinator.resetImplRetryCount(specPath);
+
+        // Should have emitted state-changed
+        expect(stateChangedEvents.length).toBeGreaterThan(0);
+        const lastState = stateChangedEvents[stateChangedEvents.length - 1];
+        expect(lastState.implRetryCount).toBe(0);
+      });
+    });
+
+    describe('Task 5.1 & 5.2: Notifications', () => {
+      /**
+       * Task 5.1: Retry notification via EventLog
+       * Requirements: 4.1
+       */
+      it('should log retry event to EventLogService on retry', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        mockLogEvent.mockClear();
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl',
+          specPath,
+          'completed',
+          { total: 5, completed: 3, isComplete: false }
+        );
+
+        // Check that EventLogService.logEvent was called with retry info
+        // Note: retry events use 'agent:start' type (impl retry triggers new agent)
+        const retryCalls = mockLogEvent.mock.calls.filter(
+          (call: unknown[]) => {
+            const event = call[2] as { type?: string; message?: string };
+            return event?.type === 'agent:start' &&
+                   event?.message?.includes('Retrying impl');
+          }
+        );
+
+        expect(retryCalls.length).toBeGreaterThan(0);
+        const retryEvent = retryCalls[0][2] as { message: string };
+        expect(retryEvent.message).toContain('1/7');  // retry 1 of max 7
+        expect(retryEvent.message).toContain('3/5');  // 3 of 5 tasks
+      });
+
+      /**
+       * Task 5.2: Max retries exceeded notification via EventLog
+       * Requirements: 4.3
+       */
+      it('should log max retries exceeded event to EventLogService', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: false,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        mockLogEvent.mockClear();
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Exceed max retries
+        for (let i = 0; i < 8; i++) {
+          await coordinator.handleAgentCompletedWithTasksCheck(
+            `agent-impl-${i}`,
+            specPath,
+            'completed',
+            { total: 5, completed: 3, isComplete: false }
+          );
+        }
+
+        // Check that EventLogService.logEvent was called with max retries exceeded
+        // Error triggers at 7th retry (MAX_IMPL_RETRY_COUNT = 7)
+        const failCalls = mockLogEvent.mock.calls.filter(
+          (call: unknown[]) => {
+            const event = call[2] as { type?: string; message?: string };
+            return event?.type === 'auto-execution:fail' &&
+                   event?.message?.includes('after 7 retries');
+          }
+        );
+
+        expect(failCalls.length).toBe(1);
+        const failEvent = failCalls[0][2] as { message: string; status: string };
+        expect(failEvent.message).toContain('Impl phase failed');
+        expect(failEvent.status).toBe('failed');  // EventLog type uses 'failed', not 'error'
+      });
+    });
+
+    describe('Task 7.1 & 7.2: Integration Tests', () => {
+      /**
+       * Task 7.1: Full impl retry flow integration test
+       * Requirements: 1.1, 2.1, 4.1
+       */
+      it('should handle complete impl retry flow: detect incomplete -> retry -> emit event', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Track all events
+        const stateChanges: { specPath: string; state: AutoExecutionState }[] = [];
+        const phaseExecEvents: { specPath: string; phase: WorkflowPhase }[] = [];
+        const errorEvents: AutoExecutionError[] = [];
+
+        coordinator.on('state-changed', (sp: string, state: AutoExecutionState) => {
+          stateChanges.push({ specPath: sp, state });
+        });
+        coordinator.on('execute-next-phase', (sp: string, phase: WorkflowPhase) => {
+          phaseExecEvents.push({ specPath: sp, phase });
+        });
+        coordinator.on('execution-error', (_sp: string, error: AutoExecutionError) => {
+          errorEvents.push(error);
+        });
+
+        mockLogEvent.mockClear();
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // First attempt: incomplete tasks
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl-1',
+          specPath,
+          'completed',
+          { total: 5, completed: 2, isComplete: false }
+        );
+
+        // Verify state updated with retry count
+        let state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBe(1);
+        expect(state?.status).toBe('running'); // Still running for retry
+
+        // Verify execute-next-phase(impl) was emitted for retry
+        expect(phaseExecEvents.some(e => e.specPath === specPath && e.phase === 'impl')).toBe(true);
+
+        // Verify EventLog recorded the retry
+        const retryLogs = mockLogEvent.mock.calls.filter(
+          (call: unknown[]) => {
+            const event = call[2] as { message?: string };
+            return event?.message?.includes('Retrying impl');
+          }
+        );
+        expect(retryLogs.length).toBeGreaterThan(0);
+
+        // Second attempt: tasks now complete
+        phaseExecEvents.length = 0; // Clear
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl-2',
+          specPath,
+          'completed',
+          { total: 5, completed: 5, isComplete: true }
+        );
+
+        // Should proceed to inspection (not retry)
+        expect(phaseExecEvents.some(e => e.specPath === specPath && e.phase === 'inspection')).toBe(true);
+
+        // No errors should have occurred
+        expect(errorEvents.length).toBe(0);
+      });
+
+      /**
+       * Task 7.2: Max retries flow integration test
+       * Requirements: 3.1, 3.2, 3.3, 4.3
+       */
+      it('should handle max retries flow: 7 retries -> error state -> block further execution', async () => {
+        const projectPath = '/test/project';
+        const specPath = '/test/project/.kiro/specs/test-spec';
+        const specId = 'test-spec';
+
+        const options: AutoExecutionOptions = {
+          permissions: {
+            requirements: true,
+            design: true,
+            tasks: true,
+            'document-review': false,
+            impl: true,
+            inspection: true,
+            deploy: false,
+          },
+          validationOptions: { gap: false, design: false, impl: false },
+        };
+
+        // Track error events
+        const errorEvents: AutoExecutionError[] = [];
+        coordinator.on('execution-error', (_sp: string, error: AutoExecutionError) => {
+          errorEvents.push(error);
+        });
+
+        mockLogEvent.mockClear();
+        await coordinator.start(projectPath, specPath, specId, options);
+        coordinator.setCurrentPhase(specPath, 'impl', 'agent-impl');
+
+        // Execute MAX_IMPL_RETRY_COUNT - 1 (6) retries - should still be running
+        // Logic: currentRetryCount = implRetryCount + 1, error when >= MAX (7)
+        // So we need 6 calls to reach implRetryCount=6, then 7th triggers error
+        for (let i = 0; i < 6; i++) {
+          await coordinator.handleAgentCompletedWithTasksCheck(
+            `agent-impl-${i}`,
+            specPath,
+            'completed',
+            { total: 10, completed: 5, isComplete: false }
+          );
+        }
+
+        let state = coordinator.getStatus(specPath);
+        expect(state?.implRetryCount).toBe(6);
+        expect(state?.status).toBe('running'); // Still running after 6
+
+        // 7th attempt should trigger error state (currentRetryCount = 7 >= 7)
+        await coordinator.handleAgentCompletedWithTasksCheck(
+          'agent-impl-7',
+          specPath,
+          'completed',
+          { total: 10, completed: 5, isComplete: false }
+        );
+
+        state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('error');
+        expect(state?.implRetryCount).toBe(7);
+
+        // Verify error event was emitted
+        expect(errorEvents.length).toBe(1);
+        expect(errorEvents[0].type).toBe('PHASE_EXECUTION_FAILED');
+        expect(errorEvents[0].phase).toBe('impl');
+
+        // Verify EventLog recorded the failure
+        const failLogs = mockLogEvent.mock.calls.filter(
+          (call: unknown[]) => {
+            const event = call[2] as { type?: string; message?: string };
+            return event?.type === 'auto-execution:fail' &&
+                   event?.message?.includes('after 7 retries');
+          }
+        );
+        expect(failLogs.length).toBe(1);
+
+        // Verify error state blocks further phase transitions
+        // (When status is 'error', coordinator should not accept new phase executions)
+        // This is implicitly verified by the status check above
+
+        // Test reset clears error state
+        coordinator.resetImplRetryCount(specPath);
+        state = coordinator.getStatus(specPath);
+        expect(state?.status).toBe('idle');
+        expect(state?.implRetryCount).toBe(0);
+      });
     });
   });
 });

@@ -1359,6 +1359,14 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RESET),
 
   /**
+   * impl-task-completion-guard Task 4.2: Reset impl retry count
+   * Resets the implRetryCount and clears error state
+   * Requirements: 3.4
+   */
+  autoExecutionResetImplRetry: (params: { specPath: string }): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUTO_EXECUTION_RESET_IMPL_RETRY, params),
+
+  /**
    * Set mock environment variable (E2E test support)
    * WARNING: This API is intended for E2E tests only.
    * Only allowed keys: E2E_MOCK_DOC_REVIEW_RESULT, E2E_MOCK_TASKS_COMPLETE, E2E_MOCK_CLAUDE_DELAY

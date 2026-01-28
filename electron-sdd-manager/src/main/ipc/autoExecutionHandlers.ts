@@ -244,6 +244,16 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
     }
   );
 
+  // impl-task-completion-guard Task 4.2: Reset impl retry count
+  // Requirements: 3.4
+  ipcMain.handle(
+    IPC_CHANNELS.AUTO_EXECUTION_RESET_IMPL_RETRY,
+    async (_event, params: { specPath: string }): Promise<void> => {
+      logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_RESET_IMPL_RETRY', { specPath: params.specPath });
+      coordinator.resetImplRetryCount(params.specPath);
+    }
+  );
+
   // SET_MOCK_ENV (E2E Test Support)
   // WARNING: This handler is intended for E2E tests only.
   // Allows dynamic setting of mock environment variables during tests.
@@ -284,6 +294,8 @@ export function unregisterAutoExecutionHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM);
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RESET);
   ipcMain.removeHandler(IPC_CHANNELS.SET_MOCK_ENV);
+  // impl-task-completion-guard Task 4.2
+  ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RESET_IMPL_RETRY);
 
   logger.info('[autoExecutionHandlers] IPC handlers unregistered');
 }

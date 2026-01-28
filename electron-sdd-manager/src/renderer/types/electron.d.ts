@@ -403,6 +403,13 @@ export interface AutoExecutionState {
   errors: string[];
   startTime: number;
   lastActivityTime: number;
+  /**
+   * impl-task-completion-guard Task 1.1: Impl phase retry count
+   * Incremented when impl Agent completes with incomplete tasks
+   * Reset on Electron restart (in-memory only)
+   * Requirements: 2.2, 2.3
+   */
+  implRetryCount?: number;
 }
 
 /**
@@ -965,6 +972,13 @@ export interface ElectronAPI {
    * WARNING: This API is intended for E2E tests only.
    */
   autoExecutionReset(): Promise<void>;
+
+  /**
+   * impl-task-completion-guard Task 4.2: Reset impl retry count
+   * Resets the implRetryCount for a spec and clears error state if applicable
+   * Requirements: 3.4
+   */
+  autoExecutionResetImplRetry(params: { specPath: string }): Promise<void>;
 
   /**
    * Set mock environment variable (E2E test support)

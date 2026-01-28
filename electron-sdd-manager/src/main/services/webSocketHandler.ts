@@ -481,9 +481,42 @@ export class WebSocketHandler {
   private fileService: FileServiceInterface | null = null;
   private specDetailProvider: SpecDetailProvider | null = null;
   private bugDetailProvider: BugDetailProvider | null = null;
+  // git-diff-viewer: Singleton instances for Git services (Task 15.9 fix)
+  private gitService: GitService | null = null;
+  private gitFileWatcherService: GitFileWatcherService | null = null;
 
   constructor(config: WebSocketHandlerConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /**
+   * Get or create GitService singleton instance
+   * git-diff-viewer: Task 15.9 fix - prevent EMFILE errors from multiple instances
+   */
+  private getGitService(): GitService {
+    if (!this.gitService) {
+      this.gitService = new GitService();
+    }
+    return this.gitService;
+  }
+
+  /**
+   * Get or create GitFileWatcherService singleton instance
+   * git-diff-viewer: Task 15.9 fix - prevent EMFILE errors from multiple instances
+   */
+  private getGitFileWatcherService(): GitFileWatcherService {
+    if (!this.gitFileWatcherService) {
+      this.gitFileWatcherService = new GitFileWatcherService(this.getGitService());
+      // Set up event callback to broadcast changes to all clients
+      this.gitFileWatcherService.setEventCallback((projectPath, status) => {
+        this.broadcast({
+          type: 'GIT_CHANGES_DETECTED',
+          payload: { projectPath, status } as unknown as Record<string, unknown>,
+          timestamp: Date.now(),
+        });
+      });
+    }
+    return this.gitFileWatcherService;
   }
 
   /**
@@ -3636,18 +3669,8 @@ export class WebSocketHandler {
     }
 
     try {
-      const gitService = new GitService();
-      const gitFileWatcherService = new GitFileWatcherService(gitService);
-
-      // Set up event callback to broadcast changes to all clients
-      gitFileWatcherService.setEventCallback((projectPath, status) => {
-        this.broadcast({
-          type: 'GIT_CHANGES_DETECTED',
-          payload: { projectPath, status } as unknown as Record<string, unknown>,
-          timestamp: Date.now(),
-        });
-      });
-
+      // git-diff-viewer: Use singleton to prevent EMFILE errors (Task 15.9 fix)
+      const gitFileWatcherService = this.getGitFileWatcherService();
       const result = await gitFileWatcherService.startWatching(projectPath);
 
       if (result.success) {
@@ -3694,8 +3717,8 @@ export class WebSocketHandler {
     }
 
     try {
-      const gitService = new GitService();
-      const gitFileWatcherService = new GitFileWatcherService(gitService);
+      // git-diff-viewer: Use singleton to prevent EMFILE errors (Task 15.9 fix)
+      const gitFileWatcherService = this.getGitFileWatcherService();
       const result = await gitFileWatcherService.stopWatching(projectPath);
 
       if (result.success) {

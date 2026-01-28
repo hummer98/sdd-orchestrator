@@ -3,7 +3,7 @@
  * Tests for exclusive switching between ArtifactEditor and GitView
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CenterPaneContainer } from './CenterPaneContainer';
 import type { TabInfo } from './ArtifactEditor';
@@ -13,8 +13,13 @@ vi.mock('./ArtifactEditor', () => ({
   ArtifactEditor: () => <div data-testid="artifact-editor">Artifact Editor</div>,
 }));
 
+// Capture GitView props for testing
+let capturedGitViewProps: { workingPath?: string } | null = null;
 vi.mock('./GitView', () => ({
-  GitView: () => <div data-testid="git-view">Git View</div>,
+  GitView: (props: { workingPath?: string }) => {
+    capturedGitViewProps = props;
+    return <div data-testid="git-view">Git View</div>;
+  },
 }));
 
 describe('CenterPaneContainer', () => {
@@ -22,6 +27,11 @@ describe('CenterPaneContainer', () => {
     { key: 'document-review-1', label: 'Review-1' },
   ];
   const mockOnViewModeChange = vi.fn();
+
+  beforeEach(() => {
+    capturedGitViewProps = null;
+    mockOnViewModeChange.mockClear();
+  });
 
   it('should render segmented control with Artifacts and Git Diff options', () => {
     render(
@@ -150,5 +160,53 @@ describe('CenterPaneContainer', () => {
     fireEvent.keyDown(document, { key: 'G', metaKey: true, shiftKey: true });
 
     expect(mockOnViewModeChange).toHaveBeenCalledWith('artifacts');
+  });
+
+  describe('worktreePath prop', () => {
+    it('should pass worktreePath to GitView when provided', () => {
+      const worktreePath = '/test/project/.kiro/worktrees/specs/my-feature';
+
+      render(
+        <CenterPaneContainer
+          dynamicTabs={mockDynamicTabs}
+          viewMode="git-diff"
+          onViewModeChange={mockOnViewModeChange}
+          worktreePath={worktreePath}
+        />
+      );
+
+      expect(capturedGitViewProps).not.toBeNull();
+      expect(capturedGitViewProps?.workingPath).toBe(worktreePath);
+    });
+
+    it('should pass undefined to GitView when worktreePath is not provided', () => {
+      render(
+        <CenterPaneContainer
+          dynamicTabs={mockDynamicTabs}
+          viewMode="git-diff"
+          onViewModeChange={mockOnViewModeChange}
+        />
+      );
+
+      expect(capturedGitViewProps).not.toBeNull();
+      expect(capturedGitViewProps?.workingPath).toBeUndefined();
+    });
+
+    it('should not affect ArtifactEditor when worktreePath is provided', () => {
+      const worktreePath = '/test/project/.kiro/worktrees/specs/my-feature';
+
+      render(
+        <CenterPaneContainer
+          dynamicTabs={mockDynamicTabs}
+          viewMode="artifacts"
+          onViewModeChange={mockOnViewModeChange}
+          worktreePath={worktreePath}
+        />
+      );
+
+      // ArtifactEditor should still render normally
+      expect(screen.getByTestId('artifact-editor')).toBeInTheDocument();
+      expect(screen.queryByTestId('git-view')).not.toBeInTheDocument();
+    });
   });
 });

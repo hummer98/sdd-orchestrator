@@ -27,6 +27,12 @@ export interface CenterPaneContainerProps {
   placeholder?: string;
   /** Artifacts for ArtifactEditor */
   artifacts?: Record<string, ArtifactInfo | null>;
+  /**
+   * Worktree path for GitView.
+   * When provided, GitView uses this path instead of projectPath for git operations.
+   * Use this when viewing git diff for a worktree instead of the main project.
+   */
+  worktreePath?: string;
 }
 
 /**
@@ -39,6 +45,7 @@ export function CenterPaneContainer({
   baseName,
   placeholder,
   artifacts,
+  worktreePath,
 }: CenterPaneContainerProps): React.ReactElement {
   // Keyboard shortcut: Ctrl+Shift+G (Windows/Linux) or Cmd+Shift+G (Mac)
   useEffect(() => {
@@ -96,7 +103,7 @@ export function CenterPaneContainer({
             artifacts={artifacts}
           />
         ) : (
-          <GitView />
+          <GitView workingPath={worktreePath} />
         )}
       </div>
     </div>

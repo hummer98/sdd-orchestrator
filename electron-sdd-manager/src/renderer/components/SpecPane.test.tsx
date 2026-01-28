@@ -12,13 +12,25 @@ import { useSpecStore } from '../stores';
 // Mock the stores
 vi.mock('../stores');
 
+// Mock projectStore separately for worktree tests
+vi.mock('../stores/projectStore', () => ({
+  useProjectStore: {
+    getState: vi.fn(() => ({ currentProject: '/test/project' })),
+  },
+}));
+
 // Mock child components
 vi.mock('./ArtifactEditor', () => ({
   ArtifactEditor: () => <div data-testid="artifact-editor">ArtifactEditor</div>,
 }));
 
+// Capture GitView props for worktree path testing
+let capturedGitViewProps: { workingPath?: string } | null = null;
 vi.mock('./GitView', () => ({
-  GitView: () => <div data-testid="git-view">GitView</div>,
+  GitView: (props: { workingPath?: string }) => {
+    capturedGitViewProps = props;
+    return <div data-testid="git-view">GitView</div>;
+  },
 }));
 
 vi.mock('./AgentListPanel', () => ({
@@ -62,6 +74,7 @@ describe('SpecPane', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    capturedGitViewProps = null;
   });
 
   describe('When no spec is selected', () => {
@@ -256,6 +269,95 @@ describe('SpecPane', () => {
 
       expect(gitDiffButton).toHaveClass('bg-blue-500');
       expect(artifactsButton).not.toHaveClass('bg-blue-500');
+    });
+  });
+
+  // worktree support: GitView should receive resolved worktree path
+  describe('worktree path resolution', () => {
+    it('should pass worktree absolute path to GitView when spec has worktree.path', () => {
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: { name: 'test-spec' },
+        specDetail: {
+          metadata: { name: 'test-spec' },
+          specJson: {
+            feature_name: 'test-spec',
+            phase: 'implementation',
+            worktree: {
+              path: '.kiro/worktrees/specs/test-spec',
+              branch: 'feature/test-spec',
+              created_at: '2024-01-01T00:00:00Z',
+            },
+          },
+          artifacts: {},
+        },
+        isDetailLoading: false,
+      });
+
+      render(<SpecPane {...defaultProps} />);
+
+      // Switch to git-diff view
+      const gitDiffButton = screen.getByRole('button', { name: /git diff/i });
+      fireEvent.click(gitDiffButton);
+
+      // GitView should receive worktree absolute path
+      expect(capturedGitViewProps).not.toBeNull();
+      expect(capturedGitViewProps?.workingPath).toBe('/test/project/.kiro/worktrees/specs/test-spec');
+    });
+
+    it('should pass undefined to GitView when spec has no worktree', () => {
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: { name: 'test-spec' },
+        specDetail: {
+          metadata: { name: 'test-spec' },
+          specJson: {
+            feature_name: 'test-spec',
+            phase: 'requirements',
+            // No worktree field
+          },
+          artifacts: {},
+        },
+        isDetailLoading: false,
+      });
+
+      render(<SpecPane {...defaultProps} />);
+
+      // Switch to git-diff view
+      const gitDiffButton = screen.getByRole('button', { name: /git diff/i });
+      fireEvent.click(gitDiffButton);
+
+      // GitView should NOT receive worktreePath (uses default projectPath)
+      expect(capturedGitViewProps).not.toBeNull();
+      expect(capturedGitViewProps?.workingPath).toBeUndefined();
+    });
+
+    it('should pass undefined to GitView when worktree has no path (normal mode impl)', () => {
+      mockUseSpecStore.mockReturnValue({
+        selectedSpec: { name: 'test-spec' },
+        specDetail: {
+          metadata: { name: 'test-spec' },
+          specJson: {
+            feature_name: 'test-spec',
+            phase: 'implementation',
+            worktree: {
+              // Normal mode: branch and created_at without path
+              branch: 'feature/test-spec',
+              created_at: '2024-01-01T00:00:00Z',
+            },
+          },
+          artifacts: {},
+        },
+        isDetailLoading: false,
+      });
+
+      render(<SpecPane {...defaultProps} />);
+
+      // Switch to git-diff view
+      const gitDiffButton = screen.getByRole('button', { name: /git diff/i });
+      fireEvent.click(gitDiffButton);
+
+      // GitView should NOT receive worktreePath (normal mode uses main project)
+      expect(capturedGitViewProps).not.toBeNull();
+      expect(capturedGitViewProps?.workingPath).toBeUndefined();
     });
   });
 });

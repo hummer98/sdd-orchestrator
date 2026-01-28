@@ -9,6 +9,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSpecStore } from '../stores';
+import { useProjectStore } from '../stores/projectStore';
 import {
   AgentListPanel,
   ResizeHandle,
@@ -19,6 +20,7 @@ import { ElectronWorkflowView as WorkflowView } from './ElectronWorkflowView';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
 import type { ArtifactType } from '../stores/editorStore';
 import { normalizeInspectionState } from '../types/inspection';
+import { hasWorktreePath } from '@shared/types/worktree';
 
 interface SpecPaneProps {
   /** Right pane width */
@@ -138,6 +140,28 @@ export function SpecPane({
     return specDetail.artifacts as Record<string, ArtifactInfo | null>;
   }, [specDetail?.artifacts]);
 
+  // Resolve worktree path for GitView
+  // If spec has worktree.path, resolve it to absolute path using currentProject
+  const worktreePath = useMemo((): string | undefined => {
+    const specJson = specDetail?.specJson;
+    if (!specJson || !hasWorktreePath(specJson)) {
+      return undefined;
+    }
+
+    const projectPath = useProjectStore.getState().currentProject;
+    if (!projectPath) {
+      return undefined;
+    }
+
+    // Resolve relative worktree path to absolute path
+    const relativePath = specJson.worktree?.path;
+    if (!relativePath) {
+      return undefined;
+    }
+
+    return `${projectPath}/${relativePath}`;
+  }, [specDetail?.specJson]);
+
   if (!selectedSpec) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
@@ -169,6 +193,7 @@ export function SpecPane({
         baseName={selectedSpec.name}
         placeholder="仕様を選択してエディターを開始"
         artifacts={artifacts}
+        worktreePath={worktreePath}
       />
 
       {/* Right resize handle */}

@@ -318,10 +318,10 @@ describe('Workflow Types', () => {
       it('should have permissions matching DEFAULT_AUTO_EXECUTION_PERMISSIONS', () => {
         const { permissions } = DEFAULT_SPEC_AUTO_EXECUTION_STATE;
         expect(permissions.requirements).toBe(true);
-        expect(permissions.design).toBe(false);
-        expect(permissions.tasks).toBe(false);
+        expect(permissions.design).toBe(true);
+        expect(permissions.tasks).toBe(true);
         expect(permissions['document-review']).toBe(true);
-        expect(permissions.impl).toBe(false);
+        expect(permissions.impl).toBe(true);
         expect(permissions.inspection).toBe(true);
         expect(permissions.deploy).toBe(false);
       });
@@ -343,16 +343,16 @@ describe('Workflow Types', () => {
         const state = createSpecAutoExecutionState({
           enabled: true,
           permissions: {
-            requirements: true,
-            design: true, // override default false to true
+            requirements: false, // override default true to false
+            design: false, // override default true to false
           },
         });
         expect(state.enabled).toBe(true);
-        expect(state.permissions.requirements).toBe(true);
-        expect(state.permissions.design).toBe(true); // overridden
+        expect(state.permissions.requirements).toBe(false); // overridden
+        expect(state.permissions.design).toBe(false); // overridden
         // Non-overridden permissions use DEFAULT_AUTO_EXECUTION_PERMISSIONS
-        expect(state.permissions.tasks).toBe(false);
-        expect(state.permissions.impl).toBe(false);
+        expect(state.permissions.tasks).toBe(true);
+        expect(state.permissions.impl).toBe(true);
       });
 
       // document-review-phase Task 9.1: Test updated for permissions['document-review']

@@ -283,18 +283,16 @@ export interface AutoExecutionPermissions {
 
 /**
  * デフォルトの自動実行許可設定（SSOT）
- * document-review-phase Task 2.3: permissions.documentReview のデフォルト値 true
- * Requirements: 2.1, 2.3
- * Rationale: tasks完了後に自動的にdocument-reviewが実行される動作が期待される
+ * deploy以外は全て自動実行を許可
  */
 export const DEFAULT_AUTO_EXECUTION_PERMISSIONS: AutoExecutionPermissions = {
-  requirements: true, // デフォルトで許可
-  design: false,
-  tasks: false,
-  'document-review': true, // document-review-phase: デフォルトGO
-  impl: false,
-  inspection: true, // inspection-permission-unification: デフォルトGO
-  deploy: false,
+  requirements: true,
+  design: true,
+  tasks: true,
+  'document-review': true,
+  impl: true,
+  inspection: true,
+  deploy: false, // deploy/spec-mergeは手動承認が必要
 };
 
 /**

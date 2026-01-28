@@ -24,7 +24,7 @@ import {
   useSharedAgentStore,
   type AgentInfo as SharedAgentInfo,
   type AgentStatus as SharedAgentStatus,
-  type LogEntry,
+  type ParsedLogEntry,
 } from '@shared/stores/agentStore';
 import type { LLMEngineId } from '@shared/registry';
 import {
@@ -87,9 +87,10 @@ export interface AgentInfo {
 }
 
 /**
- * Re-export LogEntry type
+ * Re-export ParsedLogEntry type
+ * main-process-log-parser Task 10.4: Changed from LogEntry to ParsedLogEntry
  */
-export type { LogEntry };
+export type { ParsedLogEntry };
 
 // =============================================================================
 // Type Conversion Helpers
@@ -150,8 +151,11 @@ interface AgentState {
   agents: Map<string, AgentInfo[]>;
   /** Selected agent ID */
   selectedAgentId: string | null;
-  /** Logs per agent: agentId -> LogEntry[] */
-  logs: Map<string, LogEntry[]>;
+  /**
+   * Logs per agent: agentId -> ParsedLogEntry[]
+   * main-process-log-parser Task 10.4: Changed from LogEntry[] to ParsedLogEntry[]
+   */
+  logs: Map<string, ParsedLogEntry[]>;
   /** Loading state */
   isLoading: boolean;
   /** Error message */
@@ -202,14 +206,15 @@ interface AgentActions {
 
   // ===========================================================================
   // Log Management
+  // main-process-log-parser Task 10.4: Changed to ParsedLogEntry
   // ===========================================================================
 
   /** Append a log entry */
-  appendLog: (agentId: string, entry: LogEntry) => void;
+  appendLog: (agentId: string, entry: ParsedLogEntry) => void;
   /** Clear logs for an agent */
   clearLogs: (agentId: string) => void;
   /** Get logs for an agent */
-  getLogsForAgent: (agentId: string) => LogEntry[];
+  getLogsForAgent: (agentId: string) => ParsedLogEntry[];
 
   // ===========================================================================
   // Event Listeners
@@ -272,8 +277,9 @@ function getAgentsFromShared(): Map<string, AgentInfo[]> {
 
 /**
  * Get logs from shared store
+ * main-process-log-parser Task 10.4: Return ParsedLogEntry[]
  */
-function getLogsFromShared(): Map<string, LogEntry[]> {
+function getLogsFromShared(): Map<string, ParsedLogEntry[]> {
   return useSharedAgentStore.getState().logs;
 }
 
@@ -445,17 +451,8 @@ export const useAgentStore = create<AgentStore>()(
 
     resumeAgent: async (agentId: string, prompt?: string) => {
       try {
-        // Add stdin log entry if prompt provided
-        if (prompt) {
-          const inputLogEntry: LogEntry = {
-            id: `stdin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            stream: 'stdin',
-            data: prompt,
-            timestamp: Date.now(),
-          };
-          get().appendLog(agentId, inputLogEntry);
-        }
-
+        // main-process-log-parser Task 10.4: Removed duplicate log addition
+        // The adapter (agentStoreAdapter.ts) already handles adding stdin log
         await agentOperations.resumeAgent(agentId, prompt);
         // Sync from shared store
         set({ agents: getAgentsFromShared() });
@@ -494,7 +491,7 @@ export const useAgentStore = create<AgentStore>()(
     // Log Management
     // ===========================================================================
 
-    appendLog: (agentId: string, entry: LogEntry) => {
+    appendLog: (agentId: string, entry: ParsedLogEntry) => {
       useSharedAgentStore.getState().addLog(agentId, entry);
       set({ logs: getLogsFromShared() });
     },

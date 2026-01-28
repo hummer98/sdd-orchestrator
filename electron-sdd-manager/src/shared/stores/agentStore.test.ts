@@ -756,4 +756,98 @@ describe('SharedAgentStore', () => {
       });
     });
   });
+
+  // =============================================================================
+  // Task 10.4: main-process-log-parser - ParsedLogEntry型対応
+  // Requirements: 4.1, 4.2, 4.3
+  // =============================================================================
+  describe('Task 10.4: ParsedLogEntry type support (main-process-log-parser)', () => {
+    // Helper to create mock ParsedLogEntry
+    const createParsedLog = (id: string): import('@shared/utils/parserTypes').ParsedLogEntry => ({
+      id,
+      type: 'text',
+      timestamp: Date.now(),
+      engineId: 'claude',
+      text: {
+        content: `Log content ${id}`,
+        role: 'assistant',
+      },
+    });
+
+    it('should store ParsedLogEntry[] instead of LogEntry[] (Requirement 4.1)', () => {
+      const store = getSharedAgentStore();
+      expect(store.logs).toBeInstanceOf(Map);
+
+      // Add a ParsedLogEntry
+      const log = createParsedLog('log-1');
+      store.addLog('agent-1', log);
+
+      const freshState = getSharedAgentStore();
+      const logs = freshState.logs.get('agent-1');
+      expect(logs).toBeDefined();
+      expect(logs).toHaveLength(1);
+      expect(logs![0]).toMatchObject({
+        id: 'log-1',
+        type: 'text',
+        engineId: 'claude',
+      });
+    });
+
+    it('should accept ParsedLogEntry in addLog method (Requirement 4.2)', () => {
+      const store = getSharedAgentStore();
+      const log = createParsedLog('log-parsed');
+
+      // Should not throw type error
+      store.addLog('agent-1', log);
+
+      const freshState = getSharedAgentStore();
+      const logs = freshState.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(1);
+      expect(logs[0].id).toBe('log-parsed');
+    });
+
+    it('should return ParsedLogEntry[] from getLogsForAgent (Requirement 4.1)', () => {
+      const store = getSharedAgentStore();
+      const log1 = createParsedLog('log-1');
+      const log2 = createParsedLog('log-2');
+
+      store.addLog('agent-1', log1);
+      store.addLog('agent-1', log2);
+
+      const logs = store.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(2);
+      // Verify logs are ParsedLogEntry type (have engineId field)
+      expect(logs[0]).toHaveProperty('engineId');
+      expect(logs[1]).toHaveProperty('engineId');
+    });
+
+    it('should accumulate multiple ParsedLogEntry for same agent', () => {
+      const store = getSharedAgentStore();
+      const log1 = createParsedLog('log-1');
+      const log2 = createParsedLog('log-2');
+      const log3 = createParsedLog('log-3');
+
+      store.addLog('agent-1', log1);
+      store.addLog('agent-1', log2);
+      store.addLog('agent-1', log3);
+
+      const logs = store.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(3);
+    });
+
+    it('should clear ParsedLogEntry[] for agent', () => {
+      const store = getSharedAgentStore();
+      const log1 = createParsedLog('log-1');
+      const log2 = createParsedLog('log-2');
+
+      store.addLog('agent-1', log1);
+      store.addLog('agent-1', log2);
+
+      // Clear logs
+      store.clearLogs('agent-1');
+
+      const logs = store.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(0);
+    });
+  });
 });

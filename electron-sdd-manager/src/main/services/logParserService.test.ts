@@ -227,6 +227,8 @@ describe('LogParserService', () => {
       }
     });
 
+    // main-process-log-parser Task 10.6: Updated tests to use proper Claude CLI format
+    // The unified parser expects message.content to be an array with typed blocks
     it('should handle assistant message with text content array', async () => {
       const logPath = await createLogFile([
         { type: 'assistant', message: { content: [{ type: 'text', text: 'Part 1' }, { type: 'text', text: 'Part 2' }] } },
@@ -236,21 +238,23 @@ describe('LogParserService', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
+        // Unified parser creates separate entries for each text block, then combines them
         expect(result.value).toContain('Part 1');
         expect(result.value).toContain('Part 2');
       }
     });
 
-    it('should handle assistant message with direct string content', async () => {
+    it('should handle single text block in assistant message', async () => {
+      // Claude CLI format: message is always an object with content array
       const logPath = await createLogFile([
-        { type: 'assistant', message: 'Direct string message' },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'Single text message' }] } },
       ]);
 
       const result = await service.getLastAssistantMessage(logPath);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toContain('Direct string message');
+        expect(result.value).toContain('Single text message');
       }
     });
   });

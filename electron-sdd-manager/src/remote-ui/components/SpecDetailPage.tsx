@@ -29,7 +29,7 @@ import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
 import { RemoteWorkflowView } from '../views/RemoteWorkflowView';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
-import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
@@ -292,8 +292,8 @@ function SpecTabContent({
   /** Get logs map from the store */
   const logsMap = useSharedAgentStore((state) => state.logs);
 
-  /** Get logs for the selected agent */
-  const logs: LogEntry[] = useMemo(
+  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
+  const logs: ParsedLogEntry[] = useMemo(
     () => selectedAgent ? (logsMap.get(selectedAgent.id) ?? []) : [],
     [logsMap, selectedAgent]
   );

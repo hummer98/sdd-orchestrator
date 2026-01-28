@@ -2,9 +2,13 @@
  * LogParserService
  * Parses agent log files to extract result subtype and assistant messages
  * Requirements: 2.1-2.3, 2.5-2.6
+ * main-process-log-parser Task 10.6: Unified parser integration for multi-engine support
  */
 
 import * as fs from 'fs/promises';
+import { unifiedParser } from '../utils/unifiedParser';
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
+import type { LLMEngineId } from '@shared/registry';
 
 /**
  * Result subtype from log analysis
@@ -169,69 +173,111 @@ export class LogParserService {
 
   /**
    * Get the last assistant message from the log
-   * For ImplCompletionAnalyzer input
+   * main-process-log-parser Task 10.6: Uses unified parser for multi-engine support
+   *
+   * The method collects all consecutive text entries from the last assistant "turn"
+   * and combines them into a single string. This preserves the original behavior where
+   * an assistant message with multiple text parts is returned as a combined string.
    *
    * @param logPath - Path to the log file
+   * @param engineId - Optional engine ID (defaults to auto-detection or Claude)
    * @returns Last assistant message text or error
    */
-  async getLastAssistantMessage(logPath: string): Promise<Result<string, ParseError>> {
-    const readResult = await this.readLogLines(logPath);
-    if (!readResult.ok) {
-      return readResult;
+  async getLastAssistantMessage(logPath: string, engineId?: LLMEngineId): Promise<Result<string, ParseError>> {
+    const parsedResult = await this.readAndParseLogFile(logPath, engineId);
+    if (!parsedResult.ok) {
+      return parsedResult;
     }
 
-    const messages = readResult.value;
+    const parsedEntries = parsedResult.value;
 
-    // Find all assistant messages and get the last one
-    const assistantMessages = messages.filter(msg => msg.type === 'assistant');
+    // Find all text entries with role='assistant'
+    const assistantTextIndices: number[] = [];
+    parsedEntries.forEach((entry, index) => {
+      if (entry.type === 'text' && entry.text?.role === 'assistant') {
+        assistantTextIndices.push(index);
+      }
+    });
 
-    if (assistantMessages.length === 0) {
+    if (assistantTextIndices.length === 0) {
       return { ok: false, error: { type: 'NO_ASSISTANT_FOUND' } };
     }
 
-    const lastAssistant = assistantMessages[assistantMessages.length - 1];
+    // Find the last "group" of consecutive assistant text entries
+    // A group is considered to be from the same assistant message turn
+    const groupTexts: string[] = [];
 
-    // Extract text content from the message
-    const text = this.extractTextFromMessage(lastAssistant.message);
+    // Walk backwards from the last assistant entry to collect consecutive entries
+    for (let i = assistantTextIndices.length - 1; i >= 0; i--) {
+      const idx = assistantTextIndices[i];
+      // Check if this entry is part of the same group (consecutive or nearly consecutive)
+      // For simplicity, we collect all entries from the last continuous block
+      if (i === assistantTextIndices.length - 1 || assistantTextIndices[i + 1] - idx <= 1) {
+        groupTexts.unshift(parsedEntries[idx].text?.content || '');
+      } else {
+        // Non-consecutive, we've collected the last group
+        break;
+      }
+    }
 
-    return { ok: true, value: text };
+    // Return combined text from the last group
+    return { ok: true, value: groupTexts.join('\n') };
   }
 
   /**
-   * Extract text content from an assistant message
-   * Handles various message formats
+   * Read log file and parse with unified parser
+   * main-process-log-parser Task 10.6: Engine-agnostic log parsing
+   *
+   * @param logPath - Path to the log file
+   * @param engineId - Optional engine ID (defaults to auto-detection or Claude)
+   * @returns Parsed log entries or error
    */
-  private extractTextFromMessage(message: unknown): string {
-    if (typeof message === 'string') {
-      return message;
-    }
+  private async readAndParseLogFile(logPath: string, engineId?: LLMEngineId): Promise<Result<ParsedLogEntry[], ParseError>> {
+    try {
+      const content = await fs.readFile(logPath, 'utf-8');
+      const lines = content.split('\n').filter(line => line.trim() !== '');
+      const parsedEntries: ParsedLogEntry[] = [];
 
-    if (typeof message === 'object' && message !== null) {
-      const msgObj = message as Record<string, unknown>;
+      // Detect engineId from first system entry if not provided
+      let detectedEngineId = engineId;
 
-      // Handle { content: [...] } format
-      if (Array.isArray(msgObj.content)) {
-        const textParts: string[] = [];
-        for (const part of msgObj.content) {
-          if (typeof part === 'object' && part !== null) {
-            const partObj = part as Record<string, unknown>;
-            if (partObj.type === 'text' && typeof partObj.text === 'string') {
-              textParts.push(partObj.text);
+      for (const line of lines) {
+        try {
+          // Parse the wrapper JSON
+          const wrapper: LogWrapper = JSON.parse(line);
+
+          // Skip stderr (only parse stdout for assistant messages)
+          if (wrapper.stream === 'stderr') continue;
+
+          // Parse the inner data with unified parser
+          const entries = unifiedParser.parseLine(wrapper.data, detectedEngineId);
+
+          // If we found a system entry and haven't detected engineId yet, use it
+          if (!detectedEngineId && entries.length > 0) {
+            const systemEntry = entries.find(e => e.type === 'system');
+            if (systemEntry?.engineId) {
+              detectedEngineId = systemEntry.engineId;
             }
-          } else if (typeof part === 'string') {
-            textParts.push(part);
           }
+
+          parsedEntries.push(...entries);
+        } catch {
+          // Not valid JSON, skip this line
         }
-        return textParts.join('\n');
       }
 
-      // Handle direct text field
-      if (typeof msgObj.text === 'string') {
-        return msgObj.text;
-      }
+      return { ok: true, value: parsedEntries };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'FILE_READ_ERROR',
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
     }
-
-    // Fallback: stringify the message
-    return JSON.stringify(message);
   }
+
+  // main-process-log-parser Task 10.6: extractTextFromMessage removed
+  // Text extraction is now handled by the unified parser (ParsedLogEntry.text.content)
 }

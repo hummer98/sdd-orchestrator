@@ -639,6 +639,17 @@ export interface ElectronAPI {
   ): () => void;
 
   /**
+   * main-process-log-parser Task 10.2: Subscribe to parsed agent log entries
+   * Main processでパース済みのログエントリを受信
+   * Requirements: 3.1
+   * @param callback Function called when parsed log entry is received
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentLog(
+    callback: (agentId: string, log: import('@shared/utils/parserTypes').ParsedLogEntry) => void
+  ): () => void;
+
+  /**
    * agent-exit-robustness: Subscribe to agent exit error events
    * Called when handleAgentExit encounters an error (e.g., readRecord failure)
    * Requirements: 3.4

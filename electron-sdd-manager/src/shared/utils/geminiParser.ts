@@ -64,6 +64,7 @@ function parseLine(jsonLine: string): ParsedLogEntry[] {
           session: {
             cwd: event.cwd,
             model: event.model,
+            sessionId: event.session_id,
           },
         });
         break;

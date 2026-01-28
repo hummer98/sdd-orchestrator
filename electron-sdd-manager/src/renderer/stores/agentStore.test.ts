@@ -301,17 +301,38 @@ describe('useAgentStore', () => {
 
       it('should append user input to logs when prompt is provided', async () => {
         // agent-store-unification: Facade delegates to adapter
-        (agentOperations.resumeAgent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        // main-process-log-parser Task 10.4: Mock needs to simulate adapter behavior
+        // The adapter adds the stdin log before calling electronAPI.resumeAgent
+        // Import shared store synchronously at test level for mock implementation
+        const { useSharedAgentStore } = await import('@shared/stores/agentStore');
+
+        (agentOperations.resumeAgent as ReturnType<typeof vi.fn>).mockImplementation(
+          async (agentId: string, prompt?: string) => {
+            // Simulate what the real adapter does: add stdin log if prompt provided
+            if (prompt) {
+              useSharedAgentStore.getState().addLog(agentId, {
+                id: `stdin-mock-${Date.now()}`,
+                type: 'input',
+                timestamp: Date.now(),
+                text: {
+                  content: prompt,
+                  role: 'user',
+                },
+              });
+            }
+          }
+        );
 
         await useAgentStore.getState().resumeAgent('agent-1', 'カスタムプロンプト');
 
-        // Check that user input was logged as stdin
-        const state = useAgentStore.getState();
-        const logs = state.logs.get('agent-1');
+        // Check that user input was logged as ParsedLogEntry via the adapter mock
+        // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
+        // Use getLogsForAgent which delegates to shared store (SSOT)
+        const logs = useAgentStore.getState().getLogsForAgent('agent-1');
         expect(logs).toBeDefined();
-        expect(logs?.length).toBe(1);
-        expect(logs?.[0].stream).toBe('stdin');
-        expect(logs?.[0].data).toBe('カスタムプロンプト');
+        expect(logs.length).toBe(1);
+        expect(logs[0].type).toBe('input');
+        expect(logs[0].text?.content).toBe('カスタムプロンプト');
 
         // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
         expect(agentOperations.resumeAgent).toHaveBeenCalledWith('agent-1', 'カスタムプロンプト');

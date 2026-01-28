@@ -169,12 +169,14 @@ describe('agentStoreAdapter', () => {
 
         await agentOperations.resumeAgent('agent-1', 'user input');
 
-        // Verify stdin log was added
+        // Verify stdin log was added as ParsedLogEntry
+        // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
         const state = getSharedAgentStore();
         const logs = state.getLogsForAgent('agent-1');
         expect(logs.length).toBeGreaterThan(0);
-        expect(logs[0].stream).toBe('stdin');
-        expect(logs[0].data).toBe('user input');
+        // toParsedLogEntry converts 'stdin' to type='input'
+        expect(logs[0].type).toBe('input');
+        expect(logs[0].text?.content).toBe('user input');
       });
     });
 
@@ -225,11 +227,13 @@ describe('agentStoreAdapter', () => {
 
         expect(mockElectronAPI.getAgentLogs).toHaveBeenCalledWith('spec-a', 'agent-1');
 
-        // Verify logs were added to shared store
+        // Verify logs were added to shared store as ParsedLogEntry
+        // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
         const state = getSharedAgentStore();
         const logs = state.getLogsForAgent('agent-1');
         expect(logs).toHaveLength(1);
-        expect(logs[0].data).toBe('test output');
+        // toParsedLogEntry converts 'stdout' to type='text' with content in text.content
+        expect(logs[0].text?.content).toBe('test output');
       });
     });
   });
@@ -302,12 +306,14 @@ describe('agentStoreAdapter', () => {
       // Invoke the callback
       outputCallback?.('agent-1', 'stdout', 'Hello from agent');
 
-      // Verify log was added to shared store
+      // Verify log was added to shared store as ParsedLogEntry
+      // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
       const state = getSharedAgentStore();
       const logs = state.getLogsForAgent('agent-1');
       expect(logs).toHaveLength(1);
-      expect(logs[0].data).toBe('Hello from agent');
-      expect(logs[0].stream).toBe('stdout');
+      // toParsedLogEntry converts stdout to type='text' with content in text.content
+      expect(logs[0].text?.content).toBe('Hello from agent');
+      expect(logs[0].type).toBe('text');
     });
 
     it('should update agent status in shared store when onAgentStatusChange callback is invoked', () => {

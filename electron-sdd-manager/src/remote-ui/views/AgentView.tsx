@@ -13,7 +13,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bot } from 'lucide-react';
 import { AgentList, type AgentItemInfo, type AgentItemStatus, AgentLogPanel, type AgentLogInfo } from '@shared/components/agent';
 import { Spinner } from '@shared/components/ui/Spinner';
-import type { ApiClient, AgentInfo, AgentStatus, LogEntry } from '@shared/api/types';
+// main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+import type { ApiClient, AgentInfo, AgentStatus, ParsedLogEntry } from '@shared/api/types';
 
 // =============================================================================
 // Types
@@ -93,7 +94,8 @@ export function AgentView({
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [logs, setLogs] = useState<Map<string, LogEntry[]>>(new Map());
+  // main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+  const [logs, setLogs] = useState<Map<string, ParsedLogEntry[]>>(new Map());
 
   // Load agents on mount
   useEffect(() => {
@@ -122,21 +124,16 @@ export function AgentView({
     };
   }, [apiClient, specId]);
 
-  // Subscribe to agent output
+  // Subscribe to parsed agent log entries
+  // main-process-log-parser Task 10.4: Changed from onAgentOutput to onAgentLog
+  // Logs are now pre-parsed by Main process
   useEffect(() => {
-    const unsubscribe = apiClient.onAgentOutput((agentId, stream, data) => {
+    const unsubscribe = apiClient.onAgentLog((agentId, log) => {
       setLogs((prev) => {
         const newLogs = new Map(prev);
         const agentLogs = newLogs.get(agentId) || [];
-        newLogs.set(agentId, [
-          ...agentLogs,
-          {
-            id: `${agentId}-${Date.now()}-${agentLogs.length}`,
-            timestamp: Date.now(),
-            stream,
-            data,
-          },
-        ]);
+        // ParsedLogEntry is already properly structured
+        newLogs.set(agentId, [...agentLogs, log]);
         return newLogs;
       });
     });
@@ -192,7 +189,8 @@ export function AgentView({
           }
 
           // Sort by timestamp to ensure correct order
-          mergedLogs.sort((a, b) => a.timestamp - b.timestamp);
+          // main-process-log-parser Task 10.4: Handle optional timestamp
+          mergedLogs.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 
           newLogs.set(agentId, mergedLogs);
           return newLogs;

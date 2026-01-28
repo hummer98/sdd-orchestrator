@@ -25,6 +25,9 @@ import type {
   ApprovalStatus,
 } from '@renderer/types';
 
+// main-process-log-parser Task 10.2: Export ParsedLogEntry for IPC API
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
+
 import type { WorktreeConfig } from '@shared/types/worktree';
 
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
@@ -386,10 +389,11 @@ export interface ApiClient {
 
   /**
    * Get logs for a specific agent
+   * main-process-log-parser Task 10.4: Changed return type to ParsedLogEntry[]
    * @param specId - Spec identifier
    * @param agentId - Agent identifier
    */
-  getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>>;
+  getAgentLogs(specId: string, agentId: string): Promise<Result<ParsedLogEntry[], ApiError>>;
 
   /**
    * Execute a project-level command
@@ -552,6 +556,15 @@ export interface ApiClient {
    * @returns Unsubscribe function
    */
   onAgentStatusChange(callback: (agentId: string, status: AgentStatus) => void): () => void;
+
+  /**
+   * Subscribe to parsed agent log entries
+   * main-process-log-parser Task 10.2: New event for Main process parsed logs
+   * Requirements: 3.1
+   * @param callback - Callback receiving parsed log entry
+   * @returns Unsubscribe function
+   */
+  onAgentLog(callback: (agentId: string, log: ParsedLogEntry) => void): () => void;
 
   /**
    * Subscribe to auto execution status changes
@@ -730,6 +743,8 @@ export type {
   BugMetadata,
   BugDetail,
   BugAction,
+  // main-process-log-parser Task 10.2: Export ParsedLogEntry
+  ParsedLogEntry,
 };
 
 // bugs-view-unification: Re-export BugsChangeEvent

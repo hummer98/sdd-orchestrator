@@ -28,6 +28,9 @@ import { projectLogger } from '../services/projectLogger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
 import { initDefaultLogFileService } from '../services/logFileService';
+// main-process-log-parser Task 10.7: LogStreamingService for parsed log distribution
+import { LogStreamingService } from '../services/logStreamingService';
+import { getDefaultAgentRecordService } from '../services/agentRecordService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugService } from '../services/bugService';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
@@ -1054,11 +1057,36 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
   logger.info('[handlers] Registering event callbacks');
   eventCallbacksRegistered = true;
 
+  // main-process-log-parser Task 10.7: Create LogStreamingService for parsed log distribution
+  // The emitLog callback sends ParsedLogEntry to both IPC and WebSocket
+  const logStreamingService = new LogStreamingService(
+    getDefaultAgentRecordService(),
+    (agentId, parsedLog) => {
+      // Send parsed log to IPC (Renderer)
+      if (!window.isDestroyed()) {
+        window.webContents.send(IPC_CHANNELS.AGENT_LOG, agentId, parsedLog);
+      }
+      // Send parsed log to WebSocket (Remote UI)
+      const remoteServer = getRemoteAccessServer();
+      const wsHandler = remoteServer.getWebSocketHandler();
+      if (wsHandler) {
+        wsHandler.broadcastAgentLog(agentId, parsedLog);
+      }
+    }
+  );
+
   service.onOutput((agentId, stream, data) => {
+    // Keep raw output for backward compatibility (AGENT_OUTPUT channel)
     if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.AGENT_OUTPUT, agentId, stream, data);
     const remoteServer = getRemoteAccessServer();
     const wsHandler = remoteServer.getWebSocketHandler();
     if (wsHandler) wsHandler.broadcastAgentOutput(agentId, stream, data, stream === 'stderr' ? 'error' : 'agent');
+
+    // main-process-log-parser Task 10.7: Process output through LogStreamingService for parsed logs
+    // This sends ParsedLogEntry via AGENT_LOG channel (IPC and WebSocket)
+    logStreamingService.processLogOutput(agentId, stream, data).catch((error) => {
+      logger.warn('[handlers] LogStreamingService.processLogOutput failed', { agentId, error: error instanceof Error ? error.message : String(error) });
+    });
   });
 
   service.onStatusChange(async (agentId, status) => {

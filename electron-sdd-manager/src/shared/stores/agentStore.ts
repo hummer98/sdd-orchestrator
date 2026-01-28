@@ -12,10 +12,10 @@
  */
 
 import { create } from 'zustand';
-import type { ApiClient, AgentInfo, AgentStatus, LogEntry } from '../api/types';
+import type { ApiClient, AgentInfo, AgentStatus, ParsedLogEntry } from '../api/types';
 
 // Re-export types for convenience
-export type { AgentInfo, AgentStatus, LogEntry };
+export type { AgentInfo, AgentStatus, ParsedLogEntry };
 
 // =============================================================================
 // Types
@@ -36,8 +36,12 @@ export interface SharedAgentState {
    * Requirements: 3.3, 3.5
    */
   selectedAgentIdBySpec: Map<string, string | null>;
-  /** Agent別のログ */
-  logs: Map<string, LogEntry[]>;
+  /**
+   * Agent別のログ
+   * main-process-log-parser Task 10.4
+   * Requirements: 4.1 - ParsedLogEntry型に変更
+   */
+  logs: Map<string, ParsedLogEntry[]>;
   /** 読み込み中フラグ */
   isLoading: boolean;
   /** エラーメッセージ */
@@ -79,12 +83,20 @@ export interface SharedAgentActions {
    * Requirements: 1.5
    */
   removeAgent: (agentId: string) => void;
-  /** ログを追加する */
-  addLog: (agentId: string, log: LogEntry) => void;
+  /**
+   * ログを追加する
+   * main-process-log-parser Task 10.4
+   * Requirements: 4.2 - ParsedLogEntry型に変更
+   */
+  addLog: (agentId: string, log: ParsedLogEntry) => void;
   /** ログをクリアする */
   clearLogs: (agentId: string) => void;
-  /** 指定AgentのLogsを取得する */
-  getLogsForAgent: (agentId: string) => LogEntry[];
+  /**
+   * 指定AgentのLogsを取得する
+   * main-process-log-parser Task 10.4
+   * Requirements: 4.1 - ParsedLogEntry[]型に変更
+   */
+  getLogsForAgent: (agentId: string) => ParsedLogEntry[];
   /** エラーをクリアする */
   clearError: () => void;
 
@@ -280,7 +292,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     });
   },
 
-  addLog: (agentId: string, log: LogEntry) => {
+  addLog: (agentId: string, log: ParsedLogEntry) => {
     set((state) => {
       const newLogs = new Map(state.logs);
       const currentLogs = newLogs.get(agentId) || [];
@@ -301,7 +313,8 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     const logs = get().logs.get(agentId) || [];
     // Bug fix: agent-log-stream-race-condition
     // Sort logs by timestamp to ensure correct order when file logs are merged with real-time logs
-    return [...logs].sort((a, b) => a.timestamp - b.timestamp);
+    // main-process-log-parser: ParsedLogEntry.timestamp is optional, so we need to handle undefined
+    return [...logs].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   },
 
   clearError: () => {

@@ -3894,3 +3894,141 @@ describe('WebSocketHandler - PING/PONG Heartbeat (safari-websocket-stability Tas
     });
   });
 });
+
+// ============================================================
+// main-process-log-parser Task 10.8: broadcastAgentLog Tests
+// Requirements: 3.2
+// ============================================================
+
+describe('WebSocketHandler - broadcastAgentLog (Task 10.8)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('should broadcast ParsedLogEntry to all connected clients', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+    handler.initialize(mockWss);
+
+    // Connect a client
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+    await vi.runAllTimersAsync();
+    mockWs.send.mockClear();
+
+    // Create a ParsedLogEntry
+    const parsedLog = {
+      id: 'log-1',
+      type: 'text' as const,
+      timestamp: Date.now(),
+      engineId: 'claude' as const,
+      text: {
+        content: 'Hello World',
+        role: 'assistant' as const,
+      },
+    };
+
+    // Broadcast the log
+    handler.broadcastAgentLog('agent-001', parsedLog);
+
+    await vi.runAllTimersAsync();
+
+    // Should broadcast AGENT_LOG message
+    expect(mockWs.send).toHaveBeenCalledWith(
+      expect.stringContaining('"type":"AGENT_LOG"')
+    );
+    expect(mockWs.send).toHaveBeenCalledWith(
+      expect.stringContaining('"agentId":"agent-001"')
+    );
+    expect(mockWs.send).toHaveBeenCalledWith(
+      expect.stringContaining('"Hello World"')
+    );
+  });
+
+  it('should include log entry in the broadcast payload', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+    await vi.runAllTimersAsync();
+    mockWs.send.mockClear();
+
+    const parsedLog = {
+      id: 'log-2',
+      type: 'system' as const,
+      timestamp: Date.now(),
+      engineId: 'gemini' as const,
+      session: {
+        cwd: '/test/project',
+        model: 'gemini-2.0-flash-exp',
+      },
+    };
+
+    handler.broadcastAgentLog('agent-002', parsedLog);
+
+    await vi.runAllTimersAsync();
+
+    // Verify the exact message structure
+    const sentMessage = mockWs.send.mock.calls[0][0];
+    const parsed = JSON.parse(sentMessage);
+
+    expect(parsed.type).toBe('AGENT_LOG');
+    expect(parsed.payload.agentId).toBe('agent-002');
+    expect(parsed.payload.log.id).toBe('log-2');
+    expect(parsed.payload.log.type).toBe('system');
+    expect(parsed.payload.log.engineId).toBe('gemini');
+  });
+
+  it('should handle broadcast with no connected clients gracefully', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+    handler.initialize(mockWss);
+
+    // Do not connect any clients
+
+    const parsedLog = {
+      id: 'log-3',
+      type: 'text' as const,
+      timestamp: Date.now(),
+      engineId: 'claude' as const,
+      text: {
+        content: 'No one is listening',
+        role: 'assistant' as const,
+      },
+    };
+
+    // Should not throw
+    expect(() => handler.broadcastAgentLog('agent-003', parsedLog)).not.toThrow();
+  });
+});

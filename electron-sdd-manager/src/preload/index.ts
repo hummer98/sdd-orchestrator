@@ -10,6 +10,8 @@ import type { Phase, SelectProjectResult } from '../renderer/types';
 import type { ExecutionGroup } from '../main/services/specManagerService';
 // agent-state-file-ssot: Import AgentInfo/AgentStatus from agentRecordService (SSOT)
 import type { AgentInfo, AgentStatus } from '../main/services/agentRecordService';
+// main-process-log-parser Task 10.2: Import ParsedLogEntry for type-safe IPC
+import type { ParsedLogEntry } from '../shared/utils/parserTypes';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';
@@ -269,6 +271,31 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.AGENT_STATUS_CHANGE, handler);
+    };
+  },
+
+  /**
+   * main-process-log-parser Task 10.2: Subscribe to parsed agent log entries
+   * Main processでパース済みのログエントリを受信
+   * Requirements: 3.1
+   * @param callback Function called when parsed log entry is received
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentLog: (
+    callback: (agentId: string, log: ParsedLogEntry) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      agentId: string,
+      log: ParsedLogEntry
+    ) => {
+      callback(agentId, log);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AGENT_LOG, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AGENT_LOG, handler);
     };
   },
 

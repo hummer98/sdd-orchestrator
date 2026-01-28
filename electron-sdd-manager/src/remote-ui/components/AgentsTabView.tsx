@@ -27,7 +27,7 @@ import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { AskAgentDialog } from '@shared/components/project';
-import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type { ApiClient } from '@shared/api/types';
 
@@ -148,8 +148,8 @@ export function AgentsTabView({
   /** Get logs map from the store */
   const logsMap = useSharedAgentStore((state) => state.logs);
 
-  /** Get logs for the selected agent */
-  const logs: LogEntry[] = useMemo(
+  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
+  const logs: ParsedLogEntry[] = useMemo(
     () => selectedAgent ? (logsMap.get(selectedAgent.id) ?? []) : [],
     [logsMap, selectedAgent]
   );

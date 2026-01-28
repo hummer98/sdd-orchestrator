@@ -21,10 +21,11 @@ import { Terminal, Copy, Trash2, Loader2, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { TokenUsage } from '@shared/utils/tokenAggregator';
 import { throttle } from '@shared/utils/throttle';
-import { useIncrementalLogParser } from '@shared/hooks/useIncrementalLogParser';
+// main-process-log-parser Task 10.9: useIncrementalLogParser removed - logs are pre-parsed by Main process
 import { useIncrementalTokenAggregator } from '@shared/hooks/useIncrementalTokenAggregator';
 import { LogEntryBlock } from './LogEntryBlock';
-import type { LogEntry, AgentStatus } from '@shared/api/types';
+// main-process-log-parser Task 10.9: Changed LogEntry to ParsedLogEntry
+import type { ParsedLogEntry, AgentStatus } from '@shared/api/types';
 import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
 import { getLLMEngine } from '@shared/registry';
 import type { LLMEngineId } from '@shared/registry';
@@ -62,8 +63,12 @@ export interface AgentLogInfo {
 export interface AgentLogPanelProps {
   /** Agent information (undefined shows "select agent" message) */
   agent?: AgentLogInfo;
-  /** Log entries to display */
-  logs: LogEntry[];
+  /**
+   * Log entries to display
+   * main-process-log-parser Task 10.9: Changed from LogEntry[] to ParsedLogEntry[]
+   * Logs are now pre-parsed by Main process
+   */
+  logs: ParsedLogEntry[];
   /** Show token usage in header (calculates from logs if true) */
   showTokens?: boolean;
   /** Pre-calculated token usage (if not provided, calculated from logs when showTokens=true) */
@@ -122,9 +127,29 @@ export function AgentLogPanel({
   );
   const tokenUsage = providedTokenUsage ?? calculatedTokenUsage;
 
-  // Performance fix: Incremental log parsing
-  // llm-stream-log-parser Task 7.2: Pass engineId for engine-specific parsing
-  const parsedEntries = useIncrementalLogParser(logs, agent?.command, agent?.engineId);
+  // main-process-log-parser Task 10.9: Removed useIncrementalLogParser
+  // Logs are now pre-parsed by Main process, so we can use them directly
+  // Build entries with optional command entry prepended
+  const parsedEntries = useMemo(() => {
+    const entries: ParsedLogEntry[] = [];
+
+    // Add command entry if provided
+    if (agent?.command) {
+      entries.push({
+        id: 'command-line',
+        type: 'system',
+        engineId: agent.engineId,
+        session: {
+          cwd: agent.command,
+        },
+      });
+    }
+
+    // Add all pre-parsed log entries
+    entries.push(...logs);
+
+    return entries;
+  }, [logs, agent?.command, agent?.engineId]);
 
   // Track if user is near bottom of scroll area
   useEffect(() => {
@@ -150,13 +175,18 @@ export function AgentLogPanel({
   }, [parsedEntries.length]);
 
   // Copy handler - copies log file path if available, otherwise log content
+  // main-process-log-parser Task 10.9: Updated to extract text from ParsedLogEntry
   const handleCopy = () => {
     if (onCopy) {
       onCopy();
     } else if (agent?.logFilePath) {
       navigator.clipboard.writeText(agent.logFilePath);
     } else {
-      const logText = logs.map((log) => log.data).join('\n');
+      // Extract text content from ParsedLogEntry
+      const logText = logs
+        .map((log) => log.text?.content ?? log.result?.content ?? '')
+        .filter(Boolean)
+        .join('\n');
       navigator.clipboard.writeText(logText);
     }
   };

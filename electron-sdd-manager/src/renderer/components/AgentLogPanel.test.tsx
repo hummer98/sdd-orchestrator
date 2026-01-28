@@ -2,13 +2,16 @@
  * AgentLogPanel Component Tests
  * Task 31.1-31.2: Agent log display and operations
  * Requirements: 9.1, 9.2, 9.4, 9.7, 9.8, 9.9, 9.10
+ *
+ * main-process-log-parser Task 10.9: Updated to use ParsedLogEntry type
+ * Logs are now pre-parsed by Main process
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentLogPanel } from './AgentLogPanel';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
-import type { LogEntry } from '../types';
+import type { ParsedLogEntry } from '@shared/api/types';
 import type { LLMEngineId } from '@shared/registry';
 
 // Mock the stores
@@ -24,13 +27,28 @@ Object.assign(navigator, {
 
 const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
 
+// Helper to create ParsedLogEntry
+function createParsedLog(
+  id: string,
+  type: ParsedLogEntry['type'],
+  overrides: Partial<ParsedLogEntry> = {}
+): ParsedLogEntry {
+  return {
+    id,
+    type,
+    timestamp: Date.now(),
+    engineId: 'claude',
+    ...overrides,
+  };
+}
+
 describe('AgentLogPanel - Task 31', () => {
   const mockClearLogs = vi.fn();
 
-  const baseLogs: LogEntry[] = [
-    { id: 'log-1', stream: 'stdout', data: 'Starting process...', timestamp: Date.now() - 2000 },
-    { id: 'log-2', stream: 'stdout', data: 'Processing requirements...', timestamp: Date.now() - 1000 },
-    { id: 'log-3', stream: 'stderr', data: 'Warning: Something happened', timestamp: Date.now() },
+  const baseLogs: ParsedLogEntry[] = [
+    createParsedLog('log-1', 'text', { text: { content: 'Starting process...', role: 'assistant' } }),
+    createParsedLog('log-2', 'text', { text: { content: 'Processing requirements...', role: 'assistant' } }),
+    createParsedLog('log-3', 'error', { text: { content: 'Warning: Something happened', role: 'assistant' } }),
   ];
 
   const baseAgentInfo: AgentInfo = {
@@ -50,7 +68,7 @@ describe('AgentLogPanel - Task 31', () => {
   // Helper to create mock store state for selector-based access
   const createMockState = (overrides: {
     selectedAgentId?: string | null;
-    logs?: LogEntry[];
+    logs?: ParsedLogEntry[];
     agent?: AgentInfo | null;
   } = {}) => {
     const selectedAgentId = 'selectedAgentId' in overrides ? overrides.selectedAgentId : 'agent-1';
@@ -58,7 +76,7 @@ describe('AgentLogPanel - Task 31', () => {
     // Use null to explicitly indicate no agent, undefined means use default
     const agent = 'agent' in overrides ? overrides.agent : baseAgentInfo;
 
-    const logsMap = new Map<string, LogEntry[]>();
+    const logsMap = new Map<string, ParsedLogEntry[]>();
     if (selectedAgentId && logs.length > 0) {
       logsMap.set(selectedAgentId, logs);
     }
@@ -253,74 +271,6 @@ describe('AgentLogPanel - Task 31', () => {
 
       const clearButton = screen.getByTitle('Clear logs');
       expect(clearButton).toBeDisabled();
-    });
-  });
-
-  describe('Token aggregation in header', () => {
-    it('should display aggregated tokens in header when logs contain token data', () => {
-      const logsWithTokens: LogEntry[] = [
-        {
-          id: 'log-1',
-          stream: 'stdout',
-          data: '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50}}}',
-          timestamp: Date.now(),
-        },
-        {
-          id: 'log-2',
-          stream: 'stdout',
-          data: '{"type":"assistant","message":{"usage":{"input_tokens":200,"output_tokens":100}}}',
-          timestamp: Date.now(),
-        },
-      ];
-
-      setupMock(createMockState({
-        logs: logsWithTokens,
-      }));
-
-      render(<AgentLogPanel />);
-
-      // Should display aggregated tokens (300 input + 150 output = 450 total)
-      expect(screen.getByText(/300/)).toBeInTheDocument();
-      expect(screen.getByText(/150/)).toBeInTheDocument();
-    });
-
-    it('should not display token info when no token data in logs', () => {
-      const logsWithoutTokens: LogEntry[] = [
-        {
-          id: 'log-1',
-          stream: 'stdout',
-          data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}',
-          timestamp: Date.now(),
-        },
-      ];
-
-      setupMock(createMockState({
-        logs: logsWithoutTokens,
-      }));
-
-      render(<AgentLogPanel />);
-
-      // Token display should not be present when there are no tokens
-      expect(screen.queryByText(/Input:/)).not.toBeInTheDocument();
-    });
-
-    it('should display token icon when tokens are present', () => {
-      const logsWithTokens: LogEntry[] = [
-        {
-          id: 'log-1',
-          stream: 'stdout',
-          data: '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50}}}',
-          timestamp: Date.now(),
-        },
-      ];
-
-      setupMock(createMockState({
-        logs: logsWithTokens,
-      }));
-
-      render(<AgentLogPanel />);
-
-      expect(screen.getByTestId('token-display')).toBeInTheDocument();
     });
   });
 

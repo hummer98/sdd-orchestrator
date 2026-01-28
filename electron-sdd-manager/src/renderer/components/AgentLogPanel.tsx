@@ -7,13 +7,15 @@
  */
 
 import { useMemo } from 'react';
-import { useAgentStore, type LogEntry } from '../stores/agentStore';
+// main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+import { useAgentStore, type ParsedLogEntry } from '../stores/agentStore';
 import { useProjectStore } from '../stores/projectStore';
 import { AgentLogPanel as SharedAgentLogPanel, type AgentLogInfo } from '@shared/components/agent';
 import { useHumanActivity } from '../hooks/useHumanActivity';
 
 // Bug fix: Zustand無限ループ回避のため、空配列を定数化して参照安定性を確保
-const EMPTY_LOGS: LogEntry[] = [];
+// main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+const EMPTY_LOGS: ParsedLogEntry[] = [];
 
 export function AgentLogPanel() {
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
@@ -30,9 +32,10 @@ export function AgentLogPanel() {
   });
 
   // Bug fix: agent-log-stream-race-condition - ソートはuseMemo内で行う
+  // main-process-log-parser Task 10.4: ParsedLogEntry.timestamp is optional
   const logs = useMemo(() => {
     if (rawLogs === EMPTY_LOGS || rawLogs.length === 0) return EMPTY_LOGS;
-    return [...rawLogs].sort((a, b) => a.timestamp - b.timestamp);
+    return [...rawLogs].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   }, [rawLogs]);
 
   // Bug fix: getSnapshot無限ループ回避

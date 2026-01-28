@@ -26,7 +26,8 @@ export { useSpecStore } from './specStore';
 export { useEditorStore } from './editorStore';
 export { useNotificationStore, notify } from './notificationStore';
 export { useAgentStore } from './agentStore';
-export type { AgentInfo, AgentStatus, LogEntry } from './agentStore';
+// main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+export type { AgentInfo, AgentStatus, ParsedLogEntry } from './agentStore';
 // Task 2: Workflow Store (simplified in Task 5.1)
 // NOTE: AutoExecutionStatus moved to types/index.ts as part of spec-scoped-auto-execution-state Task 5.1
 export { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS, DEFAULT_COMMAND_PREFIX, COMMAND_PREFIXES } from './workflowStore';

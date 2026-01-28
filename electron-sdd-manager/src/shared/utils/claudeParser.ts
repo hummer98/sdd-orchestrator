@@ -75,6 +75,7 @@ function parseLine(jsonLine: string): ParsedLogEntry[] {
               cwd: event.cwd,
               model: event.message?.model,
               version: event.version,
+              sessionId: event.session_id,
             },
           });
         }

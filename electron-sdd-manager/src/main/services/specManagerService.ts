@@ -37,6 +37,8 @@ import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';
 // spec-productivity-metrics: Direct metrics tracking in service
 import { getDefaultMetricsService } from './metricsService';
+// main-process-log-parser Task 10.5: Unified parser for session_id extraction
+import { unifiedParser } from '../utils/unifiedParser';
 // MetricsWorkflowPhase import removed - now using AgentPhase (string) for all phases
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
@@ -479,6 +481,9 @@ export class SpecManagerService {
 
   // Buffer for sessionId parsing across chunked stdout data
   private sessionIdParseBuffers: Map<string, string> = new Map();
+
+  // main-process-log-parser Task 10.5: Cache for engineId per agent
+  private engineIdCache: Map<string, LLMEngineId | undefined> = new Map();
 
   // skip-permissions-main-process: DI for layoutConfigService
   private layoutConfigService: LayoutConfigServiceDependency | null = null;
@@ -992,6 +997,9 @@ export class SpecManagerService {
         }],
       });
 
+      // main-process-log-parser Task 10.5: Cache engineId for session_id parsing
+      this.setEngineIdCache(agentId, engineId);
+
       // Mark file as written and process any pending events
       fileWritten = true;
       for (const event of pendingEvents) {
@@ -1122,6 +1130,8 @@ export class SpecManagerService {
       // agent-exit-robustness: Cleanup remaining resources
       this.processes.delete(agentId);
       this.sessionIdParseBuffers.delete(agentId);
+      // main-process-log-parser Task 10.5: Clear engineId cache
+      this.clearEngineIdCache(agentId);
 
       // spec-event-log: Log agent:complete or agent:fail event (Requirement 1.2, 1.3)
       const phase = currentRecord?.phase || 'unknown';
@@ -1221,6 +1231,8 @@ export class SpecManagerService {
     this.processes.delete(agentId);
     this.forcedKillSuccess.delete(agentId);
     this.sessionIdParseBuffers.delete(agentId);
+    // main-process-log-parser Task 10.5: Clear engineId cache
+    this.clearEngineIdCache(agentId);
   }
 
   /**
@@ -1231,6 +1243,8 @@ export class SpecManagerService {
     this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
     this.processes.delete(agentId);
     this.sessionIdParseBuffers.delete(agentId);
+    // main-process-log-parser Task 10.5: Clear engineId cache
+    this.clearEngineIdCache(agentId);
 
     // spec-event-log: Log agent:fail event (Requirement 1.3)
     this.logAgentEvent(specId, {
@@ -1283,6 +1297,9 @@ export class SpecManagerService {
       this.processes.delete(agentId);
     }
 
+    // main-process-log-parser Task 10.5: Clear engineId cache
+    this.clearEngineIdCache(agentId);
+
     // Notify status change
     this.statusCallbacks.forEach((cb) => cb(agentId, 'interrupted'));
 
@@ -1330,6 +1347,10 @@ export class SpecManagerService {
       logger.error('[SpecManagerService] Failed to delete agent record', { specId, agentId, error });
       // Continue even if file deletion fails (file might not exist)
     }
+
+    // main-process-log-parser Task 10.5: Clear engineId and sessionId caches
+    this.clearEngineIdCache(agentId);
+    this.sessionIdParseBuffers.delete(agentId);
 
     return { ok: true, value: undefined };
   }
@@ -2246,8 +2267,9 @@ export class SpecManagerService {
   }
 
   /**
-   * Parse sessionId from Claude Code stream-json output
-   * Claude Code outputs session_id in the first "system/init" message
+   * Parse sessionId from LLM CLI stream-json output
+   * main-process-log-parser Task 10.5: Uses unified parser for engine-agnostic session_id extraction
+   * Supports both Claude CLI and Gemini CLI output formats.
    *
    * Uses buffering to handle chunked stdout data where JSON lines may be split
    * across multiple data events (Node.js child process stdout does not guarantee
@@ -2281,21 +2303,29 @@ export class SpecManagerService {
       this.sessionIdParseBuffers.set(agentId, '');
     }
 
-    // Process complete lines only
+    // Get engineId from cache or fetch it asynchronously
+    const cachedEngineId = this.engineIdCache.get(agentId);
+
+    // Process complete lines using unified parser
     for (const line of lines) {
       if (!line.trim()) continue;
-      try {
-        const parsed = JSON.parse(line);
-        // Check for system/init message with session_id
-        if (parsed.type === 'system' && parsed.subtype === 'init' && parsed.session_id) {
-          logger.info('[SpecManagerService] Extracted sessionId from Claude Code output', {
+
+      // main-process-log-parser Task 10.5: Use unified parser for parsing
+      // Falls back to Claude if engineId is not cached yet
+      const parsedEntries = unifiedParser.parseLine(line, cachedEngineId);
+
+      // Look for system entry with sessionId
+      for (const entry of parsedEntries) {
+        if (entry.type === 'system' && entry.session?.sessionId) {
+          logger.info('[SpecManagerService] Extracted sessionId from LLM CLI output', {
             agentId,
-            sessionId: parsed.session_id,
+            sessionId: entry.session.sessionId,
+            engineId: entry.engineId,
           });
 
           // agent-state-file-ssot: Update agent record (SSOT)
           this.recordService.updateRecord(specId, agentId, {
-            sessionId: parsed.session_id,
+            sessionId: entry.session.sessionId,
           }).catch((err) => {
             logger.warn('[SpecManagerService] Failed to update agent record with sessionId', {
               agentId,
@@ -2307,10 +2337,24 @@ export class SpecManagerService {
           this.sessionIdParseBuffers.delete(agentId);
           return;
         }
-      } catch {
-        // Not valid JSON, skip this line
       }
     }
+  }
+
+  /**
+   * Set engineId in cache for session_id parsing
+   * main-process-log-parser Task 10.5: Called when starting an agent to cache its engineId
+   */
+  private setEngineIdCache(agentId: string, engineId?: LLMEngineId): void {
+    this.engineIdCache.set(agentId, engineId);
+  }
+
+  /**
+   * Clear engineId cache for an agent
+   * main-process-log-parser Task 10.5: Called when agent is stopped/removed
+   */
+  private clearEngineIdCache(agentId: string): void {
+    this.engineIdCache.delete(agentId);
   }
 
   // ============================================================

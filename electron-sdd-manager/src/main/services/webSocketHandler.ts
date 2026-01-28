@@ -15,6 +15,8 @@ import { getDefaultEventLogService } from './eventLogService';
 // git-diff-viewer: Git services import (Task 15.9)
 import { GitService } from './GitService';
 import { GitFileWatcherService } from './GitFileWatcherService';
+// main-process-log-parser Task 10.8: ParsedLogEntry for broadcastAgentLog
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 
 /**
  * WebSocket message structure for communication
@@ -1142,6 +1144,28 @@ export class WebSocketHandler {
         stream,
         data,
         logType: type,
+      },
+      timestamp,
+    });
+  }
+
+  /**
+   * Broadcast parsed agent log entry to all connected clients
+   * main-process-log-parser Task 10.8: WebSocket broadcasting for ParsedLogEntry
+   * Requirements: 3.2
+   *
+   * @param agentId Agent identifier
+   * @param log ParsedLogEntry from LogStreamingService
+   */
+  broadcastAgentLog(agentId: string, log: ParsedLogEntry): void {
+    const timestamp = Date.now();
+
+    // Broadcast to all clients
+    this.broadcast({
+      type: 'AGENT_LOG',
+      payload: {
+        agentId,
+        log,
       },
       timestamp,
     });

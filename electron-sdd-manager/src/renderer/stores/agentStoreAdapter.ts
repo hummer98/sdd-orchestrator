@@ -14,12 +14,29 @@
  * - Updating shared/agentStore with IPC results
  */
 
-import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus, type ParsedLogEntry } from '@shared/stores/agentStore';
 import type { LogEntry } from '../types';
 
 // =============================================================================
 // Type Adapters
 // =============================================================================
+
+/**
+ * Convert LogEntry to ParsedLogEntry format
+ * main-process-log-parser Task 10.4: Temporary converter for adapter
+ * This is a fallback for stdin logs and file reading until full pipeline is complete
+ */
+function toParsedLogEntry(logEntry: LogEntry): ParsedLogEntry {
+  return {
+    id: logEntry.id,
+    type: logEntry.stream === 'stdin' ? 'input' : 'text',
+    timestamp: logEntry.timestamp,
+    text: {
+      content: logEntry.data,
+      role: logEntry.stream === 'stdin' ? 'user' : 'assistant',
+    },
+  };
+}
 
 /**
  * Convert renderer AgentInfo to shared AgentInfo format
@@ -134,7 +151,7 @@ export const agentOperations = {
           data: prompt,
           timestamp: Date.now(),
         };
-        useSharedAgentStore.getState().addLog(agentId, inputLogEntry);
+        useSharedAgentStore.getState().addLog(agentId, toParsedLogEntry(inputLogEntry));
       }
 
       await window.electronAPI.resumeAgent(agentId, prompt);
@@ -188,7 +205,7 @@ export const agentOperations = {
       console.log('[agentStoreAdapter] Loading agent logs', { specId, agentId });
       const logs = await window.electronAPI.getAgentLogs(specId, agentId);
 
-      // Convert file logs to LogEntry format
+      // Convert file logs to LogEntry format then to ParsedLogEntry
       const fileLogEntries: LogEntry[] = logs.map((log: { timestamp: string; stream: string; data: string }, index: number) => ({
         id: `${agentId}-${index}-${log.timestamp}`,
         stream: log.stream as 'stdout' | 'stderr' | 'stdin',
@@ -207,7 +224,7 @@ export const agentOperations = {
       // Add only new logs from file (not already in real-time logs)
       const newFileLogsCount = fileLogEntries.filter((entry) => {
         if (!existingIds.has(entry.id)) {
-          state.addLog(agentId, entry);
+          state.addLog(agentId, toParsedLogEntry(entry));
           return true;
         }
         return false;
@@ -248,7 +265,7 @@ export function setupAgentEventListeners(): () => void {
         data,
         timestamp: Date.now(),
       };
-      useSharedAgentStore.getState().addLog(agentId, entry);
+      useSharedAgentStore.getState().addLog(agentId, toParsedLogEntry(entry));
     }
   );
 

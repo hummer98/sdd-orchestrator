@@ -23,7 +23,8 @@ import React, { useState, useCallback, useRef } from 'react';
 import { X, Loader2, Send, Play } from 'lucide-react';
 import { clsx } from 'clsx';
 import { AgentLogPanel } from '@shared/components/agent';
-import type { AgentInfo, LogEntry } from '@shared/api/types';
+// main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+import type { AgentInfo, ParsedLogEntry } from '@shared/api/types';
 
 // =============================================================================
 // Types
@@ -36,8 +37,11 @@ import type { AgentInfo, LogEntry } from '@shared/api/types';
 export interface AgentDetailDrawerProps {
   /** Agent to display */
   agent: AgentInfo;
-  /** Log entries to display */
-  logs: LogEntry[];
+  /**
+   * Log entries to display
+   * main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
+   */
+  logs: ParsedLogEntry[];
   /** Whether the drawer is open */
   isOpen: boolean;
   /** Callback when drawer is closed */

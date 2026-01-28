@@ -18,6 +18,13 @@ export default defineConfig({
           options.startup(['.', '--no-sandbox', '--remote-debugging-port=9222']);
         },
         vite: {
+          resolve: {
+            alias: {
+              '@': resolve(__dirname, 'src'),
+              '@main': resolve(__dirname, 'src/main'),
+              '@shared': resolve(__dirname, 'src/shared'),
+            },
+          },
           build: {
             outDir: 'dist/main',
             rollupOptions: {

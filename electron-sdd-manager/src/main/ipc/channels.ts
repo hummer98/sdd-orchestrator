@@ -38,6 +38,8 @@ export const IPC_CHANNELS = {
   // Agent Events (Task 27.2)
   AGENT_OUTPUT: 'ipc:agent-output',
   AGENT_STATUS_CHANGE: 'ipc:agent-status-change',
+  // main-process-log-parser Task 10.2: Parsed log entries from Main process
+  AGENT_LOG: 'ipc:agent-log',
 
   // Project
   SET_PROJECT_PATH: 'ipc:set-project-path',

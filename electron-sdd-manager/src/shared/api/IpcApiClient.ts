@@ -20,11 +20,13 @@ import type {
   SpecMetadata,
   SpecDetail,
   Phase,
-  LogEntry,
+  // main-process-log-parser Task 10.4: LogEntry import removed - now using ParsedLogEntry
   BugMetadata,
   BugDetail,
   BugAction,
   BugsChangeEvent,
+  // main-process-log-parser Task 10.2: Import ParsedLogEntry for onAgentLog
+  ParsedLogEntry,
 } from './types';
 
 function getCurrentProjectPath(): string | null {
@@ -274,15 +276,26 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(() => window.electronAPI.sendAgentInput(agentId, text));
   }
 
-  async getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>> {
+  /**
+   * Get logs for a specific agent
+   * main-process-log-parser Task 10.4: Updated to return ParsedLogEntry[]
+   * Converts raw LogEntry from file to ParsedLogEntry format
+   */
+  async getAgentLogs(specId: string, agentId: string): Promise<Result<ParsedLogEntry[], ApiError>> {
     checkElectronAPI();
     return wrapResult(async () => {
       const logs = await window.electronAPI.getAgentLogs(specId, agentId);
+      // Convert LogEntry to ParsedLogEntry format
+      // main-process-log-parser Task 10.4: Temporary converter until Main process returns ParsedLogEntry
+      // Note: log.stream can be 'stdout' | 'stderr' (stdin is not returned from file logs)
       return logs.map((log, index) => ({
         id: `${agentId}-${index}`,
-        stream: log.stream,
-        data: log.data,
+        type: 'text' as const,  // File logs are always stdout/stderr, not stdin
         timestamp: new Date(log.timestamp).getTime(),
+        text: {
+          content: log.data,
+          role: 'assistant' as const,
+        },
       }));
     });
   }
@@ -463,6 +476,18 @@ export class IpcApiClient implements ApiClient {
     checkElectronAPI();
     return window.electronAPI.onAgentStatusChange((agentId, status) => {
       callback(agentId, status as AgentStatus);
+    });
+  }
+
+  // ===========================================================================
+  // main-process-log-parser Task 10.2: onAgentLog implementation
+  // Requirements: 3.1
+  // ===========================================================================
+
+  onAgentLog(callback: (agentId: string, log: ParsedLogEntry) => void): () => void {
+    checkElectronAPI();
+    return window.electronAPI.onAgentLog((agentId, log) => {
+      callback(agentId, log);
     });
   }
 

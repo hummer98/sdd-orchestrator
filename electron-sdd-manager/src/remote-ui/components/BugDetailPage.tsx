@@ -33,7 +33,7 @@ import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 // Task 6.3: Import BugWorkflowFooter for Bug tab (Req 4.6)
 import { BugWorkflowFooter } from '@shared/components/bug';
-import { useSharedAgentStore, type AgentInfo, type LogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
@@ -345,8 +345,8 @@ function BugTabContent({
   /** Get logs map from the store */
   const logsMap = useSharedAgentStore((state) => state.logs);
 
-  /** Get logs for the selected agent */
-  const logs: LogEntry[] = useMemo(
+  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
+  const logs: ParsedLogEntry[] = useMemo(
     () => selectedAgent ? (logsMap.get(selectedAgent.id) ?? []) : [],
     [logsMap, selectedAgent]
   );

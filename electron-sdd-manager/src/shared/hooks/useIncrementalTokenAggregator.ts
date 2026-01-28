@@ -4,6 +4,9 @@
  * Incrementally aggregates token usage to avoid re-processing all logs on each update.
  * Performance fix: Prevents UI blocking (rainbow spinner) when logs are large.
  *
+ * main-process-log-parser Task 10.9: Updated to work with ParsedLogEntry[]
+ * Logs are now pre-parsed by Main process, so token data is in the usage field.
+ *
  * Strategy:
  * - Track the last processed log index
  * - Only extract tokens from new logs
@@ -11,7 +14,8 @@
  */
 
 import { useRef, useMemo } from 'react';
-import type { LogEntry } from '@shared/api/types';
+// main-process-log-parser Task 10.9: Changed LogEntry to ParsedLogEntry
+import type { ParsedLogEntry } from '@shared/api/types';
 
 export interface TokenUsage {
   inputTokens: number;
@@ -30,29 +34,17 @@ interface TokenCache {
   outputTokens: number;
 }
 
-interface ClaudeEvent {
-  type?: string;
-  message?: {
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-    };
-  };
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-  };
-}
-
 /**
  * Incrementally aggregate token usage, only processing new entries
  *
- * @param logs - Array of log entries
+ * main-process-log-parser Task 10.9: Updated to work with ParsedLogEntry[]
+ *
+ * @param logs - Array of pre-parsed log entries
  * @param enabled - Whether to calculate tokens (false returns undefined)
  * @returns Token usage or undefined if disabled
  */
 export function useIncrementalTokenAggregator(
-  logs: LogEntry[],
+  logs: ParsedLogEntry[],
   enabled: boolean = true
 ): TokenUsage | undefined {
   const cacheRef = useRef<TokenCache>({
@@ -104,8 +96,9 @@ export function useIncrementalTokenAggregator(
 
 /**
  * Detect if logs were replaced (not just appended)
+ * main-process-log-parser Task 10.9: Updated to work with ParsedLogEntry[]
  */
-function detectLogReplacement(logs: LogEntry[], cachedLogIds: Set<string>): boolean {
+function detectLogReplacement(logs: ParsedLogEntry[], cachedLogIds: Set<string>): boolean {
   if (cachedLogIds.size === 0) {
     return false;
   }
@@ -118,39 +111,18 @@ function detectLogReplacement(logs: LogEntry[], cachedLogIds: Set<string>): bool
 }
 
 /**
- * Extract token counts from a single log entry
+ * Extract token counts from a single pre-parsed log entry
+ * main-process-log-parser Task 10.9: Updated to extract from ParsedLogEntry.result
  */
-function extractTokens(log: LogEntry): { inputTokens: number; outputTokens: number } {
-  let inputTokens = 0;
-  let outputTokens = 0;
-
-  // Only process stdout logs
-  if (log.stream !== 'stdout') {
-    return { inputTokens, outputTokens };
+function extractTokens(log: ParsedLogEntry): { inputTokens: number; outputTokens: number } {
+  // Token usage is now in the pre-parsed entry's result field
+  // Only 'result' type entries have token usage
+  if (log.type === 'result' && log.result) {
+    return {
+      inputTokens: log.result.inputTokens ?? 0,
+      outputTokens: log.result.outputTokens ?? 0,
+    };
   }
 
-  // Parse multiple JSON lines
-  const lines = log.data.split('\n').filter((l) => l.trim());
-
-  for (const line of lines) {
-    try {
-      const event = JSON.parse(line) as ClaudeEvent;
-
-      // Check message.usage (assistant type)
-      if (event.message?.usage) {
-        inputTokens += event.message.usage.input_tokens || 0;
-        outputTokens += event.message.usage.output_tokens || 0;
-      }
-
-      // Check top-level usage (result type)
-      if (event.usage) {
-        inputTokens += event.usage.input_tokens || 0;
-        outputTokens += event.usage.output_tokens || 0;
-      }
-    } catch {
-      // Ignore invalid JSON
-    }
-  }
-
-  return { inputTokens, outputTokens };
+  return { inputTokens: 0, outputTokens: 0 };
 }

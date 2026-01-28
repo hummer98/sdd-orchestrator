@@ -20,13 +20,15 @@ import type {
   SpecMetadata,
   SpecDetail,
   Phase,
-  LogEntry,
+  // main-process-log-parser Task 10.3: LogEntry import removed - now using ParsedLogEntry
   BugMetadata,
   BugDetail,
   BugAction,
   BugAutoExecutionState,
   BugAutoExecutionPermissions,
   BugsChangeEvent,
+  // main-process-log-parser Task 10.2: Import ParsedLogEntry for onAgentLog
+  ParsedLogEntry,
 } from './types';
 import type { ExecuteOptions } from '../types/executeOptions';
 
@@ -900,8 +902,13 @@ export class WebSocketApiClient implements ApiClient {
     return this.wrapRequest<void>('SEND_AGENT_INPUT', { agentId, text });
   }
 
-  async getAgentLogs(specId: string, agentId: string): Promise<Result<LogEntry[], ApiError>> {
-    return this.wrapRequest<LogEntry[]>('GET_AGENT_LOGS', { specId, agentId });
+  /**
+   * Get logs for a specific agent
+   * main-process-log-parser Task 10.3: Updated to return ParsedLogEntry[]
+   */
+  async getAgentLogs(specId: string, agentId: string): Promise<Result<ParsedLogEntry[], ApiError>> {
+    // main-process-log-parser Task 10.3: Server now returns ParsedLogEntry[]
+    return this.wrapRequest<ParsedLogEntry[]>('GET_AGENT_LOGS', { specId, agentId });
   }
 
   /**
@@ -1138,6 +1145,18 @@ export class WebSocketApiClient implements ApiClient {
     return this.on('agentStatusChange', (data) => {
       const payload = data as { agentId: string; status: AgentStatus };
       callback(payload.agentId, payload.status);
+    });
+  }
+
+  // ===========================================================================
+  // main-process-log-parser Task 10.2: onAgentLog implementation
+  // Requirements: 3.1, 3.2
+  // ===========================================================================
+
+  onAgentLog(callback: (agentId: string, log: ParsedLogEntry) => void): () => void {
+    return this.on('agent-log', (data) => {
+      const payload = data as { agentId: string; log: ParsedLogEntry };
+      callback(payload.agentId, payload.log);
     });
   }
 

@@ -258,12 +258,14 @@ describe('Agent Resume Log Display E2E Test', () => {
       await browser.pause(500);
 
       // Check for stdin log entry
+      // main-process-log-parser: LogEntry.stream -> ParsedLogEntry.type
+      // stdin logs now have type: 'input' and text.content instead of stream/data
       const logs = await getAgentLogs(agentId);
-      const stdinLogs = logs.filter((log: any) => log.stream === 'stdin');
+      const stdinLogs = logs.filter((log: any) => log.type === 'input');
       console.log(`[E2E] Stdin log count: ${stdinLogs.length}`);
 
       const hasStdinEntry = stdinLogs.some(
-        (log: any) => log.data && log.data.includes(additionalInstruction)
+        (log: any) => log.text?.content?.includes(additionalInstruction)
       );
       console.log(`[E2E] Has stdin entry with instruction: ${hasStdinEntry}`);
       expect(hasStdinEntry).toBe(true);
@@ -383,7 +385,8 @@ describe('Agent Resume Log Display E2E Test', () => {
       expect(count3).toBeGreaterThan(count2);
 
       // Verify we have multiple stdin entries
-      const stdinCount = logs3.filter((log: any) => log.stream === 'stdin').length;
+      // main-process-log-parser: LogEntry.stream -> ParsedLogEntry.type
+      const stdinCount = logs3.filter((log: any) => log.type === 'input').length;
       console.log(`[E2E] Total stdin entries: ${stdinCount}`);
       expect(stdinCount).toBeGreaterThanOrEqual(2);
 

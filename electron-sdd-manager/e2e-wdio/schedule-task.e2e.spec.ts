@@ -384,7 +384,17 @@ describe('Schedule Task E2E Tests', () => {
 
   // Cleanup after each test
   afterEach(async () => {
-    // Close any open dialogs
+    // Close delete confirmation dialog if open
+    try {
+      const deleteDialog = await $('[data-testid="delete-confirm-dialog"]');
+      if (await deleteDialog.isExisting()) {
+        await cancelDelete();
+      }
+    } catch {
+      // Ignore
+    }
+
+    // Close main schedule task dialog if open
     try {
       await closeScheduleTaskDialog();
     } catch {

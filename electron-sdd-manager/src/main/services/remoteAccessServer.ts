@@ -124,10 +124,14 @@ export class RemoteAccessServer {
     const uiDir = join(__dirname, '../../dist/remote-ui');
     logger.debug(`[remoteAccessServer] Using UI directory: ${uiDir}`);
     this.staticFileServer = new StaticFileServer(uiDir);
-    // Initialize WebSocketHandler
-    this.webSocketHandler = new WebSocketHandler();
     // Initialize AccessTokenService
     this.accessTokenService = accessTokenService ?? getAccessTokenService();
+    // Initialize WebSocketHandler with token authentication enabled
+    // Security: All connections (LAN and Cloudflare Tunnel) require valid token
+    this.webSocketHandler = new WebSocketHandler({
+      requireTokenAuth: true,
+      accessTokenService: this.accessTokenService,
+    });
     // Initialize CloudflareTunnelManager (optional)
     this.tunnelManager = tunnelManager ?? null;
   }

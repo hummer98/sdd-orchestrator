@@ -1703,53 +1703,105 @@ describe('WebSocketHandler - Token Authentication (Task 5.1)', () => {
       expect(handler.getClientCount()).toBe(1);
     });
 
-    it('should skip token validation for private IPs when configured', async () => {
+    it('should always require token for private IPs when requireTokenAuth is true', async () => {
       mockAccessTokenService.validateToken.mockReturnValue(true);
 
       const { WebSocketHandler } = await import('./webSocketHandler');
       const handler = new WebSocketHandler({
         accessTokenService: mockAccessTokenService as any,
         requireTokenAuth: true,
-        skipTokenForPrivateIp: true,
       });
       handler.initialize(mockWss);
 
       const mockWs = createMockWebSocket();
-      const mockReq = createMockRequestWithToken('192.168.1.100'); // No token, but private IP
+      // Private IP without token should be rejected
+      const mockReq = createMockRequestWithToken('192.168.1.100'); // No token
 
       connectionHandler!(mockWs, mockReq);
 
-      expect(mockAccessTokenService.validateToken).not.toHaveBeenCalled();
-      expect(mockWs.close).not.toHaveBeenCalled();
-      expect(handler.getClientCount()).toBe(1);
+      // Should reject because no token provided
+      expect(mockWs.close).toHaveBeenCalledWith(4001, 'Unauthorized: Token required');
     });
 
-    it('should require token for non-private IPs even with skipTokenForPrivateIp', async () => {
+    it('should allow Cloudflare Tunnel connections with valid token', async () => {
       mockAccessTokenService.validateToken.mockReturnValue(true);
 
       const { WebSocketHandler } = await import('./webSocketHandler');
       const handler = new WebSocketHandler({
         accessTokenService: mockAccessTokenService as any,
         requireTokenAuth: true,
-        skipTokenForPrivateIp: true,
       });
       handler.initialize(mockWss);
 
-      // Simulate Cloudflare forwarding - CF uses x-forwarded-for header
+      // Simulate Cloudflare Tunnel - cloudflared connects from localhost
       const mockWs = createMockWebSocket();
       const mockReq = {
-        socket: { remoteAddress: '127.0.0.1' }, // Cloudflare worker connects locally
+        socket: { remoteAddress: '127.0.0.1' }, // cloudflared runs locally
         url: '/?token=valid-token',
         headers: {
           'cf-connecting-ip': '203.0.113.50', // Real client IP from Cloudflare
-          'x-forwarded-for': undefined,
+          'x-forwarded-for': '203.0.113.50',
         },
       } as unknown as IncomingMessage;
 
       connectionHandler!(mockWs, mockReq);
 
-      // Should validate token because real IP is public
+      // Should validate token and allow connection
       expect(mockAccessTokenService.validateToken).toHaveBeenCalledWith('valid-token');
+      expect(mockWs.close).not.toHaveBeenCalled();
+      expect(handler.getClientCount()).toBe(1);
+    });
+
+    it('should reject Cloudflare Tunnel connections without token', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler({
+        accessTokenService: mockAccessTokenService as any,
+        requireTokenAuth: true,
+      });
+      handler.initialize(mockWss);
+
+      // Simulate Cloudflare Tunnel without token
+      const mockWs = createMockWebSocket();
+      const mockReq = {
+        socket: { remoteAddress: '127.0.0.1' }, // cloudflared runs locally
+        url: '/', // No token
+        headers: {
+          'cf-connecting-ip': '203.0.113.50',
+          'x-forwarded-for': '203.0.113.50',
+        },
+      } as unknown as IncomingMessage;
+
+      connectionHandler!(mockWs, mockReq);
+
+      // Should reject because no token provided
+      expect(mockWs.close).toHaveBeenCalledWith(4001, 'Unauthorized: Token required');
+      expect(handler.getClientCount()).toBe(0);
+    });
+
+    it('should reject spoofed X-Forwarded-For when socket IP is public', async () => {
+      const { WebSocketHandler } = await import('./webSocketHandler');
+      const handler = new WebSocketHandler({
+        accessTokenService: mockAccessTokenService as any,
+        requireTokenAuth: true,
+      });
+      handler.initialize(mockWss);
+
+      // Attacker tries to spoof X-Forwarded-For with private IP
+      // but socket connection comes from public IP
+      const mockWs = createMockWebSocket();
+      const mockReq = {
+        socket: { remoteAddress: '203.0.113.100' }, // Public IP (direct external connection)
+        url: '/?token=valid-token',
+        headers: {
+          'x-forwarded-for': '192.168.1.100', // Spoofed private IP
+        },
+      } as unknown as IncomingMessage;
+
+      connectionHandler!(mockWs, mockReq);
+
+      // Should reject because socket IP is public (IP validation uses socket, not headers)
+      expect(mockWs.close).toHaveBeenCalledWith(1008, 'Connection from non-private IP rejected');
+      expect(handler.getClientCount()).toBe(0);
     });
   });
 });

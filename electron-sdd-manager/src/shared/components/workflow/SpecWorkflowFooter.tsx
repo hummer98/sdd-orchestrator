@@ -132,7 +132,7 @@ export function SpecWorkflowFooter({
         )}
 
         <button
-          data-testid="auto-execute-button"
+          data-testid="auto-execution-button"
           onClick={onAutoExecution}
           disabled={!isAutoExecuting && hasRunningAgents}
           className={clsx(

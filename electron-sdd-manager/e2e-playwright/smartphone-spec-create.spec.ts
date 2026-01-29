@@ -35,10 +35,10 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
 
   test.describe('Create Spec Button', () => {
     /**
-     * Test: Spec作成ボタンが表示される
+     * Test: Spec作成ボタンが表示される（スマートフォン版はFAB）
      */
     test('should display create spec button', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await expect(createButton).toBeVisible();
     });
 
@@ -46,7 +46,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      * Test: Spec作成ボタンがクリック可能
      */
     test('should have create spec button enabled', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await expect(createButton).toBeEnabled();
     });
 
@@ -54,7 +54,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      * Test: Spec作成ボタンに適切なaria-labelがある
      */
     test('should have proper aria-label on create button', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await expect(createButton).toHaveAttribute('aria-label', '新規Specを作成');
     });
   });
@@ -64,7 +64,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      * Test: 作成ボタンクリックでダイアログが開く
      */
     test('should open create spec dialog on button click', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
 
       const dialog = page.locator('[data-testid="create-spec-dialog"]');
@@ -75,7 +75,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      * Test: ダイアログがフルスクリーン表示される（スマートフォン）
      */
     test('should display dialog as fullscreen on smartphone', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
 
       const dialog = page.locator('[data-testid="create-spec-dialog"]');
@@ -94,7 +94,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      * Test: ダイアログヘッダーに「新規Specを作成」と表示される
      */
     test('should display dialog title', async ({ page }) => {
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
 
       const dialog = page.locator('[data-testid="create-spec-dialog"]');
@@ -105,7 +105,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
   test.describe('Create Spec Dialog - Form Elements', () => {
     test.beforeEach(async ({ page }) => {
       // Open dialog
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
       await expect(page.locator('[data-testid="create-spec-dialog"]')).toBeVisible();
     });
@@ -175,7 +175,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
   test.describe('Create Spec Dialog - Validation', () => {
     test.beforeEach(async ({ page }) => {
       // Open dialog
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
       await expect(page.locator('[data-testid="create-spec-dialog"]')).toBeVisible();
     });
@@ -214,7 +214,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
   test.describe('Create Spec Dialog - Interactions', () => {
     test.beforeEach(async ({ page }) => {
       // Open dialog
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
       await expect(page.locator('[data-testid="create-spec-dialog"]')).toBeVisible();
     });
@@ -295,7 +295,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
       await cancelButton.click();
 
       // Reopen dialog
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
       await expect(page.locator('[data-testid="create-spec-dialog"]')).toBeVisible();
 
@@ -308,7 +308,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
   test.describe('Create Spec Dialog - Form Submission', () => {
     test.beforeEach(async ({ page }) => {
       // Open dialog
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await createButton.click();
       await expect(page.locator('[data-testid="create-spec-dialog"]')).toBeVisible();
     });
@@ -358,7 +358,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
      */
     test('should show create spec button when Specs tab is active', async ({ page }) => {
       // Specs tab is active by default
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await expect(createButton).toBeVisible();
       await expect(createButton).toHaveAttribute('aria-label', '新規Specを作成');
     });
@@ -396,7 +396,7 @@ test.describe('Smartphone Remote UI - Spec Creation', () => {
       await expect(specsTab).toHaveAttribute('aria-selected', 'true');
 
       // Create button should be for specs again
-      const createButton = page.locator('[data-testid="create-spec-button"]');
+      const createButton = page.locator('[data-testid="create-fab"]');
       await expect(createButton).toBeVisible();
       await expect(createButton).toHaveAttribute('aria-label', '新規Specを作成');
     });

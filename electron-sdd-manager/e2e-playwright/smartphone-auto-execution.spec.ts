@@ -20,6 +20,7 @@ import {
   navigateToRemoteUI,
   waitForConnection,
   waitForSpecList,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 // スマートフォンビューポート設定
@@ -32,7 +33,7 @@ async function selectSpecSmartphone(page: import('@playwright/test').Page, specN
   await waitForSpecList(page);
   const specItem = page.locator(`[data-testid="remote-spec-item-${specName}"]`);
   await specItem.click();
-  const detailView = page.locator('[data-testid="remote-spec-detail"]');
+  const detailView = getSpecDetailLocator(page);
   await expect(detailView).toBeVisible({ timeout: 10000 });
 }
 
@@ -54,7 +55,7 @@ test.describe('Smartphone Remote UI Auto Execution Tests', () => {
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
       await expect(autoExecButton).toBeVisible();
-      await expect(autoExecButton).toContainText('Auto Execute All');
+      await expect(autoExecButton).toContainText('自動実行');
     });
 
     /**

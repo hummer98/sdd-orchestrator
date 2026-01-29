@@ -20,6 +20,7 @@ import {
   waitForConnection,
   waitForSpecList,
   selectSpec,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 test.describe('Remote UI Auto Execution Tests', () => {
@@ -36,7 +37,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display Auto Execute All button in spec detail', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
@@ -50,7 +51,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should have Auto Execute All button enabled', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
@@ -63,7 +64,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should handle Auto Execute All click without error', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
@@ -83,7 +84,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display auto permission toggle for each phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check that auto permission toggle exists on requirements phase
@@ -105,7 +106,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should have clickable permission toggles', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoToggle = page.locator('[data-testid="phase-item-requirements"] [data-testid="auto-permission-toggle"]');
@@ -120,7 +121,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display phases in correct order', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Verify phase order
@@ -137,7 +138,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should show generated icon on requirements phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // requirements phase should show generated icon
@@ -151,7 +152,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should have next phase button disabled when previous not approved', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Design phase button should be disabled
@@ -168,7 +169,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display approve button for generated phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check for approve button on requirements phase
@@ -182,7 +183,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should have approve button enabled', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const approveButton = page.locator('[data-testid="phase-item-requirements"] button:has-text("承認")');
@@ -197,7 +198,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display current phase tag', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const phaseTag = page.locator('[data-testid="remote-spec-phase-tag"]');
@@ -211,7 +212,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display generated icon for completed phases', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Requirements should show generated (yellow pause icon)
@@ -231,7 +232,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display impl phase item', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const implPhase = page.locator('[data-testid="phase-item-impl"]');
@@ -244,7 +245,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display impl phase permission toggle', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const implToggle = page.locator('[data-testid="phase-item-impl"] [data-testid="auto-permission-toggle"]');
@@ -259,7 +260,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display inspection phase item', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const inspectionPhase = page.locator('[data-testid="phase-item-inspection"]');
@@ -272,7 +273,7 @@ test.describe('Remote UI Auto Execution Tests', () => {
     test('should display deploy phase item', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const deployPhase = page.locator('[data-testid="phase-item-deploy"]');

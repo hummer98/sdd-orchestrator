@@ -16,6 +16,7 @@ import {
   waitForConnection,
   waitForSpecList,
   selectSpec,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 test.describe('Remote UI Workflow Integration Tests', () => {
@@ -39,7 +40,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await selectSpec(page, 'test-feature');
 
       // Detail view should be visible
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Spec name should be displayed
@@ -53,7 +54,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await waitForSpecList(page);
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Phases should appear in correct order
@@ -74,7 +75,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await waitForSpecList(page);
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // requirements: generated (yellow icon)
@@ -97,7 +98,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await waitForSpecList(page);
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // requirements phase should have approve button (it's in generated state)
@@ -142,7 +143,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await selectSpec(page, 'test-feature');
 
       // Verify detail is shown
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Switch to Bugs tab
@@ -169,7 +170,7 @@ test.describe('Remote UI Workflow Integration Tests', () => {
       await waitForSpecList(page);
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check auto permission toggle on each phase

@@ -24,6 +24,7 @@ import {
   waitForConnection,
   waitForSpecList,
   selectSpec,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
@@ -43,7 +44,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should display agent log panel in spec detail', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check for agent log panel (may be in a tab or sidebar)
@@ -66,7 +67,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should show agent log after auto execution starts', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Find auto execution button
@@ -94,7 +95,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should display running indicator during execution', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
@@ -133,7 +134,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should display engine tag in agent log panel header', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
@@ -171,7 +172,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should display log entries after agent runs', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
@@ -212,7 +213,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should display system init entry with working directory', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
@@ -252,7 +253,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should receive logs via WebSocket and update UI', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
@@ -422,7 +423,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
     test('should maintain Connected status during log streaming', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execute-button"]');

@@ -185,13 +185,8 @@ describe('Renderer IPC通信確認', () => {
     expect(hasAPI).toBe(true);
   });
 
-  it('installExperimentalCommit APIが存在する', async () => {
-    const hasAPI = await browser.execute(() => {
-      const api = (window as { electronAPI?: { installExperimentalCommit?: unknown } }).electronAPI;
-      return typeof api?.installExperimentalCommit === 'function';
-    });
-    expect(hasAPI).toBe(true);
-  });
+  // Note: installExperimentalCommit API は削除済み
+  // Commitコマンドはプロジェクト選択時に自動インストールされるコア機能に昇格
 
   it('checkExperimentalToolExists APIが存在する', async () => {
     const hasAPI = await browser.execute(() => {
@@ -209,11 +204,6 @@ describe('Renderer IPC通信確認', () => {
     expect(hasAPI).toBe(true);
   });
 
-  it('onMenuInstallExperimentalCommit APIが存在する', async () => {
-    const hasAPI = await browser.execute(() => {
-      const api = (window as { electronAPI?: { onMenuInstallExperimentalCommit?: unknown } }).electronAPI;
-      return typeof api?.onMenuInstallExperimentalCommit === 'function';
-    });
-    expect(hasAPI).toBe(true);
-  });
+  // Note: onMenuInstallExperimentalCommit API は削除済み
+  // Commitコマンドはプロジェクト選択時に自動インストールされるコア機能に昇格
 });

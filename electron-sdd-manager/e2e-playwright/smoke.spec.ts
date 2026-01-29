@@ -18,6 +18,7 @@ import {
   waitForSpecList,
   selectSpec,
   switchToTab,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 test.describe('Remote UI Smoke Tests', () => {
@@ -58,7 +59,7 @@ test.describe('Remote UI Smoke Tests', () => {
     await firstSpec.click();
 
     // Wait for detail panel to appear
-    const detailPanel = page.locator('[data-testid="remote-spec-detail"]');
+    const detailPanel = getSpecDetailLocator(page);
     await expect(detailPanel).toBeVisible();
   });
 

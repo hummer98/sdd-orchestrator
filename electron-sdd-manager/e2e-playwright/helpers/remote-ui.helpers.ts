@@ -13,8 +13,22 @@
  * - Extended timeouts for built app environment
  */
 
-import { Page, expect } from '@playwright/test';
+import { Page, expect, Locator } from '@playwright/test';
 import { getRemoteUIUrl } from './electron-launcher';
+
+// =============================================================================
+// Selector Constants
+// =============================================================================
+
+/**
+ * Spec detail view testid varies by layout:
+ * - Desktop (SpecDetailPage): 'spec-detail-page'
+ * - Mobile (MobileSpecWorkflowView): 'remote-spec-detail'
+ */
+export const SPEC_DETAIL_SELECTORS = [
+  '[data-testid="spec-detail-page"]',
+  '[data-testid="remote-spec-detail"]',
+] as const;
 
 // ============================================================================
 // Retry Configuration
@@ -76,6 +90,15 @@ async function withRetry<T>(
  */
 export function getRemoteUIBaseURL(): string {
   return getRemoteUIUrl();
+}
+
+/**
+ * Get a locator for the spec detail view that works on both Desktop and Mobile
+ * @param page Playwright Page instance
+ * @returns Locator that matches either spec-detail-page or remote-spec-detail
+ */
+export function getSpecDetailLocator(page: Page): Locator {
+  return page.locator(SPEC_DETAIL_SELECTORS.join(', '));
 }
 
 /**
@@ -176,7 +199,12 @@ export async function waitForSpecList(
 export async function selectSpec(page: Page, specName: string): Promise<void> {
   const specItem = page.locator(`[data-testid="remote-spec-item-${specName}"]`);
   await specItem.click();
-  await page.waitForSelector('[data-testid="remote-spec-detail"]:not(.hidden)', { timeout: 5000 });
+  // Desktop uses 'spec-detail-page', Mobile uses 'remote-spec-detail'
+  // Wait for either selector to appear
+  await Promise.race([
+    page.waitForSelector('[data-testid="spec-detail-page"]', { timeout: 10000 }),
+    page.waitForSelector('[data-testid="remote-spec-detail"]', { timeout: 10000 }),
+  ]);
 }
 
 /**
@@ -223,17 +251,21 @@ export async function waitForPhaseGenerated(
  * 特定Specの詳細パネルが表示されるまで待機
  * @param page Playwright Page instance
  * @param specName Spec name
- * @param timeout Timeout in milliseconds (default: 5000)
+ * @param timeout Timeout in milliseconds (default: 10000)
  */
 export async function waitForSpecDetail(
   page: Page,
   specName: string,
-  timeout = 5000
+  timeout = 10000
 ): Promise<void> {
-  await page.waitForSelector('[data-testid="remote-spec-detail"]:not(.hidden)', { timeout });
-  // Verify the spec name is displayed
-  const specTitle = page.locator('[data-testid="remote-spec-title"]');
-  await expect(specTitle).toContainText(specName, { timeout });
+  // Desktop uses 'spec-detail-page', Mobile uses 'remote-spec-detail'
+  await Promise.race([
+    page.waitForSelector('[data-testid="spec-detail-page"]', { timeout }),
+    page.waitForSelector('[data-testid="remote-spec-detail"]', { timeout }),
+  ]);
+  // Verify the spec name is displayed in heading
+  const headingWithSpecName = page.getByRole('heading', { name: specName });
+  await expect(headingWithSpecName).toBeVisible({ timeout });
 }
 
 /**

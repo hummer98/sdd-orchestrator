@@ -6,15 +6,16 @@
 |------|------|
 | 実行日時 | 2026-01-29 14:15 - 14:45 (JST) |
 | テストファイル総数 | 46 |
-| PASSED | 22 (auto-execution-permissions 修正後) |
-| FAILED | 24 (auto-execution-permissions 修正後) |
+| PASSED | 24 (agent-resume-log-display 修正後) |
+| FAILED | 22 (agent-resume-log-display 修正後) |
 | 実行時間 | 30分21秒 |
 
-## 成功したテスト (22件)
+## 成功したテスト (24件)
 
 | テストファイル | 内容 |
 |----------------|------|
 | agent-log-streaming.e2e.spec.ts | ログストリーミング |
+| agent-resume-log-display.e2e.spec.ts | Agent再開時ログ表示 (ParsedLogEntry型追従) |
 | app-launch.spec.ts | アプリ起動 |
 | artifact-editor-search.e2e.spec.ts | エディタ検索 |
 | auto-execution-flow.e2e.spec.ts | 自動実行フロー |
@@ -162,7 +163,7 @@ Expected: "pause", Received: "run"
 
 ### カテゴリ3: 環境・タイミング関連
 
-#### 3.1 agent-resume-log-display.e2e.spec.ts (2 failing)
+#### 3.1 agent-resume-log-display.e2e.spec.ts ~~(2 failing)~~ → 修正済み (0 failing)
 
 **症状**:
 1. stdin ログエントリが追加されない
@@ -172,7 +173,18 @@ Expected: "pause", Received: "run"
 Expected: >= 2, Received: 0
 ```
 
-**分析**: ログ表示のタイミング問題、またはログストリーミングの問題。
+**分析結果**: ~~ログ表示のタイミング問題、またはログストリーミングの問題。~~
+
+→ **型変更未追従の問題**: `main-process-log-parser` 機能により、ログ型が `LogEntry` から `ParsedLogEntry` に変更されたが、E2Eテストが未更新だった。
+
+- 旧型 `LogEntry`: `stream: 'stdin'`, `data: string`
+- 新型 `ParsedLogEntry`: `type: 'input'`, `text.content: string`
+
+テストが `log.stream === 'stdin'` でフィルタリングしていたが、新型には `stream` フィールドがないため常に 0 件を返していた。
+
+**対応**: テストのアサーションを `ParsedLogEntry` 型に追従
+- `log.stream === 'stdin'` → `log.type === 'input'`
+- `log.data` → `log.text?.content`
 
 ---
 
@@ -273,6 +285,17 @@ Expected: >= 2, Received: 0
      - ファイル監視の同期待ち時間を `2000ms` に延長。
      - シナリオ4の権限トグル操作を、ストアアクションではなく `setAutoExecutionPermissions` (IPC) 経由で `spec.json` を更新するように変更。
 
+7. **agent-resume-log-display.e2e.spec.ts** (2件 → 0件)
+   - 問題: stdin ログエントリが検出されない (`Expected: >= 2, Received: 0`)
+   - 根本原因:
+     - `main-process-log-parser` 機能により、ログ型が `LogEntry` から `ParsedLogEntry` に変更された
+     - 旧型: `stream: 'stdin'`, `data: string`
+     - 新型: `type: 'input'`, `text.content: string`
+     - テストが `log.stream === 'stdin'` でフィルタしていたが、新型には `stream` フィールドが存在しない
+   - 修正:
+     - `log.stream === 'stdin'` → `log.type === 'input'`
+     - `log.data` → `log.text?.content`
+
 ---
 
 ## 次のステップ
@@ -289,3 +312,4 @@ Expected: >= 2, Received: 0
 *Updated: 2026-01-30T07:30:00Z - auto-execution-document-review.e2e.spec.ts の pause flag テストを仕様変更により削除*
 *Updated: 2026-01-30T00:10:00Z - bugs-pane-integration.e2e.spec.ts の Store 参照・API 不整合を修正 (11件→0件)*
 *Updated: 2026-01-30T09:15:00Z - auto-execution-permissions.e2e.spec.ts を最新仕様(specStore SSOT)に追従 (5件→0件)*
+*Updated: 2026-01-30T00:20:00Z - agent-resume-log-display.e2e.spec.ts を ParsedLogEntry 型に追従 (2件→0件)*

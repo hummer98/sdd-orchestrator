@@ -16,6 +16,7 @@ import {
   navigateToRemoteUI,
   waitForConnection,
   waitForSpecList,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 // スマートフォンビューポート設定
@@ -167,7 +168,7 @@ test.describe('Smartphone Remote UI - Spec Management', () => {
       await testFeatureItem.click();
 
       // Wait for detail view to appear
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
     });
 
@@ -181,7 +182,7 @@ test.describe('Smartphone Remote UI - Spec Management', () => {
       await testFeatureItem.click();
 
       // Wait for detail view
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Spec name should be visible
@@ -230,7 +231,7 @@ test.describe('Smartphone Remote UI - Spec Management', () => {
       await testFeatureItem.click();
 
       // Wait for detail view
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Click back button
@@ -300,7 +301,7 @@ test.describe('Smartphone Remote UI - Spec Management', () => {
       await testFeatureItem.click();
 
       // Wait for detail view
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Switch to Bugs tab

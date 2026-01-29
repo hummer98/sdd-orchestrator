@@ -16,6 +16,7 @@ import {
   waitForConnection,
   waitForSpecList,
   selectSpec,
+  getSpecDetailLocator,
 } from './helpers/remote-ui.helpers';
 
 test.describe('Remote UI Phase Execution Tests', () => {
@@ -34,7 +35,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
       await selectSpec(page, 'test-feature');
 
       // Wait for detail view
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check that phase items are displayed
@@ -51,7 +52,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should show requirements phase in generated state', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // requirements phase should show generated icon (yellow pause)
@@ -65,7 +66,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should have design phase button disabled when requirements not approved', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Design phase button should be disabled (previous phase not approved)
@@ -83,7 +84,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should display approve button for generated requirements phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check for approve button on requirements phase (which is in generated state)
@@ -98,7 +99,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should display disabled execute button for pending design phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check for execute button on design phase (which is disabled)
@@ -113,7 +114,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should display auto permission toggle for each phase', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Check that auto permission toggle exists on requirements phase
@@ -129,7 +130,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should display Auto Execute All button', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
@@ -143,7 +144,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should have Auto Execute All button enabled', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
@@ -158,7 +159,7 @@ test.describe('Remote UI Phase Execution Tests', () => {
     test('should display current phase tag', async ({ page }) => {
       await selectSpec(page, 'test-feature');
 
-      const detailView = page.locator('[data-testid="remote-spec-detail"]');
+      const detailView = getSpecDetailLocator(page);
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       const phaseTag = page.locator('[data-testid="remote-spec-phase-tag"]');

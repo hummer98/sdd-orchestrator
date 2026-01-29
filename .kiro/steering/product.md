@@ -8,7 +8,10 @@ SDD Orchestrator (Spec-Driven Development Orchestrator) は、Spec-Driven Develo
 2. **AIエージェント連携**: Claude Code等のAIエージェントをサブプロセスとして起動・監視・制御
 3. **ドキュメントレビュー**: Spec文書の整合性チェックと課題追跡・解決ワークフロー
 4. **バグ修正ワークフロー**: 軽量なバグ修正フロー（create -> analyze -> fix -> verify）
-5. **リモートアクセス**: SSH経由でのリモートプロジェクト操作
+5. **リモートアクセス**: SSH経由でのリモートプロジェクト操作、Remote UI（Web版）
+6. **スケジュール実行**: 定期的なタスクの自動実行（Scheduled Execution）
+7. **MCP Server**: Model Context Protocol経由での外部ツール連携
+8. **Git差分表示**: Worktree変更のdiff表示・レビュー
 
 ## Target Use Cases
 
@@ -51,4 +54,4 @@ Claude Codeと連携するスラッシュコマンド群を `.claude/commands/ki
 
 ---
 _Focus on patterns and purpose, not exhaustive feature lists_
-_updated_at: 2025-12-19_
+_updated_at: 2026-01-29_

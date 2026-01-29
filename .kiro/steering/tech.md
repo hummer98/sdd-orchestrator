@@ -32,6 +32,7 @@ Electronベースのデスクトップアプリケーション。
 - **ssh2**: SSH接続（リモートプロジェクト操作）
 - **ws**: WebSocket（リモートUI通信）
 - **express**: 静的ファイルサーバー
+- **@modelcontextprotocol/sdk**: MCP Server（外部ツール連携）
 
 ### ファイル監視
 - **chokidar**: ファイルシステム監視
@@ -227,4 +228,4 @@ sdd-orchestrator --project=/path/to/project --remote-ui=auto --headless --e2e-te
 
 ---
 _Document standards and patterns, not every dependency_
-_updated_at: 2025-12-19_
+_updated_at: 2026-01-29_

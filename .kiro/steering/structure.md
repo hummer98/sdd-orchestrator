@@ -30,10 +30,10 @@ electron-sdd-manager/src/
 │   └── utils/      # ユーティリティ関数
 ├── shared/         # Electron版/Remote UI版共有コード
 │   ├── api/        # ApiClient抽象化層 (IpcApiClient, WebSocketApiClient)
-│   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, etc.)
+│   ├── components/ # 共有UIコンポーネント (spec/, bug/, workflow/, schedule/, git/, etc.)
 │   ├── hooks/      # 共有フック (useDeviceType等)
 │   ├── providers/  # React Context Provider (PlatformProvider等)
-│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore)
+│   ├── stores/     # [Domain State SSOT] 共有Zustand stores (agentStore, bugStore, specStore, scheduleTaskStore, mcpStore, gitViewStore)
 │   └── types/      # 共有型定義
 ├── remote-ui/      # Remote UIアプリケーション（Web版React）
 │   ├── layouts/    # MobileLayout, DesktopLayout
@@ -284,6 +284,8 @@ Agent state and logs are stored in `.kiro/runtime/agents/` with a flat entity-ba
 - **コマンド**: `commandService.ts`
 - **SSH/リモート**: `ssh/` ディレクトリ配下
 - **設定管理**: `settingsFileManager.ts`, `profileManager.ts`
+- **スケジュール実行**: `scheduleTaskService.ts`, `scheduleTaskCoordinator.ts`, `scheduleTaskFileService.ts`
+- **MCP Server**: `mcp/` ディレクトリ配下 (`mcpServerService.ts`, `mcpToolRegistry.ts`, etc.)
 
 ### IPC Pattern
 ```
@@ -296,4 +298,4 @@ main/ipc/
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
-_updated_at: 2025-01-19_
+_updated_at: 2026-01-29_

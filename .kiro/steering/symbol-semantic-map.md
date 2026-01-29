@@ -149,6 +149,39 @@
 | **コンポーネント** | `RemoteAccessPanel`, `RemoteAccessDialog`, `CloudflareSettingsPanel`, `InstallCloudflaredDialog` |
 | **Remote UIパス** | `electron-sdd-manager/src/remote-ui/` |
 
+### Schedule Task（スケジュールタスク）
+
+| 属性 | 定義 |
+|-----|------|
+| **定義** | 定期的または条件付きで自動実行されるタスク |
+| **用途** | 夜間バッチ実行、定期レビュー、idle時実行など |
+| **格納場所** | `.kiro/settings/schedule/tasks.json` |
+| **コードシンボル** | `ScheduleTask`, `ScheduleTaskInput`, `QueuedTask`, `RunningTaskInfo` |
+| **Store** | `scheduleTaskStore.ts` (shared) |
+| **Service** | `scheduleTaskService.ts`, `scheduleTaskCoordinator.ts`, `scheduleTaskFileService.ts`, `idleTimeTracker.ts` |
+| **コンポーネント** | `ScheduleTaskSettingView`, `ScheduleTaskEditPage`, `ScheduleTaskListItem`, `ScheduleTypeSelector` |
+
+### MCP Server（Model Context Protocol）
+
+| 属性 | 定義 |
+|-----|------|
+| **定義** | 外部ツールからSpec/Bug操作を可能にするMCPサーバー |
+| **用途** | Claude Desktop等のMCPクライアントからの操作 |
+| **コードシンボル** | `McpServerStatus`, `McpStoreState` |
+| **Store** | `mcpStore.ts` (shared) |
+| **Service** | `mcpServerService.ts`, `mcpToolRegistry.ts`, `mcpAutoStart.ts`, `specToolHandlers.ts`, `bugToolHandlers.ts`, `projectToolHandlers.ts` |
+| **コンポーネント** | `McpStatusIndicator` |
+
+### Git View（Git差分表示）
+
+| 属性 | 定義 |
+|-----|------|
+| **定義** | Worktree変更のdiff表示・レビュー機能 |
+| **用途** | 実装フェーズでの変更確認、コードレビュー |
+| **コードシンボル** | `GitStatusResult`, `GitFileStatus`, `GitViewState` |
+| **Store** | `gitViewStore.ts` (shared, renderer) |
+| **コンポーネント** | `GitView`, `GitDiffViewer`, `GitFileTree` |
+
 ---
 
 ## Screen Layout Diagrams（画面レイアウト図）
@@ -349,6 +382,8 @@ electron-sdd-manager/src/
 | ログパネル | Agent出力のリアルタイム表示 | `AgentLogPanel`, `LogEntryBlock`, `ToolUseBlock`, `ToolResultBlock` | `shared/components/agent/` |
 | メトリクス表示 | 開発時間・コスト表示 | `MetricsSummaryPanel`, `PhaseMetricsView` | `shared/components/metrics/` |
 | イベントログ | Spec活動履歴 | `EventLogViewerModal`, `EventLogButton` | `shared/components/eventLog/` |
+| スケジュール設定 | 定期タスク設定・一覧 | `ScheduleTaskSettingView`, `ScheduleTaskEditPage` | `shared/components/schedule/` |
+| Git差分 | ファイル変更の表示 | `GitView`, `GitDiffViewer`, `GitFileTree` | `shared/components/git/` |
 
 ### 操作系コンポーネント
 
@@ -378,6 +413,7 @@ electron-sdd-manager/src/
 | Agent一覧 | 実行中/完了Agentの表示 | `AgentListPanel`, `AgentList`, `AgentListItem` |
 | プロジェクトメトリクス | プロジェクト全体のメトリクス | `ProjectMetricsSummary` |
 | バージョン状態 | アプリバージョン・更新通知 | `UpdateBanner`, `versionStatusStore` |
+| MCP状態 | MCPサーバー状態表示 | `McpStatusIndicator` |
 
 ---
 
@@ -412,6 +448,9 @@ electron-sdd-manager/src/
 | 並列モード | `parallelModeStore` | `parallelModeEnabled`, `parseResults` |
 | Spec | `specStore` | Remote UI用Spec状態 |
 | Agent実行 | `executionStore` | `isRunning`, `logs`, `currentCommand` |
+| スケジュール | `scheduleTaskStore` | `tasks`, `editingTask`, `queuedTasks`, `runningTasks` |
+| MCP | `mcpStore` | `isRunning`, `port`, `url` |
+| Git表示 | `gitViewStore` | `selectedFilePath`, `cachedStatus`, `diffMode` |
 
 ### main/services/（Main Process設定Store）
 
@@ -444,6 +483,9 @@ electron-sdd-manager/src/
 | イベントログ | `eventLogService` | Specイベント記録 |
 | メトリクス | `metricsService` | 開発時間計測・集計 |
 | 並列実行 | `parallelImplService` | 並列タスク実行管理 |
+| スケジュール実行 | `scheduleTaskService`, `scheduleTaskCoordinator`, `scheduleTaskFileService` | 定期タスク管理・実行 |
+| アイドル監視 | `idleTimeTracker` | ユーザーアイドル状態追跡 |
+| MCP Server | `mcpServerService`, `mcpToolRegistry`, `mcpAutoStart` | MCPサーバー管理 |
 | セッション復旧 | `sessionRecoveryService` | クラッシュ復旧 |
 | レイアウト | `layoutConfigService` | ウィンドウレイアウト永続化 |
 | バリデーション | `validationService` | プロジェクト検証 |
@@ -480,6 +522,8 @@ electron-sdd-manager/src/
 | **Execution** | Agent実行 | 単一Agentプロセスの実行 |
 | **Worktree** (Git) | Git Worktree | 分離された作業ディレクトリ |
 | **Worktree** (Mode) | spec.json | Worktreeモード設定フラグ |
+| **ScheduleTask** | スケジュール実行 | 定期実行されるタスク設定 |
+| **MCP** | Model Context Protocol | 外部ツール連携プロトコル |
 
 ### コマンドプレフィックス
 
@@ -523,4 +567,4 @@ electron-sdd-manager/src/
 
 ---
 
-_updated_at: 2026-01-24_
+_updated_at: 2026-01-29_

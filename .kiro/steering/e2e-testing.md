@@ -88,6 +88,7 @@ task electron:build && E2E_USE_PACKAGED_APP=true task electron:test:e2e
 | `workflow-integration.e2e.spec.ts` | **ワークフロー統合テスト（Mock Claude使用）** | 25 |
 | `auto-execution-flow.e2e.spec.ts` | **自動実行フロー全通テスト（Mock Claude使用）** | 21 |
 | `agent-log-streaming.e2e.spec.ts` | **エージェントログストリーミングテスト（ストリーミングMock使用）** | 10 |
+| `git-diff-viewer.e2e.spec.ts` | **Git差分表示機能テスト** | 15 |
 
 ---
 
@@ -910,6 +911,16 @@ expect(windows[0].isResizable()).toBe(true);
 | CLAUDE.md新規インストール | `claudemd-install-submit-button`, `claudemd-install-new-cancel-button`, `claudemd-install-close-button` |
 | CLAUDE.mdエラー | `claudemd-install-error` |
 
+### Git差分コンポーネント
+
+| コンポーネント | data-testid |
+|--------------|-------------|
+| GitView全体 | `git-view` |
+| ファイルツリー | `git-file-tree` |
+| Diffビューア | `git-diff-viewer` |
+| 表示モード切替 | `view-mode-artifacts`, `view-mode-git-diff` |
+| Diffモード切替 | `diff-mode-toggle` |
+
 ---
 
 ## カバレッジ評価
@@ -918,8 +929,8 @@ expect(windows[0].isResizable()).toBe(true);
 
 | 指標 | 数値 |
 |-----|-----|
-| E2Eテストファイル | 12 |
-| E2Eテストケース | 約275 |
+| E2Eテストファイル | 13 |
+| E2Eテストケース | 約290 |
 | ユニットテストファイル | 114 |
 | コンポーネント数 | 44 |
 | data-testid付きコンポーネント | 46 |
@@ -948,6 +959,7 @@ UIコンポーネント存在確認: ████████░░ 80%
 - ✅ インストールダイアログ（CliInstallDialog, ClaudeMdInstallDialog）
 - ✅ マルチウィンドウ機能（ウィンドウ管理、状態取得）
 - ✅ **ワークフロー統合テスト（Mock Claude使用）**
+- ✅ Git差分表示（GitView, GitDiffViewer）
 
 ### 改善が必要な領域
 
@@ -975,4 +987,4 @@ Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずに�
 
 ---
 
-_更新日: 2026-01-24_
+_更新日: 2026-01-29_

@@ -1526,7 +1526,6 @@ export class SpecManagerService {
         pid: process.pid,
         status: 'running',
         lastActivityAt: now,
-        command: `${command} ${args.join(' ')}`,
         executions: updatedExecutions,
       };
 
@@ -1541,7 +1540,6 @@ export class SpecManagerService {
         pid: process.pid,
         status: 'running',
         lastActivityAt: now,
-        command: `${command} ${args.join(' ')}`,
         executions: updatedExecutions,
         autoResumeCount: 0,
       });

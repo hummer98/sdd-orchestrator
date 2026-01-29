@@ -152,18 +152,10 @@ describe('agentStoreAdapter', () => {
         expect(mockElectronAPI.resumeAgent).toHaveBeenCalledWith('agent-1', 'custom prompt');
       });
 
-      it('should add stdin log entry when prompt is provided', async () => {
-        // First add the agent to the store
-        const mockAgent = {
-          id: 'agent-1',
-          specId: 'spec-a',
-          phase: 'requirements',
-          status: 'interrupted' as const,
-          startedAt: new Date().toISOString(),
-          command: 'claude',
-        };
-        useSharedAgentStore.getState().addAgent('spec-a', mockAgent);
-
+      // Bug fix: agent-log-user-input-duplicate
+      // User input log is now added only via Main process (onAgentLog IPC)
+      // to avoid duplicate entries. This test verifies no local log is added.
+      it('should NOT add stdin log entry locally (handled by Main process)', async () => {
         mockElectronAPI.resumeAgent.mockResolvedValue({
           agentId: 'agent-1',
           status: 'running',
@@ -171,14 +163,10 @@ describe('agentStoreAdapter', () => {
 
         await agentOperations.resumeAgent('agent-1', 'user input');
 
-        // Verify stdin log was added as ParsedLogEntry
-        // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
+        // Verify NO log was added locally (Main process will send it via onAgentLog)
         const state = getSharedAgentStore();
         const logs = state.getLogsForAgent('agent-1');
-        expect(logs.length).toBeGreaterThan(0);
-        // toParsedLogEntry converts 'stdin' to type='input'
-        expect(logs[0].type).toBe('input');
-        expect(logs[0].text?.content).toBe('user input');
+        expect(logs).toHaveLength(0);
       });
     });
 
@@ -254,21 +242,19 @@ describe('agentStoreAdapter', () => {
   // Requirements: 2.4, 2.5
   // =============================================================================
   describe('Task 2.3: setupAgentEventListeners', () => {
-    it('should register onAgentOutput listener', () => {
-      const mockCleanup = vi.fn();
-      mockElectronAPI.onAgentOutput.mockReturnValue(mockCleanup);
+    // Bug fix: agent-log-json-display-issue
+    // onAgentOutput listener was removed - parsed logs come via onAgentLog channel
+    it('should NOT register onAgentOutput listener (removed for parsed log integration)', () => {
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
-      const cleanup = setupAgentEventListeners();
+      setupAgentEventListeners();
 
-      expect(mockElectronAPI.onAgentOutput).toHaveBeenCalled();
-      expect(typeof cleanup).toBe('function');
+      expect(mockElectronAPI.onAgentOutput).not.toHaveBeenCalled();
     });
 
     it('should register onAgentStatusChange listener', () => {
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
@@ -279,7 +265,6 @@ describe('agentStoreAdapter', () => {
     });
 
     it('should register onAgentRecordChanged listener', () => {
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
@@ -290,12 +275,10 @@ describe('agentStoreAdapter', () => {
     });
 
     it('should return cleanup function that calls all cleanups', () => {
-      const cleanupOutput = vi.fn();
       const cleanupStatus = vi.fn();
       const cleanupRecord = vi.fn();
       const cleanupLog = vi.fn();
 
-      mockElectronAPI.onAgentOutput.mockReturnValue(cleanupOutput);
       mockElectronAPI.onAgentStatusChange.mockReturnValue(cleanupStatus);
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(cleanupRecord);
       mockElectronAPI.onAgentLog.mockReturnValue(cleanupLog);
@@ -303,35 +286,9 @@ describe('agentStoreAdapter', () => {
       const cleanup = setupAgentEventListeners();
       cleanup();
 
-      expect(cleanupOutput).toHaveBeenCalled();
       expect(cleanupStatus).toHaveBeenCalled();
       expect(cleanupRecord).toHaveBeenCalled();
       expect(cleanupLog).toHaveBeenCalled();
-    });
-
-    it('should add log to shared store when onAgentOutput callback is invoked', () => {
-      let outputCallback: ((agentId: string, stream: 'stdout' | 'stderr', data: string) => void) | null = null;
-      mockElectronAPI.onAgentOutput.mockImplementation((cb) => {
-        outputCallback = cb;
-        return vi.fn();
-      });
-      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
-
-      setupAgentEventListeners();
-
-      // Invoke the callback
-      outputCallback?.('agent-1', 'stdout', 'Hello from agent');
-
-      // Verify log was added to shared store as ParsedLogEntry
-      // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
-      const state = getSharedAgentStore();
-      const logs = state.getLogsForAgent('agent-1');
-      expect(logs).toHaveLength(1);
-      // toParsedLogEntry converts stdout to type='text' with content in text.content
-      expect(logs[0].text?.content).toBe('Hello from agent');
-      expect(logs[0].type).toBe('text');
     });
 
     it('should update agent status in shared store when onAgentStatusChange callback is invoked', () => {
@@ -347,7 +304,6 @@ describe('agentStoreAdapter', () => {
       useSharedAgentStore.getState().addAgent('spec-a', mockAgent);
 
       let statusCallback: ((agentId: string, status: string) => void) | null = null;
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentStatusChange.mockImplementation((cb) => {
         statusCallback = cb;
         return vi.fn();

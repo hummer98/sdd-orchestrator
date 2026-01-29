@@ -15,28 +15,10 @@
  */
 
 import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus, type ParsedLogEntry } from '@shared/stores/agentStore';
-import type { LogEntry } from '../types';
 
 // =============================================================================
 // Type Adapters
 // =============================================================================
-
-/**
- * Convert LogEntry to ParsedLogEntry format
- * main-process-log-parser Task 10.4: Temporary converter for adapter
- * This is a fallback for stdin logs and file reading until full pipeline is complete
- */
-function toParsedLogEntry(logEntry: LogEntry): ParsedLogEntry {
-  return {
-    id: logEntry.id,
-    type: logEntry.stream === 'stdin' ? 'input' : 'text',
-    timestamp: logEntry.timestamp,
-    text: {
-      content: logEntry.data,
-      role: logEntry.stream === 'stdin' ? 'user' : 'assistant',
-    },
-  };
-}
 
 /**
  * Convert renderer AgentInfo to shared AgentInfo format
@@ -140,20 +122,12 @@ export const agentOperations = {
 
   /**
    * Resume an interrupted agent
+   * Bug fix: agent-log-user-input-duplicate
+   * User input log is now added only via Main process (onAgentLog IPC)
+   * to avoid duplicate entries from both Renderer and Main.
    */
   async resumeAgent(agentId: string, prompt?: string): Promise<void> {
     try {
-      // Add stdin log entry if prompt is provided
-      if (prompt) {
-        const inputLogEntry: LogEntry = {
-          id: `stdin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          stream: 'stdin',
-          data: prompt,
-          timestamp: Date.now(),
-        };
-        useSharedAgentStore.getState().addLog(agentId, toParsedLogEntry(inputLogEntry));
-      }
-
       await window.electronAPI.resumeAgent(agentId, prompt);
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to resume agent:', error);

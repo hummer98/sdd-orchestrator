@@ -255,19 +255,8 @@ export const agentOperations = {
 export function setupAgentEventListeners(): () => void {
   console.log('[agentStoreAdapter] Setting up event listeners');
 
-  // Agent output event listener
-  const cleanupOutput = window.electronAPI.onAgentOutput(
-    (agentId: string, stream: 'stdout' | 'stderr', data: string) => {
-      console.log('[agentStoreAdapter] Received agent output', { agentId, stream, dataLength: data.length });
-      const entry: LogEntry = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        stream,
-        data,
-        timestamp: Date.now(),
-      };
-      useSharedAgentStore.getState().addLog(agentId, toParsedLogEntry(entry));
-    }
-  );
+  // Note: onAgentOutput listener was removed (Bug fix: agent-log-json-display-issue)
+  // Raw output is no longer needed here - parsed logs come via onAgentLog channel
 
   // Agent status change event listener
   const cleanupStatus = window.electronAPI.onAgentStatusChange(
@@ -314,7 +303,6 @@ export function setupAgentEventListeners(): () => void {
   // Return cleanup function
   return () => {
     console.log('[agentStoreAdapter] Cleaning up event listeners');
-    cleanupOutput();
     cleanupStatus();
     cleanupRecordChanged();
     cleanupLog();

@@ -89,6 +89,8 @@ describe('AgentLogPanel - Task 31', () => {
     return {
       selectedAgentId,
       clearLogs: mockClearLogs,
+      // Refactoring: log-loading-separation - add ensureLogsLoaded mock
+      ensureLogsLoaded: vi.fn(),
       logs: logsMap,
       agents: agentsMap,
       // Bug fix: findAgentById関数をモックに追加

@@ -178,8 +178,15 @@ interface AgentActions {
   loadRunningAgentCounts: () => Promise<void>;
   /** Get running agent count for a spec */
   getRunningAgentCount: (specId: string) => number;
-  /** Select an agent */
+  /** Select an agent (selection only, no side effects) */
   selectAgent: (agentId: string | null) => Promise<void>;
+  /**
+   * Ensure logs are loaded for an agent
+   * Refactoring: log-loading-separation
+   * - Running agents: load only if no logs exist (IPC adds more)
+   * - Completed/failed agents: always load from file (may have more logs)
+   */
+  ensureLogsLoaded: (agentId: string) => Promise<void>;
   /** Load agent logs */
   loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
   /** Add an agent to the store */
@@ -383,21 +390,35 @@ export const useAgentStore = create<AgentStore>()(
     },
 
     selectAgent: async (agentId: string | null) => {
-      // Update shared store
+      // Refactoring: log-loading-separation
+      // selectAgent is now a pure selection action - no side effects
+      // Log loading should be handled separately via ensureLogsLoaded()
       useSharedAgentStore.getState().selectAgent(agentId);
       set({ selectedAgentId: agentId });
+    },
 
-      // Load logs if not already loaded
-      if (agentId) {
-        const state = get();
-        const existingLogs = state.logs.get(agentId);
+    ensureLogsLoaded: async (agentId: string) => {
+      // Refactoring: log-loading-separation
+      // Separated from selectAgent for clear responsibility
+      const state = get();
+      const agent = state.getAgentById(agentId);
 
-        if (!existingLogs || existingLogs.length === 0) {
-          const agent = state.getAgentById(agentId);
-          if (agent) {
-            await agentOperations.loadAgentLogs(agent.specId, agentId);
-          }
-        }
+      if (!agent) {
+        return;
+      }
+
+      const existingLogs = state.logs.get(agentId);
+      const hasLogs = existingLogs && existingLogs.length > 0;
+      const isRunning = agent.status === 'running';
+
+      // Running agents: load only if no logs (IPC will add more in real-time)
+      // Completed/failed agents: always load from file (may have more logs)
+      const shouldLoad = !hasLogs || !isRunning;
+
+      if (shouldLoad) {
+        await agentOperations.loadAgentLogs(agent.specId, agentId);
+        // Sync logs from shared store after loading
+        set({ logs: getLogsFromShared() });
       }
     },
 

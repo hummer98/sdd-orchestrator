@@ -6,7 +6,7 @@
  * Requirements: 8.1, 8.2, 9.1, 9.2, 9.3, 9.4, 9.5
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 // main-process-log-parser Task 10.4: Changed LogEntry to ParsedLogEntry
 import { useAgentStore, type ParsedLogEntry } from '../stores/agentStore';
 import { useProjectStore } from '../stores/projectStore';
@@ -20,6 +20,16 @@ const EMPTY_LOGS: ParsedLogEntry[] = [];
 export function AgentLogPanel() {
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
   const clearLogs = useAgentStore((state) => state.clearLogs);
+  const ensureLogsLoaded = useAgentStore((state) => state.ensureLogsLoaded);
+
+  // Refactoring: log-loading-separation
+  // When a new agent is selected, ensure its logs are loaded
+  // This separates the concern of "what to display" from "when to load"
+  useEffect(() => {
+    if (selectedAgentId) {
+      ensureLogsLoaded(selectedAgentId);
+    }
+  }, [selectedAgentId, ensureLogsLoaded]);
   const currentProject = useProjectStore((state) => state.currentProject);
   const { recordActivity } = useHumanActivity();
 

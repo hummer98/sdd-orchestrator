@@ -191,6 +191,12 @@ describe('useAgentStore', () => {
     });
 
     describe('selectAgent', () => {
+      // ============================================================
+      // Refactoring: log-loading-separation
+      // selectAgent should ONLY update selection state.
+      // Log loading is handled separately via ensureLogsLoaded().
+      // ============================================================
+
       it('should set selectedAgentId', async () => {
         await useAgentStore.getState().selectAgent('agent-1');
 
@@ -207,23 +213,70 @@ describe('useAgentStore', () => {
         expect(state.selectedAgentId).toBeNull();
       });
 
-      it('should load logs when selecting an agent with no cached logs', async () => {
-        // agent-store-unification: Facade delegates to adapter for log loading
-        // Add agent to store first via addAgent (which updates shared store)
+      it('should NOT call loadAgentLogs - selection only updates state', async () => {
+        // Refactoring: log-loading-separation
+        // selectAgent is now a pure selection action - no side effects
         useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
 
         await useAgentStore.getState().selectAgent('agent-1');
 
+        // selectAgent should NOT trigger log loading
+        expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('ensureLogsLoaded', () => {
+      // ============================================================
+      // Refactoring: log-loading-separation
+      // New method that handles log loading with proper conditions
+      // ============================================================
+
+      it('should load logs for completed agent even if some logs exist', async () => {
+        // Add completed agent
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo2); // status: 'completed'
+        // Add some cached logs (partial)
+        useAgentStore.getState().appendLog('agent-2', {
+          id: 'log-1',
+          type: 'text',
+          timestamp: Date.now(),
+          text: { content: 'partial', role: 'assistant' },
+        });
+
+        await useAgentStore.getState().ensureLogsLoaded('agent-2');
+
+        // Should load from file to get complete logs
+        expect(agentOperations.loadAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-2');
+      });
+
+      it('should NOT load logs for running agent if some logs exist', async () => {
+        // Add running agent
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo); // status: 'running'
+        // Add some cached logs (will receive more via IPC)
+        useAgentStore.getState().appendLog('agent-1', {
+          id: 'log-1',
+          type: 'text',
+          timestamp: Date.now(),
+          text: { content: 'realtime', role: 'assistant' },
+        });
+
+        await useAgentStore.getState().ensureLogsLoaded('agent-1');
+
+        // Running agent gets logs via IPC, no file load needed
+        expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
+      });
+
+      it('should load logs for running agent if no logs exist', async () => {
+        // Add running agent with no logs
+        useAgentStore.getState().addAgent('spec-1', mockAgentInfo); // status: 'running'
+
+        await useAgentStore.getState().ensureLogsLoaded('agent-1');
+
+        // Initial load for running agent (IPC will add more)
         expect(agentOperations.loadAgentLogs).toHaveBeenCalledWith('spec-1', 'agent-1');
       });
 
-      it('should not load logs if already cached', async () => {
-        // Add agent to store first
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
-        // Add pre-cached logs via appendLog
-        useAgentStore.getState().appendLog('agent-1', { id: 'log-1', stream: 'stdout', data: 'cached', timestamp: Date.now() });
-
-        await useAgentStore.getState().selectAgent('agent-1');
+      it('should do nothing if agent does not exist', async () => {
+        await useAgentStore.getState().ensureLogsLoaded('non-existent');
 
         expect(agentOperations.loadAgentLogs).not.toHaveBeenCalled();
       });

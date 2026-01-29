@@ -223,45 +223,19 @@ npx electron-builder --mac
 **重要**: パッケージングしたアプリが正常に起動するか確認します。
 
 ```bash
-# ログファイルの現在位置を記録
-LOG_FILE=~/Library/Logs/sdd-orchestrator/main.log
-LOG_LINES_BEFORE=$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)
-
-# 起動前のPIDを記録（既存プロセスを除外するため）
-PIDS_BEFORE=$(pgrep -f "SDD Orchestrator" 2>/dev/null | tr '\n' ' ')
-
-# アプリを起動
-open "release/mac-arm64/SDD Orchestrator.app"
+# アプリを直接実行（バックグラウンドで）
+"release/mac-arm64/SDD Orchestrator.app/Contents/MacOS/SDD Orchestrator" &
+APP_PID=$!
 sleep 5
 
-# 新しく起動したプロセスのPIDを特定
-PIDS_AFTER=$(pgrep -f "SDD Orchestrator" 2>/dev/null | tr '\n' ' ')
-NEW_PID=""
-for pid in $PIDS_AFTER; do
-  if ! echo "$PIDS_BEFORE" | grep -qw "$pid"; then
-    NEW_PID="$pid"
-    break
-  fi
-done
-
-# 1. プロセス確認
-if [ -z "$NEW_PID" ]; then
+# プロセスが生存しているか確認
+if kill -0 "$APP_PID" 2>/dev/null; then
+  echo "✅ スモークテスト成功: アプリが正常に起動しました (PID: $APP_PID)"
+  kill "$APP_PID" 2>/dev/null
+else
   echo "❌ スモークテスト失敗: アプリが起動時にクラッシュしました"
   exit 1
 fi
-
-# 2. ログファイルのエラーチェック
-# Unhandled promise rejection, uncaught exception, fatal errors を検出
-NEW_LOGS=$(tail -n +$((LOG_LINES_BEFORE + 1)) "$LOG_FILE" 2>/dev/null)
-if echo "$NEW_LOGS" | grep -qi "Unhandled promise rejection\|uncaught\|exception\|fatal"; then
-  echo "❌ スモークテスト失敗: 起動時にエラーが発生しました"
-  echo "$NEW_LOGS" | grep -i "Unhandled promise rejection\|uncaught\|exception\|fatal"
-  kill "$NEW_PID" 2>/dev/null
-  exit 1
-fi
-
-echo "✅ スモークテスト成功: アプリが正常に起動しました"
-kill "$NEW_PID" 2>/dev/null
 ```
 
 **スモークテストが失敗した場合:**

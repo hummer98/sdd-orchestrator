@@ -857,9 +857,11 @@ describe('SpecManagerService', () => {
  * Claude CLI引数の一元管理
  */
 describe('buildClaudeArgs', () => {
-  // BASE_FLAGS now includes --disallowedTools=AskUserQuestion (always disabled in stream-json mode)
+  // BASE_FLAGS now includes:
+  // - --permission-mode bypassPermissions (always enabled for subagent permission inheritance)
+  // - --disallowedTools=AskUserQuestion (always disabled in stream-json mode)
   // Note: --disallowedTools uses = syntax to prevent CLI from consuming subsequent args as tool names
-  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json', '--disallowedTools=AskUserQuestion'];
+  const BASE_FLAGS = ['-p', '--verbose', '--output-format', 'stream-json', '--permission-mode', 'bypassPermissions', '--disallowedTools=AskUserQuestion'];
 
   it('should build args with command only', () => {
     const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
@@ -950,6 +952,58 @@ describe('buildClaudeArgs', () => {
       });
       expect(args).toContain('--dangerously-skip-permissions');
       expect(args).toContain('--allowedTools=Read,Write');
+    });
+  });
+
+  // ============================================================
+  // permissionMode tests (--permission-mode bypassPermissions)
+  // This is always enabled to ensure subagents inherit bypass mode
+  // See: docs/technical-notes/claude-code-permissions-analysis.md
+  // ============================================================
+  describe('permissionMode - bypassPermissions always enabled', () => {
+    it('should always include --permission-mode bypassPermissions with no options', () => {
+      const args = buildClaudeArgs({});
+      expect(args).toContain('--permission-mode');
+      expect(args).toContain('bypassPermissions');
+    });
+
+    it('should include --permission-mode bypassPermissions with command', () => {
+      const args = buildClaudeArgs({ command: '/kiro:spec-requirements my-feature' });
+      expect(args).toContain('--permission-mode');
+      expect(args).toContain('bypassPermissions');
+    });
+
+    it('should include --permission-mode bypassPermissions with resume session', () => {
+      const args = buildClaudeArgs({
+        resumeSessionId: 'session-123',
+        resumePrompt: 'continue',
+      });
+      expect(args).toContain('--permission-mode');
+      expect(args).toContain('bypassPermissions');
+    });
+
+    it('should place --permission-mode bypassPermissions before other options', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-requirements my-feature',
+        allowedTools: ['Read', 'Write'],
+      });
+      const permissionModeIndex = args.indexOf('--permission-mode');
+      const disallowedIndex = args.findIndex(arg => arg.startsWith('--disallowedTools='));
+      const allowedIndex = args.findIndex(arg => arg.startsWith('--allowedTools='));
+      // --permission-mode should come before --disallowedTools and --allowedTools
+      expect(permissionModeIndex).toBeLessThan(disallowedIndex);
+      expect(permissionModeIndex).toBeLessThan(allowedIndex);
+    });
+
+    it('should work with skipPermissions (both flags can coexist)', () => {
+      const args = buildClaudeArgs({
+        command: '/kiro:spec-requirements my-feature',
+        skipPermissions: true,
+      });
+      // Both flags should be present (skipPermissions takes precedence at runtime)
+      expect(args).toContain('--permission-mode');
+      expect(args).toContain('bypassPermissions');
+      expect(args).toContain('--dangerously-skip-permissions');
     });
   });
 

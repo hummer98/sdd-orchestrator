@@ -117,6 +117,12 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
     args.push('--dangerously-skip-permissions');
   }
 
+  // --permission-mode bypassPermissions を常に追加
+  // サブエージェント（Task tool）も親の権限モードを継承するため、
+  // 非対話型環境で権限プロンプトが発生しないようにする
+  // See: docs/technical-notes/claude-code-permissions-analysis.md
+  args.push('--permission-mode', 'bypassPermissions');
+
   // AskUserQuestionは常に無効化（stream-jsonモードでは応答できないため）
   // See: https://github.com/anthropics/claude-code/issues/16712
   // Note: --disallowedTools は <tools...> 形式（可変長引数）のため、

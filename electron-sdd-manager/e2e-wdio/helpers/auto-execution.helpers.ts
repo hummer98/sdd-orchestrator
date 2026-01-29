@@ -669,3 +669,100 @@ export async function configureMockClaude(config: {
     await setMockEnv('E2E_MOCK_CLAUDE_DELAY', config.delay);
   }
 }
+
+/**
+ * Helper: Resume agent with additional instruction
+ *
+ * Calls agentStore.resumeAgent to send additional instruction to a completed agent.
+ * This creates a new Claude CLI session with the -r (resume) flag.
+ *
+ * @param agentId The agent ID to resume
+ * @param prompt The additional instruction to send
+ * @returns true if resume was initiated, false otherwise
+ */
+export async function resumeAgentViaStore(agentId: string, prompt: string): Promise<boolean> {
+  return browser.executeAsync(async (id: string, p: string, done: (result: boolean) => void) => {
+    try {
+      const stores = (window as any).__STORES__;
+      if (!stores?.agent?.getState) {
+        console.error('[E2E] resumeAgentViaStore: agentStore not available');
+        done(false);
+        return;
+      }
+
+      const agentStore = stores.agent.getState();
+      await agentStore.resumeAgent(id, p);
+      done(true);
+    } catch (e) {
+      console.error('[E2E] resumeAgentViaStore error:', e);
+      done(false);
+    }
+  }, agentId, prompt);
+}
+
+/**
+ * Helper: Get logs for an agent
+ *
+ * @param agentId The agent ID
+ * @returns Array of parsed log entries
+ */
+export async function getAgentLogs(agentId: string): Promise<any[]> {
+  return browser.execute((id: string) => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.agent?.getState) return [];
+    return stores.agent.getState().getLogsForAgent(id);
+  }, agentId);
+}
+
+/**
+ * Helper: Get selected agent ID
+ *
+ * @returns The selected agent ID or null
+ */
+export async function getSelectedAgentId(): Promise<string | null> {
+  return browser.execute(() => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.agent?.getState) return null;
+    return stores.agent.getState().selectedAgentId;
+  });
+}
+
+/**
+ * Helper: Wait for agent to complete
+ *
+ * @param agentId The agent ID to wait for
+ * @param timeout Timeout in milliseconds
+ */
+export async function waitForAgentComplete(
+  agentId: string,
+  timeout: number = 30000
+): Promise<boolean> {
+  return waitForCondition(
+    async () => {
+      const agent = await browser.execute((id: string) => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.agent?.getState) return null;
+        return stores.agent.getState().getAgentById(id);
+      }, agentId);
+      return agent?.status === 'completed' || agent?.status === 'error';
+    },
+    timeout,
+    500,
+    'agent-complete'
+  );
+}
+
+/**
+ * Helper: Get first agent for a spec
+ *
+ * @param specName The spec name
+ * @returns The first agent info or null
+ */
+export async function getFirstAgentForSpec(specName: string): Promise<any | null> {
+  return browser.execute((spec: string) => {
+    const stores = (window as any).__STORES__;
+    if (!stores?.agent?.getState) return null;
+    const agents = stores.agent.getState().getAgentsForSpec(spec);
+    return agents.length > 0 ? agents[0] : null;
+  }, specName);
+}

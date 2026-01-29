@@ -53,7 +53,7 @@ interface GitViewState {
 
 interface GitViewActions {
   /** Select file and fetch diff content */
-  selectFile: (apiClient: ApiClient, filePath: string) => Promise<void>;
+  selectFile: (apiClient: ApiClient, filePath: string, projectPath?: string) => Promise<void>;
   /** Toggle directory expansion/collapse */
   toggleDir: (dirPath: string) => void;
   /** Set diff display mode */
@@ -86,12 +86,12 @@ export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
   ...initialState,
 
   // Actions
-  selectFile: async (apiClient: ApiClient, filePath: string) => {
+  selectFile: async (apiClient: ApiClient, filePath: string, overrideProjectPath?: string) => {
     set({ selectedFilePath: filePath, isLoading: true, error: null });
 
     try {
-      // Get project path (use empty string for current project)
-      const projectPath = apiClient.getProjectPath?.() || '';
+      // Get project path (use override or fallback to apiClient)
+      const projectPath = overrideProjectPath ?? apiClient.getProjectPath?.() ?? '';
 
       // Fetch diff content via ApiClient
       const result = await apiClient.getGitDiff(projectPath, filePath);

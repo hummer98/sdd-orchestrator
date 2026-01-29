@@ -139,7 +139,7 @@ describe('GitFileTree Component', () => {
       const fileNode = screen.getByTestId('file-node-src/file.ts');
       fireEvent.click(fileNode);
 
-      expect(selectFileSpy).toHaveBeenCalledWith(mockApiClient, 'src/file.ts');
+      expect(selectFileSpy).toHaveBeenCalledWith(mockApiClient, 'src/file.ts', undefined);
     });
 
     it('should highlight selected file', () => {

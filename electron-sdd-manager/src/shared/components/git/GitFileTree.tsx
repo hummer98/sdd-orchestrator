@@ -508,6 +508,17 @@ function TreeRendererNested({
 }
 
 /**
+ * Props for GitFileTree component
+ */
+export interface GitFileTreeProps {
+  /**
+   * Explicit working path for git operations (e.g., worktree path).
+   * When provided, takes precedence over apiClient.getProjectPath().
+   */
+  workingPath?: string;
+}
+
+/**
  * GitFileTree - Displays a tree of changed files
  *
  * Features:
@@ -519,7 +530,7 @@ function TreeRendererNested({
  * - Keyboard navigation (ArrowUp/Down, Enter, Space) - Task 11.1
  * - Virtualized rendering for 100+ files - Task 12.2
  */
-export function GitFileTree(): React.ReactElement {
+export function GitFileTree({ workingPath }: GitFileTreeProps): React.ReactElement {
   const apiClient = useApi();
   const containerRef = useRef<HTMLDivElement>(null);
   const {
@@ -555,8 +566,8 @@ export function GitFileTree(): React.ReactElement {
 
   // Handle file selection
   const handleSelectFile = useCallback((filePath: string) => {
-    selectFile(apiClient, filePath);
-  }, [apiClient, selectFile]);
+    selectFile(apiClient, filePath, workingPath);
+  }, [apiClient, selectFile, workingPath]);
 
   // Handle directory toggle
   const handleToggleDir = useCallback((dirPath: string) => {
@@ -582,11 +593,11 @@ export function GitFileTree(): React.ReactElement {
         // If nothing selected, select first file
         if (currentIndex === -1) {
           const firstFile = fileItems[0];
-          selectFile(apiClient, firstFile.path);
+          selectFile(apiClient, firstFile.path, workingPath);
         } else if (currentIndex < fileItems.length - 1) {
           // Move to next file
           const nextFile = fileItems[currentIndex + 1];
-          selectFile(apiClient, nextFile.path);
+          selectFile(apiClient, nextFile.path, workingPath);
         }
         // If at last file, do nothing (boundary)
         break;
@@ -597,7 +608,7 @@ export function GitFileTree(): React.ReactElement {
         if (currentIndex > 0) {
           // Move to previous file
           const prevFile = fileItems[currentIndex - 1];
-          selectFile(apiClient, prevFile.path);
+          selectFile(apiClient, prevFile.path, workingPath);
         }
         // If at first file or not selected, do nothing
         break;
@@ -621,12 +632,12 @@ export function GitFileTree(): React.ReactElement {
         e.preventDefault();
         // Re-fetch diff for currently selected file
         if (selectedFilePath) {
-          selectFile(apiClient, selectedFilePath);
+          selectFile(apiClient, selectedFilePath, workingPath);
         }
         break;
       }
     }
-  }, [fileItems, selectedFilePath, selectFile, toggleDir, apiClient]);
+  }, [fileItems, selectedFilePath, selectFile, toggleDir, apiClient, workingPath]);
 
   // Empty state
   if (!cachedStatus || cachedStatus.files.length === 0) {

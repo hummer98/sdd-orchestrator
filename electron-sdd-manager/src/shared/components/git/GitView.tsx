@@ -138,7 +138,7 @@ export function GitView({ workingPath }: GitViewProps): React.ReactElement {
         className="h-full shrink-0 overflow-auto border-r border-gray-200 dark:border-gray-700"
         data-testid="git-file-tree"
       >
-        <GitFileTree />
+        <GitFileTree workingPath={effectivePath} />
       </div>
 
       {/* Resize handle */}

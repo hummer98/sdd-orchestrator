@@ -1478,6 +1478,38 @@ export class SpecManagerService {
         sessionId: agent.sessionId,
       });
 
+      // Bug fix: resume-agent-event-handler-race
+      // Track if record has been written (for event handlers)
+      // Event handlers must be set up synchronously before any await
+      // to catch ENOENT errors that occur immediately after spawn
+      let recordWritten = false;
+      const pendingEvents: Array<{ type: 'output' | 'exit' | 'error'; data?: unknown }> = [];
+
+      // Set up event handlers synchronously (no await before this)
+      process.onOutput((stream, data) => {
+        if (!recordWritten) {
+          pendingEvents.push({ type: 'output', data: { stream, data } });
+          return;
+        }
+        this.handleAgentOutput(agentId, agent.specId, process, stream, data);
+      });
+
+      process.onExit((code) => {
+        if (!recordWritten) {
+          pendingEvents.push({ type: 'exit', data: code });
+          return;
+        }
+        this.handleAgentExit(agentId, agent.specId, code);
+      });
+
+      process.onError(() => {
+        if (!recordWritten) {
+          pendingEvents.push({ type: 'error' });
+          return;
+        }
+        this.handleAgentError(agentId, agent.specId);
+      });
+
       // Update agent info (keep same agentId)
       // metrics-file-based-tracking: Task 4.1 - Update executions array
       const existingExecutions = agent.executions || [];
@@ -1534,21 +1566,29 @@ export class SpecManagerService {
       // Also notify UI via output callbacks
       this.outputCallbacks.forEach((cb) => cb(agentId, 'stdout', userEventJson + '\n'));
 
-      // Set up event handlers using shared methods
-      process.onOutput((stream, data) => {
-        this.handleAgentOutput(agentId, agent.specId, process, stream, data);
-      });
+      // Mark record as written and process any pending events
+      recordWritten = true;
+      for (const event of pendingEvents) {
+        switch (event.type) {
+          case 'output': {
+            const { stream, data } = event.data as { stream: 'stdout' | 'stderr'; data: string };
+            this.handleAgentOutput(agentId, agent.specId, process, stream, data);
+            break;
+          }
+          case 'exit':
+            this.handleAgentExit(agentId, agent.specId, event.data as number);
+            break;
+          case 'error':
+            this.handleAgentError(agentId, agent.specId);
+            break;
+        }
+      }
 
-      process.onExit((code) => {
-        this.handleAgentExit(agentId, agent.specId, code);
-      });
-
-      process.onError(() => {
-        this.handleAgentError(agentId, agent.specId);
-      });
-
-      // Notify status change
-      this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
+      // Notify status change only if no error occurred during setup
+      // (handleAgentError will have already notified 'failed' status)
+      if (!pendingEvents.some((e) => e.type === 'error')) {
+        this.statusCallbacks.forEach((cb) => cb(agentId, 'running'));
+      }
 
       return { ok: true, value: updatedAgentInfo };
     } catch (error) {

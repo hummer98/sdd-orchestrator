@@ -265,47 +265,69 @@ export async function startBugsWatcher(window: BrowserWindow): Promise<void> {
 
   bugsWatcherService = new BugsWatcherService(currentProjectPath);
 
-  bugsWatcherService.onChange(async (event) => {
-    logger.info('[bugHandlers] Bugs changed', { event });
-    if (!window.isDestroyed()) {
-      window.webContents.send(IPC_CHANNELS.BUGS_CHANGED, event);
-    }
+  let updateTimer: NodeJS.Timeout | null = null;
+  // Use a simple array to track pending events during debounce window
+  let pendingEvents: any[] = [];
 
-    // Broadcast to Remote UI via WebSocket
-    // Requirements: Bug management file watcher - Remote UI integration
-    // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
-    // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
-    try {
-      const remoteServer = getRemoteAccessServer();
-      const wsHandler = remoteServer.getWebSocketHandler();
-      if (wsHandler && currentProjectPath && currentDeps) {
-        const bugsResult = await currentDeps.bugService.readBugs(currentProjectPath);
-        if (bugsResult.ok) {
-          // Log warnings for empty bug directories
-          if (bugsResult.value.warnings.length > 0) {
-            for (const warning of bugsResult.value.warnings) {
-              logger.warn('[bugHandlers] ' + warning);
+  bugsWatcherService.onChange(async (event) => {
+    logger.debug('[bugHandlers] Bugs change event received (buffering)', { event });
+    pendingEvents.push(event);
+
+    if (updateTimer) return;
+
+    updateTimer = setTimeout(async () => {
+      updateTimer = null;
+      const eventsCount = pendingEvents.length;
+      const lastEvent = pendingEvents[pendingEvents.length - 1];
+      pendingEvents = []; // Clear buffer
+
+      logger.info('[bugHandlers] Processing debounced bug changes', { eventsCount, lastEvent });
+
+      // 1. Broadcast to Remote UI via WebSocket (Once per batch)
+      // Requirements: Bug management file watcher - Remote UI integration
+      // spec-path-ssot-refactor: Use resolveBugPath to get the full path for BugInfo (WebSocket API)
+      // Bug fix: empty bug directory handling - extract bugs from ReadBugsResult
+      try {
+        const remoteServer = getRemoteAccessServer();
+        const wsHandler = remoteServer.getWebSocketHandler();
+        if (wsHandler && currentProjectPath && currentDeps) {
+          const bugsResult = await currentDeps.bugService.readBugs(currentProjectPath);
+          if (bugsResult.ok) {
+            // Log warnings for empty bug directories
+            if (bugsResult.value.warnings.length > 0) {
+              for (const warning of bugsResult.value.warnings) {
+                logger.warn('[bugHandlers] ' + warning);
+              }
             }
+            const bugs: BugInfo[] = [];
+            for (const bug of bugsResult.value.bugs) {
+              const bugPathResult = await currentDeps.fileService.resolveBugPath(currentProjectPath, bug.name);
+              const bugPath = bugPathResult.ok ? bugPathResult.value : '';
+              bugs.push({
+                name: bug.name,
+                path: bugPath,
+                phase: bug.phase,
+                updatedAt: bug.updatedAt,
+                reportedAt: bug.reportedAt,
+              });
+            }
+            wsHandler.broadcastBugsUpdated(bugs);
+            logger.debug('[bugHandlers] Bugs change broadcasted to Remote UI', { bugsCount: bugs.length });
           }
-          const bugs: BugInfo[] = [];
-          for (const bug of bugsResult.value.bugs) {
-            const bugPathResult = await currentDeps.fileService.resolveBugPath(currentProjectPath, bug.name);
-            const bugPath = bugPathResult.ok ? bugPathResult.value : '';
-            bugs.push({
-              name: bug.name,
-              path: bugPath,
-              phase: bug.phase,
-              updatedAt: bug.updatedAt,
-              reportedAt: bug.reportedAt,
-            });
-          }
-          wsHandler.broadcastBugsUpdated(bugs);
-          logger.debug('[bugHandlers] Bugs change broadcasted to Remote UI', { bugsCount: bugs.length });
         }
+      } catch (error) {
+        logger.warn('[bugHandlers] Failed to broadcast bugs change to Remote UI', { error });
       }
-    } catch (error) {
-      logger.warn('[bugHandlers] Failed to broadcast bugs change to Remote UI', { error });
-    }
+
+      // 2. Notify Renderer (Once per batch)
+      // Force 'change' type to ensure renderer triggers a full fetch (SSOT)
+      // This handles add/change/unlink correctly by syncing with the current state
+      if (!window.isDestroyed()) {
+        const triggerEvent = { ...lastEvent, type: 'change' };
+        window.webContents.send(IPC_CHANNELS.BUGS_CHANGED, triggerEvent);
+        logger.debug('[bugHandlers] Sent debounced update to renderer', { triggerEvent });
+      }
+    }, 500); // 500ms debounce window
   });
 
   await bugsWatcherService.start();

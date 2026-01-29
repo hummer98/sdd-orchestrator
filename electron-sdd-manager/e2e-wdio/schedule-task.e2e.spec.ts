@@ -311,6 +311,7 @@ async function navigateBackToList(): Promise<void> {
 
 /**
  * Helper: Set schedule task store mock tasks via browser execute
+ * Note: Should be called AFTER dialog is open and loadTasks has completed
  */
 async function setMockTasks(tasks: any[]): Promise<void> {
   await browser.execute((mockTasks: any[]) => {
@@ -319,7 +320,28 @@ async function setMockTasks(tasks: any[]): Promise<void> {
       stores.scheduleTask.getState().updateTasks(mockTasks);
     }
   }, tasks);
-  await browser.pause(100);
+  await browser.pause(200); // Wait for UI to update
+}
+
+/**
+ * Helper: Open dialog and set mock tasks after loadTasks completes
+ * This ensures mock data is not overwritten by API call
+ */
+async function openDialogWithMockTasks(tasks: any[]): Promise<boolean> {
+  // Open dialog first
+  const opened = await openScheduleTaskDialog();
+  if (!opened) return false;
+
+  // Wait for initial load to complete (loadTasks finishes)
+  await browser.pause(500);
+
+  // Now set mock tasks - this won't be overwritten
+  await setMockTasks(tasks);
+
+  // Wait for UI to update with mock data
+  await browser.pause(200);
+
+  return true;
 }
 
 /**
@@ -503,11 +525,9 @@ describe('Schedule Task E2E Tests', () => {
     });
 
     it('should display task list items when tasks exist (Requirement 1.3)', async () => {
-      // Set mock tasks
+      // Open dialog and set mock tasks after loadTasks completes
       const mockTask = createMockTask({ name: 'Weekly Update Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const count = await getTaskListItemsCount();
       expect(count).toBe(1);
@@ -515,9 +535,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should display task name in list item (Requirement 1.3)', async () => {
       const mockTask = createMockTask({ name: 'My Test Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const taskItem = await $('[data-testid="schedule-task-list-item"]');
       const text = await taskItem.getText();
@@ -526,9 +544,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should display schedule type badge in list item (Requirement 1.3)', async () => {
       const mockTask = createMockTask({ name: 'Interval Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const badge = await $('[data-testid="schedule-type-badge"]');
       const exists = await badge.isExisting();
@@ -537,9 +553,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should have enabled toggle in list item (Requirement 1.6)', async () => {
       const mockTask = createMockTask({ name: 'Toggle Test Task', enabled: true });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const toggle = await $('[data-testid="enabled-toggle"]');
       const exists = await toggle.isExisting();
@@ -548,9 +562,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should have delete button in list item (Requirement 1.5)', async () => {
       const mockTask = createMockTask({ name: 'Delete Test Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const deleteButton = await $('[data-testid="delete-button"]');
       const exists = await deleteButton.isExisting();
@@ -559,9 +571,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should have execute button in list item (Requirement 7.1)', async () => {
       const mockTask = createMockTask({ name: 'Execute Test Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const executeButton = await $('[data-testid="execute-button"]');
       const exists = await executeButton.isExisting();
@@ -576,9 +586,7 @@ describe('Schedule Task E2E Tests', () => {
   describe('Schedule Task Edit Flow', () => {
     it('should navigate to edit page when task item is clicked (Requirement 1.4)', async () => {
       const mockTask = createMockTask({ name: 'Editable Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const clicked = await clickTaskByName('Editable Task');
       expect(clicked).toBe(true);
@@ -590,9 +598,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should show back button in edit mode', async () => {
       const mockTask = createMockTask({ name: 'Back Button Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
       await clickTaskByName('Back Button Task');
 
       const backButton = await $('button[aria-label="戻る"]');
@@ -602,9 +608,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should navigate back to list when back button is clicked', async () => {
       const mockTask = createMockTask({ name: 'Navigation Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
       await clickTaskByName('Navigation Task');
       await navigateBackToList();
 
@@ -615,9 +619,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should populate form with task data when editing (Requirement 2.1)', async () => {
       const mockTask = createMockTask({ name: 'Populated Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
       await clickTaskByName('Populated Task');
 
       const nameInput = await $('[data-testid="task-name-input"]');
@@ -633,9 +635,7 @@ describe('Schedule Task E2E Tests', () => {
   describe('Delete Confirmation Flow', () => {
     it('should show delete confirmation dialog when delete icon is clicked (Requirement 1.5)', async () => {
       const mockTask = createMockTask({ name: 'Delete Me Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const dialogOpened = await clickDeleteButtonOnTask('Delete Me Task');
       expect(dialogOpened).toBe(true);
@@ -647,9 +647,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should close confirmation dialog when cancel is clicked', async () => {
       const mockTask = createMockTask({ name: 'Cancel Delete Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
       await clickDeleteButtonOnTask('Cancel Delete Task');
       await cancelDelete();
 
@@ -660,9 +658,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should show task name in confirmation dialog', async () => {
       const mockTask = createMockTask({ name: 'Named Delete Task' });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
       await clickDeleteButtonOnTask('Named Delete Task');
 
       const confirmDialog = await $('[data-testid="delete-confirm-dialog"]');
@@ -680,9 +676,7 @@ describe('Schedule Task E2E Tests', () => {
   describe('Enable/Disable Toggle', () => {
     it('should toggle task enabled state when toggle is clicked (Requirement 1.6)', async () => {
       const mockTask = createMockTask({ name: 'Toggle Task', enabled: true });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       // Get initial state
       const initialState = await getToggleState('Toggle Task');
@@ -701,9 +695,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should show disabled state visually when task is disabled', async () => {
       const mockTask = createMockTask({ name: 'Disabled Task', enabled: false });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const taskItem = await $('[data-testid="schedule-task-list-item"]');
       const text = await taskItem.getText();
@@ -713,9 +705,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should disable execute button when task is disabled', async () => {
       const mockTask = createMockTask({ name: 'Disabled Execute Task', enabled: false });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const taskItem = await $('[data-testid="schedule-task-list-item"]');
       const executeButton = await taskItem.$('[data-testid="execute-button"]');
@@ -731,9 +721,7 @@ describe('Schedule Task E2E Tests', () => {
   describe('Immediate Execution', () => {
     it('should have execute button for enabled tasks (Requirement 7.1)', async () => {
       const mockTask = createMockTask({ name: 'Exec Ready Task', enabled: true });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const taskItem = await $('[data-testid="schedule-task-list-item"]');
       const executeButton = await taskItem.$('[data-testid="execute-button"]');
@@ -743,9 +731,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should enable execute button for enabled tasks', async () => {
       const mockTask = createMockTask({ name: 'Clickable Exec Task', enabled: true });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const taskItem = await $('[data-testid="schedule-task-list-item"]');
       const executeButton = await taskItem.$('[data-testid="execute-button"]');
@@ -755,9 +741,7 @@ describe('Schedule Task E2E Tests', () => {
 
     it('should be clickable for immediate execution', async () => {
       const mockTask = createMockTask({ name: 'Click Exec Task', enabled: true });
-      await setMockTasks([mockTask]);
-
-      await openScheduleTaskDialog();
+      await openDialogWithMockTasks([mockTask]);
 
       const clicked = await clickExecuteButtonOnTask('Click Exec Task');
       expect(clicked).toBe(true);
@@ -833,10 +817,10 @@ describe('Schedule Task E2E Tests', () => {
       await clickCancelButton();
 
       // 5. Add mock task to simulate created task
-      const mockTask = createMockTask({ name: 'CRUD Test Task' });
-      await setMockTasks([mockTask]);
+      // Close current dialog and reopen with mock tasks
       await closeScheduleTaskDialog();
-      await openScheduleTaskDialog();
+      const mockTask = createMockTask({ name: 'CRUD Test Task' });
+      await openDialogWithMockTasks([mockTask]);
 
       // 6. Verify task appears in list
       count = await getTaskListItemsCount();

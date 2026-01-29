@@ -197,7 +197,10 @@ function ScheduleTaskList({
 
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div
+        data-testid="schedule-task-list"
+        className="flex flex-col items-center justify-center py-12 text-center"
+      >
         <Clock className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-500 dark:text-gray-400 mb-2">
           スケジュールタスクがありません

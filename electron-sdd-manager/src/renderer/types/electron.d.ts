@@ -10,6 +10,8 @@ import type {
   SelectProjectResult,
   VersionCheckResult,
 } from './index';
+// Bug fix: agent-log-json-display-issue - ParsedLogEntry for getAgentLogs return type
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 
 /**
  * Layout values for pane-layout-persistence feature
@@ -516,10 +518,11 @@ export interface ElectronAPI {
   getAgents(specId: string): Promise<AgentInfo[]>;
   getAllAgents(): Promise<Record<string, AgentInfo[]>>;
   sendAgentInput(agentId: string, input: string): Promise<void>;
+  // Bug fix: agent-log-json-display-issue - Returns ParsedLogEntry[] (already parsed in Main)
   getAgentLogs(
     specId: string,
     agentId: string
-  ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>>;
+  ): Promise<ParsedLogEntry[]>;
 
   // Phase Execution (high-level commands)
 

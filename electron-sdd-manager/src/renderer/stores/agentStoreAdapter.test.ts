@@ -220,22 +220,31 @@ describe('agentStoreAdapter', () => {
 
     describe('loadAgentLogs', () => {
       it('should call window.electronAPI.getAgentLogs and update shared store', async () => {
-        const mockLogs = [
-          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'test output' },
+        // Bug fix: agent-log-json-display-issue - Main process now returns ParsedLogEntry[]
+        const mockParsedLogs = [
+          {
+            id: 'test-log-1',
+            type: 'text' as const,
+            timestamp: new Date('2024-01-01T00:00:00Z').getTime(),
+            engineId: 'claude' as const,
+            text: {
+              content: 'test output',
+              role: 'assistant' as const,
+            },
+          },
         ];
-        mockElectronAPI.getAgentLogs.mockResolvedValue(mockLogs);
+        mockElectronAPI.getAgentLogs.mockResolvedValue(mockParsedLogs);
 
         await agentOperations.loadAgentLogs('spec-a', 'agent-1');
 
         expect(mockElectronAPI.getAgentLogs).toHaveBeenCalledWith('spec-a', 'agent-1');
 
         // Verify logs were added to shared store as ParsedLogEntry
-        // main-process-log-parser Task 10.4: Updated to check ParsedLogEntry fields
         const state = getSharedAgentStore();
         const logs = state.getLogsForAgent('agent-1');
         expect(logs).toHaveLength(1);
-        // toParsedLogEntry converts 'stdout' to type='text' with content in text.content
         expect(logs[0].text?.content).toBe('test output');
+        expect(logs[0].type).toBe('text');
       });
     });
   });

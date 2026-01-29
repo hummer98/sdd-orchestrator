@@ -278,26 +278,12 @@ export class IpcApiClient implements ApiClient {
 
   /**
    * Get logs for a specific agent
-   * main-process-log-parser Task 10.4: Updated to return ParsedLogEntry[]
-   * Converts raw LogEntry from file to ParsedLogEntry format
+   * Bug fix: agent-log-json-display-issue - Main process now returns ParsedLogEntry[] directly
    */
   async getAgentLogs(specId: string, agentId: string): Promise<Result<ParsedLogEntry[], ApiError>> {
     checkElectronAPI();
-    return wrapResult(async () => {
-      const logs = await window.electronAPI.getAgentLogs(specId, agentId);
-      // Convert LogEntry to ParsedLogEntry format
-      // main-process-log-parser Task 10.4: Temporary converter until Main process returns ParsedLogEntry
-      // Note: log.stream can be 'stdout' | 'stderr' (stdin is not returned from file logs)
-      return logs.map((log, index) => ({
-        id: `${agentId}-${index}`,
-        type: 'text' as const,  // File logs are always stdout/stderr, not stdin
-        timestamp: new Date(log.timestamp).getTime(),
-        text: {
-          content: log.data,
-          role: 'assistant' as const,
-        },
-      }));
-    });
+    // Main process now returns ParsedLogEntry[] (already parsed)
+    return wrapResult(() => window.electronAPI.getAgentLogs(specId, agentId));
   }
 
   // ===========================================================================

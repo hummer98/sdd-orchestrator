@@ -23,6 +23,9 @@ import { AgentRecordWatcherService } from '../services/agentRecordWatcherService
 import { getClaudeCommand } from '../services/agentProcess';
 // Task 7.3: Agent Lifecycle Management integration (agent-lifecycle-management feature)
 import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
+// Bug fix: agent-log-json-display-issue - Parse logs before returning to renderer
+import { unifiedParser } from '../utils/unifiedParser';
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 
 // Module-level state for agent record watcher
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
@@ -264,15 +267,39 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   );
 
   // Agent Logs Handler (Bug fix: agent-log-display-issue)
+  // Bug fix: agent-log-json-display-issue - Parse logs before returning to renderer
   ipcMain.handle(
     IPC_CHANNELS.GET_AGENT_LOGS,
-    async (_event, specId: string, agentId: string) => {
+    async (_event, specId: string, agentId: string): Promise<ParsedLogEntry[]> => {
       logger.debug('[agentHandlers] GET_AGENT_LOGS called', { specId, agentId });
       try {
         const logFileService = getDefaultLogFileService();
+        const agentRecordService = getDefaultAgentRecordService();
         const logs = await logFileService.readLog(specId, agentId);
-        logger.debug('[agentHandlers] GET_AGENT_LOGS returned', { specId, agentId, logCount: logs.length });
-        return logs;
+
+        // Get engineId from agent record for parser selection
+        const record = await agentRecordService.findRecordByAgentId(agentId);
+        const engineId = record?.engineId;
+
+        // Parse each log entry's data field using unified parser
+        // Note: Log files only contain stdout/stderr, stdin is handled in Renderer
+        const parsedLogs: ParsedLogEntry[] = [];
+        for (const log of logs) {
+          if (log.stream === 'stdout' && log.data) {
+            // Parse stdout data using unified parser
+            const entries = unifiedParser.parseData(log.data, engineId);
+            parsedLogs.push(...entries);
+          }
+          // stderr is typically not shown in UI, skip for now
+        }
+
+        logger.debug('[agentHandlers] GET_AGENT_LOGS returned parsed', {
+          specId,
+          agentId,
+          rawLogCount: logs.length,
+          parsedLogCount: parsedLogs.length,
+        });
+        return parsedLogs;
       } catch (error) {
         logger.error('[agentHandlers] GET_AGENT_LOGS failed', { specId, agentId, error });
         throw error;

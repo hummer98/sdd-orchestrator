@@ -131,10 +131,11 @@ const electronAPI = {
   sendAgentInput: (agentId: string, input: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.SEND_AGENT_INPUT, agentId, input),
 
+  // Bug fix: agent-log-json-display-issue - Returns ParsedLogEntry[] (already parsed in Main)
   getAgentLogs: (
     specId: string,
     agentId: string
-  ): Promise<Array<{ timestamp: string; stream: 'stdout' | 'stderr'; data: string }>> =>
+  ): Promise<ParsedLogEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_AGENT_LOGS, specId, agentId),
 
   // Phase Execution (high-level commands)

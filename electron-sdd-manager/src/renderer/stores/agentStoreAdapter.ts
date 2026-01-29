@@ -199,19 +199,15 @@ export const agentOperations = {
    * Previously, clearLogs() was called before adding file logs, which caused
    * real-time logs received via onAgentOutput to be lost. Now we merge file logs
    * with existing real-time logs, using ID-based deduplication and timestamp sorting.
+   *
+   * Bug fix: agent-log-json-display-issue
+   * Main process now returns ParsedLogEntry[] directly (already parsed).
    */
   async loadAgentLogs(specId: string, agentId: string): Promise<void> {
     try {
       console.log('[agentStoreAdapter] Loading agent logs', { specId, agentId });
-      const logs = await window.electronAPI.getAgentLogs(specId, agentId);
-
-      // Convert file logs to LogEntry format then to ParsedLogEntry
-      const fileLogEntries: LogEntry[] = logs.map((log: { timestamp: string; stream: string; data: string }, index: number) => ({
-        id: `${agentId}-${index}-${log.timestamp}`,
-        stream: log.stream as 'stdout' | 'stderr' | 'stdin',
-        data: log.data,
-        timestamp: new Date(log.timestamp).getTime(),
-      }));
+      // Main process now returns ParsedLogEntry[] (already parsed)
+      const parsedLogs: ParsedLogEntry[] = await window.electronAPI.getAgentLogs(specId, agentId);
 
       // Bug fix: agent-log-stream-race-condition
       // Merge file logs with existing real-time logs instead of clearing
@@ -222,9 +218,9 @@ export const agentOperations = {
       const existingIds = new Set(existingLogs.map((log) => log.id));
 
       // Add only new logs from file (not already in real-time logs)
-      const newFileLogsCount = fileLogEntries.filter((entry) => {
+      const newFileLogsCount = parsedLogs.filter((entry) => {
         if (!existingIds.has(entry.id)) {
-          state.addLog(agentId, toParsedLogEntry(entry));
+          state.addLog(agentId, entry);
           return true;
         }
         return false;
@@ -233,7 +229,7 @@ export const agentOperations = {
       console.log('[agentStoreAdapter] Loaded agent logs', {
         specId,
         agentId,
-        fileCount: fileLogEntries.length,
+        fileCount: parsedLogs.length,
         existingCount: existingLogs.length,
         newCount: newFileLogsCount,
       });

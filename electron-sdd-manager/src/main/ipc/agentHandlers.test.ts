@@ -35,6 +35,8 @@ vi.mock('../services/logger', () => ({
 vi.mock('../services/agentRecordService', () => ({
   getDefaultAgentRecordService: vi.fn(() => ({
     getRunningAgentCounts: vi.fn(() => Promise.resolve(new Map([['test-spec', 2]]))),
+    // Bug fix: agent-log-json-display-issue - findRecordByAgentId for engineId lookup
+    findRecordByAgentId: vi.fn(() => Promise.resolve({ engineId: 'claude' })),
   })),
 }));
 
@@ -42,9 +44,24 @@ vi.mock('../services/agentRecordService', () => ({
 vi.mock('../services/logFileService', () => ({
   getDefaultLogFileService: vi.fn(() => ({
     readLog: vi.fn(() => Promise.resolve([
-      { timestamp: '2026-01-25T00:00:00Z', stream: 'stdout', data: 'test log' },
+      { timestamp: '2026-01-25T00:00:00Z', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"test"}]}}' },
     ])),
   })),
+}));
+
+// Bug fix: agent-log-json-display-issue - Mock unifiedParser
+vi.mock('../utils/unifiedParser', () => ({
+  unifiedParser: {
+    parseData: vi.fn(() => [
+      {
+        id: 'parsed-log-1',
+        type: 'text',
+        timestamp: Date.now(),
+        engineId: 'claude',
+        text: { content: 'test', role: 'assistant' },
+      },
+    ]),
+  },
 }));
 
 // Mock remoteAccessHandlers

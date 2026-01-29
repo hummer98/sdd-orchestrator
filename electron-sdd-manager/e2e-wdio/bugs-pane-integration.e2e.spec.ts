@@ -43,24 +43,26 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
 /**
  * Helper: Select bug using Zustand bugStore action
  * This sets the selected bug directly without UI click
+ * Note: Uses setState directly since selectBug requires apiClient
  */
 async function selectBugViaStore(bugName: string): Promise<boolean> {
   return new Promise((resolve) => {
     browser.executeAsync(async (name: string, done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.bugStore?.getState) {
-          const bugStore = stores.bugStore.getState();
+        if (stores?.bug?.getState) {
+          const bugStore = stores.bug.getState();
           const bug = bugStore.bugs.find((b: any) => b.name === name);
           if (bug) {
-            await bugStore.selectBug(bug);
+            // Use setState directly (selectBug requires apiClient)
+            stores.bug.setState({ selectedBugId: name });
             done(true);
           } else {
             console.error('[E2E] Bug not found:', name);
             done(false);
           }
         } else {
-          console.error('[E2E] __STORES__.bugStore not available');
+          console.error('[E2E] __STORES__.bug not available');
           done(false);
         }
       } catch (e) {
@@ -79,12 +81,12 @@ async function clearSelectedBugViaStore(): Promise<boolean> {
     browser.executeAsync(async (done: (result: boolean) => void) => {
       try {
         const stores = (window as any).__STORES__;
-        if (stores?.bugStore?.getState) {
-          const bugStore = stores.bugStore.getState();
+        if (stores?.bug?.getState) {
+          const bugStore = stores.bug.getState();
           bugStore.clearSelectedBug();
           done(true);
         } else {
-          console.error('[E2E] __STORES__.bugStore not available');
+          console.error('[E2E] __STORES__.bug not available');
           done(false);
         }
       } catch (e) {
@@ -273,8 +275,8 @@ describe('Bugs Pane Integration E2E', () => {
       // Store経由で確認
       const hasNoBugSelected = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const bugStore = stores?.bugStore?.getState();
-        return bugStore?.selectedBug === null;
+        const bugStore = stores?.bug?.getState();
+        return bugStore?.selectedBugId === null;
       });
       expect(hasNoBugSelected).toBe(true);
 
@@ -518,8 +520,8 @@ describe('Bugs Pane Integration E2E', () => {
       // Bugの選択状態がStore上で維持されていることを確認
       const bugStillSelected = await browser.execute(() => {
         const stores = (window as any).__STORES__;
-        const bugStore = stores?.bugStore?.getState();
-        return bugStore?.selectedBug?.name === 'test-bug';
+        const bugStore = stores?.bug?.getState();
+        return bugStore?.selectedBugId === 'test-bug';
       });
       expect(bugStillSelected).toBe(true);
     });
@@ -539,10 +541,10 @@ describe('Bugs Pane Integration E2E', () => {
       const bothSelected = await browser.execute(() => {
         const stores = (window as any).__STORES__;
         const specStore = stores?.spec?.getState();
-        const bugStore = stores?.bugStore?.getState();
+        const bugStore = stores?.bug?.getState();
         return {
           specSelected: specStore?.selectedSpec?.name === 'test-feature',
-          bugSelected: bugStore?.selectedBug?.name === 'test-bug',
+          bugSelected: bugStore?.selectedBugId === 'test-bug',
         };
       });
       expect(bothSelected.specSelected).toBe(true);

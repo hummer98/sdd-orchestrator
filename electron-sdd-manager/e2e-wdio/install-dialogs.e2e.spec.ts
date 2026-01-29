@@ -75,29 +75,6 @@ describe('Install Dialogs E2E', () => {
   });
 
   // ============================================================
-  // CLAUDE.md Install API（統合インストーラーに統合済み）
-  // Note: 個別のCLAUDE.mdインストールダイアログは削除されましたが、
-  //       installClaudeMd APIは他の機能から使用される可能性があるため維持
-  // ============================================================
-  describe('CLAUDE.md Install API', () => {
-    it('Renderer APIにCLAUDE.mdインストールメソッドが存在する', async () => {
-      const hasClaudeMdAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.installClaudeMd === 'function';
-      });
-      expect(hasClaudeMdAPI).toBe(true);
-    });
-
-    it('Renderer APIにCLAUDE.md存在確認メソッドが存在する', async () => {
-      const hasCheckClaudeMdAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.checkClaudeMdExists === 'function';
-      });
-      expect(hasCheckClaudeMdAPI).toBe(true);
-    });
-  });
-
-  // ============================================================
   // メニュー関連IPC
   // ============================================================
   describe('メニュー関連IPC', () => {
@@ -143,28 +120,6 @@ describe('Install Dialogs E2E', () => {
           typeof window.electronAPI.checkRequiredPermissions === 'function';
       });
       expect(hasCheckRequiredPermissionsAPI).toBe(true);
-    });
-  });
-
-  // ============================================================
-  // cc-sdd Workflow API
-  // Note: 個別メニュー項目は削除されましたが、APIは維持されています
-  // ============================================================
-  describe('cc-sdd Workflow API', () => {
-    it('Renderer APIにcc-sddワークフローインストールメソッドが存在する', async () => {
-      const hasCcSddWorkflowAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.installCcSddWorkflow === 'function';
-      });
-      expect(hasCcSddWorkflowAPI).toBe(true);
-    });
-
-    it('Renderer APIにcc-sddワークフローステータス確認メソッドが存在する', async () => {
-      const hasCheckCcSddWorkflowStatusAPI = await browser.execute(() => {
-        return typeof window.electronAPI !== 'undefined' &&
-          typeof window.electronAPI.checkCcSddWorkflowStatus === 'function';
-      });
-      expect(hasCheckCcSddWorkflowStatusAPI).toBe(true);
     });
   });
 

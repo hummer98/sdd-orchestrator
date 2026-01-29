@@ -13,15 +13,72 @@
  * Requirements: 1.1, 1.2, 1.4
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { X, Plus, ArrowLeft, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { useScheduleTaskStore } from '../../stores/scheduleTaskStore';
+import { useScheduleTaskStore, type ScheduleTaskElectronAPI } from '../../stores/scheduleTaskStore';
 import { ScheduleTaskListItem } from './ScheduleTaskListItem';
 import { ScheduleTaskEditPage } from './ScheduleTaskEditPage';
-import type { ScheduleTask, ScheduleTaskInput } from '../../types/scheduleTask';
+import type { ScheduleTask, ScheduleTaskInput, ScheduleTaskServiceError } from '../../types/scheduleTask';
+
+// =============================================================================
+// Error Message Helper
+// =============================================================================
+
+/**
+ * Convert ScheduleTaskServiceError to user-friendly message
+ */
+function getErrorMessage(error: ScheduleTaskServiceError): string {
+  switch (error.type) {
+    case 'VALIDATION_ERROR':
+      return error.errors.map(e => `${e.field}: ${e.message}`).join(', ');
+    case 'TASK_NOT_FOUND':
+      return `タスクが見つかりません: ${error.taskId}`;
+    case 'DUPLICATE_TASK_NAME':
+      return `タスク名が重複しています: ${error.taskName}`;
+    default:
+      return '不明なエラーが発生しました';
+  }
+}
+
+// =============================================================================
+// Electron API Helper
+// =============================================================================
+
+/**
+ * Get schedule task API from window.electronAPI
+ * This function bridges shared component with Electron-specific API
+ */
+function getScheduleTaskAPI(): ScheduleTaskElectronAPI | null {
+  if (typeof window !== 'undefined' && 'electronAPI' in window) {
+    const api = (window as any).electronAPI;
+    return {
+      scheduleTaskGetAll: api.scheduleTaskGetAll,
+      scheduleTaskGet: api.scheduleTaskGet,
+      scheduleTaskCreate: api.scheduleTaskCreate,
+      scheduleTaskUpdate: api.scheduleTaskUpdate,
+      scheduleTaskDelete: api.scheduleTaskDelete,
+      scheduleTaskExecuteImmediately: api.scheduleTaskExecuteImmediately,
+      scheduleTaskGetQueue: api.scheduleTaskGetQueue,
+      scheduleTaskGetRunning: api.scheduleTaskGetRunning,
+      onScheduleTaskStatusChanged: api.onScheduleTaskStatusChanged,
+    };
+  }
+  return null;
+}
+
+/**
+ * Get current project path from projectStore via window.__STORES__
+ */
+function getCurrentProjectPath(): string | null {
+  if (typeof window !== 'undefined' && '__STORES__' in window) {
+    const stores = (window as any).__STORES__;
+    return stores?.project?.getState()?.currentProject ?? null;
+  }
+  return null;
+}
 
 // =============================================================================
 // Types
@@ -112,6 +169,7 @@ function ScheduleTaskHeader({
 
 interface ScheduleTaskListProps {
   tasks: ScheduleTask[];
+  isLoading: boolean;
   onTaskClick: (task: ScheduleTask) => void;
   onToggleEnabled: (taskId: string) => void;
   onDelete: (taskId: string) => void;
@@ -120,11 +178,23 @@ interface ScheduleTaskListProps {
 
 function ScheduleTaskList({
   tasks,
+  isLoading,
   onTaskClick,
   onToggleEnabled,
   onDelete,
   onExecuteImmediately,
 }: ScheduleTaskListProps) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Clock className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4 animate-pulse" />
+        <p className="text-gray-500 dark:text-gray-400">
+          読み込み中...
+        </p>
+      </div>
+    );
+  }
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -236,9 +306,16 @@ export function ScheduleTaskSettingView({
     tasks,
     editingTask,
     isCreatingNew,
+    isLoading,
     startEditing,
     startNewTask,
     cancelEditing,
+    loadTasks,
+    createTask,
+    updateTask,
+    deleteTask,
+    toggleTaskEnabled,
+    executeImmediately,
   } = useScheduleTaskStore();
 
   // Local state for delete confirmation
@@ -248,6 +325,17 @@ export function ScheduleTaskSettingView({
   // Task 6.1: Save/cancel operation state
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Load tasks when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const api = getScheduleTaskAPI();
+      const projectPath = getCurrentProjectPath();
+      if (api && projectPath) {
+        loadTasks(api, projectPath);
+      }
+    }
+  }, [isOpen, loadTasks]);
 
   // Determine if we're in edit mode (editing existing or creating new)
   const isEditMode = editingTask !== null || isCreatingNew;
@@ -280,11 +368,15 @@ export function ScheduleTaskSettingView({
     onClose();
   }, [isEditMode, cancelEditing, onClose]);
 
-  // Handle toggle enabled - placeholder (requires API integration)
-  const handleToggleEnabled = useCallback((taskId: string) => {
-    // TODO: Integrate with scheduleTaskStore.toggleTaskEnabled when API is connected
-    console.log('[ScheduleTaskSettingView] Toggle enabled:', taskId);
-  }, []);
+  // Handle toggle enabled
+  const handleToggleEnabled = useCallback(async (taskId: string) => {
+    const api = getScheduleTaskAPI();
+    if (!api) {
+      console.error('[ScheduleTaskSettingView] API not available');
+      return;
+    }
+    await toggleTaskEnabled(api, taskId);
+  }, [toggleTaskEnabled]);
 
   // Handle delete request - show confirmation dialog
   // Requirement 1.5: 削除確認ダイアログ
@@ -296,43 +388,78 @@ export function ScheduleTaskSettingView({
   }, [tasks]);
 
   // Handle delete confirmation
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (deleteTarget) {
-      // TODO: Integrate with scheduleTaskStore.deleteTask when API is connected
-      console.log('[ScheduleTaskSettingView] Delete confirmed:', deleteTarget.id);
+      const api = getScheduleTaskAPI();
+      if (!api) {
+        console.error('[ScheduleTaskSettingView] API not available');
+        setDeleteTarget(null);
+        return;
+      }
+      const result = await deleteTask(api, deleteTarget.id);
+      if (!result.ok) {
+        console.error('[ScheduleTaskSettingView] Delete failed:', result.error);
+      }
       setDeleteTarget(null);
     }
-  }, [deleteTarget]);
+  }, [deleteTarget, deleteTask]);
 
   // Handle delete cancel
   const handleDeleteCancel = useCallback(() => {
     setDeleteTarget(null);
   }, []);
 
-  // Handle immediate execution - placeholder (requires API integration)
+  // Handle immediate execution
   // Requirement 7.1: 即時実行ボタン
-  const handleExecuteImmediately = useCallback((taskId: string) => {
-    // TODO: Integrate with scheduleTaskStore.executeImmediately when API is connected
-    // This will need ImmediateExecutionWarningDialog integration (Task 5.3)
-    console.log('[ScheduleTaskSettingView] Execute immediately:', taskId);
-  }, []);
+  const handleExecuteImmediately = useCallback(async (taskId: string) => {
+    const api = getScheduleTaskAPI();
+    if (!api) {
+      console.error('[ScheduleTaskSettingView] API not available');
+      return;
+    }
+    // TODO: ImmediateExecutionWarningDialog integration (Task 5.3)
+    const result = await executeImmediately(api, taskId, false);
+    if (!result.ok) {
+      console.error('[ScheduleTaskSettingView] Execute immediately failed:', result.error);
+    }
+  }, [executeImmediately]);
 
   // Handle save from edit page
   // Task 6.1: Requirement 2.4 - Save operation
-  const handleSave = useCallback((data: ScheduleTaskInput) => {
+  const handleSave = useCallback(async (data: ScheduleTaskInput) => {
     setIsSaving(true);
     setSaveError(null);
 
-    // TODO: Integrate with scheduleTaskStore.createTask/updateTask when API is connected
-    // For now, just log and close
-    console.log('[ScheduleTaskSettingView] Save:', isCreatingNew ? 'create' : 'update', data);
-
-    // Simulate async operation
-    setTimeout(() => {
+    const api = getScheduleTaskAPI();
+    if (!api) {
+      setSaveError('API not available');
       setIsSaving(false);
-      cancelEditing();
-    }, 100);
-  }, [isCreatingNew, cancelEditing]);
+      return;
+    }
+
+    try {
+      if (isCreatingNew) {
+        const result = await createTask(api, data);
+        if (!result.ok) {
+          setSaveError(getErrorMessage(result.error));
+          setIsSaving(false);
+          return;
+        }
+      } else if (editingTask) {
+        const result = await updateTask(api, editingTask.id, data);
+        if (!result.ok) {
+          setSaveError(getErrorMessage(result.error));
+          setIsSaving(false);
+          return;
+        }
+      }
+      setIsSaving(false);
+      // Note: cancelEditing is called inside createTask/updateTask on success
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unknown error');
+      setIsSaving(false);
+    }
+  }, [isCreatingNew, editingTask, createTask, updateTask]);
 
   // Handle cancel from edit page
   const handleEditCancel = useCallback(() => {
@@ -370,6 +497,7 @@ export function ScheduleTaskSettingView({
           ) : (
             <ScheduleTaskList
               tasks={tasks}
+              isLoading={isLoading}
               onTaskClick={handleTaskClick}
               onToggleEnabled={handleToggleEnabled}
               onDelete={handleDeleteRequest}

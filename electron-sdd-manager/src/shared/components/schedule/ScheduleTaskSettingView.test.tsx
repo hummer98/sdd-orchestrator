@@ -277,7 +277,7 @@ describe('ScheduleTaskSettingView', () => {
       render(<ScheduleTaskSettingView isOpen={true} onClose={mockOnClose} />);
       const dialogContainer = screen.getByTestId('modal-container');
       // Should have reasonable max-width (not too narrow)
-      expect(dialogContainer.className).toMatch(/max-w-(lg|xl|2xl)/);
+      expect(dialogContainer.className).toMatch(/max-w-(lg|xl|2xl|3xl|4xl)/);
     });
 
     it('should have proper overflow handling for task list', () => {

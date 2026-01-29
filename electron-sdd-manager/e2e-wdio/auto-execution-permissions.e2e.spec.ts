@@ -109,23 +109,49 @@ function resetFixture(): void {
 }
 
 /**
- * Helper: Get auto-permission state via store
+ * Helper: Get Auto permission state via store
+ * Updated to read from specStore (spec.json SSOT)
  */
 async function getAutoPermissionState(phase: string): Promise<boolean> {
   return browser.execute((p: string) => {
     const stores = (window as any).__STORES__;
-    if (!stores?.workflow?.getState) return false;
-    return stores.workflow.getState().autoExecutionPermissions[p] ?? false;
+    if (!stores?.spec?.getState) return false;
+
+    const specStore = stores.spec.getState();
+    const specJson = specStore.specDetail?.specJson;
+    const permissions = specJson?.autoExecution?.permissions;
+
+    // Fallback to defaults if not in spec.json
+    if (!permissions) {
+      // DEFAULT_AUTO_EXECUTION_PERMISSIONS
+      const defaults: Record<string, boolean> = {
+        requirements: true,
+        design: true,
+        tasks: true,
+        'document-review': true,
+        impl: true,
+        inspection: true,
+        deploy: false
+      };
+      // Normalize key
+      const key = p === 'documentReview' ? 'document-review' : p;
+      return defaults[key] ?? false;
+    }
+
+    // Normalize key
+    const key = p === 'documentReview' ? 'document-review' : p;
+    return permissions[key] ?? false;
   }, phase);
 }
 
 /**
  * Helper: Get all permission states
+ * Updated to read from specStore (spec.json SSOT)
  */
 async function getAllPermissionStates(): Promise<Record<string, boolean>> {
   return browser.execute(() => {
     const stores = (window as any).__STORES__;
-    if (!stores?.workflow?.getState) {
+    if (!stores?.spec?.getState) {
       return {
         requirements: false,
         design: false,
@@ -135,7 +161,25 @@ async function getAllPermissionStates(): Promise<Record<string, boolean>> {
         deploy: false,
       };
     }
-    return stores.workflow.getState().autoExecutionPermissions;
+
+    const specStore = stores.spec.getState();
+    const specJson = specStore.specDetail?.specJson;
+    const permissions = specJson?.autoExecution?.permissions;
+
+    if (permissions) {
+      return permissions;
+    }
+
+    // Return defaults if not present
+    return {
+      requirements: true,
+      design: true,
+      tasks: true,
+      'document-review': true,
+      impl: true,
+      inspection: true,
+      deploy: false
+    };
   });
 }
 
@@ -222,7 +266,8 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      // Wait for file watcher to sync (increase from 300ms)
+      await browser.pause(2000);
     });
 
     it('should verify all permissions are OFF', async () => {
@@ -281,7 +326,7 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
     });
 
     it('should verify only design permission is ON', async () => {
@@ -330,7 +375,7 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
     });
 
     it('should verify impl permission is ON', async () => {
@@ -363,16 +408,18 @@ describe('Auto Execution Permissions E2E', () => {
   // ============================================================
   describe('Scenario 4: Dynamic permission toggle', () => {
     it('should toggle permission state via store', async () => {
-      // Get initial state
+      // Get initial state (from specStore)
       const initialState = await getAutoPermissionState('requirements');
       console.log(`[E2E] Initial requirements permission: ${initialState}`);
+      
+      const allPermissions = await getAllPermissionStates();
 
-      // Toggle via store
-      await browser.execute(() => {
-        const stores = (window as any).__STORES__;
-        stores?.workflow?.getState()?.toggleAutoPermission('requirements');
+      // Toggle by updating spec.json (SSOT)
+      await setAutoExecutionPermissions({
+        ...allPermissions,
+        requirements: !initialState
       });
-      await browser.pause(200);
+      await browser.pause(2000);
 
       // Verify toggled
       const newState = await getAutoPermissionState('requirements');
@@ -380,11 +427,11 @@ describe('Auto Execution Permissions E2E', () => {
       expect(newState).toBe(!initialState);
 
       // Toggle back
-      await browser.execute(() => {
-        const stores = (window as any).__STORES__;
-        stores?.workflow?.getState()?.toggleAutoPermission('requirements');
+      await setAutoExecutionPermissions({
+        ...allPermissions,
+        requirements: initialState
       });
-      await browser.pause(200);
+      await browser.pause(2000);
 
       expect(await getAutoPermissionState('requirements')).toBe(initialState);
     });
@@ -399,7 +446,7 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
 
       const initialEnabled = await isAutoExecuteButtonEnabled();
       console.log(`[E2E] Button enabled (all OFF): ${initialEnabled}`);
@@ -413,7 +460,7 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
 
       const afterEnabled = await isAutoExecuteButtonEnabled();
       console.log(`[E2E] Button enabled (requirements ON): ${afterEnabled}`);
@@ -437,14 +484,14 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
 
       const beforeRefresh = await getAllPermissionStates();
       console.log(`[E2E] Before refresh: ${JSON.stringify(beforeRefresh)}`);
 
       // Refresh spec store
       await refreshSpecStore();
-      await browser.pause(300);
+      await browser.pause(2000);
 
       const afterRefresh = await getAllPermissionStates();
       console.log(`[E2E] After refresh: ${JSON.stringify(afterRefresh)}`);
@@ -471,7 +518,7 @@ describe('Auto Execution Permissions E2E', () => {
         inspection: false,
         deploy: false,
       });
-      await browser.pause(300);
+      await browser.pause(2000);
     });
 
     it('should handle gaps in permission sequence correctly', async () => {

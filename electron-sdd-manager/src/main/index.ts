@@ -22,7 +22,7 @@ import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 // Task 7.4: Agent Lifecycle Management (agent-lifecycle-management feature)
-import { getAgentWatchdog, initializeAgentLifecycleManager } from './services/agentLifecycleSetup';
+import { getAgentWatchdog } from './services/agentLifecycleSetup';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -230,21 +230,6 @@ app.whenReady().then(async () => {
 
   await initializeMcpServer(() => configStore.getMcpSettings());
 
-  // Task 7.4: Initialize Agent Lifecycle Management (agent-lifecycle-management feature)
-  // Requirement: 7.5 - Watchdog lifecycle linked to app
-  // Requirement: 5.1 - State synchronization on startup
-  try {
-    const { lifecycleManager, watchdog } = await initializeAgentLifecycleManager();
-    // Synchronize state on startup (detect interrupted agents, reattach running ones)
-    const syncResult = await lifecycleManager.synchronizeOnStartup();
-    logger.info('[main] Agent state synchronized', syncResult);
-    // Start watchdog for periodic health checks
-    watchdog.start();
-    logger.info('[main] Agent watchdog started');
-  } catch (error) {
-    logger.error('[main] Failed to initialize agent lifecycle management', { error });
-  }
-
   // Initialize with project path from command line if provided
   if (initialProjectPath) {
     logger.info('[main] Initial project path from command line', { initialProjectPath });
@@ -255,6 +240,7 @@ app.whenReady().then(async () => {
         // Set the initial project path for IPC queries from renderer
         setInitialProjectPath(initialProjectPath);
 
+        // setProjectPath initializes AgentRecordService and AgentLifecycleManager
         await setProjectPath(initialProjectPath);
         logger.info('[main] SpecManagerService initialized with project path', { initialProjectPath });
 

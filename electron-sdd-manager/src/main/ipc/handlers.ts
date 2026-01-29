@@ -288,6 +288,21 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   } catch (error) {
     logger.error('[handlers] Failed to initialize ScheduleTaskCoordinator', { error: error instanceof Error ? error.message : String(error) });
   }
+
+  // Initialize Agent Lifecycle Management
+  // Note: AgentRecordService must be initialized before this
+  try {
+    const { initializeAgentLifecycleManager } = await import('../services/agentLifecycleSetup');
+    const { lifecycleManager, watchdog } = await initializeAgentLifecycleManager();
+    // Synchronize state on startup (detect interrupted agents, reattach running ones)
+    const syncResult = await lifecycleManager.synchronizeOnStartup();
+    logger.info('[handlers] Agent state synchronized', syncResult);
+    // Start watchdog for periodic health checks (idempotent - won't start if already running)
+    watchdog.start();
+    logger.info('[handlers] Agent lifecycle management initialized');
+  } catch (error) {
+    logger.error('[handlers] Failed to initialize agent lifecycle management', { error: error instanceof Error ? error.message : String(error) });
+  }
 }
 
 function getSpecManagerService(): SpecManagerService {

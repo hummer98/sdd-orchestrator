@@ -598,37 +598,36 @@ export class WebSocketHandler {
    * @param req HTTP upgrade request
    */
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
-    // Get client IP address
+    // Get socket-level IP (direct connection source)
+    // This is the actual TCP connection source, not forwarded headers
+    const socketIp = this.getSocketIP(req);
+
+    // Get client IP from headers (may be forwarded)
     const ip = this.getClientIP(req);
 
-    // Get real client IP from Cloudflare headers if present
-    const realIp = this.getRealClientIP(req) || ip;
-
-    // Validate IP address (only allow private IPs for direct connections)
-    if (!isPrivateIP(ip)) {
+    // Validate IP address based on socket connection
+    // - Direct LAN connection: socketIp is private IP (192.168.x.x, etc.)
+    // - Cloudflare Tunnel: socketIp is 127.0.0.1 (cloudflared runs locally)
+    // - External direct: socketIp is public IP (rejected)
+    if (!isPrivateIP(socketIp)) {
       ws.close(1008, 'Connection from non-private IP rejected');
       return;
     }
 
-    // Token authentication
+    // Token authentication - always validate token for security
     // Requirements: 3.4, 7.3 (cloudflare-tunnel-integration)
     if (this.config.requireTokenAuth) {
-      const isRealIpPrivate = isPrivateIP(realIp);
+      const token = this.extractTokenFromRequest(req);
 
-      // Skip token validation for private IPs if configured
-      if (!this.config.skipTokenForPrivateIp || !isRealIpPrivate) {
-        const token = this.extractTokenFromRequest(req);
+      if (!token) {
+        ws.close(4001, 'Unauthorized: Token required');
+        return;
+      }
 
-        if (!token) {
-          ws.close(4001, 'Unauthorized: Token required');
+      if (this.config.accessTokenService) {
+        if (!this.config.accessTokenService.validateToken(token)) {
+          ws.close(4001, 'Unauthorized: Invalid token');
           return;
-        }
-
-        if (this.config.accessTokenService) {
-          if (!this.config.accessTokenService.validateToken(token)) {
-            ws.close(4001, 'Unauthorized: Invalid token');
-            return;
-          }
         }
       }
     }
@@ -1014,7 +1013,16 @@ export class WebSocketHandler {
   }
 
   /**
-   * Get client IP address from request
+   * Get socket-level IP address (direct TCP connection source)
+   * This ignores any forwarded headers and returns the actual socket connection IP
+   * Used for IP validation to allow cloudflared local connections (127.0.0.1)
+   */
+  private getSocketIP(req: IncomingMessage): string {
+    return req.socket.remoteAddress || '127.0.0.1';
+  }
+
+  /**
+   * Get client IP address from request (considers forwarded headers)
    */
   private getClientIP(req: IncomingMessage): string {
     // Check X-Forwarded-For header first (for reverse proxy scenarios)
@@ -1025,22 +1033,6 @@ export class WebSocketHandler {
     }
     // Fall back to socket remote address
     return req.socket.remoteAddress || '127.0.0.1';
-  }
-
-  /**
-   * Get real client IP from Cloudflare headers
-   * Requirements: 7.3 (cloudflare-tunnel-integration)
-   *
-   * Cloudflare adds cf-connecting-ip header with the real client IP
-   * when connections come through Cloudflare Tunnel
-   */
-  private getRealClientIP(req: IncomingMessage): string | null {
-    // Check Cloudflare header
-    const cfIp = req.headers['cf-connecting-ip'];
-    if (cfIp) {
-      return Array.isArray(cfIp) ? cfIp[0] : cfIp;
-    }
-    return null;
   }
 
   /**

@@ -31,32 +31,8 @@ export const BUG_TEMPLATES = [
   'bug.json',  // bugs-worktree-support: bug metadata template
 ] as const;
 
-/**
- * CLAUDE.mdに追加するBug Workflowセクション
- * bugs-worktree-support: Added bug-merge and worktree mode explanation
- */
-export const BUG_WORKFLOW_CLAUDE_MD_SECTION = `### Bug Fix (Lightweight Workflow)
-
-小規模なバグ修正にはフルSDDプロセスは不要。以下の軽量ワークフローを使用：
-
-\`\`\`
-Report → Analyze → Fix → Verify → (Merge)
-\`\`\`
-
-| コマンド | 説明 |
-|---------|------|
-| \`/kiro:bug-create <name> "description"\` | バグレポート作成 |
-| \`/kiro:bug-analyze [name]\` | 根本原因の調査 |
-| \`/kiro:bug-fix [name]\` | 修正の実装 |
-| \`/kiro:bug-verify [name]\` | 修正の検証 |
-| \`/kiro:bug-status [name]\` | 進捗確認 |
-| \`/kiro:bug-merge <name>\` | Worktreeモードのマージ（worktree使用時のみ） |
-
-**使い分け**:
-- **小規模バグ**: Bug Fixワークフロー（軽量・高速）
-- **設計変更を伴う複雑なバグ**: Full SDDワークフロー
-
-**Worktreeモード**: 大きな修正が必要な場合、git worktreeを使用して分離した作業環境で修正可能。`;
+// claudemd-profile-install-merge: BUG_WORKFLOW_CLAUDE_MD_SECTION removed
+// CLAUDE.md installation is now handled by the claudemd-merge Agent
 
 /**
  * Install options
@@ -74,25 +50,21 @@ export interface InstallResult {
   readonly overwritten: readonly string[];
 }
 
-/**
- * CLAUDE.md update result
- */
-export interface ClaudeMdUpdateResult {
-  readonly action: 'created' | 'merged' | 'skipped';
-  readonly reason?: 'already_exists';
-}
+// claudemd-profile-install-merge: ClaudeMdUpdateResult removed
+// CLAUDE.md installation is now handled by the claudemd-merge Agent
 
 /**
  * Full install result
+ * claudemd-profile-install-merge: claudeMd property removed
  */
 export interface BugWorkflowInstallResult {
   readonly commands: InstallResult;
   readonly templates: InstallResult;
-  readonly claudeMd: ClaudeMdUpdateResult;
 }
 
 /**
  * Install status
+ * claudemd-profile-install-merge: claudeMd property removed
  */
 export interface BugWorkflowInstallStatus {
   readonly commands: {
@@ -102,10 +74,6 @@ export interface BugWorkflowInstallStatus {
   readonly templates: {
     readonly installed: readonly string[];
     readonly missing: readonly string[];
-  };
-  readonly claudeMd: {
-    readonly exists: boolean;
-    readonly hasBugSection: boolean;
   };
 }
 
@@ -272,130 +240,14 @@ export class BugWorkflowInstaller {
     return { ok: true, value: { installed, skipped, overwritten } };
   }
 
-  /**
-   * Update CLAUDE.md with bug workflow section
-   * @param projectPath - Project root path
-   */
-  async updateClaudeMd(
-    projectPath: string
-  ): Promise<Result<ClaudeMdUpdateResult, InstallError>> {
-    const targetPath = join(projectPath, 'CLAUDE.md');
-    const exists = await fileExists(targetPath);
-
-    try {
-      if (!exists) {
-        // Create new CLAUDE.md with bug section
-        const content = `# Project\n\n## Minimal Workflow\n\n${BUG_WORKFLOW_CLAUDE_MD_SECTION}\n`;
-        await writeFile(targetPath, content, 'utf-8');
-        return { ok: true, value: { action: 'created' } };
-      }
-
-      // Read existing content
-      const existingContent = await readFile(targetPath, 'utf-8');
-
-      // Check if bug section already exists
-      if (this.hasBugWorkflowSection(existingContent)) {
-        return { ok: true, value: { action: 'skipped', reason: 'already_exists' } };
-      }
-
-      // Merge bug section into existing content
-      const mergedContent = this.mergeBugSection(existingContent);
-      await writeFile(targetPath, mergedContent, 'utf-8');
-      return { ok: true, value: { action: 'merged' } };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('EACCES') || message.includes('EPERM')) {
-        return {
-          ok: false,
-          error: { type: 'PERMISSION_DENIED', path: targetPath },
-        };
-      }
-      return {
-        ok: false,
-        error: { type: 'WRITE_ERROR', path: targetPath, message },
-      };
-    }
-  }
-
-  /**
-   * Check if content has bug workflow section
-   */
-  private hasBugWorkflowSection(content: string): boolean {
-    return content.includes('Bug Fix (Lightweight Workflow)') ||
-           content.includes('Bug Fix Workflow') ||
-           (content.includes('/kiro:bug-create') && content.includes('/kiro:bug-analyze'));
-  }
-
-  /**
-   * Merge bug section into existing content
-   * Strategy: Insert after "Feature Development" section or at end of "Minimal Workflow" section
-   */
-  private mergeBugSection(content: string): string {
-    const lines = content.split('\n');
-    const result: string[] = [];
-    let inserted = false;
-    let inFeatureDevelopment = false;
-    let featureDevEndIndex = -1;
-
-    // Find where to insert: after Feature Development section ends
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Track Feature Development section
-      if (line.includes('Feature Development')) {
-        inFeatureDevelopment = true;
-      }
-
-      // Detect end of Feature Development section (next heading at same or higher level)
-      if (inFeatureDevelopment && i > 0) {
-        if (line.match(/^##[^#]/) || line.match(/^#[^#]/)) {
-          featureDevEndIndex = i;
-          inFeatureDevelopment = false;
-        }
-      }
-    }
-
-    // Insert bug section
-    for (let i = 0; i < lines.length; i++) {
-      // Insert before the next section after Feature Development
-      if (i === featureDevEndIndex && !inserted) {
-        result.push('');
-        result.push(BUG_WORKFLOW_CLAUDE_MD_SECTION);
-        result.push('');
-        inserted = true;
-      }
-
-      result.push(lines[i]);
-    }
-
-    // If not inserted (no Feature Development section found), append at end
-    if (!inserted) {
-      // Try to find Minimal Workflow section
-      const minimalWorkflowIndex = lines.findIndex(l => l.includes('Minimal Workflow'));
-      if (minimalWorkflowIndex >= 0) {
-        // Find next major section after Minimal Workflow
-        let insertIndex = lines.length;
-        for (let i = minimalWorkflowIndex + 1; i < lines.length; i++) {
-          if (lines[i].match(/^##[^#]/) && !lines[i].includes('Workflow')) {
-            insertIndex = i;
-            break;
-          }
-        }
-        result.splice(insertIndex, 0, '', BUG_WORKFLOW_CLAUDE_MD_SECTION, '');
-      } else {
-        // No suitable location found, append at end
-        result.push('');
-        result.push(BUG_WORKFLOW_CLAUDE_MD_SECTION);
-      }
-    }
-
-    return result.join('\n');
-  }
+  // claudemd-profile-install-merge: updateClaudeMd, hasBugWorkflowSection, mergeBugSection removed
+  // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
   /**
    * Install all bug workflow components
    * @param projectPath - Project root path
    * @param options - Install options
+   * claudemd-profile-install-merge: CLAUDE.md update removed - handled by claudemd-merge Agent
    */
   async installAll(
     projectPath: string,
@@ -413,18 +265,14 @@ export class BugWorkflowInstaller {
       return templatesResult;
     }
 
-    // Update CLAUDE.md
-    const claudeMdResult = await this.updateClaudeMd(projectPath);
-    if (!claudeMdResult.ok) {
-      return claudeMdResult;
-    }
+    // claudemd-profile-install-merge: CLAUDE.md update removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
     return {
       ok: true,
       value: {
         commands: commandsResult.value,
         templates: templatesResult.value,
-        claudeMd: claudeMdResult.value,
       },
     };
   }
@@ -432,6 +280,7 @@ export class BugWorkflowInstaller {
   /**
    * Check installation status
    * @param projectPath - Project root path
+   * claudemd-profile-install-merge: claudeMd status check removed - handled by claudemd-merge Agent
    */
   async checkInstallStatus(projectPath: string): Promise<BugWorkflowInstallStatus> {
     const installedCommands: string[] = [];
@@ -458,14 +307,8 @@ export class BugWorkflowInstaller {
       }
     }
 
-    const claudeMdPath = join(projectPath, 'CLAUDE.md');
-    const claudeMdExists = await fileExists(claudeMdPath);
-    let hasBugSection = false;
-
-    if (claudeMdExists) {
-      const content = await readFile(claudeMdPath, 'utf-8');
-      hasBugSection = this.hasBugWorkflowSection(content);
-    }
+    // claudemd-profile-install-merge: claudeMd status check removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
     return {
       commands: {
@@ -475,10 +318,6 @@ export class BugWorkflowInstaller {
       templates: {
         installed: installedTemplates,
         missing: missingTemplates,
-      },
-      claudeMd: {
-        exists: claudeMdExists,
-        hasBugSection,
       },
     };
   }

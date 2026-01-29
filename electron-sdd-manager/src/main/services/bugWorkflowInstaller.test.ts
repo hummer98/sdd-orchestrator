@@ -11,7 +11,6 @@ import {
   BugWorkflowInstaller,
   BUG_COMMANDS,
   BUG_TEMPLATES,
-  BUG_WORKFLOW_CLAUDE_MD_SECTION,
 } from './bugWorkflowInstaller';
 
 describe('BugWorkflowInstaller', () => {
@@ -72,16 +71,8 @@ describe('BugWorkflowInstaller', () => {
       expect(BUG_TEMPLATES.length).toBe(5);
     });
 
-    it('should have CLAUDE.md section with Bug Fix workflow', () => {
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('Bug Fix');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('Report → Analyze → Fix → Verify');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-create');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-analyze');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-fix');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-verify');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-status');
-      expect(BUG_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-merge');
-    });
+    // claudemd-profile-install-merge: BUG_WORKFLOW_CLAUDE_MD_SECTION removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
   });
 
   describe('installCommands', () => {
@@ -184,109 +175,20 @@ describe('BugWorkflowInstaller', () => {
     });
   });
 
-  describe('updateClaudeMd', () => {
-    it('should create CLAUDE.md with bug section if it does not exist', async () => {
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.action).toBe('created');
-      }
-
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      const content = await fs.readFile(targetPath, 'utf-8');
-      expect(content).toContain('Bug Fix');
-      expect(content).toContain('/kiro:bug-create');
-    });
-
-    it('should skip if CLAUDE.md already contains bug workflow section', async () => {
-      // Create CLAUDE.md with bug section already present
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      await fs.writeFile(targetPath, `# Project\n\n## Bug Fix (Lightweight Workflow)\n\nAlready has bug workflow.`, 'utf-8');
-
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.action).toBe('skipped');
-        expect(result.value.reason).toBe('already_exists');
-      }
-    });
-
-    it('should merge bug section into existing CLAUDE.md', async () => {
-      // Create CLAUDE.md without bug section
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      const existingContent = `# My Project
-
-## Language
-
-日本語で応答
-
-## Development Rules
-
-- Rule 1
-- Rule 2
-`;
-      await fs.writeFile(targetPath, existingContent, 'utf-8');
-
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.action).toBe('merged');
-      }
-
-      const content = await fs.readFile(targetPath, 'utf-8');
-      // Should preserve existing content
-      expect(content).toContain('My Project');
-      expect(content).toContain('日本語で応答');
-      expect(content).toContain('Rule 1');
-      // Should add bug workflow section
-      expect(content).toContain('Bug Fix');
-      expect(content).toContain('/kiro:bug-create');
-    });
-
-    it('should insert bug section after Minimal Workflow section if it exists', async () => {
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      const existingContent = `# My Project
-
-## Minimal Workflow
-
-### Feature Development (Full SDD)
-
-- /kiro:spec-init
-- /kiro:spec-requirements
-
-## Development Rules
-
-- Rule 1
-`;
-      await fs.writeFile(targetPath, existingContent, 'utf-8');
-
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-
-      const content = await fs.readFile(targetPath, 'utf-8');
-      // Bug section should be after Feature Development but before Development Rules
-      const featureDevIndex = content.indexOf('Feature Development');
-      const bugFixIndex = content.indexOf('Bug Fix');
-      const devRulesIndex = content.indexOf('Development Rules');
-
-      expect(featureDevIndex).toBeLessThan(bugFixIndex);
-      expect(bugFixIndex).toBeLessThan(devRulesIndex);
-    });
-  });
+  // claudemd-profile-install-merge: updateClaudeMd tests removed
+  // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
   describe('installAll', () => {
-    it('should install commands, templates, and update CLAUDE.md', async () => {
+    // claudemd-profile-install-merge: installAll no longer updates CLAUDE.md
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
+    it('should install commands and templates (CLAUDE.md handled by Agent)', async () => {
       const result = await installer.installAll(tempDir);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.commands.installed.length).toBe(6);
         expect(result.value.templates.installed.length).toBe(5);
-        expect(result.value.claudeMd.action).toBe('created');
+        // claudeMd is no longer part of the result
       }
     });
 
@@ -312,6 +214,8 @@ describe('BugWorkflowInstaller', () => {
   });
 
   describe('checkInstallStatus', () => {
+    // claudemd-profile-install-merge: claudeMd status check removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
     it('should return not installed status for empty project', async () => {
       const status = await installer.checkInstallStatus(tempDir);
 
@@ -319,7 +223,7 @@ describe('BugWorkflowInstaller', () => {
       expect(status.commands.missing).toEqual(BUG_COMMANDS);
       expect(status.templates.installed).toEqual([]);
       expect(status.templates.missing).toEqual(BUG_TEMPLATES);
-      expect(status.claudeMd.hasBugSection).toBe(false);
+      // claudeMd is no longer part of the status
     });
 
     it('should return fully installed status when all files exist', async () => {
@@ -332,7 +236,7 @@ describe('BugWorkflowInstaller', () => {
       expect(status.commands.missing).toEqual([]);
       expect(status.templates.installed).toEqual(expect.arrayContaining(BUG_TEMPLATES));
       expect(status.templates.missing).toEqual([]);
-      expect(status.claudeMd.hasBugSection).toBe(true);
+      // claudeMd is no longer part of the status
     });
 
     it('should return partial status when some files exist', async () => {

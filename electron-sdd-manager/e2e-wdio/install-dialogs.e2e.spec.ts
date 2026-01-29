@@ -6,6 +6,7 @@
  * - CliInstallDialogの表示と操作
  * - CommandsetInstallDialog（統合インストーラー）の表示と操作
  * - IPC API確認
+ * - コマンドセットインストール後のCLAUDE.md非作成確認
  *
  * Note: Phase 2 (commandset-unified-installer) で以下のメニュー項目が削除されました:
  * - 「CLAUDE.mdをインストール...」 → 統合インストーラーに統合
@@ -17,6 +18,10 @@
  *
  * Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
  */
+
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 
 describe('Install Dialogs E2E', () => {
   // ============================================================
@@ -123,5 +128,76 @@ describe('Install Dialogs E2E', () => {
     });
   });
 
+  // ============================================================
+  // CLAUDE.md非作成確認（claudemd-profile-install-merge）
+  // コマンドセットインストール時にbugWorkflowInstallerが
+  // CLAUDE.mdを勝手に作成しないことを確認
+  // CLAUDE.md管理はclaudemd-merge Agentが担当
+  // ============================================================
+  describe('CLAUDE.md非作成確認', () => {
+    let tempProjectDir: string;
+
+    beforeEach(async () => {
+      tempProjectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'e2e-claudemd-test-'));
+    });
+
+    afterEach(async () => {
+      if (tempProjectDir) {
+        await fs.rm(tempProjectDir, { recursive: true, force: true });
+      }
+    });
+
+    it('コマンドセットインストール後にCLAUDE.mdが作成されないこと', async () => {
+      // CLAUDE.mdが存在しないことを事前確認
+      const existsBefore = await fileExists(path.join(tempProjectDir, 'CLAUDE.md'));
+      expect(existsBefore).toBe(false);
+
+      // cc-sddプロファイルでコマンドセットインストールを実行
+      const result = await browser.execute(
+        async (projectPath: string) => {
+          return await window.electronAPI.installCommandsetByProfile(projectPath, 'cc-sdd');
+        },
+        tempProjectDir
+      );
+
+      // インストール自体は成功すること
+      expect(result).toBeDefined();
+      expect(result.ok).toBe(true);
+
+      // CLAUDE.mdが作成されていないこと
+      // (CLAUDE.md管理はclaudemd-merge Agentが担当するため、
+      //  インストーラーが直接作成してはいけない)
+      const existsAfter = await fileExists(path.join(tempProjectDir, 'CLAUDE.md'));
+      expect(existsAfter).toBe(false);
+    });
+
+    it('cc-sdd-agentプロファイルでもCLAUDE.mdが作成されないこと', async () => {
+      const result = await browser.execute(
+        async (projectPath: string) => {
+          return await window.electronAPI.installCommandsetByProfile(projectPath, 'cc-sdd-agent');
+        },
+        tempProjectDir
+      );
+
+      expect(result).toBeDefined();
+      expect(result.ok).toBe(true);
+
+      const existsAfter = await fileExists(path.join(tempProjectDir, 'CLAUDE.md'));
+      expect(existsAfter).toBe(false);
+    });
+  });
+
   // Note: セキュリティ設定・安定性テストは app-launch.spec.ts に統合
 });
+
+/**
+ * Helper to check if file exists
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}

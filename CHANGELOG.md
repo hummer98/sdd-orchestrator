@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## [0.54.2] - 2026-01-30
+
+### Fixed
+- スモークテストを直接実行方式に簡素化（release）
+- schedule-taskテストでモックデータ設定タイミングを修正（e2e）
+- 未実装APIのテストを削除（install-dialogs）
+- agent-resume-log-displayテストをParsedLogEntry型に追従（e2e）
+- bugs-pane-integrationでbugDetailも設定（e2e）
+- auto-execution-permissionsテストを最新の仕様に追従（e2e）
+- bugs-pane-integrationテストのStore参照を修正（e2e）
+- E2Eテストのセットアップと期待値を修正
+- スケジュールタスクダイアログでタスクが表示されない問題を修正
+- worktree環境でGitViewのdiffが表示されない問題を修正
+- AgentRecordService未初期化時のエラーハンドリングと統合テスト追加
+- ファイルからログ読込時もパースして表示する問題を修正
+- Agentログが未パースのJSONで表示される問題を修正
+
+### Changed
+- selectAgentからログ読み込みを分離してensureLogsLoadedに
+- 削除されたdocumentReviewFlagのテストを整理
+
+### Added
+- Agent resume後のログ累積表示テストを追加
+
+### Documentation
+- E2Eテストレポートを更新
+- steering sync - 新機能のドキュメント追加
+- ドキュメント整理と新規追加
+
 ## [0.54.1] - 2026-01-29
 
 ### Fixed

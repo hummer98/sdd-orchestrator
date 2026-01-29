@@ -75,13 +75,18 @@ import type { SpecInfo, BugInfo, AgentStateInfo } from '../services/webSocketHan
 // ============================================================
 const fileService = new FileService();
 const projectChecker = new ProjectChecker();
+const bugService = new BugService();
+const commandsetVersionService = new CommandsetVersionService();
+
 const experimentalToolsInstaller = new ExperimentalToolsInstallerService(getExperimentalTemplateDir());
 const commandInstallerService = new CommandInstallerService(getTemplateDir());
 const ccSddWorkflowInstaller = new CcSddWorkflowInstaller(getTemplateDir());
 const bugWorkflowInstaller = new BugWorkflowInstaller(getTemplateDir());
-const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(ccSddWorkflowInstaller, bugWorkflowInstaller, getTemplateDir());
-const bugService = new BugService();
-const commandsetVersionService = new CommandsetVersionService();
+const unifiedCommandsetInstaller = new UnifiedCommandsetInstaller(
+  ccSddWorkflowInstaller,
+  bugWorkflowInstaller,
+  getTemplateDir()
+);
 
 // ============================================================
 // Global State
@@ -403,8 +408,15 @@ export function registerIpcHandlers(): void {
   // LLM Engine Config handlers (llm-engine-abstraction feature)
   registerEngineConfigHandlers();
   registerInstallHandlers({
-    commandInstallerService, projectChecker, ccSddWorkflowInstaller, unifiedCommandsetInstaller,
-    experimentalToolsInstaller, commandsetVersionService, getCliInstallStatus, installCliCommand, getManualInstallInstructions,
+    commandInstallerService,
+    projectChecker,
+    ccSddWorkflowInstaller,
+    unifiedCommandsetInstaller,
+    experimentalToolsInstaller,
+    commandsetVersionService,
+    getCliInstallStatus,
+    installCliCommand,
+    getManualInstallInstructions,
   });
   registerFileHandlers({ fileService, getCurrentProjectPath });
 

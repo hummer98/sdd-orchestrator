@@ -29,12 +29,6 @@ export default defineConfig({
             outDir: 'dist/main',
             rollupOptions: {
               external: ['electron'],
-              plugins: [
-                nodeResolve({
-                  exportConditions: ['node', 'default'],
-                  preferBuiltins: true,
-                }),
-              ],
             },
           },
         },

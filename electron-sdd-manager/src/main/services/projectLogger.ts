@@ -396,5 +396,5 @@ export class ProjectLogger implements ProjectLoggerService {
   }
 }
 
-// Singleton instance for backward compatibility with existing logger
+// Export singleton instance
 export const projectLogger = new ProjectLogger();

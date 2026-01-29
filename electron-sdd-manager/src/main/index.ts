@@ -83,7 +83,8 @@ let mainWindow: BrowserWindow | null = null;
 
 // Task 10.2: Parse CLI arguments using cliArgsParser
 // In packaged apps, argv structure may differ (no 'electron' as first arg)
-const cliArgs = app.isPackaged ? process.argv.slice(1) : process.argv.slice(2);
+const isAppPackaged = app.isPackaged;
+const cliArgs = isAppPackaged ? process.argv.slice(1) : process.argv.slice(2);
 const cliOptions: CLIOptions = parseCLIArgs(cliArgs);
 
 // Handle --help option early (before app.whenReady)
@@ -130,7 +131,7 @@ const initialProjectPath = getInitialProjectPathFromConfig();
 
 // Enable remote debugging for MCP server (development only)
 // Note: This must be set before app.whenReady()
-if (!app.isPackaged && !isE2ETest) {
+if (!isAppPackaged && !isE2ETest) {
   app.commandLine.appendSwitch('remote-debugging-port', '9222');
 }
 

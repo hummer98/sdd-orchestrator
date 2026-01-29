@@ -79,15 +79,48 @@ export class GitService {
       }
 
       // For tracked files, use git diff
-      // Normal mode: git diff -- filePath
-      // Worktree mode: git diff baseBranch...HEAD -- filePath
-      const args = ['diff'];
-      if (statusResult.data.mode === 'worktree' && statusResult.data.baseBranch) {
-        args.push(`${statusResult.data.baseBranch}...HEAD`);
-      }
-      args.push('--', filePath);
+      // Normal mode: git diff -- filePath (uncommitted changes only)
+      // Worktree mode: git diff -- filePath + git diff baseBranch...HEAD -- filePath
+      //   (both uncommitted and committed changes need to be shown)
 
-      const diffOutput = await this.execGit(projectPath, args);
+      if (statusResult.data.mode === 'worktree' && statusResult.data.baseBranch) {
+        // worktree-gitview-diff-bug fix:
+        // In worktree mode, getWorktreeStatus() merges both committed and uncommitted changes.
+        // So getDiff() must also return both types of changes.
+
+        // 1. Get uncommitted changes (staged + unstaged)
+        const uncommittedResult = await this.execGit(projectPath, ['diff', 'HEAD', '--', filePath]);
+
+        // 2. Get committed changes (from baseBranch to HEAD)
+        const committedResult = await this.execGit(projectPath, [
+          'diff',
+          `${statusResult.data.baseBranch}...HEAD`,
+          '--',
+          filePath,
+        ]);
+
+        // If uncommitted changes exist, prioritize them (current working state)
+        if (uncommittedResult.success && uncommittedResult.data.trim()) {
+          return {
+            success: true,
+            data: uncommittedResult.data,
+          };
+        }
+
+        // Fall back to committed changes
+        if (committedResult.success) {
+          return {
+            success: true,
+            data: committedResult.data,
+          };
+        }
+
+        // Return the error from committed diff if both failed
+        return committedResult;
+      }
+
+      // Normal mode: just get uncommitted changes
+      const diffOutput = await this.execGit(projectPath, ['diff', '--', filePath]);
 
       if (!diffOutput.success) {
         return diffOutput;

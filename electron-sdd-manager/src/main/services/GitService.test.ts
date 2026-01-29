@@ -1,3 +1,11 @@
+/**
+ * GitService Tests
+ *
+ * worktree-gitview-diff-bug: Added worktree mode integration tests
+ * - Worktree environment detection
+ * - baseBranch detection in worktree
+ * - Diff command generation for worktree mode
+ */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GitService } from './GitService';
 
@@ -70,7 +78,9 @@ describe('GitService', () => {
     });
 
     it('should generate correct git diff command for worktree mode', async () => {
-      // Mock getStatus to return worktree mode
+      // worktree-gitview-diff-bug fix:
+      // In worktree mode, getDiff tries uncommitted changes first (git diff HEAD),
+      // then committed changes (git diff baseBranch...HEAD)
       const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
         success: true,
         data: {
@@ -97,10 +107,10 @@ describe('GitService', () => {
 
       await gitService.getDiff('/test/project', 'src/test.ts');
 
-      // Verify the git diff command is correct for worktree mode
-      // Should be: git diff master...HEAD -- src/test.ts
-      const diffCall = execGitCalls.find(args => args[0] === 'diff');
-      expect(diffCall).toEqual(['diff', 'master...HEAD', '--', 'src/test.ts']);
+      // First call: uncommitted changes (git diff HEAD)
+      expect(execGitCalls[0]).toEqual(['diff', 'HEAD', '--', 'src/test.ts']);
+      // Second call: committed changes (git diff baseBranch...HEAD)
+      expect(execGitCalls[1]).toEqual(['diff', 'master...HEAD', '--', 'src/test.ts']);
 
       mockGetStatus.mockRestore();
       mockExecGit.mockRestore();
@@ -213,6 +223,346 @@ describe('GitService', () => {
       if (result.success) {
         expect(result.data).toBeTruthy();
       }
+    });
+  });
+
+  // ============================================================
+  // worktree-gitview-diff-bug: Worktree Mode Integration Tests
+  // ============================================================
+  describe('Worktree Mode - getDiff Integration', () => {
+    it('should try uncommitted changes first, then committed changes in worktree mode', async () => {
+      // worktree-gitview-diff-bug fix:
+      // In worktree mode, getDiff() now tries uncommitted changes first (git diff HEAD),
+      // then falls back to committed changes (git diff baseBranch...HEAD)
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+
+      // Mock execGit to capture the arguments
+      const execGitCalls: string[][] = [];
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          execGitCalls.push(args);
+          // Return non-empty diff for uncommitted changes
+          return Promise.resolve({ success: true, data: 'diff output' });
+        });
+
+      // Mock validateGitRepository to pass
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await gitService.getDiff('/worktree/path', 'src/feature.ts');
+
+      // Verify first call is for uncommitted changes (git diff HEAD)
+      expect(execGitCalls[0]).toEqual(['diff', 'HEAD', '--', 'src/feature.ts']);
+      // Verify second call is for committed changes (git diff baseBranch...HEAD)
+      expect(execGitCalls[1]).toEqual(['diff', 'main...HEAD', '--', 'src/feature.ts']);
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should return uncommitted diff when available in worktree mode', async () => {
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          if (args[1] === 'HEAD') {
+            return Promise.resolve({ success: true, data: 'uncommitted diff output' });
+          }
+          return Promise.resolve({ success: true, data: 'committed diff output' });
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getDiff('/worktree/path', 'src/feature.ts');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('uncommitted diff output');
+      }
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should fallback to committed diff when uncommitted is empty in worktree mode', async () => {
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          if (args[1] === 'HEAD') {
+            // Empty uncommitted changes
+            return Promise.resolve({ success: true, data: '' });
+          }
+          // Return committed diff
+          return Promise.resolve({ success: true, data: 'committed diff output' });
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getDiff('/worktree/path', 'src/feature.ts');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('committed diff output');
+      }
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should use simple diff for normal mode (no baseBranch)', async () => {
+      // Mock getStatus to return normal mode (no baseBranch)
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/file.ts', status: 'M' }],
+          mode: 'normal',
+        },
+      });
+
+      const execGitCalls: string[][] = [];
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          execGitCalls.push(args);
+          return Promise.resolve({ success: true, data: 'diff output' });
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await gitService.getDiff('/normal/project', 'src/file.ts');
+
+      // Verify the git diff command does NOT include baseBranch
+      const diffCall = execGitCalls.find(args => args[0] === 'diff');
+      expect(diffCall).toEqual(['diff', '--', 'src/file.ts']);
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should handle worktree with master as baseBranch', async () => {
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'A' }],
+          baseBranch: 'master',
+          mode: 'worktree',
+        },
+      });
+
+      const execGitCalls: string[][] = [];
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          execGitCalls.push(args);
+          return Promise.resolve({ success: true, data: 'new file diff' });
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await gitService.getDiff('/worktree/path', 'src/feature.ts');
+
+      // First call should be for uncommitted changes
+      expect(execGitCalls[0]).toEqual(['diff', 'HEAD', '--', 'src/feature.ts']);
+      // Second call should use master as baseBranch
+      expect(execGitCalls[1]).toEqual(['diff', 'master...HEAD', '--', 'src/feature.ts']);
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+  });
+
+  describe('Worktree Mode - getStatus Integration', () => {
+    it('should return worktree mode when .git is a file (worktree indicator)', async () => {
+      // This test verifies the logic flow when isWorktreeEnvironment returns true
+      const mockIsWorktree = vi.spyOn(gitService as never, 'isWorktreeEnvironment').mockResolvedValue(true);
+      const mockGetWorktreeStatus = vi.spyOn(gitService as never, 'getWorktreeStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getStatus('/worktree/path');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.mode).toBe('worktree');
+        expect(result.data.baseBranch).toBe('main');
+      }
+
+      mockIsWorktree.mockRestore();
+      mockGetWorktreeStatus.mockRestore();
+    });
+
+    it('should return normal mode when .git is a directory', async () => {
+      const mockIsWorktree = vi.spyOn(gitService as never, 'isWorktreeEnvironment').mockResolvedValue(false);
+      const mockGetNormalStatus = vi.spyOn(gitService as never, 'getNormalStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/file.ts', status: 'M' }],
+          mode: 'normal',
+        },
+      });
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getStatus('/normal/project');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.mode).toBe('normal');
+        expect(result.data.baseBranch).toBeUndefined();
+      }
+
+      mockIsWorktree.mockRestore();
+      mockGetNormalStatus.mockRestore();
+    });
+  });
+
+  describe('Worktree Mode - Edge Cases', () => {
+    it('should handle untracked file in worktree mode', async () => {
+      // Untracked files should generate synthetic diff regardless of mode
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/newFile.ts', status: '??' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+
+      const mockGenerateUntrackedDiff = vi
+        .spyOn(gitService as never, 'generateUntrackedDiff')
+        .mockResolvedValue({
+          success: true,
+          data: 'diff --git a/src/newFile.ts b/src/newFile.ts\nnew file mode 100644\n...',
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getDiff('/worktree/path', 'src/newFile.ts');
+
+      expect(result.success).toBe(true);
+      expect(mockGenerateUntrackedDiff).toHaveBeenCalledWith('/worktree/path', 'src/newFile.ts');
+
+      mockGetStatus.mockRestore();
+      mockGenerateUntrackedDiff.mockRestore();
+    });
+
+    it('should return empty diff when file has no changes from baseBranch', async () => {
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/unchanged.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        },
+      });
+
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockResolvedValue({ success: true, data: '' }); // Empty diff
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getDiff('/worktree/path', 'src/unchanged.ts');
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('');
+      }
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should handle error when baseBranch is not found', async () => {
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'non-existent-branch',
+          mode: 'worktree',
+        },
+      });
+
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockResolvedValue({
+          success: false,
+          error: {
+            type: 'git_error',
+            message: "fatal: ambiguous argument 'non-existent-branch...HEAD': unknown revision",
+          },
+        });
+
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      const result = await gitService.getDiff('/worktree/path', 'src/feature.ts');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('unknown revision');
+      }
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
     });
   });
 });

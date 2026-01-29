@@ -2,6 +2,11 @@
  * Shared GitView Store Tests
  * Requirements: 4.1, 4.2, 10.3, 10.4, 12.3
  * TDD: Test-first development
+ *
+ * worktree-gitview-diff-bug: Added worktree mode tests
+ * - Worktree status caching with baseBranch
+ * - Override projectPath for worktree environments
+ * - Diff fetching with explicit worktree path
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
@@ -297,6 +302,236 @@ describe('Shared GitView Store', () => {
       expect(state.cachedDiffContent).toBe(null);
       expect(state.diffMode).toBe('unified');
       expect(state.fileTreeWidth).toBe(300);
+    });
+  });
+
+  // ============================================================
+  // worktree-gitview-diff-bug: Worktree Mode Tests
+  // ============================================================
+  describe('Worktree Mode Support', () => {
+    const WORKTREE_PATH = '/test/project/.kiro/worktrees/specs/my-feature';
+
+    describe('refreshStatus with overrideProjectPath', () => {
+      it('should use overrideProjectPath instead of getProjectPath() when provided', async () => {
+        const mockWorktreeStatus: GitStatusResult = {
+          files: [{ path: 'src/feature.ts', status: 'M' }],
+          baseBranch: 'main',
+          mode: 'worktree',
+        };
+
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: true,
+          value: mockWorktreeStatus,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.refreshStatus(mockApiClient, WORKTREE_PATH);
+
+        // Should have been called with worktree path
+        expect(mockApiClient.getGitStatus).toHaveBeenCalledWith(WORKTREE_PATH);
+        // Should NOT have been called with default project path
+        expect(mockApiClient.getGitStatus).not.toHaveBeenCalledWith('/test/project');
+      });
+
+      it('should cache worktree status with baseBranch', async () => {
+        const mockWorktreeStatus: GitStatusResult = {
+          files: [
+            { path: 'src/feature.ts', status: 'A' },
+            { path: 'src/oldFile.ts', status: 'D' },
+          ],
+          baseBranch: 'master',
+          mode: 'worktree',
+        };
+
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: true,
+          value: mockWorktreeStatus,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.refreshStatus(mockApiClient, WORKTREE_PATH);
+
+        const state = useSharedGitViewStore.getState();
+        expect(state.cachedStatus).toEqual(mockWorktreeStatus);
+        expect(state.cachedStatus?.mode).toBe('worktree');
+        expect(state.cachedStatus?.baseBranch).toBe('master');
+        expect(state.cachedStatus?.files).toHaveLength(2);
+      });
+
+      it('should fallback to getProjectPath() when overrideProjectPath is not provided', async () => {
+        const mockStatus: GitStatusResult = {
+          files: [{ path: 'src/file.ts', status: 'M' }],
+          mode: 'normal',
+        };
+
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: true,
+          value: mockStatus,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.refreshStatus(mockApiClient);
+
+        // Should have been called with default project path from getProjectPath()
+        expect(mockApiClient.getGitStatus).toHaveBeenCalledWith('/test/project');
+      });
+    });
+
+    describe('selectFile with overrideProjectPath', () => {
+      it('should use overrideProjectPath for getGitDiff when provided', async () => {
+        const mockDiffContent = 'diff --git a/src/feature.ts b/src/feature.ts\n...';
+
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: true,
+          value: mockDiffContent,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.selectFile(mockApiClient, 'src/feature.ts', WORKTREE_PATH);
+
+        // Should have been called with worktree path
+        expect(mockApiClient.getGitDiff).toHaveBeenCalledWith(WORKTREE_PATH, 'src/feature.ts');
+        // Should NOT have been called with default project path
+        expect(mockApiClient.getGitDiff).not.toHaveBeenCalledWith('/test/project', 'src/feature.ts');
+      });
+
+      it('should cache diff content from worktree', async () => {
+        const mockDiffContent = `diff --git a/src/feature.ts b/src/feature.ts
+index abc123..def456 100644
+--- a/src/feature.ts
++++ b/src/feature.ts
+@@ -1,3 +1,5 @@
++// Worktree changes
+ export function feature() {
+   return true;
+ }`;
+
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: true,
+          value: mockDiffContent,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.selectFile(mockApiClient, 'src/feature.ts', WORKTREE_PATH);
+
+        const state = useSharedGitViewStore.getState();
+        expect(state.cachedDiffContent).toBe(mockDiffContent);
+        expect(state.selectedFilePath).toBe('src/feature.ts');
+      });
+
+      it('should fallback to getProjectPath() when overrideProjectPath is not provided', async () => {
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: true,
+          value: 'diff content',
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.selectFile(mockApiClient, 'src/file.ts');
+
+        // Should have been called with default project path
+        expect(mockApiClient.getGitDiff).toHaveBeenCalledWith('/test/project', 'src/file.ts');
+      });
+    });
+
+    describe('Worktree mode error handling', () => {
+      it('should handle worktree status fetch error', async () => {
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: false,
+          error: { type: 'git_error', message: 'Worktree not found' },
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.refreshStatus(mockApiClient, WORKTREE_PATH);
+
+        const state = useSharedGitViewStore.getState();
+        expect(state.error).toBe('Worktree not found');
+        expect(state.cachedStatus).toBeNull();
+        expect(state.isLoading).toBe(false);
+      });
+
+      it('should handle worktree diff fetch error (baseBranch not found)', async () => {
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: false,
+          error: { type: 'git_error', message: 'Failed to get diff: baseBranch main not found' },
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.selectFile(mockApiClient, 'src/feature.ts', WORKTREE_PATH);
+
+        const state = useSharedGitViewStore.getState();
+        expect(state.error).toBe('Failed to get diff: baseBranch main not found');
+        expect(state.cachedDiffContent).toBeNull();
+        expect(state.selectedFilePath).toBe('src/feature.ts');
+      });
+
+      it('should handle empty diff in worktree (no changes from baseBranch)', async () => {
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: true,
+          value: '', // Empty diff - no changes
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.selectFile(mockApiClient, 'src/unchanged.ts', WORKTREE_PATH);
+
+        const state = useSharedGitViewStore.getState();
+        expect(state.cachedDiffContent).toBe('');
+        expect(state.error).toBeNull();
+      });
+    });
+
+    describe('Worktree lazy loading', () => {
+      it('should NOT fetch diff when refreshStatus is called with worktree path', async () => {
+        const mockWorktreeStatus: GitStatusResult = {
+          files: [
+            { path: 'src/file1.ts', status: 'M' },
+            { path: 'src/file2.ts', status: 'A' },
+          ],
+          baseBranch: 'main',
+          mode: 'worktree',
+        };
+
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: true,
+          value: mockWorktreeStatus,
+        });
+
+        const store = useSharedGitViewStore.getState();
+        await store.refreshStatus(mockApiClient, WORKTREE_PATH);
+
+        // getGitDiff should NOT have been called
+        expect(mockApiClient.getGitDiff).not.toHaveBeenCalled();
+      });
+
+      it('should fetch diff ONLY when selectFile is called with worktree path', async () => {
+        const mockWorktreeStatus: GitStatusResult = {
+          files: [
+            { path: 'src/file1.ts', status: 'M' },
+            { path: 'src/file2.ts', status: 'A' },
+          ],
+          baseBranch: 'main',
+          mode: 'worktree',
+        };
+
+        vi.mocked(mockApiClient.getGitStatus).mockResolvedValue({
+          ok: true,
+          value: mockWorktreeStatus,
+        });
+        vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+          ok: true,
+          value: 'worktree diff content',
+        });
+
+        const store = useSharedGitViewStore.getState();
+
+        // Step 1: Refresh status (should NOT fetch any diffs)
+        await store.refreshStatus(mockApiClient, WORKTREE_PATH);
+        expect(mockApiClient.getGitDiff).not.toHaveBeenCalled();
+
+        // Step 2: Select a file (should fetch diff for ONLY that file)
+        await store.selectFile(mockApiClient, 'src/file1.ts', WORKTREE_PATH);
+        expect(mockApiClient.getGitDiff).toHaveBeenCalledTimes(1);
+        expect(mockApiClient.getGitDiff).toHaveBeenCalledWith(WORKTREE_PATH, 'src/file1.ts');
+      });
     });
   });
 });

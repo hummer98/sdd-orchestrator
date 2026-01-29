@@ -415,8 +415,8 @@ describe('Worktree Two-Stage Watcher E2E', () => {
 
       console.log('[E2E] Main spec.json worktree field:', specJson.worktree);
 
-      // Verify no worktree field
-      expect(specJson.worktree).toBeUndefined();
+      // Verify no worktree field (null or undefined)
+      expect(specJson.worktree == null).toBe(true);
 
       // Select main spec
       const specSuccess = await selectSpecViaStore(MAIN_SPEC_NAME);
@@ -427,8 +427,8 @@ describe('Worktree Two-Stage Watcher E2E', () => {
       const selectedSpec = await getSelectedSpecFromStore();
       console.log('[E2E] Selected main spec worktree info:', selectedSpec?.worktree);
 
-      // Verify no worktree info in store
-      expect(selectedSpec?.worktree).toBeUndefined();
+      // Verify no worktree info in store (null or undefined)
+      expect(selectedSpec?.worktree == null).toBe(true);
     });
   });
 

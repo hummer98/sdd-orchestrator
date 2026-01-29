@@ -14,7 +14,22 @@
  * Note: 基本的なアプリ起動・セキュリティ・安定性テストは app-launch.spec.ts に統合
  */
 
+import * as path from 'path';
+import { selectProjectViaStore } from './helpers/auto-execution.helpers';
+
+// Fixture project path
+const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
+
 describe('Spec Workflow E2E', () => {
+  // プロジェクト選択をテストグループの前に実行
+  before(async () => {
+    const success = await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+    if (!success) {
+      console.warn('[E2E] Failed to select project, some tests may fail');
+    }
+    await browser.pause(500);
+  });
+
   // ============================================================
   // Spec一覧表示
   // Requirements: Spec選択、一覧表示

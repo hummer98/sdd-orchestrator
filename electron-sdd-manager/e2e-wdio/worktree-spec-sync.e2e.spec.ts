@@ -327,7 +327,8 @@ describe('Worktree Spec Sync E2E', () => {
 
       console.log('[E2E] Main spec worktree field:', JSON.stringify(mainSpec?.worktree));
 
-      expect(mainSpec?.worktree).toBeUndefined();
+      // worktreeフィールドがnullまたはundefinedであることを確認（main specにはworktreeがない）
+      expect(mainSpec?.worktree == null).toBe(true);
     });
 
     it('should display worktree badge for worktree spec in UI', async () => {

@@ -274,12 +274,19 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
       logger.debug('[agentHandlers] GET_AGENT_LOGS called', { specId, agentId });
       try {
         const logFileService = getDefaultLogFileService();
-        const agentRecordService = getDefaultAgentRecordService();
         const logs = await logFileService.readLog(specId, agentId);
 
-        // Get engineId from agent record for parser selection
-        const record = await agentRecordService.findRecordByAgentId(agentId);
-        const engineId = record?.engineId;
+        // Get engineId from agent record for parser selection (optional)
+        // Bug fix: agent-log-json-display-issue - Handle case where agentRecordService is not initialized
+        let engineId: import('@shared/registry').LLMEngineId | undefined;
+        try {
+          const agentRecordService = getDefaultAgentRecordService();
+          const record = await agentRecordService.findRecordByAgentId(agentId);
+          engineId = record?.engineId;
+        } catch {
+          // AgentRecordService may not be initialized, use default parser
+          logger.debug('[agentHandlers] AgentRecordService not available, using default parser');
+        }
 
         // Parse each log entry's data field using unified parser
         // Note: Log files only contain stdout/stderr, stdin is handled in Renderer

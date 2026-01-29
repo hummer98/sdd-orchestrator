@@ -240,4 +240,61 @@ describe('agentHandlers', () => {
       expect(getLogsCall).toBeDefined();
     });
   });
+
+  // =============================================================================
+  // Integration tests for GET_AGENT_LOGS
+  // Bug fix: agent-log-json-display-issue
+  // =============================================================================
+  describe('GET_AGENT_LOGS integration', () => {
+    it('should return parsed logs when AgentRecordService is available', async () => {
+      const { registerAgentHandlers } = await import('./agentHandlers');
+
+      registerAgentHandlers(mockDependencies);
+
+      // Find the GET_AGENT_LOGS handler
+      const handleCalls = vi.mocked(ipcMain.handle).mock.calls;
+      const getLogsCall = handleCalls.find(([channel]) => channel === 'ipc:get-agent-logs');
+      expect(getLogsCall).toBeDefined();
+
+      // Execute the handler
+      const handler = getLogsCall![1];
+      const result = await handler({} as Electron.IpcMainInvokeEvent, 'test-spec', 'test-agent');
+
+      // Should return parsed logs
+      expect(result).toEqual([
+        {
+          id: 'parsed-log-1',
+          type: 'text',
+          timestamp: expect.any(Number),
+          engineId: 'claude',
+          text: { content: 'test', role: 'assistant' },
+        },
+      ]);
+    });
+
+    it('should handle AgentRecordService not initialized gracefully', async () => {
+      // Override the mock to throw error (simulating uninitialized service)
+      const { getDefaultAgentRecordService } = await import('../services/agentRecordService');
+      vi.mocked(getDefaultAgentRecordService).mockImplementationOnce(() => {
+        throw new Error('AgentRecordService not initialized');
+      });
+
+      const { registerAgentHandlers } = await import('./agentHandlers');
+
+      registerAgentHandlers(mockDependencies);
+
+      // Find the GET_AGENT_LOGS handler
+      const handleCalls = vi.mocked(ipcMain.handle).mock.calls;
+      const getLogsCall = handleCalls.find(([channel]) => channel === 'ipc:get-agent-logs');
+      expect(getLogsCall).toBeDefined();
+
+      // Execute the handler - should NOT throw, should use default parser
+      const handler = getLogsCall![1];
+      const result = await handler({} as Electron.IpcMainInvokeEvent, 'test-spec', 'test-agent');
+
+      // Should still return parsed logs (using default Claude parser)
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    });
+  });
 });

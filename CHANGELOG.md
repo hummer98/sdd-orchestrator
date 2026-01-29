@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [0.54.0] - 2026-01-29
+
+### Added
+- CLAUDE.mdにプロファイル選択機能を追加
+- 自動実行のタスク完了ガード機能を追加
+- Worktreeモードでmainブランチからのrebase機能を追加
+- メインプロセスでのログパース処理を実装
+- SpecからGitViewへworktreeパスを伝播
+- メインパネル一杯表示と独立スクロール対応（GitView）
+
+### Fixed
+- ファイルI/Oタイミング問題を修正しシーケンス実行を改善
+- permissionModeをbypassPermissionsに変更
+- WebSocketでAGENT_LOGメッセージを処理してログ逐次更新を修正
+- 空リポジトリでのWorktree変換エラーにリカバリー手段を提示
+- E2Eテストをdocument-review必須仕様とspec.json SSOT対応に修正
+- Bash使用を回避してapproval中断を防止（spec-plan）
+
+### Changed
+- 自動実行デフォルト設定をdeploy以外は全て許可に変更
+- GitViewPropsをrenderer re-exportに追加
+
 ## [0.53.1] - 2026-01-28
 
 ### Fixed

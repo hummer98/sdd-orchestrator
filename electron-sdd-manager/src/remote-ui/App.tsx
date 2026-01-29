@@ -23,8 +23,9 @@ import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecDetailPage } from './components/SpecDetailPage';
 import { BugDetailPage } from './components/BugDetailPage';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
-import { AgentList, type AgentItemInfo, type AgentItemStatus } from '../shared/components/agent';
+import { AgentList, type AgentItemInfo, type AgentItemStatus, AgentLogPanel, type AgentLogInfo } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
+import { useSharedAgentStore } from '../shared/stores/agentStore';
 import { ResizeHandle } from '../shared/components/ui';
 import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -597,12 +598,62 @@ function RightSidebar({
 // Footer Component - Agentログエリア (仮)
 // =============================================================================
 
+/**
+ * FooterContent - Agent log viewer for DesktopLayout
+ * Uses shared AgentLogPanel component (Electron準拠)
+ */
 function FooterContent() {
-  // TODO: Implement agent log viewer
+  const apiClient = useApi();
+  const agentStore = useSharedAgentStore();
+
+  // Get selected agent info
+  const selectedAgentId = agentStore.selectedAgentId;
+  const selectedAgent = selectedAgentId ? agentStore.getAgentById(selectedAgentId) : undefined;
+
+  // Get logs for selected agent
+  const logs = selectedAgentId ? agentStore.logs.get(selectedAgentId) ?? [] : [];
+
+  // Transform AgentInfo to AgentLogInfo
+  const agentLogInfo: AgentLogInfo | undefined = selectedAgent ? {
+    agentId: selectedAgent.id,
+    sessionId: selectedAgent.specId,
+    phase: selectedAgent.phase,
+    status: selectedAgent.status,
+    command: selectedAgent.command,
+    engineId: selectedAgent.engineId,
+  } : undefined;
+
+  // Handle copy logs
+  const handleCopy = useCallback(async () => {
+    if (!selectedAgent || !selectedAgentId) return;
+    const result = await apiClient.getAgentLogs(selectedAgent.specId, selectedAgentId);
+    if (result.ok && result.value.length > 0) {
+      const logsText = result.value.map(entry =>
+        typeof entry === 'string' ? entry : JSON.stringify(entry)
+      ).join('\n');
+      await navigator.clipboard.writeText(logsText);
+    }
+  }, [apiClient, selectedAgent, selectedAgentId]);
+
+  // Handle clear logs
+  const handleClear = useCallback(() => {
+    if (selectedAgentId) {
+      agentStore.clearLogs(selectedAgentId);
+    }
+  }, [agentStore, selectedAgentId]);
+
   return (
-    <div className="h-full p-4 font-mono text-xs text-gray-500">
-      Agent logs will be displayed here...
-    </div>
+    <AgentLogPanel
+      agent={agentLogInfo}
+      logs={logs}
+      showTokens={true}
+      onCopy={handleCopy}
+      onClear={handleClear}
+      noAgentMessage="エージェントが選択されていません"
+      emptyLogsMessage="ログがありません"
+      showSessionId={true}
+      testId="remote-desktop-agent-log-panel"
+    />
   );
 }
 

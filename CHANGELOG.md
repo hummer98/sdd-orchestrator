@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [0.55.0] - 2026-01-30
+
+### Added
+- remote-ui): DesktopLayoutにAgentLogPanel統合
+
+### Fixed
+- スマートフォン版E2Eテストの期待値を実装に合わせて修正
+- agent-log): AgentLogPaneで初回カード選択時に記録が上書きされる問題を修正
+- AgentDetailDrawerのログパネルレイアウト修正
+- bugWorkflowInstallerからCLAUDE.md更新機能を削除
+- resumeAgentでspawn直後のエラーを正しく捕捉するよう修正
+
+### Changed
+- refactor: ファイル監視機構にwatchedPathsトラッキングを追加
+- perf(bugs): BugsWatcherのイベント処理にデバウンスを導入
+- chore: tasks.mdからCoverage Validation Checklistの生成を抑止
+- test: スマートフォン版Spec作成のE2Eテスト追加
+
+
 ## [0.54.3] - 2026-01-30
 
 ### Fixed

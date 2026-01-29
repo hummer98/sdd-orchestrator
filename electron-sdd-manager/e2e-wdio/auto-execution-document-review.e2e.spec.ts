@@ -249,42 +249,9 @@ function readSpecJson(): typeof DESIGN_COMPLETED_SPEC_JSON & { documentReview?: 
   return JSON.parse(fs.readFileSync(path.join(SPEC_DIR, 'spec.json'), 'utf-8'));
 }
 
-/**
- * Helper: Set document review flag via workflowStore
- * document-review-skip-removal: 'skip' option removed
- */
-async function setDocumentReviewFlag(flag: 'run' | 'pause'): Promise<boolean> {
-  return browser.execute((f: string) => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return false;
-      const workflowStore = stores.workflow.getState();
-      // Bug fix: Use correct method name setDocumentReviewAutoExecutionFlag
-      workflowStore.setDocumentReviewAutoExecutionFlag(f);
-      return true;
-    } catch (e) {
-      console.error('[E2E] setDocumentReviewFlag error:', e);
-      return false;
-    }
-  }, flag);
-}
-
-/**
- * Helper: Get document review flag from workflowStore
- * document-review-skip-removal: Default changed from 'skip' to 'run'
- */
-async function getDocumentReviewFlag(): Promise<string> {
-  return browser.execute(() => {
-    try {
-      const stores = (window as any).__STORES__;
-      if (!stores?.workflow?.getState) return 'run';
-      // Bug fix: Use correct property path documentReviewOptions.autoExecutionFlag
-      return stores.workflow.getState().documentReviewOptions?.autoExecutionFlag || 'run';
-    } catch (e) {
-      return 'run';
-    }
-  });
-}
+// document-review-phase: documentReviewFlag (run/pause/skip) was removed
+// and replaced with permissions.documentReview (boolean GO/NOGO).
+// setDocumentReviewFlag and getDocumentReviewFlag helpers removed.
 
 /**
  * Helper: Check if document review panel is visible
@@ -353,9 +320,10 @@ describe('Auto Execution Document Review Integration E2E', () => {
   // ============================================================
 
   // ============================================================
-  // Scenario 2: Document Review with 'run' flag
+  // Scenario 2: Document Review triggered (permissions.documentReview = true by default)
+  // document-review-phase: documentReviewFlag replaced with permissions.documentReview
   // ============================================================
-  describe('Scenario 2: Document Review triggered with run flag', () => {
+  describe('Scenario 2: Document Review triggered with default permissions', () => {
     beforeEach(async () => {
       // Select project and spec
       const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
@@ -372,17 +340,10 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
-
-      // Set document review flag to 'run'
-      await setDocumentReviewFlag('run');
     });
 
-    it('should trigger document review when flag is run and tasks completed', async () => {
-      // Verify flag is set to run
-      const flag = await getDocumentReviewFlag();
-      expect(flag).toBe('run');
-
-      // Set permissions: tasks and impl enabled
+    it('should trigger document review when tasks completed', async () => {
+      // Set permissions: tasks and impl enabled (documentReview is true by default)
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,
@@ -429,66 +390,9 @@ describe('Auto Execution Document Review Integration E2E', () => {
   });
 
   // ============================================================
-  // Scenario 3: Document Review with 'pause' flag
+  // Scenario 3: REMOVED - documentReviewFlag 'pause' option was removed
+  // document-review-phase: documentReviewFlag replaced with permissions.documentReview (boolean)
   // ============================================================
-  describe('Scenario 3: Document Review with pause flag', () => {
-    beforeEach(async () => {
-      // Select project and spec
-      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
-      expect(projectSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-      await browser.pause(500);
-
-      const specSuccess = await selectSpecViaStore(SPEC_NAME);
-      expect(specSuccess).toBe(true);
-      await browser.pause(500);
-      await refreshSpecStore();
-
-      // Wait for workflow view
-      const workflowView = await $('[data-testid="workflow-view"]');
-      await workflowView.waitForExist({ timeout: 5000 });
-
-      // Set document review flag to 'pause'
-      await setDocumentReviewFlag('pause');
-    });
-
-    it('should trigger document review and pause for manual action when flag is pause', async () => {
-      // Verify flag is set to pause
-      const flag = await getDocumentReviewFlag();
-      expect(flag).toBe('pause');
-
-      // Set permissions
-      await setAutoExecutionPermissions({
-        requirements: true,
-        design: true,
-        tasks: true,
-        impl: true,
-        inspection: false,
-        deploy: false,
-      });
-
-      // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
-      await autoButton.click();
-
-      // Wait for execution to either complete or pause
-      const result = await waitForCondition(async () => {
-        const s = await getAutoExecutionStatus();
-        // Should pause after document review is triggered
-        return !s.isAutoExecuting || s.autoExecutionStatus === 'paused';
-      }, 120000, 1000, 'auto-execution-pause');
-
-      console.log(`[E2E] Auto-execution paused or completed: ${result}`);
-
-      // Check status
-      const status = await getAutoExecutionStatus();
-      console.log(`[E2E] Final status: ${JSON.stringify(status)}`);
-
-      // With pause flag, execution should pause at document review
-      // Note: This depends on the document-review workflow completing
-    });
-  });
 
   // ============================================================
   // Scenario 4: Document Review Panel UI visibility
@@ -604,17 +508,11 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
-
-      // Set document review flag to 'run'
-      await setDocumentReviewFlag('run');
     });
 
     it('should complete auto-execution and reset UI when impl is NOGO after document-review-reply', async () => {
-      // Verify flag is set to run
-      const flag = await getDocumentReviewFlag();
-      expect(flag).toBe('run');
-
       // Set permissions: tasks GO, impl NOGO (the key condition)
+      // document-review-phase: permissions.documentReview defaults to true
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,
@@ -728,17 +626,11 @@ describe('Auto Execution Document Review Integration E2E', () => {
       // Wait for workflow view
       const workflowView = await $('[data-testid="workflow-view"]');
       await workflowView.waitForExist({ timeout: 5000 });
-
-      // Set document review flag to 'run'
-      await setDocumentReviewFlag('run');
     });
 
     it('should NOT set approved after autofix and should trigger next review round', async () => {
-      // Verify flag is set to run
-      const flag = await getDocumentReviewFlag();
-      expect(flag).toBe('run');
-
       // Set permissions: all GO
+      // document-review-phase: permissions.documentReview defaults to true
       await setAutoExecutionPermissions({
         requirements: true,
         design: true,

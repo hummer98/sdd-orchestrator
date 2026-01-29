@@ -30,7 +30,7 @@ import { CommandInstallerService, getTemplateDir } from '../services/commandInst
 import { initDefaultLogFileService } from '../services/logFileService';
 // main-process-log-parser Task 10.7: LogStreamingService for parsed log distribution
 import { LogStreamingService } from '../services/logStreamingService';
-import { getDefaultAgentRecordService } from '../services/agentRecordService';
+import { getDefaultAgentRecordService, initDefaultAgentRecordService } from '../services/agentRecordService';
 import { getCliInstallStatus, installCliCommand, getManualInstallInstructions } from '../services/cliInstallerService';
 import { BugService } from '../services/bugService';
 import { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
@@ -246,6 +246,11 @@ export async function setProjectPath(projectPath: string): Promise<void> {
 
   initDefaultMetricsService(projectPath);
   logger.info('[handlers] MetricsService initialized');
+
+  // Initialize default AgentRecordService for agent lifecycle management
+  const agentsBasePath = path.join(projectPath, '.kiro', 'runtime', 'agents');
+  initDefaultAgentRecordService(agentsBasePath);
+  logger.info('[handlers] AgentRecordService initialized');
 
   // Session recovery
   try {

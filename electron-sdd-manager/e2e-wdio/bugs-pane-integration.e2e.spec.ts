@@ -44,6 +44,7 @@ async function selectProjectViaStore(projectPath: string): Promise<boolean> {
  * Helper: Select bug using Zustand bugStore action
  * This sets the selected bug directly without UI click
  * Note: Uses setState directly since selectBug requires apiClient
+ * Also sets bugDetail to enable proper artifact filtering and phase status
  */
 async function selectBugViaStore(bugName: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -54,8 +55,18 @@ async function selectBugViaStore(bugName: string): Promise<boolean> {
           const bugStore = stores.bug.getState();
           const bug = bugStore.bugs.find((b: any) => b.name === name);
           if (bug) {
+            // Create bugDetail based on fixture data (test-bug has report.md and analysis.md only)
+            const bugDetail = {
+              metadata: bug,
+              artifacts: {
+                report: { exists: true, path: '', updatedAt: null },
+                analysis: { exists: true, path: '', updatedAt: null },
+                fix: { exists: false, path: '', updatedAt: null },
+                verification: { exists: false, path: '', updatedAt: null },
+              },
+            };
             // Use setState directly (selectBug requires apiClient)
-            stores.bug.setState({ selectedBugId: name });
+            stores.bug.setState({ selectedBugId: name, bugDetail });
             done(true);
           } else {
             console.error('[E2E] Bug not found:', name);

@@ -15,6 +15,7 @@ import { SpecWorkflowFooter } from './SpecWorkflowFooter';
 import { DocumentReviewPanel, InspectionPanel } from '@shared/components/review';
 import type { WorkflowState, WorkflowHandlers } from '@shared/types/workflowState';
 import type { WorkflowPhase } from '@shared/api/types';
+import type { SpecMetrics } from '../../../main/types/metrics';
 
 // =============================================================================
 // Types
@@ -35,8 +36,8 @@ export interface WorkflowViewCoreProps {
     error: unknown;
     onClose: () => void;
   };
-  /** メトリクスパネルをレンダリングする関数（オプション） */
-  renderMetrics?: () => React.ReactNode;
+  /** Metrics data for the spec (displayed in footer) */
+  metrics?: SpecMetrics | null;
   /** TaskProgressViewをレンダリングする関数（オプション） */
   renderTaskProgress?: () => React.ReactNode;
   /** EventLogViewerModalをレンダリングする関数（オプション） */
@@ -185,7 +186,7 @@ function getPreviousStatus(
 export function WorkflowViewCore({
   state,
   handlers,
-  renderMetrics,
+  metrics,
   renderTaskProgress,
   renderEventLogModal,
   disableFooterSafeArea = false,
@@ -235,8 +236,6 @@ export function WorkflowViewCore({
     <div className="flex flex-col h-full" data-testid="workflow-view">
       {/* Workflow Phases */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2" data-testid="phase-execution-panel">
-        {/* Metrics Summary Panel (custom render) */}
-        {renderMetrics?.()}
 
         {/* Display Phases (requirements, design, tasks) */}
         {DISPLAY_PHASES.map((phase, index) => (
@@ -381,6 +380,7 @@ export function WorkflowViewCore({
         isConverting={state.isConverting}
         onShowEventLog={handlers.handleShowEventLog}
         disableSafeArea={disableFooterSafeArea}
+        metrics={metrics}
       />
 
       {/* Event Log Modal (custom render) */}

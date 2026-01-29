@@ -10,7 +10,6 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { WorkflowViewCore } from '@shared/components/workflow';
-import { MetricsSummaryPanel } from '@shared/components/metrics';
 import { EventLogViewerModal } from '@shared/components/eventLog';
 import { TaskProgressView, type TaskItem } from './TaskProgressView';
 import { useElectronWorkflowState } from '../hooks/useElectronWorkflowState';
@@ -96,11 +95,6 @@ export function ElectronWorkflowView(): React.ReactElement {
     return tasks;
   }, [specDetail?.artifacts.tasks?.content]);
 
-  // Render slots
-  const renderMetrics = useCallback(() => (
-    <MetricsSummaryPanel metrics={currentMetrics} className="mb-4" />
-  ), [currentMetrics]);
-
   const renderTaskProgress = useCallback(() => {
     if (!specDetail?.taskProgress) return null;
     return (
@@ -129,7 +123,7 @@ export function ElectronWorkflowView(): React.ReactElement {
     <WorkflowViewCore
       state={state}
       handlers={overriddenHandlers}
-      renderMetrics={renderMetrics}
+      metrics={currentMetrics}
       renderTaskProgress={renderTaskProgress}
       renderEventLogModal={renderEventLogModal}
     />

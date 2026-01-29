@@ -74,10 +74,6 @@ export const IPC_CHANNELS = {
   INSTALL_SPEC_MANAGER_ALL: 'ipc:install-spec-manager-all',
   FORCE_REINSTALL_SPEC_MANAGER_ALL: 'ipc:force-reinstall-spec-manager-all',
 
-  // CLAUDE.md Install
-  CHECK_CLAUDE_MD_EXISTS: 'ipc:check-claude-md-exists',
-  INSTALL_CLAUDE_MD: 'ipc:install-claude-md',
-
   // Menu Events
   MENU_OPEN_PROJECT: 'menu:open-project',
 
@@ -126,9 +122,6 @@ export const IPC_CHANNELS = {
   EXECUTE_DOCUMENT_REVIEW_FIX: 'ipc:execute-document-review-fix',
   APPROVE_DOCUMENT_REVIEW: 'ipc:approve-document-review',
   // document-review-skip-removal: SKIP_DOCUMENT_REVIEW removed
-  // cc-sdd Workflow Install (cc-sdd-command-installer feature)
-  CHECK_CC_SDD_WORKFLOW_STATUS: 'ipc:check-cc-sdd-workflow-status',
-  INSTALL_CC_SDD_WORKFLOW: 'ipc:install-cc-sdd-workflow',
 
   // Menu Events - Unified Commandset Install (Requirement 10)
   MENU_INSTALL_COMMANDSET: 'menu:install-commandset',

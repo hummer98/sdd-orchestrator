@@ -33,8 +33,6 @@ export { TaskProgressView } from './TaskProgressView';
 export { ArtifactPreview } from './ArtifactPreview';
 // CLI Install
 export { CliInstallDialog } from './CliInstallDialog';
-// CLAUDE.md Install
-export { ClaudeMdInstallDialog } from './ClaudeMdInstallDialog';
 // Task 4.2, 4.3 (sidebar-refactor): プロジェクトAgent領域
 export { ProjectAgentPanel } from './ProjectAgentPanel';
 // Task 3.1, 3.2 (sidebar-refactor): 仕様一覧ヘッダー

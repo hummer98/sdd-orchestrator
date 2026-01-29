@@ -13,8 +13,10 @@ import {
   CC_SDD_COMMANDS,
   CC_SDD_AGENTS,
   CC_SDD_SETTINGS,
-  CC_SDD_WORKFLOW_CLAUDE_MD_SECTION,
 } from './ccSddWorkflowInstaller';
+
+// claudemd-profile-install-merge: CC_SDD_WORKFLOW_CLAUDE_MD_SECTION was removed
+// CLAUDE.md installation is now handled by the claudemd-merge Agent
 
 describe('CcSddWorkflowInstaller', () => {
   let installer: CcSddWorkflowInstaller;
@@ -127,9 +129,8 @@ describe('CcSddWorkflowInstaller', () => {
       await fs.writeFile(filePath, `# Template for ${template}\nThis is a settings template file.`, 'utf-8');
     }
 
-    // Create CLAUDE.md template
-    const claudeMdPath = path.join(templateDir, 'CLAUDE.md');
-    await fs.writeFile(claudeMdPath, `# AI-DLC and Spec-Driven Development\n\n${CC_SDD_WORKFLOW_CLAUDE_MD_SECTION}`, 'utf-8');
+    // claudemd-profile-install-merge: CLAUDE.md template creation removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
   }
 
   describe('Constants', () => {
@@ -194,22 +195,8 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_AGENTS.length).toBe(12);
     });
 
-    it('should have CLAUDE.md section with cc-sdd workflow', () => {
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('Minimal Workflow');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('Feature Development (Full SDD)');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('Bug Fix (Lightweight Workflow)');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-init');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-requirements');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-design');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-tasks');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-impl');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:spec-status');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:validate-gap');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:validate-design');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:validate-impl');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-create');
-      expect(CC_SDD_WORKFLOW_CLAUDE_MD_SECTION).toContain('/kiro:bug-analyze');
-    });
+    // claudemd-profile-install-merge: CC_SDD_WORKFLOW_CLAUDE_MD_SECTION test removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
     it('should include steering templates for logging and debugging in CC_SDD_SETTINGS', () => {
       expect(CC_SDD_SETTINGS).toContain('templates/steering/logging.md');
@@ -394,83 +381,20 @@ describe('CcSddWorkflowInstaller', () => {
     });
   });
 
-  describe('updateClaudeMd', () => {
-    it('should create CLAUDE.md with cc-sdd section if it does not exist', async () => {
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.action).toBe('created');
-      }
-
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      const content = await fs.readFile(targetPath, 'utf-8');
-      expect(content).toContain('Minimal Workflow');
-      expect(content).toContain('Feature Development (Full SDD)');
-      expect(content).toContain('/kiro:spec-init');
-    });
-
-    it('should skip if CLAUDE.md already contains cc-sdd section', async () => {
-      // Create CLAUDE.md with cc-sdd section already present
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      await fs.writeFile(targetPath, `# Project\n\n## Minimal Workflow\n\n### Feature Development (Full SDD)\n\nAlready has cc-sdd workflow.`, 'utf-8');
-
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.action).toBe('skipped');
-        expect(result.value.reason).toBe('already_exists');
-      }
-    });
-
-    it('should merge cc-sdd section into existing CLAUDE.md (fallback to simple merge)', async () => {
-      // Create CLAUDE.md without cc-sdd section
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      const existingContent = `# My Project
-
-## Language
-
-日本語で応答
-
-## Development Rules
-
-- Rule 1
-- Rule 2
-`;
-      await fs.writeFile(targetPath, existingContent, 'utf-8');
-
-      // Note: The actual merge uses claude -p, which may not be available in test environment
-      // The implementation falls back to simple merge when claude -p fails
-      const result = await installer.updateClaudeMd(tempDir);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // Expect merged (either via claude -p or fallback)
-        expect(result.value.action).toBe('merged');
-      }
-
-      // Verify the content was merged
-      const content = await fs.readFile(targetPath, 'utf-8');
-      // Should preserve existing content
-      expect(content).toContain('My Project');
-      expect(content).toContain('日本語で応答');
-      expect(content).toContain('Rule 1');
-      // Should add cc-sdd workflow section
-      expect(content).toContain('Feature Development (Full SDD)');
-      expect(content).toContain('/kiro:spec-init');
-    }, 10000); // Increase timeout for claude -p fallback
-  });
+  // claudemd-profile-install-merge: updateClaudeMd tests removed
+  // CLAUDE.md installation is now handled by the claudemd-merge Agent
 
   describe('installAll', () => {
-    it('should install commands, agents, and update CLAUDE.md', async () => {
+    it('should install commands and agents (CLAUDE.md handled by Agent)', async () => {
+      // claudemd-profile-install-merge: CLAUDE.md installation is now handled by the claudemd-merge Agent
       const result = await installer.installAll(tempDir);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.commands.installed.length).toBe(25);
         expect(result.value.agents.installed.length).toBe(12);
-        expect(result.value.claudeMd.action).toBe('created');
+        // claudeMd property removed from result
+        expect(result.value).not.toHaveProperty('claudeMd');
       }
     });
 
@@ -496,6 +420,9 @@ describe('CcSddWorkflowInstaller', () => {
   });
 
   describe('checkInstallStatus', () => {
+    // claudemd-profile-install-merge: claudeMd status check removed
+    // CLAUDE.md status is now handled by the claudemd-merge Agent
+
     it('should return not installed status for empty project', async () => {
       const status = await installer.checkInstallStatus(tempDir);
 
@@ -503,8 +430,8 @@ describe('CcSddWorkflowInstaller', () => {
       expect(status.commands.missing.length).toBe(25);
       expect(status.agents.installed).toEqual([]);
       expect(status.agents.missing.length).toBe(12);
-      expect(status.claudeMd.exists).toBe(false);
-      expect(status.claudeMd.hasCcSddSection).toBe(false);
+      // claudeMd property removed from status
+      expect(status).not.toHaveProperty('claudeMd');
     });
 
     it('should return fully installed status when all files exist', async () => {
@@ -517,8 +444,8 @@ describe('CcSddWorkflowInstaller', () => {
       expect(status.commands.missing).toEqual([]);
       expect(status.agents.installed.length).toBe(12);
       expect(status.agents.missing).toEqual([]);
-      expect(status.claudeMd.exists).toBe(true);
-      expect(status.claudeMd.hasCcSddSection).toBe(true);
+      // claudeMd property removed from status
+      expect(status).not.toHaveProperty('claudeMd');
     });
 
     it('should return partial status when some files exist', async () => {
@@ -538,28 +465,6 @@ describe('CcSddWorkflowInstaller', () => {
       expect(status.agents.installed).toContain('spec-design');
       expect(status.agents.missing).not.toContain('spec-design');
       expect(status.agents.missing.length).toBe(11); // 12 - 1 installed
-    });
-
-    it('should detect cc-sdd section in existing CLAUDE.md', async () => {
-      // Create CLAUDE.md with cc-sdd section
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      await fs.writeFile(targetPath, `# Project\n\n## Minimal Workflow\n\n### Feature Development (Full SDD)\n\n/kiro:spec-init`, 'utf-8');
-
-      const status = await installer.checkInstallStatus(tempDir);
-
-      expect(status.claudeMd.exists).toBe(true);
-      expect(status.claudeMd.hasCcSddSection).toBe(true);
-    });
-
-    it('should detect CLAUDE.md without cc-sdd section', async () => {
-      // Create CLAUDE.md without cc-sdd section
-      const targetPath = path.join(tempDir, 'CLAUDE.md');
-      await fs.writeFile(targetPath, '# Project\n\n## Other content', 'utf-8');
-
-      const status = await installer.checkInstallStatus(tempDir);
-
-      expect(status.claudeMd.exists).toBe(true);
-      expect(status.claudeMd.hasCcSddSection).toBe(false);
     });
   });
 });
@@ -657,8 +562,8 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
       await fs.writeFile(filePath, `# Template for ${template}`, 'utf-8');
     }
 
-    const claudeMdPath = path.join(templateDir, 'CLAUDE.md');
-    await fs.writeFile(claudeMdPath, `# AI-DLC\n\n${CC_SDD_WORKFLOW_CLAUDE_MD_SECTION}`, 'utf-8');
+    // claudemd-profile-install-merge: CLAUDE.md template creation removed
+    // CLAUDE.md installation is now handled by the claudemd-merge Agent
   });
 
   afterEach(async () => {

@@ -1,12 +1,14 @@
 /**
  * CommandInstallerService
- * Installs Slash Command files, SDD settings, and CLAUDE.md to projects
+ * Installs Slash Command files and SDD settings to projects
  * Requirements: 4.3, 4.5, 4.6
+ *
+ * Note: CLAUDE.md installation is now handled by the claudemd-merge Agent
+ * (claudemd-profile-install-merge feature)
  */
 
 import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { join, dirname } from 'path';
-import { spawn } from 'child_process';
 import { REQUIRED_SETTINGS, COMMANDS_BY_PROFILE, ProfileName } from './projectChecker';
 import { getTemplatesPath } from '../utils/resourcePaths';
 
@@ -40,21 +42,7 @@ export interface FullInstallResult {
 export type InstallError =
   | { type: 'TEMPLATE_NOT_FOUND'; path: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
-  | { type: 'PERMISSION_DENIED'; path: string }
-  | { type: 'MERGE_ERROR'; message: string };
-
-/**
- * CLAUDE.md install mode
- */
-export type ClaudeMdInstallMode = 'overwrite' | 'merge' | 'skip';
-
-/**
- * CLAUDE.md install result
- */
-export interface ClaudeMdInstallResult {
-  readonly mode: ClaudeMdInstallMode;
-  readonly existed: boolean;
-}
+  | { type: 'PERMISSION_DENIED'; path: string };
 
 /**
  * Result type
@@ -266,142 +254,6 @@ export class CommandInstallerService {
     projectPath: string
   ): Promise<Result<FullInstallResult, InstallError>> {
     return this.installAll(projectPath, { force: true });
-  }
-
-  /**
-   * Check if CLAUDE.md exists in project
-   * @param projectPath - Project root path
-   * @returns true if CLAUDE.md exists
-   */
-  async claudeMdExists(projectPath: string): Promise<boolean> {
-    const targetPath = join(projectPath, 'CLAUDE.md');
-    return fileExists(targetPath);
-  }
-
-  /**
-   * Install CLAUDE.md to project
-   * @param projectPath - Project root path
-   * @param mode - Install mode: 'overwrite', 'merge', or 'skip'
-   * @returns Install result
-   */
-  async installClaudeMd(
-    projectPath: string,
-    mode: ClaudeMdInstallMode
-  ): Promise<Result<ClaudeMdInstallResult, InstallError>> {
-    const templatePath = join(this.templateDir, 'CLAUDE.md');
-    const targetPath = join(projectPath, 'CLAUDE.md');
-
-    // Check if template exists
-    if (!(await fileExists(templatePath))) {
-      return {
-        ok: false,
-        error: { type: 'TEMPLATE_NOT_FOUND', path: templatePath },
-      };
-    }
-
-    const existed = await fileExists(targetPath);
-
-    if (mode === 'skip') {
-      return { ok: true, value: { mode: 'skip', existed } };
-    }
-
-    try {
-      const templateContent = await readFile(templatePath, 'utf-8');
-
-      if (mode === 'overwrite' || !existed) {
-        // Simply write the template
-        await writeFile(targetPath, templateContent, 'utf-8');
-        return { ok: true, value: { mode: existed ? 'overwrite' : 'overwrite', existed } };
-      }
-
-      // Semantic merge
-      const existingContent = await readFile(targetPath, 'utf-8');
-      const mergedContent = await this.semanticMergeClaudeMd(templateContent, existingContent);
-      await writeFile(targetPath, mergedContent, 'utf-8');
-      return { ok: true, value: { mode: 'merge', existed } };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('EACCES') || message.includes('EPERM')) {
-        return {
-          ok: false,
-          error: { type: 'PERMISSION_DENIED', path: targetPath },
-        };
-      }
-      if (message.includes('merge')) {
-        return {
-          ok: false,
-          error: { type: 'MERGE_ERROR', message },
-        };
-      }
-      return {
-        ok: false,
-        error: { type: 'WRITE_ERROR', path: targetPath, message },
-      };
-    }
-  }
-
-  /**
-   * Semantic merge of CLAUDE.md using claude -p
-   * @param templateContent - Template content (new version)
-   * @param existingContent - Existing content (user's customizations)
-   * @returns Merged content
-   */
-  private async semanticMergeClaudeMd(
-    templateContent: string,
-    existingContent: string
-  ): Promise<string> {
-    const prompt = `以下の2つのCLAUDE.mdファイルをセマンティックにマージしてください。
-
-【テンプレート（新しいバージョン）】
----
-${templateContent}
----
-
-【既存ファイル（ユーザーのカスタマイズ）】
----
-${existingContent}
----
-
-マージルール:
-1. テンプレートの構造とセクションを基本とする
-2. ユーザーがカスタマイズした内容（プロジェクト固有の設定、追加のコマンド、開発ルールなど）は保持する
-3. テンプレートで更新された部分（コマンド名の変更、新機能の追加など）は反映する
-4. 重複するセクションは統合し、情報は失わない
-5. プレースホルダー（{{KIRO_DIR}}など）はテンプレートのまま残す
-
-結果は以下の形式で出力してください：
-- マージ後のCLAUDE.mdの完全な内容のみを出力
-- 説明や解説は不要`;
-
-    return new Promise((resolve, reject) => {
-      const claude = spawn('claude', ['-p', prompt], {
-        shell: true,
-        env: { ...process.env },
-      });
-
-      let output = '';
-      let errorOutput = '';
-
-      claude.stdout.on('data', (data: Buffer) => {
-        output += data.toString();
-      });
-
-      claude.stderr.on('data', (data: Buffer) => {
-        errorOutput += data.toString();
-      });
-
-      claude.on('close', (code: number | null) => {
-        if (code === 0 && output.trim()) {
-          resolve(output.trim());
-        } else {
-          reject(new Error(`Semantic merge failed: ${errorOutput || `exit code ${code}`}`));
-        }
-      });
-
-      claude.on('error', (err: Error) => {
-        reject(new Error(`Failed to spawn claude: ${err.message}`));
-      });
-    });
   }
 }
 

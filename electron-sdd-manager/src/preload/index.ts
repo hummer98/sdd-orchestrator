@@ -14,11 +14,10 @@ import type { AgentInfo, AgentStatus } from '../main/services/agentRecordService
 import type { ParsedLogEntry } from '../shared/utils/parserTypes';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
-import type { FullInstallResult, InstallResult, InstallError, Result, ClaudeMdInstallMode, ClaudeMdInstallResult } from '../main/services/commandInstallerService';
+import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
 import type { AddPermissionsResult } from '../main/services/permissionsService';
 import type { CliInstallStatus, CliInstallResult } from '../main/services/cliInstallerService';
 import type { ServerStartResult, ServerStatus, ServerError } from '../main/services/remoteAccessServer';
-import type { CcSddWorkflowInstallResult, CcSddWorkflowInstallStatus, InstallError as CcSddInstallError, Result as CcSddResult } from '../main/services/ccSddWorkflowInstaller';
 import type { ProfileName, UnifiedInstallResult, UnifiedInstallStatus } from '../main/services/unifiedCommandsetInstaller';
 import type { BugDetail, BugsChangeEvent, ReadBugsResult } from '../renderer/types';
 import type { LayoutValues } from '../main/services/configStore';
@@ -418,13 +417,6 @@ const electronAPI = {
   forceReinstallSpecManagerAll: (projectPath: string): Promise<Result<FullInstallResult, InstallError>> =>
     ipcRenderer.invoke(IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL, projectPath),
 
-  // CLAUDE.md Install
-  checkClaudeMdExists: (projectPath: string): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS, projectPath),
-
-  installClaudeMd: (projectPath: string, mode: ClaudeMdInstallMode): Promise<Result<ClaudeMdInstallResult, InstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CLAUDE_MD, projectPath, mode),
-
   // Phase Sync - Auto-fix spec.json phase based on task completion
   // options.skipTimestamp: If true, do not update updated_at (used for UI auto-correction)
   // spec-path-ssot-refactor Task 5.4: Change from specPath to specName
@@ -722,27 +714,6 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.CLOUDFLARE_TUNNEL_STATUS_CHANGED, handler);
     };
   },
-
-  // ============================================================
-  // cc-sdd Workflow Install (cc-sdd-command-installer feature)
-  // ============================================================
-
-  /**
-   * Check cc-sdd workflow installation status
-   * @param projectPath Project root path
-   * @returns Installation status for commands, agents, settings, and CLAUDE.md
-   */
-  checkCcSddWorkflowStatus: (projectPath: string): Promise<CcSddWorkflowInstallStatus> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS, projectPath),
-
-  /**
-   * Install cc-sdd workflow (commands, agents, settings, CLAUDE.md section)
-   * Includes Bug Workflow integration
-   * @param projectPath Project root path
-   * @returns Installation result
-   */
-  installCcSddWorkflow: (projectPath: string): Promise<CcSddResult<CcSddWorkflowInstallResult, CcSddInstallError>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW, projectPath),
 
   /**
    * Menu event - Install Commandset (Unified Installer)

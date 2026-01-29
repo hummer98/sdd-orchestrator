@@ -23,7 +23,7 @@ import { IPC_CHANNELS } from './channels';
 import { access, rm } from 'fs/promises';
 import { join } from 'path';
 import { logger } from '../services/logger';
-import type { CommandInstallerService, ClaudeMdInstallMode } from '../services/commandInstallerService';
+import type { CommandInstallerService } from '../services/commandInstallerService';
 import type { ProjectChecker } from '../services/projectChecker';
 import type { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
 import type {
@@ -42,6 +42,7 @@ import type {
 } from '../services/experimentalToolsInstallerService';
 import type { CommandsetVersionService } from '../services/commandsetVersionService';
 import type { CliInstallStatus, CliInstallResult, InstallLocation } from '../services/cliInstallerService';
+import type { SpecManagerService } from '../services/specManagerService';
 
 /**
  * Manual install instructions type (matches getManualInstallInstructions return type)
@@ -80,6 +81,12 @@ export interface InstallHandlersDependencies {
   installCliCommand: (location?: InstallLocation) => Promise<CliInstallResult>;
   /** Function to get manual install instructions */
   getManualInstallInstructions: (location?: InstallLocation) => ManualInstallInstructions;
+  /**
+   * Function to get SpecManagerService instance for Agent startup
+   * claudemd-profile-install-merge: Added for CLAUDE.md merge Agent
+   * Requirements: 2.1, 2.4
+   */
+  getSpecManagerService?: () => SpecManagerService | null;
 }
 
 /**
@@ -92,7 +99,6 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   const {
     commandInstallerService,
     projectChecker,
-    ccSddWorkflowInstaller,
     unifiedCommandsetInstaller,
     experimentalToolsInstaller,
     commandsetVersionService,
@@ -151,46 +157,6 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   );
 
   // ============================================================
-  // CLAUDE.md Install Handlers
-  // ============================================================
-
-  ipcMain.handle(
-    IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS,
-    async (_event, projectPath: string) => {
-      logger.info('[installHandlers] CHECK_CLAUDE_MD_EXISTS called', { projectPath });
-      return commandInstallerService.claudeMdExists(projectPath);
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.INSTALL_CLAUDE_MD,
-    async (_event, projectPath: string, mode: ClaudeMdInstallMode) => {
-      logger.info('[installHandlers] INSTALL_CLAUDE_MD called', { projectPath, mode });
-      return commandInstallerService.installClaudeMd(projectPath, mode);
-    }
-  );
-
-  // ============================================================
-  // cc-sdd Workflow Install Handlers (cc-sdd-command-installer feature)
-  // ============================================================
-
-  ipcMain.handle(
-    IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS,
-    async (_event, projectPath: string) => {
-      logger.info('[installHandlers] CHECK_CC_SDD_WORKFLOW_STATUS called', { projectPath });
-      return ccSddWorkflowInstaller.checkInstallStatus(projectPath);
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW,
-    async (_event, projectPath: string) => {
-      logger.info('[installHandlers] INSTALL_CC_SDD_WORKFLOW called', { projectPath });
-      return ccSddWorkflowInstaller.installAll(projectPath);
-    }
-  );
-
-  // ============================================================
   // Unified Commandset Install Handlers (commandset-unified-installer feature)
   // Requirements: 11.1
   // ============================================================
@@ -232,10 +198,11 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
 
       if (!result.ok) {
         logger.error('[installHandlers] INSTALL_COMMANDSET_BY_PROFILE failed', { error: result.error });
-        const errorMessage = 'path' in result.error ? result.error.path : ('message' in result.error ? result.error.message : 'Installation failed');
+        const err = result.error;
+        const errorMessage = 'message' in err ? err.message : ('path' in err ? err.path : 'Installation failed');
         return {
           ok: false,
-          error: { type: result.error.type, message: errorMessage }
+          error: { type: err.type, message: errorMessage }
         };
       }
 
@@ -245,6 +212,35 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
         totalSkipped: result.value.summary.totalSkipped,
         totalFailed: result.value.summary.totalFailed
       });
+
+      // claudemd-profile-install-merge: Start claudemd-merge Agent for cc-sdd/cc-sdd-agent profiles
+      // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+      if (profileName === 'cc-sdd' || profileName === 'cc-sdd-agent') {
+        const specManagerService = deps.getSpecManagerService?.();
+        if (specManagerService) {
+          // Fire-and-forget: Don't await the Agent startup
+          // Requirements: 2.4, 2.5 - Background execution, return result immediately
+          specManagerService.startAgent({
+            specId: '',
+            phase: 'claudemd-merge',
+            command: 'claude',
+            args: ['/internal:claudemd-merge'],
+            group: 'doc',
+          }).then((agentResult) => {
+            if (agentResult.ok) {
+              logger.info('[installHandlers] claudemd-merge agent started', { agentId: agentResult.value.agentId });
+            } else {
+              // Requirements: 2.6 - Agent startup failure is logged as warning only
+              logger.warn('[installHandlers] Failed to start claudemd-merge agent', { error: agentResult.error });
+            }
+          }).catch((error) => {
+            // Requirements: 2.6 - Catch any unexpected errors
+            logger.warn('[installHandlers] Failed to start claudemd-merge agent', { error: error instanceof Error ? error.message : String(error) });
+          });
+        } else {
+          logger.warn('[installHandlers] SpecManagerService not available for claudemd-merge agent');
+        }
+      }
 
       return result;
     }

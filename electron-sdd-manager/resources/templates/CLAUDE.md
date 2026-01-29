@@ -5,23 +5,21 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 ## Project Context
 
 ### Paths
-- Steering: `{{KIRO_DIR}}/steering/`
-- Specs: `{{KIRO_DIR}}/specs/`
+- Steering: `.kiro/steering/`
+- Specs: `.kiro/specs/`
 
 ### Steering vs Specification
 
-**Steering** (`{{KIRO_DIR}}/steering/`) - Guide AI with project-wide rules and context
-**Specs** (`{{KIRO_DIR}}/specs/`) - Formalize development process for individual features
+**Steering** (`.kiro/steering/`) - Guide AI with project-wide rules and context
+**Specs** (`.kiro/specs/`) - Formalize development process for individual features
 
 ### Active Specifications
-- Check `{{KIRO_DIR}}/specs/` for active specifications
+- Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 
 ## Development Guidelines
 
 - **Timestamps**: Always generate UTC timestamps using `date -u +"%Y-%m-%dT%H:%M:%SZ"` for ISO 8601 fields (spec.json, bug.json, inspection reports, etc.). Never use local time with Z suffix.
-
-{{DEV_GUIDELINES}}
 
 ## Minimal Workflow
 

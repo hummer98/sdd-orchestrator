@@ -206,21 +206,7 @@ export interface FullInstallResult {
 export type InstallError =
   | { type: 'TEMPLATE_NOT_FOUND'; path: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
-  | { type: 'PERMISSION_DENIED'; path: string }
-  | { type: 'MERGE_ERROR'; message: string };
-
-/**
- * CLAUDE.md install mode
- */
-export type ClaudeMdInstallMode = 'overwrite' | 'merge' | 'skip';
-
-/**
- * CLAUDE.md install result
- */
-export interface ClaudeMdInstallResult {
-  readonly mode: ClaudeMdInstallMode;
-  readonly existed: boolean;
-}
+  | { type: 'PERMISSION_DENIED'; path: string };
 
 /**
  * Result type for spec-manager operations
@@ -326,25 +312,18 @@ export type ServerError =
   | { type: 'NETWORK_ERROR'; message: string };
 
 /**
- * cc-sdd Workflow CLAUDE.md update result
- */
-export interface CcSddWorkflowClaudeMdResult {
-  readonly action: 'created' | 'merged' | 'skipped';
-  readonly reason?: 'already_exists';
-}
-
-/**
  * cc-sdd Workflow install result
+ * Note: CLAUDE.md installation is now handled by the claudemd-merge Agent
  */
 export interface CcSddWorkflowInstallResult {
   readonly commands: InstallResult;
   readonly agents: InstallResult;
   readonly settings: InstallResult;
-  readonly claudeMd: CcSddWorkflowClaudeMdResult;
 }
 
 /**
  * cc-sdd Workflow install status
+ * Note: CLAUDE.md status check is now handled by the claudemd-merge Agent
  */
 export interface CcSddWorkflowInstallStatus {
   readonly commands: {
@@ -358,10 +337,6 @@ export interface CcSddWorkflowInstallStatus {
   readonly settings: {
     readonly installed: readonly string[];
     readonly missing: readonly string[];
-  };
-  readonly claudeMd: {
-    readonly exists: boolean;
-    readonly hasCcSddSection: boolean;
   };
 }
 
@@ -715,10 +690,6 @@ export interface ElectronAPI {
   installSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
   forceReinstallSpecManagerAll(projectPath: string): Promise<Result<FullInstallResult, InstallError>>;
 
-  // CLAUDE.md Install
-  checkClaudeMdExists(projectPath: string): Promise<boolean>;
-  installClaudeMd(projectPath: string, mode: ClaudeMdInstallMode): Promise<Result<ClaudeMdInstallResult, InstallError>>;
-
   // Menu Events
   onMenuOpenProject(callback: (projectPath: string) => void): () => void;
 
@@ -801,10 +772,6 @@ export interface ElectronAPI {
   getCloudflareSettings(): Promise<CloudflareSettings>;
   setCloudfareTunnelToken(token: string): Promise<void>;
   refreshAccessToken(): Promise<RefreshAccessTokenResult>;
-
-  // cc-sdd Workflow Install
-  checkCcSddWorkflowStatus(projectPath: string): Promise<CcSddWorkflowInstallStatus>;
-  installCcSddWorkflow(projectPath: string): Promise<Result<CcSddWorkflowInstallResult, InstallError>>;
 
   // Unified Commandset Install
   onMenuInstallCommandset(callback: () => void): () => void;

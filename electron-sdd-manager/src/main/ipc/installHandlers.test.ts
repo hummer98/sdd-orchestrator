@@ -3,12 +3,16 @@
  * Unit tests for install-related IPC handlers
  * Task 2.1: TDD - Write tests first
  * Requirements: 1.2, 2.1, 2.2, 2.3, 4.1, 4.2
+ *
+ * claudemd-profile-install-merge: Updated tests for Agent-based CLAUDE.md installation
+ * - Removed tests for CHECK_CLAUDE_MD_EXISTS, INSTALL_CLAUDE_MD handlers
+ * - Removed tests for CHECK_CC_SDD_WORKFLOW_STATUS, INSTALL_CC_SDD_WORKFLOW handlers
+ * - Added tests for claudemd-merge Agent startup after cc-sdd/cc-sdd-agent profile installation
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
-import type { ClaudeMdInstallMode } from '../services/commandInstallerService';
 import type { ProfileName, UnifiedInstallStatus, UnifiedInstallResult } from '../services/unifiedCommandsetInstaller';
 import type {
   InstallOptions as ExperimentalInstallOptions,
@@ -51,8 +55,6 @@ describe('installHandlers', () => {
     installSettings: ReturnType<typeof vi.fn>;
     installAll: ReturnType<typeof vi.fn>;
     forceReinstallAll: ReturnType<typeof vi.fn>;
-    claudeMdExists: ReturnType<typeof vi.fn>;
-    installClaudeMd: ReturnType<typeof vi.fn>;
   };
 
   let mockProjectChecker: {
@@ -85,6 +87,12 @@ describe('installHandlers', () => {
   let mockInstallCliCommand: ReturnType<typeof vi.fn>;
   let mockGetManualInstallInstructions: ReturnType<typeof vi.fn>;
 
+  // claudemd-profile-install-merge: Mock SpecManagerService for Agent startup tests
+  let mockGetSpecManagerService: ReturnType<typeof vi.fn>;
+  let mockSpecManagerService: {
+    startAgent: ReturnType<typeof vi.fn>;
+  };
+
   // Store registered handlers for testing
   const registeredHandlers: Map<string, (...args: unknown[]) => Promise<unknown>> = new Map();
 
@@ -107,9 +115,13 @@ describe('installHandlers', () => {
       installSettings: vi.fn(),
       installAll: vi.fn(),
       forceReinstallAll: vi.fn(),
-      claudeMdExists: vi.fn(),
-      installClaudeMd: vi.fn(),
     };
+
+    // claudemd-profile-install-merge: Initialize mock SpecManagerService
+    mockSpecManagerService = {
+      startAgent: vi.fn(),
+    };
+    mockGetSpecManagerService = vi.fn(() => mockSpecManagerService);
 
     mockProjectChecker = {
       checkAll: vi.fn(),
@@ -163,15 +175,12 @@ describe('installHandlers', () => {
       });
 
       // Verify all install handlers are registered
+      // claudemd-profile-install-merge: Removed CHECK_CLAUDE_MD_EXISTS, INSTALL_CLAUDE_MD, CHECK_CC_SDD_WORKFLOW_STATUS, INSTALL_CC_SDD_WORKFLOW
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_SPEC_MANAGER_COMMANDS, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_SPEC_MANAGER_SETTINGS, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_SPEC_MANAGER_ALL, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL, expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS, expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_CLAUDE_MD, expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS, expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.CHECK_COMMANDSET_STATUS, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE, expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith(IPC_CHANNELS.CHECK_AGENT_FOLDER_EXISTS, expect.any(Function));
@@ -325,112 +334,8 @@ describe('installHandlers', () => {
     });
   });
 
-  describe('CHECK_CLAUDE_MD_EXISTS handler', () => {
-    it('should check if CLAUDE.md exists via commandInstallerService', async () => {
-      const { registerInstallHandlers } = await import('./installHandlers');
-
-      mockCommandInstallerService.claudeMdExists.mockResolvedValue(true);
-
-      registerInstallHandlers({
-        commandInstallerService: mockCommandInstallerService as any,
-        projectChecker: mockProjectChecker as any,
-        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
-        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
-        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
-        commandsetVersionService: mockCommandsetVersionService as any,
-        getCliInstallStatus: mockGetCliInstallStatus,
-        installCliCommand: mockInstallCliCommand,
-        getManualInstallInstructions: mockGetManualInstallInstructions,
-      });
-
-      const handler = registeredHandlers.get(IPC_CHANNELS.CHECK_CLAUDE_MD_EXISTS);
-      expect(handler).toBeDefined();
-
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project');
-      expect(result).toBe(true);
-      expect(mockCommandInstallerService.claudeMdExists).toHaveBeenCalledWith('/path/to/project');
-    });
-  });
-
-  describe('INSTALL_CLAUDE_MD handler', () => {
-    it('should install CLAUDE.md via commandInstallerService', async () => {
-      const { registerInstallHandlers } = await import('./installHandlers');
-
-      mockCommandInstallerService.installClaudeMd.mockResolvedValue({ ok: true });
-
-      registerInstallHandlers({
-        commandInstallerService: mockCommandInstallerService as any,
-        projectChecker: mockProjectChecker as any,
-        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
-        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
-        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
-        commandsetVersionService: mockCommandsetVersionService as any,
-        getCliInstallStatus: mockGetCliInstallStatus,
-        installCliCommand: mockInstallCliCommand,
-        getManualInstallInstructions: mockGetManualInstallInstructions,
-      });
-
-      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_CLAUDE_MD);
-      expect(handler).toBeDefined();
-
-      await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project', 'overwrite');
-      expect(mockCommandInstallerService.installClaudeMd).toHaveBeenCalledWith('/path/to/project', 'overwrite');
-    });
-  });
-
-  describe('CHECK_CC_SDD_WORKFLOW_STATUS handler', () => {
-    it('should check cc-sdd workflow status via ccSddWorkflowInstaller', async () => {
-      const { registerInstallHandlers } = await import('./installHandlers');
-
-      const mockStatus = { installed: true, version: '1.0.0' };
-      mockCcSddWorkflowInstaller.checkInstallStatus.mockResolvedValue(mockStatus);
-
-      registerInstallHandlers({
-        commandInstallerService: mockCommandInstallerService as any,
-        projectChecker: mockProjectChecker as any,
-        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
-        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
-        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
-        commandsetVersionService: mockCommandsetVersionService as any,
-        getCliInstallStatus: mockGetCliInstallStatus,
-        installCliCommand: mockInstallCliCommand,
-        getManualInstallInstructions: mockGetManualInstallInstructions,
-      });
-
-      const handler = registeredHandlers.get(IPC_CHANNELS.CHECK_CC_SDD_WORKFLOW_STATUS);
-      expect(handler).toBeDefined();
-
-      const result = await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project');
-      expect(result).toEqual(mockStatus);
-      expect(mockCcSddWorkflowInstaller.checkInstallStatus).toHaveBeenCalledWith('/path/to/project');
-    });
-  });
-
-  describe('INSTALL_CC_SDD_WORKFLOW handler', () => {
-    it('should install cc-sdd workflow via ccSddWorkflowInstaller', async () => {
-      const { registerInstallHandlers } = await import('./installHandlers');
-
-      mockCcSddWorkflowInstaller.installAll.mockResolvedValue({ ok: true });
-
-      registerInstallHandlers({
-        commandInstallerService: mockCommandInstallerService as any,
-        projectChecker: mockProjectChecker as any,
-        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
-        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
-        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
-        commandsetVersionService: mockCommandsetVersionService as any,
-        getCliInstallStatus: mockGetCliInstallStatus,
-        installCliCommand: mockInstallCliCommand,
-        getManualInstallInstructions: mockGetManualInstallInstructions,
-      });
-
-      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_CC_SDD_WORKFLOW);
-      expect(handler).toBeDefined();
-
-      await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project');
-      expect(mockCcSddWorkflowInstaller.installAll).toHaveBeenCalledWith('/path/to/project');
-    });
-  });
+  // claudemd-profile-install-merge: Removed tests for CHECK_CLAUDE_MD_EXISTS, INSTALL_CLAUDE_MD,
+  // CHECK_CC_SDD_WORKFLOW_STATUS, INSTALL_CC_SDD_WORKFLOW handlers (these handlers were removed)
 
   describe('CHECK_COMMANDSET_STATUS handler', () => {
     it('should check commandset status via unifiedCommandsetInstaller', async () => {
@@ -537,6 +442,178 @@ describe('installHandlers', () => {
 
       const result = await handler!(mockEvent, '/path/to/project', 'cc-sdd' as ProfileName);
       expect(result).toHaveProperty('ok', false);
+    });
+
+    // claudemd-profile-install-merge: Tests for Agent startup after profile installation
+    // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+
+    it('should start claudemd-merge agent for cc-sdd profile after successful install', async () => {
+      const { registerInstallHandlers } = await import('./installHandlers');
+
+      const mockResult: { ok: true; value: UnifiedInstallResult } = {
+        ok: true,
+        value: {
+          summary: { totalInstalled: 5, totalSkipped: 0, totalFailed: 0 },
+          results: [],
+        } as unknown as UnifiedInstallResult,
+      };
+      mockUnifiedCommandsetInstaller.installByProfile.mockResolvedValue(mockResult);
+
+      // Setup SpecManagerService mock to track startAgent calls
+      mockSpecManagerService.startAgent.mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-123' },
+      });
+
+      registerInstallHandlers({
+        commandInstallerService: mockCommandInstallerService as any,
+        projectChecker: mockProjectChecker as any,
+        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
+        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
+        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
+        commandsetVersionService: mockCommandsetVersionService as any,
+        getCliInstallStatus: mockGetCliInstallStatus,
+        installCliCommand: mockInstallCliCommand,
+        getManualInstallInstructions: mockGetManualInstallInstructions,
+        getSpecManagerService: mockGetSpecManagerService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE);
+      const mockEvent = { sender: {} } as Electron.IpcMainInvokeEvent;
+      vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null);
+
+      const result = await handler!(mockEvent, '/path/to/project', 'cc-sdd' as ProfileName);
+
+      // Install result should be returned immediately (fire-and-forget for Agent)
+      expect(result).toEqual(mockResult);
+
+      // Wait for microtasks to complete (fire-and-forget startAgent)
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Verify startAgent was called with correct parameters
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith({
+        specId: '',
+        phase: 'claudemd-merge',
+        command: 'claude',
+        args: ['/internal:claudemd-merge'],
+        group: 'doc',
+      });
+    });
+
+    it('should start claudemd-merge agent for cc-sdd-agent profile after successful install', async () => {
+      const { registerInstallHandlers } = await import('./installHandlers');
+
+      const mockResult: { ok: true; value: UnifiedInstallResult } = {
+        ok: true,
+        value: {
+          summary: { totalInstalled: 5, totalSkipped: 0, totalFailed: 0 },
+          results: [],
+        } as unknown as UnifiedInstallResult,
+      };
+      mockUnifiedCommandsetInstaller.installByProfile.mockResolvedValue(mockResult);
+      mockSpecManagerService.startAgent.mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-456' },
+      });
+
+      registerInstallHandlers({
+        commandInstallerService: mockCommandInstallerService as any,
+        projectChecker: mockProjectChecker as any,
+        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
+        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
+        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
+        commandsetVersionService: mockCommandsetVersionService as any,
+        getCliInstallStatus: mockGetCliInstallStatus,
+        installCliCommand: mockInstallCliCommand,
+        getManualInstallInstructions: mockGetManualInstallInstructions,
+        getSpecManagerService: mockGetSpecManagerService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE);
+      const mockEvent = { sender: {} } as Electron.IpcMainInvokeEvent;
+      vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null);
+
+      await handler!(mockEvent, '/path/to/project', 'cc-sdd-agent' as ProfileName);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalled();
+    });
+
+    it('should NOT start claudemd-merge agent for spec-manager profile', async () => {
+      const { registerInstallHandlers } = await import('./installHandlers');
+
+      const mockResult: { ok: true; value: UnifiedInstallResult } = {
+        ok: true,
+        value: {
+          summary: { totalInstalled: 5, totalSkipped: 0, totalFailed: 0 },
+          results: [],
+        } as unknown as UnifiedInstallResult,
+      };
+      mockUnifiedCommandsetInstaller.installByProfile.mockResolvedValue(mockResult);
+
+      registerInstallHandlers({
+        commandInstallerService: mockCommandInstallerService as any,
+        projectChecker: mockProjectChecker as any,
+        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
+        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
+        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
+        commandsetVersionService: mockCommandsetVersionService as any,
+        getCliInstallStatus: mockGetCliInstallStatus,
+        installCliCommand: mockInstallCliCommand,
+        getManualInstallInstructions: mockGetManualInstallInstructions,
+        getSpecManagerService: mockGetSpecManagerService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE);
+      const mockEvent = { sender: {} } as Electron.IpcMainInvokeEvent;
+      vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null);
+
+      await handler!(mockEvent, '/path/to/project', 'spec-manager' as ProfileName);
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // spec-manager profile should NOT trigger claudemd-merge agent
+      expect(mockSpecManagerService.startAgent).not.toHaveBeenCalled();
+    });
+
+    it('should still return success even if Agent startup fails (Requirements: 2.5, 2.6)', async () => {
+      const { registerInstallHandlers } = await import('./installHandlers');
+
+      const mockResult: { ok: true; value: UnifiedInstallResult } = {
+        ok: true,
+        value: {
+          summary: { totalInstalled: 5, totalSkipped: 0, totalFailed: 0 },
+          results: [],
+        } as unknown as UnifiedInstallResult,
+      };
+      mockUnifiedCommandsetInstaller.installByProfile.mockResolvedValue(mockResult);
+
+      // Agent startup fails
+      mockSpecManagerService.startAgent.mockResolvedValue({
+        ok: false,
+        error: { type: 'AGENT_ERROR', message: 'Agent failed' },
+      });
+
+      registerInstallHandlers({
+        commandInstallerService: mockCommandInstallerService as any,
+        projectChecker: mockProjectChecker as any,
+        ccSddWorkflowInstaller: mockCcSddWorkflowInstaller as any,
+        unifiedCommandsetInstaller: mockUnifiedCommandsetInstaller as any,
+        experimentalToolsInstaller: mockExperimentalToolsInstaller as any,
+        commandsetVersionService: mockCommandsetVersionService as any,
+        getCliInstallStatus: mockGetCliInstallStatus,
+        installCliCommand: mockInstallCliCommand,
+        getManualInstallInstructions: mockGetManualInstallInstructions,
+        getSpecManagerService: mockGetSpecManagerService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE);
+      const mockEvent = { sender: {} } as Electron.IpcMainInvokeEvent;
+      vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null);
+
+      const result = await handler!(mockEvent, '/path/to/project', 'cc-sdd' as ProfileName);
+
+      // Install result should still be success (Agent failure is handled gracefully)
+      expect(result).toEqual(mockResult);
     });
   });
 

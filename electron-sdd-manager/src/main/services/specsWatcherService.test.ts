@@ -6,6 +6,7 @@ vi.mock('chokidar', () => ({
   watch: vi.fn(() => ({
     on: vi.fn().mockReturnThis(),
     close: vi.fn().mockResolvedValue(undefined),
+    unwatch: vi.fn(),
   })),
 }));
 
@@ -301,9 +302,11 @@ describe('SpecsWatcherService', () => {
     it('should reset watcher when resetWatchPath is called', async () => {
       const chokidar = await import('chokidar');
       const mockClose = vi.fn().mockResolvedValue(undefined);
+      const mockUnwatch = vi.fn();
       const mockWatcher = {
         on: vi.fn().mockReturnThis(),
         close: mockClose,
+        unwatch: mockUnwatch,
       };
       (chokidar.watch as any).mockReturnValue(mockWatcher);
 

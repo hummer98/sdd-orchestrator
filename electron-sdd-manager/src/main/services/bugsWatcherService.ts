@@ -34,6 +34,8 @@ export class BugsWatcherService {
   /** Debounce timers for worktree additions (500ms) */
   private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
   private worktreeAdditionDebounceMs = 500;
+  /** Tracks all currently watched paths to prevent duplicate monitoring */
+  private watchedPaths: Set<string> = new Set();
 
   constructor(projectPath: string) {
     this.projectPath = projectPath;
@@ -130,6 +132,11 @@ export class BugsWatcherService {
     }
 
     logger.info('[BugsWatcherService] Starting watcher with 2-tier monitoring', { watchPaths });
+
+    // Track all initial watch paths
+    for (const watchPath of watchPaths) {
+      this.watchedPaths.add(watchPath);
+    }
 
     this.watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
@@ -230,12 +237,19 @@ export class BugsWatcherService {
 
       const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
 
+      // Prevent duplicate monitoring
+      if (this.watchedPaths.has(innerBugPath)) {
+        logger.debug('[BugsWatcherService] Path already watched, skipping duplicate add', { entityName, innerBugPath });
+        return;
+      }
+
       // Check if inner bug path exists
       try {
         await access(innerBugPath, constants.F_OK);
 
-        // Add to watcher
+        // Add to watcher and track in watchedPaths
         this.watcher?.add(innerBugPath);
+        this.watchedPaths.add(innerBugPath);
         logger.info('[BugsWatcherService] Added worktree inner bug path to watcher', { entityName, innerBugPath });
 
         // Trigger callback to refresh bugs list (aligned with SpecsWatcherService)
@@ -275,14 +289,19 @@ export class BugsWatcherService {
 
     const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
 
-    // Remove from watcher
-    this.watcher.unwatch(innerBugPath);
-    logger.info('[BugsWatcherService] Removed worktree inner bug path from watcher', { entityName, innerBugPath });
+    // Remove from watcher and watchedPaths
+    if (this.watchedPaths.has(innerBugPath)) {
+      this.watcher.unwatch(innerBugPath);
+      this.watchedPaths.delete(innerBugPath);
+      logger.info('[BugsWatcherService] Removed worktree inner bug path from watcher', { entityName, innerBugPath });
 
-    // Trigger callback to refresh bugs list (aligned with SpecsWatcherService)
-    const event: BugsChangeEvent = { type: 'unlinkDir', path: innerBugPath, bugName: entityName };
-    this.callbacks.forEach((cb) => cb(event));
-    logger.debug('[BugsWatcherService] Triggered callback for worktree bug removal', { entityName });
+      // Trigger callback to refresh bugs list (aligned with SpecsWatcherService)
+      const event: BugsChangeEvent = { type: 'unlinkDir', path: innerBugPath, bugName: entityName };
+      this.callbacks.forEach((cb) => cb(event));
+      logger.debug('[BugsWatcherService] Triggered callback for worktree bug removal', { entityName });
+    } else {
+      logger.debug('[BugsWatcherService] Path not in watchedPaths, skipping unwatch', { entityName, innerBugPath });
+    }
   }
 
   /**
@@ -305,9 +324,18 @@ export class BugsWatcherService {
   async stop(): Promise<void> {
     if (this.watcher) {
       logger.info('[BugsWatcherService] Stopping watcher');
+
+      // Unwatch all tracked paths before closing
+      for (const watchedPath of this.watchedPaths) {
+        this.watcher.unwatch(watchedPath);
+      }
+
       await this.watcher.close();
       this.watcher = null;
     }
+
+    // Clear watchedPaths Set
+    this.watchedPaths.clear();
 
     // Clear all debounce timers
     for (const timer of this.debounceTimers.values()) {
@@ -366,9 +394,17 @@ export class BugsWatcherService {
 
     // Close existing watcher if running
     if (this.watcher) {
+      // Unwatch all tracked paths before closing
+      for (const watchedPath of this.watchedPaths) {
+        this.watcher.unwatch(watchedPath);
+      }
+
       await this.watcher.close();
       this.watcher = null;
     }
+
+    // Clear watchedPaths Set
+    this.watchedPaths.clear();
 
     // Clear all debounce timers
     for (const timer of this.debounceTimers.values()) {
@@ -378,6 +414,9 @@ export class BugsWatcherService {
 
     // Start new watcher with the new path
     logger.info('[BugsWatcherService] Starting new watcher', { newWatchPath });
+
+    // Track the new watch path
+    this.watchedPaths.add(newWatchPath);
 
     this.watcher = chokidar.watch(newWatchPath, {
       ignoreInitial: true,

@@ -48,6 +48,8 @@ export class SpecsWatcherService {
   /** spec-path-ssot-refactor: Debounce timers for worktree additions (500ms) */
   private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
   private worktreeAdditionDebounceMs = 500;
+  /** Tracks all currently watched paths to prevent duplicate monitoring */
+  private watchedPaths: Set<string> = new Set();
 
   constructor(projectPath: string, fileService?: FileService) {
     this.projectPath = projectPath;
@@ -153,6 +155,11 @@ export class SpecsWatcherService {
     }
 
     logger.info('[SpecsWatcherService] Starting watcher with 2-tier monitoring', { watchPaths });
+
+    // Track all initial watch paths
+    for (const watchPath of watchPaths) {
+      this.watchedPaths.add(watchPath);
+    }
 
     this.watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
@@ -278,12 +285,19 @@ export class SpecsWatcherService {
 
       const innerSpecPath = buildWorktreeEntityPath(this.projectPath, 'specs', entityName);
 
+      // Prevent duplicate monitoring
+      if (this.watchedPaths.has(innerSpecPath)) {
+        logger.debug('[SpecsWatcherService] Path already watched, skipping duplicate add', { entityName, innerSpecPath });
+        return;
+      }
+
       // Check if inner spec path exists
       try {
         await access(innerSpecPath, constants.F_OK);
 
-        // Add to watcher
+        // Add to watcher and track in watchedPaths
         this.watcher?.add(innerSpecPath);
+        this.watchedPaths.add(innerSpecPath);
         logger.info('[SpecsWatcherService] Added worktree inner spec path to watcher', { entityName, innerSpecPath });
       } catch {
         logger.debug('[SpecsWatcherService] Worktree inner spec path not yet ready', { entityName, innerSpecPath });
@@ -319,9 +333,14 @@ export class SpecsWatcherService {
 
     const innerSpecPath = buildWorktreeEntityPath(this.projectPath, 'specs', entityName);
 
-    // Remove from watcher
-    this.watcher.unwatch(innerSpecPath);
-    logger.info('[SpecsWatcherService] Removed worktree inner spec path from watcher', { entityName, innerSpecPath });
+    // Remove from watcher and watchedPaths
+    if (this.watchedPaths.has(innerSpecPath)) {
+      this.watcher.unwatch(innerSpecPath);
+      this.watchedPaths.delete(innerSpecPath);
+      logger.info('[SpecsWatcherService] Removed worktree inner spec path from watcher', { entityName, innerSpecPath });
+    } else {
+      logger.debug('[SpecsWatcherService] Path not in watchedPaths, skipping unwatch', { entityName, innerSpecPath });
+    }
   }
 
   /**
@@ -503,9 +522,18 @@ export class SpecsWatcherService {
   async stop(): Promise<void> {
     if (this.watcher) {
       logger.info('[SpecsWatcherService] Stopping watcher');
+
+      // Unwatch all tracked paths before closing
+      for (const watchedPath of this.watchedPaths) {
+        this.watcher.unwatch(watchedPath);
+      }
+
       await this.watcher.close();
       this.watcher = null;
     }
+
+    // Clear watchedPaths Set
+    this.watchedPaths.clear();
 
     // Clear all debounce timers
     for (const timer of this.debounceTimers.values()) {
@@ -562,9 +590,17 @@ export class SpecsWatcherService {
 
     // Close existing watcher if running
     if (this.watcher) {
+      // Unwatch all tracked paths before closing
+      for (const watchedPath of this.watchedPaths) {
+        this.watcher.unwatch(watchedPath);
+      }
+
       await this.watcher.close();
       this.watcher = null;
     }
+
+    // Clear watchedPaths Set
+    this.watchedPaths.clear();
 
     // Clear all debounce timers
     for (const timer of this.debounceTimers.values()) {
@@ -574,6 +610,9 @@ export class SpecsWatcherService {
 
     // Start new watcher with the new path
     logger.info('[SpecsWatcherService] Starting new watcher', { newWatchPath });
+
+    // Track the new watch path
+    this.watchedPaths.add(newWatchPath);
 
     this.watcher = chokidar.watch(newWatchPath, {
       ignoreInitial: true,

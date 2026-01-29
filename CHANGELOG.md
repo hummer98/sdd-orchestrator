@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.54.3] - 2026-01-30
+
+### Fixed
+- Claude CLI起動時に--permission-mode bypassPermissionsを常に追加
+- AgentログでUser発言が二重に表示される問題を修正
+- AgentRecordService初期化順序の修正
+- schedule-task テストの afterEach で削除確認ダイアログも閉じるよう修正
+
+### Security
+- WebSocket接続のトークン認証を必須化
+
 ## [0.54.2] - 2026-01-30
 
 ### Fixed

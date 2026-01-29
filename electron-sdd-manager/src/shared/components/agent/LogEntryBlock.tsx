@@ -28,7 +28,9 @@ export function LogEntryBlock({
   // llm-stream-log-parser Task 7.2: Extract engineId from entry for propagation
   const { engineId } = entry;
 
-  switch (entry.type) {
+  // Render the appropriate block based on entry type
+  const renderBlock = (): React.ReactElement | null => {
+    switch (entry.type) {
     case 'system':
       // System type with session info shows SessionInfoBlock
       if (entry.session) {
@@ -81,5 +83,16 @@ export function LogEntryBlock({
         return <TextBlock text={entry.text} defaultExpanded={defaultExpanded} engineId={engineId} />;
       }
       return null;
-  }
+    }
+  };
+
+  const block = renderBlock();
+  if (!block) return null;
+
+  // Wrap in a div with data-testid for E2E testing
+  return (
+    <div data-testid="log-entry" data-log-type={entry.type}>
+      {block}
+    </div>
+  );
 }

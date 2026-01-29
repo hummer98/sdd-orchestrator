@@ -441,6 +441,13 @@ export class WebSocketApiClient implements ApiClient {
       case 'AGENT_STATUS_CHANGE':
         this.emit('agentStatusChange', message.payload);
         break;
+      case 'AGENT_LOG':
+        // Bug fix: AGENT_LOG messages were not being handled, causing
+        // logs to not update incrementally after the initial display.
+        // WebSocketHandler.broadcastAgentLog sends 'AGENT_LOG' type messages
+        // which need to be emitted as 'agent-log' events for UI updates.
+        this.emit('agent-log', message.payload);
+        break;
       case 'AUTO_EXECUTION_STATUS_CHANGED':
         this.emit('autoExecutionStatusChanged', message.payload);
         break;

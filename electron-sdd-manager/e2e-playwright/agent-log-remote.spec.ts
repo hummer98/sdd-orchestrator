@@ -70,7 +70,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
       // Find auto execution button
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -97,7 +97,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -136,7 +136,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -174,7 +174,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -215,7 +215,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -255,7 +255,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {
@@ -285,7 +285,135 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
   });
 
   // ============================================================
-  // 6. Connection status during log streaming
+  // 6. Incremental log updates (streaming)
+  // ============================================================
+  test.describe('Incremental log updates', () => {
+    /**
+     * Test: Logs are displayed incrementally as they arrive via WebSocket
+     *
+     * This test verifies that AGENT_LOG messages are properly handled
+     * and logs accumulate over time (not just initial display).
+     *
+     * Bug fix: WebSocketApiClient.handlePushMessage was missing AGENT_LOG case
+     *
+     * Note: Desktop layout is used (Playwright runs with Desktop Chrome viewport).
+     * - Spec item selection uses remote-spec-item-* selector
+     * - Auto execution button is in the WorkflowFooter
+     * - Log panel is in the footer area (testid: agent-log-panel)
+     */
+    test('should display logs incrementally as they arrive', async ({ page }) => {
+      // Select spec by clicking the spec item (works on both layouts)
+      const specItem = page.locator('[data-testid="remote-spec-item-test-feature"]');
+      await specItem.click();
+
+      // Wait for spec detail to load - auto-execute button appears when specDetail is loaded
+      // In desktop layout, the workflow footer with auto-execute button is in the right sidebar
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
+
+      // Wait for the button to appear with a longer timeout (specDetail loading)
+      try {
+        await autoExecButton.waitFor({ state: 'visible', timeout: 15000 });
+      } catch {
+        console.log('[E2E] Auto execution button not found after waiting, skipping test');
+        return;
+      }
+
+      const buttonExists = await autoExecButton.isVisible();
+
+      if (!buttonExists) {
+        console.log('[E2E] Auto execution button not visible, skipping test');
+        return;
+      }
+
+      // Get log panel and count selector
+      const logPanel = page.locator('[data-testid="agent-log-panel"]');
+      const logEntries = logPanel.locator('[data-testid="log-entry"]');
+
+      // Start auto execution
+      await autoExecButton.click();
+
+      // Wait a bit for agent to start
+      await page.waitForTimeout(3000);
+
+      let previousCount = 0;
+      let incrementsSeen = 0;
+      const countHistory: number[] = [];
+
+      // Poll for 15 seconds, checking every 500ms
+      for (let i = 0; i < 30; i++) {
+        await page.waitForTimeout(500);
+        const currentCount = await logEntries.count().catch(() => 0);
+        countHistory.push(currentCount);
+
+        if (currentCount > previousCount) {
+          incrementsSeen++;
+          console.log(`[E2E] Log count increased: ${previousCount} → ${currentCount}`);
+        }
+        previousCount = currentCount;
+
+        // Early exit if we've seen enough increments
+        if (incrementsSeen >= 3) {
+          break;
+        }
+      }
+
+      console.log(`[E2E] Count history: ${countHistory.join(', ')}`);
+      console.log(`[E2E] Total increments seen: ${incrementsSeen}`);
+
+      // Should have seen at least 2 increments (initial + streaming updates)
+      expect(incrementsSeen).toBeGreaterThanOrEqual(2);
+    });
+
+    /**
+     * Test: Multiple log entries accumulate in the panel
+     */
+    test('should accumulate multiple log entries', async ({ page }) => {
+      // Select spec by clicking the spec item (works on both layouts)
+      const specItem = page.locator('[data-testid="remote-spec-item-test-feature"]');
+      await specItem.click();
+
+      // Wait for spec detail to load - auto-execute button appears when specDetail is loaded
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
+
+      // Wait for the button to appear with a longer timeout (specDetail loading)
+      try {
+        await autoExecButton.waitFor({ state: 'visible', timeout: 15000 });
+      } catch {
+        console.log('[E2E] Auto execution button not found after waiting, skipping test');
+        return;
+      }
+
+      const buttonExists = await autoExecButton.isVisible();
+
+      if (!buttonExists) {
+        console.log('[E2E] Auto execution button not visible, skipping test');
+        return;
+      }
+
+      await autoExecButton.click();
+
+      // Wait for agent execution to complete (mock-claude runs quickly)
+      await page.waitForTimeout(8000);
+
+      const logPanel = page.locator('[data-testid="agent-log-panel"]');
+      const logPanelVisible = await logPanel.isVisible().catch(() => false);
+
+      if (logPanelVisible) {
+        const logEntries = logPanel.locator('[data-testid="log-entry"]');
+        const finalCount = await logEntries.count();
+
+        console.log(`[E2E] Final log entry count: ${finalCount}`);
+
+        // Should have multiple log entries (not just the first command)
+        expect(finalCount).toBeGreaterThan(1);
+      } else {
+        console.log('[E2E] Log panel not visible, cannot verify accumulation');
+      }
+    });
+  });
+
+  // ============================================================
+  // 7. Connection status during log streaming
   // ============================================================
   test.describe('Connection status during log streaming', () => {
     /**
@@ -297,7 +425,7 @@ test.describe('Remote UI Agent Log Display E2E Test - Task 9.2', () => {
       const detailView = page.locator('[data-testid="remote-spec-detail"]');
       await expect(detailView).toBeVisible({ timeout: 10000 });
 
-      const autoExecButton = page.locator('[data-testid="auto-execution-button"]');
+      const autoExecButton = page.locator('[data-testid="auto-execute-button"]');
       const buttonExists = await autoExecButton.isVisible().catch(() => false);
 
       if (buttonExists) {

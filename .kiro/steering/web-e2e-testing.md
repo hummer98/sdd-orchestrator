@@ -335,7 +335,11 @@ electron-sdd-manager/
 │   │   ├── electron-launcher.ts  # Electron起動ヘルパー
 │   │   └── remote-ui.helpers.ts  # Remote UI操作ヘルパー
 │   ├── smoke.spec.ts             # Smoke Test（基本接続確認）
-│   └── smartphone-spec.spec.ts   # スマートフォンUI Specテスト
+│   ├── smartphone-spec.spec.ts   # スマートフォンUI Spec一覧・選択テスト
+│   ├── smartphone-spec-create.spec.ts # スマートフォンUI Spec作成テスト
+│   ├── smartphone-auto-execution.spec.ts # スマートフォンUI 自動実行テスト
+│   ├── smartphone-agent-log.spec.ts  # スマートフォンUI AgentLogテスト
+│   └── agent-log-remote.spec.ts  # デスクトップUI AgentLogテスト
 ├── e2e-wdio/                     # 既存WebdriverIOテスト
 │   └── fixtures/                 # 共有テストフィクスチャ
 ├── playwright-report/            # テストレポート出力
@@ -344,4 +348,4 @@ electron-sdd-manager/
 
 ---
 
-_updated_at: 2026-01-18_
+_updated_at: 2026-01-30_

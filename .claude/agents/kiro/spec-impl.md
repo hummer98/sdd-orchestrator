@@ -4,7 +4,7 @@ description: Execute implementation tasks using Test-Driven Development methodol
 tools: Read, Write, Edit, MultiEdit, Glob, Grep, Skill
 model: inherit
 color: red
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 ---
 
 # spec-tdd-impl Agent

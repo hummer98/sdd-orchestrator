@@ -199,10 +199,199 @@ Claude requested permissions to write to /Users/yamamoto/git/firex/.kiro/specs/f
 - `electron-sdd-manager/src/main/services/agentProcess.ts` - エージェント実行処理
 - `electron-sdd-manager/src/main/services/fileService.ts` - ファイル操作処理
 
+## 実験による検証結果（2026-01-29）
+
+### 実験環境
+
+- Claude Code version: 2.1.22
+- テストプロジェクト: orcking（`.claude/agents/kiro/*.md` に `permissionMode: dontAsk` 設定済み）
+
+### 実験1: CLI起動時のpermissionMode決定
+
+```bash
+# 引数なしで起動
+claude -p "echo 'test'" --output-format stream-json --verbose 2>&1 | head -1 | jq '{permissionMode}'
+# 結果: {"permissionMode": "default"}
+
+# --permission-mode dontAsk を指定
+claude -p "echo 'test'" --output-format stream-json --verbose --permission-mode dontAsk 2>&1 | head -1 | jq '{permissionMode}'
+# 結果: {"permissionMode": "dontAsk"}
+```
+
+**結論**: エージェント定義ファイル（`.claude/agents/kiro/*.md`）の `permissionMode` は、**CLI起動時には適用されない**。CLI引数で明示的に指定する必要がある。
+
+### 実験2: dontAskモードでのサブエージェントWrite操作
+
+```bash
+claude -p "Use the spec-design-agent to create a test file at /tmp/claude-test-123.txt" \
+  --permission-mode dontAsk --output-format stream-json --verbose
+```
+
+**結果**:
+```
+Permission to use Write has been denied.
+Permission to use Bash has been denied.
+```
+
+`dontAsk` モードでは、サブエージェントが `tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch` を持っていても、Write/Bashが自動的にdenyされる。
+
+### 実験3: bypassPermissionsモードでのサブエージェントWrite操作
+
+```bash
+claude -p "Use the spec-design-agent to create a test file at /tmp/claude-test-456.txt" \
+  --permission-mode bypassPermissions --output-format stream-json --verbose
+```
+
+**結果**: **成功** - ファイルが作成された
+
+### 実験結果まとめ
+
+| 親プロセス permissionMode | サブエージェント Write/Bash |
+|--------------------------|---------------------------|
+| `default`（引数なし）     | 権限プロンプト発生（非対話型では応答不可） |
+| `dontAsk`               | **自動deny**（エージェント定義のtools無視） |
+| `bypassPermissions`     | **成功** |
+
+### 実験4: エージェント定義の `permissionMode: bypassPermissions` が適用されるか
+
+エージェント定義を一時的に `permissionMode: bypassPermissions` に変更し、親プロセスが `default` モードのときにサブエージェントが書き込めるかテスト。
+
+```bash
+# spec-design.md を permissionMode: bypassPermissions に変更後
+claude -p "You MUST use the Task tool to invoke spec-design-agent. Ask it to create /tmp/claude-test-abc.txt" \
+  --output-format stream-json --verbose
+```
+
+**結果**: **成功** - サブエージェントがファイルを作成できた
+
+ログから確認された動作：
+- 親プロセス: `"permissionMode":"default"`
+- サブエージェントがWriteツールを使用: `"content":"File created successfully at: /tmp/claude-test-abc.txt"`
+- `permission_denials: []`（権限エラーなし）
+
+### 結論
+
+| 親プロセス permissionMode | エージェント定義 permissionMode | サブエージェント Write |
+|--------------------------|-------------------------------|----------------------|
+| `default` | `dontAsk` | **失敗**（権限プロンプト発生、非対話型で応答不可） |
+| `default` | `bypassPermissions` | **成功** ✅ |
+| `dontAsk` | `dontAsk` | **失敗**（自動deny） |
+| `bypassPermissions` | `dontAsk` | **成功** ✅（親の `bypassPermissions` が優先） |
+
+**重要な発見**:
+
+1. **エージェント定義の `permissionMode` はサブエージェント起動時に適用される**
+2. **`bypassPermissions` を設定すれば、親が `default` でもサブエージェントは書き込み可能**
+3. **`dontAsk` では Write/Bash が常に失敗する**（`tools` フィールドに含まれていても）
+4. **`tools` フィールドは使用可能ツールの「制限」であり、`allow` ルールの「代替」ではない**
+5. **`dontAsk` モードでは `settings.json` の `allow` ルールがないツールは自動deny**される（`tools` フィールドは無関係）
+
+### 推奨設定
+
+サブエージェントでファイル操作が必要な場合：
+
+```yaml
+---
+name: spec-design-agent
+permissionMode: bypassPermissions  # ← dontAsk ではなく bypassPermissions
+tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch
+---
+```
+
+または、親プロセスを `--permission-mode bypassPermissions` で起動する。
+
+### permission-control-refactoring Spec の評価
+
+permission-control-refactoringの設計（requirements.md, design.md）と今回の実験結果を照らし合わせた分析。
+
+**設計の前提（Design Decision DD-001）**:
+```
+Decision: Agent定義でpermissionMode: dontAsk + toolsフィールドによる明示的制御を採用
+Rationale: dontAskモードではtoolsフィールドに含まれないツールは自動的にdenyされる
+```
+
+**今回の実験で判明した事実**:
+
+| 設計の想定 | 実験結果 | 評価 |
+|-----------|---------|------|
+| `dontAsk` + `tools: Write` でWriteが使用可能 | **失敗** - Write denied | ❌ 想定と異なる |
+| エージェント定義の`permissionMode`がサブエージェントに適用される | **成功** - `bypassPermissions`設定で動作 | ✅ 正しい |
+| settings.local.jsonに依存しない | 未検証 | - |
+
+**結論**: permission-control-refactoringの設計は**「`dontAsk` + `tools`で制御できる」という前提に基づいているが、実験ではこの組み合わせでは動作しなかった**。
+
+**考えられる原因**:
+1. **`dontAsk`モードの仕様誤解**: `dontAsk`は「許可されていないツールを自動deny」ではなく、「allowルール（settings.json）がないツールは自動deny」かもしれない
+2. **`tools`フィールドと`allow`ルールの関係**: `tools`フィールドは使用可能ツールの**制限**（ホワイトリスト）であり、`allow`ルールの**代替**ではない可能性
+3. **親プロセスの`permissionMode`の影響**: 親が`default`の場合、サブエージェントの`dontAsk`でも権限プロンプトが発生する
+
+**現在のSDD Orchestrator設定**:
+
+sdd-orchestratorでは現在、全エージェントが `permissionMode: dontAsk` で設定されている（inspection-3.mdで確認）。しかし：
+
+- **SDD OrchestratorからのClaude起動時**に `--permission-mode` は渡されていない
+- 親プロセスは `default` モードで起動される
+- サブエージェント定義の `dontAsk` は適用されるが、**`dontAsk` + `tools`ではWrite操作が失敗する**
+
+**本当に動いているのか？**:
+
+inspection-3.mdでは「E2Eテスト17件全パス」と報告されているが、今回の実験結果と矛盾する。
+
+**E2Eテストコード（`permission-control.e2e.spec.ts`）を確認した結果**:
+
+テストは以下のみを検証しており、**実際のAgent実行やファイル書き込みは検証していない**：
+- `skipPermissions` のデフォルト値が `false` であること
+- ストアの値が正しく設定されること
+- 多数の `TODO` コメントで「実際のCLI検証は未実装」と記載
+
+```typescript
+// テストコードより抜粋
+// TODO: Verify actual CLI command generation through agent logs
+// This would require:
+// 1. Start an agent
+// 2. Check agent log file
+// 3. Verify --dangerously-skip-permissions is NOT present
+```
+
+**結論**: E2Eテストは「skipPermissions=falseでサブエージェントがWriteできる」ことを検証していない。テストがパスしても、実際の動作保証にはならない。
+
+**追加実験: 親プロセスも `dontAsk` で起動**
+
+```bash
+claude -p "Use spec-design-agent to create /tmp/claude-test-dontask.txt" \
+  --permission-mode dontAsk --output-format stream-json --verbose
+```
+
+**結果**: **失敗** - `Permission to use Write has been denied.`
+
+| 親 permissionMode | サブエージェント permissionMode | サブエージェント Write |
+|-------------------|-------------------------------|----------------------|
+| `default` | `dontAsk` | **失敗**（権限プロンプト発生） |
+| `dontAsk` | `dontAsk` | **失敗**（自動deny） |
+| `default` | `bypassPermissions` | **成功** |
+| `bypassPermissions` | `dontAsk` | **成功** |
+
+**最終結論**: **`dontAsk` モードでは、`tools` フィールドに `Write` があっても、Write操作は常に失敗する。**
+
+permission-control-refactoringの設計前提「`dontAsk` + `tools`で制御できる」は**誤り**であり、サブエージェントでファイル操作を行うには **`permissionMode: bypassPermissions`** が必要。
+
+**推奨対応**:
+1. 全エージェント定義を `permissionMode: bypassPermissions` に変更
+2. E2Eテストの実行環境を確認（`--dangerously-skip-permissions`が付いている可能性）
+
+### SDD Orchestratorへの影響
+
+現在のSDD Orchestrator（`buildClaudeArgs()`）は `--permission-mode` を渡していないため、親プロセスは常に `default` モードで起動される。
+
+推奨対応：
+1. 全エージェント定義を `permissionMode: bypassPermissions` に変更
+2. または親プロセス起動時に `--permission-mode bypassPermissions` を追加
+3. `--dangerously-skip-permissions` を使用（現在はオプション、最も確実）
+
 ## ステータス
 
 - **発見日**: 2025-12-14
-- **最終更新**: 2025-12-15
+- **最終更新**: 2026-01-29
 - **バグステータス**: 未修正（Claude Code開発チーム認識済み）
 - **緊急度**: 高（CC-SDD Workflowの中核機能に影響）
 
@@ -210,6 +399,7 @@ Claude requested permissions to write to /Users/yamamoto/git/firex/.kiro/specs/f
 
 1. ✅ 問題の特定と原因調査
 2. ✅ 関連GitHub Issueの収集
-3. ⏳ 必要に応じてGitHub Issue #5465にコメント追加
-4. ⏳ Electronアプリ側での代替実装を検討
-5. ⏳ Claude Code開発チームのバグ修正を待つ
+3. ✅ 実験による動作検証（2026-01-29）
+4. ⏳ 必要に応じてGitHub Issue #5465にコメント追加
+5. ⏳ Electronアプリ側での代替実装を検討
+6. ⏳ Claude Code開発チームのバグ修正を待つ

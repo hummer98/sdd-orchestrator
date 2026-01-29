@@ -4,7 +4,7 @@ description: Generate implementation tasks from requirements and design
 tools: Read, Write, Edit, Glob, Grep
 model: inherit
 color: purple
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 ---
 
 # spec-tasks Agent

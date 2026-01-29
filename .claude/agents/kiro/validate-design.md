@@ -4,7 +4,7 @@ description: Interactive technical design quality review and validation
 tools: Read, Grep, Glob
 model: inherit
 color: yellow
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 ---
 
 # validate-design Agent

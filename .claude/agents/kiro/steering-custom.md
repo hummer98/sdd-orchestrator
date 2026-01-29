@@ -4,7 +4,7 @@ description: Create custom steering documents for specialized project contexts
 tools: Read, Write, Edit, Glob, Grep
 model: inherit
 color: green
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 ---
 
 # steering-custom Agent

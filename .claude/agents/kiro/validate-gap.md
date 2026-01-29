@@ -4,7 +4,7 @@ description: Analyze implementation gap between requirements and existing codeba
 tools: Read, Grep, Glob, WebSearch, WebFetch
 model: inherit
 color: yellow
-permissionMode: dontAsk
+permissionMode: bypassPermissions
 ---
 
 # validate-gap Agent

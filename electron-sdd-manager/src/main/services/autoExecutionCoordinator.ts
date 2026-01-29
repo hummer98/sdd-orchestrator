@@ -736,11 +736,13 @@ export class AutoExecutionCoordinator extends EventEmitter {
    * @param agentId エージェントID
    * @param specPath specのパス
    * @param status 終了ステータス（'completed' | 'failed' | 'interrupted'）
+   * @param updatedApprovals 更新済みのApprovals状態（オプション、渡された場合はファイル読み取りをスキップ）
    */
   async handleAgentCompleted(
     agentId: string,
     specPath: string,
-    status: 'completed' | 'failed' | 'interrupted'
+    status: 'completed' | 'failed' | 'interrupted',
+    updatedApprovals?: ApprovalsStatus
   ): Promise<void> {
     const state = this.executionStates.get(specPath);
     if (!state) {
@@ -792,17 +794,21 @@ export class AutoExecutionCoordinator extends EventEmitter {
         // 次フェーズを自動実行
         const options = this.executionOptions.get(specPath);
         if (options) {
-          // Read latest approvals from spec.json (may have been updated by auto-approve)
-          let latestApprovals = options.approvals;
-          try {
-            const path = require('path');
-            const fs = require('fs');
-            const specJsonPath = path.join(specPath, 'spec.json');
-            const content = fs.readFileSync(specJsonPath, 'utf-8');
-            const specJson = JSON.parse(content);
-            latestApprovals = specJson.approvals;
-          } catch (err) {
-            // Use options.approvals as fallback
+          // Use provided approvals if available, otherwise read from spec.json
+          // This avoids timing issues when updateApproval() hasn't been flushed to disk
+          let latestApprovals = updatedApprovals ?? options.approvals;
+          if (!updatedApprovals) {
+            // Fallback: read from spec.json if not provided
+            try {
+              const path = require('path');
+              const fs = require('fs');
+              const specJsonPath = path.join(specPath, 'spec.json');
+              const content = fs.readFileSync(specJsonPath, 'utf-8');
+              const specJson = JSON.parse(content);
+              latestApprovals = specJson.approvals;
+            } catch (err) {
+              // Use options.approvals as fallback
+            }
           }
 
           // document-review-phase Task 2.2: tasksフェーズ完了後はdocument-reviewへ遷移

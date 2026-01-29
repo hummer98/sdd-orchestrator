@@ -977,14 +977,26 @@ function setupAgentCompletionListener(service: SpecManagerService, agentId: stri
 function setupAgentCompletionListenerWithApproval(service: SpecManagerService, agentId: string, specPath: string, phase: WorkflowPhase, coordinator: AutoExecutionCoordinator): void {
   const handleStatusChange = async (changedAgentId: string, status: string) => {
     if (changedAgentId === agentId && ['completed', 'failed', 'stopped'].includes(status)) {
+      // Read approvals after auto-approve to pass to coordinator
+      // This avoids file I/O timing issues where readFileSync reads stale data
+      let updatedApprovals: import('../../renderer/types').SpecJson['approvals'] | undefined;
       if (status === 'completed' && ['requirements', 'design', 'tasks'].includes(phase)) {
         try {
           const approveResult = await fileService.updateApproval(specPath, phase as 'requirements' | 'design' | 'tasks', true);
-          if (approveResult.ok) logger.info('[handlers] execute-next-phase: auto-approved phase', { specPath, phase });
+          if (approveResult.ok) {
+            logger.info('[handlers] execute-next-phase: auto-approved phase', { specPath, phase });
+            // Read the updated approvals from spec.json after successful update
+            const specJsonResult = await fileService.readSpecJson(specPath);
+            if (specJsonResult.ok) {
+              updatedApprovals = specJsonResult.value.approvals;
+              logger.debug('[handlers] Read updated approvals after auto-approve', { specPath, approvals: updatedApprovals });
+            }
+          }
         } catch { /* ignore */ }
       }
       const finalStatus = status === 'completed' ? 'completed' : (status === 'stopped' ? 'interrupted' : 'failed');
-      coordinator.handleAgentCompleted(agentId, specPath, finalStatus as 'completed' | 'failed' | 'interrupted');
+      // Pass updatedApprovals to coordinator to avoid sync file read timing issues
+      coordinator.handleAgentCompleted(agentId, specPath, finalStatus as 'completed' | 'failed' | 'interrupted', updatedApprovals);
       service.offStatusChange(handleStatusChange);
     }
   };

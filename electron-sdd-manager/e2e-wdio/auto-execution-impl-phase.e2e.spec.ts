@@ -535,11 +535,13 @@ describe('Auto Execution impl Phase E2E', () => {
     });
 
     it('should show impl phase in the workflow UI', async () => {
-      // Check for impl phase item
-      const implPhaseItem = await $('[data-testid="phase-item-impl"]');
-      const exists = await implPhaseItem.isExisting();
+      // Check for impl phase panel
+      // Note: impl phase uses ImplPhasePanel component, not PhaseItem
+      // data-testid is "impl-phase-panel", not "phase-item-impl"
+      const implPhasePanel = await $('[data-testid="impl-phase-panel"]');
+      const exists = await implPhasePanel.isExisting();
 
-      console.log(`[E2E] impl phase item exists: ${exists}`);
+      console.log(`[E2E] impl phase panel exists: ${exists}`);
 
       // impl phase should be visible in the workflow
       expect(exists).toBe(true);

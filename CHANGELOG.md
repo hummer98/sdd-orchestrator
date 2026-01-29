@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.54.1] - 2026-01-29
+
+### Fixed
+- worktreeモードでのgit diffコマンド生成を修正
+- GitFileTreeにworkingPathを伝播させてworktreeモードでのdiff取得を修正
+- AgentログのJSON表示問題を修正
+
+### Documentation
+- visualization-agentの設計ドキュメントとsteeringを追加
+
 ## [0.54.0] - 2026-01-29
 
 ### Added

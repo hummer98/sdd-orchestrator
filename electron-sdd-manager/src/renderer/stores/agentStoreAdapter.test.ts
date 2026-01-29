@@ -33,6 +33,8 @@ const mockElectronAPI = {
   onAgentOutput: vi.fn(),
   onAgentStatusChange: vi.fn(),
   onAgentRecordChanged: vi.fn(),
+  // main-process-log-parser integration: parsed log listener
+  onAgentLog: vi.fn(),
 };
 
 // Set up global mock
@@ -248,6 +250,7 @@ describe('agentStoreAdapter', () => {
       mockElectronAPI.onAgentOutput.mockReturnValue(mockCleanup);
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
       const cleanup = setupAgentEventListeners();
 
@@ -259,6 +262,7 @@ describe('agentStoreAdapter', () => {
       mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
       setupAgentEventListeners();
 
@@ -269,6 +273,7 @@ describe('agentStoreAdapter', () => {
       mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
       setupAgentEventListeners();
 
@@ -279,10 +284,12 @@ describe('agentStoreAdapter', () => {
       const cleanupOutput = vi.fn();
       const cleanupStatus = vi.fn();
       const cleanupRecord = vi.fn();
+      const cleanupLog = vi.fn();
 
       mockElectronAPI.onAgentOutput.mockReturnValue(cleanupOutput);
       mockElectronAPI.onAgentStatusChange.mockReturnValue(cleanupStatus);
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(cleanupRecord);
+      mockElectronAPI.onAgentLog.mockReturnValue(cleanupLog);
 
       const cleanup = setupAgentEventListeners();
       cleanup();
@@ -290,6 +297,7 @@ describe('agentStoreAdapter', () => {
       expect(cleanupOutput).toHaveBeenCalled();
       expect(cleanupStatus).toHaveBeenCalled();
       expect(cleanupRecord).toHaveBeenCalled();
+      expect(cleanupLog).toHaveBeenCalled();
     });
 
     it('should add log to shared store when onAgentOutput callback is invoked', () => {
@@ -300,6 +308,7 @@ describe('agentStoreAdapter', () => {
       });
       mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
       setupAgentEventListeners();
 
@@ -335,6 +344,7 @@ describe('agentStoreAdapter', () => {
         return vi.fn();
       });
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(vi.fn());
 
       setupAgentEventListeners();
 
@@ -345,6 +355,122 @@ describe('agentStoreAdapter', () => {
       const state = getSharedAgentStore();
       const agent = state.getAgentById('agent-1');
       expect(agent?.status).toBe('completed');
+    });
+
+    // =============================================================================
+    // Bug fix: agent-log-json-display-issue
+    // main-process-log-parser integration: onAgentLog listener tests
+    // =============================================================================
+    it('should register onAgentLog listener for parsed log entries', () => {
+      const mockCleanup = vi.fn();
+      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(mockCleanup);
+
+      setupAgentEventListeners();
+
+      expect(mockElectronAPI.onAgentLog).toHaveBeenCalled();
+    });
+
+    it('should add parsed log entry to shared store when onAgentLog callback is invoked', () => {
+      // Capture the callback
+      type ParsedLogEntry = {
+        id: string;
+        type: string;
+        timestamp: number;
+        text?: { content: string; role: string };
+        tool?: { name: string; toolUseId?: string; input?: Record<string, unknown> };
+      };
+      let logCallback: ((agentId: string, log: ParsedLogEntry) => void) | null = null;
+
+      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockImplementation((cb) => {
+        logCallback = cb;
+        return vi.fn();
+      });
+
+      setupAgentEventListeners();
+
+      // Create a parsed log entry (as Main process would send)
+      const parsedLogEntry: ParsedLogEntry = {
+        id: 'log-123',
+        type: 'text',
+        timestamp: Date.now(),
+        text: {
+          content: 'Hello, this is parsed text from Main process',
+          role: 'assistant',
+        },
+      };
+
+      // Invoke the callback with parsed log entry
+      logCallback?.('agent-1', parsedLogEntry);
+
+      // Verify the parsed log was added to shared store directly (not re-parsed)
+      const state = getSharedAgentStore();
+      const logs = state.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(1);
+      expect(logs[0].id).toBe('log-123');
+      expect(logs[0].type).toBe('text');
+      expect(logs[0].text?.content).toBe('Hello, this is parsed text from Main process');
+    });
+
+    it('should handle tool_use parsed log entry from onAgentLog', () => {
+      type ParsedLogEntry = {
+        id: string;
+        type: string;
+        timestamp: number;
+        text?: { content: string; role: string };
+        tool?: { name: string; toolUseId?: string; input?: Record<string, unknown> };
+      };
+      let logCallback: ((agentId: string, log: ParsedLogEntry) => void) | null = null;
+
+      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockImplementation((cb) => {
+        logCallback = cb;
+        return vi.fn();
+      });
+
+      setupAgentEventListeners();
+
+      // Create a tool_use parsed log entry
+      const toolUseEntry: ParsedLogEntry = {
+        id: 'tool-456',
+        type: 'tool_use',
+        timestamp: Date.now(),
+        tool: {
+          name: 'Read',
+          toolUseId: 'tu_123',
+          input: { file_path: '/path/to/file.ts' },
+        },
+      };
+
+      // Invoke the callback
+      logCallback?.('agent-1', toolUseEntry);
+
+      // Verify tool_use entry was added correctly
+      const state = getSharedAgentStore();
+      const logs = state.getLogsForAgent('agent-1');
+      expect(logs).toHaveLength(1);
+      expect(logs[0].type).toBe('tool_use');
+      expect(logs[0].tool?.name).toBe('Read');
+    });
+
+    it('should cleanup onAgentLog listener when cleanup function is called', () => {
+      const cleanupLog = vi.fn();
+      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
+      mockElectronAPI.onAgentLog.mockReturnValue(cleanupLog);
+
+      const cleanup = setupAgentEventListeners();
+      cleanup();
+
+      expect(cleanupLog).toHaveBeenCalled();
     });
   });
 

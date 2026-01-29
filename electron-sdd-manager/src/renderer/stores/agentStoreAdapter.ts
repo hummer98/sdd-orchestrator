@@ -301,12 +301,23 @@ export function setupAgentEventListeners(): () => void {
     }
   );
 
+  // Bug fix: agent-log-json-display-issue
+  // main-process-log-parser integration: Listen for parsed log entries from Main process
+  // This receives ParsedLogEntry directly, no conversion needed
+  const cleanupLog = window.electronAPI.onAgentLog(
+    (agentId: string, parsedLog: ParsedLogEntry) => {
+      console.log('[agentStoreAdapter] Received parsed agent log', { agentId, type: parsedLog.type });
+      useSharedAgentStore.getState().addLog(agentId, parsedLog);
+    }
+  );
+
   // Return cleanup function
   return () => {
     console.log('[agentStoreAdapter] Cleaning up event listeners');
     cleanupOutput();
     cleanupStatus();
     cleanupRecordChanged();
+    cleanupLog();
   };
 }
 

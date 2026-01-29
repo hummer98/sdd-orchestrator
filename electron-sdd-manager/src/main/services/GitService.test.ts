@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GitService } from './GitService';
 
 describe('GitService', () => {
@@ -67,6 +67,79 @@ describe('GitService', () => {
         expect(result.error.type).toBe('validation_error');
         expect(result.error.message).toContain('Not a git repository');
       }
+    });
+
+    it('should generate correct git diff command for worktree mode', async () => {
+      // Mock getStatus to return worktree mode
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/test.ts', status: 'M' }],
+          baseBranch: 'master',
+          mode: 'worktree',
+        },
+      });
+
+      // Mock execGit to capture the arguments
+      const execGitCalls: string[][] = [];
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          execGitCalls.push(args);
+          return Promise.resolve({ success: true, data: 'diff output' });
+        });
+
+      // Mock validateGitRepository to pass
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await gitService.getDiff('/test/project', 'src/test.ts');
+
+      // Verify the git diff command is correct for worktree mode
+      // Should be: git diff master...HEAD -- src/test.ts
+      const diffCall = execGitCalls.find(args => args[0] === 'diff');
+      expect(diffCall).toEqual(['diff', 'master...HEAD', '--', 'src/test.ts']);
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
+    });
+
+    it('should generate correct git diff command for normal mode', async () => {
+      // Mock getStatus to return normal mode
+      const mockGetStatus = vi.spyOn(gitService, 'getStatus').mockResolvedValue({
+        success: true,
+        data: {
+          files: [{ path: 'src/test.ts', status: 'M' }],
+          mode: 'normal',
+        },
+      });
+
+      // Mock execGit to capture the arguments
+      const execGitCalls: string[][] = [];
+      const mockExecGit = vi
+        .spyOn(gitService as never, 'execGit')
+        .mockImplementation((_cwd: string, args: string[]) => {
+          execGitCalls.push(args);
+          return Promise.resolve({ success: true, data: 'diff output' });
+        });
+
+      // Mock validateGitRepository to pass
+      vi.spyOn(gitService as never, 'validateGitRepository').mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await gitService.getDiff('/test/project', 'src/test.ts');
+
+      // Verify the git diff command is correct for normal mode
+      // Should be: git diff -- src/test.ts
+      const diffCall = execGitCalls.find(args => args[0] === 'diff');
+      expect(diffCall).toEqual(['diff', '--', 'src/test.ts']);
+
+      mockGetStatus.mockRestore();
+      mockExecGit.mockRestore();
     });
 
     it.skip('should reject paths with parent directory references (integration test)', async () => {

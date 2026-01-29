@@ -79,11 +79,13 @@ export class GitService {
       }
 
       // For tracked files, use git diff
-      const args = ['diff', filePath];
+      // Normal mode: git diff -- filePath
+      // Worktree mode: git diff baseBranch...HEAD -- filePath
+      const args = ['diff'];
       if (statusResult.data.mode === 'worktree' && statusResult.data.baseBranch) {
-        args.unshift('HEAD');
-        args[0] = `${statusResult.data.baseBranch}...HEAD`;
+        args.push(`${statusResult.data.baseBranch}...HEAD`);
       }
+      args.push('--', filePath);
 
       const diffOutput = await this.execGit(projectPath, args);
 

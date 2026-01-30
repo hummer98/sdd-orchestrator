@@ -340,7 +340,12 @@ export class GitService {
 
     for (const line of lines) {
       const statusCode = line.substring(0, 2).trim();
-      const path = line.substring(3).trim();
+      let path = line.substring(3).trim();
+
+      // Skip directories (git status --porcelain reports untracked dirs with trailing slash)
+      if (path.endsWith('/')) {
+        continue;
+      }
 
       let status: GitFileStatus['status'];
 

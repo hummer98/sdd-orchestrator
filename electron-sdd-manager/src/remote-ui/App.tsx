@@ -115,6 +115,9 @@ function LeftSidebar({
 }: LeftSidebarProps) {
   const apiClient = useApi();
 
+  // Agent Store
+  const { selectAgent, selectedAgentId } = useSharedAgentStore();
+
   // Project Agent state
   const [projectAgents, setProjectAgents] = useState<AgentInfo[]>([]);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
@@ -169,6 +172,10 @@ function LeftSidebar({
   }, [apiClient]);
 
   // Project Agent handlers
+  const handleSelectAgent = useCallback((agentId: string) => {
+    selectAgent(agentId);
+  }, [selectAgent]);
+
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
     await apiClient.stopAgent(agentId);
@@ -309,8 +316,8 @@ function LeftSidebar({
         <div className="px-2 pb-2 max-h-32 overflow-y-auto">
           <AgentList
             agents={projectAgents.map(mapAgentInfoToItemInfo)}
-            selectedAgentId={null}
-            onSelect={() => {}}
+            selectedAgentId={selectedAgentId}
+            onSelect={handleSelectAgent}
             onStop={handleStopAgent}
             onRemove={handleRemoveAgent}
             emptyMessage="プロジェクトエージェントなし"
@@ -448,6 +455,7 @@ function RightSidebar({
   onAutoExecution,
 }: RightSidebarProps) {
   const apiClient = useApi();
+  const { selectAgent, selectedAgentId } = useSharedAgentStore();
 
   // Spec Agents state (filtered by selected spec)
   const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
@@ -516,6 +524,10 @@ function RightSidebar({
   }, [apiClient]);
 
   // Agent handlers
+  const handleSelectAgent = useCallback((agentId: string) => {
+    selectAgent(agentId);
+  }, [selectAgent]);
+
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
     await apiClient.stopAgent(agentId);
@@ -548,8 +560,8 @@ function RightSidebar({
           <div className="flex-1 overflow-y-auto">
             <AgentList
               agents={specAgents.map(mapAgentInfoToItemInfo)}
-              selectedAgentId={null}
-              onSelect={() => {}}
+              selectedAgentId={selectedAgentId}
+              onSelect={handleSelectAgent}
               onStop={handleStopAgent}
               onRemove={handleRemoveAgent}
               emptyMessage="エージェントなし"

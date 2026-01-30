@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.58.2] - 2026-01-31
+
+### Fixed
+- initialize LogFileService with correct basePath
+- use category-aware log reading in IPC and MCP handlers
+
+### Changed
+- add dummy project agents to E2E test fixture
+- add log content validation to project-agent E2E test
+
+
 ## [0.58.1] - 2026-01-31
 
 ### Fixed

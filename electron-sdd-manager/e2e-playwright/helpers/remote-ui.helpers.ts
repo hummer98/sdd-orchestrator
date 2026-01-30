@@ -341,3 +341,55 @@ export async function selectBug(page: Page, bugName: string): Promise<void> {
 export async function waitForBugDetail(page: Page, timeout = 10000): Promise<void> {
   await page.waitForSelector('[data-testid="bug-detail-view"]', { timeout });
 }
+
+/**
+ * Agentsタブに切り替え（モバイルレイアウト）
+ * @param page Playwright Page instance
+ */
+export async function switchToAgentsTab(page: Page): Promise<void> {
+  const bottomTabBar = page.locator('[data-testid="mobile-bottom-tabs"]');
+  const agentsTab = bottomTabBar.locator('[data-testid="remote-tab-agents"]');
+  await agentsTab.click();
+
+  await page.waitForFunction(() => {
+    const tab = document.querySelector('[data-testid="mobile-bottom-tabs"] [data-testid="remote-tab-agents"]');
+    return tab?.getAttribute('aria-selected') === 'true';
+  }, { timeout: 5000 });
+}
+
+/**
+ * ProjectAgent一覧が表示されるまで待機
+ * @param page Playwright Page instance
+ * @param timeout Timeout in milliseconds (default: 10000)
+ */
+export async function waitForProjectAgentList(page: Page, timeout = 10000): Promise<void> {
+  await page.waitForSelector('[data-testid="agents-tab-view"]', { timeout });
+  // Wait for either agent list or empty state
+  const agentList = page.locator('[data-testid="project-agent-list"]');
+  const emptyState = page.locator('[data-testid="project-agent-list-empty"]');
+
+  await Promise.race([
+    expect(agentList).toBeVisible({ timeout }),
+    expect(emptyState).toBeVisible({ timeout }),
+  ]);
+}
+
+/**
+ * 特定のProjectAgentを選択
+ * @param page Playwright Page instance
+ * @param agentId Agent ID to select
+ */
+export async function selectProjectAgent(page: Page, agentId: string): Promise<void> {
+  const agentItem = page.locator(`[data-testid="agent-item-${agentId}"]`);
+  await agentItem.click();
+  await page.waitForSelector('[data-testid="agent-detail-drawer"]', { timeout: 5000 });
+}
+
+/**
+ * AgentDetailDrawerが表示されるまで待機
+ * @param page Playwright Page instance
+ * @param timeout Timeout in milliseconds (default: 5000)
+ */
+export async function waitForAgentDetailDrawer(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForSelector('[data-testid="agent-detail-drawer"]', { timeout });
+}

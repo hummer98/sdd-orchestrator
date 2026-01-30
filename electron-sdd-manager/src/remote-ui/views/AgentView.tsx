@@ -7,6 +7,11 @@
  * AgentListを使用した一覧表示、共通AgentLogPanelを使用したログパネル。
  *
  * Requirements: 1.2, 7.1, 7.2, 7.3, 9.1
+ *
+ * @deprecated This component uses local state for log management.
+ * For new implementations, use SpecDetailPage, AgentsTabView, or BugDetailPage
+ * which integrate with useSharedAgentStore for centralized state management.
+ * This component is kept for backward compatibility and existing tests.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';

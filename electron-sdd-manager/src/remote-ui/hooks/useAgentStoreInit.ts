@@ -123,24 +123,46 @@ export function useAgentStoreInit(apiClient: ApiClient | null): UseAgentStoreIni
   useEffect(() => {
     if (!apiClient) return;
 
+    const cleanups: Array<() => void> = [];
+
     /**
      * Handle AGENT_STATUS event from WebSocket
      * Requirements 3.1, 3.3, 3.4: Update agentStore on status change
      * Design.md DD-002: WebSocketイベント購読の方式
      */
-    const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
-      const store = useSharedAgentStore.getState();
+    cleanups.push(
+      apiClient.onAgentStatusChange((agentId, status) => {
+        const store = useSharedAgentStore.getState();
 
-      // Requirement 3.1: Update agent status in store
-      store.updateAgentStatus(agentId, status);
+        // Requirement 3.1: Update agent status in store
+        store.updateAgentStatus(agentId, status);
 
-      // Note: Requirement 3.2 (UI auto-update) is handled automatically by Zustand subscription
-      // Note: Requirement 3.3 (agent add) and 3.4 (agent remove) are handled by store methods
-    });
+        // Note: Requirement 3.2 (UI auto-update) is handled automatically by Zustand subscription
+        // Note: Requirement 3.3 (agent add) and 3.4 (agent remove) are handled by store methods
+      })
+    );
 
-    // Cleanup: Unsubscribe on unmount
+    /**
+     * Handle AGENT_LOG event from WebSocket
+     * Bug fix: Remote UIでagent-logイベントがStoreに反映されない問題を修正
+     *
+     * Architecture:
+     * - WebSocket AGENT_LOG message → WebSocketApiClient.emit('agent-log')
+     * - apiClient.onAgentLog() → useSharedAgentStore.addLog()
+     * - Components subscribe to store.logs for display
+     *
+     * This completes the data flow parity with Electron version (agentStoreAdapter.ts)
+     */
+    cleanups.push(
+      apiClient.onAgentLog((agentId, log) => {
+        const store = useSharedAgentStore.getState();
+        store.addLog(agentId, log);
+      })
+    );
+
+    // Cleanup: Unsubscribe all listeners on unmount
     return () => {
-      unsubscribe();
+      cleanups.forEach((cleanup) => cleanup());
     };
   }, [apiClient]);
 

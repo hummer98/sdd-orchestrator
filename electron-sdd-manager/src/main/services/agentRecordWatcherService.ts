@@ -142,12 +142,13 @@ export class AgentRecordWatcherService {
 
     logger.info('[AgentRecordWatcherService] Starting ProjectAgent watcher', { agentsDir });
 
-    // ProjectAgent watcher: watch root agents/ directory only (depth: 0)
-    // This captures agent files directly in agents/ (no subdirectory = ProjectAgent)
-    this._projectAgentWatcher = chokidar.watch(agentsDir, {
+    // ProjectAgent watcher: watch project/ subdirectory (runtime-agents-restructure)
+    // This captures agent files in agents/project/ (category-aware structure)
+    const projectDir = path.join(agentsDir, 'project');
+    this._projectAgentWatcher = chokidar.watch(projectDir, {
       ignoreInitial: false, // Process existing files on startup
       persistent: true,
-      depth: 0, // Only watch direct files, not subdirectories
+      depth: 0, // Only watch direct files in project/, not nested subdirectories
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 50,

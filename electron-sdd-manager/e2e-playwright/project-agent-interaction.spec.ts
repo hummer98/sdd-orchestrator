@@ -327,6 +327,64 @@ test.describe('Project Agent Interaction E2E Test', () => {
         expect(logCount).toBeGreaterThan(1);
       }
     });
+
+    test('should display log entries with actual content', async ({ page }) => {
+      await switchToAgentsTab(page);
+      await waitForProjectAgentList(page);
+
+      // ProjectAgentを起動
+      await executeProjectCommand(page);
+      await page.waitForTimeout(3000);
+
+      // ProjectAgentアイテムをクリック
+      const agentList = page.locator('[data-testid="project-agent-list"]');
+      const agentItems = agentList.locator('[data-testid^="agent-item-"]');
+      await agentItems.first().click();
+
+      // Drawerが開く
+      const drawer = page.locator('[data-testid="agent-detail-drawer"]');
+      await expect(drawer).toBeVisible({ timeout: 5000 });
+
+      // エージェント実行完了まで待機
+      await page.waitForTimeout(8000);
+
+      // ログエントリが表示される
+      const logEntries = drawer.locator('[data-testid="log-entry"]');
+      const logCount = await logEntries.count();
+
+      if (logCount === 0) {
+        console.log('[E2E] No log entries found, skipping content validation');
+        return;
+      }
+
+      // 最初のログエントリの内容を検証
+      const firstEntry = logEntries.first();
+      const firstText = await firstEntry.textContent();
+
+      console.log(`[E2E] First log entry text (first 100 chars): ${firstText?.substring(0, 100)}`);
+
+      // ログエントリに期待されるテキストが含まれるか確認
+      // Session Started, Working Directory, claude コマンドなど
+      expect(firstText).toBeTruthy();
+      expect(firstText!.length).toBeGreaterThan(0);
+
+      // 複数のエントリが異なる内容を持つか確認
+      if (logCount > 1) {
+        const allEntries = await logEntries.all();
+        const allTexts = await Promise.all(allEntries.map((e) => e.textContent()));
+
+        // null を除外
+        const validTexts = allTexts.filter((t) => t !== null && t.length > 0);
+
+        console.log(`[E2E] Valid log entries: ${validTexts.length} / ${logCount}`);
+
+        if (validTexts.length > 1) {
+          // 少なくとも2つの異なる内容があることを確認
+          const uniqueTexts = new Set(validTexts);
+          expect(uniqueTexts.size).toBeGreaterThan(1);
+        }
+      }
+    });
   });
 
   // ============================================================

@@ -241,7 +241,8 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   const projectName = projectPath.split('/').pop() || projectPath;
   updateWindowTitle(projectName);
 
-  initDefaultLogFileService(path.join(projectPath, '.kiro', 'specs'));
+  // runtime-agents-restructure: Log files unified under .kiro/runtime/agents
+  initDefaultLogFileService(path.join(projectPath, '.kiro', 'runtime', 'agents'));
   logger.info('[handlers] LogFileService initialized');
 
   initDefaultMetricsService(projectPath);

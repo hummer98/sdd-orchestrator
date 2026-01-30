@@ -15,6 +15,8 @@ import { SPEC_ARTIFACT_TABS } from '../../shared/constants/artifacts';
 const SPEC_TABS: TabInfo[] = SPEC_ARTIFACT_TABS as unknown as TabInfo[];
 
 export interface CenterPaneContainerProps {
+  /** Static tabs for ArtifactEditor (optional, defaults to SPEC_TABS) */
+  tabs?: TabInfo[];
   /** Dynamic tabs (document-review, inspection, etc.) */
   dynamicTabs: TabInfo[];
   /** View mode: 'artifacts' | 'git-diff' */
@@ -27,6 +29,8 @@ export interface CenterPaneContainerProps {
   placeholder?: string;
   /** Artifacts for ArtifactEditor */
   artifacts?: Record<string, ArtifactInfo | null>;
+  /** Entity type for ArtifactEditor path resolution (optional, defaults to 'spec') */
+  entityType?: 'spec' | 'bug';
   /**
    * Worktree path for GitView.
    * When provided, GitView uses this path instead of projectPath for git operations.
@@ -39,14 +43,21 @@ export interface CenterPaneContainerProps {
  * CenterPaneContainer - Container for exclusive switching between ArtifactEditor and GitView
  */
 export function CenterPaneContainer({
+  tabs = SPEC_TABS,
   dynamicTabs,
   viewMode,
   onViewModeChange,
   baseName,
   placeholder,
   artifacts,
+  entityType = 'spec',
   worktreePath,
 }: CenterPaneContainerProps): React.ReactElement {
+  // Debug log
+  useEffect(() => {
+    console.log('[CenterPaneContainer] Rendered', { entityType, baseName, viewMode, tabs: tabs.length });
+  }, [entityType, baseName, viewMode, tabs]);
+
   // Keyboard shortcut: Ctrl+Shift+G (Windows/Linux) or Cmd+Shift+G (Mac)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -96,11 +107,12 @@ export function CenterPaneContainer({
       <div className="flex-1 overflow-hidden">
         {viewMode === 'artifacts' ? (
           <ArtifactEditor
-            tabs={SPEC_TABS}
+            tabs={tabs}
             baseName={baseName || ''}
             placeholder={placeholder || '仕様を選択してエディターを開始'}
             dynamicTabs={dynamicTabs}
             artifacts={artifacts}
+            entityType={entityType}
           />
         ) : (
           <GitView workingPath={worktreePath} />

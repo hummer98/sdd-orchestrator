@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.58.1] - 2026-01-31
+
+### Fixed
+- update projectAgentWatcher to monitor new category-aware directory
+
+
 ## [0.58.0] - 2026-01-31
 
 ### Added

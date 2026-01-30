@@ -12,10 +12,6 @@ import { createWindow } from './index';
 // Current project path for menu state management
 let currentProjectPathForMenu: string | null = null;
 
-// Current command prefix for menu state management
-type CommandPrefix = 'kiro' | 'spec-manager';
-let currentCommandPrefix: CommandPrefix = 'kiro';
-
 // Remote access server state for menu state management
 let isRemoteServerRunning = false;
 
@@ -243,34 +239,6 @@ export function createMenu(): void {
         },
         { type: 'separator' as const },
         {
-          label: 'コマンドプレフィックス',
-          submenu: [
-            {
-              label: '/kiro:spec-*',
-              type: 'radio' as const,
-              checked: currentCommandPrefix === 'kiro',
-              click: () => {
-                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-                if (window) {
-                  window.webContents.send(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, 'kiro');
-                }
-              },
-            },
-            {
-              label: '/spec-manager:*',
-              type: 'radio' as const,
-              checked: currentCommandPrefix === 'spec-manager',
-              click: () => {
-                const window = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-                if (window) {
-                  window.webContents.send(IPC_CHANNELS.MENU_SET_COMMAND_PREFIX, 'spec-manager');
-                }
-              },
-            },
-          ],
-        },
-        { type: 'separator' as const },
-        {
           label: 'コマンドセットをインストール...',
           enabled: currentProjectPathForMenu !== null,
           click: () => {
@@ -358,16 +326,6 @@ export function updateMenu(): void {
 export function setMenuProjectPath(projectPath: string | null): void {
   currentProjectPathForMenu = projectPath;
   createMenu(); // Rebuild menu to update enabled states
-}
-
-/**
- * Set current command prefix for menu state management
- * Call this when command prefix setting changes
- * @param prefix - Command prefix ('kiro' or 'spec-manager')
- */
-export function setMenuCommandPrefix(prefix: CommandPrefix): void {
-  currentCommandPrefix = prefix;
-  createMenu(); // Rebuild menu to update radio button states
 }
 
 /**

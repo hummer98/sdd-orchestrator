@@ -6,14 +6,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, Loader2, Package, Layers, BoxSelect, CheckCircle, Trash2, FolderCheck, FileText, RefreshCw, SkipForward } from 'lucide-react';
+import { X, AlertCircle, Loader2, Package, Layers, CheckCircle, Trash2, FolderCheck, FileText, RefreshCw, SkipForward } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { CommonCommandConflict, CommonCommandDecision, CommonCommandsInstallResult } from '../types/electron.d';
 
 /**
  * Profile name type
  */
-export type ProfileName = 'cc-sdd' | 'cc-sdd-agent' | 'spec-manager';
+export type ProfileName = 'cc-sdd' | 'cc-sdd-agent';
 
 /**
  * Install progress callback data
@@ -71,13 +71,6 @@ const PROFILES: Profile[] = [
     description: 'cc-sdd-agent commands with agents',
     icon: <Layers className="w-5 h-5 text-green-500" />,
     commandsets: ['cc-sdd-agent', 'bug', 'document-review', 'agents'],
-  },
-  {
-    name: 'spec-manager',
-    displayName: 'spec-manager',
-    description: 'spec-manager commands with bug and document-review',
-    icon: <BoxSelect className="w-5 h-5 text-gray-500" />,
-    commandsets: ['spec-manager', 'bug', 'document-review'],
   },
 ];
 

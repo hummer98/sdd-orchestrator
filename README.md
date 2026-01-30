@@ -109,7 +109,6 @@ From SDD Orchestrator's **Tools** menu, select **Install Commandset...** to inst
 |---------|---------------------|----------|
 | cc-sdd | cc-sdd + bug + document-review | Standard SDD workflow |
 | cc-sdd-agent | cc-sdd-agent + bug + document-review | SDD with agent-based commands |
-| spec-manager | spec-manager + bug + document-review | Spec manager workflow |
 
 > ⚠️ **Note**: The `cc-sdd-agent` profile requires **Skip Permissions** to be enabled. See [Profile Details](#profile-details) for more information.
 
@@ -152,15 +151,6 @@ A Claude Code-native workflow using subagents for SDD phases. Each phase runs as
 - **Execution**: Each phase runs as an autonomous subagent with isolated context
 - **Permissions**: ⚠️ **Requires Skip Permissions** - Subagents need broad file access to function properly. Enable via Claude Code settings or `--dangerously-skip-permissions` flag.
 - **Best for**: Users who want more autonomous AI execution with less manual intervention
-
-#### spec-manager
-
-An experimental workflow specifically designed for this project. Uses a different internal architecture.
-
-- **Commands**: Uses `spec-manager:*` skill variants
-- **Execution**: Integrated skill-based execution
-- **Permissions**: Works with default permission settings
-- **Best for**: Experimental use and testing new SDD approaches
 
 ## Remote Access with Cloudflare Tunnel
 

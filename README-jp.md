@@ -111,7 +111,6 @@ SDD Orchestratorの**ツール**メニュー → **コマンドセットをイ�
 | ------------ | ------------------------------------ | ------------------------ |
 | cc-sdd       | cc-sdd + bug + document-review       | 標準的なSDDワークフロー  |
 | cc-sdd-agent | cc-sdd-agent + bug + document-review | エージェントベースのSDD  |
-| spec-manager | spec-manager + bug + document-review | Spec Managerワークフロー |
 
 > ⚠️ **注意**: `cc-sdd-agent` プロファイルを使用する場合は、**Skip Permissions** を有効にする必要があります。詳細は[プロファイル詳細](#プロファイル詳細)を参照してください。
 
@@ -155,15 +154,6 @@ Claude Code専用のsubagentを使ったワークフロー。各フェーズが�
 - **実行方式**: 各フェーズが独立したコンテキストを持つ自律的なsubagentとして実行
 - **パーミッション**: ⚠️ **Skip Permissionsが必須** - subagentが適切に動作するには広範なファイルアクセス権限が必要です。Claude Codeの設定または `--dangerously-skip-permissions` フラグで有効化してください。
 - **推奨ユーザー**: より自律的なAI実行を望み、手動介入を減らしたい方
-
-#### spec-manager
-
-本プロジェクト専用の実験的なワークフロー。異なる内部アーキテクチャを使用しています。
-
-- **コマンド**: `spec-manager:*` skillバリアントを使用
-- **実行方式**: 統合されたskillベースの実行
-- **パーミッション**: デフォルトのパーミッション設定で動作
-- **推奨ユーザー**: 新しいSDDアプローチの実験・テスト用途
 
 ## Cloudflare Tunnelによるリモートアクセス
 

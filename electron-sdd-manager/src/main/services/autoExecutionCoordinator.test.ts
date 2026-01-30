@@ -3061,4 +3061,97 @@ No tasks defined yet.
       });
     });
   });
+
+  /**
+   * getLastCompletedPhase() tests
+   * Tests for document-review completion detection
+   */
+  describe('getLastCompletedPhase()', () => {
+    it('should return null when no phases are completed', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: false, approved: false },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = coordinator.getLastCompletedPhase(approvals);
+      expect(result).toBeNull();
+    });
+
+    it('should return requirements when only requirements is completed', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: false, approved: false },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = coordinator.getLastCompletedPhase(approvals);
+      expect(result).toBe('requirements');
+    });
+
+    it('should return design when requirements and design are completed', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: false, approved: false },
+      };
+
+      const result = coordinator.getLastCompletedPhase(approvals);
+      expect(result).toBe('design');
+    });
+
+    it('should return tasks when all three phases are completed', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      };
+
+      const result = coordinator.getLastCompletedPhase(approvals);
+      expect(result).toBe('tasks');
+    });
+
+    it('should return document-review when tasks completed and documentReview.status is approved', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      };
+
+      // documentReview.status = 'approved' を追加パラメータとして渡す
+      const result = coordinator.getLastCompletedPhase(approvals, 'approved');
+      expect(result).toBe('document-review');
+    });
+
+    it('should return tasks when tasks completed but documentReview.status is not approved', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      };
+
+      // documentReview.status = 'pending'
+      const result = coordinator.getLastCompletedPhase(approvals, 'pending');
+      expect(result).toBe('tasks');
+    });
+
+    it('should return tasks when tasks completed and documentReview status is undefined', () => {
+      const coordinator = new AutoExecutionCoordinator();
+      const approvals: ApprovalsStatus = {
+        requirements: { generated: true, approved: true },
+        design: { generated: true, approved: true },
+        tasks: { generated: true, approved: true },
+      };
+
+      // documentReview.status が存在しない（undefined）
+      const result = coordinator.getLastCompletedPhase(approvals, undefined);
+      expect(result).toBe('tasks');
+    });
+  });
 });

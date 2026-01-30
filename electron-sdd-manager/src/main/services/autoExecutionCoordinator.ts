@@ -462,6 +462,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
     // これを state 作成前に実行し、options を確定させる
     let approvals = options.approvals;
     let effectiveOptions = options;
+    let documentReviewStatus: 'pending' | 'in_progress' | 'approved' | undefined = undefined;
     try {
       const specJsonPath = require('path').join(specPath, 'spec.json');
       const content = require('fs').readFileSync(specJsonPath, 'utf-8');
@@ -485,6 +486,15 @@ export class AutoExecutionCoordinator extends EventEmitter {
         logger.info('[AutoExecutionCoordinator] Read approvals from spec.json', {
           specPath,
           approvals,
+        });
+      }
+
+      // document-review-complete-detection: Read documentReview status
+      if (specJson.documentReview?.status) {
+        documentReviewStatus = specJson.documentReview.status;
+        logger.info('[AutoExecutionCoordinator] Read documentReview status from spec.json', {
+          specPath,
+          documentReviewStatus,
         });
       }
     } catch (err) {
@@ -567,11 +577,12 @@ export class AutoExecutionCoordinator extends EventEmitter {
         approvals = mutableApprovals;
       }
 
-      lastCompletedPhase = this.getLastCompletedPhase(approvals);
+      lastCompletedPhase = this.getLastCompletedPhase(approvals, documentReviewStatus);
       logger.info('[AutoExecutionCoordinator] Last completed phase from approvals', {
         specPath,
         lastCompletedPhase,
         approvals,
+        documentReviewStatus,
       });
     }
 
@@ -947,7 +958,13 @@ export class AutoExecutionCoordinator extends EventEmitter {
    * @param approvals spec.jsonのapprovals状態
    * @returns 最後に完了したフェーズ or null（なし）
    */
-  getLastCompletedPhase(approvals: ApprovalsStatus): WorkflowPhase | null {
+  getLastCompletedPhase(approvals: ApprovalsStatus, documentReviewStatus?: 'pending' | 'in_progress' | 'approved'): WorkflowPhase | null {
+    // document-review-complete-detection: Check document-review completion
+    // If tasks are completed and documentReview.status is 'approved', return 'document-review'
+    if ((approvals.tasks.approved || approvals.tasks.generated) && documentReviewStatus === 'approved') {
+      return 'document-review';
+    }
+
     // requirements, design, tasks の順でチェック（逆順）
     // approved または generated のフェーズは完了とみなす
     if (approvals.tasks.approved || approvals.tasks.generated) return 'tasks';

@@ -155,11 +155,26 @@ export interface EngineConfig {
 
 /**
  * Specs change event type
+ * file-change-push-notification: Task 1.1
+ * Requirements: 2.1, 2.4
+ * Push型通知: ファイル内容とエラー情報を含む
  */
 export interface SpecsChangeEvent {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
   path: string;
   specId?: string;
+  /**
+   * ファイル内容（Push型）
+   * - spec.jsonの場合: SpecJson型
+   * - artifactの場合: string型（Markdown内容）
+   * - エラー時: null
+   * - 未設定時: undefined（後方互換性）
+   */
+  content?: SpecJson | string | null;
+  /**
+   * ファイル読み込み失敗時のエラーメッセージ
+   */
+  error?: string;
 }
 
 /**

@@ -19,11 +19,25 @@ export type WatchCategory = 'specs' | 'bugs';
 // Bug fix: spec-agent-list-not-updating-on-auto-execution
 // Simplified event type - no longer includes record data
 // Renderer will fetch full data via loadAgents() to avoid file read timing issues
+// file-change-push-notification: Task 1.3
+// Requirements: 2.3, 2.4
+// Push型通知: ファイル内容とエラー情報を含む
 export type AgentRecordChangeEvent = {
   type: 'add' | 'change' | 'unlink';
   path: string;
   specId?: string;
   agentId?: string;
+  /**
+   * ファイル内容（Push型）
+   * - agent-{id}.jsonの場合: AgentRecord型
+   * - エラー時: null
+   * - 未設定時: undefined（後方互換性）
+   */
+  content?: import('./agentRecordService').AgentRecord | null;
+  /**
+   * ファイル読み込み失敗時のエラーメッセージ
+   */
+  error?: string;
 };
 
 export type AgentRecordChangeCallback = (event: AgentRecordChangeEvent) => void;

@@ -67,11 +67,25 @@ export interface BugDetail {
 /**
  * Bugs change event for file watcher
  * Requirements: 6.5
+ * file-change-push-notification: Task 1.2
+ * Requirements: 2.2, 2.4
+ * Push型通知: ファイル内容とエラー情報を含む
  */
 export interface BugsChangeEvent {
   readonly type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
   readonly path: string;
   readonly bugName?: string;
+  /**
+   * ファイル内容（Push型）
+   * - bug.jsonの場合: BugJson型
+   * - エラー時: null
+   * - 未設定時: undefined（後方互換性）
+   */
+  readonly content?: import('./bugJson').BugJson | null;
+  /**
+   * ファイル読み込み失敗時のエラーメッセージ
+   */
+  readonly error?: string;
 }
 
 /**

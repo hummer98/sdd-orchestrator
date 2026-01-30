@@ -54,8 +54,8 @@ describe('AgentRecordService', () => {
 
       await service.writeRecord(record);
 
-      // Verify file was created
-      const filePath = path.join(testDir, 'spec-a', 'agent-001.json');
+      // Verify file was created at new category-aware path
+      const filePath = path.join(testDir, 'specs', 'spec-a', 'agent-001.json');
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(content);
 
@@ -79,8 +79,8 @@ describe('AgentRecordService', () => {
 
       await service.writeRecord(record);
 
-      // Verify directory was created
-      const dirPath = path.join(testDir, 'new-spec');
+      // Verify directory was created at new category-aware path
+      const dirPath = path.join(testDir, 'specs', 'new-spec');
       const stats = await fs.stat(dirPath);
       expect(stats.isDirectory()).toBe(true);
     });
@@ -352,8 +352,8 @@ describe('AgentRecordService', () => {
     });
 
     it('should return empty array when spec directory is empty', async () => {
-      // Create empty directory
-      await fs.mkdir(path.join(testDir, 'empty-spec'), { recursive: true });
+      // Create empty directory at new category-aware path
+      await fs.mkdir(path.join(testDir, 'specs', 'empty-spec'), { recursive: true });
       const records = await service.readRecordsForSpec('empty-spec');
       expect(records).toHaveLength(0);
     });
@@ -373,8 +373,8 @@ describe('AgentRecordService', () => {
 
       await service.writeRecord(validRecord);
 
-      // Write corrupted JSON file
-      const corruptedPath = path.join(testDir, 'spec-a', 'agent-corrupted.json');
+      // Write corrupted JSON file at new category-aware path
+      const corruptedPath = path.join(testDir, 'specs', 'spec-a', 'agent-corrupted.json');
       await fs.writeFile(corruptedPath, 'not valid json {{{', 'utf-8');
 
       const records = await service.readRecordsForSpec('spec-a');
@@ -863,8 +863,8 @@ describe('AgentRecordService', () => {
 
       await service.writeRecord(record);
 
-      // Read file directly to verify JSON content
-      const filePath = path.join(testDir, 'spec-d', 'agent-004.json');
+      // Read file directly to verify JSON content at new category-aware path
+      const filePath = path.join(testDir, 'specs', 'spec-d', 'agent-004.json');
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(content);
 
@@ -1060,8 +1060,8 @@ describe('AgentRecordService', () => {
 
       await service.writeRecord(record);
 
-      // Read file directly to verify JSON content
-      const filePath = path.join(testDir, 'spec-e', 'agent-005.json');
+      // Read file directly to verify JSON content at new category-aware path
+      const filePath = path.join(testDir, 'specs', 'spec-e', 'agent-005.json');
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(content);
 

@@ -13,7 +13,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { type AgentCategory, getCategoryBasePath, getMetadataPath } from './agentCategory';
+import { type AgentCategory, getCategoryBasePath, getMetadataPath, determineCategory, getEntityIdFromSpecId } from './agentCategory';
 import type { LLMEngineId } from '@shared/registry';
 import type { ExitReason } from './agentLifecycleTypes';
 
@@ -213,13 +213,12 @@ export class AgentRecordService {
    * Requirements: 5.5
    * agent-stale-recovery Task 14.2: Reset autoResumeCount to 0 for new agent creation
    * Requirements: 5.4 - Reset autoResumeCount on new execution
+   * runtime-agents-restructure Task 7.4: Use category-aware writeRecordWithCategory
    */
   async writeRecord(record: AgentRecord): Promise<void> {
-    const dirPath = path.join(this.basePath, record.specId);
-    const filePath = this.getFilePath(record.specId, record.agentId);
-
-    // Ensure directory exists
-    await fs.mkdir(dirPath, { recursive: true });
+    // runtime-agents-restructure Task 7.4: Determine category and delegate to category-aware method
+    const category = determineCategory(record.specId);
+    const entityId = getEntityIdFromSpecId(record.specId);
 
     // agent-stale-recovery Task 14.2: Reset autoResumeCount to 0 for new agent creation
     // Requirements: 5.4 - New execution or manual resume should reset count
@@ -229,56 +228,70 @@ export class AgentRecordService {
       autoResumeCount: record.autoResumeCount ?? 0,
     };
 
-    // Write file
-    await fs.writeFile(filePath, JSON.stringify(recordToWrite, null, 2), 'utf-8');
+    await this.writeRecordWithCategory(category, entityId, recordToWrite);
   }
 
   /**
    * Read an agent record
    * Requirements: 5.6
+   * runtime-agents-restructure Task 7.4: Use category-aware readRecordWithCategory
    */
   async readRecord(specId: string, agentId: string): Promise<AgentRecord | null> {
-    const filePath = this.getFilePath(specId, agentId);
+    // runtime-agents-restructure Task 7.4: Determine category and delegate to category-aware method
+    const category = determineCategory(specId);
+    const entityId = getEntityIdFromSpecId(specId);
 
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      return JSON.parse(content) as AgentRecord;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return null;
-      }
-      throw error;
-    }
+    return this.readRecordWithCategory(category, entityId, agentId);
   }
 
   /**
-   * Read all agent records from all spec directories
+   * Read all agent records from all categories
    * Requirements: 5.6
+   * runtime-agents-restructure: Scans category-aware directory structure
    * @deprecated Use readRecordsForSpec instead for scoped reads (agent-state-file-ssot)
    */
   async readAllRecords(): Promise<AgentRecord[]> {
     const result: AgentRecord[] = [];
 
     try {
-      // Get all spec directories
-      const specDirs = await fs.readdir(this.basePath, { withFileTypes: true });
+      // Read project agents
+      const projectAgents = await this.readProjectAgents();
+      result.push(...projectAgents);
 
-      for (const specDir of specDirs) {
-        if (!specDir.isDirectory()) continue;
+      // Read specs category
+      const specsPath = path.join(this.basePath, 'specs');
+      try {
+        const specEntries = await fs.readdir(specsPath, { withFileTypes: true });
+        for (const entry of specEntries) {
+          if (!entry.isDirectory()) continue;
 
-        const specPath = path.join(this.basePath, specDir.name);
-        const files = await fs.readdir(specPath);
-
-        for (const file of files) {
-          if (!file.endsWith('.json')) continue;
-
-          const agentId = file.replace('.json', '');
-          const record = await this.readRecord(specDir.name, agentId);
-
-          if (record) {
-            result.push(record);
-          }
+          const specId = entry.name;
+          const records = await this.readRecordsForSpec(specId);
+          result.push(...records);
         }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // specs directory doesn't exist yet, skip
+      }
+
+      // Read bugs category
+      const bugsPath = path.join(this.basePath, 'bugs');
+      try {
+        const bugEntries = await fs.readdir(bugsPath, { withFileTypes: true });
+        for (const entry of bugEntries) {
+          if (!entry.isDirectory()) continue;
+
+          const bugId = entry.name;
+          const records = await this.readRecordsForBug(bugId);
+          result.push(...records);
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // bugs directory doesn't exist yet, skip
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -294,81 +307,82 @@ export class AgentRecordService {
   /**
    * Read agent records for a specific spec
    * Requirements: 1.1 (agent-state-file-ssot)
+   * runtime-agents-restructure Task 2.3: Wrapper around readRecordsFor('specs', specId)
    * @param specId - The spec ID to read records for
    * @returns Array of AgentRecord for the specified spec
    */
   async readRecordsForSpec(specId: string): Promise<AgentRecord[]> {
-    const result: AgentRecord[] = [];
-    const specPath = path.join(this.basePath, specId);
-
-    try {
-      const files = await fs.readdir(specPath);
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        const agentId = file.replace('.json', '');
-        try {
-          const record = await this.readRecord(specId, agentId);
-          if (record) {
-            result.push(record);
-          }
-        } catch {
-          // Skip corrupted JSON files - log would be useful but not required
-        }
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        // Spec directory doesn't exist yet
-        return [];
-      }
-      throw error;
-    }
-
-    return result;
+    // runtime-agents-restructure Task 2.3: Delegate to category-aware method
+    const category = determineCategory(specId);
+    const entityId = getEntityIdFromSpecId(specId);
+    return this.readRecordsFor(category, entityId);
   }
 
   /**
    * Read project-level agent records (specId = "")
    * Requirements: 1.2 (agent-state-file-ssot)
-   * ProjectAgent records are stored in root directory with empty specId
+   * runtime-agents-restructure Task 2.3: Wrapper around readRecordsFor('project', '')
    * @returns Array of AgentRecord for project-level agents
    */
   async readProjectAgents(): Promise<AgentRecord[]> {
-    // ProjectAgents use empty string as specId, stored in base directory directly
-    return this.readRecordsForSpec('');
+    // runtime-agents-restructure Task 2.3: Delegate to category-aware method
+    return this.readRecordsFor('project', '');
   }
 
   /**
    * Get running agent counts per spec
    * Requirements: 1.3 (agent-state-file-ssot)
-   * Scans all agent records and counts running agents per spec
+   * runtime-agents-restructure: Scans category-aware directory structure
    * @returns Map of specId to running agent count
    */
   async getRunningAgentCounts(): Promise<Map<string, number>> {
     const counts = new Map<string, number>();
 
     try {
-      // Get all entries in base directory
-      const entries = await fs.readdir(this.basePath, { withFileTypes: true });
-
-      // Check for ProjectAgents (empty specId) - JSON files directly in basePath
-      const projectAgentFiles = entries.filter((e) => e.isFile() && e.name.endsWith('.json'));
-      if (projectAgentFiles.length > 0) {
-        const projectAgents = await this.readProjectAgents();
+      // Check for ProjectAgents
+      const projectAgents = await this.readProjectAgents();
+      if (projectAgents.length > 0) {
         const runningCount = projectAgents.filter((r) => r.status === 'running').length;
         counts.set('', runningCount);
       }
 
-      // Process spec directories
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
+      // Process specs category
+      const specsPath = path.join(this.basePath, 'specs');
+      try {
+        const specEntries = await fs.readdir(specsPath, { withFileTypes: true });
+        for (const entry of specEntries) {
+          if (!entry.isDirectory()) continue;
 
-        const specId = entry.name;
-        const records = await this.readRecordsForSpec(specId);
+          const specId = entry.name;
+          const records = await this.readRecordsForSpec(specId);
+          const runningCount = records.filter((r) => r.status === 'running').length;
+          counts.set(specId, runningCount);
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // specs directory doesn't exist yet, skip
+      }
 
-        const runningCount = records.filter((r) => r.status === 'running').length;
-        counts.set(specId, runningCount);
+      // Process bugs category
+      const bugsPath = path.join(this.basePath, 'bugs');
+      try {
+        const bugEntries = await fs.readdir(bugsPath, { withFileTypes: true });
+        for (const entry of bugEntries) {
+          if (!entry.isDirectory()) continue;
+
+          const bugId = entry.name;
+          const specId = `bug:${bugId}`;
+          const records = await this.readRecordsForBug(bugId);
+          const runningCount = records.filter((r) => r.status === 'running').length;
+          counts.set(specId, runningCount);
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // bugs directory doesn't exist yet, skip
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -384,22 +398,46 @@ export class AgentRecordService {
   /**
    * Get all spec IDs that have agent records
    * Requirements: agent-state-file-ssot (for getAllAgents)
-   * Bug fix: project-agent-no-response - Include empty specId for ProjectAgents
-   * @returns Array of spec IDs (directory names under basePath, plus '' for ProjectAgents)
+   * runtime-agents-restructure: Scans category-aware directory structure
+   * @returns Array of spec IDs (specIds from specs/, bug:bugIds from bugs/, '' for project)
    */
   async getAllSpecIds(): Promise<string[]> {
     try {
-      const entries = await fs.readdir(this.basePath, { withFileTypes: true });
       const specIds: string[] = [];
 
-      // Check for ProjectAgents (empty specId) - JSON files directly in basePath
-      const hasProjectAgents = entries.some((e) => e.isFile() && e.name.endsWith('.json'));
-      if (hasProjectAgents) {
+      // Check for ProjectAgents
+      const projectAgents = await this.readProjectAgents();
+      if (projectAgents.length > 0) {
         specIds.push(''); // Empty specId for ProjectAgents
       }
 
-      // Add spec/bug directories
-      specIds.push(...entries.filter((d) => d.isDirectory()).map((d) => d.name));
+      // Add specs from specs/ directory
+      const specsPath = path.join(this.basePath, 'specs');
+      try {
+        const specEntries = await fs.readdir(specsPath, { withFileTypes: true });
+        const specs = specEntries.filter((d) => d.isDirectory()).map((d) => d.name);
+        specIds.push(...specs);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // specs directory doesn't exist yet, skip
+      }
+
+      // Add bugs from bugs/ directory (with bug: prefix)
+      const bugsPath = path.join(this.basePath, 'bugs');
+      try {
+        const bugEntries = await fs.readdir(bugsPath, { withFileTypes: true });
+        const bugs = bugEntries
+          .filter((d) => d.isDirectory())
+          .map((d) => `bug:${d.name}`);
+        specIds.push(...bugs);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+        // bugs directory doesn't exist yet, skip
+      }
 
       return specIds;
     } catch (error) {
@@ -526,9 +564,13 @@ export class AgentRecordService {
 
   /**
    * Delete an agent record
+   * runtime-agents-restructure Task 7.4: Use category-aware paths
    */
   async deleteRecord(specId: string, agentId: string): Promise<void> {
-    const filePath = this.getFilePath(specId, agentId);
+    // Determine category and entity ID
+    const category = determineCategory(specId);
+    const entityId = getEntityIdFromSpecId(specId);
+    const filePath = this.getFilePathWithCategory(category, entityId, agentId);
 
     try {
       await fs.unlink(filePath);

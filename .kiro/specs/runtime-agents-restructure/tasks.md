@@ -127,11 +127,29 @@
   - AgentRecordServiceの新メソッドを使用するように変更
   - specIdからcategoryを自動判定するロジックを適用
   - _Requirements: 3.2, 3.3, 3.4_
+  - ✅ SpecManagerService: writeRecordWithCategoryを使用 (L988-990)
+  - ✅ agentLifecycleSetup.ts: アダプタをwriteRecordWithCategoryに更新
 
-- [x] 7.2 既存のログ読み込み箇所を更新
+- [x] 7.2 既存のログ読み込み・書き込み箇所を更新
+  - appendLogWithCategoryを使用するように変更（SpecManagerService内）
   - readLogWithFallbackを使用するように変更
   - isLegacyフラグに基づくUI表示（オプション）
   - _Requirements: 6.1, 6.2, 6.3_
+  - ✅ SpecManagerService: appendLogWithCategoryを使用 (L1100-1102, L1569-1571)
+
+- [x] 7.4 AgentRecordService内部メソッドを新構造に対応
+  - updateRecord内のreadRecord/writeRecordをカテゴリ対応版に変更
+  - readRecord内部でreadRecordWithCategoryを使用するように変更
+  - deleteRecord内部でカテゴリ対応パスを使用するように変更
+  - LogFileService basePathを `.kiro/runtime/agents` に統一
+  - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - ✅ writeRecord: determineCategory + writeRecordWithCategory を使用
+  - ✅ readRecord: determineCategory + readRecordWithCategory を使用
+  - ✅ updateRecord: 自動的に新パスを使用（readRecord/writeRecordに依存）
+  - ✅ deleteRecord: determineCategory + getFilePathWithCategory を使用
+  - ✅ LogFileService basePathを `.kiro/runtime/agents` に統一 (SpecManagerService L508)
+  - ✅ 既存テスト全て修正完了（agentRecordService.test.ts: 55/55 passed）
+  - ✅ 統合テスト作成完了（specManagerService.categoryIntegration.test.ts: 7/7 passed）
 
 - [x] 7.3 .gitignore の更新確認
   - `.kiro/runtime/agents/` が適切に除外されていることを確認

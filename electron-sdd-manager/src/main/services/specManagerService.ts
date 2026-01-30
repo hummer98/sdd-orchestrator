@@ -15,6 +15,7 @@ import {
 } from './providerAgentProcess';
 import { AgentRecordService, AgentInfo, AgentStatus, ExecutionEntry } from './agentRecordService';
 import { LogFileService, LogEntry } from './logFileService';
+import { determineCategory, getEntityIdFromSpecId } from './agentCategory';
 import { FileService } from './fileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 // execution-store-consolidation: ImplCompletionAnalyzer REMOVED (Req 6.2)
@@ -502,9 +503,9 @@ export class SpecManagerService {
     this.recordService = new AgentRecordService(
       path.join(projectPath, '.kiro', 'runtime', 'agents')
     );
-    // Log files are stored at .kiro/specs/{specId}/logs/{agentId}.log
+    // runtime-agents-restructure Task 7.2: Log files unified under .kiro/runtime/agents
     this.logService = new LogFileService(
-      path.join(projectPath, '.kiro', 'specs')
+      path.join(projectPath, '.kiro', 'runtime', 'agents')
     );
     this.logParserService = new LogParserService();
 
@@ -982,8 +983,11 @@ export class SpecManagerService {
       // Bug fix: agent-resume-cwd-mismatch - Save cwd for resume operations
       // llm-stream-log-parser: Task 6.2 - Save engineId for log parsing
       // metrics-file-based-tracking: Task 2.1 - Initialize executions array
+      // runtime-agents-restructure: Task 7.1 - Use writeRecordWithCategory
       // Requirements: 2.1, 2.2
-      await this.recordService.writeRecord({
+      const category = determineCategory(specId);
+      const entityId = getEntityIdFromSpecId(specId);
+      await this.recordService.writeRecordWithCategory(category, entityId, {
         agentId,
         specId,
         phase,
@@ -1087,12 +1091,15 @@ export class SpecManagerService {
     }
 
     // Save log to file
+    // runtime-agents-restructure: Task 7.2 - Use appendLogWithCategory
     const logEntry: LogEntry = {
       timestamp: new Date().toISOString(),
       stream,
       data,
     };
-    this.logService.appendLog(specId, agentId, logEntry).catch((err) => {
+    const category = determineCategory(specId);
+    const entityId = getEntityIdFromSpecId(specId);
+    this.logService.appendLogWithCategory(category, entityId, agentId, logEntry).catch((err) => {
       logger.warn('[SpecManagerService] Failed to write log file', { agentId, error: err.message });
     });
 
@@ -1558,7 +1565,10 @@ export class SpecManagerService {
         stream: 'stdout',
         data: userEventJson + '\n',
       };
-      this.logService.appendLog(agent.specId, agentId, promptLogEntry).catch((err) => {
+      // runtime-agents-restructure: Task 7.2 - Use appendLogWithCategory
+      const category = determineCategory(agent.specId);
+      const entityId = getEntityIdFromSpecId(agent.specId);
+      this.logService.appendLogWithCategory(category, entityId, agentId, promptLogEntry).catch((err) => {
         logger.warn('[SpecManagerService] Failed to write prompt log', { agentId, error: err.message });
       });
       // Also notify UI via output callbacks

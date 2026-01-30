@@ -16,6 +16,7 @@ import { AgentRegistry } from './agentRegistry';
 import { getProcessUtils, type ProcessUtils } from './processUtils';
 import { AgentWatchdog } from './agentWatchdog';
 import { getDefaultAgentRecordService } from './agentRecordService';
+import { determineCategory, getEntityIdFromSpecId } from './agentCategory';
 import { logger } from './logger';
 
 // Singleton instances
@@ -32,7 +33,12 @@ function createRecordStoreAdapter(): IAgentRecordStore {
 
   return {
     readAllRecords: () => recordService.readAllRecords(),
-    createRecord: (record) => recordService.writeRecord(record),
+    createRecord: (record) => {
+      // runtime-agents-restructure: Task 7.1 - Use writeRecordWithCategory
+      const category = determineCategory(record.specId);
+      const entityId = getEntityIdFromSpecId(record.specId);
+      return recordService.writeRecordWithCategory(category, entityId, record);
+    },
     updateRecord: (agentId, updates) => {
       // AgentRecordService.updateRecord requires specId, but IAgentRecordStore doesn't
       // We need to find the record first to get its specId

@@ -23,6 +23,8 @@ import type { SpecManagerService } from '../specManagerService';
 import type { LogFileService, LogEntry } from '../logFileService';
 import type { BugDetail, BugMetadata, BugPhase } from '../../../renderer/types';
 import type { BugWorkflowPhase } from '../../../renderer/types/bug';
+// runtime-agents-restructure: Category-aware log reading
+import { determineCategory, getEntityIdFromSpecId } from '../agentCategory';
 
 // Export BugWorkflowService type for consumers (reserved for future use)
 export type { BugWorkflowService };
@@ -1344,8 +1346,11 @@ export class BugToolHandlers {
 
     const agent = sortedAgents[0];
 
-    // Read logs using logFileService
-    let logs = await this.logFileService.readLog(bugSpecId, agent.agentId);
+    // Read logs using logFileService (runtime-agents-restructure: category-aware)
+    const category = determineCategory(bugSpecId);
+    const entityId = getEntityIdFromSpecId(bugSpecId);
+    const { entries } = await this.logFileService.readLogWithFallback(category, entityId, agent.agentId);
+    let logs = entries;
 
     // Apply lines limit if specified (return last N entries)
     if (lines !== undefined && lines > 0 && logs.length > lines) {

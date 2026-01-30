@@ -26,6 +26,8 @@ import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
 // Bug fix: agent-log-json-display-issue - Parse logs before returning to renderer
 import { unifiedParser } from '../utils/unifiedParser';
 import type { ParsedLogEntry } from '@shared/utils/parserTypes';
+// runtime-agents-restructure: Category-aware log reading
+import { determineCategory, getEntityIdFromSpecId } from '../services/agentCategory';
 
 // Module-level state for agent record watcher
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
@@ -274,7 +276,10 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
       logger.debug('[agentHandlers] GET_AGENT_LOGS called', { specId, agentId });
       try {
         const logFileService = getDefaultLogFileService();
-        const logs = await logFileService.readLog(specId, agentId);
+        // runtime-agents-restructure: Use category-aware log reading
+        const category = determineCategory(specId);
+        const entityId = getEntityIdFromSpecId(specId);
+        const { entries: logs } = await logFileService.readLogWithFallback(category, entityId, agentId);
 
         // Get engineId from agent record for parser selection (optional)
         // Bug fix: agent-log-json-display-issue - Handle case where agentRecordService is not initialized

@@ -19,6 +19,8 @@ import type { FileService } from '../fileService';
 import type { AutoExecutionCoordinator, AutoExecutionState } from '../autoExecutionCoordinator';
 import type { SpecManagerService } from '../specManagerService';
 import type { LogFileService, LogEntry } from '../logFileService';
+// runtime-agents-restructure: Category-aware log reading
+import { determineCategory, getEntityIdFromSpecId } from '../agentCategory';
 import type { SpecJson, ArtifactInfo, Phase } from '../../../renderer/types';
 
 // =============================================================================
@@ -1489,8 +1491,14 @@ export class SpecToolHandlers {
     const runningAgent = specAgents.find((a) => a.status === 'running');
     const targetAgent = runningAgent || specAgents[specAgents.length - 1];
 
-    // Read logs using logFileService
-    const logEntries = await this.logFileService.readLog(name, targetAgent.agentId);
+    // Read logs using logFileService (runtime-agents-restructure: category-aware)
+    const category = determineCategory(name);
+    const entityId = getEntityIdFromSpecId(name);
+    const { entries: logEntries } = await this.logFileService.readLogWithFallback(
+      category,
+      entityId,
+      targetAgent.agentId
+    );
 
     // Apply line limit if specified (return last N lines)
     if (lines !== undefined && lines > 0 && logEntries.length > lines) {

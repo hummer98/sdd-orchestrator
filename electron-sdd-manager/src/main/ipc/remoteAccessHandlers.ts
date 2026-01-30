@@ -20,6 +20,8 @@ import { getClaudeCommand } from '../services/agentProcess';
 import { BugService } from '../services/bugService';
 import { join } from 'path';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
+// runtime-agents-restructure: Category-aware log reading
+import { determineCategory, getEntityIdFromSpecId } from '../services/agentCategory';
 
 // Singleton instance of RemoteAccessServer
 let remoteAccessServer: RemoteAccessServer | null = null;
@@ -417,12 +419,17 @@ export function setupWorkflowController(specManagerService: SpecManagerService):
 /**
  * Create an AgentLogsProvider for WebSocketHandler
  * Requirements: Bug fix - remote-ui-agent-log-display
+ * runtime-agents-restructure: Use category-aware log reading
  */
 export function createAgentLogsProvider(): AgentLogsProvider {
   return {
     readLog: async (specId: string, agentId: string) => {
       const logFileService = getDefaultLogFileService();
-      return logFileService.readLog(specId, agentId);
+      // runtime-agents-restructure: Use category-aware log reading
+      const category = determineCategory(specId);
+      const entityId = getEntityIdFromSpecId(specId);
+      const { entries } = await logFileService.readLogWithFallback(category, entityId, agentId);
+      return entries;
     },
   };
 }

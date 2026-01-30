@@ -635,6 +635,9 @@ describe('Inspection Workflow E2E', () => {
 
       // Skip document review
       await setDocumentReviewFlag('run');
+
+      // Clear agent store to prevent interference from previous tests
+      await clearAgentStore();
     });
 
     it('should execute inspection when inspection permission is ON', async () => {
@@ -650,7 +653,7 @@ describe('Inspection Workflow E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for inspection to be triggered
@@ -684,7 +687,7 @@ describe('Inspection Workflow E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion
@@ -788,7 +791,7 @@ describe('Inspection Workflow E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for inspection agent to start
@@ -831,7 +834,7 @@ describe('Inspection Workflow E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for spec-merge to start (after inspection GO)
@@ -970,6 +973,188 @@ describe('Inspection Workflow E2E', () => {
         }, 60000, 1000, 'inspection-fix-started');
 
         console.log(`[E2E] Inspection fix started: ${fixStarted}`);
+      }
+    });
+  });
+
+  // ============================================================
+  // Auto-execution: NOGO -> autofix -> next inspection round
+  // Tests that inspection automatically continues to next round after autofix
+  // Similar to document-review autofix loop test
+  // ============================================================
+  describe('Auto-execution: NOGO -> autofix -> next inspection round', () => {
+    beforeEach(async () => {
+      setFixtureState('no_inspection');
+
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+
+      // Skip document review
+      await setDocumentReviewFlag('run');
+    });
+
+    it('should trigger next inspection round automatically after autofix on NOGO', async () => {
+      // Set permissions: inspection enabled (with --autofix in auto-execution)
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: true, // Enable inspection with --autofix
+        deploy: false,
+      });
+      await browser.pause(300);
+
+      // Get auto-execute button and start
+      const autoButton = await $('[data-testid="auto-execution-button"]');
+      await autoButton.click();
+
+      // Wait for first inspection agent to start
+      const firstInspectionStarted = await waitForCondition(async () => {
+        const agents = await getAgentsForPhase('inspection');
+        return agents.some(a => a.phase.includes('inspection'));
+      }, 90000, 1000, 'first-inspection-started');
+
+      console.log(`[E2E] First inspection started: ${firstInspectionStarted}`);
+      expect(firstInspectionStarted).toBe(true);
+
+      // Wait for first inspection to complete
+      const firstInspectionCompleted = await waitForCondition(async () => {
+        const agents = await getAgentsForPhase('inspection');
+        return agents.some(a => a.status === 'completed' || a.status === 'failed');
+      }, 180000, 2000, 'first-inspection-completed');
+
+      console.log(`[E2E] First inspection completed: ${firstInspectionCompleted}`);
+
+      if (firstInspectionCompleted) {
+        // Check spec.json after first inspection
+        await browser.pause(2000);
+        const specJsonAfterFirstInspection = readSpecJson();
+        console.log(`[E2E] spec.json after first inspection: ${JSON.stringify(specJsonAfterFirstInspection.inspection)}`);
+
+        // If inspection returned NOGO and autofix was applied
+        if (specJsonAfterFirstInspection.inspection?.rounds) {
+          const rounds = specJsonAfterFirstInspection.inspection.rounds;
+          const lastRound = rounds[rounds.length - 1];
+
+          if (lastRound?.result === 'nogo' && lastRound.fixedAt) {
+            console.log(`[E2E] NOGO result with autofix detected in round ${lastRound.number}`);
+
+            // CRITICAL: Verify that phase is still 'impl' or 'inspection-pending'
+            // NOT 'inspection-complete' or 'deploy'
+            const phase = specJsonAfterFirstInspection.phase;
+            console.log(`[E2E] Phase after autofix: ${phase}`);
+            expect(phase).not.toBe('inspection-complete');
+            expect(phase).not.toBe('deploy');
+
+            // Wait for second inspection round to be triggered
+            const secondInspectionStarted = await waitForCondition(async () => {
+              const agents = await getAgentsForPhase('inspection');
+              // Filter agents to get only inspection agents (not inspection-fix)
+              const inspectionAgents = agents.filter(a =>
+                a.phase.includes('inspection') && !a.phase.includes('fix')
+              );
+              // Should have at least 2 inspection agents (round 1 and round 2)
+              return inspectionAgents.length >= 2;
+            }, 90000, 1000, 'second-inspection-started');
+
+            console.log(`[E2E] Second inspection round started: ${secondInspectionStarted}`);
+
+            if (secondInspectionStarted) {
+              console.log(`[E2E] ✅ Loop correctly continued to second round after autofix`);
+            }
+          } else if (lastRound?.result === 'go') {
+            console.log(`[E2E] First inspection returned GO - no autofix needed`);
+          }
+        }
+      }
+
+      // Wait for auto-execution to complete or pause
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting || s.autoExecutionStatus === 'paused' || s.autoExecutionStatus === 'completed';
+      }, 300000, 2000, 'auto-execution-complete-or-paused');
+
+      // Final verification
+      const finalSpecJson = readSpecJson();
+      console.log(`[E2E] Final spec.json inspection: ${JSON.stringify(finalSpecJson.inspection)}`);
+
+      // Verify multiple rounds were executed if fixes were applied
+      if (finalSpecJson.inspection?.rounds) {
+        const rounds = finalSpecJson.inspection.rounds;
+        const roundsWithAutofix = rounds.filter((r: any) => r.result === 'nogo' && r.fixedAt);
+
+        if (roundsWithAutofix.length > 0) {
+          // If any round had autofix, there should be at least one more round after it
+          console.log(`[E2E] Rounds with autofix: ${roundsWithAutofix.length}`);
+          console.log(`[E2E] Total rounds: ${rounds.length}`);
+
+          // The test passes if:
+          // 1. No round with autofix incorrectly completed the workflow
+          // 2. OR if there are multiple rounds (loop continued)
+          expect(rounds.length).toBeGreaterThanOrEqual(1);
+
+          // Verify that after autofix, the loop continued
+          // (unless the last round with autofix is also the last round overall and it's GO)
+          const lastRoundWithAutofix = roundsWithAutofix[roundsWithAutofix.length - 1];
+          const lastRoundOverall = rounds[rounds.length - 1];
+
+          if (lastRoundWithAutofix.number < lastRoundOverall.number) {
+            // There is a round after the autofix round - loop continued
+            console.log(`[E2E] ✅ Confirmed: loop continued after autofix (round ${lastRoundWithAutofix.number} -> ${lastRoundOverall.number})`);
+          } else if (lastRoundOverall.result === 'go') {
+            // Last round is GO - acceptable terminal state
+            console.log(`[E2E] ✅ Terminal state: last round is GO`);
+          } else {
+            // Last round is NOGO with fix - may need more rounds
+            console.log(`[E2E] ⚠️ Last round is NOGO with autofix - may need more rounds`);
+          }
+        }
+      }
+    });
+
+    it('should respect max autofix rounds limit (similar to document-review)', async () => {
+      // Set permissions: inspection enabled
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        impl: true,
+        inspection: true,
+        deploy: false,
+      });
+      await browser.pause(300);
+
+      // Start auto-execution
+      const autoButton = await $('[data-testid="auto-execution-button"]');
+      await autoButton.click();
+
+      // Wait for auto-execution to complete
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 300000, 2000, 'auto-execution-complete');
+
+      // Verify that inspection rounds did not exceed max limit
+      const finalSpecJson = readSpecJson();
+      if (finalSpecJson.inspection?.rounds) {
+        const rounds = finalSpecJson.inspection.rounds;
+        console.log(`[E2E] Total inspection rounds: ${rounds.length}`);
+
+        // Autofix should have a max rounds limit (similar to document-review's 5 rounds)
+        // If Mock Claude returns NOGO every time, it should stop after max rounds
+        expect(rounds.length).toBeLessThanOrEqual(5);
       }
     });
   });

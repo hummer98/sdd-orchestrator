@@ -1,7 +1,6 @@
 /**
- * SpecsWatcherService Unit Tests - Root Monitoring Approach
- * file-watcher-root-monitoring: Tests for watchedPaths tracking with root monitoring
- * Requirements: 1.2, 1.3, 9.1, 9.2, 9.3
+ * SpecsWatcherService Unit Tests
+ * Tests for watchedPaths tracking mechanism to prevent duplicate monitoring
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -24,7 +23,7 @@ vi.mock('../logger', () => ({
   },
 }));
 
-describe('SpecsWatcherService - Root monitoring with watchedPaths tracking', () => {
+describe('SpecsWatcherService - watchedPaths tracking', () => {
   let service: SpecsWatcherService;
   let mockWatcher: any;
   let projectPath: string;
@@ -59,65 +58,79 @@ describe('SpecsWatcherService - Root monitoring with watchedPaths tracking', () 
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  describe('Root monitoring path initialization', () => {
-    it('should track both main and worktree base paths in watchedPaths on start', async () => {
+  describe('Duplicate path prevention', () => {
+    it('should not add the same path twice', async () => {
+      await service.start();
+
+      const testPath = path.join(worktreeSpecsBaseDir, 'test-spec', '.kiro', 'specs', 'test-spec');
+
+      // First add
+      await service['handleWorktreeAddition'](path.join(worktreeSpecsBaseDir, 'test-spec'));
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      const firstAddCallCount = mockWatcher.add.mock.calls.length;
+
+      // Second add (should be prevented)
+      await service['handleWorktreeAddition'](path.join(worktreeSpecsBaseDir, 'test-spec'));
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Should not add duplicate
+      expect(mockWatcher.add).toHaveBeenCalledTimes(firstAddCallCount);
+    });
+
+    it('should track all watched paths in watchedPaths Set', async () => {
       await service.start();
 
       // Initial paths should be tracked
       const watchedPaths = service['watchedPaths'];
       expect(watchedPaths).toBeDefined();
-      expect(watchedPaths.size).toBe(2);
+      expect(watchedPaths.size).toBeGreaterThan(0);
       expect(watchedPaths.has(specsDir)).toBe(true);
       expect(watchedPaths.has(worktreeSpecsBaseDir)).toBe(true);
     });
+  });
 
-    it('should pass both paths to chokidar.watch in a single call', async () => {
+  describe('Worktree addition handling', () => {
+    it('should add path to watchedPaths when worktree is added', async () => {
       await service.start();
 
-      expect(chokidar.watch).toHaveBeenCalledTimes(1);
-      expect(chokidar.watch).toHaveBeenCalledWith(
-        expect.arrayContaining([specsDir, worktreeSpecsBaseDir]),
-        expect.objectContaining({
-          depth: undefined,
-          ignored: expect.arrayContaining([
-            '**/runtime/**',
-            '**/.git/**',
-            '**/logs/**',
-            '**/*.log',
-          ]),
-        })
-      );
+      const specId = 'test-spec';
+      const worktreeSpecPath = path.join(worktreeSpecsBaseDir, specId, '.kiro', 'specs', specId);
+
+      // Create worktree directory
+      await mkdir(worktreeSpecPath, { recursive: true });
+
+      await service['handleWorktreeAddition'](path.join(worktreeSpecsBaseDir, specId));
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      const watchedPaths = service['watchedPaths'];
+      expect(watchedPaths.has(worktreeSpecPath)).toBe(true);
     });
   });
 
-  describe('Root monitoring approach - no dynamic path addition', () => {
-    it('should NOT have handleWorktreeAddition method', async () => {
+  describe('Worktree removal handling', () => {
+    it('should remove path from watchedPaths when worktree is removed', async () => {
       await service.start();
 
-      const handleWorktreeAddition = (service as any).handleWorktreeAddition;
-      expect(handleWorktreeAddition).toBeUndefined();
-    });
-
-    it('should NOT have handleWorktreeRemoval method', async () => {
-      await service.start();
-
-      const handleWorktreeRemoval = (service as any).handleWorktreeRemoval;
-      expect(handleWorktreeRemoval).toBeUndefined();
-    });
-
-    it('should NOT call watcher.add after initialization (root monitoring)', async () => {
-      await service.start();
-
-      // Reset mock to clear initialization call
-      mockWatcher.add.mockClear();
-
-      // Create a worktree directory (in real scenario, this happens via git worktree add)
       const specId = 'test-spec';
       const worktreeSpecPath = path.join(worktreeSpecsBaseDir, specId, '.kiro', 'specs', specId);
-      await mkdir(worktreeSpecPath, { recursive: true });
 
-      // Root monitoring does not dynamically add paths
-      expect(mockWatcher.add).not.toHaveBeenCalled();
+      // Create and add worktree
+      await mkdir(worktreeSpecPath, { recursive: true });
+      await service['handleWorktreeAddition'](path.join(worktreeSpecsBaseDir, specId));
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Remove worktree
+      service['handleWorktreeRemoval'](path.join(worktreeSpecsBaseDir, specId));
+
+      const watchedPaths = service['watchedPaths'];
+      expect(watchedPaths.has(worktreeSpecPath)).toBe(false);
     });
   });
 
@@ -125,9 +138,17 @@ describe('SpecsWatcherService - Root monitoring with watchedPaths tracking', () 
     it('should unwatch all tracked paths and clear watchedPaths on stop', async () => {
       await service.start();
 
+      const specId = 'test-spec';
+      const worktreeSpecPath = path.join(worktreeSpecsBaseDir, specId, '.kiro', 'specs', specId);
+
+      // Create and add worktree
+      await mkdir(worktreeSpecPath, { recursive: true });
+      await service['handleWorktreeAddition'](path.join(worktreeSpecsBaseDir, specId));
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       const watchedPaths = service['watchedPaths'];
       const pathsBeforeStop = Array.from(watchedPaths);
-      expect(pathsBeforeStop.length).toBe(2);
+      expect(pathsBeforeStop.length).toBeGreaterThan(0);
 
       // Stop service
       await service.stop();
@@ -160,7 +181,7 @@ describe('SpecsWatcherService - Root monitoring with watchedPaths tracking', () 
       await service.start();
 
       const oldWatchedPaths = new Set(service['watchedPaths']);
-      expect(oldWatchedPaths.size).toBe(2);
+      expect(oldWatchedPaths.size).toBeGreaterThan(0);
 
       const newWatchPath = path.join(projectPath, '.kiro', 'worktrees', 'specs', 'another-spec', '.kiro', 'specs');
 

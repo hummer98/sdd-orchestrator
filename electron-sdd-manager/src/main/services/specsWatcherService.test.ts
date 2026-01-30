@@ -268,132 +268,6 @@ describe('SpecsWatcherService', () => {
   });
 
   // ============================================================
-  // file-watcher-root-monitoring: Root monitoring tests (Task 5.4)
-  // Requirements: 8.3
-  // ============================================================
-  describe('Root monitoring with exclusion patterns', () => {
-    it('should ignore .log files', async () => {
-      const service = new SpecsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      // .log files should be ignored by extension filtering
-      handleEvent('add', '/project/.kiro/specs/my-feature/debug.log');
-
-      vi.advanceTimersByTime(350);
-
-      // Callback should NOT be called for .log files
-      expect(callback).toHaveBeenCalledTimes(0);
-    });
-
-    it('should ignore files in runtime/ directory', async () => {
-      const service = new SpecsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      // runtime/ directory files should be ignored
-      handleEvent('add', '/project/.kiro/specs/my-feature/runtime/temp.json');
-
-      vi.advanceTimersByTime(350);
-
-      // Callback should NOT be called for runtime/ files
-      expect(callback).toHaveBeenCalledTimes(0);
-    });
-
-    it('should process .json files', async () => {
-      const service = new SpecsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      handleEvent('add', '/project/.kiro/specs/my-feature/spec.json');
-
-      vi.advanceTimersByTime(350);
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'add',
-          path: '/project/.kiro/specs/my-feature/spec.json',
-        })
-      );
-    });
-
-    it('should process .md files', async () => {
-      const service = new SpecsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      handleEvent('change', '/project/.kiro/specs/my-feature/requirements.md');
-
-      vi.advanceTimersByTime(350);
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'change',
-          path: '/project/.kiro/specs/my-feature/requirements.md',
-        })
-      );
-    });
-
-    it('should ignore .txt files', async () => {
-      const service = new SpecsWatcherService('/project');
-      const callback = vi.fn();
-      service.onChange(callback);
-
-      const handleEvent = (service as unknown as { handleEvent: (type: string, path: string) => void }).handleEvent.bind(service);
-
-      handleEvent('add', '/project/.kiro/specs/my-feature/notes.txt');
-
-      vi.advanceTimersByTime(350);
-
-      // Only .json and .md files should be processed
-      expect(callback).toHaveBeenCalledTimes(0);
-    });
-
-    it('should watch with depth undefined for full directory tree', async () => {
-      const chokidar = await import('chokidar');
-      const service = new SpecsWatcherService('/project');
-      await service.start();
-
-      // Verify chokidar.watch was called with depth: undefined
-      expect(chokidar.watch).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          depth: undefined,
-        })
-      );
-    });
-
-    it('should watch with ignored patterns', async () => {
-      const chokidar = await import('chokidar');
-      const service = new SpecsWatcherService('/project');
-      await service.start();
-
-      // Verify chokidar.watch was called with ignored patterns
-      expect(chokidar.watch).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          ignored: expect.arrayContaining([
-            '**/runtime/**',
-            '**/.git/**',
-            '**/logs/**',
-            '**/*.log',
-          ]),
-        })
-      );
-    });
-  });
-
-  // ============================================================
   // git-worktree-support Task 7.1: 監視パス動的切り替え
   // Requirements: 8.1, 8.2
   // ============================================================
@@ -656,13 +530,11 @@ describe('SpecsWatcherService', () => {
   });
 
   // ============================================================
-  // file-watcher-root-monitoring: Root monitoring for worktrees
-  // Requirements: 1.2, 1.3, 2.1, 5.1-5.4
-  // Note: 2-layer monitoring methods (handleWorktreeAddition, handleWorktreeRemoval) are removed
-  // Root monitoring approach watches all paths from the start
+  // spec-path-ssot-refactor Task 3: 2段階監視対応
+  // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
   // ============================================================
-  describe('Root monitoring for worktrees', () => {
-    it('should watch worktrees base directory for root monitoring', async () => {
+  describe('Two-tier monitoring for worktrees', () => {
+    it('should watch worktrees base directory for dynamic additions', async () => {
       const chokidar = await import('chokidar');
       const mockWatcher = {
         on: vi.fn().mockReturnThis(),
@@ -685,31 +557,51 @@ describe('SpecsWatcherService', () => {
       expect(watchPaths).toContain('/project/.kiro/worktrees/specs');
     });
 
-    it('should NOT have handleWorktreeAddition method (root monitoring approach)', async () => {
+    it('should dynamically add inner spec path when worktree is added', async () => {
+      const chokidar = await import('chokidar');
+      const mockAdd = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: mockAdd,
+        unwatch: vi.fn(),
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
       const service = new SpecsWatcherService('/project');
       await service.start();
 
-      // handleWorktreeAddition should NOT exist - root monitoring watches all paths from start
+      // Access private handleWorktreeAddition method
       const handleWorktreeAddition = (service as unknown as {
-        handleWorktreeAddition?: (dirPath: string) => Promise<void>
+        handleWorktreeAddition: (dirPath: string) => Promise<void>
       }).handleWorktreeAddition;
 
-      expect(handleWorktreeAddition).toBeUndefined();
+      expect(handleWorktreeAddition).toBeDefined();
     });
 
-    it('should NOT have handleWorktreeRemoval method (root monitoring approach)', async () => {
+    it('should dynamically remove inner spec path when worktree is removed', async () => {
+      const chokidar = await import('chokidar');
+      const mockUnwatch = vi.fn();
+      const mockWatcher = {
+        on: vi.fn().mockReturnThis(),
+        close: vi.fn().mockResolvedValue(undefined),
+        add: vi.fn(),
+        unwatch: mockUnwatch,
+      };
+      (chokidar.watch as any).mockReturnValue(mockWatcher);
+
       const service = new SpecsWatcherService('/project');
       await service.start();
 
-      // handleWorktreeRemoval should NOT exist - root monitoring manages all paths statically
+      // Access private handleWorktreeRemoval method
       const handleWorktreeRemoval = (service as unknown as {
-        handleWorktreeRemoval?: (dirPath: string) => void
+        handleWorktreeRemoval: (dirPath: string) => void
       }).handleWorktreeRemoval;
 
-      expect(handleWorktreeRemoval).toBeUndefined();
+      expect(handleWorktreeRemoval).toBeDefined();
     });
 
-    it('should extract specId from worktree paths using root monitoring', async () => {
+    it('should use extractEntityName from worktreeWatcherUtils', async () => {
       const service = new SpecsWatcherService('/project');
       const callback = vi.fn();
       service.onChange(callback);

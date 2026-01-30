@@ -338,9 +338,14 @@ app.on('window-all-closed', () => {
   }
 });
 
-// Task 7.4: Stop watchdog on app quit (Requirement: 7.5)
-app.on('will-quit', () => {
-  logger.info('[main] will-quit event fired, stopping agent watchdog');
+/**
+ * Cleanup function called on app quit
+ * Stops agent watchdog and remote UI server
+ */
+export async function cleanupOnQuit(): Promise<void> {
+  logger.info('[main] Starting cleanup on quit');
+
+  // Stop agent watchdog
   try {
     const watchdog = getAgentWatchdog();
     if (watchdog) {
@@ -350,6 +355,25 @@ app.on('will-quit', () => {
   } catch (error) {
     logger.warn('[main] Error stopping agent watchdog', { error });
   }
+
+  // Stop remote UI server if running
+  try {
+    const server = getRemoteAccessServer();
+    const status = server.getStatus();
+    if (status.isRunning) {
+      await server.stop();
+      logger.info('[main] Remote UI server stopped');
+    }
+  } catch (error) {
+    logger.warn('[main] Error stopping remote UI server', { error });
+  }
+}
+
+// Task 7.4: Stop watchdog on app quit (Requirement: 7.5)
+// Extended: Also stop remote UI server if running
+app.on('will-quit', async () => {
+  logger.info('[main] will-quit event fired');
+  await cleanupOnQuit();
 });
 
 // Export for testing

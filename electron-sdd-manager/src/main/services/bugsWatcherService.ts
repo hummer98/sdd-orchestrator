@@ -80,10 +80,10 @@ export class BugsWatcherService {
    * - .kiro/worktrees/bugs/
    *
    * With exclusion patterns:
-   * - **/runtime/**
-   * - **/.git/**
-   * - **/logs/**
-   * - **/*.log
+   * - runtime directories
+   * - .git directories
+   * - logs directories
+   * - .log files
    */
   async start(): Promise<void> {
     if (this.watcher) {

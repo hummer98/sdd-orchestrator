@@ -114,7 +114,7 @@ export function ScheduleTaskEditPage({
     schedule: task?.schedule ?? DEFAULT_SCHEDULE,
     workflow: task?.workflow ?? DEFAULT_WORKFLOW_CONFIG,
     behavior: task?.behavior ?? DEFAULT_AGENT_BEHAVIOR,
-    prompts: task?.prompts ?? [{ order: 0, content: '' }],
+    prompts: task?.prompts ? [...task.prompts] : [{ order: 0, content: '' }],
   });
 
   // Validation errors
@@ -130,7 +130,7 @@ export function ScheduleTaskEditPage({
       schedule: task?.schedule ?? DEFAULT_SCHEDULE,
       workflow: task?.workflow ?? DEFAULT_WORKFLOW_CONFIG,
       behavior: task?.behavior ?? DEFAULT_AGENT_BEHAVIOR,
-      prompts: task?.prompts ?? [{ order: 0, content: '' }],
+      prompts: task?.prompts ? [...task.prompts] : [{ order: 0, content: '' }],
     });
     setFormErrors({});
     setTouched({});

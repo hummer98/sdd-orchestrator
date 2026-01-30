@@ -9,14 +9,9 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { access, constants, readdir } from 'fs/promises';
 import { logger } from './logger';
 import type { BugsChangeEvent } from '../../renderer/types';
 import type { BugWorktreeConfig } from '../../renderer/types/bugJson';
-import {
-  detectWorktreeAddition,
-  buildWorktreeEntityPath,
-} from './worktreeWatcherUtils';
 
 export type BugsChangeCallback = (event: BugsChangeEvent) => void;
 
@@ -31,9 +26,6 @@ export class BugsWatcherService {
   private debounceMs = 300;
   /** Base path for worktrees bugs directory */
   private worktreeBugsBaseDir: string;
-  /** Debounce timers for worktree additions (500ms) */
-  private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
-  private worktreeAdditionDebounceMs = 500;
   /** Tracks all currently watched paths to prevent duplicate monitoring */
   private watchedPaths: Set<string> = new Set();
 
@@ -81,11 +73,17 @@ export class BugsWatcherService {
 
   /**
    * Start watching the bugs directory
-   * Aligned with SpecsWatcherService: watches specific directories directly
+   * file-watcher-root-monitoring: Root monitoring approach
    *
-   * Main bugs: .kiro/bugs/{bugName}/**
-   * Worktree bugs: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/**
-   * Worktree base: .kiro/worktrees/bugs/ (for detecting new worktrees)
+   * Monitors:
+   * - .kiro/bugs/
+   * - .kiro/worktrees/bugs/
+   *
+   * With exclusion patterns:
+   * - **/runtime/**
+   * - **/.git/**
+   * - **/logs/**
+   * - **/*.log
    */
   async start(): Promise<void> {
     if (this.watcher) {
@@ -95,43 +93,10 @@ export class BugsWatcherService {
 
     const bugsDir = path.join(this.projectPath, '.kiro', 'bugs');
 
-    // Watch main bugs directory AND worktrees base directory for dynamic additions
+    // Root monitoring: Watch both main and worktrees directories
     const watchPaths: string[] = [bugsDir, this.worktreeBugsBaseDir];
 
-    // Check if worktree bugs base directory exists
-    // If exists, also add paths for existing worktree's own bug
-    // Pattern: .kiro/worktrees/bugs/{bugName}/.kiro/bugs/{bugName}/** (same bugName)
-    try {
-      await access(this.worktreeBugsBaseDir, constants.F_OK);
-
-      // Read worktree directories and add specific paths
-      const worktreeDirs = await readdir(this.worktreeBugsBaseDir, { withFileTypes: true });
-
-      for (const dir of worktreeDirs) {
-        if (dir.isDirectory()) {
-          const bugName = dir.name;
-          // Only watch the bug that matches the worktree name
-          const worktreeBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', bugName);
-          try {
-            await access(worktreeBugPath, constants.F_OK);
-            watchPaths.push(worktreeBugPath);
-            logger.debug('[BugsWatcherService] Adding worktree bug path', { bugName, worktreeBugPath });
-          } catch {
-            // Bug directory doesn't exist yet in worktree, skip
-            logger.debug('[BugsWatcherService] Worktree bug path not found, skipping', { bugName, worktreeBugPath });
-          }
-        }
-      }
-
-      logger.info('[BugsWatcherService] Worktree bugs directory found', {
-        worktreeBugsBaseDir: this.worktreeBugsBaseDir,
-        worktreeCount: worktreeDirs.filter(d => d.isDirectory()).length,
-      });
-    } catch {
-      logger.debug('[BugsWatcherService] Worktree bugs directory not found, will watch for creation', { worktreeBugsBaseDir: this.worktreeBugsBaseDir });
-    }
-
-    logger.info('[BugsWatcherService] Starting watcher with 2-tier monitoring', { watchPaths });
+    logger.info('[BugsWatcherService] Starting root monitoring', { watchPaths });
 
     // Track all initial watch paths
     for (const watchPath of watchPaths) {
@@ -141,7 +106,13 @@ export class BugsWatcherService {
     this.watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
       persistent: true,
-      depth: 2, // Sufficient for {bugName}/*.{md,json}
+      depth: undefined, // Monitor all levels
+      ignored: [
+        '**/runtime/**',
+        '**/.git/**',
+        '**/logs/**',
+        '**/*.log',
+      ],
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,
@@ -165,33 +136,21 @@ export class BugsWatcherService {
 
   /**
    * Handle file system events with debouncing
-   * 2-tier monitoring for worktree additions/removals
+   * file-watcher-root-monitoring: Extension filtering for .json and .md only
    */
   private handleEvent(type: BugsChangeEvent['type'], filePath: string): void {
-    const bugName = this.extractBugName(filePath);
-
-    logger.debug('[BugsWatcherService] File event', { type, filePath, bugName });
-
-    // 2-tier monitoring - detect worktree additions/removals
-    if (type === 'addDir') {
-      const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, filePath);
-      if (entityName) {
-        logger.info('[BugsWatcherService] Worktree addition detected', { entityName, dirPath: filePath });
-        this.handleWorktreeAddition(filePath).catch((error) => {
-          logger.error('[BugsWatcherService] Failed to handle worktree addition', { error, entityName });
-        });
-        // Don't propagate addDir event for worktree base directory
-        return;
-      }
-    } else if (type === 'unlinkDir') {
-      const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, filePath);
-      if (entityName) {
-        logger.info('[BugsWatcherService] Worktree removal detected', { entityName, dirPath: filePath });
-        this.handleWorktreeRemoval(filePath);
-        // Don't propagate unlinkDir event for worktree base directory
+    // Extension filtering: only process .json and .md files (and directories)
+    if (type !== 'addDir' && type !== 'unlinkDir') {
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext !== '.json' && ext !== '.md') {
+        logger.debug('[BugsWatcherService] Ignoring non-.json/.md file', { filePath, ext });
         return;
       }
     }
+
+    const bugName = this.extractBugName(filePath);
+
+    logger.debug('[BugsWatcherService] File event', { type, filePath, bugName });
 
     // Debounce per file path to avoid dropping concurrent events for different files
     const existingTimer = this.debounceTimers.get(filePath);
@@ -208,101 +167,6 @@ export class BugsWatcherService {
     this.debounceTimers.set(filePath, timer);
   }
 
-  /**
-   * Handle worktree directory addition
-   * Dynamically adds inner bug path to monitoring after debounce wait
-   * and triggers callback to refresh bugs list
-   */
-  private async handleWorktreeAddition(dirPath: string): Promise<void> {
-    if (!this.watcher) {
-      logger.warn('[BugsWatcherService] Watcher not running, cannot add worktree path');
-      return;
-    }
-
-    const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, dirPath);
-    if (!entityName) {
-      logger.debug('[BugsWatcherService] Could not extract entity name from worktree path', { dirPath });
-      return;
-    }
-
-    // Clear existing timer for this worktree
-    const existingTimer = this.worktreeAdditionTimers.get(entityName);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    // Debounce to wait for directory structure creation (500ms)
-    const timer = setTimeout(async () => {
-      this.worktreeAdditionTimers.delete(entityName);
-
-      const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
-
-      // Prevent duplicate monitoring
-      if (this.watchedPaths.has(innerBugPath)) {
-        logger.debug('[BugsWatcherService] Path already watched, skipping duplicate add', { entityName, innerBugPath });
-        return;
-      }
-
-      // Check if inner bug path exists
-      try {
-        await access(innerBugPath, constants.F_OK);
-
-        // Add to watcher and track in watchedPaths
-        this.watcher?.add(innerBugPath);
-        this.watchedPaths.add(innerBugPath);
-        logger.info('[BugsWatcherService] Added worktree inner bug path to watcher', { entityName, innerBugPath });
-
-        // Trigger callback to refresh bugs list (aligned with SpecsWatcherService)
-        const event: BugsChangeEvent = { type: 'addDir', path: innerBugPath, bugName: entityName };
-        this.callbacks.forEach((cb) => cb(event));
-        logger.debug('[BugsWatcherService] Triggered callback for worktree bug addition', { entityName });
-      } catch {
-        logger.debug('[BugsWatcherService] Worktree inner bug path not yet ready', { entityName, innerBugPath });
-      }
-    }, this.worktreeAdditionDebounceMs);
-
-    this.worktreeAdditionTimers.set(entityName, timer);
-  }
-
-  /**
-   * Handle worktree directory removal
-   * Removes inner bug path from monitoring and triggers callback to refresh bugs list
-   */
-  private handleWorktreeRemoval(dirPath: string): void {
-    if (!this.watcher) {
-      logger.warn('[BugsWatcherService] Watcher not running, cannot remove worktree path');
-      return;
-    }
-
-    const entityName = detectWorktreeAddition(this.worktreeBugsBaseDir, dirPath);
-    if (!entityName) {
-      logger.debug('[BugsWatcherService] Could not extract entity name from worktree path', { dirPath });
-      return;
-    }
-
-    // Clear any pending addition timer
-    const existingTimer = this.worktreeAdditionTimers.get(entityName);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.worktreeAdditionTimers.delete(entityName);
-    }
-
-    const innerBugPath = buildWorktreeEntityPath(this.projectPath, 'bugs', entityName);
-
-    // Remove from watcher and watchedPaths
-    if (this.watchedPaths.has(innerBugPath)) {
-      this.watcher.unwatch(innerBugPath);
-      this.watchedPaths.delete(innerBugPath);
-      logger.info('[BugsWatcherService] Removed worktree inner bug path from watcher', { entityName, innerBugPath });
-
-      // Trigger callback to refresh bugs list (aligned with SpecsWatcherService)
-      const event: BugsChangeEvent = { type: 'unlinkDir', path: innerBugPath, bugName: entityName };
-      this.callbacks.forEach((cb) => cb(event));
-      logger.debug('[BugsWatcherService] Triggered callback for worktree bug removal', { entityName });
-    } else {
-      logger.debug('[BugsWatcherService] Path not in watchedPaths, skipping unwatch', { entityName, innerBugPath });
-    }
-  }
 
   /**
    * Register a callback for bug changes
@@ -342,12 +206,6 @@ export class BugsWatcherService {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
-
-    // spec-path-ssot-refactor: Clear worktree addition timers
-    for (const timer of this.worktreeAdditionTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.worktreeAdditionTimers.clear();
 
     this.callbacks = [];
   }

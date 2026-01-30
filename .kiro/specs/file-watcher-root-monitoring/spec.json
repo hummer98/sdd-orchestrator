@@ -1,0 +1,60 @@
+{
+  "feature_name": "file-watcher-root-monitoring",
+  "created_at": "2026-01-30T07:00:00Z",
+  "updated_at": "2026-01-30T18:15:23Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-01-30T07:42:49Z",
+        "fixedAt": "2026-01-30T07:48:06Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-01-30T07:59:59Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-01-30T08:04:35Z"
+      }
+    ]
+  }
+}

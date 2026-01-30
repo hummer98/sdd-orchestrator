@@ -1,6 +1,7 @@
 /**
- * BugsWatcherService Unit Tests
- * Tests for watchedPaths tracking mechanism to prevent duplicate monitoring
+ * BugsWatcherService Unit Tests - Root Monitoring Approach
+ * file-watcher-root-monitoring: Tests for watchedPaths tracking with root monitoring
+ * Requirements: 1.1, 1.3, 9.1, 9.2, 9.3
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -23,7 +24,7 @@ vi.mock('../logger', () => ({
   },
 }));
 
-describe('BugsWatcherService - watchedPaths tracking', () => {
+describe('BugsWatcherService - Root monitoring with watchedPaths tracking', () => {
   let service: BugsWatcherService;
   let mockWatcher: any;
   let projectPath: string;
@@ -58,79 +59,65 @@ describe('BugsWatcherService - watchedPaths tracking', () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  describe('Duplicate path prevention', () => {
-    it('should not add the same path twice', async () => {
-      await service.start();
-
-      const testPath = path.join(worktreeBugsBaseDir, 'test-bug', '.kiro', 'bugs', 'test-bug');
-
-      // First add
-      await service['handleWorktreeAddition'](path.join(worktreeBugsBaseDir, 'test-bug'));
-
-      // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      const firstAddCallCount = mockWatcher.add.mock.calls.length;
-
-      // Second add (should be prevented)
-      await service['handleWorktreeAddition'](path.join(worktreeBugsBaseDir, 'test-bug'));
-
-      // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      // Should not add duplicate
-      expect(mockWatcher.add).toHaveBeenCalledTimes(firstAddCallCount);
-    });
-
-    it('should track all watched paths in watchedPaths Set', async () => {
+  describe('Root monitoring path initialization', () => {
+    it('should track both main and worktree base paths in watchedPaths on start', async () => {
       await service.start();
 
       // Initial paths should be tracked
       const watchedPaths = service['watchedPaths'];
       expect(watchedPaths).toBeDefined();
-      expect(watchedPaths.size).toBeGreaterThan(0);
+      expect(watchedPaths.size).toBe(2);
       expect(watchedPaths.has(bugsDir)).toBe(true);
       expect(watchedPaths.has(worktreeBugsBaseDir)).toBe(true);
     });
-  });
 
-  describe('Worktree addition handling', () => {
-    it('should add path to watchedPaths when worktree is added', async () => {
+    it('should pass both paths to chokidar.watch in a single call', async () => {
       await service.start();
 
-      const bugName = 'test-bug';
-      const worktreeBugPath = path.join(worktreeBugsBaseDir, bugName, '.kiro', 'bugs', bugName);
-
-      // Create worktree directory
-      await mkdir(worktreeBugPath, { recursive: true });
-
-      await service['handleWorktreeAddition'](path.join(worktreeBugsBaseDir, bugName));
-
-      // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      const watchedPaths = service['watchedPaths'];
-      expect(watchedPaths.has(worktreeBugPath)).toBe(true);
+      expect(chokidar.watch).toHaveBeenCalledTimes(1);
+      expect(chokidar.watch).toHaveBeenCalledWith(
+        expect.arrayContaining([bugsDir, worktreeBugsBaseDir]),
+        expect.objectContaining({
+          depth: undefined,
+          ignored: expect.arrayContaining([
+            '**/runtime/**',
+            '**/.git/**',
+            '**/logs/**',
+            '**/*.log',
+          ]),
+        })
+      );
     });
   });
 
-  describe('Worktree removal handling', () => {
-    it('should remove path from watchedPaths when worktree is removed', async () => {
+  describe('Root monitoring approach - no dynamic path addition', () => {
+    it('should NOT have handleWorktreeAddition method', async () => {
       await service.start();
 
+      const handleWorktreeAddition = (service as any).handleWorktreeAddition;
+      expect(handleWorktreeAddition).toBeUndefined();
+    });
+
+    it('should NOT have handleWorktreeRemoval method', async () => {
+      await service.start();
+
+      const handleWorktreeRemoval = (service as any).handleWorktreeRemoval;
+      expect(handleWorktreeRemoval).toBeUndefined();
+    });
+
+    it('should NOT call watcher.add after initialization (root monitoring)', async () => {
+      await service.start();
+
+      // Reset mock to clear initialization call
+      mockWatcher.add.mockClear();
+
+      // Create a worktree directory (in real scenario, this happens via git worktree add)
       const bugName = 'test-bug';
       const worktreeBugPath = path.join(worktreeBugsBaseDir, bugName, '.kiro', 'bugs', bugName);
-
-      // Create and add worktree
       await mkdir(worktreeBugPath, { recursive: true });
-      await service['handleWorktreeAddition'](path.join(worktreeBugsBaseDir, bugName));
-      await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Remove worktree
-      service['handleWorktreeRemoval'](path.join(worktreeBugsBaseDir, bugName));
-
-      const watchedPaths = service['watchedPaths'];
-      expect(watchedPaths.has(worktreeBugPath)).toBe(false);
+      // Root monitoring does not dynamically add paths
+      expect(mockWatcher.add).not.toHaveBeenCalled();
     });
   });
 
@@ -138,17 +125,9 @@ describe('BugsWatcherService - watchedPaths tracking', () => {
     it('should unwatch all tracked paths and clear watchedPaths on stop', async () => {
       await service.start();
 
-      const bugName = 'test-bug';
-      const worktreeBugPath = path.join(worktreeBugsBaseDir, bugName, '.kiro', 'bugs', bugName);
-
-      // Create and add worktree
-      await mkdir(worktreeBugPath, { recursive: true });
-      await service['handleWorktreeAddition'](path.join(worktreeBugsBaseDir, bugName));
-      await new Promise(resolve => setTimeout(resolve, 600));
-
       const watchedPaths = service['watchedPaths'];
       const pathsBeforeStop = Array.from(watchedPaths);
-      expect(pathsBeforeStop.length).toBeGreaterThan(0);
+      expect(pathsBeforeStop.length).toBe(2);
 
       // Stop service
       await service.stop();
@@ -181,7 +160,7 @@ describe('BugsWatcherService - watchedPaths tracking', () => {
       await service.start();
 
       const oldWatchedPaths = new Set(service['watchedPaths']);
-      expect(oldWatchedPaths.size).toBeGreaterThan(0);
+      expect(oldWatchedPaths.size).toBe(2);
 
       const newWatchPath = path.join(projectPath, '.kiro', 'worktrees', 'bugs', 'another-bug', '.kiro', 'bugs');
 

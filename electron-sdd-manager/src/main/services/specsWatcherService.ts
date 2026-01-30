@@ -7,17 +7,10 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import { readFile, writeFile, access, constants } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { logger } from './logger';
 import type { FileService } from './fileService';
-// remove-inspection-phase-auto-update: Removed inspection-related imports
-// normalizeInspectionState and hasPassed are no longer used here
-// inspection-complete phase update is now handled by spec-inspection agent
 import type { WorktreeConfig } from '../../renderer/types/worktree';
-import {
-  detectWorktreeAddition,
-  buildWorktreeEntityPath,
-} from './worktreeWatcherUtils';
 import {
   SPEC_JSON_FILENAME,
   SPEC_ARTIFACT_FILENAMES,
@@ -43,11 +36,8 @@ export class SpecsWatcherService {
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private debounceMs = 300;
   private fileService: FileService | null = null;
-  /** spec-path-ssot-refactor: Base path for worktrees specs directory */
+  /** Base path for worktrees specs directory */
   private worktreeSpecsBaseDir: string;
-  /** spec-path-ssot-refactor: Debounce timers for worktree additions (500ms) */
-  private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
-  private worktreeAdditionDebounceMs = 500;
   /** Tracks all currently watched paths to prevent duplicate monitoring */
   private watchedPaths: Set<string> = new Set();
 
@@ -98,15 +88,17 @@ export class SpecsWatcherService {
 
   /**
    * Start watching the specs directory
-   * spec-worktree-early-creation: Task 5.1 - also watches worktree spec files
-   * spec-path-ssot-refactor: Task 3.1 - 2-tier monitoring for dynamic worktree additions
+   * file-watcher-root-monitoring: Root monitoring approach
    *
-   * Main specs: .kiro/specs/{specId}/**
-   * Worktree specs: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/**
-   * Worktree base: .kiro/worktrees/specs/ (for detecting new worktrees)
+   * Monitors:
+   * - .kiro/specs/
+   * - .kiro/worktrees/specs/
    *
-   * Note: Each worktree contains a full copy of .kiro/specs/, but we only watch
-   * the spec that matches the worktree name to avoid duplicate monitoring.
+   * With exclusion patterns:
+   * - **/runtime/**
+   * - **/.git/**
+   * - **/logs/**
+   * - **/*.log
    */
   async start(): Promise<void> {
     if (this.watcher) {
@@ -116,45 +108,10 @@ export class SpecsWatcherService {
 
     const specsDir = path.join(this.projectPath, '.kiro', 'specs');
 
-    // spec-path-ssot-refactor: 2-tier monitoring
-    // Watch main specs directory AND worktrees base directory for dynamic additions
+    // Root monitoring: Watch both main and worktrees directories
     const watchPaths: string[] = [specsDir, this.worktreeSpecsBaseDir];
 
-    // Check if worktree specs base directory exists
-    // If exists, also add paths for existing worktree's own spec
-    // Pattern: .kiro/worktrees/specs/{specId}/.kiro/specs/{specId}/** (same specId)
-    try {
-      await access(this.worktreeSpecsBaseDir, constants.F_OK);
-
-      // Read worktree directories and add specific paths
-      const { readdir } = await import('fs/promises');
-      const worktreeDirs = await readdir(this.worktreeSpecsBaseDir, { withFileTypes: true });
-
-      for (const dir of worktreeDirs) {
-        if (dir.isDirectory()) {
-          const specId = dir.name;
-          // Only watch the spec that matches the worktree name
-          const worktreeSpecPath = buildWorktreeEntityPath(this.projectPath, 'specs', specId);
-          try {
-            await access(worktreeSpecPath, constants.F_OK);
-            watchPaths.push(worktreeSpecPath);
-            logger.debug('[SpecsWatcherService] Adding worktree spec path', { specId, worktreeSpecPath });
-          } catch {
-            // Spec directory doesn't exist yet in worktree, skip
-            logger.debug('[SpecsWatcherService] Worktree spec path not found, skipping', { specId, worktreeSpecPath });
-          }
-        }
-      }
-
-      logger.info('[SpecsWatcherService] Worktree specs directory found', {
-        worktreeSpecsBaseDir: this.worktreeSpecsBaseDir,
-        worktreeCount: worktreeDirs.filter(d => d.isDirectory()).length,
-      });
-    } catch {
-      logger.debug('[SpecsWatcherService] Worktree specs directory not found, will watch for creation', { worktreeSpecsBaseDir: this.worktreeSpecsBaseDir });
-    }
-
-    logger.info('[SpecsWatcherService] Starting watcher with 2-tier monitoring', { watchPaths });
+    logger.info('[SpecsWatcherService] Starting root monitoring', { watchPaths });
 
     // Track all initial watch paths
     for (const watchPath of watchPaths) {
@@ -164,8 +121,13 @@ export class SpecsWatcherService {
     this.watcher = chokidar.watch(watchPaths, {
       ignoreInitial: true,
       persistent: true,
-      depth: 2, // Sufficient for {specId}/*.{md,json}
-      ignored: ['**/logs/**', '**/*.log'], // Exclude log directories to reduce event noise
+      depth: undefined, // Monitor all levels
+      ignored: [
+        '**/runtime/**',
+        '**/.git/**',
+        '**/logs/**',
+        '**/*.log',
+      ],
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,
@@ -189,33 +151,21 @@ export class SpecsWatcherService {
 
   /**
    * Handle file system events with debouncing
-   * spec-path-ssot-refactor: Added 2-tier monitoring for worktree additions/removals
+   * file-watcher-root-monitoring: Extension filtering for .json and .md only
    */
   private handleEvent(type: SpecsChangeEvent['type'], filePath: string): void {
-    const specId = this.extractSpecId(filePath);
-
-    logger.debug('[SpecsWatcherService] File event', { type, filePath, specId });
-
-    // spec-path-ssot-refactor: 2-tier monitoring - detect worktree additions/removals
-    if (type === 'addDir') {
-      const entityName = detectWorktreeAddition(this.worktreeSpecsBaseDir, filePath);
-      if (entityName) {
-        logger.info('[SpecsWatcherService] Worktree addition detected', { entityName, dirPath: filePath });
-        this.handleWorktreeAddition(filePath).catch((error) => {
-          logger.error('[SpecsWatcherService] Failed to handle worktree addition', { error, entityName });
-        });
-        // Don't propagate addDir event for worktree base directory
-        return;
-      }
-    } else if (type === 'unlinkDir') {
-      const entityName = detectWorktreeAddition(this.worktreeSpecsBaseDir, filePath);
-      if (entityName) {
-        logger.info('[SpecsWatcherService] Worktree removal detected', { entityName, dirPath: filePath });
-        this.handleWorktreeRemoval(filePath);
-        // Don't propagate unlinkDir event for worktree base directory
+    // Extension filtering: only process .json and .md files (and directories)
+    if (type !== 'addDir' && type !== 'unlinkDir') {
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext !== '.json' && ext !== '.md') {
+        logger.debug('[SpecsWatcherService] Ignoring non-.json/.md file', { filePath, ext });
         return;
       }
     }
+
+    const specId = this.extractSpecId(filePath);
+
+    logger.debug('[SpecsWatcherService] File event', { type, filePath, specId });
 
     // Check for artifact file generation (requirements.md, design.md, tasks.md)
     // These are user-initiated actions via skills, so we update updated_at
@@ -256,92 +206,6 @@ export class SpecsWatcherService {
     this.debounceTimers.set(filePath, timer);
   }
 
-  /**
-   * spec-path-ssot-refactor Task 3.2: Handle worktree directory addition
-   * Dynamically adds inner spec path to monitoring after debounce wait
-   * Requirements: 2.2, 2.4
-   */
-  private async handleWorktreeAddition(dirPath: string): Promise<void> {
-    if (!this.watcher) {
-      logger.warn('[SpecsWatcherService] Watcher not running, cannot add worktree path');
-      return;
-    }
-
-    const entityName = detectWorktreeAddition(this.worktreeSpecsBaseDir, dirPath);
-    if (!entityName) {
-      logger.debug('[SpecsWatcherService] Could not extract entity name from worktree path', { dirPath });
-      return;
-    }
-
-    // Clear existing timer for this worktree
-    const existingTimer = this.worktreeAdditionTimers.get(entityName);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    // Debounce to wait for directory structure creation (500ms)
-    const timer = setTimeout(async () => {
-      this.worktreeAdditionTimers.delete(entityName);
-
-      const innerSpecPath = buildWorktreeEntityPath(this.projectPath, 'specs', entityName);
-
-      // Prevent duplicate monitoring
-      if (this.watchedPaths.has(innerSpecPath)) {
-        logger.debug('[SpecsWatcherService] Path already watched, skipping duplicate add', { entityName, innerSpecPath });
-        return;
-      }
-
-      // Check if inner spec path exists
-      try {
-        await access(innerSpecPath, constants.F_OK);
-
-        // Add to watcher and track in watchedPaths
-        this.watcher?.add(innerSpecPath);
-        this.watchedPaths.add(innerSpecPath);
-        logger.info('[SpecsWatcherService] Added worktree inner spec path to watcher', { entityName, innerSpecPath });
-      } catch {
-        logger.debug('[SpecsWatcherService] Worktree inner spec path not yet ready', { entityName, innerSpecPath });
-      }
-    }, this.worktreeAdditionDebounceMs);
-
-    this.worktreeAdditionTimers.set(entityName, timer);
-  }
-
-  /**
-   * spec-path-ssot-refactor Task 3.3: Handle worktree directory removal
-   * Removes inner spec path from monitoring
-   * Requirements: 2.3
-   */
-  private handleWorktreeRemoval(dirPath: string): void {
-    if (!this.watcher) {
-      logger.warn('[SpecsWatcherService] Watcher not running, cannot remove worktree path');
-      return;
-    }
-
-    const entityName = detectWorktreeAddition(this.worktreeSpecsBaseDir, dirPath);
-    if (!entityName) {
-      logger.debug('[SpecsWatcherService] Could not extract entity name from worktree path', { dirPath });
-      return;
-    }
-
-    // Clear any pending addition timer
-    const existingTimer = this.worktreeAdditionTimers.get(entityName);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.worktreeAdditionTimers.delete(entityName);
-    }
-
-    const innerSpecPath = buildWorktreeEntityPath(this.projectPath, 'specs', entityName);
-
-    // Remove from watcher and watchedPaths
-    if (this.watchedPaths.has(innerSpecPath)) {
-      this.watcher.unwatch(innerSpecPath);
-      this.watchedPaths.delete(innerSpecPath);
-      logger.info('[SpecsWatcherService] Removed worktree inner spec path from watcher', { entityName, innerSpecPath });
-    } else {
-      logger.debug('[SpecsWatcherService] Path not in watchedPaths, skipping unwatch', { entityName, innerSpecPath });
-    }
-  }
 
   /**
    * Handle artifact file generation (requirements.md, design.md, tasks.md)
@@ -540,12 +404,6 @@ export class SpecsWatcherService {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
-
-    // spec-path-ssot-refactor: Clear worktree addition timers
-    for (const timer of this.worktreeAdditionTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.worktreeAdditionTimers.clear();
 
     this.callbacks = [];
   }

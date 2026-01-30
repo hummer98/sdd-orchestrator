@@ -458,6 +458,42 @@ export class AutoExecutionCoordinator extends EventEmitter {
       };
     }
 
+    // spec.json から最新の permissions と approvals を読み取る (SSOT)
+    // これを state 作成前に実行し、options を確定させる
+    let approvals = options.approvals;
+    let effectiveOptions = options;
+    try {
+      const specJsonPath = require('path').join(specPath, 'spec.json');
+      const content = require('fs').readFileSync(specJsonPath, 'utf-8');
+      const specJson = JSON.parse(content);
+
+      // Merge permissions from spec.json (spec.json is SSOT)
+      if (specJson.autoExecution?.permissions) {
+        effectiveOptions = {
+          ...options,
+          permissions: { ...options.permissions, ...specJson.autoExecution.permissions },
+        };
+        logger.info('[AutoExecutionCoordinator] Read permissions from spec.json', {
+          specPath,
+          permissions: effectiveOptions.permissions,
+        });
+      }
+
+      // Read approvals if not provided
+      if (!approvals && specJson.approvals) {
+        approvals = specJson.approvals;
+        logger.info('[AutoExecutionCoordinator] Read approvals from spec.json', {
+          specPath,
+          approvals,
+        });
+      }
+    } catch (err) {
+      logger.warn('[AutoExecutionCoordinator] Failed to read spec.json', {
+        specPath,
+        error: err,
+      });
+    }
+
     // 新しい状態を作成または既存を更新
     const now = Date.now();
     // auto-execution-projectpath-fix Task 1.2: projectPathは引数から直接取得（逆算ロジックは使用しない）
@@ -475,13 +511,13 @@ export class AutoExecutionCoordinator extends EventEmitter {
     };
 
     // タイムアウト設定
-    const timeoutMs = options.timeoutMs ?? DEFAULT_AUTO_EXECUTION_TIMEOUT;
+    const timeoutMs = effectiveOptions.timeoutMs ?? DEFAULT_AUTO_EXECUTION_TIMEOUT;
     state.timeoutId = setTimeout(() => {
       this.handleTimeout(specPath);
     }, timeoutMs);
 
     this.executionStates.set(specPath, state);
-    this.executionOptions.set(specPath, options);
+    this.executionOptions.set(specPath, effectiveOptions);
     this.emit('state-changed', specPath, state);
 
     logger.info('[AutoExecutionCoordinator] Auto-execution started', { specPath, specId });
@@ -491,36 +527,14 @@ export class AutoExecutionCoordinator extends EventEmitter {
       type: 'auto-execution:start',
       message: 'Auto-execution started',
       status: 'started',
-      startPhase: options.permissions.requirements ? 'requirements' :
-                 options.permissions.design ? 'design' :
-                 options.permissions.tasks ? 'tasks' :
-                 options.permissions.impl ? 'impl' : undefined,
+      startPhase: effectiveOptions.permissions.requirements ? 'requirements' :
+                 effectiveOptions.permissions.design ? 'design' :
+                 effectiveOptions.permissions.tasks ? 'tasks' :
+                 effectiveOptions.permissions.impl ? 'impl' : undefined,
     });
 
     // 初期フェーズを決定して実行イベントを発火
-    // Bug Fix: approvals がある場合は既に完了しているフェーズをスキップ
-    // approvals が渡されない場合は Main Process で直接 spec.json を読み取る
     let lastCompletedPhase: WorkflowPhase | null = null;
-    let approvals = options.approvals;
-
-    if (!approvals) {
-      // Main Process で spec.json を直接読み取り
-      try {
-        const specJsonPath = require('path').join(specPath, 'spec.json');
-        const content = require('fs').readFileSync(specJsonPath, 'utf-8');
-        const specJson = JSON.parse(content);
-        approvals = specJson.approvals;
-        logger.info('[AutoExecutionCoordinator] Read approvals from spec.json', {
-          specPath,
-          approvals,
-        });
-      } catch (err) {
-        logger.warn('[AutoExecutionCoordinator] Failed to read spec.json for approvals', {
-          specPath,
-          error: err,
-        });
-      }
-    }
 
     if (approvals) {
       // Bug Fix: 未承認だが生成済みのフェーズを自動承認
@@ -564,7 +578,7 @@ export class AutoExecutionCoordinator extends EventEmitter {
     // auto-execution-nogo-stop Task 1.1: getImmediateNextPhaseに変更
     // NOGOフェーズをスキップせず、即座に停止する動作に統一
     // Requirements: 1.1, 1.2, 1.3, 2.2, 2.3
-    const firstPhase = this.getImmediateNextPhase(lastCompletedPhase, options.permissions, approvals);
+    const firstPhase = this.getImmediateNextPhase(lastCompletedPhase, effectiveOptions.permissions, approvals);
     if (firstPhase) {
       this.emit('execute-next-phase', specPath, firstPhase, {
         specId,

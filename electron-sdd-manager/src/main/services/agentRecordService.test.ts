@@ -1317,7 +1317,7 @@ describe('AgentRecordService', () => {
         status: 'running',
         startedAt: '2026-01-28T10:00:00Z',
         lastActivityAt: '2026-01-28T10:00:00Z',
-        // autoResumeCount should be reset to 0
+        autoResumeCount: undefined, // autoResumeCount should be reset to 0 (default)
       };
 
       await service.writeRecord(newExecutionRecord);

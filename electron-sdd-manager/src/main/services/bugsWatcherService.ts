@@ -148,6 +148,12 @@ export class BugsWatcherService {
       }
     }
 
+    // Runtime directory filtering: ignore files in runtime/ directories
+    if (filePath.includes('/runtime/') || filePath.includes('\\runtime\\')) {
+      logger.debug('[BugsWatcherService] Ignoring runtime/ directory file', { filePath });
+      return;
+    }
+
     const bugName = this.extractBugName(filePath);
 
     logger.debug('[BugsWatcherService] File event', { type, filePath, bugName });

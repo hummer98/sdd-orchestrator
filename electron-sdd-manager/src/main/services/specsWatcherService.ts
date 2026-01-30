@@ -163,6 +163,12 @@ export class SpecsWatcherService {
       }
     }
 
+    // Runtime directory filtering: ignore files in runtime/ directories
+    if (filePath.includes('/runtime/') || filePath.includes('\\runtime\\')) {
+      logger.debug('[SpecsWatcherService] Ignoring runtime/ directory file', { filePath });
+      return;
+    }
+
     const specId = this.extractSpecId(filePath);
 
     logger.debug('[SpecsWatcherService] File event', { type, filePath, specId });

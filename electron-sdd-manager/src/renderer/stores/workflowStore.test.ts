@@ -95,13 +95,13 @@ describe('useWorkflowStore', () => {
         expect(state.autoExecutionPermissions.inspection).toBe(true);
       });
 
-      it('should have other phases not permitted by default', () => {
+      it('should have other phases permitted by default (except deploy)', () => {
         const state = useWorkflowStore.getState();
-        expect(state.autoExecutionPermissions.design).toBe(false);
-        expect(state.autoExecutionPermissions.tasks).toBe(false);
-        expect(state.autoExecutionPermissions.impl).toBe(false);
+        expect(state.autoExecutionPermissions.design).toBe(true);
+        expect(state.autoExecutionPermissions.tasks).toBe(true);
+        expect(state.autoExecutionPermissions.impl).toBe(true);
         // inspection is now true by default - tested separately above
-        expect(state.autoExecutionPermissions.deploy).toBe(false);
+        expect(state.autoExecutionPermissions.deploy).toBe(false); // Only deploy is false
       });
     });
 
@@ -110,7 +110,7 @@ describe('useWorkflowStore', () => {
         useWorkflowStore.getState().toggleAutoPermission('design');
 
         const state = useWorkflowStore.getState();
-        expect(state.autoExecutionPermissions.design).toBe(true);
+        expect(state.autoExecutionPermissions.design).toBe(false); // Toggled from true to false
       });
 
       it('should toggle permission back to false', () => {
@@ -125,8 +125,8 @@ describe('useWorkflowStore', () => {
 
         const state = useWorkflowStore.getState();
         expect(state.autoExecutionPermissions.requirements).toBe(true);
-        expect(state.autoExecutionPermissions.tasks).toBe(true);
-        expect(state.autoExecutionPermissions.design).toBe(false);
+        expect(state.autoExecutionPermissions.tasks).toBe(false); // Toggled from true to false
+        expect(state.autoExecutionPermissions.design).toBe(true); // Unchanged (still true)
       });
     });
   });
@@ -189,8 +189,8 @@ describe('useWorkflowStore', () => {
       });
 
       it('should return false for non-permitted phase', () => {
-        const result = useWorkflowStore.getState().isPhaseAutoPermitted('design');
-        expect(result).toBe(false);
+        const result = useWorkflowStore.getState().isPhaseAutoPermitted('deploy');
+        expect(result).toBe(false); // deploy is the only phase with false by default
       });
     });
 

@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [0.57.0] - 2026-01-31
+
+### Added
+- file-watcher-root-monitoring): ファイル監視をルート監視+Globフィルタリング方式に移行
+
+### Fixed
+- schedule): スケジュールタスク作成時のプロンプトエディタ統合の欠落を修正
+
+### Tests
+- Inspection workflow E2Eテストの修正と拡張
+
+### Refactored
+- auto-execution): spec.jsonからのpermissions/approvals読み取りをSSoT化
+
+### Other Changes
+- chore: E2Eフィクスチャのテストアーティファクト整理
+- chore: simple-feature E2Eフィクスチャデータの整理
+
+
 ## [0.56.0] - 2026-01-30
 
 ### Added

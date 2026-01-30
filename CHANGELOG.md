@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.56.0] - 2026-01-30
+
+### Added
+- GitViewにdiff/source表示切替機能を追加
+
+### Fixed
+- projectConfigServiceエラーの原因を特定・修正
+- fix project/spec agent selection not working in sidebar
+- EISDIR error on untracked directories in project file tree
+- GitViewをBugsタブにも搭載
+
+### Changed
+- refactor: spec-managerプロファイルの機能をオフにする
+- chore: 依存関係の更新とセキュリティ脆弱性の修正
+- test(e2e): remote-ui ProjectAgent操作のE2Eテストを追加
+- docs: loggingガイドラインにconsole.*使用制限を追加
+
+
 ## [0.55.0] - 2026-01-30
 
 ### Added

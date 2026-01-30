@@ -44,7 +44,6 @@ export class SpecsWatcherService {
   private worktreeSpecsBaseDir: string;
   /** Debounce timers for worktree additions */
   private worktreeAdditionTimers: Map<string, NodeJS.Timeout> = new Map();
-  private worktreeAdditionDebounceMs = 500;
   /** Tracks all currently watched paths to prevent duplicate monitoring */
   private watchedPaths: Set<string> = new Set();
 

@@ -201,12 +201,6 @@ export class AgentRecordService {
     return `${specId}/${agentId}`;
   }
 
-  /**
-   * Get the file path for an agent record
-   */
-  private getFilePath(specId: string, agentId: string): string {
-    return path.join(this.basePath, specId, `${agentId}.json`);
-  }
 
   /**
    * Write an agent record

@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.58.0] - 2026-01-31
+
+### Added
+- detect document-review completion in auto-execution workflow
+- push-style notification types for file change events
+- remote-ui server cleanup on app quit
+
+### Fixed
+- runtime-agents-restructure: 実装漏れの修正 - カテゴリ対応パスの完全適用
+- agent-log events not reflected in Remote UI store
+- EMFILE error by restoring 2-tier file monitoring with depth limit
+
+### Changed
+- add E2E test for Remote UI agent-log store integration
+- add type tests for push-style notification events
+- add document-review completion resume E2E test
+- ユニットテストの修正と改善
+- update package-lock.json for version 0.57.0
+
+
 ## [0.57.0] - 2026-01-31
 
 ### Added

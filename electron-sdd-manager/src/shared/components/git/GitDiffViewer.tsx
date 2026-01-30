@@ -202,7 +202,7 @@ export function GitDiffViewer(): React.ReactElement {
           data-testid="diff-content"
         >
           <Diff
-            viewType={diffMode}
+            viewType={diffMode as 'unified' | 'split'}
             diffType={parsedDiff.type}
             hunks={parsedDiff.hunks}
           >

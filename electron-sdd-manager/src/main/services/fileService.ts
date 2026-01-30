@@ -6,7 +6,7 @@
  */
 
 import { readdir, readFile, writeFile, mkdir, stat, access } from 'fs/promises';
-import { join, resolve, normalize } from 'path';
+import { join, resolve, normalize, extname } from 'path';
 import type {
   KiroValidation,
   SpecMetadata,
@@ -910,5 +910,201 @@ ${description}
     bugName: string
   ): Promise<Result<string, FileError>> {
     return this.resolveEntityPath(projectPath, 'bugs', bugName);
+  }
+
+  // ============================================================
+  // git-view-source-mode: File content reading for Source view
+  // Requirements: 5.2, 5.3, 5.4
+  // ============================================================
+
+  /** Supported image extensions */
+  private static readonly IMAGE_EXTENSIONS = ['.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico'];
+
+  /** Markdown extensions */
+  private static readonly MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
+
+  /** Language mapping from extension to refractor language name */
+  private static readonly LANGUAGE_MAP: Record<string, string> = {
+    '.ts': 'typescript',
+    '.tsx': 'tsx',
+    '.js': 'javascript',
+    '.jsx': 'jsx',
+    '.py': 'python',
+    '.rb': 'ruby',
+    '.go': 'go',
+    '.rs': 'rust',
+    '.java': 'java',
+    '.c': 'c',
+    '.cpp': 'cpp',
+    '.h': 'c',
+    '.hpp': 'cpp',
+    '.cs': 'csharp',
+    '.php': 'php',
+    '.swift': 'swift',
+    '.kt': 'kotlin',
+    '.scala': 'scala',
+    '.json': 'json',
+    '.yaml': 'yaml',
+    '.yml': 'yaml',
+    '.xml': 'markup',
+    '.html': 'markup',
+    '.css': 'css',
+    '.scss': 'scss',
+    '.sass': 'sass',
+    '.less': 'less',
+    '.sql': 'sql',
+    '.sh': 'bash',
+    '.bash': 'bash',
+    '.zsh': 'bash',
+    '.fish': 'bash',
+    '.ps1': 'powershell',
+    '.dockerfile': 'docker',
+    '.toml': 'toml',
+    '.ini': 'ini',
+    '.conf': 'nginx',
+    '.nginx': 'nginx',
+    '.lua': 'lua',
+    '.r': 'r',
+    '.pl': 'perl',
+    '.vim': 'vim',
+    '.graphql': 'graphql',
+    '.gql': 'graphql',
+  };
+
+  /**
+   * Check if content appears to be binary
+   * Uses simple heuristic: contains null bytes in first 8KB
+   */
+  private isBinaryContent(buffer: Buffer): boolean {
+    const checkLength = Math.min(buffer.length, 8192);
+    for (let i = 0; i < checkLength; i++) {
+      if (buffer[i] === 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Detect file type from extension and content
+   */
+  private detectFileType(
+    filePath: string,
+    buffer: Buffer
+  ): 'code' | 'markdown' | 'image' | 'binary' {
+    const ext = extname(filePath).toLowerCase();
+
+    if (FileService.IMAGE_EXTENSIONS.includes(ext)) {
+      return 'image';
+    }
+
+    if (FileService.MARKDOWN_EXTENSIONS.includes(ext)) {
+      return 'markdown';
+    }
+
+    if (this.isBinaryContent(buffer)) {
+      return 'binary';
+    }
+
+    return 'code';
+  }
+
+  /**
+   * Detect programming language from file extension
+   */
+  private detectLanguage(filePath: string): string | undefined {
+    const ext = extname(filePath).toLowerCase();
+    return FileService.LANGUAGE_MAP[ext];
+  }
+
+  /**
+   * Read file content for Source view display
+   * git-view-source-mode: Requirements 5.2, 5.3, 5.4
+   *
+   * @param projectPath - Project root path
+   * @param filePath - Relative file path from project root
+   * @returns File content with metadata
+   */
+  async readFileContent(
+    projectPath: string,
+    filePath: string
+  ): Promise<Result<{
+    content: string;
+    isBase64: boolean;
+    fileType: 'code' | 'markdown' | 'image' | 'binary';
+    language?: string;
+  }, FileError>> {
+    // Security: Validate path to prevent directory traversal
+    const absolutePath = join(projectPath, filePath);
+    const pathValidation = validatePath(projectPath, absolutePath);
+
+    if (!pathValidation.ok) {
+      return pathValidation;
+    }
+
+    try {
+      // Read file as buffer
+      const buffer = await readFile(absolutePath);
+
+      // Detect file type
+      const fileType = this.detectFileType(filePath, buffer);
+
+      // For images, return base64 encoded content
+      if (fileType === 'image') {
+        return {
+          ok: true,
+          value: {
+            content: buffer.toString('base64'),
+            isBase64: true,
+            fileType: 'image',
+          },
+        };
+      }
+
+      // For binary files, return empty content (handled by UI)
+      if (fileType === 'binary') {
+        return {
+          ok: true,
+          value: {
+            content: '',
+            isBase64: false,
+            fileType: 'binary',
+          },
+        };
+      }
+
+      // For text files (code/markdown), return as string
+      const content = buffer.toString('utf-8');
+      const language = fileType === 'code' ? this.detectLanguage(filePath) : undefined;
+
+      return {
+        ok: true,
+        value: {
+          content,
+          isBase64: false,
+          fileType,
+          language,
+        },
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          ok: false,
+          error: {
+            type: 'FILE_NOT_FOUND',
+            path: filePath,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: filePath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
   }
 }

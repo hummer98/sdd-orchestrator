@@ -60,11 +60,13 @@ export type {
 // GitView store (git-diff-viewer feature)
 // Task 10.5: Move gitViewStore to shared
 // Requirements: 4.1, 4.2, 10.3, 10.4
+// git-view-source-mode: Extended with 'source' diffMode
 export {
   useSharedGitViewStore,
   resetSharedGitViewStore,
   getSharedGitViewStore,
 } from './gitViewStore';
+export type { GitViewDiffMode, GitViewViewMode } from './gitViewStore';
 
 // Notification store (worktree-rebase-from-main)
 // Task 12.2, 12.3: Shared notification interface for stores

@@ -169,10 +169,13 @@ export interface Notification {
 export type FileError =
   | { type: 'NOT_FOUND'; path: string }
   | { type: 'PERMISSION_DENIED'; path: string }
-  | { type: 'INVALID_PATH'; path: string; reason: string }
+  | { type: 'INVALID_PATH'; path: string; reason?: string }
   | { type: 'PARSE_ERROR'; path: string; message: string }
   | { type: 'WRITE_ERROR'; path: string; message: string }
-  | { type: 'INVALID_TRANSITION'; path: string; message: string };  // spec-phase-auto-update
+  | { type: 'INVALID_TRANSITION'; path: string; message: string }  // spec-phase-auto-update
+  // git-view-source-mode: Extended file error types
+  | { type: 'FILE_NOT_FOUND'; path: string }
+  | { type: 'READ_ERROR'; path: string; message: string };
 
 // Command error types
 export type CommandError =

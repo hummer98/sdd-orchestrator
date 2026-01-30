@@ -2548,6 +2548,19 @@ const electronAPI = {
         ipcRenderer.removeListener(IPC_CHANNELS.GIT_CHANGES_DETECTED, handler);
       };
     },
+
+    /**
+     * git-view-source-mode Task 4.1: Read file content for Source view
+     * Requirements: 5.1
+     * @param projectPath Project root path
+     * @param filePath Relative file path from project root
+     * @returns FileContentResult with content, type, and metadata
+     */
+    readFileContent: (
+      projectPath: string,
+      filePath: string
+    ): Promise<import('../shared/types').Result<import('../shared/api/types').FileContentResult, import('../shared/api/types').ApiError>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, projectPath, filePath),
   },
 };
 

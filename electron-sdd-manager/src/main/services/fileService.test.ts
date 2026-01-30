@@ -700,3 +700,260 @@ describe('FileService - resolveEntityPath', () => {
     });
   });
 });
+
+// ============================================================
+// git-view-source-mode Task 2.1, 9.1: readFileContent tests
+// Requirements: 5.2, 5.3, 5.4
+// ============================================================
+describe('FileService - readFileContent', () => {
+  let fileService: FileService;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'readfilecontent-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe('readFileContent - text files', () => {
+    it('should read text file content and return code type', async () => {
+      const testContent = 'const hello = "world";';
+      const filePath = 'src/test.ts';
+      const fullPath = path.join(tempDir, filePath);
+      await fs.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, testContent, 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.content).toBe(testContent);
+        expect(result.value.isBase64).toBe(false);
+        expect(result.value.fileType).toBe('code');
+        expect(result.value.language).toBe('typescript');
+      }
+    });
+
+    it('should detect language from file extension', async () => {
+      const testContent = 'console.log("hello");';
+      const filePath = 'test.js';
+      await fs.writeFile(path.join(tempDir, filePath), testContent, 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.fileType).toBe('code');
+        expect(result.value.language).toBe('javascript');
+      }
+    });
+  });
+
+  describe('readFileContent - markdown files', () => {
+    it('should identify .md files as markdown type', async () => {
+      const testContent = '# Hello\n\nThis is markdown.';
+      const filePath = 'README.md';
+      await fs.writeFile(path.join(tempDir, filePath), testContent, 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.content).toBe(testContent);
+        expect(result.value.isBase64).toBe(false);
+        expect(result.value.fileType).toBe('markdown');
+      }
+    });
+
+    it('should identify .markdown files as markdown type', async () => {
+      const testContent = '# Test';
+      const filePath = 'test.markdown';
+      await fs.writeFile(path.join(tempDir, filePath), testContent, 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.fileType).toBe('markdown');
+      }
+    });
+  });
+
+  describe('readFileContent - image files', () => {
+    it('should read PNG image as base64', async () => {
+      // Create a minimal PNG file (1x1 red pixel)
+      const pngBuffer = Buffer.from([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk header
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
+        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+        0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+        0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+        0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x18, 0xDD,
+        0x8D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+        0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+      ]);
+      const filePath = 'test.png';
+      await fs.writeFile(path.join(tempDir, filePath), pngBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+        // Verify base64 can be decoded back
+        const decoded = Buffer.from(result.value.content, 'base64');
+        expect(decoded.equals(pngBuffer)).toBe(true);
+      }
+    });
+
+    it('should read SVG as base64', async () => {
+      const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40"/></svg>';
+      const filePath = 'test.svg';
+      await fs.writeFile(path.join(tempDir, filePath), svgContent, 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+      }
+    });
+
+    it('should handle JPG/JPEG images', async () => {
+      // Create minimal JPEG (just valid header for testing)
+      const jpegBuffer = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46]);
+      const filePath = 'test.jpg';
+      await fs.writeFile(path.join(tempDir, filePath), jpegBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+      }
+    });
+
+    it('should handle GIF images', async () => {
+      // Minimal GIF header
+      const gifBuffer = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
+      const filePath = 'test.gif';
+      await fs.writeFile(path.join(tempDir, filePath), gifBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+      }
+    });
+
+    it('should handle WebP images', async () => {
+      // Minimal WebP header (RIFF + WEBP)
+      const webpBuffer = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]);
+      const filePath = 'test.webp';
+      await fs.writeFile(path.join(tempDir, filePath), webpBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+      }
+    });
+
+    it('should handle ICO images', async () => {
+      // Minimal ICO header
+      const icoBuffer = Buffer.from([0x00, 0x00, 0x01, 0x00, 0x01, 0x00]);
+      const filePath = 'test.ico';
+      await fs.writeFile(path.join(tempDir, filePath), icoBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.isBase64).toBe(true);
+        expect(result.value.fileType).toBe('image');
+      }
+    });
+  });
+
+  describe('readFileContent - binary files', () => {
+    it('should detect binary files and return binary type', async () => {
+      // Create a file with binary content (null bytes)
+      const binaryBuffer = Buffer.from([0x00, 0x01, 0x02, 0xFF, 0xFE, 0x00, 0x00]);
+      const filePath = 'test.bin';
+      await fs.writeFile(path.join(tempDir, filePath), binaryBuffer);
+
+      const result = await fileService.readFileContent(tempDir, filePath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.fileType).toBe('binary');
+      }
+    });
+  });
+
+  describe('readFileContent - error handling', () => {
+    it('should return FILE_NOT_FOUND error for non-existent file', async () => {
+      const result = await fileService.readFileContent(tempDir, 'non-existent.ts');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('FILE_NOT_FOUND');
+      }
+    });
+
+    it('should return INVALID_PATH error for path traversal attempt', async () => {
+      const result = await fileService.readFileContent(tempDir, '../../../etc/passwd');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_PATH');
+      }
+    });
+  });
+
+  describe('readFileContent - language detection', () => {
+    it('should detect Python files', async () => {
+      await fs.writeFile(path.join(tempDir, 'test.py'), 'print("hello")', 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, 'test.py');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.language).toBe('python');
+      }
+    });
+
+    it('should detect JSON files', async () => {
+      await fs.writeFile(path.join(tempDir, 'test.json'), '{}', 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, 'test.json');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.language).toBe('json');
+      }
+    });
+
+    it('should return undefined language for unknown extensions', async () => {
+      await fs.writeFile(path.join(tempDir, 'test.xyz'), 'content', 'utf-8');
+
+      const result = await fileService.readFileContent(tempDir, 'test.xyz');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.language).toBeUndefined();
+      }
+    });
+  });
+});

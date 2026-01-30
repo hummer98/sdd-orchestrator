@@ -98,4 +98,25 @@ export {
   type AgentBehaviorEditorProps,
 } from '@shared/components/schedule';
 // git-diff-viewer Task 10.5: Git components (re-export from shared)
-export { GitView, GitFileTree, GitDiffViewer } from '@shared/components/git';
+// git-view-source-mode Task 8.3: Extended with Source view components
+export {
+  GitView,
+  GitFileTree,
+  GitDiffViewer,
+  // git-view-source-mode: Source view components
+  ViewModeToggle,
+  SourceCodeViewer,
+  ImageViewer,
+  MarkdownViewer,
+  BinaryFileIndicator,
+  SourceContentViewer,
+} from '@shared/components/git';
+export type {
+  GitViewProps,
+  ViewModeToggleProps,
+  SourceCodeViewerProps,
+  ImageViewerProps,
+  MarkdownViewerProps,
+  BinaryFileIndicatorProps,
+  SourceContentViewerProps,
+} from '@shared/components/git';

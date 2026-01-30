@@ -47,6 +47,7 @@ const mockApiClient: ApiClient = {
   startBugsWatcher: vi.fn(),
   stopBugsWatcher: vi.fn(),
   onBugsChanged: vi.fn(() => () => {}),
+  onAgentLog: vi.fn(() => () => {}),
   getProjectPath: vi.fn(() => '/test/project'),
 };
 
@@ -532,6 +533,149 @@ index abc123..def456 100644
         expect(mockApiClient.getGitDiff).toHaveBeenCalledTimes(1);
         expect(mockApiClient.getGitDiff).toHaveBeenCalledWith(WORKTREE_PATH, 'src/file1.ts');
       });
+    });
+  });
+
+  // ============================================================
+  // git-view-source-mode: diffMode Extension Tests
+  // Task 5.1: diffMode type extension to include 'source'
+  // Requirements: 2.4
+  // ============================================================
+  describe('diffMode extension (git-view-source-mode feature)', () => {
+    it('should allow setting diffMode to source', () => {
+      const store = useSharedGitViewStore.getState();
+
+      store.setDiffMode('source');
+      const state = useSharedGitViewStore.getState();
+      expect(state.diffMode).toBe('source');
+    });
+
+    it('should allow switching between unified, split, and source modes', () => {
+      const store = useSharedGitViewStore.getState();
+
+      store.setDiffMode('source');
+      expect(useSharedGitViewStore.getState().diffMode).toBe('source');
+
+      store.setDiffMode('split');
+      expect(useSharedGitViewStore.getState().diffMode).toBe('split');
+
+      store.setDiffMode('unified');
+      expect(useSharedGitViewStore.getState().diffMode).toBe('unified');
+    });
+
+    it('should reset diffMode to unified on reset', async () => {
+      const store = useSharedGitViewStore.getState();
+      store.setDiffMode('source');
+
+      store.reset();
+
+      const state = useSharedGitViewStore.getState();
+      expect(state.diffMode).toBe('unified');
+    });
+
+    it('should fetch file content when selecting file in source mode', async () => {
+      const mockFileContent = {
+        content: 'const hello = "world";',
+        isBase64: false,
+        fileType: 'code' as const,
+        language: 'typescript',
+      };
+
+      const apiClientWithFileContent = {
+        ...mockApiClient,
+        readFileContent: vi.fn().mockResolvedValue({
+          ok: true,
+          value: mockFileContent,
+        }),
+      };
+
+      const store = useSharedGitViewStore.getState();
+      store.setDiffMode('source');
+      await store.selectFile(apiClientWithFileContent, 'src/file.ts');
+
+      // In source mode, readFileContent should be called instead of getGitDiff
+      expect(apiClientWithFileContent.readFileContent).toHaveBeenCalledWith(
+        '/test/project',
+        'src/file.ts'
+      );
+      expect(apiClientWithFileContent.getGitDiff).not.toHaveBeenCalled();
+
+      const state = useSharedGitViewStore.getState();
+      expect(state.cachedFileContent).toEqual(mockFileContent);
+    });
+
+    it('should fetch diff content when selecting file in unified/split mode', async () => {
+      const diffContent = 'diff --git a/file.ts b/file.ts...';
+
+      vi.mocked(mockApiClient.getGitDiff).mockResolvedValue({
+        ok: true,
+        value: diffContent,
+      });
+
+      const store = useSharedGitViewStore.getState();
+      // Default is unified mode
+      await store.selectFile(mockApiClient, 'src/file.ts');
+
+      expect(mockApiClient.getGitDiff).toHaveBeenCalledWith('/test/project', 'src/file.ts');
+
+      const state = useSharedGitViewStore.getState();
+      expect(state.cachedDiffContent).toBe(diffContent);
+    });
+
+    it('should have null cachedFileContent initially', () => {
+      const state = useSharedGitViewStore.getState();
+      expect(state.cachedFileContent).toBe(null);
+    });
+
+    it('should clear cachedFileContent on reset', async () => {
+      const mockFileContent = {
+        content: 'const hello = "world";',
+        isBase64: false,
+        fileType: 'code' as const,
+        language: 'typescript',
+      };
+
+      const apiClientWithFileContent = {
+        ...mockApiClient,
+        readFileContent: vi.fn().mockResolvedValue({
+          ok: true,
+          value: mockFileContent,
+        }),
+      };
+
+      const store = useSharedGitViewStore.getState();
+      store.setDiffMode('source');
+      await store.selectFile(apiClientWithFileContent, 'src/file.ts');
+
+      store.reset();
+
+      const state = useSharedGitViewStore.getState();
+      expect(state.cachedFileContent).toBe(null);
+    });
+  });
+
+  describe('zoom state (git-view-source-mode feature)', () => {
+    it('should have default imageZoom as 1', () => {
+      const state = useSharedGitViewStore.getState();
+      expect(state.imageZoom).toBe(1);
+    });
+
+    it('should update imageZoom', () => {
+      const store = useSharedGitViewStore.getState();
+
+      store.setImageZoom(2.5);
+      const state = useSharedGitViewStore.getState();
+      expect(state.imageZoom).toBe(2.5);
+    });
+
+    it('should reset imageZoom to 1 on reset', () => {
+      const store = useSharedGitViewStore.getState();
+      store.setImageZoom(3);
+
+      store.reset();
+
+      const state = useSharedGitViewStore.getState();
+      expect(state.imageZoom).toBe(1);
     });
   });
 });

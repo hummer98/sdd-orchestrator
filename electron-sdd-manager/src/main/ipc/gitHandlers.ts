@@ -15,13 +15,15 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { GitService } from '../services/GitService';
 import { GitFileWatcherService } from '../services/GitFileWatcherService';
+import { FileService } from '../services/fileService';
 import { logger } from '../services/logger';
 import type { Result } from '../../shared/types';
-import type { ApiError, GitStatusResult } from '../../shared/api/types';
+import type { ApiError, GitStatusResult, FileContentResult } from '../../shared/api/types';
 
 // Service instances
 let gitService: GitService | null = null;
 let gitFileWatcherService: GitFileWatcherService | null = null;
+let fileService: FileService | null = null;
 
 /**
  * Get or create GitService instance
@@ -31,6 +33,17 @@ function getGitService(): GitService {
     gitService = new GitService();
   }
   return gitService;
+}
+
+/**
+ * Get or create FileService instance
+ * git-view-source-mode: Task 3.1
+ */
+function getFileService(): FileService {
+  if (!fileService) {
+    fileService = new FileService();
+  }
+  return fileService;
 }
 
 /**
@@ -196,6 +209,57 @@ export function registerGitHandlers(): void {
           error: {
             type: 'system_error',
             message: `Failed to stop watching: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        };
+      }
+    }
+  );
+
+  // ============================================================
+  // git-view-source-mode Task 3.1: READ_FILE_CONTENT handler
+  // Requirements: 5.1
+  // ============================================================
+  ipcMain.handle(
+    IPC_CHANNELS.READ_FILE_CONTENT,
+    async (_event, projectPath: string, filePath: string): Promise<Result<FileContentResult, ApiError>> => {
+      logger.debug('[gitHandlers] READ_FILE_CONTENT called', { projectPath, filePath });
+
+      try {
+        const service = getFileService();
+        const result = await service.readFileContent(projectPath, filePath);
+
+        if (result.ok) {
+          logger.debug('[gitHandlers] READ_FILE_CONTENT success', {
+            projectPath,
+            filePath,
+            fileType: result.value.fileType,
+            isBase64: result.value.isBase64,
+          });
+          return {
+            success: true,
+            data: result.value,
+          };
+        } else {
+          logger.warn('[gitHandlers] READ_FILE_CONTENT failed', {
+            projectPath,
+            filePath,
+            error: result.error,
+          });
+          return {
+            success: false,
+            error: {
+              type: result.error.type,
+              message: 'message' in result.error ? result.error.message : `File operation failed: ${result.error.type}`,
+            },
+          };
+        }
+      } catch (error) {
+        logger.error('[gitHandlers] READ_FILE_CONTENT error', { projectPath, filePath, error });
+        return {
+          success: false,
+          error: {
+            type: 'system_error',
+            message: `Failed to read file content: ${error instanceof Error ? error.message : String(error)}`,
           },
         };
       }

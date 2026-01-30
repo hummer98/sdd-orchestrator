@@ -401,6 +401,10 @@ export const IPC_CHANNELS = {
   // Worktree Rebase from Main (worktree-rebase-from-main feature)
   // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
   WORKTREE_REBASE_FROM_MAIN: 'worktree:rebase-from-main',
+
+  // Git View Source Mode (git-view-source-mode feature)
+  // Requirements: 5.1 (readFileContent IPC API)
+  READ_FILE_CONTENT: 'git:read-file-content',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

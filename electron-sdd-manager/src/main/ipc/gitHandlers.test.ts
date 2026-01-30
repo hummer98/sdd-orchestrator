@@ -6,6 +6,7 @@ import { IPC_CHANNELS } from './channels';
  * Git IPC Handlers Tests
  * Task 3.2: Test IPC handler registration and basic functionality
  * Requirements: 3.1
+ * git-view-source-mode: Task 3.1 - readFileContent handler tests
  */
 
 describe('Git IPC Handlers', () => {
@@ -32,6 +33,11 @@ describe('Git IPC Handlers', () => {
 
     it('should have GIT_CHANGES_DETECTED channel defined', () => {
       expect(IPC_CHANNELS.GIT_CHANGES_DETECTED).toBe('git:changes-detected');
+    });
+
+    // git-view-source-mode Task 3.1: READ_FILE_CONTENT channel
+    it('should have READ_FILE_CONTENT channel defined', () => {
+      expect(IPC_CHANNELS.READ_FILE_CONTENT).toBe('git:read-file-content');
     });
   });
 });

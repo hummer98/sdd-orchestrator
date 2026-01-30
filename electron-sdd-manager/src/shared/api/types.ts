@@ -737,6 +737,23 @@ export interface ApiClient {
    * @param projectPath - Project root path (use empty string for current project)
    */
   stopWatching(projectPath: string): Promise<Result<void, ApiError>>;
+
+  // ===========================================================================
+  // Git View Source Mode Operations (git-view-source-mode feature)
+  // Requirements: 5.1, 5.2, 5.3
+  // ===========================================================================
+
+  /**
+   * Read file content for Source view display
+   * Returns file content with type detection for appropriate rendering
+   * @param projectPath - Project root path
+   * @param filePath - Relative file path from project root
+   * @returns FileContentResult with content, isBase64, fileType, and optional language
+   */
+  readFileContent?(
+    projectPath: string,
+    filePath: string
+  ): Promise<Result<FileContentResult, ApiError>>;
 }
 
 // =============================================================================
@@ -798,4 +815,24 @@ export interface GitStatusResult {
   baseBranch?: string;
   /** Detection mode */
   mode: 'worktree' | 'normal';
+}
+
+// =============================================================================
+// Git View Source Mode Types (git-view-source-mode feature)
+// Requirements: 5.1, 5.2, 5.3
+// =============================================================================
+
+/**
+ * File content result for Source view
+ * Contains file content with type detection for appropriate rendering
+ */
+export interface FileContentResult {
+  /** File content (text or base64 encoded for images) */
+  content: string;
+  /** Whether content is base64 encoded */
+  isBase64: boolean;
+  /** Detected file type for rendering selection */
+  fileType: 'code' | 'markdown' | 'image' | 'binary';
+  /** Programming language for syntax highlighting (code files only) */
+  language?: string;
 }

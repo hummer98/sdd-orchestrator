@@ -591,4 +591,23 @@ export class IpcApiClient implements ApiClient {
       return { ok: true, value: { success: false, conflict: isConflict, error: result.error.message } };
     }
   }
+
+  // ===========================================================================
+  // git-view-source-mode Task 4.2: IpcApiClient.readFileContent
+  // Requirements: 5.1
+  // ===========================================================================
+
+  async readFileContent(
+    projectPath: string,
+    filePath: string
+  ): Promise<Result<import('./types').FileContentResult, ApiError>> {
+    checkElectronAPI();
+    // Convert from shared/types Result format (success/data) to shared/api/types Result format (ok/value)
+    const result = await window.electronAPI.git.readFileContent(projectPath, filePath);
+    if (result.success) {
+      return { ok: true, value: result.data };
+    } else {
+      return { ok: false, error: result.error };
+    }
+  }
 }

@@ -3,6 +3,9 @@
  * Main UI component for git diff viewer (2-column layout)
  * Requirements: 6.1, 6.2, 6.3, 6.4, 10.3, 10.4
  *
+ * git-view-source-mode: Extended with viewMode toggle
+ * Requirements: 1.1 (diff/source表示切替)
+ *
  * This component is shared between Electron and Remote UI.
  * It uses ApiClient abstraction to work with both IpcApiClient and WebSocketApiClient.
  */
@@ -13,6 +16,8 @@ import { useApi } from '@shared/api/ApiClientProvider';
 import { useSharedGitViewStore } from '@shared/stores/gitViewStore';
 import { GitFileTree } from './GitFileTree';
 import { GitDiffViewer } from './GitDiffViewer';
+import { ViewModeToggle } from './ViewModeToggle';
+import { SourceContentViewer } from './SourceContentViewer';
 import { ResizeHandle } from '@shared/components/ui/ResizeHandle';
 
 /**
@@ -25,6 +30,14 @@ export interface GitViewProps {
    * Use this when viewing git diff for a worktree instead of the main project.
    */
   workingPath?: string;
+
+  /**
+   * git-view-source-mode Task 8.1: Whether to show diff mode toggle (3 buttons)
+   * When true, shows a toggle between 'unified', 'split', and 'source' views
+   * Requirements: 2.1 (3ボタン並列表示)
+   * @default true - Shows toggle by default
+   */
+  showDiffModeToggle?: boolean;
 }
 
 /**
@@ -32,14 +45,14 @@ export interface GitViewProps {
  *
  * Layout:
  * - Left: GitFileTree (resizable width from gitViewStore.fileTreeWidth)
- * - Right: GitDiffViewer (remaining space)
+ * - Right: GitDiffViewer or SourceContentViewer (based on viewMode)
  *
  * Lifecycle:
  * - On mount: Fetch initial git status and start file watching
  * - On unmount: Stop file watching
  * - On file change event: Refresh status
  */
-export function GitView({ workingPath }: GitViewProps): React.ReactElement {
+export function GitView({ workingPath, showDiffModeToggle = true }: GitViewProps): React.ReactElement {
   const apiClient = useApi();
   const {
     isLoading,
@@ -49,6 +62,11 @@ export function GitView({ workingPath }: GitViewProps): React.ReactElement {
     setFileTreeWidth,
     refreshStatus,
     clearError,
+    // git-view-source-mode: Extended state
+    diffMode,
+    setDiffMode,
+    selectedFilePath,
+    cachedFileContent,
   } = useSharedGitViewStore();
 
   // Resolve effective path: workingPath > apiClient.getProjectPath()
@@ -131,29 +149,51 @@ export function GitView({ workingPath }: GitViewProps): React.ReactElement {
   }
 
   return (
-    <div className="h-full flex overflow-hidden" data-testid="git-view-container">
-      {/* Left: GitFileTree - independent scrolling */}
-      <div
-        style={{ width: fileTreeWidth }}
-        className="h-full shrink-0 overflow-auto border-r border-gray-200 dark:border-gray-700"
-        data-testid="git-file-tree"
-      >
-        <GitFileTree workingPath={effectivePath} />
-      </div>
+    <div className="h-full flex flex-col overflow-hidden" data-testid="git-view-container">
+      {/* git-view-source-mode Task 8.1: 3-button diff mode toggle */}
+      {showDiffModeToggle && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-end">
+          <ViewModeToggle
+            diffMode={diffMode}
+            onDiffModeChange={setDiffMode}
+          />
+        </div>
+      )}
 
-      {/* Resize handle */}
-      <ResizeHandle
-        direction="horizontal"
-        onResize={handleResize}
-        onResizeEnd={handleResizeEnd}
-      />
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: GitFileTree - independent scrolling */}
+        <div
+          style={{ width: fileTreeWidth }}
+          className="h-full shrink-0 overflow-auto border-r border-gray-200 dark:border-gray-700"
+          data-testid="git-file-tree"
+        >
+          <GitFileTree workingPath={effectivePath} />
+        </div>
 
-      {/* Right: GitDiffViewer - independent scrolling */}
-      <div
-        className="h-full flex-1 overflow-auto"
-        data-testid="git-diff-viewer"
-      >
-        <GitDiffViewer />
+        {/* Resize handle */}
+        <ResizeHandle
+          direction="horizontal"
+          onResize={handleResize}
+          onResizeEnd={handleResizeEnd}
+        />
+
+        {/* Right: Content viewer - switches between diff and source based on diffMode */}
+        <div
+          className="h-full flex-1 overflow-auto"
+          data-testid={diffMode === 'source' ? 'git-source-viewer' : 'git-diff-viewer'}
+        >
+          {diffMode === 'source' ? (
+            <SourceContentViewer
+              fileContent={cachedFileContent}
+              filePath={selectedFilePath}
+              isLoading={isLoading}
+              error={error}
+            />
+          ) : (
+            <GitDiffViewer />
+          )}
+        </div>
       </div>
     </div>
   );

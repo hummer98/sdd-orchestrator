@@ -3,6 +3,9 @@
  * Manages GitView UI state (selected file, tree expansion, diff mode, resize position)
  * Requirements: 4.1, 4.2, 10.3, 10.4
  *
+ * git-view-source-mode: Extended with viewMode support
+ * Requirements: 1.1, 1.2, 2.1, 5.1, 5.2
+ *
  * Design: UI State store following structure.md principles
  * - GitView-related UI state only (not Domain State)
  * - Git diff data cached from Main Process (MainからのResult受信後に保持)
@@ -12,7 +15,21 @@
  */
 
 import { create } from 'zustand';
-import type { ApiClient, GitStatusResult, GitFileStatus } from '@shared/api/types';
+import type { ApiClient, GitStatusResult, GitFileStatus, FileContentResult } from '@shared/api/types';
+
+/**
+ * git-view-source-mode Task 5.1: Extended diff mode type
+ * Requirements: 2.4 (diffMode状態管理)
+ * Original: 'unified' | 'split'
+ * Extended: 'unified' | 'split' | 'source'
+ */
+export type GitViewDiffMode = 'unified' | 'split' | 'source';
+
+/**
+ * For backward compatibility - alias to GitViewDiffMode
+ * @deprecated Use GitViewDiffMode instead
+ */
+export type GitViewViewMode = 'diff' | 'source';
 
 /**
  * Extract all directory paths from file list
@@ -37,8 +54,12 @@ interface GitViewState {
   selectedFilePath: string | null;
   /** File tree expansion state (Map<dirPath, boolean>) */
   expandedDirs: Map<string, boolean>;
-  /** Diff display mode: 'unified' | 'split' */
-  diffMode: 'unified' | 'split';
+  /**
+   * Diff display mode: 'unified' | 'split' | 'source'
+   * git-view-source-mode Task 5.1: Extended with 'source' option
+   * Requirements: 2.4
+   */
+  diffMode: GitViewDiffMode;
   /** Resize handle position (file tree width, px) */
   fileTreeWidth: number;
   /** Cache: git status result */
@@ -49,15 +70,25 @@ interface GitViewState {
   isLoading: boolean;
   /** Error message */
   error: string | null;
+
+  // git-view-source-mode: Extended state for source mode
+  /** Cache: selected file content (for source mode) */
+  cachedFileContent: FileContentResult | null;
+  /** Image zoom level (for source mode image display) */
+  imageZoom: number;
 }
 
 interface GitViewActions {
-  /** Select file and fetch diff content */
+  /** Select file and fetch diff/content based on diffMode */
   selectFile: (apiClient: ApiClient, filePath: string, projectPath?: string) => Promise<void>;
   /** Toggle directory expansion/collapse */
   toggleDir: (dirPath: string) => void;
-  /** Set diff display mode */
-  setDiffMode: (mode: 'unified' | 'split') => void;
+  /**
+   * Set diff display mode
+   * git-view-source-mode Task 5.1: Extended to accept 'source' mode
+   * Requirements: 2.4
+   */
+  setDiffMode: (mode: GitViewDiffMode) => void;
   /** Update file tree width */
   setFileTreeWidth: (width: number) => void;
   /** Fetch git status and cache */
@@ -66,6 +97,10 @@ interface GitViewActions {
   clearError: () => void;
   /** Reset store to initial state */
   reset: () => void;
+
+  // git-view-source-mode: Extended actions
+  /** Set image zoom level */
+  setImageZoom: (zoom: number) => void;
 }
 
 type GitViewStore = GitViewState & GitViewActions;
@@ -79,6 +114,10 @@ const initialState: GitViewState = {
   cachedDiffContent: null,
   isLoading: false,
   error: null,
+
+  // git-view-source-mode: Extended initial state
+  cachedFileContent: null,
+  imageZoom: 1,
 };
 
 export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
@@ -87,31 +126,61 @@ export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
 
   // Actions
   selectFile: async (apiClient: ApiClient, filePath: string, overrideProjectPath?: string) => {
+    const { diffMode } = get();
     set({ selectedFilePath: filePath, isLoading: true, error: null });
 
     try {
       // Get project path (use override or fallback to apiClient)
       const projectPath = overrideProjectPath ?? apiClient.getProjectPath?.() ?? '';
 
-      // Fetch diff content via ApiClient
-      const result = await apiClient.getGitDiff(projectPath, filePath);
+      // git-view-source-mode: Fetch based on diffMode
+      if (diffMode === 'source') {
+        // Source mode: fetch file content
+        if (!apiClient.readFileContent) {
+          set({
+            cachedFileContent: null,
+            error: 'ファイル内容の取得はサポートされていません',
+            isLoading: false,
+          });
+          return;
+        }
 
-      if (result.ok) {
-        set({
-          cachedDiffContent: result.value,
-          isLoading: false,
-        });
+        const result = await apiClient.readFileContent(projectPath, filePath);
+
+        if (result.ok) {
+          set({
+            cachedFileContent: result.value,
+            isLoading: false,
+          });
+        } else {
+          set({
+            cachedFileContent: null,
+            error: result.error.message,
+            isLoading: false,
+          });
+        }
       } else {
-        set({
-          cachedDiffContent: null,
-          error: result.error.message,
-          isLoading: false,
-        });
+        // Unified/Split diff mode: fetch diff content
+        const result = await apiClient.getGitDiff(projectPath, filePath);
+
+        if (result.ok) {
+          set({
+            cachedDiffContent: result.value,
+            isLoading: false,
+          });
+        } else {
+          set({
+            cachedDiffContent: null,
+            error: result.error.message,
+            isLoading: false,
+          });
+        }
       }
     } catch (error) {
       set({
         cachedDiffContent: null,
-        error: error instanceof Error ? error.message : '差分の取得に失敗しました',
+        cachedFileContent: null,
+        error: error instanceof Error ? error.message : 'データの取得に失敗しました',
         isLoading: false,
       });
     }
@@ -125,7 +194,7 @@ export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
     set({ expandedDirs: newExpandedDirs });
   },
 
-  setDiffMode: (mode: 'unified' | 'split') => {
+  setDiffMode: (mode: GitViewDiffMode) => {
     set({ diffMode: mode });
   },
 
@@ -190,6 +259,11 @@ export const useSharedGitViewStore = create<GitViewStore>((set, get) => ({
 
   reset: () => {
     set(initialState);
+  },
+
+  // git-view-source-mode: Extended actions
+  setImageZoom: (zoom: number) => {
+    set({ imageZoom: zoom });
   },
 }));
 

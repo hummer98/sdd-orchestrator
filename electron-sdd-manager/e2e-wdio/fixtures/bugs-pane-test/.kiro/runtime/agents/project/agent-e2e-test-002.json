@@ -1,0 +1,11 @@
+{
+  "agentId": "agent-e2e-test-002",
+  "specId": "",
+  "phase": "project-ask",
+  "pid": null,
+  "sessionId": "e2e-test-session-002",
+  "status": "completed",
+  "startedAt": "2026-01-30T01:00:00.000Z",
+  "lastActivityAt": "2026-01-30T01:03:00.000Z",
+  "command": "claude -p --verbose /kiro:project-ask \"Second E2E test query\""
+}

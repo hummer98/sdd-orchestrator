@@ -1,0 +1,6 @@
+{"timestamp":"2026-01-30T01:00:01.000Z","stream":"stdout","data":"{\"type\":\"system\",\"subtype\":\"init\",\"cwd\":\"/test/project\",\"session_id\":\"e2e-test-session-002\",\"model\":\"claude-opus-4-5\"}"}
+{"timestamp":"2026-01-30T01:00:02.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Second E2E test - checking configuration\"}]}}"}
+{"timestamp":"2026-01-30T01:00:03.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_002\",\"name\":\"Read\",\"input\":{\"file_path\":\"package.json\"}}]}}"}
+{"timestamp":"2026-01-30T01:00:04.000Z","stream":"stdout","data":"{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_002\",\"content\":\"{\\\"name\\\":\\\"test-project\\\"}\"}]}}"}
+{"timestamp":"2026-01-30T01:00:05.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Configuration verified successfully.\"}]}}"}
+{"timestamp":"2026-01-30T01:00:06.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"All checks completed.\"}]}}"}

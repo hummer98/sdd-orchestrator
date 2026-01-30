@@ -1,0 +1,5 @@
+{"timestamp":"2026-01-30T00:00:01.000Z","stream":"stdout","data":"{\"type\":\"system\",\"subtype\":\"init\",\"cwd\":\"/test/project\",\"session_id\":\"e2e-test-session-001\",\"model\":\"claude-opus-4-5\"}"}
+{"timestamp":"2026-01-30T00:00:02.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"E2E test response - analyzing project structure\"}]}}"}
+{"timestamp":"2026-01-30T00:00:03.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_001\",\"name\":\"Glob\",\"input\":{\"pattern\":\"**/*.md\"}}]}}"}
+{"timestamp":"2026-01-30T00:00:04.000Z","stream":"stdout","data":"{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_001\",\"content\":\"README.md\\nDOCS.md\"}]}}"}
+{"timestamp":"2026-01-30T00:00:05.000Z","stream":"stdout","data":"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Found documentation files. The project structure looks good.\"}]}}"}

@@ -339,7 +339,8 @@ electron-sdd-manager/
 │   ├── smartphone-spec-create.spec.ts # スマートフォンUI Spec作成テスト
 │   ├── smartphone-auto-execution.spec.ts # スマートフォンUI 自動実行テスト
 │   ├── smartphone-agent-log.spec.ts  # スマートフォンUI AgentLogテスト
-│   └── agent-log-remote.spec.ts  # デスクトップUI AgentLogテスト
+│   ├── agent-log-remote.spec.ts  # デスクトップUI AgentLogテスト
+│   └── project-agent-interaction.spec.ts # ProjectAgent操作テスト（クリック→Drawer→ログ表示）
 ├── e2e-wdio/                     # 既存WebdriverIOテスト
 │   └── fixtures/                 # 共有テストフィクスチャ
 ├── playwright-report/            # テストレポート出力

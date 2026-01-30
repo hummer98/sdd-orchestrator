@@ -4,6 +4,35 @@
 
 ## 必須観点 (Critical)
 
+### console.* の使用制限
+
+**必須**: `console.log/warn/error/info` の直接使用を避けること。
+
+**理由**:
+- ログレベルの制御ができない（常に出力される）
+- 構造化されていない（パースが困難）
+- 環境ごとの出力先制御ができない
+
+**代替手段**: 本プロジェクトでは `logger` を使用すること。
+
+```typescript
+// ❌ 悪い例
+console.log('Processing started');
+console.warn('[service] Invalid format');
+console.error('Failed to load', error);
+
+// ✅ 良い例
+import { logger } from './logger';
+
+logger.debug('Processing started', { itemCount: 10 });
+logger.warn('[service] Invalid format', { path: configPath });
+logger.error('Failed to load', { error });
+```
+
+**例外**: 以下の場合のみ `console.*` の使用を許可：
+- アプリケーション起動前のブートストラップ処理
+- ロガー初期化前のエラーハンドリング
+
 ### ログレベル対応
 
 アプリケーションは以下のログレベルをサポートすること:
@@ -14,6 +43,17 @@
 | info | 正常系の動作記録 | 処理開始/完了、ユーザーアクション |
 | warning | 潜在的な問題の警告 | 非推奨APIの使用、リトライ発生 |
 | error | エラー発生時の詳細 | 例外発生、処理失敗 |
+
+**ログレベルの選択基準**:
+
+- **debug**: 本番環境では出力されない情報。開発時のみ有用。
+- **info**: 正常動作の記録。監視やトラブルシューティングに必要。
+- **warning**: 現在は動作するが、将来問題になる可能性がある状況。ユーザーや開発者の注意が必要。
+- **error**: 処理が失敗し、ユーザーやシステムに影響がある状況。即座の対応が必要。
+
+**判断に迷う場合**:
+- ファイルが見つからない場合 → 正常な状態として扱えるなら`debug`、エラーなら`error`
+- 不明な設定値 → デフォルト値で動作するなら`debug`、動作に影響するなら`warning`
 
 ### ログフォーマット
 

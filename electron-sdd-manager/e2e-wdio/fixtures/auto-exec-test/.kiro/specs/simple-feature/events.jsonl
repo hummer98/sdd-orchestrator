@@ -1,5 +1,0 @@
-{"type":"auto-execution:start","message":"Auto-execution started","status":"started","startPhase":"requirements","timestamp":"2024-01-01T00:00:00.000Z"}
-{"type":"agent:start","message":"Agent started: requirements phase","agentId":"agent-fixture-001","phase":"requirements","command":"mock-claude.sh /kiro:spec-requirements simple-feature","timestamp":"2024-01-01T00:00:01.000Z"}
-{"type":"agent:complete","message":"Agent completed: requirements phase","agentId":"agent-fixture-001","phase":"requirements","exitCode":0,"timestamp":"2024-01-01T00:00:02.000Z"}
-{"type":"approval:update","message":"requirements approved","phase":"requirements","approved":true,"timestamp":"2024-01-01T00:00:02.100Z"}
-{"type":"auto-execution:complete","message":"Auto-execution completed (1 phases executed)","status":"completed","endPhase":"requirements","timestamp":"2024-01-01T00:00:02.100Z"}

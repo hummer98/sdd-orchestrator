@@ -69,6 +69,23 @@ const DESIGN_COMPLETED_SPEC_JSON = {
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
+// Initial spec.json content with document-review COMPLETED
+const DOCUMENT_REVIEW_COMPLETED_SPEC_JSON = {
+  feature_name: 'resume-feature',
+  name: 'resume-feature',
+  description: 'E2Eテスト用：途中から再開するテスト機能',
+  phase: 'tasks',
+  language: 'ja',
+  approvals: {
+    requirements: { generated: true, approved: true },
+    design: { generated: true, approved: true },
+    tasks: { generated: true, approved: true },
+  },
+  documentReview: { status: 'approved' as const },
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+};
+
 const REQUIREMENTS_MD_CONTENT = `# Requirements Document
 
 ## Project Description (Input)
@@ -104,6 +121,18 @@ E2Eテスト用の設計ドキュメント。
 ## Components
 - Component A
 - Component B
+
+## Approval Status
+- Generated: Yes
+- Approved: Yes
+`;
+
+const TASKS_MD_CONTENT = `# Implementation Tasks
+
+## Tasks
+- [ ] Task 1: Implement basic functionality
+- [ ] Task 2: Add validation
+- [ ] Task 3: Write tests
 
 ## Approval Status
 - Generated: Yes
@@ -176,6 +205,47 @@ function resetFixtureToDesignCompleted(): void {
   if (fs.existsSync(tasksPath)) {
     fs.unlinkSync(tasksPath);
   }
+
+  // runtime/agents ディレクトリをクリーンアップ
+  if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
+    const files = fs.readdirSync(RUNTIME_AGENTS_DIR);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(RUNTIME_AGENTS_DIR, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // logs ディレクトリをクリーンアップ
+  const logsDir = path.join(SPEC_DIR, 'logs');
+  if (fs.existsSync(logsDir)) {
+    const files = fs.readdirSync(logsDir);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(logsDir, file));
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+/**
+ * Fixtureを document-review 完了状態にリセット
+ */
+function resetFixtureToDocumentReviewCompleted(): void {
+  // spec.jsonを document-review 完了状態に設定
+  fs.writeFileSync(
+    path.join(SPEC_DIR, 'spec.json'),
+    JSON.stringify(DOCUMENT_REVIEW_COMPLETED_SPEC_JSON, null, 2)
+  );
+
+  // requirements.md, design.md, tasks.mdを設定
+  fs.writeFileSync(path.join(SPEC_DIR, 'requirements.md'), REQUIREMENTS_MD_CONTENT);
+  fs.writeFileSync(path.join(SPEC_DIR, 'design.md'), DESIGN_MD_CONTENT);
+  fs.writeFileSync(path.join(SPEC_DIR, 'tasks.md'), TASKS_MD_CONTENT);
 
   // runtime/agents ディレクトリをクリーンアップ
   if (fs.existsSync(RUNTIME_AGENTS_DIR)) {
@@ -560,6 +630,119 @@ describe('Auto Execution Resume E2E Tests', () => {
 
       // tasks.md should be created
       expect(fs.existsSync(path.join(SPEC_DIR, 'tasks.md'))).toBe(true);
+    });
+  });
+
+  // ============================================================
+  // Scenario 3: Document-review completed, should start from impl
+  // ============================================================
+  describe('Scenario 3: Document-review already completed', () => {
+    beforeEach(async () => {
+      // Reset to document-review completed state
+      resetFixtureToDocumentReviewCompleted();
+
+      // Select project and spec
+      const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
+      expect(projectSuccess).toBe(true);
+      await browser.pause(500);
+      await refreshSpecStore();
+      await browser.pause(500);
+
+      const specSuccess = await selectSpecViaStore(SPEC_NAME);
+      expect(specSuccess).toBe(true);
+      await browser.pause(500);
+
+      await refreshSpecStore();
+
+      // Wait for workflow view
+      const workflowView = await $('[data-testid="workflow-view"]');
+      await workflowView.waitForExist({ timeout: 5000 });
+    });
+
+    it('should verify initial state shows document-review as approved', async () => {
+      const specJson = readSpecJson();
+      expect(specJson.approvals.requirements.approved).toBe(true);
+      expect(specJson.approvals.design.approved).toBe(true);
+      expect(specJson.approvals.tasks.approved).toBe(true);
+      expect(specJson.documentReview.status).toBe('approved');
+
+      console.log('[E2E] Initial spec.json state:', JSON.stringify({
+        approvals: specJson.approvals,
+        documentReview: specJson.documentReview
+      }));
+    });
+
+    it('should start auto-execution from impl phase, NOT document-review', async () => {
+      // Set permissions: impl enabled (document-review not required since already completed)
+      await setAutoExecutionPermissions({
+        requirements: true,
+        design: true,
+        tasks: true,
+        'document-review': true,
+        impl: true,
+        inspection: false,
+        deploy: false,
+      });
+
+      // Record initial file modification times
+      const reqMdPath = path.join(SPEC_DIR, 'requirements.md');
+      const designMdPath = path.join(SPEC_DIR, 'design.md');
+      const tasksMdPath = path.join(SPEC_DIR, 'tasks.md');
+      const initialReqMTime = fs.statSync(reqMdPath).mtimeMs;
+      const initialDesignMTime = fs.statSync(designMdPath).mtimeMs;
+      const initialTasksMTime = fs.statSync(tasksMdPath).mtimeMs;
+
+      // Click auto-execute button
+      const autoButton = await $('[data-testid="auto-execute-button"]');
+      await autoButton.click();
+
+      // Wait for auto-execution to start and detect first phase
+      let firstPhase: string | null = null;
+      await waitForCondition(async () => {
+        const phase = await getCurrentExecutingPhase();
+        if (phase) {
+          firstPhase = phase;
+          console.log(`[E2E] First executing phase: ${phase}`);
+          return true;
+        }
+        return false;
+      }, 10000, 200, 'first-phase-detection');
+
+      // BUG CHECK
+      if (firstPhase === 'document-review') {
+        console.error('[E2E] BUG DETECTED: Auto-execution started from document-review even though it was already approved!');
+      }
+
+      // Wait for completion or timeout
+      await waitForCondition(async () => {
+        const s = await getAutoExecutionStatus();
+        return !s.isAutoExecuting;
+      }, 60000, 500, 'auto-execution-complete');
+
+      // Check if previous phase files were modified
+      const finalReqMTime = fs.statSync(reqMdPath).mtimeMs;
+      const finalDesignMTime = fs.statSync(designMdPath).mtimeMs;
+      const finalTasksMTime = fs.statSync(tasksMdPath).mtimeMs;
+
+      const reqWasModified = finalReqMTime !== initialReqMTime;
+      const designWasModified = finalDesignMTime !== initialDesignMTime;
+      const tasksWasModified = finalTasksMTime !== initialTasksMTime;
+
+      console.log(`[E2E] requirements.md modified: ${reqWasModified}`);
+      console.log(`[E2E] design.md modified: ${designWasModified}`);
+      console.log(`[E2E] tasks.md modified: ${tasksWasModified}`);
+
+      if (reqWasModified || designWasModified || tasksWasModified) {
+        console.error('[E2E] BUG: Completed phase files were modified!');
+      }
+
+      // EXPECTED: First phase should be 'impl'
+      expect(firstPhase).toBe('impl');
+
+      // EXPECTED: No previous phase files should be modified
+      expect(reqWasModified).toBe(false);
+      expect(designWasModified).toBe(false);
+      expect(tasksWasModified).toBe(false);
     });
   });
 });

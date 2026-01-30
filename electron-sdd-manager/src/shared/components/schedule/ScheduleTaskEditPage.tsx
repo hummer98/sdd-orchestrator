@@ -33,12 +33,14 @@ import { Button } from '../ui/Button';
 import { ScheduleTypeSelector } from './ScheduleTypeSelector';
 import { WorkflowModeEditor } from './WorkflowModeEditor';
 import { AgentBehaviorEditor } from './AgentBehaviorEditor';
+import { PromptListEditor } from './PromptListEditor';
 import type {
   ScheduleTask,
   ScheduleTaskInput,
   ScheduleWorkflowConfig,
   ScheduleCondition,
   AgentBehavior,
+  Prompt,
 } from '../../types/scheduleTask';
 
 // =============================================================================
@@ -65,10 +67,12 @@ interface FormState {
   schedule: ScheduleCondition;
   workflow: ScheduleWorkflowConfig;
   behavior: AgentBehavior;
+  prompts: Prompt[];
 }
 
 interface FormErrors {
   name?: string;
+  prompts?: string;
 }
 
 // =============================================================================
@@ -92,26 +96,6 @@ const DEFAULT_WORKFLOW_CONFIG: ScheduleWorkflowConfig = {
 /** Default agent behavior */
 const DEFAULT_AGENT_BEHAVIOR: AgentBehavior = 'wait';
 
-/**
- * Create default schedule task input for new tasks
- */
-function createDefaultTaskInput(
-  name: string,
-  schedule: ScheduleCondition,
-  workflow: ScheduleWorkflowConfig,
-  behavior: AgentBehavior
-): ScheduleTaskInput {
-  return {
-    name,
-    enabled: true,
-    schedule,
-    prompts: [{ order: 0, content: '' }],
-    avoidance: { targets: [], behavior: 'skip' },
-    workflow,
-    behavior,
-  };
-}
-
 // =============================================================================
 // ScheduleTaskEditPage Component
 // =============================================================================
@@ -130,6 +114,7 @@ export function ScheduleTaskEditPage({
     schedule: task?.schedule ?? DEFAULT_SCHEDULE,
     workflow: task?.workflow ?? DEFAULT_WORKFLOW_CONFIG,
     behavior: task?.behavior ?? DEFAULT_AGENT_BEHAVIOR,
+    prompts: task?.prompts ?? [{ order: 0, content: '' }],
   });
 
   // Validation errors
@@ -145,6 +130,7 @@ export function ScheduleTaskEditPage({
       schedule: task?.schedule ?? DEFAULT_SCHEDULE,
       workflow: task?.workflow ?? DEFAULT_WORKFLOW_CONFIG,
       behavior: task?.behavior ?? DEFAULT_AGENT_BEHAVIOR,
+      prompts: task?.prompts ?? [{ order: 0, content: '' }],
     });
     setFormErrors({});
     setTouched({});
@@ -158,9 +144,15 @@ export function ScheduleTaskEditPage({
       errors.name = 'タスク名を入力してください';
     }
 
+    // Validate prompts (at least one non-empty prompt required)
+    const hasValidPrompt = formState.prompts.some((p) => p.content.trim().length > 0);
+    if (!hasValidPrompt) {
+      errors.prompts = '少なくとも1つのプロンプトを入力してください';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [formState.name]);
+  }, [formState.name, formState.prompts]);
 
   // Handle name change
   const handleNameChange = useCallback((value: string) => {
@@ -194,18 +186,33 @@ export function ScheduleTaskEditPage({
     setFormState((prev) => ({ ...prev, behavior }));
   }, []);
 
+  // Handle prompts change
+  const handlePromptsChange = useCallback((prompts: Prompt[]) => {
+    setFormState((prev) => ({ ...prev, prompts }));
+    // Clear error when user edits prompts
+    if (formErrors.prompts) {
+      setFormErrors((prev) => ({ ...prev, prompts: undefined }));
+    }
+  }, [formErrors.prompts]);
+
   // Handle save
   const handleSave = useCallback(() => {
     if (!validateForm()) return;
 
+    // Filter out empty prompts before saving
+    const validPrompts = formState.prompts.filter((p) => p.content.trim().length > 0);
+
     if (isNew) {
-      // Create new task with default values
-      const newTask = createDefaultTaskInput(
-        formState.name.trim(),
-        formState.schedule,
-        formState.workflow,
-        formState.behavior
-      );
+      // Create new task
+      const newTask: ScheduleTaskInput = {
+        name: formState.name.trim(),
+        enabled: true,
+        schedule: formState.schedule,
+        prompts: validPrompts,
+        avoidance: { targets: [], behavior: 'skip' },
+        workflow: formState.workflow,
+        behavior: formState.behavior,
+      };
       onSave(newTask);
     } else if (task) {
       // Update existing task
@@ -213,17 +220,18 @@ export function ScheduleTaskEditPage({
         name: formState.name.trim(),
         enabled: task.enabled,
         schedule: formState.schedule,
-        prompts: [...task.prompts],
+        prompts: validPrompts,
         avoidance: task.avoidance,
         workflow: formState.workflow,
         behavior: formState.behavior,
       };
       onSave(updatedTask);
     }
-  }, [validateForm, isNew, task, formState.name, formState.schedule, formState.workflow, formState.behavior, onSave]);
+  }, [validateForm, isNew, task, formState, onSave]);
 
   // Check if form is valid
-  const isFormValid = formState.name.trim().length > 0;
+  const hasValidPrompt = formState.prompts.some((p) => p.content.trim().length > 0);
+  const isFormValid = formState.name.trim().length > 0 && hasValidPrompt;
 
   // Determine button text
   const saveButtonText = isNew ? '作成' : '更新';
@@ -281,10 +289,27 @@ export function ScheduleTaskEditPage({
           />
         </div>
 
-        {/* Placeholder for future form fields (Tasks 6.3-6.4) */}
+        {/* Prompt List Editor (Task 6.3) */}
+        <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <PromptListEditor
+            prompts={formState.prompts}
+            onChange={handlePromptsChange}
+            disabled={isSaving}
+          />
+          {formErrors.prompts && (
+            <p
+              data-testid="prompts-error"
+              className="mt-2 text-sm text-red-500"
+            >
+              {formErrors.prompts}
+            </p>
+          )}
+        </div>
+
+        {/* Placeholder for avoidance rules (Task 6.4) */}
         <div className="p-4 rounded-md bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600">
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            プロンプト、回避ルール等はTask 6.3-6.4で実装予定
+            回避ルール設定はTask 6.4で実装予定
           </p>
         </div>
 

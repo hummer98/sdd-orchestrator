@@ -226,6 +226,10 @@ describe('ScheduleTaskEditPage', () => {
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
       const saveButton = screen.getByTestId('save-button');
       expect(saveButton).not.toBeDisabled();
     });
@@ -242,6 +246,10 @@ describe('ScheduleTaskEditPage', () => {
 
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
+
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
 
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
@@ -422,6 +430,10 @@ describe('ScheduleTaskEditPage', () => {
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -467,6 +479,10 @@ describe('ScheduleTaskEditPage', () => {
 
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
+
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
 
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
@@ -533,6 +549,10 @@ describe('ScheduleTaskEditPage', () => {
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -594,6 +614,10 @@ describe('ScheduleTaskEditPage', () => {
 
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
+
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
 
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
@@ -663,6 +687,10 @@ describe('ScheduleTaskEditPage', () => {
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -710,6 +738,10 @@ describe('ScheduleTaskEditPage', () => {
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Add a prompt to satisfy validation
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'test prompt' } });
+
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -738,10 +770,15 @@ describe('ScheduleTaskEditPage', () => {
       const weeklyShortcut = screen.getByTestId('shortcut-weekly');
       fireEvent.click(weeklyShortcut);
 
-      // Fill in name and save
+      // Fill in name
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Fill in prompt (required for validation)
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'テストプロンプト' } });
+
+      // Save
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -786,9 +823,15 @@ describe('ScheduleTaskEditPage', () => {
         />
       );
 
+      // Fill in name
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Fill in prompt (required for validation)
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'テストプロンプト' } });
+
+      // Save
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 
@@ -839,10 +882,15 @@ describe('ScheduleTaskEditPage', () => {
       const skipRadio = screen.getByTestId('agent-behavior-skip');
       fireEvent.click(skipRadio);
 
-      // Fill in name and save
+      // Fill in name
       const nameInput = screen.getByTestId('task-name-input');
       fireEvent.change(nameInput, { target: { value: '新しいタスク' } });
 
+      // Fill in prompt (required for validation)
+      const promptInput = screen.getByTestId('prompt-content-0');
+      fireEvent.change(promptInput, { target: { value: 'テストプロンプト' } });
+
+      // Save
       const saveButton = screen.getByTestId('save-button');
       fireEvent.click(saveButton);
 

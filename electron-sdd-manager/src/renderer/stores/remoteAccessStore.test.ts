@@ -2,6 +2,9 @@
  * Remote Access Store Tests
  * TDD: Testing Zustand store for Remote Access Server state management
  * Requirements: 1.4, 1.5, 1.6, 8.5
+ *
+ * remote-ui-auto-start Task 5.2: autoStartEnabled tests removed
+ * Auto-start setting is now stored in project config (.kiro/sdd-orchestrator.json)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -55,7 +58,6 @@ describe('Remote Access Store (Task 4.2)', () => {
       expect(store.clientCount).toBe(0);
       expect(store.error).toBeNull();
       expect(store.localIp).toBeNull();
-      expect(store.autoStartEnabled).toBe(false);
       expect(store.isLoading).toBe(false);
     });
   });
@@ -260,25 +262,12 @@ describe('Remote Access Store (Task 4.2)', () => {
     });
   });
 
-  describe('setAutoStartEnabled action', () => {
-    it('should update autoStartEnabled', () => {
-      const store = useRemoteAccessStore.getState();
-
-      act(() => {
-        store.setAutoStartEnabled(true);
-      });
-
-      const updatedStore = useRemoteAccessStore.getState();
-      expect(updatedStore.autoStartEnabled).toBe(true);
-    });
-  });
-
   describe('LocalStorage Persistence', () => {
-    it('should persist autoStartEnabled to localStorage', () => {
+    it('should persist publishToCloudflare to localStorage', () => {
       const store = useRemoteAccessStore.getState();
 
       act(() => {
-        store.setAutoStartEnabled(true);
+        store.setPublishToCloudflare(true);
       });
 
       // Check localStorage
@@ -286,27 +275,7 @@ describe('Remote Access Store (Task 4.2)', () => {
       expect(storedValue).not.toBeNull();
 
       const parsed = JSON.parse(storedValue!);
-      expect(parsed.state.autoStartEnabled).toBe(true);
-    });
-
-    it('should restore autoStartEnabled from localStorage', () => {
-      // Set localStorage value
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          state: { autoStartEnabled: true },
-          version: 0,
-        })
-      );
-
-      // Create a new store instance - simulate page reload
-      // In practice, zustand persist will read this on initialization
-      const state = useRemoteAccessStore.getState();
-
-      // Force rehydration by re-reading
-      state.setAutoStartEnabled(true);
-
-      expect(useRemoteAccessStore.getState().autoStartEnabled).toBe(true);
+      expect(parsed.state.publishToCloudflare).toBe(true);
     });
 
     it('should not persist runtime state (isRunning, port, etc.)', () => {
@@ -314,14 +283,14 @@ describe('Remote Access Store (Task 4.2)', () => {
         isRunning: true,
         port: 8765,
         url: 'http://192.168.1.1:8765',
-        autoStartEnabled: true,
+        publishToCloudflare: true,
       });
 
       const storedValue = localStorage.getItem(STORAGE_KEY);
       const parsed = JSON.parse(storedValue!);
 
-      // Only autoStartEnabled should be persisted
-      expect(parsed.state.autoStartEnabled).toBe(true);
+      // Only publishToCloudflare should be persisted
+      expect(parsed.state.publishToCloudflare).toBe(true);
       expect(parsed.state.isRunning).toBeUndefined();
       expect(parsed.state.port).toBeUndefined();
       expect(parsed.state.url).toBeUndefined();
@@ -424,7 +393,7 @@ describe('Remote Access Store (Task 4.2)', () => {
         localIp: '192.168.1.1',
         clientCount: 3,
         error: 'Some error',
-        autoStartEnabled: true,
+        publishToCloudflare: true,
         isLoading: true,
       });
 
@@ -443,8 +412,8 @@ describe('Remote Access Store (Task 4.2)', () => {
       expect(updatedStore.clientCount).toBe(0);
       expect(updatedStore.error).toBeNull();
       expect(updatedStore.isLoading).toBe(false);
-      // autoStartEnabled should be preserved (persisted)
-      expect(updatedStore.autoStartEnabled).toBe(true);
+      // publishToCloudflare should be preserved (persisted)
+      expect(updatedStore.publishToCloudflare).toBe(true);
     });
   });
 });

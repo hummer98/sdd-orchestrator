@@ -146,6 +146,27 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
+  // ============================================================
+  // Remote UI Auto Start Config (remote-ui-auto-start feature)
+  // Requirements: 1.3
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LOAD_REMOTE_UI_AUTO_START,
+    async (_event, projectPath: string): Promise<boolean> => {
+      logger.debug('[configHandlers] LOAD_REMOTE_UI_AUTO_START called', { projectPath });
+      return layoutConfigService.loadRemoteUiAutoStart(projectPath);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_REMOTE_UI_AUTO_START,
+    async (_event, projectPath: string, enabled: boolean): Promise<void> => {
+      logger.debug('[configHandlers] SAVE_REMOTE_UI_AUTO_START called', { projectPath, enabled });
+      return layoutConfigService.saveRemoteUiAutoStart(projectPath, enabled);
+    }
+  );
+
   logger.info('[configHandlers] Config handlers registered');
 }
 

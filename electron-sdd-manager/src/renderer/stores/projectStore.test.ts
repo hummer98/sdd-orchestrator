@@ -809,4 +809,127 @@ describe('useProjectStore', () => {
       expect(state.jjInstallError).toBeNull();
     });
   });
+
+  // ============================================================
+  // Remote UI Auto Start (remote-ui-auto-start feature)
+  // Task 3.1: Auto-start logic in selectProject
+  // Requirements: 2.1, 2.2, 2.3
+  // ============================================================
+
+  describe('remote UI auto-start', () => {
+    it('should auto-start remote server when remoteUiAutoStart is true and server not running', async () => {
+      const { useRemoteAccessStore } = await import('./remoteAccessStore');
+
+      // Reset store state
+      useRemoteAccessStore.setState({ isRunning: false });
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
+      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(true);
+
+      // Mock remoteAccessStore.startServer
+      const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(startServerSpy).toHaveBeenCalled();
+    });
+
+    it('should not auto-start remote server when remoteUiAutoStart is false', async () => {
+      const { useRemoteAccessStore } = await import('./remoteAccessStore');
+
+      // Reset store state
+      useRemoteAccessStore.setState({ isRunning: false });
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
+      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(false);
+
+      const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(startServerSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not auto-start remote server when server is already running (double start prevention)', async () => {
+      const { useRemoteAccessStore } = await import('./remoteAccessStore');
+
+      // Server already running
+      useRemoteAccessStore.setState({ isRunning: true });
+
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+      window.electronAPI.loadSkipPermissions = vi.fn().mockResolvedValue(false);
+      window.electronAPI.loadRemoteUiAutoStart = vi.fn().mockResolvedValue(true);
+
+      const startServerSpy = vi.spyOn(useRemoteAccessStore.getState(), 'startServer').mockResolvedValue();
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      expect(window.electronAPI.loadRemoteUiAutoStart).toHaveBeenCalledWith('/test/project');
+      expect(startServerSpy).not.toHaveBeenCalled();
+    });
+  });
 });

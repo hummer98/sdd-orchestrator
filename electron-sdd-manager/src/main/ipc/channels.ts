@@ -285,6 +285,11 @@ export const IPC_CHANNELS = {
   // Requirements: 1.1, 1.2, 1.3
   LOAD_PROFILE: 'ipc:load-profile',
 
+  // Remote UI Auto Start (remote-ui-auto-start feature)
+  // Requirements: 1.3
+  LOAD_REMOTE_UI_AUTO_START: 'ipc:load-remote-ui-auto-start',
+  SAVE_REMOTE_UI_AUTO_START: 'ipc:save-remote-ui-auto-start',
+
   // Steering Verification (steering-verification-integration feature)
   // Requirements: 3.1, 3.2, 3.3
   CHECK_STEERING_FILES: 'ipc:check-steering-files',

@@ -75,9 +75,16 @@ export type CommandsetVersionRecord = z.infer<typeof CommandsetVersionRecordSche
  * Bug fix: persist-skip-permission-per-project
  * Feature: jj-merge-support
  */
+/**
+ * プロジェクト設定のスキーマ
+ * Bug fix: persist-skip-permission-per-project
+ * Feature: jj-merge-support
+ * Feature: remote-ui-auto-start - Requirements 1.1
+ */
 export const ProjectSettingsSchema = z.object({
   skipPermissions: z.boolean().optional(),
   jjInstallIgnored: z.boolean().optional(),
+  remoteUiAutoStart: z.boolean().optional(),
 });
 
 export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
@@ -474,6 +481,41 @@ export const projectConfigService = {
       settings: {
         ...(existing?.settings ?? {}),
         jjInstallIgnored,
+      },
+      defaults: existing?.defaults,
+    };
+    await saveProjectConfigV3(projectPath, config);
+  },
+
+  /**
+   * remoteUiAutoStart設定を読み込む
+   * Feature: remote-ui-auto-start
+   * Requirements: 1.1, 1.2
+   * @param projectPath プロジェクトルートパス
+   * @returns remoteUiAutoStart設定（存在しない場合はfalse）
+   */
+  async loadRemoteUiAutoStart(projectPath: string): Promise<boolean> {
+    const config = await loadProjectConfigV3(projectPath);
+    return config?.settings?.remoteUiAutoStart ?? false;
+  },
+
+  /**
+   * remoteUiAutoStart設定を保存
+   * Feature: remote-ui-auto-start
+   * Requirements: 1.1, 1.3
+   * @param projectPath プロジェクトルートパス
+   * @param remoteUiAutoStart 設定値
+   */
+  async saveRemoteUiAutoStart(projectPath: string, remoteUiAutoStart: boolean): Promise<void> {
+    const existing = await loadProjectConfigV3(projectPath);
+    const config: ProjectConfigV3 = {
+      version: 3,
+      profile: existing?.profile,
+      layout: existing?.layout,
+      commandsets: existing?.commandsets,
+      settings: {
+        ...(existing?.settings ?? {}),
+        remoteUiAutoStart,
       },
       defaults: existing?.defaults,
     };

@@ -3,6 +3,10 @@
  * Manages remote access server state in the renderer process
  * Requirements: 1.4, 1.5, 1.6, 8.5
  * Cloudflare Tunnel Integration: 5.2, 6.1, 6.2, 3.3, 5.1, 6.3
+ *
+ * remote-ui-auto-start Task 5.1: autoStartEnabled removed
+ * Auto-start setting is now stored in project config (.kiro/sdd-orchestrator.json)
+ * instead of LocalStorage to enable per-project configuration.
  */
 
 import { create } from 'zustand';
@@ -38,8 +42,6 @@ interface RemoteAccessState {
   error: string | null;
   /** Local IP address */
   localIp: string | null;
-  /** Auto-start server on app launch (persisted) */
-  autoStartEnabled: boolean;
   /** Loading state */
   isLoading: boolean;
 
@@ -74,8 +76,6 @@ interface RemoteAccessActions {
   updateStatus: (status: Partial<RemoteAccessState>) => void;
   /** Clear error message */
   clearError: () => void;
-  /** Set auto-start enabled (persisted) */
-  setAutoStartEnabled: (enabled: boolean) => void;
   /** Initialize store and subscribe to events */
   initialize: () => Promise<void>;
   /** Cleanup subscriptions */
@@ -107,7 +107,6 @@ const initialState: RemoteAccessState = {
   clientCount: 0,
   error: null,
   localIp: null,
-  autoStartEnabled: false,
   isLoading: false,
 
   // Cloudflare Tunnel initial state
@@ -263,14 +262,6 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
       },
 
       /**
-       * Set auto-start enabled
-       * This value is persisted to localStorage
-       */
-      setAutoStartEnabled: (enabled: boolean) => {
-        set({ autoStartEnabled: enabled });
-      },
-
-      /**
        * Initialize store and subscribe to events
        * Requirements: 1.6, 8.5 - Subscribe to status changes
        */
@@ -334,13 +325,13 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
 
       /**
        * Reset store to initial state
-       * Preserves autoStartEnabled and publishToCloudflare as they are persisted
+       * Preserves publishToCloudflare as it is persisted
+       * Note: autoStartEnabled was removed in remote-ui-auto-start Task 5.1
        */
       reset: () => {
-        const { autoStartEnabled, publishToCloudflare } = get();
+        const { publishToCloudflare } = get();
         set({
           ...initialState,
-          autoStartEnabled, // Preserve persisted value
           publishToCloudflare, // Preserve persisted value
         });
       },
@@ -398,8 +389,9 @@ export const useRemoteAccessStore = create<RemoteAccessStore>()(
     {
       name: STORAGE_KEY,
       partialize: (state) => ({
-        // Only persist autoStartEnabled and publishToCloudflare
-        autoStartEnabled: state.autoStartEnabled,
+        // Only persist publishToCloudflare
+        // Note: autoStartEnabled was removed in remote-ui-auto-start Task 5.1
+        // Auto-start is now stored per-project in .kiro/sdd-orchestrator.json
         publishToCloudflare: state.publishToCloudflare,
       }),
     }

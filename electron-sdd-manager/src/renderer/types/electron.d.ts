@@ -850,6 +850,11 @@ export interface ElectronAPI {
   // Requirements: 1.1, 1.2, 1.3
   loadProfile(projectPath: string): Promise<{ name: string; installedAt: string } | null>;
 
+  // Remote UI Auto Start (remote-ui-auto-start feature)
+  // Requirements: 1.3
+  loadRemoteUiAutoStart(projectPath: string): Promise<boolean>;
+  saveRemoteUiAutoStart(projectPath: string, enabled: boolean): Promise<void>;
+
   // LLM Engine Config (llm-engine-abstraction feature)
   // Requirements: 6.1
   loadEngineConfig(projectPath: string): Promise<EngineConfig>;

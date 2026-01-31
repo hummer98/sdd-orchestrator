@@ -336,6 +336,36 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // regardless of which code path triggers project selection (menu, RecentProjects, etc.)
       await useAgentStore.getState().loadSkipPermissions(path);
 
+      // ============================================================
+      // remote-ui-auto-start feature: Auto-start Remote UI server
+      // Task 3.1: Check setting and start server if enabled
+      // Requirements: 2.1, 2.2, 2.3
+      // ============================================================
+      try {
+        const remoteUiAutoStart = await window.electronAPI.loadRemoteUiAutoStart(path);
+        if (remoteUiAutoStart) {
+          // Import remoteAccessStore dynamically to avoid circular dependency
+          const { useRemoteAccessStore } = await import('./remoteAccessStore');
+          const remoteState = useRemoteAccessStore.getState();
+
+          // Requirements 2.2: Prevent double start
+          if (!remoteState.isRunning) {
+            try {
+              await remoteState.startServer();
+              console.log('[projectStore] Remote UI server auto-started');
+            } catch (startError) {
+              // Requirements 2.3: Show error notification without blocking UI
+              const { notify } = await import('./notificationStore');
+              notify.error('Remote UIサーバーの自動起動に失敗しました');
+              console.error('[projectStore] Failed to auto-start remote server:', startError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[projectStore] Failed to load remoteUiAutoStart setting:', error);
+        // Don't fail project selection if remote UI auto-start check fails
+      }
+
       // jj-merge-support feature: Check jj availability
       // Requirements: 3.1, 9.1, 9.4
       // Load jjInstallIgnored setting from the project settings

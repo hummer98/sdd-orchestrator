@@ -52,6 +52,8 @@ describe('configHandlers', () => {
     loadProjectDefaults: ReturnType<typeof vi.fn>;
     saveProjectDefaults: ReturnType<typeof vi.fn>;
     loadProfile: ReturnType<typeof vi.fn>;
+    loadRemoteUiAutoStart: ReturnType<typeof vi.fn>;
+    saveRemoteUiAutoStart: ReturnType<typeof vi.fn>;
   };
 
   // Store registered handlers for testing
@@ -84,6 +86,8 @@ describe('configHandlers', () => {
       loadProjectDefaults: vi.fn(),
       saveProjectDefaults: vi.fn(),
       loadProfile: vi.fn(),
+      loadRemoteUiAutoStart: vi.fn(),
+      saveRemoteUiAutoStart: vi.fn(),
     };
   });
 
@@ -380,6 +384,76 @@ describe('configHandlers', () => {
 
       // Should not throw
       expect(() => registerConfigHandlers(dependencies)).not.toThrow();
+    });
+  });
+
+  // ============================================================
+  // remote-ui-auto-start Task 2.2: IPC handlers for remoteUiAutoStart
+  // Requirements: 1.3
+  // ============================================================
+
+  describe('LOAD_REMOTE_UI_AUTO_START handler', () => {
+    it('should return remoteUiAutoStart from layoutConfigService', async () => {
+      const { registerConfigHandlers } = await import('./configHandlers');
+
+      mockLayoutConfigService.loadRemoteUiAutoStart.mockResolvedValue(true);
+
+      registerConfigHandlers({
+        configStore: mockConfigStore as unknown as ConfigStore,
+        layoutConfigService: mockLayoutConfigService as unknown as LayoutConfigService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.LOAD_REMOTE_UI_AUTO_START);
+      expect(handler).toBeDefined();
+
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project');
+      expect(result).toBe(true);
+      expect(mockLayoutConfigService.loadRemoteUiAutoStart).toHaveBeenCalledWith('/path/to/project');
+    });
+
+    it('should return false when remoteUiAutoStart is not configured', async () => {
+      const { registerConfigHandlers } = await import('./configHandlers');
+
+      mockLayoutConfigService.loadRemoteUiAutoStart.mockResolvedValue(false);
+
+      registerConfigHandlers({
+        configStore: mockConfigStore as unknown as ConfigStore,
+        layoutConfigService: mockLayoutConfigService as unknown as LayoutConfigService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.LOAD_REMOTE_UI_AUTO_START);
+      const result = await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('SAVE_REMOTE_UI_AUTO_START handler', () => {
+    it('should save remoteUiAutoStart via layoutConfigService', async () => {
+      const { registerConfigHandlers } = await import('./configHandlers');
+
+      registerConfigHandlers({
+        configStore: mockConfigStore as unknown as ConfigStore,
+        layoutConfigService: mockLayoutConfigService as unknown as LayoutConfigService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.SAVE_REMOTE_UI_AUTO_START);
+      expect(handler).toBeDefined();
+
+      await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project', true);
+      expect(mockLayoutConfigService.saveRemoteUiAutoStart).toHaveBeenCalledWith('/path/to/project', true);
+    });
+
+    it('should save remoteUiAutoStart as false', async () => {
+      const { registerConfigHandlers } = await import('./configHandlers');
+
+      registerConfigHandlers({
+        configStore: mockConfigStore as unknown as ConfigStore,
+        layoutConfigService: mockLayoutConfigService as unknown as LayoutConfigService,
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.SAVE_REMOTE_UI_AUTO_START);
+      await handler!({} as Electron.IpcMainInvokeEvent, '/path/to/project', false);
+      expect(mockLayoutConfigService.saveRemoteUiAutoStart).toHaveBeenCalledWith('/path/to/project', false);
     });
   });
 });

@@ -1049,6 +1049,27 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.LOAD_PROFILE, projectPath),
 
   // ============================================================
+  // Remote UI Auto Start (remote-ui-auto-start feature)
+  // Requirements: 1.3
+  // ============================================================
+
+  /**
+   * Load remoteUiAutoStart setting from project config
+   * @param projectPath Project root path
+   * @returns remoteUiAutoStart value (defaults to false if not set)
+   */
+  loadRemoteUiAutoStart: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LOAD_REMOTE_UI_AUTO_START, projectPath),
+
+  /**
+   * Save remoteUiAutoStart setting to project config
+   * @param projectPath Project root path
+   * @param enabled Setting value
+   */
+  saveRemoteUiAutoStart: (projectPath: string, enabled: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_REMOTE_UI_AUTO_START, projectPath, enabled),
+
+  // ============================================================
   // LLM Engine Config (llm-engine-abstraction feature)
   // Requirements: 6.1
   // ============================================================

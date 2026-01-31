@@ -4,10 +4,12 @@
  * Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 2.2, 8.5
  * Task 5.1: Remote Access Control Panel
  * Task 9.1-9.4: Cloudflare Tunnel integration
+ * remote-ui-auto-start Task 4.1: Auto-start checkbox
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { useProjectStore } from '../stores/projectStore';
 import {
   Wifi,
   WifiOff,
@@ -74,6 +76,50 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [tunnelCopySuccess, setTunnelCopySuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // remote-ui-auto-start Task 4.1: Auto-start setting state
+  // Requirements: 3.1, 3.2, 3.3
+  const { currentProject } = useProjectStore();
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  const [autoStartLoading, setAutoStartLoading] = useState(false);
+
+  // Load auto-start setting when component mounts or project changes
+  useEffect(() => {
+    const loadAutoStartSetting = async () => {
+      if (!currentProject) {
+        setAutoStartEnabled(false);
+        return;
+      }
+
+      try {
+        const enabled = await window.electronAPI.loadRemoteUiAutoStart(currentProject);
+        setAutoStartEnabled(enabled);
+      } catch (error) {
+        console.error('[RemoteAccessPanel] Failed to load auto-start setting:', error);
+        setAutoStartEnabled(false);
+      }
+    };
+
+    loadAutoStartSetting();
+  }, [currentProject]);
+
+  // Handle auto-start toggle
+  const handleAutoStartToggle = useCallback(async () => {
+    if (!currentProject || autoStartLoading) return;
+
+    const newValue = !autoStartEnabled;
+    setAutoStartLoading(true);
+
+    try {
+      await window.electronAPI.saveRemoteUiAutoStart(currentProject, newValue);
+      setAutoStartEnabled(newValue);
+    } catch (error) {
+      console.error('[RemoteAccessPanel] Failed to save auto-start setting:', error);
+      // Revert on error
+    } finally {
+      setAutoStartLoading(false);
+    }
+  }, [currentProject, autoStartEnabled, autoStartLoading]);
 
   // Construct URLs with access token for display and copy
   const urlWithToken = url && accessToken ? `${url}?token=${accessToken}` : url;
@@ -199,6 +245,39 @@ export function RemoteAccessPanel({ className }: RemoteAccessPanelProps) {
           Enable remote access
         </span>
       </label>
+
+      {/* Auto-start Checkbox (remote-ui-auto-start Task 4.1) */}
+      {/* Requirements: 3.1, 3.2, 3.3 */}
+      <div className="mb-4">
+        <label className={clsx(
+          'flex items-center gap-3',
+          currentProject ? 'cursor-pointer' : 'cursor-not-allowed'
+        )}>
+          <input
+            type="checkbox"
+            checked={autoStartEnabled}
+            onChange={handleAutoStartToggle}
+            disabled={!currentProject || autoStartLoading}
+            className={clsx(
+              'w-5 h-5 rounded border-gray-300 text-blue-600',
+              'focus:ring-blue-500 focus:ring-offset-0',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+            aria-label="プロジェクト起動時に自動起動"
+            data-testid="auto-start-checkbox"
+          />
+          <span className={clsx(
+            currentProject ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'
+          )}>
+            プロジェクト起動時に自動起動
+          </span>
+        </label>
+        {!currentProject && (
+          <p className="mt-1 ml-8 text-xs text-gray-400 dark:text-gray-500">
+            プロジェクトを選択してください
+          </p>
+        )}
+      </div>
 
       {/* Cloudflare Publish Checkbox (Task 9.1) */}
       <div className="mb-4">

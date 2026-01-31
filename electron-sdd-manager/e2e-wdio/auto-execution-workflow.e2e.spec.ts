@@ -241,7 +241,7 @@ describe('Auto Execution Workflow E2E', () => {
       console.log(`[E2E] Initial status before click: isAutoExecuting=${initialStatus.isAutoExecuting}, status=${initialStatus.autoExecutionStatus}`);
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait briefly for execution to start
@@ -268,7 +268,7 @@ describe('Auto Execution Workflow E2E', () => {
 
     it('should update UI to show completed phases', async () => {
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for auto-execution to complete
@@ -314,7 +314,7 @@ describe('Auto Execution Workflow E2E', () => {
       expect(await getAutoPermissionState('tasks')).toBe(false);
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for auto-execution to stop (60 seconds timeout)
@@ -342,7 +342,7 @@ describe('Auto Execution Workflow E2E', () => {
 
     it('should stop at requirements and not proceed to design', async () => {
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion (60 seconds timeout)
@@ -387,7 +387,7 @@ describe('Auto Execution Workflow E2E', () => {
       expect(await getAutoPermissionState('tasks')).toBe(false);
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for auto-execution to stop (120 seconds for multiple phases)
@@ -415,7 +415,7 @@ describe('Auto Execution Workflow E2E', () => {
 
     it('should show requirements and design as completed, tasks as pending', async () => {
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion (120 seconds for multiple phases)
@@ -484,7 +484,7 @@ describe('Auto Execution Workflow E2E', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion

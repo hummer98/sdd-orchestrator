@@ -94,37 +94,46 @@ export class AgentRecordWatcherService {
 
   /**
    * Extract spec ID and agent ID from file path
-   * e.g., /project/.kiro/runtime/agents/my-spec/agent-123.json -> { specId: 'my-spec', agentId: 'agent-123' }
-   * e.g., /project/.kiro/runtime/agents/agent-123.json -> { specId: '', agentId: 'agent-123' } (global agent)
+   * Category-aware extraction:
+   * - specs/{specId}/agent-*.json -> { specId, agentId }
+   * - bugs/{bugId}/agent-*.json -> { specId: 'bug:{bugId}', agentId }
+   * - project/agent-*.json -> { specId: '', agentId }
    */
   private extractIds(filePath: string): { specId?: string; agentId?: string } {
     const agentsDir = path.join(this.projectPath, '.kiro', 'runtime', 'agents');
     const relativePath = path.relative(agentsDir, filePath);
     const parts = relativePath.split(path.sep);
 
-    if (parts.length >= 2 && parts[1].endsWith('.json')) {
-      // Spec-bound agent: {specId}/agent-xxx.json
-      return {
-        specId: parts[0],
-        agentId: parts[1].replace('.json', ''),
-      };
-    } else if (parts.length === 1 && parts[0].endsWith('.json')) {
-      // Global agent: agent-xxx.json (no specId folder)
+    // Category-aware path structure: {category}/{entityId}/agent-*.json or project/agent-*.json
+    if (parts.length === 3 && parts[2].endsWith('.json')) {
+      // specs/{specId}/agent-*.json or bugs/{bugId}/agent-*.json
+      const category = parts[0];
+      const entityId = parts[1];
+      const agentId = parts[2].replace('.json', '');
+
+      if (category === 'specs') {
+        return { specId: entityId, agentId };
+      } else if (category === 'bugs') {
+        return { specId: `bug:${entityId}`, agentId };
+      }
+    } else if (parts.length === 2 && parts[0] === 'project' && parts[1].endsWith('.json')) {
+      // project/agent-*.json
       return {
         specId: '',
-        agentId: parts[0].replace('.json', ''),
+        agentId: parts[1].replace('.json', ''),
       };
     }
+
     return {};
   }
 
   /**
    * Start watching the agents directory
    *
-   * agent-watcher-optimization:
-   * - Only starts ProjectAgent watcher (root agents/ with depth: 0)
-   * - Spec-specific watching is done via switchWatchScope()
-   * - ignoreInitial: false to process existing ProjectAgent files on startup
+   * agent-watcher-optimization + full-category-watch:
+   * - Watches all categories (specs/*, bugs/*, project/) with glob patterns
+   * - No need for switchWatchScope() for basic visibility
+   * - ignoreInitial: false to process existing agent files on startup
    */
   start(): void {
     if (this._projectAgentWatcher) {
@@ -140,15 +149,20 @@ export class AgentRecordWatcherService {
       logger.info('[AgentRecordWatcherService] Created agents directory', { agentsDir });
     }
 
-    logger.info('[AgentRecordWatcherService] Starting ProjectAgent watcher', { agentsDir });
+    logger.info('[AgentRecordWatcherService] Starting full-category watcher', { agentsDir });
 
-    // ProjectAgent watcher: watch project/ subdirectory (runtime-agents-restructure)
-    // This captures agent files in agents/project/ (category-aware structure)
-    const projectDir = path.join(agentsDir, 'project');
-    this._projectAgentWatcher = chokidar.watch(projectDir, {
+    // Full-category watcher: watch all categories with glob patterns
+    // This ensures all agent metadata files are visible immediately
+    const watchPaths = [
+      path.join(agentsDir, 'specs/*/*.json'),    // specs/{specId}/agent-*.json
+      path.join(agentsDir, 'bugs/*/*.json'),     // bugs/{bugId}/agent-*.json
+      path.join(agentsDir, 'project/*.json'),    // project/agent-*.json
+    ];
+
+    this._projectAgentWatcher = chokidar.watch(watchPaths, {
       ignoreInitial: false, // Process existing files on startup
       persistent: true,
-      depth: 0, // Only watch direct files in project/, not nested subdirectories
+      ignored: '**/logs/**', // Exclude log files (handled separately via GET_AGENT_LOGS)
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 50,
@@ -161,10 +175,10 @@ export class AgentRecordWatcherService {
       .on('unlink', (filePath) => this.handleEvent('unlink', filePath))
       .on('error', (error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
-        logger.error('[AgentRecordWatcherService] ProjectAgent watcher error', { error: message });
+        logger.error('[AgentRecordWatcherService] Full-category watcher error', { error: message });
       })
       .on('ready', () => {
-        logger.info('[AgentRecordWatcherService] ProjectAgent watcher ready');
+        logger.info('[AgentRecordWatcherService] Full-category watcher ready');
       });
   }
 

@@ -179,7 +179,7 @@ describe('Simple Auto Execution E2E Test', () => {
     });
 
     it('should have auto-execute button enabled', async () => {
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       expect(await autoButton.isEnabled()).toBe(true);
 
@@ -212,7 +212,7 @@ describe('Simple Auto Execution E2E Test', () => {
       });
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // AgentStoreにrunning状態のエージェントが追加されるまで待機
@@ -253,7 +253,7 @@ describe('Simple Auto Execution E2E Test', () => {
       });
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // 少し待ってから状態確認
@@ -282,7 +282,7 @@ describe('Simple Auto Execution E2E Test', () => {
       });
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // AgentStoreにrunning状態のエージェントが追加されるまで待機（長めのタイムアウト）
@@ -367,7 +367,7 @@ describe('Simple Auto Execution E2E Test', () => {
       console.log('[E2E] DEBUG: Body structure:', JSON.stringify(bodyStructure));
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // AgentStoreにエージェントが追加されるまで待機（長めのタイムアウト）
@@ -426,7 +426,7 @@ describe('Simple Auto Execution E2E Test', () => {
       });
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // 自動実行完了まで待つ（40秒に延長）
@@ -496,7 +496,7 @@ describe('Simple Auto Execution E2E Test', () => {
       console.log('[E2E] Initial AutoExecutionService state:', JSON.stringify(initialDebugInfo));
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
       console.log('[E2E] Auto-execute button clicked');
 
@@ -557,7 +557,7 @@ describe('Simple Auto Execution E2E Test', () => {
       });
 
       // 自動実行ボタンをクリック
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // AgentStoreにエージェントが追加されるまで待機

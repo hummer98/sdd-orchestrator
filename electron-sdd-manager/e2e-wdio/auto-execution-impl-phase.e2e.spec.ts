@@ -355,7 +355,7 @@ describe('Auto Execution impl Phase E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for impl phase to start
@@ -405,7 +405,7 @@ describe('Auto Execution impl Phase E2E', () => {
       await browser.pause(300);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion
@@ -468,7 +468,7 @@ describe('Auto Execution impl Phase E2E', () => {
       let lastPhase: string | null = null;
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Monitor phase progression

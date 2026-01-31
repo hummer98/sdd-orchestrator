@@ -165,7 +165,7 @@ describe('Agent Resume Log Display E2E Test', () => {
       });
 
       // Click auto-execute button to start agent
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       await autoButton.click();
 
@@ -239,7 +239,7 @@ describe('Agent Resume Log Display E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       const hasAgent = await waitForAgentInStore(SPEC_NAME, 10000);
@@ -289,7 +289,7 @@ describe('Agent Resume Log Display E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       const hasAgent = await waitForAgentInStore(SPEC_NAME, 10000);
@@ -346,7 +346,7 @@ describe('Agent Resume Log Display E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       const hasAgent = await waitForAgentInStore(SPEC_NAME, 10000);
@@ -413,7 +413,7 @@ describe('Agent Resume Log Display E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       const hasAgent = await waitForAgentInStore(SPEC_NAME, 10000);

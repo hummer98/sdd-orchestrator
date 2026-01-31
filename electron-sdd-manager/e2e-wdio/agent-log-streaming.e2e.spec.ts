@@ -158,7 +158,7 @@ describe('Agent Log Streaming E2E Test', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       expect(await autoButton.isEnabled()).toBe(true);
 
@@ -198,7 +198,7 @@ describe('Agent Log Streaming E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for agent to appear in store
@@ -243,7 +243,7 @@ describe('Agent Log Streaming E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent
@@ -282,7 +282,7 @@ describe('Agent Log Streaming E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent
@@ -351,7 +351,7 @@ describe('Agent Log Streaming E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for agent to start
@@ -399,7 +399,7 @@ describe('Agent Log Streaming E2E Test', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent

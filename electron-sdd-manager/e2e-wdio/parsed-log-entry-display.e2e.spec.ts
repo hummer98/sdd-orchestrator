@@ -159,7 +159,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       await autoButton.click();
 
@@ -211,7 +211,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent
@@ -250,7 +250,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent
@@ -315,7 +315,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for running agent
@@ -364,7 +364,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for agent to start
@@ -454,7 +454,7 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
       });
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion

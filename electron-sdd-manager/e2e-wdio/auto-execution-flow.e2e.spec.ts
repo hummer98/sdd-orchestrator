@@ -187,7 +187,7 @@ describe('Auto Execution Flow E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.waitForClickable({ timeout: 5000 });
       await autoButton.click();
 
@@ -239,7 +239,7 @@ describe('Auto Execution Flow E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.waitForClickable({ timeout: 5000 });
       await autoButton.click();
 
@@ -296,7 +296,7 @@ describe('Auto Execution Flow E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion (60 seconds for mock environment)
@@ -351,7 +351,7 @@ describe('Auto Execution Flow E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Check button state during execution (should change to "停止")
@@ -387,7 +387,7 @@ describe('Auto Execution Flow E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to finish (60 seconds for mock environment)
@@ -446,7 +446,7 @@ describe('Auto Execution Flow E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion

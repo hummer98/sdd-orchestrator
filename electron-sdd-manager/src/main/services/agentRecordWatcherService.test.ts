@@ -73,16 +73,29 @@ describe('AgentRecordWatcherService', () => {
       expect(service.specWatcher).toBeNull();
     });
 
-    it('should watch ProjectAgent path (agents directory root) for direct JSON files', () => {
+    it('should watch all category paths (specs/*/bugs/*/project/) for JSON files', () => {
       service.start();
 
-      // First call should be for ProjectAgent watcher
+      // Should watch all categories with glob patterns
       expect(chokidar.watch).toHaveBeenCalled();
       const firstCallArgs = (chokidar.watch as Mock).mock.calls[0];
-      const watchedPath = firstCallArgs[0];
+      const watchedPaths = firstCallArgs[0];
 
-      // Should watch the agents directory for direct files only (depth: 0)
-      expect(watchedPath).toBe(path.join(projectPath, '.kiro', 'runtime', 'agents'));
+      // Should be an array of glob patterns
+      expect(Array.isArray(watchedPaths)).toBe(true);
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs/*/*.json'));
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'bugs/*/*.json'));
+      expect(watchedPaths).toContain(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project/*.json'));
+    });
+
+    it('should exclude log files from watching', () => {
+      service.start();
+
+      const firstCallArgs = (chokidar.watch as Mock).mock.calls[0];
+      const options = firstCallArgs[1];
+
+      // Should ignore logs directory
+      expect(options.ignored).toBe('**/logs/**');
     });
 
     it('should set projectAgentWatcher after start()', () => {
@@ -216,14 +229,14 @@ describe('AgentRecordWatcherService', () => {
       expect(options.ignoreInitial).toBe(false);
     });
 
-    it('should watch agents directory with depth: 0 for ProjectAgent', () => {
+    it('should not specify depth option (glob patterns control depth)', () => {
       service.start();
 
       const callArgs = (chokidar.watch as Mock).mock.calls[0];
       const options = callArgs[1];
 
-      // Only watch direct files in agents directory (not subdirectories)
-      expect(options.depth).toBe(0);
+      // Depth is controlled by glob patterns, not depth option
+      expect(options.depth).toBeUndefined();
     });
 
     it('should warn and return if already running', () => {
@@ -309,6 +322,7 @@ describe('AgentRecordWatcherService', () => {
   // =============================================================================
   describe('Task 6.1: Additional unit test coverage', () => {
     it('should call onChange callbacks for ProjectAgent events', async () => {
+      vi.useFakeTimers();
       const callback = vi.fn();
       service.onChange(callback);
       service.start();
@@ -317,43 +331,44 @@ describe('AgentRecordWatcherService', () => {
       const addHandler = (mockWatcher.on as Mock).mock.calls.find((c) => c[0] === 'add')?.[1];
       expect(addHandler).toBeDefined();
 
-      // Simulate a ProjectAgent file event
-      addHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'agent-123.json'));
+      // Simulate a ProjectAgent file event (project/ category)
+      addHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project', 'agent-123.json'));
 
       // Wait for debounce
-      await new Promise((r) => setTimeout(r, 150));
+      vi.advanceTimersByTime(200);
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
         type: 'add',
         specId: '', // Empty specId for ProjectAgent
         agentId: 'agent-123',
       }));
+
+      vi.useRealTimers();
     });
 
     it('should call onChange callbacks for Spec-bound agent events', async () => {
+      vi.useFakeTimers();
       const callback = vi.fn();
       service.onChange(callback);
       service.start();
 
-      const specMockWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn().mockResolvedValue(undefined) };
-      (chokidar.watch as Mock).mockReturnValue(specMockWatcher);
-      await service.switchWatchScope('my-spec');
-
-      // Get the 'add' handler from spec watcher
-      const addHandler = (specMockWatcher.on as Mock).mock.calls.find((c) => c[0] === 'add')?.[1];
+      // Get the 'add' handler from main watcher (now watches all categories)
+      const addHandler = (mockWatcher.on as Mock).mock.calls.find((c) => c[0] === 'add')?.[1];
       expect(addHandler).toBeDefined();
 
-      // Simulate a Spec-bound agent file event
-      addHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'my-spec', 'agent-456.json'));
+      // Simulate a Spec-bound agent file event (specs/ category)
+      addHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs', 'my-spec', 'agent-456.json'));
 
       // Wait for debounce
-      await new Promise((r) => setTimeout(r, 150));
+      vi.advanceTimersByTime(200);
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
         type: 'add',
         specId: 'my-spec',
         agentId: 'agent-456',
       }));
+
+      vi.useRealTimers();
     });
 
     it('should ignore non-JSON files', async () => {
@@ -370,33 +385,39 @@ describe('AgentRecordWatcherService', () => {
     });
 
     it('should handle change events', async () => {
+      vi.useFakeTimers();
       const callback = vi.fn();
       service.onChange(callback);
       service.start();
 
       const changeHandler = (mockWatcher.on as Mock).mock.calls.find((c) => c[0] === 'change')?.[1];
-      changeHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'agent-123.json'));
+      changeHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project', 'agent-123.json'));
 
-      await new Promise((r) => setTimeout(r, 150));
+      vi.advanceTimersByTime(200);
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
         type: 'change',
       }));
+
+      vi.useRealTimers();
     });
 
     it('should handle unlink events', async () => {
+      vi.useFakeTimers();
       const callback = vi.fn();
       service.onChange(callback);
       service.start();
 
       const unlinkHandler = (mockWatcher.on as Mock).mock.calls.find((c) => c[0] === 'unlink')?.[1];
-      unlinkHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'agent-123.json'));
+      unlinkHandler(path.join(projectPath, '.kiro', 'runtime', 'agents', 'project', 'agent-123.json'));
 
-      await new Promise((r) => setTimeout(r, 150));
+      vi.advanceTimersByTime(200);
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({
         type: 'unlink',
       }));
+
+      vi.useRealTimers();
     });
 
     it('should return correct watch scope via getWatchScope()', async () => {
@@ -605,6 +626,101 @@ describe('AgentRecordWatcherService', () => {
         expect(bugMockWatcher.close).toHaveBeenCalled();
         expect(service.bugWatcher).toBeNull();
       });
+    });
+  });
+
+  // =============================================================================
+  // Full Category Watch: extractIds with category-aware paths
+  // =============================================================================
+  describe('extractIds with category-aware paths', () => {
+    it('should extract specId and agentId from specs category path', () => {
+      vi.useFakeTimers();
+      const filePath = path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs', 'my-feature', 'agent-123.json');
+      const callback = vi.fn();
+
+      service.start();
+      service.onChange(callback);
+
+      // Simulate file event
+      const addHandler = mockWatcher.on.mock.calls.find(call => call[0] === 'add')?.[1];
+      addHandler?.(filePath);
+
+      // Wait for debounce
+      vi.advanceTimersByTime(200);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'my-feature',
+          agentId: 'agent-123',
+        })
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should extract bugId (with bug: prefix) and agentId from bugs category path', () => {
+      vi.useFakeTimers();
+      const filePath = path.join(projectPath, '.kiro', 'runtime', 'agents', 'bugs', 'login-error', 'agent-456.json');
+      const callback = vi.fn();
+
+      service.start();
+      service.onChange(callback);
+
+      const addHandler = mockWatcher.on.mock.calls.find(call => call[0] === 'add')?.[1];
+      addHandler?.(filePath);
+
+      vi.advanceTimersByTime(200);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'bug:login-error',
+          agentId: 'agent-456',
+        })
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should extract empty specId and agentId from project category path', () => {
+      vi.useFakeTimers();
+      const filePath = path.join(projectPath, '.kiro', 'runtime', 'agents', 'project', 'agent-789.json');
+      const callback = vi.fn();
+
+      service.start();
+      service.onChange(callback);
+
+      const addHandler = mockWatcher.on.mock.calls.find(call => call[0] === 'add')?.[1];
+      addHandler?.(filePath);
+
+      vi.advanceTimersByTime(200);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: '',
+          agentId: 'agent-789',
+        })
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should ignore log files', () => {
+      vi.useFakeTimers();
+      const logFilePath = path.join(projectPath, '.kiro', 'runtime', 'agents', 'specs', 'my-feature', 'logs', 'agent-123.log');
+      const callback = vi.fn();
+
+      service.start();
+      service.onChange(callback);
+
+      const addHandler = mockWatcher.on.mock.calls.find(call => call[0] === 'add')?.[1];
+      addHandler?.(logFilePath);
+
+      vi.advanceTimersByTime(200);
+
+      // Should not trigger callback for log files
+      expect(callback).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
   });
 });

@@ -420,7 +420,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       });
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for tasks phase to complete first (since we start from design-completed)
@@ -527,7 +527,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       });
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for impl to complete
@@ -617,7 +617,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       });
 
       // Get auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
 
       // Verify button shows "自動実行" before starting
       const initialText = await autoButton.getText();
@@ -715,7 +715,7 @@ describe('Auto Execution Impl Flow E2E', () => {
       });
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for impl to complete

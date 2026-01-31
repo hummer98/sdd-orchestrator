@@ -187,7 +187,7 @@ async function getAllPermissionStates(): Promise<Record<string, boolean>> {
  * Helper: Check if auto-execute button is enabled
  */
 async function isAutoExecuteButtonEnabled(): Promise<boolean> {
-  const autoButton = await $('[data-testid="auto-execute-button"]');
+  const autoButton = await $('[data-testid="auto-execution-button"]');
   if (!(await autoButton.isExisting())) return false;
   return autoButton.isEnabled();
 }
@@ -196,7 +196,7 @@ async function isAutoExecuteButtonEnabled(): Promise<boolean> {
  * Helper: Check if auto-execute button is visible
  */
 async function isAutoExecuteButtonVisible(): Promise<boolean> {
-  const autoButton = await $('[data-testid="auto-execute-button"]');
+  const autoButton = await $('[data-testid="auto-execution-button"]');
   if (!(await autoButton.isExisting())) return false;
   return autoButton.isDisplayed();
 }
@@ -295,7 +295,7 @@ describe('Auto Execution Permissions E2E', () => {
     });
 
     it('should not start auto-execution when button is clicked with no permissions', async () => {
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
 
       // Try to click (may or may not be clickable depending on disabled state)
       if (await autoButton.isClickable()) {
@@ -340,7 +340,7 @@ describe('Auto Execution Permissions E2E', () => {
 
     it('should not auto-execute design without requirements approved', async () => {
       // Since requirements is not approved and not permitted, design cannot be auto-executed
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
 
       if (await autoButton.isClickable()) {
         await autoButton.click();
@@ -531,7 +531,7 @@ describe('Auto Execution Permissions E2E', () => {
       expect(permissions.tasks).toBe(true);
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
 
       if (await autoButton.isClickable()) {
         await autoButton.click();

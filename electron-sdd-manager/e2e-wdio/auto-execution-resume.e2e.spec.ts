@@ -418,7 +418,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       const initialReqMTime = fs.statSync(reqMdPath).mtimeMs;
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.waitForClickable({ timeout: 5000 });
       await autoButton.click();
 
@@ -493,7 +493,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       const initialReqContent = fs.readFileSync(reqMdPath, 'utf-8');
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion
@@ -581,7 +581,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       const initialDesignMTime = fs.statSync(designMdPath).mtimeMs;
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for auto-execution to start and detect first phase
@@ -693,7 +693,7 @@ describe('Auto Execution Resume E2E Tests', () => {
       const initialTasksMTime = fs.statSync(tasksMdPath).mtimeMs;
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for auto-execution to start and detect first phase

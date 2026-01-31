@@ -398,19 +398,19 @@ describe('Bug Auto Execution E2E Tests', () => {
   // ============================================================
   describe('Auto-execute Button Display', () => {
     it('should display auto-execute button in BugWorkflowView', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
       expect(await autoButton.isDisplayed()).toBe(true);
     });
 
     it('should show "auto-execute" text on the button', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       const buttonText = await autoButton.getText();
       expect(buttonText).toContain('自動実行');
     });
 
     it('should have auto-execute button enabled when no agent is running', async () => {
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       expect(await autoButton.isEnabled()).toBe(true);
     });
   });
@@ -430,7 +430,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait a moment for state to update
@@ -468,7 +468,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -482,7 +482,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       await browser.pause(3000);
 
       // Check that auto-execute button is back
-      const autoButtonAfter = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButtonAfter = await $('[data-testid="bug-auto-execution-button"]');
       expect(await autoButtonAfter.isExisting()).toBe(true);
       const buttonText = await autoButtonAfter.getText();
       expect(buttonText).toContain('自動実行');
@@ -524,7 +524,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       console.log(`[E2E] Permissions before click: ${JSON.stringify(permissionsState)}`);
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait a moment for auto-execution to start
@@ -564,7 +564,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -594,7 +594,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -632,7 +632,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Mock execution is very fast, so we check if it started correctly
@@ -670,7 +670,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -699,7 +699,7 @@ describe('Bug Auto Execution E2E Tests', () => {
         deploy: false,
       });
 
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       await waitForCondition(async () => {
@@ -750,7 +750,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Mock execution is very fast, so we check if it started correctly
@@ -783,7 +783,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for execution to complete
@@ -829,7 +829,7 @@ describe('Bug Auto Execution E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="bug-auto-execute-button"]');
+      const autoButton = await $('[data-testid="bug-auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion

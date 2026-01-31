@@ -186,7 +186,7 @@ describe('Workflow Integration E2E (Mocked Claude)', () => {
     });
 
     it('should display auto-execute button', async () => {
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       expect(await autoButton.isExisting()).toBe(true);
     });
   });

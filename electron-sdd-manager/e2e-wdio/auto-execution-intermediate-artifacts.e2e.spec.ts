@@ -437,7 +437,7 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.waitForClickable({ timeout: 5000 });
       await autoButton.click();
 
@@ -474,7 +474,7 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.waitForClickable({ timeout: 5000 });
       await autoButton.click();
 
@@ -528,7 +528,7 @@ describe('Auto Execution Intermediate Artifacts E2E Tests', () => {
       });
 
       // Click auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for completion

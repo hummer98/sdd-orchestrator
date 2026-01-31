@@ -354,7 +354,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       });
 
       // Start auto-execution
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for document-review agent to appear
@@ -523,7 +523,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       });
 
       // Get auto-execute button
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
 
       // Verify button shows "自動実行" before starting
       const initialText = await autoButton.getText();
@@ -641,7 +641,7 @@ describe('Auto Execution Document Review Integration E2E', () => {
       });
 
       // Get auto-execute button and start
-      const autoButton = await $('[data-testid="auto-execute-button"]');
+      const autoButton = await $('[data-testid="auto-execution-button"]');
       await autoButton.click();
 
       // Wait for first document-review agent to start

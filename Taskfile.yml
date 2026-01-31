@@ -37,6 +37,24 @@ tasks:
     cmds:
       - npm run build:electron
 
+  remote:dev:
+    desc: Start remote-ui (web) development server
+    dir: electron-sdd-manager
+    cmds:
+      - npm run dev:remote
+
+  remote:build:
+    desc: Build remote-ui (web) for production
+    dir: electron-sdd-manager
+    cmds:
+      - npm run build:remote
+
+  remote:preview:
+    desc: Preview built remote-ui (web)
+    dir: electron-sdd-manager
+    cmds:
+      - npm run preview:remote
+
   electron:test:
     desc: Run unit tests (watch mode)
     dir: electron-sdd-manager

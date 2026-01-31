@@ -27,6 +27,8 @@ export interface ParsedLogEntry {
     version?: string;
     /** Claude CLI session ID for resume functionality */
     sessionId?: string;
+    /** Command that started the session */
+    command?: string;
   };
   /** Tool use information */
   tool?: {

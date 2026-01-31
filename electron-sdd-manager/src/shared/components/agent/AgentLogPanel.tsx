@@ -140,7 +140,7 @@ export function AgentLogPanel({
         type: 'system',
         engineId: agent.engineId,
         session: {
-          cwd: agent.command,
+          command: agent.command,
         },
       });
     }

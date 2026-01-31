@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { FolderOpen, Cpu, Tag } from 'lucide-react';
+import { FolderOpen, Cpu, Tag, Terminal } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getLLMEngine, type LLMEngineId } from '@shared/registry';
 
@@ -17,6 +17,8 @@ export interface SessionInfoBlockProps {
     cwd?: string;
     model?: string;
     version?: string;
+    /** Command that started the session */
+    command?: string;
   };
   /**
    * LLM engine ID for display name lookup
@@ -41,10 +43,10 @@ function getSessionLabel(engineId?: LLMEngineId): string {
 }
 
 export function SessionInfoBlock({ session, engineId }: SessionInfoBlockProps): React.ReactElement | null {
-  const { cwd, model, version } = session;
+  const { cwd, model, version, command } = session;
 
   // Don't render if all fields are undefined
-  if (!cwd && !model && !version) {
+  if (!cwd && !model && !version && !command) {
     return null;
   }
 
@@ -72,6 +74,14 @@ export function SessionInfoBlock({ session, engineId }: SessionInfoBlockProps): 
       </div>
 
       <div className="grid gap-1.5 text-sm">
+        {command && (
+          <div className="flex items-center gap-2">
+            <Terminal className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+            <span className="text-gray-600 dark:text-gray-400">Command:</span>
+            <span className="font-mono text-gray-800 dark:text-gray-200">{command}</span>
+          </div>
+        )}
+
         {cwd && (
           <div className="flex items-center gap-2">
             <FolderOpen className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />

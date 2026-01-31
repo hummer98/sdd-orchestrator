@@ -339,8 +339,8 @@ describe('Shared AgentLogPanel', () => {
     it('should display command as system entry when provided', () => {
       render(<AgentLogPanel agent={baseAgent} logs={[]} />);
 
-      // Command is shown in SessionInfoBlock
-      expect(screen.getByText('Working Directory:')).toBeInTheDocument();
+      // Command is shown in SessionInfoBlock with correct label
+      expect(screen.getByText('Command:')).toBeInTheDocument();
       expect(screen.getByText('claude -p "/kiro:spec-requirements"')).toBeInTheDocument();
     });
   });

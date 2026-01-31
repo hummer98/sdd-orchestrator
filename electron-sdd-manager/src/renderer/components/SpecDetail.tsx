@@ -55,7 +55,7 @@ export function SpecDetail() {
 
     const checkMigration = async () => {
       try {
-        const migrationInfo = await window.electronAPI.checkMigrationNeeded(projectPath, selectedSpec);
+        const migrationInfo = await window.electronAPI.checkMigrationNeeded(projectPath, selectedSpec.name);
         if (migrationInfo) {
           setMigrationDialogState({
             isOpen: true,

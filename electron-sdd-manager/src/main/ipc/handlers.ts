@@ -344,8 +344,8 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
     // Sort specs by updatedAt descending (newest first) to match Electron UI behavior
     // This matches specListStore.ts:97-112 default sorting (sortBy: 'updatedAt', sortOrder: 'desc')
     return specInfos.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || 0).getTime();
-      const timeB = new Date(b.updatedAt || 0).getTime();
+      const timeA = new Date((a.updatedAt as string | undefined) || '').getTime();
+      const timeB = new Date((b.updatedAt as string | undefined) || '').getTime();
       return timeB - timeA; // Descending order (newest first)
     });
   };

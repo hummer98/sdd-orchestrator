@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.59.0] - 2026-01-31
+
+### Added
+- add copy-to-clipboard button for artifact file paths
+
+### Fixed
+- sort specs by updatedAt descending (newest first)
+- SpecAgentログマイグレーションダイアログが表示されない問題を修正
+- prevent duplicate registration of Cloudflare IPC handlers
+- correct auto-execute button testid across all E2E tests
+- Remote UIのAgentログエリアのヘッダー二重表示を解消
+
+
 ## [0.58.2] - 2026-01-31
 
 ### Fixed

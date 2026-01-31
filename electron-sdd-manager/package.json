@@ -1,6 +1,6 @@
 {
   "name": "sdd-orchestrator",
-  "version": "0.58.2",
+  "version": "0.59.0",
   "description": "SDD Orchestrator - Spec-Driven Development workflow manager",
   "main": "dist/main/index.js",
   "scripts": {
@@ -87,11 +87,13 @@
     "productName": "SDD Orchestrator",
     "compression": "store",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "app": "."
     },
     "files": [
       "dist/**/*",
-      "!node_modules/**/*"
+      "!node_modules/**/*",
+      "!electron-sdd-manager/**/*"
     ],
     "asarUnpack": [
       "**/*.node"

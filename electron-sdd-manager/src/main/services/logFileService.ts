@@ -8,7 +8,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentCategory, getCategoryBasePath, getLogPath, determineCategory, getEntityIdFromSpecId } from './agentCategory';
 import { unifiedParser } from '../utils/unifiedParser';
-import { logger } from './logger';
 import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 import type { LLMEngineId } from '@shared/registry';
 

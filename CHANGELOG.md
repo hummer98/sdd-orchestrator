@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.63.1] - 2026-02-01
+
+### Fixed
+- Remote UIのAgent Log表示改善とテスト追加
+- Project Agentの過去ログがRemote UI Desktop版で表示されない問題を修正
+
+### Changed
+- Taskfileにremote-ui（web版）ビルドコマンドを追加
+
+
 ## [0.63.0] - 2026-02-01
 
 ### Added

@@ -64,18 +64,30 @@ export function AgentLogPanel() {
   const agentLogInfo: AgentLogInfo | undefined = useMemo(() => {
     if (!agent) return undefined;
 
-    // Build log file path: {projectPath}/.kiro/specs/{specId}/logs/{agentId}.log
-    // For bugs (specId starts with 'bug:'): {projectPath}/.kiro/bugs/{bugName}/logs/{agentId}.log
+    // Build log file path using new runtime-agents-restructure structure
+    // New structure: {projectPath}/.kiro/runtime/agents/{category}/{entityId}/logs/{agentId}.log
     let logFilePath: string | undefined;
     if (currentProject && agent.agentId) {
-      if (agent.specId.startsWith('bug:')) {
-        const bugName = agent.specId.replace('bug:', '');
-        logFilePath = `${currentProject}/.kiro/bugs/${bugName}/logs/${agent.agentId}.log`;
-      } else if (agent.specId) {
-        logFilePath = `${currentProject}/.kiro/specs/${agent.specId}/logs/${agent.agentId}.log`;
+      // Determine category based on specId
+      let category: 'specs' | 'bugs' | 'project';
+      let entityId: string;
+
+      if (agent.specId === '') {
+        category = 'project';
+        entityId = '';
+      } else if (agent.specId.startsWith('bug:')) {
+        category = 'bugs';
+        entityId = agent.specId.substring(4); // Remove 'bug:' prefix
       } else {
-        // Project-level agent (specId = '')
-        logFilePath = `${currentProject}/.kiro/specs/logs/${agent.agentId}.log`;
+        category = 'specs';
+        entityId = agent.specId;
+      }
+
+      // Build path: {projectPath}/.kiro/runtime/agents/{category}/{entityId}/logs/{agentId}.log
+      if (category === 'project') {
+        logFilePath = `${currentProject}/.kiro/runtime/agents/project/logs/${agent.agentId}.log`;
+      } else {
+        logFilePath = `${currentProject}/.kiro/runtime/agents/${category}/${entityId}/logs/${agent.agentId}.log`;
       }
     }
 

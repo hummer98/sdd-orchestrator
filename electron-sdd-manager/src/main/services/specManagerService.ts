@@ -2631,11 +2631,4 @@ export class SpecManagerService {
     }
     return { ok: true, value: { subtype: subtypeResult.value } };
   }
-
-  /**
-   * Get log path for an agent
-   */
-  getAgentLogPath(specId: string, agentId: string): string {
-    return path.join(this.projectPath, '.kiro', 'specs', specId, 'logs', `${agentId}.ndjson`);
-  }
 }

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.63.0] - 2026-02-01
+
+### Added
+- AgentLogStore統一によるRenderer/Remote UI間のログ同期
+
+### Fixed
+- モバイルAgentログ画面のレイアウトとセーフエリア対応を修正
+
+
 ## [0.62.0] - 2026-01-31
 
 ### Added

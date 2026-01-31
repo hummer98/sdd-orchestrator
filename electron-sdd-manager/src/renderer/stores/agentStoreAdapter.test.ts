@@ -206,35 +206,9 @@ describe('agentStoreAdapter', () => {
       });
     });
 
-    describe('loadAgentLogs', () => {
-      it('should call window.electronAPI.getAgentLogs and update shared store', async () => {
-        // Bug fix: agent-log-json-display-issue - Main process now returns ParsedLogEntry[]
-        const mockParsedLogs = [
-          {
-            id: 'test-log-1',
-            type: 'text' as const,
-            timestamp: new Date('2024-01-01T00:00:00Z').getTime(),
-            engineId: 'claude' as const,
-            text: {
-              content: 'test output',
-              role: 'assistant' as const,
-            },
-          },
-        ];
-        mockElectronAPI.getAgentLogs.mockResolvedValue(mockParsedLogs);
-
-        await agentOperations.loadAgentLogs('spec-a', 'agent-1');
-
-        expect(mockElectronAPI.getAgentLogs).toHaveBeenCalledWith('spec-a', 'agent-1');
-
-        // Verify logs were added to shared store as ParsedLogEntry
-        const state = getSharedAgentStore();
-        const logs = state.getLogsForAgent('agent-1');
-        expect(logs).toHaveLength(1);
-        expect(logs[0].text?.content).toBe('test output');
-        expect(logs[0].type).toBe('text');
-      });
-    });
+    // agent-log-store-unification Task 4.2: loadAgentLogs tests removed
+    // The loadAgentLogs method has been removed from agentOperations.
+    // Log loading is now handled by shared/stores/agentStore.ensureLogsLoaded()
   });
 
   // =============================================================================
@@ -274,21 +248,20 @@ describe('agentStoreAdapter', () => {
       expect(mockElectronAPI.onAgentRecordChanged).toHaveBeenCalled();
     });
 
+    // agent-log-store-unification Task 4.3: onAgentLog cleanup test updated
+    // Log subscription cleanup is now handled by useAgentLogSubscription hook
     it('should return cleanup function that calls all cleanups', () => {
       const cleanupStatus = vi.fn();
       const cleanupRecord = vi.fn();
-      const cleanupLog = vi.fn();
 
       mockElectronAPI.onAgentStatusChange.mockReturnValue(cleanupStatus);
       mockElectronAPI.onAgentRecordChanged.mockReturnValue(cleanupRecord);
-      mockElectronAPI.onAgentLog.mockReturnValue(cleanupLog);
 
       const cleanup = setupAgentEventListeners();
       cleanup();
 
       expect(cleanupStatus).toHaveBeenCalled();
       expect(cleanupRecord).toHaveBeenCalled();
-      expect(cleanupLog).toHaveBeenCalled();
     });
 
     it('should update agent status in shared store when onAgentStatusChange callback is invoked', () => {
@@ -322,121 +295,9 @@ describe('agentStoreAdapter', () => {
       expect(agent?.status).toBe('completed');
     });
 
-    // =============================================================================
-    // Bug fix: agent-log-json-display-issue
-    // main-process-log-parser integration: onAgentLog listener tests
-    // =============================================================================
-    it('should register onAgentLog listener for parsed log entries', () => {
-      const mockCleanup = vi.fn();
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentLog.mockReturnValue(mockCleanup);
-
-      setupAgentEventListeners();
-
-      expect(mockElectronAPI.onAgentLog).toHaveBeenCalled();
-    });
-
-    it('should add parsed log entry to shared store when onAgentLog callback is invoked', () => {
-      // Capture the callback
-      type ParsedLogEntry = {
-        id: string;
-        type: string;
-        timestamp: number;
-        text?: { content: string; role: string };
-        tool?: { name: string; toolUseId?: string; input?: Record<string, unknown> };
-      };
-      let logCallback: ((agentId: string, log: ParsedLogEntry) => void) | null = null;
-
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentLog.mockImplementation((cb) => {
-        logCallback = cb;
-        return vi.fn();
-      });
-
-      setupAgentEventListeners();
-
-      // Create a parsed log entry (as Main process would send)
-      const parsedLogEntry: ParsedLogEntry = {
-        id: 'log-123',
-        type: 'text',
-        timestamp: Date.now(),
-        text: {
-          content: 'Hello, this is parsed text from Main process',
-          role: 'assistant',
-        },
-      };
-
-      // Invoke the callback with parsed log entry
-      logCallback?.('agent-1', parsedLogEntry);
-
-      // Verify the parsed log was added to shared store directly (not re-parsed)
-      const state = getSharedAgentStore();
-      const logs = state.getLogsForAgent('agent-1');
-      expect(logs).toHaveLength(1);
-      expect(logs[0].id).toBe('log-123');
-      expect(logs[0].type).toBe('text');
-      expect(logs[0].text?.content).toBe('Hello, this is parsed text from Main process');
-    });
-
-    it('should handle tool_use parsed log entry from onAgentLog', () => {
-      type ParsedLogEntry = {
-        id: string;
-        type: string;
-        timestamp: number;
-        text?: { content: string; role: string };
-        tool?: { name: string; toolUseId?: string; input?: Record<string, unknown> };
-      };
-      let logCallback: ((agentId: string, log: ParsedLogEntry) => void) | null = null;
-
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentLog.mockImplementation((cb) => {
-        logCallback = cb;
-        return vi.fn();
-      });
-
-      setupAgentEventListeners();
-
-      // Create a tool_use parsed log entry
-      const toolUseEntry: ParsedLogEntry = {
-        id: 'tool-456',
-        type: 'tool_use',
-        timestamp: Date.now(),
-        tool: {
-          name: 'Read',
-          toolUseId: 'tu_123',
-          input: { file_path: '/path/to/file.ts' },
-        },
-      };
-
-      // Invoke the callback
-      logCallback?.('agent-1', toolUseEntry);
-
-      // Verify tool_use entry was added correctly
-      const state = getSharedAgentStore();
-      const logs = state.getLogsForAgent('agent-1');
-      expect(logs).toHaveLength(1);
-      expect(logs[0].type).toBe('tool_use');
-      expect(logs[0].tool?.name).toBe('Read');
-    });
-
-    it('should cleanup onAgentLog listener when cleanup function is called', () => {
-      const cleanupLog = vi.fn();
-      mockElectronAPI.onAgentOutput.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentStatusChange.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentRecordChanged.mockReturnValue(vi.fn());
-      mockElectronAPI.onAgentLog.mockReturnValue(cleanupLog);
-
-      const cleanup = setupAgentEventListeners();
-      cleanup();
-
-      expect(cleanupLog).toHaveBeenCalled();
-    });
+    // agent-log-store-unification Task 4.3: onAgentLog listener tests removed
+    // Log subscription is now handled by useAgentLogSubscription hook in shared/hooks/
+    // See useAgentLogSubscription.test.ts for log subscription tests
   });
 
   // =============================================================================

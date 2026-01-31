@@ -4,7 +4,7 @@
  * Task 8.2: ApiClientProvider, PlatformProvider integration
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Settings, Wifi } from 'lucide-react';
 import {
   NotificationProvider,
@@ -53,6 +53,9 @@ import { ProfileBadge } from '../shared/components/ui';
 import { McpStatusIndicator } from '../shared/components/ui';
 // mcp-server-integration: MCP store for status synchronization
 import { useMcpStore } from '../shared/stores/mcpStore';
+// agent-log-store-unification Task 4.4: Shared log subscription hook
+import { useAgentLogSubscription } from '../shared/hooks';
+import { IpcApiClient } from '../shared/api/IpcApiClient';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -275,6 +278,11 @@ export function App() {
     mcpStoreInitialized.current = true;
     initializeMcpStore();
   }, [initializeMcpStore]);
+
+  // agent-log-store-unification Task 4.4: Setup real-time log subscription
+  // Requirements: 2.4 - Use shared useAgentLogSubscription hook for log events
+  const ipcApiClient = useMemo(() => new IpcApiClient(), []);
+  useAgentLogSubscription(ipcApiClient);
 
   // Initialize auto-execution IPC listeners on mount
   // This enables specStore to receive state updates from Main Process (bug fix: auto-execution-state-sync)

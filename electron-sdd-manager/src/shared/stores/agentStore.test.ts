@@ -850,4 +850,313 @@ describe('SharedAgentStore', () => {
       expect(logs).toHaveLength(0);
     });
   });
+
+  // =============================================================================
+  // agent-log-store-unification: ensureLogsLoaded
+  // Requirements: 1.1, 1.2, 1.3
+  // Task 1.1: ensureLogsLoadedメソッドをshared/stores/agentStore.tsに追加
+  // Task 1.2: ensureLogsLoadedのユニットテスト
+  // =============================================================================
+  describe('ensureLogsLoaded (agent-log-store-unification)', () => {
+    // Helper to create mock ApiClient
+    const createMockApiClient = (
+      logsResult?: { ok: true; value: import('@shared/utils/parserTypes').ParsedLogEntry[] } | { ok: false; error: { message: string; type: string } }
+    ): import('../api/types').ApiClient => {
+      const mockLogs: import('@shared/utils/parserTypes').ParsedLogEntry[] = logsResult?.ok
+        ? logsResult.value
+        : [];
+
+      return {
+        getAgentLogs: async (_specId: string, _agentId: string) => {
+          return logsResult ?? { ok: true, value: mockLogs };
+        },
+        // Required interface methods (stubbed)
+        getSpecs: async () => ({ ok: true, value: [] }),
+        getSpecDetail: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        executePhase: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        updateApproval: async () => ({ ok: true, value: undefined }),
+        getBugs: async () => ({ ok: true, value: [] }),
+        getBugDetail: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        executeBugPhase: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        getAgents: async () => ({ ok: true, value: [] }),
+        stopAgent: async () => ({ ok: true, value: undefined }),
+        resumeAgent: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        sendAgentInput: async () => ({ ok: true, value: undefined }),
+        executeProjectCommand: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        executeDocumentReview: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        executeInspection: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        startAutoExecution: async () => ({ ok: false, error: { type: 'NOT_FOUND', message: 'Not found' } }),
+        stopAutoExecution: async () => ({ ok: true, value: undefined }),
+        getAutoExecutionStatus: async () => ({ ok: true, value: null }),
+        saveFile: async () => ({ ok: true, value: undefined }),
+        onSpecsUpdated: () => () => {},
+        onBugsUpdated: () => () => {},
+        onAgentOutput: () => () => {},
+        onAgentStatusChange: () => () => {},
+        onAgentLog: () => () => {},
+        onAutoExecutionStatusChanged: () => () => {},
+        startBugsWatcher: async () => ({ ok: true, value: undefined }),
+        stopBugsWatcher: async () => ({ ok: true, value: undefined }),
+        onBugsChanged: () => () => {},
+        getGitStatus: async () => ({ ok: true, value: { files: [], mode: 'normal' as const } }),
+        getGitDiff: async () => ({ ok: true, value: '' }),
+        startWatching: async () => ({ ok: true, value: undefined }),
+        stopWatching: async () => ({ ok: true, value: undefined }),
+      };
+    };
+
+    // Helper to create mock ParsedLogEntry
+    const createParsedLogEntry = (id: string, timestamp?: number): import('@shared/utils/parserTypes').ParsedLogEntry => ({
+      id,
+      type: 'text',
+      timestamp: timestamp ?? Date.now(),
+      engineId: 'claude',
+      text: {
+        content: `Log content ${id}`,
+        role: 'assistant',
+      },
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.1: ensureLogsLoadedメソッドの追加
+    // Requirements: 1.1, 1.2
+    // -------------------------------------------------------------------------
+    describe('Task 1.1: ensureLogsLoaded method (Requirements 1.1, 1.2)', () => {
+      it('should call apiClient.getAgentLogs when no logs exist', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+        store.addAgent('spec-a', agent);
+
+        const mockLogs = [createParsedLogEntry('log-1'), createParsedLogEntry('log-2')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        // Spy on getAgentLogs
+        let getAgentLogsCalled = false;
+        let calledSpecId = '';
+        let calledAgentId = '';
+        apiClient.getAgentLogs = async (specId: string, agentId: string) => {
+          getAgentLogsCalled = true;
+          calledSpecId = specId;
+          calledAgentId = agentId;
+          return { ok: true, value: mockLogs };
+        };
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        expect(getAgentLogsCalled).toBe(true);
+        expect(calledSpecId).toBe('spec-a');
+        expect(calledAgentId).toBe('agent-1');
+      });
+
+      it('should add logs to store after loading', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        const mockLogs = [createParsedLogEntry('log-1'), createParsedLogEntry('log-2')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        const freshState = getSharedAgentStore();
+        const logs = freshState.logs.get('agent-1');
+        expect(logs).toBeDefined();
+        expect(logs).toHaveLength(2);
+      });
+
+      it('should skip API call for running agent with existing logs (Requirement 1.3)', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'running');
+        store.addAgent('spec-a', agent);
+
+        // Add existing logs
+        const existingLog = createParsedLogEntry('existing-log');
+        store.addLog('agent-1', existingLog);
+
+        const apiClient = createMockApiClient();
+        let getAgentLogsCalled = false;
+        apiClient.getAgentLogs = async () => {
+          getAgentLogsCalled = true;
+          return { ok: true, value: [] };
+        };
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        // Should NOT call API for running agent with existing logs
+        expect(getAgentLogsCalled).toBe(false);
+      });
+
+      it('should call API for completed agent even with existing logs', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        // Add existing logs
+        const existingLog = createParsedLogEntry('existing-log');
+        store.addLog('agent-1', existingLog);
+
+        const mockLogs = [createParsedLogEntry('file-log-1')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        let getAgentLogsCalled = false;
+        apiClient.getAgentLogs = async () => {
+          getAgentLogsCalled = true;
+          return { ok: true, value: mockLogs };
+        };
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        // Should call API for completed agent (may have more logs in file)
+        expect(getAgentLogsCalled).toBe(true);
+      });
+
+      it('should call API for failed agent even with existing logs', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'failed');
+        store.addAgent('spec-a', agent);
+
+        // Add existing logs
+        const existingLog = createParsedLogEntry('existing-log');
+        store.addLog('agent-1', existingLog);
+
+        let getAgentLogsCalled = false;
+        const apiClient = createMockApiClient();
+        apiClient.getAgentLogs = async () => {
+          getAgentLogsCalled = true;
+          return { ok: true, value: [] };
+        };
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        // Should call API for failed agent
+        expect(getAgentLogsCalled).toBe(true);
+      });
+
+      it('should early return when agent not found', async () => {
+        const store = getSharedAgentStore();
+        const apiClient = createMockApiClient();
+
+        let getAgentLogsCalled = false;
+        apiClient.getAgentLogs = async () => {
+          getAgentLogsCalled = true;
+          return { ok: true, value: [] };
+        };
+
+        // Try to load logs for non-existent agent
+        await store.ensureLogsLoaded(apiClient, 'non-existent');
+
+        expect(getAgentLogsCalled).toBe(false);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Task 1.3: 重複排除ロジック
+    // Requirements: 1.3
+    // -------------------------------------------------------------------------
+    describe('Task 1.3: ID-based deduplication (Requirement 1.3)', () => {
+      it('should merge file logs with existing logs without duplicates', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        // Add existing realtime logs
+        const realtimeLog1 = createParsedLogEntry('log-1', 1000);
+        const realtimeLog2 = createParsedLogEntry('log-2', 2000);
+        store.addLog('agent-1', realtimeLog1);
+        store.addLog('agent-1', realtimeLog2);
+
+        // API returns logs including duplicates (log-1 already exists)
+        const fileLogs = [
+          createParsedLogEntry('log-1', 1000), // duplicate
+          createParsedLogEntry('log-3', 3000), // new
+        ];
+        const apiClient = createMockApiClient({ ok: true, value: fileLogs });
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        const freshState = getSharedAgentStore();
+        const logs = freshState.logs.get('agent-1');
+
+        // Should have 3 unique logs (log-1, log-2, log-3)
+        expect(logs).toHaveLength(3);
+
+        // Verify unique IDs
+        const ids = logs!.map(l => l.id);
+        expect(ids).toContain('log-1');
+        expect(ids).toContain('log-2');
+        expect(ids).toContain('log-3');
+
+        // Verify no duplicates
+        const uniqueIds = [...new Set(ids)];
+        expect(uniqueIds.length).toBe(ids.length);
+      });
+
+      it('should use ID-based deduplication, not timestamp', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        // Add existing log with specific ID
+        const existingLog = createParsedLogEntry('unique-id-1', 1000);
+        store.addLog('agent-1', existingLog);
+
+        // API returns log with same ID but different timestamp
+        const fileLogs = [createParsedLogEntry('unique-id-1', 9999)];
+        const apiClient = createMockApiClient({ ok: true, value: fileLogs });
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        const freshState = getSharedAgentStore();
+        const logs = freshState.logs.get('agent-1');
+
+        // Should still have only 1 log (deduplicated by ID)
+        expect(logs).toHaveLength(1);
+        // Should keep the existing one (not replaced)
+        expect(logs![0].timestamp).toBe(1000);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Error handling
+    // -------------------------------------------------------------------------
+    describe('Error handling', () => {
+      it('should handle API error gracefully', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        const apiClient = createMockApiClient({
+          ok: false,
+          error: { type: 'NETWORK_ERROR', message: 'Connection failed' },
+        });
+
+        // Should not throw
+        await expect(store.ensureLogsLoaded(apiClient, 'agent-1')).resolves.not.toThrow();
+      });
+
+      it('should not modify logs on API error', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'spec-a', 'completed');
+        store.addAgent('spec-a', agent);
+
+        // Add existing log
+        const existingLog = createParsedLogEntry('existing-log');
+        store.addLog('agent-1', existingLog);
+
+        const apiClient = createMockApiClient({
+          ok: false,
+          error: { type: 'NETWORK_ERROR', message: 'Connection failed' },
+        });
+
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        const freshState = getSharedAgentStore();
+        const logs = freshState.logs.get('agent-1');
+
+        // Should preserve existing log
+        expect(logs).toHaveLength(1);
+        expect(logs![0].id).toBe('existing-log');
+      });
+    });
+  });
 });

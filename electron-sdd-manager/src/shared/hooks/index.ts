@@ -47,3 +47,6 @@ export type {
   UseBugListLogicResult,
   BugPhaseFilter,
 } from './useBugListLogic';
+
+// agent-log-store-unification: Shared agent log subscription hook
+export { useAgentLogSubscription } from './useAgentLogSubscription';

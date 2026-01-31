@@ -400,32 +400,28 @@ export const useAgentStore = create<AgentStore>()(
     },
 
     ensureLogsLoaded: async (agentId: string) => {
-      // Refactoring: log-loading-separation
-      // Separated from selectAgent for clear responsibility
-      const state = get();
-      const agent = state.getAgentById(agentId);
+      // agent-log-store-unification Task 4.1: Delegate to shared ensureLogsLoaded
+      // Requirements: 1.4 - 共通版への委譲に変更（後方互換性維持のため薄いラッパーとして残す）
+      //
+      // Note: IpcApiClient requires projectStore to be initialized, which is done
+      // after the app is mounted. We import it lazily here to avoid circular dependencies.
+      const { IpcApiClient } = await import('@shared/api/IpcApiClient');
+      const apiClient = new IpcApiClient();
 
-      if (!agent) {
-        return;
-      }
+      await useSharedAgentStore.getState().ensureLogsLoaded(apiClient, agentId);
 
-      const existingLogs = state.logs.get(agentId);
-      const hasLogs = existingLogs && existingLogs.length > 0;
-      const isRunning = agent.status === 'running';
-
-      // Running agents: load only if no logs (IPC will add more in real-time)
-      // Completed/failed agents: always load from file (may have more logs)
-      const shouldLoad = !hasLogs || !isRunning;
-
-      if (shouldLoad) {
-        await agentOperations.loadAgentLogs(agent.specId, agentId);
-        // Sync logs from shared store after loading
-        set({ logs: getLogsFromShared() });
-      }
+      // Sync logs from shared store after loading
+      set({ logs: getLogsFromShared() });
     },
 
-    loadAgentLogs: async (specId: string, agentId: string) => {
-      await agentOperations.loadAgentLogs(specId, agentId);
+    loadAgentLogs: async (_specId: string, agentId: string) => {
+      // agent-log-store-unification Task 4.2: Delegate to shared ensureLogsLoaded
+      // Requirements: 1.5 - loadAgentLogs削除（共通版に移行）
+      // This method is kept for backward compatibility but now uses ensureLogsLoaded
+      const { IpcApiClient } = await import('@shared/api/IpcApiClient');
+      const apiClient = new IpcApiClient();
+
+      await useSharedAgentStore.getState().ensureLogsLoaded(apiClient, agentId);
       // Sync logs from shared store
       set({ logs: getLogsFromShared() });
     },

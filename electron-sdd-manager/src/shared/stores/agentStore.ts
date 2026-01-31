@@ -51,6 +51,15 @@ export interface SharedAgentState {
 export interface SharedAgentActions {
   /** ApiClient経由でagentsを読み込む */
   loadAgents: (apiClient: ApiClient) => Promise<void>;
+  /**
+   * agent-log-store-unification Task 1.1
+   * Requirements: 1.1, 1.2, 1.3
+   * Ensure logs are loaded for an agent.
+   * - Running agents: load only if no logs exist (IPC adds more in real-time)
+   * - Completed/failed agents: always load from file (may have more logs)
+   * - Uses ID-based deduplication to merge file logs with existing logs
+   */
+  ensureLogsLoaded: (apiClient: ApiClient, agentId: string) => Promise<void>;
   /** Agentを選択する */
   selectAgent: (agentId: string | null) => void;
   /**
@@ -180,6 +189,56 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
   error: null,
 
   // Actions
+
+  /**
+   * agent-log-store-unification Task 1.1
+   * Requirements: 1.1, 1.2, 1.3
+   * Ensure logs are loaded for an agent.
+   * - Running agents: load only if no logs exist (IPC adds more in real-time)
+   * - Completed/failed agents: always load from file (may have more logs)
+   * - Uses ID-based deduplication to merge file logs with existing logs
+   */
+  ensureLogsLoaded: async (apiClient: ApiClient, agentId: string) => {
+    const state = get();
+    const agent = state.getAgentById(agentId);
+
+    // Early return if agent not found
+    if (!agent) {
+      return;
+    }
+
+    const existingLogs = state.logs.get(agentId) || [];
+    const hasLogs = existingLogs.length > 0;
+    const isRunning = agent.status === 'running';
+
+    // Running agents: skip API call if logs already exist (real-time logs via IPC)
+    // Completed/failed agents: always load from file (may have additional logs)
+    const shouldLoad = !hasLogs || !isRunning;
+
+    if (!shouldLoad) {
+      return;
+    }
+
+    // Call API to get logs
+    const result = await apiClient.getAgentLogs(agent.specId, agentId);
+
+    if (!result.ok) {
+      // Log error but don't modify state
+      console.error('[agentStore] Failed to load agent logs:', result.error);
+      return;
+    }
+
+    // ID-based deduplication (Requirement 1.3)
+    const existingIds = new Set(existingLogs.map((log) => log.id));
+
+    // Add only new logs (not already in store)
+    for (const log of result.value) {
+      if (!existingIds.has(log.id)) {
+        get().addLog(agentId, log);
+      }
+    }
+  },
+
   loadAgents: async (apiClient: ApiClient) => {
     set({ isLoading: true, error: null });
 

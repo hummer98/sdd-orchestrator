@@ -14,7 +14,7 @@
  * - Updating shared/agentStore with IPC results
  */
 
-import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus, type ParsedLogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatus } from '@shared/stores/agentStore';
 
 // =============================================================================
 // Type Adapters
@@ -166,51 +166,9 @@ export const agentOperations = {
     }
   },
 
-  /**
-   * Load agent logs from file and update shared store
-   *
-   * Bug fix: agent-log-stream-race-condition
-   * Previously, clearLogs() was called before adding file logs, which caused
-   * real-time logs received via onAgentOutput to be lost. Now we merge file logs
-   * with existing real-time logs, using ID-based deduplication and timestamp sorting.
-   *
-   * Bug fix: agent-log-json-display-issue
-   * Main process now returns ParsedLogEntry[] directly (already parsed).
-   */
-  async loadAgentLogs(specId: string, agentId: string): Promise<void> {
-    try {
-      console.log('[agentStoreAdapter] Loading agent logs', { specId, agentId });
-      // Main process now returns ParsedLogEntry[] (already parsed)
-      const parsedLogs: ParsedLogEntry[] = await window.electronAPI.getAgentLogs(specId, agentId);
-
-      // Bug fix: agent-log-stream-race-condition
-      // Merge file logs with existing real-time logs instead of clearing
-      const state = useSharedAgentStore.getState();
-      const existingLogs = state.getLogsForAgent(agentId);
-
-      // Create a set of existing log IDs for deduplication
-      const existingIds = new Set(existingLogs.map((log) => log.id));
-
-      // Add only new logs from file (not already in real-time logs)
-      const newFileLogsCount = parsedLogs.filter((entry) => {
-        if (!existingIds.has(entry.id)) {
-          state.addLog(agentId, entry);
-          return true;
-        }
-        return false;
-      }).length;
-
-      console.log('[agentStoreAdapter] Loaded agent logs', {
-        specId,
-        agentId,
-        fileCount: parsedLogs.length,
-        existingCount: existingLogs.length,
-        newCount: newFileLogsCount,
-      });
-    } catch (error) {
-      console.error('[agentStoreAdapter] Failed to load agent logs:', error);
-    }
-  },
+  // agent-log-store-unification Task 4.2: loadAgentLogs removed
+  // Requirements: 1.5 - loadAgentLogs削除（共通版ensureLogsLoadedに移行）
+  // The log loading logic has been moved to shared/stores/agentStore.ts
 };
 
 // =============================================================================
@@ -260,22 +218,15 @@ export function setupAgentEventListeners(): () => void {
     }
   );
 
-  // Bug fix: agent-log-json-display-issue
-  // main-process-log-parser integration: Listen for parsed log entries from Main process
-  // This receives ParsedLogEntry directly, no conversion needed
-  const cleanupLog = window.electronAPI.onAgentLog(
-    (agentId: string, parsedLog: ParsedLogEntry) => {
-      console.log('[agentStoreAdapter] Received parsed agent log', { agentId, type: parsedLog.type });
-      useSharedAgentStore.getState().addLog(agentId, parsedLog);
-    }
-  );
+  // agent-log-store-unification Task 4.3: onAgentLog listener removed
+  // Requirements: 2.4 - ログ購読は共通hookに移行（useAgentLogSubscription）
+  // Log subscription is now handled by the shared useAgentLogSubscription hook
 
   // Return cleanup function
   return () => {
     console.log('[agentStoreAdapter] Cleaning up event listeners');
     cleanupStatus();
     cleanupRecordChanged();
-    cleanupLog();
   };
 }
 

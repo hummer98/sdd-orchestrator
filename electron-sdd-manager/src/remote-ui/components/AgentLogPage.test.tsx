@@ -14,6 +14,11 @@
  * - 3.1: ログエリアのみスクロール
  * - 3.2: ナビバー・アクション固定
  * - 3.3: AgentLogPanel再利用
+ *
+ * agent-log-store-unification: Task 6.1
+ * Integration tests for log loading:
+ * - ensureLogsLoaded called on mount
+ * - Real-time logs reflected in display
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -69,6 +74,9 @@ const createMockApiClient = (): ApiClient => ({
 // =============================================================================
 
 // Mock the shared agent store
+// agent-log-store-unification: Include ensureLogsLoaded in mock
+const mockEnsureLogsLoaded = vi.fn().mockResolvedValue(undefined);
+
 vi.mock('@shared/stores/agentStore', () => ({
   useSharedAgentStore: vi.fn((selector) => {
     const state = {
@@ -77,6 +85,7 @@ vi.mock('@shared/stores/agentStore', () => ({
       selectedAgentId: null,
       selectAgent: vi.fn(),
       getAgentById: vi.fn(),
+      ensureLogsLoaded: mockEnsureLogsLoaded,
     };
     return selector(state);
   }),
@@ -289,6 +298,54 @@ describe('AgentLogPage', () => {
       );
 
       expect(screen.getByTestId('agent-log-page-back-button')).toBeInTheDocument();
+    });
+  });
+
+  // =============================================================================
+  // agent-log-store-unification Task 6.1: Log Loading Integration Tests
+  // Requirements: 4.3 - Agent選択時にensureLogsLoadedが呼び出されることを検証
+  // =============================================================================
+
+  describe('log loading integration (agent-log-store-unification Task 6.1)', () => {
+    it('should call ensureLogsLoaded when component mounts', () => {
+      // Arrange: Reset the mock to track calls
+      mockEnsureLogsLoaded.mockClear();
+
+      const agent = createMockAgent({ agentId: 'agent-001' });
+
+      // Act: Render the component
+      render(
+        <AgentLogPage
+          agent={agent}
+          sourceType="spec"
+          sourceEntityId="test-spec"
+          apiClient={mockApiClient}
+          onBack={mockOnBack}
+          testId="agent-log-page"
+        />
+      );
+
+      // Assert: ensureLogsLoaded should be called with apiClient and agentId
+      expect(mockEnsureLogsLoaded).toHaveBeenCalledWith(mockApiClient, 'agent-001');
+    });
+
+    it('should display logs from shared store via AgentLogPanel', () => {
+      // Arrange
+      const agent = createMockAgent({ agentId: 'agent-001' });
+
+      // Act: Render the component
+      render(
+        <AgentLogPage
+          agent={agent}
+          sourceType="spec"
+          apiClient={mockApiClient}
+          onBack={mockOnBack}
+          testId="agent-log-page"
+        />
+      );
+
+      // Assert: Component should render AgentLogPanel which displays logs from store
+      expect(screen.getByTestId('agent-log-page-log-panel')).toBeInTheDocument();
     });
   });
 });

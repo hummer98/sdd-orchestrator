@@ -142,23 +142,9 @@ export function useAgentStoreInit(apiClient: ApiClient | null): UseAgentStoreIni
       })
     );
 
-    /**
-     * Handle AGENT_LOG event from WebSocket
-     * Bug fix: Remote UIでagent-logイベントがStoreに反映されない問題を修正
-     *
-     * Architecture:
-     * - WebSocket AGENT_LOG message → WebSocketApiClient.emit('agent-log')
-     * - apiClient.onAgentLog() → useSharedAgentStore.addLog()
-     * - Components subscribe to store.logs for display
-     *
-     * This completes the data flow parity with Electron version (agentStoreAdapter.ts)
-     */
-    cleanups.push(
-      apiClient.onAgentLog((agentId, log) => {
-        const store = useSharedAgentStore.getState();
-        store.addLog(agentId, log);
-      })
-    );
+    // agent-log-store-unification Task 5.1: onAgentLog listener removed
+    // Requirements: 2.3 - ログ購読は共通hookに移行（useAgentLogSubscription）
+    // Log subscription is now handled by the shared useAgentLogSubscription hook in App.tsx
 
     // Cleanup: Unsubscribe all listeners on unmount
     return () => {

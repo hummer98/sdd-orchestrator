@@ -39,6 +39,8 @@ type AgentInfo = SharedAgentInfo;
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 import { useNavigationStack } from './hooks/useNavigationStack';
 import { useAgentStoreInit } from './hooks/useAgentStoreInit';
+// agent-log-store-unification Task 3.1: Shared log subscription hook
+import { useAgentLogSubscription } from '../shared/hooks/useAgentLogSubscription';
 
 // =============================================================================
 // Types
@@ -692,6 +694,10 @@ function DesktopAppContent() {
   // Task 7.3: Get refreshAgents and isLoading for RefreshButton
   const { refreshAgents, isLoading: isAgentRefreshing } = useAgentStoreInit(apiClient);
 
+  // agent-log-store-unification Task 3.1: Use shared log subscription hook
+  // Requirements: 2.3 - アプリケーション初期化時にリアルタイムログ購読を開始
+  useAgentLogSubscription(apiClient);
+
   // Initialize WebSocket listeners
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);
@@ -825,6 +831,10 @@ function MobileAppContent() {
   // Requirements: 1.1 - MobileAppContentマウント時にloadAgents呼び出し
   // Task 7.1, 7.2: Get refreshAgents and isLoading for Pull-to-Refresh
   const { refreshAgents, isLoading: isAgentRefreshing } = useAgentStoreInit(apiClient);
+
+  // agent-log-store-unification Task 3.1: Use shared log subscription hook
+  // Requirements: 2.3 - アプリケーション初期化時にリアルタイムログ購読を開始
+  useAgentLogSubscription(apiClient);
 
   useEffect(() => {
     const cleanup = initBugAutoExecutionWebSocketListeners(apiClient);

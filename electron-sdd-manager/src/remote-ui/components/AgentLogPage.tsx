@@ -20,7 +20,7 @@
  * Design: AgentLogPage component in design.md
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { AgentLogPanel } from '@shared/components/agent';
 import { AgentLogActionArea } from './AgentLogActionArea';
@@ -81,6 +81,9 @@ export function AgentLogPage({
   // Agent Store Integration
   // ---------------------------------------------------------------------------
 
+  /** Get ensureLogsLoaded method from store */
+  const ensureLogsLoaded = useSharedAgentStore((state) => state.ensureLogsLoaded);
+
   /** Get logs for this agent from the shared store */
   const logsMap = useSharedAgentStore((state) => state.logs);
 
@@ -89,6 +92,14 @@ export function AgentLogPage({
     () => logsMap.get(agent.agentId) ?? [],
     [logsMap, agent.agentId]
   );
+
+  /**
+   * agent-log-store-unification Task 3.2: Ensure logs are loaded on mount
+   * Requirements: 3.1 - Agent選択時にensureLogsLoadedを呼び出す
+   */
+  useEffect(() => {
+    ensureLogsLoaded(apiClient, agent.agentId);
+  }, [apiClient, agent.agentId, ensureLogsLoaded]);
 
   // ---------------------------------------------------------------------------
   // Render

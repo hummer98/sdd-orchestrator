@@ -13,6 +13,11 @@ import { getCloudflareTunnelManager } from '../services/cloudflareTunnelManager'
 import { logger } from '../services/logger';
 
 /**
+ * Track if handlers are already registered to prevent duplicate registration
+ */
+let handlersRegistered = false;
+
+/**
  * Binary check result with optional install instructions
  */
 export interface BinaryCheckResponse {
@@ -41,6 +46,12 @@ export interface BinaryCheckResponse {
  * - CLOUDFLARE_GET_TUNNEL_STATUS: Get tunnel status
  */
 export function registerCloudflareHandlers(): void {
+  // Prevent duplicate registration in E2E test environments
+  if (handlersRegistered) {
+    logger.warn('[cloudflareHandlers] Handlers already registered, skipping');
+    return;
+  }
+
   const configStore = getCloudflareConfigStore();
   const accessTokenService = getAccessTokenService();
   const binaryChecker = getCloudflaredBinaryChecker();
@@ -139,6 +150,9 @@ export function registerCloudflareHandlers(): void {
     logger.debug('[cloudflareHandlers] CLOUDFLARE_GET_TUNNEL_STATUS called');
     return tunnelManager.getStatus();
   });
+
+  // Mark handlers as registered
+  handlersRegistered = true;
 }
 
 /**
@@ -177,4 +191,7 @@ export function cleanupCloudflareHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.CLOUDFLARE_START_TUNNEL);
   ipcMain.removeHandler(IPC_CHANNELS.CLOUDFLARE_STOP_TUNNEL);
   ipcMain.removeHandler(IPC_CHANNELS.CLOUDFLARE_GET_TUNNEL_STATUS);
+
+  // Reset registration flag
+  handlersRegistered = false;
 }

@@ -1,7 +1,7 @@
 ---
 name: spec-design-agent
 description: Generate comprehensive technical design translating requirements (WHAT) into architecture (HOW) with discovery process
-tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, Task
+tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch
 model: inherit
 color: purple
 permissionMode: bypassPermissions
@@ -147,34 +147,6 @@ Generate technical design document for feature based on approved requirements.
      - Detailed operational procedures (e.g., environment variable management, startup sequences)
      - Architecture pattern comparison tables with detailed pros/cons
      - External dependency deep-dive (API investigation details, version compatibility research)
-
-### Step 4: Generate Interactive Visualizations (Optional)
-
-After design.md is generated, invoke visualization-agent to create interactive HTML artifacts:
-
-```
-Task(
-  subagent_type="visualization-agent",
-  description="Generate interactive HTML visualizations",
-  prompt="""
-Feature: {feature}
-Spec directory: .kiro/specs/{feature}/
-
-Generate interactive HTML visualizations from the design.md content.
-Place output files in .kiro/specs/{feature}/artifacts/
-"""
-)
-```
-
-**Trigger Conditions** (generate visualizations when):
-- Design contains 3+ components with relationships
-- Architecture or Data Flow sections exist
-- State machine or sequence diagrams are described
-
-**Skip Conditions** (do not generate visualizations when):
-- Simple CRUD or UI-only features
-- Design has fewer than 3 components
-- No complex relationships to visualize
 
 ## Critical Constraints
  - **Type Safety**:

@@ -128,10 +128,28 @@ export function SpecPane({
     }));
   }, [specDetail?.specJson?.inspection]);
 
+  // artifact-all-markdown-files: Task 4.1 - Additional markdown files tabs
+  // Requirements: 2.1, 2.2
+  const additionalMarkdownTabs = useMemo((): TabInfo[] => {
+    const markdownFiles = specDetail?.markdownFiles;
+    if (!markdownFiles || markdownFiles.length === 0) {
+      return [];
+    }
+
+    // Files are already sorted alphabetically by FileService
+    // Convert to TabInfo format
+    return markdownFiles.map((filename) => ({
+      key: filename as ArtifactType,
+      label: filename.replace('.md', ''),
+    }));
+  }, [specDetail?.markdownFiles]);
+
   // Combine dynamic tabs
+  // artifact-all-markdown-files: Task 4.2 - Include additional markdown tabs
+  // Requirements: 2.1, 6.1, 6.2
   const dynamicTabs = useMemo(
-    () => [...documentReviewTabs, ...inspectionTabs],
-    [documentReviewTabs, inspectionTabs]
+    () => [...documentReviewTabs, ...inspectionTabs, ...additionalMarkdownTabs],
+    [documentReviewTabs, inspectionTabs, additionalMarkdownTabs]
   );
 
   // Convert artifacts to ArtifactInfo format

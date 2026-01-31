@@ -175,4 +175,39 @@ describe('IpcApiClient', () => {
       expect(content).toMatch(/rebaseFromMain[\s\S]*?wrapResult/);
     });
   });
+
+  // ===========================================================================
+  // artifact-all-markdown-files: Inspection Fix Task 10.2
+  // getBugDetail should populate markdownFiles field
+  // Requirements: 5.2, 6.3
+  // ===========================================================================
+
+  describe('getBugDetail markdownFiles field', () => {
+    it('should call listMarkdownFilesInSpec for bug in getBugDetail', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should call listMarkdownFilesInSpec with bug entity type within getBugDetail method
+      // Using a more flexible regex to account for formatting variations
+      const getBugDetailMatch = content.match(/async getBugDetail\([^)]*\)[^{]*\{[\s\S]*?\n\s*\}/);
+      expect(getBugDetailMatch).toBeTruthy();
+
+      if (getBugDetailMatch) {
+        const methodContent = getBugDetailMatch[0];
+        // Check for listMarkdownFilesInSpec call with 'bug' parameter
+        expect(methodContent).toMatch(/listMarkdownFilesInSpec.*['"]bug['"]/);
+      }
+    });
+
+    it('should set markdownFiles field in BugDetail return type', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // getBugDetail should include markdownFiles in the returned BugDetail
+      const getBugDetailMatch = content.match(/async getBugDetail\([^)]*\)[^{]*\{[\s\S]*?\n\s*\}/);
+      expect(getBugDetailMatch).toBeTruthy();
+
+      if (getBugDetailMatch) {
+        const methodContent = getBugDetailMatch[0];
+        // Check that markdownFiles is assigned in the method
+        expect(methodContent).toMatch(/markdownFiles/);
+      }
+    });
+  });
 });

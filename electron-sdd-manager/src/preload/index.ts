@@ -84,6 +84,12 @@ const electronAPI = {
   writeArtifact: (name: string, filename: string, content: string, entityType: 'spec' | 'bug' = 'spec') =>
     ipcRenderer.invoke(IPC_CHANNELS.WRITE_ARTIFACT, name, filename, content, entityType),
 
+  // artifact-all-markdown-files: List markdown files in spec/bug directory
+  // Task 1.2: Preload API exposure
+  // Requirements: 4.1
+  listMarkdownFilesInSpec: (name: string, entityType: 'spec' | 'bug' = 'spec'): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LIST_MARKDOWN_FILES_IN_SPEC, name, entityType),
+
   createSpec: (projectPath: string, specName: string, description: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.CREATE_SPEC, projectPath, specName, description),
 

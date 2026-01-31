@@ -72,15 +72,11 @@ const BUG_ARTIFACT_TABS: TabInfo[] = [
 
 export function RemoteBugArtifactEditor({
   bug,
-  bugDetail: _bugDetail, // Currently unused, but kept for future artifact existence checks
+  bugDetail,
   apiClient,
   placeholder = 'Bugを選択してドキュメントを表示',
   testId,
 }: RemoteBugArtifactEditorProps): React.ReactElement {
-  // Note: _bugDetail could be used in the future to conditionally show tabs
-  // based on artifact existence (bugDetail.artifacts.report?.exists, etc.)
-  // For now, we show all tabs similar to RemoteArtifactEditor behavior
-  void _bugDetail;
   // State
   const [activeTab, setActiveTab] = useState<BugArtifactType>('report');
   const [content, setContent] = useState<string>('');
@@ -93,13 +89,31 @@ export function RemoteBugArtifactEditor({
   // Derived state
   const isDirty = content !== originalContent;
 
+  // artifact-all-markdown-files: Task 7.4 - Additional markdown files tabs for Remote UI (bugs)
+  // Requirements: 6.3, 4.4
+  const additionalMarkdownTabs = useMemo((): TabInfo[] => {
+    const markdownFiles = bugDetail?.markdownFiles;
+    if (!markdownFiles || markdownFiles.length === 0) {
+      return [];
+    }
+
+    // Files are already sorted alphabetically by backend
+    // Convert to TabInfo format
+    return markdownFiles.map((filename) => ({
+      key: filename as BugArtifactType,
+      label: filename.replace('.md', ''),
+    }));
+  }, [bugDetail?.markdownFiles]);
+
   // Build available tabs from bugDetail artifacts
+  // artifact-all-markdown-files: Task 7.4 - Include additional markdown tabs
   const availableTabs = useMemo((): TabInfo[] => {
     // Always show all bug artifact tabs
     // Similar to RemoteArtifactEditor, we show all tabs and let getArtifactContent
     // return empty for non-existent files
-    return BUG_ARTIFACT_TABS;
-  }, []);
+    // Dynamic tabs (additional markdown) are added based on bugDetail state
+    return [...BUG_ARTIFACT_TABS, ...additionalMarkdownTabs];
+  }, [additionalMarkdownTabs]);
 
   // Load artifact content
   const loadArtifact = useCallback(async (bugId: string, artifactType: BugArtifactType) => {

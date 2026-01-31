@@ -1848,6 +1848,22 @@ export interface ElectronAPI {
   copyToClipboard(text: string): Promise<void>;
 
   // ============================================================
+  // Artifact All Markdown Files (artifact-all-markdown-files feature)
+  // Task 11.3: List additional *.md files in spec/bug directory
+  // Requirements: 4.1, 5.2, 6.3
+  // ============================================================
+
+  /**
+   * List additional *.md files in a spec or bug directory
+   * Excludes fixed tabs (requirements, design, tasks, research) and
+   * dynamic tabs (document-review-*, inspection-*)
+   * @param name Spec or bug name
+   * @param entityType Entity type ('spec' or 'bug')
+   * @returns Array of markdown filenames
+   */
+  listMarkdownFilesInSpec(name: string, entityType?: 'spec' | 'bug'): Promise<string[]>;
+
+  // ============================================================
   // Artifact Path Resolution
   // ============================================================
 

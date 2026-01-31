@@ -1107,4 +1107,98 @@ ${description}
       };
     }
   }
+
+  /**
+   * List all *.md files in spec directory (excluding fixed/dynamic tabs)
+   * artifact-all-markdown-files: Requirements 1.1, 1.2, 4.2, 4.3, 7.1
+   *
+   * @param specPath - Absolute path to spec directory
+   * @returns Result with array of filenames (e.g., ["architecture.md", "notes.md"])
+   */
+  async listMarkdownFilesInSpec(specPath: string): Promise<Result<string[], FileError>> {
+    // Validate path for security (prevent directory traversal)
+    const normalizedPath = normalize(resolve(specPath));
+    if (!normalizedPath.includes('.kiro')) {
+      return {
+        ok: false,
+        error: {
+          type: 'INVALID_PATH',
+          path: specPath,
+          reason: 'Path must be within .kiro directory',
+        },
+      };
+    }
+
+    // Check if spec.json exists to verify valid spec directory
+    try {
+      await access(join(specPath, 'spec.json'));
+    } catch {
+      return {
+        ok: false,
+        error: {
+          type: 'SPEC_NOT_FOUND',
+          path: specPath,
+        },
+      };
+    }
+
+    // Read directory contents
+    try {
+      const dirents = await readdir(specPath, { withFileTypes: true });
+
+      // Filter for *.md files (exclude directories, fixed tabs, dynamic tabs)
+      const fixedTabs = new Set([
+        'requirements.md',
+        'design.md',
+        'tasks.md',
+        'research.md',
+      ]);
+
+      const markdownFiles = dirents
+        .filter((dirent) => {
+          // Only files (not directories)
+          if (!dirent.isFile()) return false;
+
+          // Only .md extension
+          if (!dirent.name.endsWith('.md')) return false;
+
+          // Exclude fixed tabs
+          if (fixedTabs.has(dirent.name)) return false;
+
+          // Exclude document-review-*.md patterns
+          if (/^document-review-\d+(-reply)?\.md$/.test(dirent.name)) return false;
+
+          // Exclude inspection-*.md patterns
+          if (/^inspection-\d+\.md$/.test(dirent.name)) return false;
+
+          return true;
+        })
+        .map((dirent) => dirent.name)
+        .sort(); // Alphabetical order
+
+      return {
+        ok: true,
+        value: markdownFiles,
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          ok: false,
+          error: {
+            type: 'SPEC_NOT_FOUND',
+            path: specPath,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: specPath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
 }

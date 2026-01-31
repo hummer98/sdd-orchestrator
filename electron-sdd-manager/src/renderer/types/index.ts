@@ -100,6 +100,12 @@ export interface SpecDetail {
   taskProgress: TaskProgress | null;
   /** Parallel task info calculated from tasks.md (P) markers */
   parallelTaskInfo: ParallelTaskInfo | null;
+  /**
+   * List of additional *.md files in spec directory (excluding fixed/dynamic tabs)
+   * artifact-all-markdown-files: Task 2.1 - SpecDetail type extension
+   * Requirements: 5.1, 5.3
+   */
+  markdownFiles?: string[];
 }
 
 /** Task item from parsed tasks.md */
@@ -175,7 +181,10 @@ export type FileError =
   | { type: 'INVALID_TRANSITION'; path: string; message: string }  // spec-phase-auto-update
   // git-view-source-mode: Extended file error types
   | { type: 'FILE_NOT_FOUND'; path: string }
-  | { type: 'READ_ERROR'; path: string; message: string };
+  | { type: 'READ_ERROR'; path: string; message: string }
+  // artifact-all-markdown-files: Task 11.1 - SPEC_NOT_FOUND for listMarkdownFilesInSpec
+  // Requirements: 4.3
+  | { type: 'SPEC_NOT_FOUND'; path: string };
 
 // Command error types
 export type CommandError =

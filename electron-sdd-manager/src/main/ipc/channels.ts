@@ -17,6 +17,8 @@ export const IPC_CHANNELS = {
   UPDATE_APPROVAL: 'ipc:update-approval',
   // spec-scoped-auto-execution-state: Update spec.json
   UPDATE_SPEC_JSON: 'ipc:update-spec-json',
+  // artifact-all-markdown-files: List markdown files in spec directory
+  LIST_MARKDOWN_FILES_IN_SPEC: 'ipc:list-markdown-files-in-spec',
 
   // Agent Management (Task 27.1)
   START_AGENT: 'ipc:start-agent',

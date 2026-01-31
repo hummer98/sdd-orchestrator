@@ -62,6 +62,12 @@ export interface BugDetail {
     readonly fix: BugArtifactInfo | null;         // fix.md
     readonly verification: BugArtifactInfo | null; // verification.md
   };
+  /**
+   * List of additional *.md files in bug directory (excluding fixed tabs)
+   * artifact-all-markdown-files: Task 2.1 - BugDetail type extension
+   * Requirements: 6.3
+   */
+  readonly markdownFiles?: string[];
 }
 
 /**

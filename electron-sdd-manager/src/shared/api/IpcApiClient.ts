@@ -111,6 +111,9 @@ export class IpcApiClient implements ApiClient {
     const specPath = `${projectPath}/.kiro/specs/${specId}`;
     return wrapResult(async () => {
       const specJson = await window.electronAPI.readSpecJson(specPath);
+      // artifact-all-markdown-files: Task 3.1 - Populate markdownFiles field
+      // Requirements: 5.2
+      const markdownFiles = await window.electronAPI.listMarkdownFilesInSpec(specId, 'spec');
       return {
         metadata: {
           name: specId,
@@ -129,6 +132,7 @@ export class IpcApiClient implements ApiClient {
         },
         taskProgress: null,
         parallelTaskInfo: null,
+        markdownFiles,
       } as SpecDetail;
     });
   }
@@ -186,7 +190,17 @@ export class IpcApiClient implements ApiClient {
 
   async getBugDetail(bugPath: string): Promise<Result<BugDetail, ApiError>> {
     checkElectronAPI();
-    return wrapResult(() => window.electronAPI.readBugDetail(bugPath));
+    return wrapResult(async () => {
+      const bugDetail = await window.electronAPI.readBugDetail(bugPath);
+      // artifact-all-markdown-files: Task 10.2 (Inspection Fix) - Populate markdownFiles field
+      // Requirements: 5.2, 6.3
+      const bugName = bugPath.split('/').pop() || '';
+      const markdownFiles = await window.electronAPI.listMarkdownFilesInSpec(bugName, 'bug');
+      return {
+        ...bugDetail,
+        markdownFiles,
+      };
+    });
   }
 
   async executeBugPhase(

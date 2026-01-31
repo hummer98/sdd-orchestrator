@@ -16,6 +16,7 @@ import {
 } from './index';
 import { CenterPaneContainer } from './CenterPaneContainer';
 import type { TabInfo, ArtifactInfo } from './ArtifactEditor';
+import type { ArtifactType } from '../stores/editorStore';
 
 /** Bug artifact tabs */
 const BUG_TABS: TabInfo[] = [
@@ -94,6 +95,22 @@ export function BugPane({
     return bugDetail.artifacts as Record<string, ArtifactInfo | null>;
   }, [bugDetail?.artifacts]);
 
+  // artifact-all-markdown-files: Task 5.1 - Additional markdown files tabs for bugs
+  // Requirements: 6.3
+  const additionalMarkdownTabs = useMemo((): TabInfo[] => {
+    const markdownFiles = bugDetail?.markdownFiles;
+    if (!markdownFiles || markdownFiles.length === 0) {
+      return [];
+    }
+
+    // Files are already sorted alphabetically by FileService
+    // Convert to TabInfo format
+    return markdownFiles.map((filename) => ({
+      key: filename as ArtifactType,
+      label: filename.replace('.md', ''),
+    }));
+  }, [bugDetail?.markdownFiles]);
+
   // Bug fix: git-view-bugs-tab - Resolve worktree path for GitView
   const worktreePath = useMemo((): string | undefined => {
     const metadata = bugDetail?.metadata;
@@ -127,9 +144,11 @@ export function BugPane({
     <div className="flex-1 flex overflow-hidden">
       {/* Center - CenterPaneContainer (ArtifactEditor / GitView switch) */}
       {/* Bug fix: git-view-bugs-tab - Replace direct ArtifactEditor with CenterPaneContainer */}
+      {/* artifact-all-markdown-files: Task 5.2 - Include additional markdown tabs */}
+      {/* Requirements: 6.3 */}
       <CenterPaneContainer
         tabs={BUG_TABS}
-        dynamicTabs={[]}
+        dynamicTabs={additionalMarkdownTabs}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         baseName={selectedBug.name}

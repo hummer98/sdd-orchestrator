@@ -957,3 +957,184 @@ describe('FileService - readFileContent', () => {
     });
   });
 });
+
+// ============================================================
+// artifact-all-markdown-files Task 1.1: listMarkdownFilesInSpec tests
+// Requirements: 1.1, 1.2, 4.2, 4.3, 7.1
+// ============================================================
+describe('FileService - listMarkdownFilesInSpec', () => {
+  let fileService: FileService;
+  let tempDir: string;
+  let specPath: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'list-md-files-test-'));
+    specPath = path.join(tempDir, '.kiro', 'specs', 'test-feature');
+    await fs.mkdir(specPath, { recursive: true });
+    // Create spec.json to mark as valid spec directory
+    await fs.writeFile(
+      path.join(specPath, 'spec.json'),
+      JSON.stringify({ feature_name: 'test-feature', phase: 'initialized' }, null, 2),
+      'utf-8'
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * RED Phase: Test should fail because listMarkdownFilesInSpec method doesn't exist yet
+   */
+  describe('normal operations', () => {
+    it('should return empty array when no markdown files exist', async () => {
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('should list additional markdown files (excluding fixed tabs)', async () => {
+      // Create fixed tab files (should be excluded)
+      await fs.writeFile(path.join(specPath, 'requirements.md'), '# Requirements', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'design.md'), '# Design', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'tasks.md'), '# Tasks', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'research.md'), '# Research', 'utf-8');
+
+      // Create dynamic tab files (should be excluded)
+      await fs.writeFile(path.join(specPath, 'document-review-1.md'), '# Review 1', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'document-review-1-reply.md'), '# Reply 1', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'inspection-1.md'), '# Inspection 1', 'utf-8');
+
+      // Create additional markdown files (should be included)
+      await fs.writeFile(path.join(specPath, 'architecture.md'), '# Architecture', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'notes.md'), '# Notes', 'utf-8');
+
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value).toContain('architecture.md');
+        expect(result.value).toContain('notes.md');
+        // Verify exclusions
+        expect(result.value).not.toContain('requirements.md');
+        expect(result.value).not.toContain('design.md');
+        expect(result.value).not.toContain('tasks.md');
+        expect(result.value).not.toContain('research.md');
+        expect(result.value).not.toContain('document-review-1.md');
+        expect(result.value).not.toContain('document-review-1-reply.md');
+        expect(result.value).not.toContain('inspection-1.md');
+      }
+    });
+
+    it('should exclude subdirectories', async () => {
+      // Create markdown file in subdirectory
+      const subdir = path.join(specPath, 'subdir');
+      await fs.mkdir(subdir);
+      await fs.writeFile(path.join(subdir, 'nested.md'), '# Nested', 'utf-8');
+
+      // Create markdown file in spec root
+      await fs.writeFile(path.join(specPath, 'root.md'), '# Root', 'utf-8');
+
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value).toContain('root.md');
+        expect(result.value).not.toContain('nested.md');
+      }
+    });
+
+    it('should only include .md files', async () => {
+      await fs.writeFile(path.join(specPath, 'test.md'), '# Test', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'test.txt'), 'Text file', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'test.json'), '{}', 'utf-8');
+
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value).toContain('test.md');
+        expect(result.value).not.toContain('test.txt');
+        expect(result.value).not.toContain('test.json');
+      }
+    });
+
+    it('should return alphabetically sorted filenames', async () => {
+      await fs.writeFile(path.join(specPath, 'zebra.md'), 'Z', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'apple.md'), 'A', 'utf-8');
+      await fs.writeFile(path.join(specPath, 'mango.md'), 'M', 'utf-8');
+
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(['apple.md', 'mango.md', 'zebra.md']);
+      }
+    });
+  });
+
+  describe('error handling', () => {
+    it('should return error when spec.json does not exist', async () => {
+      const invalidSpecPath = path.join(tempDir, '.kiro', 'specs', 'invalid-spec');
+      await fs.mkdir(invalidSpecPath, { recursive: true });
+
+      const result = await fileService.listMarkdownFilesInSpec(invalidSpecPath);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
+    });
+
+    it('should return error when specPath does not exist', async () => {
+      const nonExistentPath = path.join(tempDir, '.kiro', 'specs', 'non-existent');
+
+      const result = await fileService.listMarkdownFilesInSpec(nonExistentPath);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
+    });
+
+    it('should return error for path traversal attempt', async () => {
+      const result = await fileService.listMarkdownFilesInSpec('/etc/passwd');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('INVALID_PATH');
+      }
+    });
+  });
+
+  describe('performance', () => {
+    it('should complete within 100ms for 100 files', async () => {
+      // Create 100 markdown files
+      const filePromises = [];
+      for (let i = 0; i < 100; i++) {
+        filePromises.push(
+          fs.writeFile(path.join(specPath, `file-${i}.md`), `# File ${i}`, 'utf-8')
+        );
+      }
+      await Promise.all(filePromises);
+
+      const startTime = performance.now();
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+      const endTime = performance.now();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(100);
+      }
+      // Performance requirement: 100ms
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+  });
+});

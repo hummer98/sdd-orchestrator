@@ -483,6 +483,11 @@ export function createSpecDetailProvider(projectPath: string): SpecDetailProvide
 
         const specJson = result.value;
 
+        // artifact-all-markdown-files: Task 3.2 - Get markdown files list
+        // Requirements: 5.2
+        const markdownFilesResult = await fileService.listMarkdownFilesInSpec(specPath);
+        const markdownFiles = markdownFilesResult.ok ? markdownFilesResult.value : [];
+
         // Build SpecDetail in the format expected by Remote UI
         return {
           ok: true,
@@ -507,6 +512,7 @@ export function createSpecDetailProvider(projectPath: string): SpecDetailProvide
               inspection: { exists: false },
             },
             taskProgress: null,
+            markdownFiles,
           },
         };
       } catch (error) {
@@ -546,6 +552,7 @@ export function setupSpecDetailProvider(projectPath: string): void {
  */
 export function createBugDetailProvider(_projectPath: string): BugDetailProvider {
   const bugService = new BugService();
+  const fileService = new FileService();
 
   return {
     getBugDetail: async (bugPath: string) => {
@@ -559,6 +566,11 @@ export function createBugDetailProvider(_projectPath: string): BugDetailProvider
           };
         }
 
+        // artifact-all-markdown-files: Task 3.2 - Get markdown files list for bugs
+        // Requirements: 6.3
+        const markdownFilesResult = await fileService.listMarkdownFilesInSpec(bugPath);
+        const markdownFiles = markdownFilesResult.ok ? markdownFilesResult.value : [];
+
         // BugService returns BugDetail which has BugMetadata (without path)
         // WebSocket API needs path, so we add it from the input parameter
         // spec-path-ssot-refactor: Reconstruct BugDetailResult with path for WebSocket API
@@ -571,6 +583,7 @@ export function createBugDetailProvider(_projectPath: string): BugDetailProvider
             updatedAt: result.value.metadata.updatedAt,
           },
           artifacts: result.value.artifacts,
+          markdownFiles,
         };
 
         return {

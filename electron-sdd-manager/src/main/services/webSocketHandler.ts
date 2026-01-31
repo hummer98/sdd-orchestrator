@@ -364,6 +364,15 @@ export interface FileServiceInterface {
     specPath: string,
     updates: Record<string, unknown>
   ): Promise<{ ok: true; value: void } | { ok: false; error: { type: string; path?: string; message?: string } }>;
+
+  /**
+   * List additional *.md files in spec/bug directory
+   * artifact-all-markdown-files: Task 11.2 - Add to interface for WebSocket handler
+   * Requirements: 4.4
+   */
+  listMarkdownFilesInSpec(
+    specPath: string
+  ): Promise<{ ok: true; value: string[] } | { ok: false; error: { type: string; path: string; reason?: string } }>;
 }
 
 /**
@@ -419,6 +428,12 @@ export interface BugDetailResult {
     readonly fix: BugArtifactInfo | null;
     readonly verification: BugArtifactInfo | null;
   };
+  /**
+   * Additional *.md files in bug directory (excluding fixed tabs)
+   * artifact-all-markdown-files: Task 11.4
+   * Requirements: 6.3
+   */
+  readonly markdownFiles?: string[];
 }
 
 /**
@@ -889,6 +904,12 @@ export class WebSocketHandler {
       // Artifact content handler (remote-ui-artifact-editor feature)
       case 'GET_ARTIFACT_CONTENT':
         await this.handleGetArtifactContent(client, message);
+        break;
+      // artifact-all-markdown-files: List markdown files handler
+      // Task 1.3: WebSocket API endpoint
+      // Requirements: 4.4
+      case 'LIST_MARKDOWN_FILES_IN_SPEC':
+        await this.handleListMarkdownFilesInSpec(client, message);
         break;
       // Spec detail handlers (remote-ui-react-migration Task 6.3)
       case 'GET_SPEC_DETAIL':
@@ -2954,6 +2975,89 @@ export class WebSocketHandler {
           timestamp: Date.now(),
         });
       }
+    }
+  }
+
+  /**
+   * Handle LIST_MARKDOWN_FILES_IN_SPEC message
+   * artifact-all-markdown-files: Task 1.3 - WebSocket API endpoint
+   * Requirements: 4.4
+   */
+  private async handleListMarkdownFilesInSpec(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    if (!this.fileService) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'File service not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (!this.stateProvider) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NOT_CONFIGURED', message: 'State provider not configured' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const payload = message.payload || {};
+    const specId = payload.specId as string;
+    const entityType = (payload.entityType as 'spec' | 'bug') || 'spec';
+
+    if (!specId) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    // Resolve entity path using fileService
+    const projectPath = this.stateProvider.getProjectPath();
+    const entityTypePlural = entityType === 'spec' ? 'specs' : 'bugs';
+    const pathResult = await this.fileService.resolveEntityPath(projectPath, entityTypePlural, specId);
+
+    if (!pathResult.ok) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: pathResult.error.type,
+          message: pathResult.error.type === 'NOT_FOUND'
+            ? `${entityType} '${specId}' not found`
+            : 'Failed to resolve path',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    // List markdown files in spec directory
+    const listResult = await this.fileService.listMarkdownFilesInSpec(pathResult.value);
+
+    if (listResult.ok) {
+      this.send(client.id, {
+        type: 'MARKDOWN_FILES_LIST',
+        payload: { files: listResult.value },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } else {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: {
+          code: listResult.error.type,
+          message: 'Failed to list markdown files',
+        },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
     }
   }
 

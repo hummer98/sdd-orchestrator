@@ -190,5 +190,38 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
     }
   );
 
+  // ============================================================
+  // artifact-all-markdown-files: List Markdown Files
+  // Task 1.2: IPC API endpoint
+  // Requirements: 4.1
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.LIST_MARKDOWN_FILES_IN_SPEC,
+    async (_event, name: string, entityType: 'spec' | 'bug' = 'spec') => {
+      logger.debug('[fileHandlers] LIST_MARKDOWN_FILES_IN_SPEC called', { name, entityType });
+
+      const currentProjectPath = getCurrentProjectPath();
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+
+      // Use appropriate path resolver based on entityType
+      const pathResult = entityType === 'bug'
+        ? await fileService.resolveBugPath(currentProjectPath, name)
+        : await fileService.resolveSpecPath(currentProjectPath, name);
+      if (!pathResult.ok) {
+        throw new Error(`${entityType === 'bug' ? 'Bug' : 'Spec'} not found: ${name}`);
+      }
+
+      const result = await fileService.listMarkdownFilesInSpec(pathResult.value);
+      if (!result.ok) {
+        throw new Error(`Failed to list markdown files: ${result.error.type}`);
+      }
+
+      return result.value;
+    }
+  );
+
   logger.info('[fileHandlers] File handlers registered');
 }

@@ -102,10 +102,11 @@ export interface LogFileEntry {
 /**
  * Agent logs provider interface for reading agent log files
  * Requirements: Bug fix - remote-ui-agent-log-display
+ * Bug fix: Returns ParsedLogEntry[] (parsed logs) instead of raw LogFileEntry[]
  */
 export interface AgentLogsProvider {
-  /** Read agent logs from log file */
-  readLog(specId: string, agentId: string): Promise<LogFileEntry[]>;
+  /** Read agent logs from log file and return parsed entries */
+  readLog(specId: string, agentId: string): Promise<ParsedLogEntry[]>;
 }
 
 /**
@@ -817,6 +818,7 @@ export class WebSocketHandler {
    * @param message Parsed WebSocket message
    */
   private async routeMessage(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    console.log('[routeMessage] Received message type:', message.type);
     switch (message.type) {
       case 'GET_SPECS':
         await this.handleGetSpecs(client, message);
@@ -831,6 +833,10 @@ export class WebSocketHandler {
         await this.handleSelectSpec(client, message);
         break;
       case 'SELECT_AGENT':
+        await this.handleSelectAgent(client, message);
+        break;
+      // Bug fix: Remote UI sends GET_AGENT_LOGS to fetch past logs
+      case 'GET_AGENT_LOGS':
         await this.handleSelectAgent(client, message);
         break;
       case 'EXECUTE_PHASE':
@@ -1348,7 +1354,8 @@ export class WebSocketHandler {
     const specId = payload.specId as string;
     const agentId = payload.agentId as string;
 
-    if (!specId || !agentId) {
+    // Note: specId can be empty string for Project Agents, so only check for undefined/null
+    if (specId === undefined || specId === null || !agentId) {
       this.send(client.id, {
         type: 'ERROR',
         payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or agentId' },

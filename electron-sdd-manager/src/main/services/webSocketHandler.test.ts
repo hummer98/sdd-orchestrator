@@ -4084,3 +4084,215 @@ describe('WebSocketHandler - broadcastAgentLog (Task 10.8)', () => {
     expect(() => handler.broadcastAgentLog('agent-003', parsedLog)).not.toThrow();
   });
 });
+
+// ============================================================
+// GET_AGENT_LOGS Handler Tests
+// Bug fix: Project Agent logs not loading (specId empty string)
+// ============================================================
+
+describe('WebSocketHandler - GET_AGENT_LOGS (handleSelectAgent)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  function createMockWebSocketForLogs(): WebSocket & { on: ReturnType<typeof vi.fn> } {
+    const eventHandlers = new Map<string, ((...args: unknown[]) => void)[]>();
+    const mockWs = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        if (!eventHandlers.has(event)) {
+          eventHandlers.set(event, []);
+        }
+        eventHandlers.get(event)!.push(handler);
+        return mockWs;
+      }),
+      off: vi.fn(),
+      send: vi.fn(),
+      close: vi.fn(),
+      readyState: 1, // WebSocket.OPEN
+      emit: (event: string, ...args: unknown[]) => {
+        const handlers = eventHandlers.get(event) || [];
+        handlers.forEach((h) => h(...args));
+      },
+    };
+    return mockWs as unknown as WebSocket & { on: ReturnType<typeof vi.fn> };
+  }
+
+  function createMockRequest(ip: string): IncomingMessage {
+    return {
+      socket: { remoteAddress: ip },
+      headers: {},
+    } as unknown as IncomingMessage;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('should return logs for Project Agent (specId is empty string)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    // Set up mock agentLogsProvider
+    const mockLogs = [
+      { id: 'log-1', type: 'text', timestamp: Date.now(), engineId: 'claude', text: { content: 'test', role: 'assistant' } },
+    ];
+    handler.setAgentLogsProvider({
+      readLog: vi.fn().mockResolvedValue(mockLogs),
+    });
+
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocketForLogs();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    // Get message handler
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+    expect(messageHandler).toBeDefined();
+
+    // Send GET_AGENT_LOGS with empty specId (Project Agent)
+    const message = JSON.stringify({
+      type: 'GET_AGENT_LOGS',
+      payload: { specId: '', agentId: 'agent-project-001' },
+      requestId: 'req-1',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    // Should return AGENT_LOGS, not ERROR
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const agentLogsResponse = sentMessages.find((m) => m.type === 'AGENT_LOGS');
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeUndefined();
+    expect(agentLogsResponse).toBeDefined();
+    expect(agentLogsResponse.payload.specId).toBe('');
+    expect(agentLogsResponse.payload.agentId).toBe('agent-project-001');
+    expect(agentLogsResponse.payload.logs).toEqual(mockLogs);
+  });
+
+  it('should return logs for Spec Agent (specId is non-empty)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockLogs = [
+      { id: 'log-2', type: 'text', timestamp: Date.now(), engineId: 'claude', text: { content: 'spec log', role: 'assistant' } },
+    ];
+    handler.setAgentLogsProvider({
+      readLog: vi.fn().mockResolvedValue(mockLogs),
+    });
+
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocketForLogs();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    // Send GET_AGENT_LOGS with non-empty specId (Spec Agent)
+    const message = JSON.stringify({
+      type: 'GET_AGENT_LOGS',
+      payload: { specId: 'my-feature-spec', agentId: 'agent-spec-001' },
+      requestId: 'req-2',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const agentLogsResponse = sentMessages.find((m) => m.type === 'AGENT_LOGS');
+
+    expect(agentLogsResponse).toBeDefined();
+    expect(agentLogsResponse.payload.specId).toBe('my-feature-spec');
+    expect(agentLogsResponse.payload.agentId).toBe('agent-spec-001');
+  });
+
+  it('should return error when agentId is missing', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    handler.setAgentLogsProvider({
+      readLog: vi.fn().mockResolvedValue([]),
+    });
+
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocketForLogs();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    // Send GET_AGENT_LOGS without agentId
+    const message = JSON.stringify({
+      type: 'GET_AGENT_LOGS',
+      payload: { specId: '' },
+      requestId: 'req-3',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+
+  it('should return error when specId is null or undefined', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    handler.setAgentLogsProvider({
+      readLog: vi.fn().mockResolvedValue([]),
+    });
+
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocketForLogs();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    // Send GET_AGENT_LOGS without specId (undefined)
+    const message = JSON.stringify({
+      type: 'GET_AGENT_LOGS',
+      payload: { agentId: 'agent-001' },
+      requestId: 'req-4',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+});

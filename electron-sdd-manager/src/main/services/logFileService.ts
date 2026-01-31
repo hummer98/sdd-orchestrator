@@ -6,7 +6,11 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { AgentCategory, getCategoryBasePath, getLogPath } from './agentCategory';
+import { AgentCategory, getCategoryBasePath, getLogPath, determineCategory, getEntityIdFromSpecId } from './agentCategory';
+import { unifiedParser } from '../utils/unifiedParser';
+import { logger } from './logger';
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
+import type { LLMEngineId } from '@shared/registry';
 
 export interface LogEntry {
   timestamp: string;
@@ -302,4 +306,39 @@ export async function appendLog(specId: string, agentId: string, entry: LogEntry
 
 export async function readLog(specId: string, agentId: string): Promise<LogEntry[]> {
   return getDefaultLogFileService().readLog(specId, agentId);
+}
+
+/**
+ * Read and parse agent logs (shared between IPC and WebSocket handlers)
+ * DRY: Unified log reading and parsing logic
+ *
+ * @param specId - Spec ID (with 'bug:' prefix for bugs, empty for project)
+ * @param agentId - Agent ID
+ * @param engineId - Optional LLM engine ID for parser selection
+ * @returns Parsed log entries ready for UI display
+ */
+export async function readParsedLogs(
+  specId: string,
+  agentId: string,
+  engineId?: LLMEngineId
+): Promise<ParsedLogEntry[]> {
+  const logFileService = getDefaultLogFileService();
+
+  // Read raw logs with category-aware path resolution
+  const category = determineCategory(specId);
+  const entityId = getEntityIdFromSpecId(specId);
+
+  const { entries: logs } = await logFileService.readLogWithFallback(category, entityId, agentId);
+
+  // Parse each log entry's data field using unified parser
+  const parsedLogs: ParsedLogEntry[] = [];
+  for (const log of logs) {
+    if (log.stream === 'stdout' && log.data) {
+      const entries = unifiedParser.parseData(log.data, engineId);
+      parsedLogs.push(...entries);
+    }
+    // stderr is typically not shown in UI, skip for now
+  }
+
+  return parsedLogs;
 }

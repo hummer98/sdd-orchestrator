@@ -12,7 +12,6 @@ import { logger } from '../services/logger';
 import { setMenuRemoteServerStatus } from '../menu';
 import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider, BugDetailResult } from '../services/webSocketHandler';
 import { FileService } from '../services/fileService';
-import { getDefaultLogFileService } from '../services/logFileService';
 import { projectConfigService } from '../services/layoutConfigService';
 import type { SpecManagerService } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
@@ -20,8 +19,9 @@ import { getClaudeCommand } from '../services/agentProcess';
 import { BugService } from '../services/bugService';
 import { join } from 'path';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
-// runtime-agents-restructure: Category-aware log reading
-import { determineCategory, getEntityIdFromSpecId } from '../services/agentCategory';
+// DRY: Uses shared readParsedLogs from logFileService (no direct imports needed)
+import { getDefaultAgentRecordService } from '../services/agentRecordService';
+import type { ParsedLogEntry } from '@shared/utils/parserTypes';
 
 // Singleton instance of RemoteAccessServer
 let remoteAccessServer: RemoteAccessServer | null = null;
@@ -419,17 +419,26 @@ export function setupWorkflowController(specManagerService: SpecManagerService):
 /**
  * Create an AgentLogsProvider for WebSocketHandler
  * Requirements: Bug fix - remote-ui-agent-log-display
- * runtime-agents-restructure: Use category-aware log reading
+ * DRY: Uses shared readParsedLogs function from logFileService
  */
 export function createAgentLogsProvider(): AgentLogsProvider {
   return {
-    readLog: async (specId: string, agentId: string) => {
-      const logFileService = getDefaultLogFileService();
-      // runtime-agents-restructure: Use category-aware log reading
-      const category = determineCategory(specId);
-      const entityId = getEntityIdFromSpecId(specId);
-      const { entries } = await logFileService.readLogWithFallback(category, entityId, agentId);
-      return entries;
+    readLog: async (specId: string, agentId: string): Promise<ParsedLogEntry[]> => {
+      // Get engineId from agent record for parser selection (optional)
+      let engineId: import('@shared/registry').LLMEngineId | undefined;
+      try {
+        const agentRecordService = getDefaultAgentRecordService();
+        const record = await agentRecordService.findRecordByAgentId(agentId);
+        engineId = record?.engineId;
+      } catch {
+        logger.debug('[createAgentLogsProvider] AgentRecordService not available, using default parser');
+      }
+
+      // Use shared function for log reading and parsing
+      const { readParsedLogs } = await import('../services/logFileService');
+      const parsedLogs = await readParsedLogs(specId, agentId, engineId);
+
+      return parsedLogs;
     },
   };
 }

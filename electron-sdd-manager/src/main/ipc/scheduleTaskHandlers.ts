@@ -30,8 +30,6 @@ import type {
   CreateScheduleWorktreeFn,
   StartScheduleAgentOptions,
   CreateScheduleWorktreeOptions,
-  ScheduleAgentStartResult,
-  ScheduleWorktreeInfo,
 } from '../services/scheduleTaskCoordinator';
 import type {
   ScheduleTask,
@@ -130,7 +128,7 @@ function toSharedExecutionResult(result: CoordinatorExecutionResult): ExecutionR
  * @returns StartScheduleAgentFn function
  */
 export function createStartScheduleAgentWrapper(
-  projectPath: string,
+  _projectPath: string,
   specManagerService: SpecManagerService
 ): StartScheduleAgentFn {
   return async (options: StartScheduleAgentOptions) => {
@@ -161,11 +159,11 @@ export function createStartScheduleAgentWrapper(
         // Requirement 3.4: Return agentId on success
         logger.info('[ScheduleTaskHandlers] Schedule agent started successfully', {
           taskId,
-          agentId: result.value.id,
+          agentId: result.value.agentId,
         });
         return {
           ok: true as const,
-          value: { agentId: result.value.id },
+          value: { agentId: result.value.agentId },
         };
       } else {
         // Requirement 3.5: Error handling
@@ -353,7 +351,7 @@ export async function initScheduleTaskCoordinator(
   const fileService = getDefaultScheduleTaskFileService();
 
   // Create service instances if not provided (for testing)
-  const sms = specManagerService ?? SpecManagerService.getInstance();
+  const sms = specManagerService ?? new SpecManagerService(projectPath);
   const wts = worktreeService ?? new WorktreeService(projectPath);
 
   // Task 3.1: Create wrapper functions for dependency injection

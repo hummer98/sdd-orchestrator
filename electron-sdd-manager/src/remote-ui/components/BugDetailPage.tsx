@@ -262,7 +262,7 @@ export function BugDetailPage({
  */
 function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
   return {
-    agentId: agent.id,
+    agentId: agent.agentId,
     sessionId: agent.sessionId ?? '',
     phase: agent.phase,
     status: agent.status,
@@ -347,7 +347,7 @@ function BugTabContent({
 
   /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
   const logs: ParsedLogEntry[] = useMemo(
-    () => selectedAgent ? (logsMap.get(selectedAgent.id) ?? []) : [],
+    () => selectedAgent ? (logsMap.get(selectedAgent.agentId) ?? []) : [],
     [logsMap, selectedAgent]
   );
 
@@ -368,7 +368,7 @@ function BugTabContent({
    * Handle agent selection - opens AgentDetailDrawer (Req 4.4)
    */
   const handleSelectAgent = useCallback((agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
+    const agent = agents.find((a) => a.agentId === agentId);
     if (agent) {
       setSelectedAgent(agent);
       setIsDrawerOpen(true);
@@ -405,7 +405,7 @@ function BugTabContent({
    */
   const handleSendInstruction = useCallback(async (instruction: string) => {
     if (!selectedAgent) return;
-    await apiClient.sendAgentInput(selectedAgent.id, instruction);
+    await apiClient.sendAgentInput(selectedAgent.agentId, instruction);
   }, [selectedAgent, apiClient]);
 
   /**
@@ -413,7 +413,7 @@ function BugTabContent({
    */
   const handleContinue = useCallback(async () => {
     if (!selectedAgent) return;
-    await apiClient.resumeAgent(selectedAgent.id);
+    await apiClient.resumeAgent(selectedAgent.agentId);
   }, [selectedAgent, apiClient]);
 
   // ---------------------------------------------------------------------------

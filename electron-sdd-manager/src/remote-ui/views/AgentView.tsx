@@ -66,7 +66,7 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
     : startedAt;
 
   return {
-    agentId: agent.id,
+    agentId: agent.agentId,
     sessionId: agent.specId,
     phase: agent.phase,
     status: mapAgentStatus(agent.status),
@@ -77,7 +77,7 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
 
 function mapAgentInfoToLogInfo(agent: AgentInfo): AgentLogInfo {
   return {
-    agentId: agent.id,
+    agentId: agent.agentId,
     sessionId: agent.sessionId,
     phase: agent.phase,
     status: agent.status,
@@ -151,7 +151,7 @@ export function AgentView({
     const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
       setAgents((prev) =>
         prev.map((agent) =>
-          agent.id === agentId ? { ...agent, status } : agent
+          agent.agentId === agentId ? { ...agent, status } : agent
         )
       );
     });
@@ -170,7 +170,7 @@ export function AgentView({
     let isMounted = true;
 
     async function loadLogs() {
-      const selectedAgent = agents.find((a) => a.id === agentId);
+      const selectedAgent = agents.find((a) => a.agentId === agentId);
       if (!selectedAgent) return;
 
       const result = await apiClient.getAgentLogs(selectedAgent.specId ?? '', agentId);
@@ -213,7 +213,7 @@ export function AgentView({
   // Handle agent selection
   const handleSelectAgent = useCallback(
     (agent: AgentInfo) => {
-      setSelectedAgentId(agent.id);
+      setSelectedAgentId(agent.agentId);
       onAgentSelected?.(agent);
     },
     [onAgentSelected]
@@ -232,7 +232,7 @@ export function AgentView({
   const handleRemoveAgent = useCallback(
     (e: React.MouseEvent, agentId: string) => {
       e.stopPropagation();
-      setAgents((prev) => prev.filter((a) => a.id !== agentId));
+      setAgents((prev) => prev.filter((a) => a.agentId !== agentId));
       if (selectedAgentId === agentId) {
         setSelectedAgentId(null);
       }
@@ -252,7 +252,7 @@ export function AgentView({
   }, [selectedAgentId]);
 
   // Get logs for selected agent
-  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  const selectedAgent = agents.find((a) => a.agentId === selectedAgentId);
   const selectedLogs = selectedAgentId ? logs.get(selectedAgentId) || [] : [];
 
   // Render loading state
@@ -288,7 +288,7 @@ export function AgentView({
           agents={agents.map(mapAgentInfoToItemInfo)}
           selectedAgentId={selectedAgentId}
           onSelect={(agentId) => {
-            const agent = agents.find(a => a.id === agentId);
+            const agent = agents.find(a => a.agentId === agentId);
             if (agent) handleSelectAgent(agent);
           }}
           onStop={(e, agentId) => handleStopAgent(e, agentId)}

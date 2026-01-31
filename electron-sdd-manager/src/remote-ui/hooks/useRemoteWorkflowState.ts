@@ -251,7 +251,7 @@ export function useRemoteWorkflowState(
     await wrapExecution(async () => {
       const result = await apiClient.executePhase(spec.name, phase);
       if (result.ok) {
-        onPhaseExecuted?.(phase, result.value.id);
+        onPhaseExecuted?.(phase, result.value.agentId);
         setRunningPhases((prev) => new Set([...prev, phase]));
         await refreshSpecDetail();
       }

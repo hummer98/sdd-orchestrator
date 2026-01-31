@@ -139,9 +139,10 @@ export interface StateProvider {
 /**
  * Agent info for state distribution (Remote UI display)
  * Bug fix: agent-command-missing-in-remote-ui - Added command and sessionId fields
+ * agentId-unification: Changed 'id' to 'agentId' for SSOT consistency
  */
 export interface AgentStateInfo {
-  readonly id: string;
+  readonly agentId: string;
   readonly status: string;
   readonly phase?: string;
   readonly specId?: string;

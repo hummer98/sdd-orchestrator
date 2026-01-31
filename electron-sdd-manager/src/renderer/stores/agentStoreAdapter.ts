@@ -22,12 +22,12 @@ import { useSharedAgentStore, type AgentInfo as SharedAgentInfo, type AgentStatu
 
 /**
  * Convert renderer AgentInfo to shared AgentInfo format
- * renderer uses 'agentId', shared uses 'id'
+ * agentId-unification: Both now use 'agentId', conversion is trivial
  * project-agent-release-footer: Task 2.3 - Map prompt to args for release detection
  */
 function toSharedAgentInfo(rendererAgent: RendererAgentInfo): SharedAgentInfo {
   return {
-    id: rendererAgent.agentId,
+    agentId: rendererAgent.agentId,
     specId: rendererAgent.specId,
     phase: rendererAgent.phase,
     status: rendererAgent.status as AgentStatus,
@@ -100,9 +100,9 @@ export const agentOperations = {
       useSharedAgentStore.getState().addAgent(specId, agentInfo);
 
       // Also select the new agent
-      useSharedAgentStore.getState().selectAgent(agentInfo.id);
+      useSharedAgentStore.getState().selectAgent(agentInfo.agentId);
 
-      return agentInfo.id;
+      return agentInfo.agentId;
     } catch (error) {
       console.error('[agentStoreAdapter] Failed to start agent:', error);
       return null;

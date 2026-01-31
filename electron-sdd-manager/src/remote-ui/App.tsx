@@ -72,7 +72,7 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
     : startedAt;
 
   return {
-    agentId: agent.id,
+    agentId: agent.agentId,
     sessionId: agent.specId,
     phase: agent.phase,
     status: mapAgentStatus(agent.status),
@@ -164,7 +164,7 @@ function LeftSidebar({
     const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
       setProjectAgents((prev) =>
         prev.map((agent) =>
-          agent.id === agentId ? { ...agent, status } : agent
+          agent.agentId === agentId ? { ...agent, status } : agent
         )
       );
     });
@@ -183,7 +183,7 @@ function LeftSidebar({
 
   const handleRemoveAgent = useCallback((e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    setProjectAgents((prev) => prev.filter((a) => a.id !== agentId));
+    setProjectAgents((prev) => prev.filter((a) => a.agentId !== agentId));
   }, []);
 
   const handleAskExecute = useCallback(async (prompt: string) => {
@@ -516,7 +516,7 @@ function RightSidebar({
     const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
       setSpecAgents((prev) =>
         prev.map((agent) =>
-          agent.id === agentId ? { ...agent, status } : agent
+          agent.agentId === agentId ? { ...agent, status } : agent
         )
       );
     });
@@ -535,7 +535,7 @@ function RightSidebar({
 
   const handleRemoveAgent = useCallback((e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    setSpecAgents((prev) => prev.filter((a) => a.id !== agentId));
+    setSpecAgents((prev) => prev.filter((a) => a.agentId !== agentId));
   }, []);
 
   return (
@@ -627,7 +627,7 @@ function FooterContent() {
 
   // Transform AgentInfo to AgentLogInfo
   const agentLogInfo: AgentLogInfo | undefined = selectedAgent ? {
-    agentId: selectedAgent.id,
+    agentId: selectedAgent.agentId,
     sessionId: selectedAgent.specId,
     phase: selectedAgent.phase,
     status: selectedAgent.status,

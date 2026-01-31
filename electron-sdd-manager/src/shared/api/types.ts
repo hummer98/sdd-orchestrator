@@ -144,10 +144,11 @@ export type AgentStatus = 'running' | 'completed' | 'interrupted' | 'hang' | 'fa
 /**
  * Agent information for tracking running agents
  * agent-store-unification: Unified with renderer/stores/agentStore AgentInfo
+ * agentId-unification: Changed 'id' to 'agentId' for SSOT consistency
  */
 export interface AgentInfo {
   /** Unique agent identifier */
-  id: string;
+  agentId: string;
   /** Spec ID or '' for project-level agents */
   specId: string;
   /** Current agent phase */

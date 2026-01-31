@@ -25,7 +25,7 @@ describe('SharedAgentStore', () => {
     status: 'running' | 'completed' | 'interrupted' | 'hang' | 'failed' = 'running',
     startedAt?: string
   ): AgentInfo => ({
-    id,
+    agentId: id,
     specId,
     status,
     startedAt: startedAt || new Date().toISOString(),
@@ -74,7 +74,7 @@ describe('SharedAgentStore', () => {
         const projectAgents = freshState.agents.get('');
         expect(projectAgents).toBeDefined();
         expect(projectAgents).toHaveLength(1);
-        expect(projectAgents![0].id).toBe('project-agent-1');
+        expect(projectAgents![0].agentId).toBe('project-agent-1');
       });
     });
 
@@ -93,8 +93,8 @@ describe('SharedAgentStore', () => {
 
         const agents = store.getAgentsForSpec('spec-a');
         expect(agents).toHaveLength(2);
-        expect(agents[0].id).toBe('agent-1');
-        expect(agents[1].id).toBe('agent-2');
+        expect(agents[0].agentId).toBe('agent-1');
+        expect(agents[1].agentId).toBe('agent-2');
       });
 
       it('should return empty array for non-existent specId', () => {
@@ -127,7 +127,7 @@ describe('SharedAgentStore', () => {
 
         const foundAgent = store.getAgentById('agent-b');
         expect(foundAgent).toBeDefined();
-        expect(foundAgent!.id).toBe('agent-b');
+        expect(foundAgent!.agentId).toBe('agent-b');
         expect(foundAgent!.specId).toBe('spec-b');
       });
 
@@ -222,7 +222,7 @@ describe('SharedAgentStore', () => {
         const freshState = getSharedAgentStore();
         const specAgents = freshState.agents.get('spec-a');
         expect(specAgents).toHaveLength(1);
-        expect(specAgents![0].id).toBe('agent-2');
+        expect(specAgents![0].agentId).toBe('agent-2');
       });
 
       it('should search across all specs to find and remove agent', () => {
@@ -803,7 +803,7 @@ describe('SharedAgentStore', () => {
       const freshState = getSharedAgentStore();
       const logs = freshState.getLogsForAgent('agent-1');
       expect(logs).toHaveLength(1);
-      expect(logs[0].id).toBe('log-parsed');
+      expect(logs[0].agentId).toBe('log-parsed');
     });
 
     it('should return ParsedLogEntry[] from getLogsForAgent (Requirement 4.1)', () => {

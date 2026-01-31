@@ -372,7 +372,7 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
     for (const agentList of allAgentsMap.values()) {
       for (const agent of agentList) {
         agents.push({
-          id: agent.agentId, status: agent.status, phase: agent.phase, specId: agent.specId,
+          agentId: agent.agentId, status: agent.status, phase: agent.phase, specId: agent.specId,
           startedAt: agent.startedAt, lastActivityAt: agent.lastActivityAt, command: agent.command, sessionId: agent.sessionId,
         });
       }

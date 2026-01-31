@@ -358,7 +358,7 @@ describe('BugDetailPage', () => {
       const agentStore = useSharedAgentStore.getState();
       agents.forEach(agent => {
         agentStore.addAgent(agent.specId ?? 'test-bug', {
-          id: agent.id,
+          agentId: agent.id,
           phase: agent.phase,
           status: agent.status,
           specId: agent.specId ?? 'test-bug',

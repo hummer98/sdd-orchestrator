@@ -143,7 +143,7 @@ export class IpcApiClient implements ApiClient {
         featureName: specId,
       });
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: result.specId,
         phase: result.phase,
         status: result.status as AgentStatus,
@@ -212,7 +212,7 @@ export class IpcApiClient implements ApiClient {
         ['-p', phaseCommand, bugName]
       );
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: bugName,
         phase: action,
         status: result.status as AgentStatus,
@@ -234,7 +234,7 @@ export class IpcApiClient implements ApiClient {
         const specAgents = agentsRecord[specId];
         for (const agent of specAgents) {
           agents.push({
-            id: agent.agentId,
+            agentId: agent.agentId,
             specId: agent.specId,
             phase: agent.phase,
             status: agent.status as AgentStatus,
@@ -262,7 +262,7 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(async () => {
       const result = await window.electronAPI.resumeAgent(agentId);
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: result.specId,
         phase: result.phase,
         status: result.status as AgentStatus,
@@ -300,7 +300,7 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(async () => {
       const result = await window.electronAPI.executeProjectCommand(projectPath, command, title);
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: result.specId,
         phase: result.phase,
         status: result.status as AgentStatus,
@@ -318,7 +318,7 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(async () => {
       const result = await window.electronAPI.executeDocumentReview(specId, specId);
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: result.specId,
         phase: 'document-review',
         status: result.status as AgentStatus,
@@ -332,7 +332,7 @@ export class IpcApiClient implements ApiClient {
     return wrapResult(async () => {
       const result = await window.electronAPI.executeInspection(specId, specId);
       return {
-        id: result.agentId,
+        agentId: result.agentId,
         specId: result.specId,
         phase: 'inspection',
         status: result.status as AgentStatus,

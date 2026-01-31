@@ -146,7 +146,7 @@ function findAgentInAllSpecs(
   agentId: string
 ): { agent: AgentInfo; specId: string } | undefined {
   for (const [specId, agentList] of agents.entries()) {
-    const agent = agentList.find((a) => a.id === agentId);
+    const agent = agentList.find((a) => a.agentId === agentId);
     if (agent) {
       return { agent, specId };
     }
@@ -232,7 +232,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
       const existingAgents = newAgents.get(specId) || [];
 
       // 重複チェック: 既存のagentIdがあれば更新、なければ追加
-      const existingIndex = existingAgents.findIndex((a) => a.id === agent.id);
+      const existingIndex = existingAgents.findIndex((a) => a.agentId === agent.agentId);
       if (existingIndex >= 0) {
         // 既存のAgentを更新
         const updatedAgents = [...existingAgents];
@@ -258,7 +258,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
 
       // Update the agent with new status and lastActivityAt
       const updatedAgents = specAgents.map((agent) =>
-        agent.id === agentId
+        agent.agentId === agentId
           ? { ...agent, status, lastActivityAt: new Date().toISOString() }
           : agent
       );
@@ -278,7 +278,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
       const specAgents = newAgents.get(found.specId) || [];
 
       // Remove the agent, keep empty array (don't delete key)
-      const filteredAgents = specAgents.filter((agent) => agent.id !== agentId);
+      const filteredAgents = specAgents.filter((agent) => agent.agentId !== agentId);
       newAgents.set(found.specId, filteredAgents);
 
       const newLogs = new Map(state.logs);
@@ -362,7 +362,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
         return timeB - timeA; // Descending (newest first)
       });
 
-      set({ selectedAgentId: sortedAgents[0].id });
+      set({ selectedAgentId: sortedAgents[0].agentId });
       return;
     }
 
@@ -383,7 +383,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
       return timeB - timeA; // Descending (newest first)
     });
 
-    const selectedAgentId = sortedAgents[0].id;
+    const selectedAgentId = sortedAgents[0].agentId;
 
     // per-spec状態も更新
     const newMap = new Map(state.selectedAgentIdBySpec);

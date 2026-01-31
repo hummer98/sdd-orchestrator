@@ -302,7 +302,7 @@ export function AgentDetailDrawer({
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <AgentLogPanel
             agent={{
-              agentId: agent.id,
+              agentId: agent.agentId,
               sessionId: agent.sessionId,
               phase: agent.phase,
               status: agent.status,

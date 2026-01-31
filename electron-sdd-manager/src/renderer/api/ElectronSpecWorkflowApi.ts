@@ -67,7 +67,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       return {
         ok: true,
         value: {
-          id: result.agentId,
+          agentId: result.agentId,
           specId,
           phase,
           status: 'running',
@@ -113,7 +113,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       return {
         ok: true,
         value: {
-          id: result.agentId,
+          agentId: result.agentId,
           specId,
           phase: 'document-review',
           status: 'running',
@@ -144,7 +144,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       return {
         ok: true,
         value: {
-          id: result.agentId,
+          agentId: result.agentId,
           specId,
           phase: 'inspection',
           status: 'running',
@@ -412,7 +412,7 @@ export class ElectronSpecWorkflowApi implements ISpecWorkflowApi {
       return {
         ok: true,
         value: {
-          id: result.agentId,
+          agentId: result.agentId,
           specId,
           phase,
           status: 'running',

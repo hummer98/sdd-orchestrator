@@ -97,11 +97,12 @@ export type { ParsedLogEntry };
 // =============================================================================
 
 /**
- * Convert shared AgentInfo (id) to renderer AgentInfo (agentId)
+ * Convert shared AgentInfo to renderer AgentInfo
+ * agentId-unification: Both now use 'agentId', conversion is trivial
  */
 function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
   return {
-    agentId: shared.id,
+    agentId: shared.agentId,
     specId: shared.specId,
     phase: shared.phase,
     sessionId: shared.sessionId || '',
@@ -120,11 +121,12 @@ function toRendererAgentInfo(shared: SharedAgentInfo): AgentInfo {
 }
 
 /**
- * Convert renderer AgentInfo (agentId) to shared AgentInfo (id)
+ * Convert renderer AgentInfo to shared AgentInfo
+ * agentId-unification: Both now use 'agentId', conversion is trivial
  */
 function toSharedAgentInfo(renderer: AgentInfo): SharedAgentInfo {
   return {
-    id: renderer.agentId,
+    agentId: renderer.agentId,
     specId: renderer.specId,
     phase: renderer.phase,
     status: renderer.status,

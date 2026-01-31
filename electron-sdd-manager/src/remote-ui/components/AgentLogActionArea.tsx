@@ -122,7 +122,7 @@ export function AgentLogActionArea({
 
   return (
     <div
-      className="shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+      className="shrink-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
       data-testid={testId}
     >
       {/* Instruction input and buttons */}

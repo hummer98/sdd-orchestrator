@@ -990,7 +990,7 @@ function MobileAppContent() {
       onTabChange={handleTabChange}
       showTabBar={showTabBar}
     >
-      <div className="h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="h-full bg-gray-50 dark:bg-gray-900">
         {renderContent()}
       </div>
     </MobileLayout>

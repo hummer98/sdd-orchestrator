@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.60.0] - 2026-01-31
+
+### Added
+- 冗長なAgentファイル監視を削除しSSOTを実現
+- AgentログのTodoWriteをタスク風UIでレンダリング
+
+### Fixed
+- レガシーログパスのフォールバック先を正しい.kiro/specs/に修正
+- プロジェクト選択時にエージェント一覧が表示されない問題を修正
+- runtime-agents-restructure後の古いログパス参照を修正
+
+
 ## [0.59.0] - 2026-01-31
 
 ### Added

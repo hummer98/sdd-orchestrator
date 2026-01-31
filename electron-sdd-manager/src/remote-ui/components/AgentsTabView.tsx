@@ -22,12 +22,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Bot, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
-import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { AskAgentDialog } from '@shared/components/project';
-import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type { ApiClient } from '@shared/api/types';
 
@@ -39,10 +38,17 @@ import type { ApiClient } from '@shared/api/types';
  * AgentsTabView Props
  * Matches design.md AgentsTabViewProps specification
  * Task 7.1, 7.2, 7.3: Added refresh functionality
+ * mobile-agent-log-fullscreen Task 5.3: Added onSelectAgent for navigation to AgentLogPage
  */
 export interface AgentsTabViewProps {
   /** API Client for agent operations */
   apiClient: ApiClient;
+  /**
+   * Callback when agent is selected for full-screen log view
+   * mobile-agent-log-fullscreen Task 5.3: Replaces AgentDetailDrawer with pushAgentLog navigation
+   * Requirements: 5.3
+   */
+  onSelectAgent?: (agent: AgentInfo) => void;
   /** Callback to refresh agents (Task 7.1: Req 4.2, 4.3) */
   onRefresh?: () => Promise<void>;
   /** Whether refresh is in progress (Task 7.1: Req 5.4, 6.5) */
@@ -108,19 +114,15 @@ function sortAgents(agents: AgentInfo[]): AgentInfo[] {
  */
 export function AgentsTabView({
   apiClient,
+  onSelectAgent,
   onRefresh,
   isRefreshing = false,
   testId = 'agents-tab-view',
 }: AgentsTabViewProps): React.ReactElement {
   // ---------------------------------------------------------------------------
   // State
+  // mobile-agent-log-fullscreen Task 5.3: Removed drawer state - using page navigation
   // ---------------------------------------------------------------------------
-
-  /** Currently selected agent for drawer display */
-  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
-
-  /** Whether the drawer is open */
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   /** Whether the AskAgentDialog is open (Req 5.4) */
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
@@ -145,15 +147,6 @@ export function AgentsTabView({
     return sortAgents(agents);
   }, [agentsMap]);
 
-  /** Get logs map from the store */
-  const logsMap = useSharedAgentStore((state) => state.logs);
-
-  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
-  const logs: ParsedLogEntry[] = useMemo(
-    () => selectedAgent ? (logsMap.get(selectedAgent.agentId) ?? []) : [],
-    [logsMap, selectedAgent]
-  );
-
   /** Selected agent ID from store */
   const selectedAgentId = useSharedAgentStore((state) => state.selectedAgentId);
 
@@ -175,20 +168,23 @@ export function AgentsTabView({
 
   // ---------------------------------------------------------------------------
   // Handlers
+  // mobile-agent-log-fullscreen Task 5.3: Changed to use onSelectAgent callback
   // ---------------------------------------------------------------------------
 
   /**
-   * Handle agent selection - opens AgentDetailDrawer
-   * Requirement 5.2
+   * Handle agent selection - navigates to AgentLogPage
+   * mobile-agent-log-fullscreen Task 5.3: Replaces AgentDetailDrawer
+   * Requirements: 5.3
    */
   const handleSelectAgent = useCallback((agentId: string) => {
     const agent = projectAgents.find((a) => a.agentId === agentId);
     if (agent) {
-      setSelectedAgent(agent);
-      setIsDrawerOpen(true);
       useSharedAgentStore.getState().selectAgent(agentId);
+      if (onSelectAgent) {
+        onSelectAgent(agent);
+      }
     }
-  }, [projectAgents]);
+  }, [projectAgents, onSelectAgent]);
 
   /**
    * Handle agent stop request
@@ -205,30 +201,6 @@ export function AgentsTabView({
     e.stopPropagation();
     useSharedAgentStore.getState().removeAgent(agentId);
   }, []);
-
-  /**
-   * Close the AgentDetailDrawer
-   */
-  const handleCloseDrawer = useCallback(() => {
-    setIsDrawerOpen(false);
-    setSelectedAgent(null);
-  }, []);
-
-  /**
-   * Send additional instruction to the selected agent
-   */
-  const handleSendInstruction = useCallback(async (instruction: string) => {
-    if (!selectedAgent) return;
-    await apiClient.sendAgentInput(selectedAgent.agentId, instruction);
-  }, [selectedAgent, apiClient]);
-
-  /**
-   * Continue the selected agent execution
-   */
-  const handleContinue = useCallback(async () => {
-    if (!selectedAgent) return;
-    await apiClient.resumeAgent(selectedAgent.agentId);
-  }, [selectedAgent, apiClient]);
 
   // ---------------------------------------------------------------------------
   // Ask Button Handlers (Req 5.4, Task 7.3)
@@ -377,18 +349,8 @@ export function AgentsTabView({
         agentListContent
       )}
 
-      {/* AgentDetailDrawer - Opens when agent is tapped (Req 5.2) */}
-      {selectedAgent && (
-        <AgentDetailDrawer
-          agent={selectedAgent}
-          logs={logs}
-          isOpen={isDrawerOpen}
-          onClose={handleCloseDrawer}
-          onSendInstruction={handleSendInstruction}
-          onContinue={handleContinue}
-          testId="agent-detail-drawer"
-        />
-      )}
+      {/* mobile-agent-log-fullscreen Task 5.3: AgentDetailDrawer removed */}
+      {/* Agent selection now navigates to AgentLogPage via onSelectAgent callback */}
 
       {/* AskAgentDialog - Opens when Ask button is clicked (Req 5.4) */}
       <AskAgentDialog

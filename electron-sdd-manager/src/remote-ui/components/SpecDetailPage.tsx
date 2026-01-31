@@ -20,16 +20,15 @@
  * Design: SpecDetailPage component in design.md
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { SubTabBar } from './SubTabBar';
-import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { RemoteArtifactEditor } from './RemoteArtifactEditor';
 import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
 import { RemoteWorkflowView } from '../views/RemoteWorkflowView';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
-import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
@@ -52,6 +51,7 @@ export type SpecSubTab = 'spec' | 'artifact';
  * SpecDetailPage Props
  * Matches design.md SpecDetailPageProps specification
  * Task 7.2, 7.3: Added refresh functionality
+ * mobile-agent-log-fullscreen Task 5.1: Added onSelectAgent for navigation to AgentLogPage
  */
 export interface SpecDetailPageProps {
   /** Selected Spec metadata */
@@ -62,6 +62,12 @@ export interface SpecDetailPageProps {
   apiClient: ApiClient;
   /** Back button click callback */
   onBack: () => void;
+  /**
+   * Callback when agent is selected for full-screen log view
+   * mobile-agent-log-fullscreen Task 5.1: Replaces AgentDetailDrawer with pushAgentLog navigation
+   * Requirements: 1.2, 5.1, 6.1
+   */
+  onSelectAgent?: (agent: AgentInfo) => void;
   /** Callback to refresh agents (Task 7.2, 7.3: Req 5.2, 6.2) */
   onRefresh?: () => Promise<void>;
   /** Whether refresh is in progress (Task 7.2, 7.3: Req 5.4, 6.5) */
@@ -96,6 +102,7 @@ export function SpecDetailPage({
   specDetail,
   apiClient,
   onBack,
+  onSelectAgent,
   onRefresh,
   isRefreshing = false,
   testId,
@@ -107,8 +114,9 @@ export function SpecDetailPage({
   /**
    * Active sub-tab state (Req 3.1)
    * Defaults to 'spec' tab
+   * mobile-agent-log-fullscreen: Removed selectedAgent/isDrawerOpen states - using page navigation instead
    */
-  const [activeSubTab, setActiveSubTab] = useState<SpecSubTab>('spec');
+  const [activeSubTab, setActiveSubTab] = React.useState<SpecSubTab>('spec');
 
   // Task 7.2, 7.3: Device type detection for conditional UI
   const { isMobile } = useDeviceType();
@@ -187,6 +195,7 @@ export function SpecDetailPage({
                   spec={spec}
                   specDetail={specDetail}
                   apiClient={apiClient}
+                  onSelectAgent={onSelectAgent}
                 />
               </MobilePullToRefresh>
             ) : (
@@ -194,6 +203,7 @@ export function SpecDetailPage({
                 spec={spec}
                 specDetail={specDetail}
                 apiClient={apiClient}
+                onSelectAgent={onSelectAgent}
               />
             )
           ) : (
@@ -248,36 +258,31 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
  * SpecTabContent - Spec tab content with AgentList, WorkflowArea, and WorkflowFooter
  * Task 5.2: AgentList implementation
  * Task 5.3: WorkflowArea and WorkflowFooter implementation
+ * mobile-agent-log-fullscreen Task 5.1: Changed from AgentDetailDrawer to page navigation
  *
  * Requirements:
  * - 3.2: Spec tab structure (AgentList + WorkflowArea + WorkflowFooter)
  * - 3.3: Fixed 3-item height AgentList with independent scroll
- * - 3.4: AgentListItem tap opens AgentDetailDrawer
+ * - 3.4: AgentListItem tap navigates to AgentLogPage (was AgentDetailDrawer)
  * - 3.7: WorkflowFooter with auto-execution button
  */
 interface SpecTabContentProps {
   spec: SpecMetadataWithPath;
   specDetail: SpecDetail;
   apiClient: ApiClient;
+  /** Callback when agent is selected for full-screen log view */
+  onSelectAgent?: (agent: AgentInfo) => void;
 }
 
 function SpecTabContent({
   spec,
   specDetail,
   apiClient,
+  onSelectAgent,
 }: SpecTabContentProps): React.ReactElement {
   // ---------------------------------------------------------------------------
-  // State for AgentDetailDrawer (Task 5.2, Req 3.4)
-  // ---------------------------------------------------------------------------
-
-  /** Currently selected agent for drawer display */
-  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
-
-  /** Whether the drawer is open */
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  // ---------------------------------------------------------------------------
   // Agent Store Integration (Task 5.2)
+  // mobile-agent-log-fullscreen Task 5.1: Removed drawer state - using page navigation
   // ---------------------------------------------------------------------------
 
   /** Get agents map from the shared agent store */
@@ -287,15 +292,6 @@ function SpecTabContent({
   const agents = useMemo(
     () => agentsMap.get(spec.name) ?? [],
     [agentsMap, spec.name]
-  );
-
-  /** Get logs map from the store */
-  const logsMap = useSharedAgentStore((state) => state.logs);
-
-  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
-  const logs: ParsedLogEntry[] = useMemo(
-    () => selectedAgent ? (logsMap.get(selectedAgent.agentId) ?? []) : [],
-    [logsMap, selectedAgent]
   );
 
   /** Selected agent ID from store */
@@ -309,19 +305,23 @@ function SpecTabContent({
 
   // ---------------------------------------------------------------------------
   // Handlers (Task 5.2)
+  // mobile-agent-log-fullscreen Task 5.1: Changed to use onSelectAgent callback
   // ---------------------------------------------------------------------------
 
   /**
-   * Handle agent selection - opens AgentDetailDrawer (Req 3.4)
+   * Handle agent selection - navigates to AgentLogPage
+   * mobile-agent-log-fullscreen Task 5.1: Replaces AgentDetailDrawer
+   * Requirements: 1.2, 5.1, 6.1
    */
   const handleSelectAgent = useCallback((agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId);
     if (agent) {
-      setSelectedAgent(agent);
-      setIsDrawerOpen(true);
       useSharedAgentStore.getState().selectAgent(agentId);
+      if (onSelectAgent) {
+        onSelectAgent(agent);
+      }
     }
-  }, [agents]);
+  }, [agents, onSelectAgent]);
 
   /**
    * Handle agent stop request
@@ -338,30 +338,6 @@ function SpecTabContent({
     e.stopPropagation();
     useSharedAgentStore.getState().removeAgent(agentId);
   }, []);
-
-  /**
-   * Close the AgentDetailDrawer
-   */
-  const handleCloseDrawer = useCallback(() => {
-    setIsDrawerOpen(false);
-    setSelectedAgent(null);
-  }, []);
-
-  /**
-   * Send additional instruction to the selected agent
-   */
-  const handleSendInstruction = useCallback(async (instruction: string) => {
-    if (!selectedAgent) return;
-    await apiClient.sendAgentInput(selectedAgent.agentId, instruction);
-  }, [selectedAgent, apiClient]);
-
-  /**
-   * Continue the selected agent execution
-   */
-  const handleContinue = useCallback(async () => {
-    if (!selectedAgent) return;
-    await apiClient.resumeAgent(selectedAgent.agentId);
-  }, [selectedAgent, apiClient]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -406,18 +382,8 @@ function SpecTabContent({
         />
       </div>
 
-      {/* AgentDetailDrawer - Opens when agent is tapped (Req 3.4) */}
-      {selectedAgent && (
-        <AgentDetailDrawer
-          agent={selectedAgent}
-          logs={logs}
-          isOpen={isDrawerOpen}
-          onClose={handleCloseDrawer}
-          onSendInstruction={handleSendInstruction}
-          onContinue={handleContinue}
-          testId="agent-detail-drawer"
-        />
-      )}
+      {/* mobile-agent-log-fullscreen Task 5.1: AgentDetailDrawer removed */}
+      {/* Agent selection now navigates to AgentLogPage via onSelectAgent callback */}
     </div>
   );
 }

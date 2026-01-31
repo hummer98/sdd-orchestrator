@@ -22,6 +22,7 @@ import { RefreshButton } from './components/RefreshButton';
 import { RemoteArtifactEditor } from './components/RemoteArtifactEditor';
 import { SpecDetailPage } from './components/SpecDetailPage';
 import { BugDetailPage } from './components/BugDetailPage';
+import { AgentLogPage } from './components/AgentLogPage';
 import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus, AgentLogPanel, type AgentLogInfo } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
@@ -31,7 +32,10 @@ import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
 import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo, AgentStatus } from '../shared/api/types';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo as SharedAgentInfo, AgentStatus } from '../shared/api/types';
+
+// mobile-agent-log-fullscreen: Re-export for local use
+type AgentInfo = SharedAgentInfo;
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
 import { useNavigationStack } from './hooks/useNavigationStack';
 import { useAgentStoreInit } from './hooks/useAgentStoreInit';
@@ -804,11 +808,13 @@ function MobileAppContent() {
 
   // Task 8.1: useNavigationStack Hookの導入
   // Manages activeTab, detailContext, showTabBar states
+  // mobile-agent-log-fullscreen: Added pushAgentLog for agent log page navigation
   const {
     state: navigationState,
     setActiveTab,
     pushSpecDetail,
     pushBugDetail,
+    pushAgentLog,
     popPage,
   } = useNavigationStack();
 
@@ -846,6 +852,22 @@ function MobileAppContent() {
     popPage();
   }, [popPage]);
 
+  /**
+   * mobile-agent-log-fullscreen Task 5.1, 5.2, 5.3: Agent選択ハンドラ
+   * Creates handlers for different source types that navigate to AgentLogPage
+   */
+  const handleSelectAgentFromSpec = useCallback((agent: AgentInfo, specName: string) => {
+    pushAgentLog(agent, 'spec', specName);
+  }, [pushAgentLog]);
+
+  const handleSelectAgentFromBug = useCallback((agent: AgentInfo, bugName: string) => {
+    pushAgentLog(agent, 'bug', bugName);
+  }, [pushAgentLog]);
+
+  const handleSelectAgentFromAgentsTab = useCallback((agent: AgentInfo) => {
+    pushAgentLog(agent, 'agents');
+  }, [pushAgentLog]);
+
   // Task 8.1: タブ切替ハンドラ - setActiveTabを使用
   // setActiveTabは自動的にdetailContextをクリアする (Req 2.6)
   // Note: LayoutMobileTab includes legacy values, filter to valid 3-tab values
@@ -871,6 +893,7 @@ function MobileAppContent() {
             specDetail={specDetail}
             apiClient={apiClient}
             onBack={handleBackToList}
+            onSelectAgent={(agent) => handleSelectAgentFromSpec(agent, spec.name)}
             testId="spec-detail-page"
           />
         );
@@ -887,7 +910,25 @@ function MobileAppContent() {
             bugDetail={bugDetail}
             apiClient={apiClient}
             onBack={handleBackToList}
+            onSelectAgent={(agent) => handleSelectAgentFromBug(agent, bug.name)}
             testId="bug-detail-page"
+          />
+        );
+      }
+
+      // mobile-agent-log-fullscreen Task 4.1: AgentLogPageの表示 (Req 1.1)
+      // - AgentListのアイテムタップ時にpushAgentLogを呼び出し
+      // - 戻るボタンでpopPageを呼び出し → onBack={handleBackToList}で接続
+      if (detailContext.type === 'agent-log') {
+        const { agent, sourceType, sourceEntityId } = detailContext;
+        return (
+          <AgentLogPage
+            agent={agent}
+            sourceType={sourceType}
+            sourceEntityId={sourceEntityId}
+            apiClient={apiClient}
+            onBack={handleBackToList}
+            testId="agent-log-page"
           />
         );
       }
@@ -921,6 +962,7 @@ function MobileAppContent() {
         return (
           <AgentsTabView
             apiClient={apiClient}
+            onSelectAgent={handleSelectAgentFromAgentsTab}
             onRefresh={refreshAgents}
             isRefreshing={isAgentRefreshing}
             testId="agents-tab-view"

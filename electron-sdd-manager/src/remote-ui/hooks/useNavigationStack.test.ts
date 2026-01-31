@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useNavigationStack } from './useNavigationStack';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, BugDetail } from '@shared/api/types';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, BugDetail, AgentInfo } from '@shared/api/types';
 
 // =============================================================================
 // Test Fixtures
@@ -72,6 +72,20 @@ const createMockBugDetail = (name: string): BugDetail => ({
     updated_at: '2024-01-01T00:00:00Z',
     status: 'open',
   },
+});
+
+/**
+ * mobile-agent-log-fullscreen Task 1.1: AgentInfo fixture
+ * Creates a mock AgentInfo for testing pushAgentLog
+ */
+const createMockAgent = (agentId: string): AgentInfo => ({
+  agentId,
+  specId: 'test-spec',
+  phase: 'requirements',
+  status: 'running',
+  startedAt: '2024-01-01T00:00:00Z',
+  command: 'claude -p "/kiro:spec-requirements"',
+  sessionId: 'session-123',
 });
 
 // =============================================================================
@@ -362,6 +376,95 @@ describe('useNavigationStack', () => {
         result.current.popPage();
       });
 
+      expect(result.current.state.showTabBar).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // mobile-agent-log-fullscreen Task 1.1: pushAgentLog tests
+  // Requirements: 5.4 - useNavigationStack拡張
+  // ===========================================================================
+
+  describe('pushAgentLog (mobile-agent-log-fullscreen Req 5.4)', () => {
+    it('should push agent log page onto navigation stack', () => {
+      const { result } = renderHook(() => useNavigationStack());
+      const mockAgent = createMockAgent('agent-001');
+
+      act(() => {
+        result.current.pushAgentLog(mockAgent, 'spec', 'test-spec');
+      });
+
+      expect(result.current.state.detailContext).not.toBeNull();
+      expect(result.current.state.detailContext?.type).toBe('agent-log');
+      if (result.current.state.detailContext?.type === 'agent-log') {
+        expect(result.current.state.detailContext.agent).toBe(mockAgent);
+        expect(result.current.state.detailContext.sourceType).toBe('spec');
+        expect(result.current.state.detailContext.sourceEntityId).toBe('test-spec');
+      }
+      expect(result.current.isDetailPage).toBe(true);
+    });
+
+    it('should hide tab bar when showing agent log page', () => {
+      const { result } = renderHook(() => useNavigationStack());
+      const mockAgent = createMockAgent('agent-001');
+
+      act(() => {
+        result.current.pushAgentLog(mockAgent, 'bug', 'test-bug');
+      });
+
+      expect(result.current.state.showTabBar).toBe(false);
+    });
+
+    it('should support agents source type (no entityId)', () => {
+      const { result } = renderHook(() => useNavigationStack());
+      const mockAgent = createMockAgent('agent-001');
+
+      act(() => {
+        result.current.pushAgentLog(mockAgent, 'agents');
+      });
+
+      expect(result.current.state.detailContext).not.toBeNull();
+      if (result.current.state.detailContext?.type === 'agent-log') {
+        expect(result.current.state.detailContext.agent).toBe(mockAgent);
+        expect(result.current.state.detailContext.sourceType).toBe('agents');
+        expect(result.current.state.detailContext.sourceEntityId).toBeUndefined();
+      }
+    });
+
+    it('should pop agent log page and return to list view', () => {
+      const { result } = renderHook(() => useNavigationStack());
+      const mockAgent = createMockAgent('agent-001');
+
+      act(() => {
+        result.current.pushAgentLog(mockAgent, 'spec', 'test-spec');
+      });
+
+      expect(result.current.isDetailPage).toBe(true);
+
+      act(() => {
+        result.current.popPage();
+      });
+
+      expect(result.current.state.detailContext).toBeNull();
+      expect(result.current.isDetailPage).toBe(false);
+      expect(result.current.state.showTabBar).toBe(true);
+    });
+
+    it('should clear agent log context when switching tabs', () => {
+      const { result } = renderHook(() => useNavigationStack());
+      const mockAgent = createMockAgent('agent-001');
+
+      act(() => {
+        result.current.pushAgentLog(mockAgent, 'spec', 'test-spec');
+      });
+
+      expect(result.current.state.detailContext).not.toBeNull();
+
+      act(() => {
+        result.current.setActiveTab('bugs');
+      });
+
+      expect(result.current.state.detailContext).toBeNull();
       expect(result.current.state.showTabBar).toBe(true);
     });
   });

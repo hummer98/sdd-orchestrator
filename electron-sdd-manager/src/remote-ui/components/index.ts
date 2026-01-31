@@ -35,3 +35,10 @@ export type { MobilePullToRefreshProps } from './MobilePullToRefresh';
 
 export { RefreshButton } from './RefreshButton';
 export type { RefreshButtonProps } from './RefreshButton';
+
+// mobile-agent-log-fullscreen: Task 6.1 - Export new fullscreen agent log components
+export { AgentLogPage } from './AgentLogPage';
+export type { AgentLogPageProps } from './AgentLogPage';
+
+export { AgentLogActionArea } from './AgentLogActionArea';
+export type { AgentLogActionAreaProps } from './AgentLogActionArea';

@@ -21,6 +21,7 @@ import type {
   SpecDetail,
   BugMetadataWithPath,
   BugDetail,
+  AgentInfo,
 } from '@shared/api/types';
 
 // =============================================================================
@@ -52,9 +53,25 @@ export interface BugDetailContext {
 }
 
 /**
- * Union type for detail context
+ * Detail context for Agent log page
+ * mobile-agent-log-fullscreen: Task 1.1
+ * Requirements: 5.4 - useNavigationStack拡張
  */
-export type DetailContext = SpecDetailContext | BugDetailContext;
+export interface AgentLogContext {
+  type: 'agent-log';
+  /** Agent to display logs for */
+  agent: AgentInfo;
+  /** Source type indicating where navigation originated from */
+  sourceType: 'spec' | 'bug' | 'agents';
+  /** Source entity ID (spec name or bug name, undefined for agents tab) */
+  sourceEntityId?: string;
+}
+
+/**
+ * Union type for detail context
+ * mobile-agent-log-fullscreen: Extended to include AgentLogContext
+ */
+export type DetailContext = SpecDetailContext | BugDetailContext | AgentLogContext;
 
 /**
  * Navigation state interface
@@ -80,6 +97,7 @@ export interface UseNavigationStackOptions {
 /**
  * Hook return type
  * Matches design.md UseNavigationStackReturn specification
+ * mobile-agent-log-fullscreen: Extended with pushAgentLog
  */
 export interface UseNavigationStackReturn {
   /** Current navigation state */
@@ -90,6 +108,12 @@ export interface UseNavigationStackReturn {
   pushSpecDetail: (spec: SpecMetadataWithPath, detail: SpecDetail) => void;
   /** Push bug detail page onto stack */
   pushBugDetail: (bug: BugMetadataWithPath, detail: BugDetail) => void;
+  /**
+   * Push agent log page onto stack
+   * mobile-agent-log-fullscreen: Task 1.1
+   * Requirements: 5.4
+   */
+  pushAgentLog: (agent: AgentInfo, sourceType: 'spec' | 'bug' | 'agents', sourceEntityId?: string) => void;
   /** Pop current page from stack */
   popPage: () => void;
   /** Derived: is currently showing a detail page */
@@ -168,6 +192,25 @@ export function useNavigationStack(
   }, []);
 
   /**
+   * Push agent log page onto navigation stack
+   * mobile-agent-log-fullscreen: Task 1.1
+   * Requirements: 5.4
+   * Automatically hides tab bar (follows existing pattern)
+   */
+  const pushAgentLog = useCallback((
+    agent: AgentInfo,
+    sourceType: 'spec' | 'bug' | 'agents',
+    sourceEntityId?: string
+  ) => {
+    setDetailContext({
+      type: 'agent-log',
+      agent,
+      sourceType,
+      sourceEntityId,
+    });
+  }, []);
+
+  /**
    * Pop current page from navigation stack (Req 2.4)
    * Automatically shows tab bar (Req 2.5)
    * Preserves active tab
@@ -196,6 +239,7 @@ export function useNavigationStack(
     setActiveTab,
     pushSpecDetail,
     pushBugDetail,
+    pushAgentLog,
     popPage,
     isDetailPage,
   };

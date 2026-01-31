@@ -22,10 +22,9 @@
  * Design: BugDetailPage component in design.md
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ArrowLeft, Bug } from 'lucide-react';
 import { SubTabBar } from './SubTabBar';
-import { AgentDetailDrawer } from './AgentDetailDrawer';
 // Task 6.4: Import RemoteBugArtifactEditor for Artifact tab (Req 4.5)
 import { RemoteBugArtifactEditor } from './RemoteBugArtifactEditor';
 import { MobilePullToRefresh } from './MobilePullToRefresh';
@@ -33,7 +32,7 @@ import { RefreshButton } from './RefreshButton';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 // Task 6.3: Import BugWorkflowFooter for Bug tab (Req 4.6)
 import { BugWorkflowFooter } from '@shared/components/bug';
-import { useSharedAgentStore, type AgentInfo, type ParsedLogEntry } from '@shared/stores/agentStore';
+import { useSharedAgentStore, type AgentInfo } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
   ApiClient,
@@ -57,6 +56,7 @@ export type BugSubTab = 'bug' | 'artifact';
  * Matches design.md BugDetailPageProps specification
  * Task 6.3: Added auto-execution and worktree props (Req 4.2, 4.6)
  * Task 8.2, 8.3: Added refresh functionality (Req 5.3, 6.3)
+ * mobile-agent-log-fullscreen Task 5.2: Added onSelectAgent for navigation to AgentLogPage
  */
 export interface BugDetailPageProps {
   /** Selected Bug metadata */
@@ -67,6 +67,12 @@ export interface BugDetailPageProps {
   apiClient: ApiClient;
   /** Back button click callback */
   onBack: () => void;
+  /**
+   * Callback when agent is selected for full-screen log view
+   * mobile-agent-log-fullscreen Task 5.2: Replaces AgentDetailDrawer with pushAgentLog navigation
+   * Requirements: 1.2, 5.2, 6.1
+   */
+  onSelectAgent?: (agent: AgentInfo) => void;
   /** Auto execution status (Task 6.3: Req 4.6) */
   isAutoExecuting?: boolean;
   /** Auto execution toggle callback (Task 6.3: Req 4.6) */
@@ -113,6 +119,7 @@ export function BugDetailPage({
   bugDetail,
   apiClient,
   onBack,
+  onSelectAgent,
   isAutoExecuting = false,
   onAutoExecution,
   hasRunningAgents = false,
@@ -130,8 +137,9 @@ export function BugDetailPage({
   /**
    * Active sub-tab state (Req 4.1)
    * Defaults to 'bug' tab
+   * mobile-agent-log-fullscreen: Removed selectedAgent/isDrawerOpen states - using page navigation instead
    */
-  const [activeSubTab, setActiveSubTab] = useState<BugSubTab>('bug');
+  const [activeSubTab, setActiveSubTab] = React.useState<BugSubTab>('bug');
 
   // Task 8.2, 8.3: Device type detection for conditional UI
   const { isMobile } = useDeviceType();
@@ -210,6 +218,7 @@ export function BugDetailPage({
                   bug={bug}
                   bugDetail={bugDetail}
                   apiClient={apiClient}
+                  onSelectAgent={onSelectAgent}
                   isAutoExecuting={isAutoExecuting}
                   onAutoExecution={onAutoExecution}
                   hasRunningAgents={hasRunningAgents}
@@ -223,6 +232,7 @@ export function BugDetailPage({
                 bug={bug}
                 bugDetail={bugDetail}
                 apiClient={apiClient}
+                onSelectAgent={onSelectAgent}
                 isAutoExecuting={isAutoExecuting}
                 onAutoExecution={onAutoExecution}
                 hasRunningAgents={hasRunningAgents}
@@ -283,17 +293,20 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
  * BugTabContent - Bug tab content with AgentList, WorkflowArea, and BugWorkflowFooter
  * Task 6.2: AgentList implementation
  * Task 6.3: WorkflowArea and BugWorkflowFooter implementation
+ * mobile-agent-log-fullscreen Task 5.2: Changed from AgentDetailDrawer to page navigation
  *
  * Requirements:
  * - 4.2: Bug tab structure (AgentList + WorkflowArea + BugWorkflowFooter)
  * - 4.3: Fixed 3-item height AgentList with independent scroll
- * - 4.4: AgentListItem tap opens AgentDetailDrawer
+ * - 4.4: AgentListItem tap navigates to AgentLogPage (was AgentDetailDrawer)
  * - 4.6: BugWorkflowFooter with auto-execution and worktree conversion
  */
 interface BugTabContentProps {
   bug: BugMetadataWithPath;
   bugDetail: BugDetail;
   apiClient: ApiClient;
+  /** Callback when agent is selected for full-screen log view */
+  onSelectAgent?: (agent: AgentInfo) => void;
   /** Auto execution status (Task 6.3: Req 4.6) */
   isAutoExecuting?: boolean;
   /** Auto execution toggle callback (Task 6.3: Req 4.6) */
@@ -312,6 +325,7 @@ function BugTabContent({
   bug,
   bugDetail,
   apiClient,
+  onSelectAgent,
   isAutoExecuting = false,
   onAutoExecution,
   hasRunningAgents = false,
@@ -320,17 +334,8 @@ function BugTabContent({
   isConverting = false,
 }: BugTabContentProps): React.ReactElement {
   // ---------------------------------------------------------------------------
-  // State for AgentDetailDrawer (Task 6.2, Req 4.4)
-  // ---------------------------------------------------------------------------
-
-  /** Currently selected agent for drawer display */
-  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
-
-  /** Whether the drawer is open */
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  // ---------------------------------------------------------------------------
   // Agent Store Integration (Task 6.2)
+  // mobile-agent-log-fullscreen Task 5.2: Removed drawer state - using page navigation
   // ---------------------------------------------------------------------------
 
   /** Get agents map from the shared agent store */
@@ -340,15 +345,6 @@ function BugTabContent({
   const agents = useMemo(
     () => agentsMap.get(bug.name) ?? [],
     [agentsMap, bug.name]
-  );
-
-  /** Get logs map from the store */
-  const logsMap = useSharedAgentStore((state) => state.logs);
-
-  /** Get logs for the selected agent (main-process-log-parser: now ParsedLogEntry[]) */
-  const logs: ParsedLogEntry[] = useMemo(
-    () => selectedAgent ? (logsMap.get(selectedAgent.agentId) ?? []) : [],
-    [logsMap, selectedAgent]
   );
 
   /** Selected agent ID from store */
@@ -362,19 +358,23 @@ function BugTabContent({
 
   // ---------------------------------------------------------------------------
   // Handlers (Task 6.2)
+  // mobile-agent-log-fullscreen Task 5.2: Changed to use onSelectAgent callback
   // ---------------------------------------------------------------------------
 
   /**
-   * Handle agent selection - opens AgentDetailDrawer (Req 4.4)
+   * Handle agent selection - navigates to AgentLogPage
+   * mobile-agent-log-fullscreen Task 5.2: Replaces AgentDetailDrawer
+   * Requirements: 1.2, 5.2, 6.1
    */
   const handleSelectAgent = useCallback((agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId);
     if (agent) {
-      setSelectedAgent(agent);
-      setIsDrawerOpen(true);
       useSharedAgentStore.getState().selectAgent(agentId);
+      if (onSelectAgent) {
+        onSelectAgent(agent);
+      }
     }
-  }, [agents]);
+  }, [agents, onSelectAgent]);
 
   /**
    * Handle agent stop request
@@ -391,30 +391,6 @@ function BugTabContent({
     e.stopPropagation();
     useSharedAgentStore.getState().removeAgent(agentId);
   }, []);
-
-  /**
-   * Close the AgentDetailDrawer
-   */
-  const handleCloseDrawer = useCallback(() => {
-    setIsDrawerOpen(false);
-    setSelectedAgent(null);
-  }, []);
-
-  /**
-   * Send additional instruction to the selected agent
-   */
-  const handleSendInstruction = useCallback(async (instruction: string) => {
-    if (!selectedAgent) return;
-    await apiClient.sendAgentInput(selectedAgent.agentId, instruction);
-  }, [selectedAgent, apiClient]);
-
-  /**
-   * Continue the selected agent execution
-   */
-  const handleContinue = useCallback(async () => {
-    if (!selectedAgent) return;
-    await apiClient.resumeAgent(selectedAgent.agentId);
-  }, [selectedAgent, apiClient]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -477,18 +453,8 @@ function BugTabContent({
         isConverting={isConverting}
       />
 
-      {/* AgentDetailDrawer - Opens when agent is tapped (Req 4.4) */}
-      {selectedAgent && (
-        <AgentDetailDrawer
-          agent={selectedAgent}
-          logs={logs}
-          isOpen={isDrawerOpen}
-          onClose={handleCloseDrawer}
-          onSendInstruction={handleSendInstruction}
-          onContinue={handleContinue}
-          testId="agent-detail-drawer"
-        />
-      )}
+      {/* mobile-agent-log-fullscreen Task 5.2: AgentDetailDrawer removed */}
+      {/* Agent selection now navigates to AgentLogPage via onSelectAgent callback */}
     </div>
   );
 }

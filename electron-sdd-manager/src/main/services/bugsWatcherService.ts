@@ -137,12 +137,12 @@ export class BugsWatcherService {
       ignoreInitial: true,
       persistent: true,
       depth: 2, // Sufficient for {bugName}/*.{md,json}
-      ignored: [
-        '**/runtime/**',
-        '**/.git/**',
-        '**/logs/**',
-        '**/*.log',
-      ],
+      // chokidar v4+ recommends function-based ignored
+      ignored: (filePath: string) =>
+        filePath.includes('/runtime/') ||
+        filePath.includes('/.git/') ||
+        filePath.includes('/logs/') ||
+        filePath.endsWith('.log'),
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,

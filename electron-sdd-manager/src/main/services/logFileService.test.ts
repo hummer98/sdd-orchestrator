@@ -219,6 +219,20 @@ describe('LogFileService', () => {
   // Requirements: 2.1, 2.2, 2.3, 1.2, 1.4, 1.6, 1.7, 6.1, 6.2, 5.1, 5.2, 5.3, 7.1
   // =============================================================================
   describe('Category-aware operations (Tasks 3.1-3.4)', () => {
+    // Bug fix: Tests need to simulate real production structure for legacy path fallback
+    // basePath = {projectPath}/.kiro/runtime/agents
+    // Legacy logs are at {projectPath}/.kiro/specs/{specId}/logs/
+    let kiroDir: string;
+    let runtimeService: LogFileService;
+
+    beforeEach(async () => {
+      // Simulate production structure: testDir = project root
+      kiroDir = path.join(testDir, '.kiro');
+      const runtimeAgentsPath = path.join(kiroDir, 'runtime', 'agents');
+      await fs.mkdir(runtimeAgentsPath, { recursive: true });
+      runtimeService = new LogFileService(runtimeAgentsPath);
+    });
+
     describe('appendLogWithCategory (Task 3.2)', () => {
       it('should write log to specs/{specId}/logs/ path (Req 1.2)', async () => {
         const entry: LogEntry = {
@@ -292,17 +306,17 @@ describe('LogFileService', () => {
           data: 'New path entry',
         };
 
-        await service.appendLogWithCategory('specs', 'my-feature', 'agent-001', entry);
+        await runtimeService.appendLogWithCategory('specs', 'my-feature', 'agent-001', entry);
 
-        const result = await service.readLogWithFallback('specs', 'my-feature', 'agent-001');
+        const result = await runtimeService.readLogWithFallback('specs', 'my-feature', 'agent-001');
         expect(result.isLegacy).toBe(false);
         expect(result.entries).toHaveLength(1);
         expect(result.entries[0].data).toBe('New path entry');
       });
 
       it('should fall back to legacy path when new path not found (Req 6.2)', async () => {
-        // Create legacy log at old path (specs/{specId}/logs/)
-        const legacyDir = path.join(testDir, 'my-feature', 'logs');
+        // Create legacy log at old path (.kiro/specs/{specId}/logs/)
+        const legacyDir = path.join(kiroDir, 'specs', 'my-feature', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
         const legacyEntry: LogEntry = {
           timestamp: '2025-11-26T10:00:00Z',
@@ -315,14 +329,35 @@ describe('LogFileService', () => {
           'utf-8'
         );
 
-        const result = await service.readLogWithFallback('specs', 'my-feature', 'agent-001');
+        const result = await runtimeService.readLogWithFallback('specs', 'my-feature', 'agent-001');
         expect(result.isLegacy).toBe(true);
         expect(result.entries).toHaveLength(1);
         expect(result.entries[0].data).toBe('Legacy path entry');
       });
 
+      it('should fall back to legacy path for bugs (Req 6.2)', async () => {
+        // Create legacy log at old path (.kiro/bugs/{bugId}/logs/)
+        const legacyDir = path.join(kiroDir, 'bugs', 'login-error', 'logs');
+        await fs.mkdir(legacyDir, { recursive: true });
+        const legacyEntry: LogEntry = {
+          timestamp: '2025-11-26T10:00:00Z',
+          stream: 'stdout',
+          data: 'Legacy bug log entry',
+        };
+        await fs.writeFile(
+          path.join(legacyDir, 'agent-002.log'),
+          JSON.stringify(legacyEntry) + '\n',
+          'utf-8'
+        );
+
+        const result = await runtimeService.readLogWithFallback('bugs', 'login-error', 'agent-002');
+        expect(result.isLegacy).toBe(true);
+        expect(result.entries).toHaveLength(1);
+        expect(result.entries[0].data).toBe('Legacy bug log entry');
+      });
+
       it('should return empty entries when neither path exists', async () => {
-        const result = await service.readLogWithFallback('specs', 'non-existent', 'agent-001');
+        const result = await runtimeService.readLogWithFallback('specs', 'non-existent', 'agent-001');
         expect(result.isLegacy).toBe(false);
         expect(result.entries).toHaveLength(0);
       });
@@ -334,10 +369,10 @@ describe('LogFileService', () => {
           stream: 'stdout',
           data: 'New path entry',
         };
-        await service.appendLogWithCategory('specs', 'my-feature', 'agent-001', newEntry);
+        await runtimeService.appendLogWithCategory('specs', 'my-feature', 'agent-001', newEntry);
 
         // Also create legacy log
-        const legacyDir = path.join(testDir, 'my-feature', 'logs');
+        const legacyDir = path.join(kiroDir, 'specs', 'my-feature', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
         const legacyEntry: LogEntry = {
           timestamp: '2025-11-26T09:00:00Z',
@@ -350,7 +385,7 @@ describe('LogFileService', () => {
           'utf-8'
         );
 
-        const result = await service.readLogWithFallback('specs', 'my-feature', 'agent-001');
+        const result = await runtimeService.readLogWithFallback('specs', 'my-feature', 'agent-001');
         expect(result.isLegacy).toBe(false);
         expect(result.entries[0].data).toBe('New path entry');
       });
@@ -358,43 +393,43 @@ describe('LogFileService', () => {
 
     describe('hasLegacyLogs (Task 3.4)', () => {
       it('should return true when legacy logs exist for spec', async () => {
-        // Create legacy log at old path
-        const legacyDir = path.join(testDir, 'my-feature', 'logs');
+        // Create legacy log at .kiro/specs/{specId}/logs/
+        const legacyDir = path.join(kiroDir, 'specs', 'my-feature', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
         await fs.writeFile(path.join(legacyDir, 'agent-001.log'), 'test\n', 'utf-8');
 
-        const hasLegacy = await service.hasLegacyLogs('my-feature');
+        const hasLegacy = await runtimeService.hasLegacyLogs('my-feature');
         expect(hasLegacy).toBe(true);
       });
 
       it('should return true when legacy logs exist for bug with bug: prefix', async () => {
-        // Create legacy log at old path with bug: prefix
-        const legacyDir = path.join(testDir, 'bug:login-error', 'logs');
+        // Create legacy log at .kiro/bugs/{bugId}/logs/
+        const legacyDir = path.join(kiroDir, 'bugs', 'login-error', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
         await fs.writeFile(path.join(legacyDir, 'agent-001.log'), 'test\n', 'utf-8');
 
-        const hasLegacy = await service.hasLegacyLogs('bug:login-error');
+        const hasLegacy = await runtimeService.hasLegacyLogs('bug:login-error');
         expect(hasLegacy).toBe(true);
       });
 
       it('should return false when no legacy logs exist', async () => {
-        const hasLegacy = await service.hasLegacyLogs('non-existent');
+        const hasLegacy = await runtimeService.hasLegacyLogs('non-existent');
         expect(hasLegacy).toBe(false);
       });
 
       it('should return false when legacy directory exists but is empty', async () => {
-        const legacyDir = path.join(testDir, 'empty-spec', 'logs');
+        const legacyDir = path.join(kiroDir, 'specs', 'empty-spec', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
 
-        const hasLegacy = await service.hasLegacyLogs('empty-spec');
+        const hasLegacy = await runtimeService.hasLegacyLogs('empty-spec');
         expect(hasLegacy).toBe(false);
       });
     });
 
     describe('getLegacyLogInfo (Task 3.4)', () => {
       it('should return file count and total size', async () => {
-        // Create legacy logs
-        const legacyDir = path.join(testDir, 'my-feature', 'logs');
+        // Create legacy logs at .kiro/specs/{specId}/logs/
+        const legacyDir = path.join(kiroDir, 'specs', 'my-feature', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
 
         const log1Content = '{"data":"entry1"}\n'.repeat(10); // ~190 bytes
@@ -403,25 +438,25 @@ describe('LogFileService', () => {
         await fs.writeFile(path.join(legacyDir, 'agent-001.log'), log1Content, 'utf-8');
         await fs.writeFile(path.join(legacyDir, 'agent-002.log'), log2Content, 'utf-8');
 
-        const info = await service.getLegacyLogInfo('my-feature');
+        const info = await runtimeService.getLegacyLogInfo('my-feature');
         expect(info).not.toBeNull();
         expect(info?.fileCount).toBe(2);
         expect(info?.totalSize).toBeGreaterThan(0);
       });
 
       it('should return null when no legacy logs exist', async () => {
-        const info = await service.getLegacyLogInfo('non-existent');
+        const info = await runtimeService.getLegacyLogInfo('non-existent');
         expect(info).toBeNull();
       });
 
       it('should only count .log files', async () => {
-        const legacyDir = path.join(testDir, 'my-feature', 'logs');
+        const legacyDir = path.join(kiroDir, 'specs', 'my-feature', 'logs');
         await fs.mkdir(legacyDir, { recursive: true });
 
         await fs.writeFile(path.join(legacyDir, 'agent-001.log'), 'test\n', 'utf-8');
         await fs.writeFile(path.join(legacyDir, 'README.txt'), 'ignore\n', 'utf-8');
 
-        const info = await service.getLegacyLogInfo('my-feature');
+        const info = await runtimeService.getLegacyLogInfo('my-feature');
         expect(info?.fileCount).toBe(1);
       });
     });

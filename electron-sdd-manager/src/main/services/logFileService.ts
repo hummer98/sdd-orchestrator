@@ -117,18 +117,23 @@ export class LogFileService {
   }
 
   /**
-   * Get legacy file path (old structure)
-   * Path: {basePath}/{specId}/logs/{agentId}.log
-   */
-  private getLegacyFilePath(specId: string, agentId: string): string {
-    return path.join(this.basePath, specId, 'logs', `${agentId}.log`);
-  }
-
-  /**
-   * Get legacy directory path
+   * Get legacy directory path for specs/bugs
+   * Bug fix: Legacy logs are under .kiro/specs/ or .kiro/bugs/, NOT under .kiro/runtime/agents/
+   * basePath is {projectPath}/.kiro/runtime/agents
+   * Legacy structure: {projectPath}/.kiro/specs/{specId}/logs/ or .kiro/bugs/{bugId}/logs/
+   *
+   * @param specId - spec ID (including 'bug:' prefix for bugs)
+   * @returns The legacy directory path
    */
   private getLegacyDirPath(specId: string): string {
-    return path.join(this.basePath, specId, 'logs');
+    // Derive .kiro path from basePath (.kiro/runtime/agents -> .kiro)
+    const kiroPath = path.dirname(path.dirname(this.basePath));
+
+    if (specId.startsWith('bug:')) {
+      const bugId = specId.substring(4);
+      return path.join(kiroPath, 'bugs', bugId, 'logs');
+    }
+    return path.join(kiroPath, 'specs', specId, 'logs');
   }
 
   /**
@@ -184,17 +189,26 @@ export class LogFileService {
     }
 
     // Fall back to legacy path
-    // For specs, legacy path is: {basePath}/{specId}/logs/{agentId}.log
-    // For bugs with 'bug:' prefix: {basePath}/bug:{bugId}/logs/{agentId}.log
-    let legacySpecId = entityId;
-    if (category === 'bugs') {
-      legacySpecId = `bug:${entityId}`;
-    } else if (category === 'project') {
+    // Bug fix: Legacy logs are under .kiro/specs/ or .kiro/bugs/, NOT under .kiro/runtime/agents/
+    // basePath is {projectPath}/.kiro/runtime/agents, so we need to go up to .kiro
+    // Legacy structure: {projectPath}/.kiro/specs/{specId}/logs/{agentId}.log
+    if (category === 'project') {
       // Project agents don't have legacy paths
       return { entries: [], isLegacy: false };
     }
 
-    const legacyPath = this.getLegacyFilePath(legacySpecId, agentId);
+    // Derive .kiro path from basePath (.kiro/runtime/agents -> .kiro)
+    const kiroPath = path.dirname(path.dirname(this.basePath));
+
+    let legacyPath: string;
+    if (category === 'bugs') {
+      // Legacy bug logs: .kiro/bugs/{bugId}/logs/{agentId}.log
+      legacyPath = path.join(kiroPath, 'bugs', entityId, 'logs', `${agentId}.log`);
+    } else {
+      // Legacy spec logs: .kiro/specs/{specId}/logs/{agentId}.log
+      legacyPath = path.join(kiroPath, 'specs', entityId, 'logs', `${agentId}.log`);
+    }
+
     try {
       const content = await fs.readFile(legacyPath, 'utf-8');
       const lines = content.split('\n').filter((line) => line.trim() !== '');

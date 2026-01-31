@@ -381,6 +381,9 @@ export function WorkflowViewCore({
         onShowEventLog={handlers.handleShowEventLog}
         disableSafeArea={disableFooterSafeArea}
         metrics={metrics}
+        // worktree-rebase-from-main: UI統合修正
+        onRebaseFromMain={handlers.handleRebaseFromMain}
+        isRebasing={state.isRebasing}
       />
 
       {/* Event Log Modal (custom render) */}

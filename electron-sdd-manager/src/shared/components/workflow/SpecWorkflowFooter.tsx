@@ -113,7 +113,8 @@ export function SpecWorkflowFooter({
 }: SpecWorkflowFooterProps) {
   const showConvertButton = canShowConvertButton(isOnMain, specJson);
   // Task 7.1: Show rebase button when in worktree mode (Requirements: 1.1, 1.2)
-  const showRebaseButton = hasWorktreePath(specJson) && !isOnMain && onRebaseFromMain;
+  // isOnMain チェックを削除: specがworktreeモードなら表示（非同期gitチェック不要）
+  const showRebaseButton = hasWorktreePath(specJson) && onRebaseFromMain;
 
   // Metrics display values
   const aiTime = metrics ? formatDurationCompact(metrics.totalAiTimeMs) : null;

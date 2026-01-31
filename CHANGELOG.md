@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [0.62.0] - 2026-01-31
+
+### Added
+- Remote UI自動起動機能を実装
+- worktree管理用シェルスクリプトとclaudeプロファイル更新
+- モバイルUI向けエージェントログフルスクリーン表示機能を実装
+- 全アーティファクトMarkdownファイル表示機能を実装
+
+### Fixed
+- 共有通知ハンドラを設定し、UI通知を表示できるようにする
+- AgentログのコマンドがWorking Directoryラベルで表示されるバグを修正
+
+### Changed
+- AgentInfo.id を agentId に統一してSSoTを実現
+
+
 ## [0.61.0] - 2026-01-31
 
 ### Added

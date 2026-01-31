@@ -51,7 +51,7 @@ test.describe('Smartphone Agent Log Store Integration E2E Test', () => {
      */
     test('should store agent logs from WebSocket in shared store', async ({ page }) => {
       // Navigate to Agents tab (project agent view)
-      const agentsTab = page.locator('[data-testid="tab-agents"]');
+      const agentsTab = page.locator('[data-testid="remote-tab-agents"]');
       await agentsTab.click();
 
       // Wait for agents tab to load
@@ -128,7 +128,7 @@ test.describe('Smartphone Agent Log Store Integration E2E Test', () => {
      */
     test('should accumulate logs incrementally from WebSocket events', async ({ page }) => {
       // Navigate to Specs tab
-      const specsTab = page.locator('[data-testid="tab-specs"]');
+      const specsTab = page.locator('[data-testid="remote-tab-specs"]');
       await specsTab.click();
 
       await waitForSpecList(page);
@@ -233,7 +233,7 @@ test.describe('Smartphone Agent Log Store Integration E2E Test', () => {
      */
     test('should persist logs in store across navigation', async ({ page }) => {
       // Navigate to Specs tab and start agent
-      const specsTab = page.locator('[data-testid="tab-specs"]');
+      const specsTab = page.locator('[data-testid="remote-tab-specs"]');
       await specsTab.click();
 
       await waitForSpecList(page);
@@ -279,7 +279,7 @@ test.describe('Smartphone Agent Log Store Integration E2E Test', () => {
       await closeButton.click();
 
       // Navigate to different tab
-      const bugsTab = page.locator('[data-testid="tab-bugs"]');
+      const bugsTab = page.locator('[data-testid="remote-tab-bugs"]');
       await bugsTab.click();
       await page.waitForTimeout(1000);
 

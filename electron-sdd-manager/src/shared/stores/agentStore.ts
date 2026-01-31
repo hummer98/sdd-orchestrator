@@ -199,11 +199,14 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
    * - Uses ID-based deduplication to merge file logs with existing logs
    */
   ensureLogsLoaded: async (apiClient: ApiClient, agentId: string) => {
+    console.log('[ensureLogsLoaded] Called with agentId:', agentId);
     const state = get();
     const agent = state.getAgentById(agentId);
+    console.log('[ensureLogsLoaded] Found agent:', agent ? { agentId: agent.agentId, specId: agent.specId, status: agent.status } : 'NOT FOUND');
 
     // Early return if agent not found
     if (!agent) {
+      console.log('[ensureLogsLoaded] Agent not found, returning early');
       return;
     }
 
@@ -214,13 +217,17 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     // Running agents: skip API call if logs already exist (real-time logs via IPC)
     // Completed/failed agents: always load from file (may have additional logs)
     const shouldLoad = !hasLogs || !isRunning;
+    console.log('[ensureLogsLoaded] hasLogs:', hasLogs, 'isRunning:', isRunning, 'shouldLoad:', shouldLoad);
 
     if (!shouldLoad) {
+      console.log('[ensureLogsLoaded] Skipping API call - logs already exist for running agent');
       return;
     }
 
     // Call API to get logs
+    console.log('[ensureLogsLoaded] Calling getAgentLogs API with specId:', agent.specId, 'agentId:', agentId);
     const result = await apiClient.getAgentLogs(agent.specId, agentId);
+    console.log('[ensureLogsLoaded] API result:', result.ok ? `OK, ${result.value.length} logs` : `ERROR: ${result.error}`);
 
     if (!result.ok) {
       // Log error but don't modify state
@@ -232,11 +239,15 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     const existingIds = new Set(existingLogs.map((log) => log.id));
 
     // Add only new logs (not already in store)
+    let addedCount = 0;
     for (const log of result.value) {
       if (!existingIds.has(log.id)) {
         get().addLog(agentId, log);
+        addedCount++;
       }
     }
+    const finalLogs = get().logs.get(agentId) || [];
+    console.log('[ensureLogsLoaded] Added', addedCount, 'logs. Final count in store:', finalLogs.length);
   },
 
   loadAgents: async (apiClient: ApiClient) => {

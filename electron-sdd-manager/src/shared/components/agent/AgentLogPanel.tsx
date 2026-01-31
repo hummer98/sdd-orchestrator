@@ -148,6 +148,8 @@ export function AgentLogPanel({
     // Add all pre-parsed log entries
     entries.push(...logs);
 
+    console.log('[AgentLogPanel] parsedEntries:', entries.length, 'types:', entries.map(e => e.type));
+
     return entries;
   }, [logs, agent?.command, agent?.engineId]);
 

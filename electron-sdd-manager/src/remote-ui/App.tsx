@@ -122,7 +122,7 @@ function LeftSidebar({
   const apiClient = useApi();
 
   // Agent Store
-  const { selectAgent, selectedAgentId } = useSharedAgentStore();
+  const { selectAgent, selectedAgentId, addAgent, getAgentById } = useSharedAgentStore();
 
   // Project Agent state
   const [projectAgents, setProjectAgents] = useState<AgentInfo[]>([]);
@@ -178,9 +178,18 @@ function LeftSidebar({
   }, [apiClient]);
 
   // Project Agent handlers
+  // Bug fix: Add agent to shared store before selecting (for ensureLogsLoaded to work)
   const handleSelectAgent = useCallback((agentId: string) => {
+    // Find agent in local projectAgents state
+    const agent = projectAgents.find(a => a.agentId === agentId);
+    if (agent) {
+      // Add to shared store if not already there (project agents have specId='')
+      if (!getAgentById(agentId)) {
+        addAgent('', agent);
+      }
+    }
     selectAgent(agentId);
-  }, [selectAgent]);
+  }, [projectAgents, selectAgent, addAgent, getAgentById]);
 
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
@@ -461,7 +470,7 @@ function RightSidebar({
   onAutoExecution,
 }: RightSidebarProps) {
   const apiClient = useApi();
-  const { selectAgent, selectedAgentId } = useSharedAgentStore();
+  const { selectAgent, selectedAgentId, addAgent, getAgentById } = useSharedAgentStore();
 
   // Spec Agents state (filtered by selected spec)
   const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
@@ -530,9 +539,18 @@ function RightSidebar({
   }, [apiClient]);
 
   // Agent handlers
+  // Bug fix: Add agent to shared store before selecting (for ensureLogsLoaded to work)
   const handleSelectAgent = useCallback((agentId: string) => {
+    // Find agent in local specAgents state
+    const agent = specAgents.find(a => a.agentId === agentId);
+    if (agent && selectedSpec) {
+      // Add to shared store if not already there
+      if (!getAgentById(agentId)) {
+        addAgent(selectedSpec.name, agent);
+      }
+    }
     selectAgent(agentId);
-  }, [selectAgent]);
+  }, [specAgents, selectedSpec, selectAgent, addAgent, getAgentById]);
 
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
@@ -630,6 +648,20 @@ function FooterContent() {
 
   // Get logs for selected agent
   const logs = selectedAgentId ? agentStore.logs.get(selectedAgentId) ?? [] : [];
+
+  /**
+   * Bug fix: Desktop Remote UI past logs not displaying
+   * Ensure logs are loaded when agent is selected (same as AgentLogPage for mobile)
+   * agent-log-store-unification: Call ensureLogsLoaded to fetch past logs
+   * Note: ensureLogsLoaded internally checks if agent exists in store via getAgentById
+   * selectedAgent in deps ensures re-trigger when agent becomes available in store
+   * (handles timing issue where user clicks before loadAgents completes)
+   */
+  useEffect(() => {
+    if (selectedAgentId) {
+      agentStore.ensureLogsLoaded(apiClient, selectedAgentId);
+    }
+  }, [apiClient, selectedAgentId, agentStore, selectedAgent]);
 
   // Transform AgentInfo to AgentLogInfo
   const agentLogInfo: AgentLogInfo | undefined = selectedAgent ? {

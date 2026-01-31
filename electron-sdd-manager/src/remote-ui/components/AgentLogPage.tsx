@@ -87,11 +87,19 @@ export function AgentLogPage({
   /** Get logs for this agent from the shared store */
   const logsMap = useSharedAgentStore((state) => state.logs);
 
+  /** Get latest agent info from store to ensure status/phase are current */
+  const latestAgent = useSharedAgentStore((state) => 
+    Array.from(state.agents.values()).flat().find(a => a.agentId === agent.agentId)
+  ) ?? agent;
+
   /** Get logs for this specific agent */
   const logs: ParsedLogEntry[] = useMemo(
     () => logsMap.get(agent.agentId) ?? [],
     [logsMap, agent.agentId]
   );
+
+  // Debug log
+  console.log('[AgentLogPage] logs count:', logs.length, 'agentId:', agent.agentId);
 
   /**
    * agent-log-store-unification Task 3.2: Ensure logs are loaded on mount
@@ -124,6 +132,14 @@ export function AgentLogPage({
         >
           <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-sm font-semibold truncate">
+            {latestAgent.specId || 'Project Agent'}
+          </h1>
+          <p className="text-xs text-gray-500 truncate">
+            {latestAgent.phase}
+          </p>
+        </div>
       </header>
 
       {/* Log Panel Container - Scrollable (Req 3.1, 3.3) */}
@@ -136,12 +152,12 @@ export function AgentLogPage({
         {/* The panel has its own header showing "Agent Log - phase [Engine]" (Req 2.4) */}
         <AgentLogPanel
           agent={{
-            agentId: agent.agentId,
-            sessionId: agent.sessionId,
-            phase: agent.phase,
-            status: agent.status,
-            command: agent.command,
-            engineId: agent.engineId,
+            agentId: latestAgent.agentId,
+            sessionId: latestAgent.sessionId,
+            phase: latestAgent.phase,
+            status: latestAgent.status,
+            command: latestAgent.command,
+            engineId: latestAgent.engineId,
           }}
           logs={logs}
           showSessionId={false}
@@ -153,7 +169,7 @@ export function AgentLogPage({
 
       {/* Action Area - Fixed at bottom (Req 3.2) */}
       <AgentLogActionArea
-        agent={agent}
+        agent={latestAgent}
         apiClient={apiClient}
         testId={`${testId}-action-area`}
       />

@@ -21,16 +21,12 @@ import { logger } from '../services/logger';
 import type { SpecManagerService, ExecutionGroup } from '../services/specManagerService';
 import type { AgentInfo } from '../services/agentRecordService';
 import { getDefaultAgentRecordService } from '../services/agentRecordService';
-import { getDefaultLogFileService } from '../services/logFileService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
 import { getClaudeCommand } from '../services/agentProcess';
 // Task 7.3: Agent Lifecycle Management integration (agent-lifecycle-management feature)
 import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
-// Bug fix: agent-log-json-display-issue - Parse logs before returning to renderer
-import { unifiedParser } from '../utils/unifiedParser';
+// DRY: Uses shared readParsedLogs from logFileService
 import type { ParsedLogEntry } from '@shared/utils/parserTypes';
-// runtime-agents-restructure: Category-aware log reading
-import { determineCategory, getEntityIdFromSpecId } from '../services/agentCategory';
 
 // Module-level state for agent record watcher
 let agentRecordWatcherService: AgentRecordWatcherService | null = null;
@@ -258,46 +254,29 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   );
 
   // Agent Logs Handler (Bug fix: agent-log-display-issue)
-  // Bug fix: agent-log-json-display-issue - Parse logs before returning to renderer
+  // DRY: Uses shared readParsedLogs function
   ipcMain.handle(
     IPC_CHANNELS.GET_AGENT_LOGS,
     async (_event, specId: string, agentId: string): Promise<ParsedLogEntry[]> => {
       logger.debug('[agentHandlers] GET_AGENT_LOGS called', { specId, agentId });
       try {
-        const logFileService = getDefaultLogFileService();
-        // runtime-agents-restructure: Use category-aware log reading
-        const category = determineCategory(specId);
-        const entityId = getEntityIdFromSpecId(specId);
-        const { entries: logs } = await logFileService.readLogWithFallback(category, entityId, agentId);
-
         // Get engineId from agent record for parser selection (optional)
-        // Bug fix: agent-log-json-display-issue - Handle case where agentRecordService is not initialized
         let engineId: import('@shared/registry').LLMEngineId | undefined;
         try {
           const agentRecordService = getDefaultAgentRecordService();
           const record = await agentRecordService.findRecordByAgentId(agentId);
           engineId = record?.engineId;
         } catch {
-          // AgentRecordService may not be initialized, use default parser
           logger.debug('[agentHandlers] AgentRecordService not available, using default parser');
         }
 
-        // Parse each log entry's data field using unified parser
-        // Note: Log files only contain stdout/stderr, stdin is handled in Renderer
-        const parsedLogs: ParsedLogEntry[] = [];
-        for (const log of logs) {
-          if (log.stream === 'stdout' && log.data) {
-            // Parse stdout data using unified parser
-            const entries = unifiedParser.parseData(log.data, engineId);
-            parsedLogs.push(...entries);
-          }
-          // stderr is typically not shown in UI, skip for now
-        }
+        // Use shared function for log reading and parsing
+        const { readParsedLogs } = await import('../services/logFileService');
+        const parsedLogs = await readParsedLogs(specId, agentId, engineId);
 
         logger.debug('[agentHandlers] GET_AGENT_LOGS returned parsed', {
           specId,
           agentId,
-          rawLogCount: logs.length,
           parsedLogCount: parsedLogs.length,
         });
         return parsedLogs;

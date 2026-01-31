@@ -134,11 +134,16 @@ export function useAgentStoreInit(apiClient: ApiClient | null): UseAgentStoreIni
       apiClient.onAgentStatusChange((agentId, status) => {
         const store = useSharedAgentStore.getState();
 
+        // Check if agent exists in store
+        const agent = store.getAgentById(agentId);
+        if (!agent) {
+          // New agent detected via status change - reload the full list
+          loadAgents(false);
+          return;
+        }
+
         // Requirement 3.1: Update agent status in store
         store.updateAgentStatus(agentId, status);
-
-        // Note: Requirement 3.2 (UI auto-update) is handled automatically by Zustand subscription
-        // Note: Requirement 3.3 (agent add) and 3.4 (agent remove) are handled by store methods
       })
     );
 

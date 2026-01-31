@@ -314,12 +314,18 @@ function SpecTabContent({
    * Requirements: 1.2, 5.1, 6.1
    */
   const handleSelectAgent = useCallback((agentId: string) => {
+    console.log('[SpecDetailPage] handleSelectAgent clicked:', agentId);
     const agent = agents.find((a) => a.agentId === agentId);
     if (agent) {
+      console.log('[SpecDetailPage] Agent found, selecting and navigating:', agent);
       useSharedAgentStore.getState().selectAgent(agentId);
       if (onSelectAgent) {
         onSelectAgent(agent);
+      } else {
+        console.error('[SpecDetailPage] onSelectAgent callback is missing!');
       }
+    } else {
+      console.error('[SpecDetailPage] Agent NOT found in list:', agentId, 'Available:', agents.map(a => a.agentId));
     }
   }, [agents, onSelectAgent]);
 

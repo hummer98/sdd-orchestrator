@@ -192,6 +192,7 @@ export function AskAgentDialog({
               'text-white',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
+            data-testid="ask-execute-button"
           >
             <Bot className="w-4 h-4" />
             実行

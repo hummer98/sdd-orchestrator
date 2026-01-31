@@ -912,10 +912,16 @@ export class WebSocketApiClient implements ApiClient {
   /**
    * Get logs for a specific agent
    * main-process-log-parser Task 10.3: Updated to return ParsedLogEntry[]
+   * Bug fix: Server returns { specId, agentId, logs }, extract logs array
    */
   async getAgentLogs(specId: string, agentId: string): Promise<Result<ParsedLogEntry[], ApiError>> {
-    // main-process-log-parser Task 10.3: Server now returns ParsedLogEntry[]
-    return this.wrapRequest<ParsedLogEntry[]>('GET_AGENT_LOGS', { specId, agentId });
+    // Server returns payload: { specId, agentId, logs }
+    const result = await this.wrapRequest<{ specId: string; agentId: string; logs: ParsedLogEntry[] }>('GET_AGENT_LOGS', { specId, agentId });
+    if (!result.ok) {
+      return result;
+    }
+    // Extract logs array from payload
+    return { ok: true, value: result.value.logs ?? [] };
   }
 
   /**

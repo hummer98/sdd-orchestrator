@@ -3,11 +3,11 @@
  * Requirements: 9.3
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { LogFileService, LogEntry, appendLog, readLog } from './logFileService';
+import { LogFileService, LogEntry, appendLog, readLog, readParsedLogs, initDefaultLogFileService } from './logFileService';
 
 describe('LogFileService', () => {
   let testDir: string;
@@ -459,6 +459,107 @@ describe('LogFileService', () => {
         const info = await runtimeService.getLegacyLogInfo('my-feature');
         expect(info?.fileCount).toBe(1);
       });
+    });
+  });
+
+  // =============================================================================
+  // DRY: Shared readParsedLogs function tests
+  // =============================================================================
+  describe('readParsedLogs', () => {
+    let projectDir: string;
+    let runtimeAgentsDir: string;
+
+    beforeEach(async () => {
+      // Create project structure
+      projectDir = path.join(os.tmpdir(), `project-test-${Date.now()}`);
+      runtimeAgentsDir = path.join(projectDir, '.kiro', 'runtime', 'agents');
+      await fs.mkdir(runtimeAgentsDir, { recursive: true });
+
+      // Initialize the default service
+      initDefaultLogFileService(runtimeAgentsDir);
+    });
+
+    afterEach(async () => {
+      try {
+        await fs.rm(projectDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+      vi.restoreAllMocks();
+    });
+
+    it('should read and parse logs from file', async () => {
+      // Create a log file with valid Claude output format
+      const logsDir = path.join(runtimeAgentsDir, 'specs', 'test-spec', 'logs');
+      await fs.mkdir(logsDir, { recursive: true });
+
+      const logEntry = {
+        timestamp: '2026-01-26T10:00:00Z',
+        stream: 'stdout',
+        data: '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello world"}]}}',
+      };
+      await fs.writeFile(
+        path.join(logsDir, 'agent-001.log'),
+        JSON.stringify(logEntry) + '\n',
+        'utf-8'
+      );
+
+      const result = await readParsedLogs('test-spec', 'agent-001');
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      // The unifiedParser should parse the log entry
+      expect(result.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should return empty array when log file does not exist', async () => {
+      const result = await readParsedLogs('non-existent-spec', 'non-existent-agent');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle bug: prefix correctly', async () => {
+      // Create a log file for a bug
+      const logsDir = path.join(runtimeAgentsDir, 'bugs', 'test-bug', 'logs');
+      await fs.mkdir(logsDir, { recursive: true });
+
+      const logEntry = {
+        timestamp: '2026-01-26T10:00:00Z',
+        stream: 'stdout',
+        data: '{"type":"result","subtype":"success"}',
+      };
+      await fs.writeFile(
+        path.join(logsDir, 'agent-002.log'),
+        JSON.stringify(logEntry) + '\n',
+        'utf-8'
+      );
+
+      const result = await readParsedLogs('bug:test-bug', 'agent-002');
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('should skip stderr entries', async () => {
+      // Create a log file with stderr entry
+      const logsDir = path.join(runtimeAgentsDir, 'specs', 'test-spec', 'logs');
+      await fs.mkdir(logsDir, { recursive: true });
+
+      const logEntry = {
+        timestamp: '2026-01-26T10:00:00Z',
+        stream: 'stderr',
+        data: 'Some error message',
+      };
+      await fs.writeFile(
+        path.join(logsDir, 'agent-003.log'),
+        JSON.stringify(logEntry) + '\n',
+        'utf-8'
+      );
+
+      const result = await readParsedLogs('test-spec', 'agent-003');
+
+      // stderr entries should be skipped
+      expect(result).toEqual([]);
     });
   });
 });

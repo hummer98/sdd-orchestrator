@@ -40,7 +40,7 @@ vi.mock('../services/agentRecordService', () => ({
   })),
 }));
 
-// Mock logFileService
+// Mock logFileService with shared readParsedLogs function
 vi.mock('../services/logFileService', () => ({
   getDefaultLogFileService: vi.fn(() => ({
     readLog: vi.fn(() => Promise.resolve([
@@ -53,9 +53,19 @@ vi.mock('../services/logFileService', () => ({
       usedFallback: false,
     })),
   })),
+  // DRY: Shared function used by both IPC and WebSocket handlers
+  readParsedLogs: vi.fn(() => Promise.resolve([
+    {
+      id: 'parsed-log-1',
+      type: 'text',
+      timestamp: Date.now(),
+      engineId: 'claude',
+      text: { content: 'test', role: 'assistant' },
+    },
+  ])),
 }));
 
-// Bug fix: agent-log-json-display-issue - Mock unifiedParser
+// Bug fix: agent-log-json-display-issue - Mock unifiedParser (still needed for other tests)
 vi.mock('../utils/unifiedParser', () => ({
   unifiedParser: {
     parseData: vi.fn(() => [

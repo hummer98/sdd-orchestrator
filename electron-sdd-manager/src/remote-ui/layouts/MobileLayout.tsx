@@ -99,7 +99,7 @@ export function MobileLayout({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <MobileHeader />
 

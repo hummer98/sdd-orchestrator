@@ -3,9 +3,10 @@
  * Displays specification details and metadata
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
  * git-worktree-support: Task 12.1, 12.2 - worktree information display (Requirements: 4.1, 4.2)
+ * runtime-agents-restructure: Task 10.3 - MigrationDialog integration (Requirements: 5.1, 5.3, 5.4)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Calendar,
@@ -20,10 +21,11 @@ import {
   FolderGit2,
 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
-import { useSpecStore } from '../stores';
+import { useSpecStore, useProjectStore } from '../stores';
 import { clsx } from 'clsx';
 import type { Phase, ArtifactInfo } from '../types';
 import { hasWorktreePath, type WorktreeConfig } from '../types/worktree';
+import { MigrationDialog } from '@shared/components/migration';
 
 const PHASE_LABELS = {
   requirements: '要件定義',
@@ -33,6 +35,81 @@ const PHASE_LABELS = {
 
 export function SpecDetail() {
   const { selectedSpec, specDetail, isLoading } = useSpecStore();
+  const { currentProject: projectPath } = useProjectStore();
+
+  // runtime-agents-restructure: Task 10.3 - MigrationDialog state management
+  const [migrationDialogState, setMigrationDialogState] = useState<{
+    isOpen: boolean;
+    specId: string;
+    fileCount: number;
+    totalSize: number;
+    isProcessing: boolean;
+    error?: string;
+  } | null>(null);
+
+  // runtime-agents-restructure: Task 10.3 - Check migration on spec selection
+  useEffect(() => {
+    if (!selectedSpec || !projectPath) {
+      return;
+    }
+
+    const checkMigration = async () => {
+      try {
+        const migrationInfo = await window.electronAPI.checkMigrationNeeded(projectPath, selectedSpec);
+        if (migrationInfo) {
+          setMigrationDialogState({
+            isOpen: true,
+            specId: migrationInfo.specId,
+            fileCount: migrationInfo.fileCount,
+            totalSize: migrationInfo.totalSize,
+            isProcessing: false,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check migration:', error);
+      }
+    };
+
+    void checkMigration();
+  }, [selectedSpec, projectPath]);
+
+  // runtime-agents-restructure: Task 10.3 - Migration handlers
+  const handleAcceptMigration = async (specId: string) => {
+    if (!projectPath || !migrationDialogState) return;
+
+    setMigrationDialogState({ ...migrationDialogState, isProcessing: true, error: undefined });
+
+    try {
+      const result = await window.electronAPI.acceptMigration(projectPath, specId);
+      if (result.ok) {
+        // Close dialog on success
+        setMigrationDialogState(null);
+      } else {
+        setMigrationDialogState({ ...migrationDialogState, isProcessing: false, error: result.error });
+      }
+    } catch (error) {
+      setMigrationDialogState({
+        ...migrationDialogState,
+        isProcessing: false,
+        error: error instanceof Error ? error.message : 'Migration failed',
+      });
+    }
+  };
+
+  const handleDeclineMigration = async (specId: string) => {
+    if (!projectPath) return;
+
+    try {
+      await window.electronAPI.declineMigration(projectPath, specId);
+      setMigrationDialogState(null);
+    } catch (error) {
+      console.error('Failed to decline migration:', error);
+    }
+  };
+
+  const handleCloseMigration = () => {
+    setMigrationDialogState(null);
+  };
 
   if (!selectedSpec) {
     return (
@@ -72,21 +149,37 @@ export function SpecDetail() {
     specJson.documentReview?.status === 'approved';
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Implementation Ready Badge */}
-      {isReadyForImplementation && (
-        <div className="flex justify-end">
-          <span
-            className={clsx(
-              'flex items-center gap-1 px-3 py-1.5 rounded-full',
-              'bg-green-100 text-green-700 text-sm font-medium'
-            )}
-          >
-            <Rocket className="w-4 h-4" />
-            実装可能
-          </span>
-        </div>
+    <>
+      {/* runtime-agents-restructure: Task 10.3 - MigrationDialog */}
+      {migrationDialogState && (
+        <MigrationDialog
+          isOpen={migrationDialogState.isOpen}
+          specId={migrationDialogState.specId}
+          fileCount={migrationDialogState.fileCount}
+          totalSize={migrationDialogState.totalSize}
+          isProcessing={migrationDialogState.isProcessing}
+          error={migrationDialogState.error}
+          onAccept={handleAcceptMigration}
+          onDecline={handleDeclineMigration}
+          onClose={handleCloseMigration}
+        />
       )}
+
+      <div className="p-6 space-y-6">
+        {/* Implementation Ready Badge */}
+        {isReadyForImplementation && (
+          <div className="flex justify-end">
+            <span
+              className={clsx(
+                'flex items-center gap-1 px-3 py-1.5 rounded-full',
+                'bg-green-100 text-green-700 text-sm font-medium'
+              )}
+            >
+              <Rocket className="w-4 h-4" />
+              実装可能
+            </span>
+          </div>
+        )}
 
       {/* Metadata */}
       {/* spec-metadata-ssot-refactor: phase moved from metadata to specJson (SSOT) */}
@@ -208,7 +301,8 @@ export function SpecDetail() {
           />
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

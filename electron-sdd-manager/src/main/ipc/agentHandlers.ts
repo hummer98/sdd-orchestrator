@@ -9,7 +9,10 @@
  * - START_AGENT, STOP_AGENT, RESUME_AGENT, DELETE_AGENT
  * - GET_AGENTS, GET_ALL_AGENTS
  * - SEND_AGENT_INPUT, GET_AGENT_LOGS
- * - SWITCH_AGENT_WATCH_SCOPE, GET_RUNNING_AGENT_COUNTS
+ * - GET_RUNNING_AGENT_COUNTS
+ *
+ * Note: SWITCH_AGENT_WATCH_SCOPE was removed (remove-redundant-agent-watchers feature)
+ * projectAgentWatcher now monitors all categories (specs/*, bugs/*, project/) with a single watcher
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
@@ -61,20 +64,6 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
     getEventCallbacksRegistered,
     registerEventCallbacks,
   } = deps;
-
-  // ============================================================
-  // Agent Watcher Handlers
-  // agent-watcher-optimization Task 4.1: Switch watch scope for specific spec/bug
-  // ============================================================
-
-  ipcMain.handle(IPC_CHANNELS.SWITCH_AGENT_WATCH_SCOPE, async (_event, scopeId: string | null) => {
-    if (agentRecordWatcherService) {
-      logger.info('[agentHandlers] Switching agent watch scope', { scopeId });
-      await agentRecordWatcherService.switchWatchScope(scopeId);
-    } else {
-      logger.warn('[agentHandlers] Cannot switch scope: agent record watcher not running');
-    }
-  });
 
   // agent-watcher-optimization Task 2.2: Get running agent counts per spec
   // Requirements: 2.1 - Get running agent counts efficiently

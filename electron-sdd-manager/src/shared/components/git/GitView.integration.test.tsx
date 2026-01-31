@@ -47,7 +47,6 @@ const createMockApiClient = (): ApiClient => ({
   onAgentOutput: vi.fn(() => () => {}),
   onAgentStatusChange: vi.fn(() => () => {}),
   onAutoExecutionStatusChanged: vi.fn(() => () => {}),
-  switchAgentWatchScope: vi.fn(),
   startBugsWatcher: vi.fn(),
   stopBugsWatcher: vi.fn(),
   onBugsChanged: vi.fn(() => () => {}),

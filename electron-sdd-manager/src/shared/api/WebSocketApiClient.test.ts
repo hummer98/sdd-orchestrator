@@ -113,15 +113,10 @@ describe('WebSocketApiClient', () => {
   // ===========================================================================
   // bugs-view-unification: Task 1.3 - Bug monitoring methods
   // Requirements: 4.6, 4.7
+  // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
   // ===========================================================================
 
   describe('Bug monitoring methods', () => {
-    it('should implement switchAgentWatchScope via WebSocket message', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      expect(content).toContain('async switchAgentWatchScope(');
-      expect(content).toContain("'SWITCH_AGENT_WATCH_SCOPE'");
-    });
-
     it('should implement startBugsWatcher via WebSocket', () => {
       const content = readFileSync(clientPath, 'utf-8');
       expect(content).toContain('async startBugsWatcher()');

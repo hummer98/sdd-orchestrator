@@ -1271,10 +1271,6 @@ export class WebSocketApiClient implements ApiClient {
   // Requirements: 4.6, 4.7
   // ===========================================================================
 
-  async switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>> {
-    return this.wrapRequest<void>('SWITCH_AGENT_WATCH_SCOPE', { specId });
-  }
-
   async startBugsWatcher(): Promise<Result<void, ApiError>> {
     return this.wrapRequest<void>('START_BUGS_WATCHER');
   }

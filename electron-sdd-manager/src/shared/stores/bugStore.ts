@@ -168,7 +168,8 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
   },
 
   // bugs-view-unification Task 2.1: selectBug with bugDetail fetch
-  // Requirements: 3.1, 3.2, 3.8
+  // Requirements: 3.1, 3.2
+  // remove-redundant-agent-watchers: No need to call switchAgentWatchScope - projectAgentWatcher handles all
   selectBug: async (apiClient: ApiClient, bugId: string | null) => {
     // Handle null selection
     if (bugId === null) {
@@ -179,9 +180,6 @@ export const useSharedBugStore = create<SharedBugStore>((set, get) => ({
     set({ selectedBugId: bugId, isLoading: true, error: null });
 
     try {
-      // Switch agent watch scope (Requirements: 3.8)
-      await apiClient.switchAgentWatchScope(`bug:${bugId}`);
-
       // Fetch bug detail (Requirements: 3.1, 3.2)
       const result = await apiClient.getBugDetail(bugId);
 

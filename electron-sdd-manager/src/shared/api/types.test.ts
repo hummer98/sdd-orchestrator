@@ -179,12 +179,8 @@ describe('API types', () => {
     // =========================================================================
     // bugs-view-unification: Task 1.1 - Bug monitoring methods
     // Requirements: 4.1, 4.2, 4.3, 4.4
+    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
     // =========================================================================
-
-    it('should have switchAgentWatchScope method', () => {
-      const content = readFileSync(typesPath, 'utf-8');
-      expect(content).toContain('switchAgentWatchScope(');
-    });
 
     it('should have startBugsWatcher method', () => {
       const content = readFileSync(typesPath, 'utf-8');

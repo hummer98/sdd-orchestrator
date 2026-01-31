@@ -95,8 +95,9 @@ export function BugsView({
 
   // Handle bug selection
   // bugs-view-unification Task 8.1: Use shared store's selectBug (Requirements: 6.2)
+  // remove-redundant-agent-watchers: projectAgentWatcher monitors all categories - no scope switch needed
   const handleSelectBug = (bug: BugMetadata): void => {
-    // Call shared store's selectBug (which handles switchAgentWatchScope)
+    // Call shared store's selectBug (fetches bug detail)
     selectBug(apiClient, bug.name);
 
     // Also notify parent component

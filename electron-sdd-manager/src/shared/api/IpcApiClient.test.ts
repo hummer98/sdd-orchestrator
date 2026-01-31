@@ -123,15 +123,10 @@ describe('IpcApiClient', () => {
   // ===========================================================================
   // bugs-view-unification: Task 1.2 - Bug monitoring methods
   // Requirements: 4.5, 4.7
+  // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
   // ===========================================================================
 
   describe('Bug monitoring methods', () => {
-    it('should implement switchAgentWatchScope delegating to window.electronAPI', () => {
-      const content = readFileSync(clientPath, 'utf-8');
-      expect(content).toContain('async switchAgentWatchScope(');
-      expect(content).toContain('window.electronAPI.switchAgentWatchScope');
-    });
-
     it('should implement startBugsWatcher via IPC', () => {
       const content = readFileSync(clientPath, 'utf-8');
       expect(content).toContain('async startBugsWatcher()');

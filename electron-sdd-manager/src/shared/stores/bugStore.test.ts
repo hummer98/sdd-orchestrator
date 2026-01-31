@@ -41,7 +41,7 @@ function createMockApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
     onAgentStatusChange: vi.fn(() => () => {}),
     onAutoExecutionStatusChanged: vi.fn(() => () => {}),
     // bugs-view-unification: Bug monitoring methods
-    switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
     startBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     stopBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     onBugsChanged: vi.fn(() => () => {}),
@@ -231,7 +231,6 @@ describe('bugStore - selectBug with bugDetail', () => {
 
     const mockApiClient = createMockApiClient({
       getBugDetail: vi.fn().mockResolvedValue({ ok: true, value: mockBugDetail }),
-      switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     });
 
     await useSharedBugStore.getState().selectBug(mockApiClient, 'test-bug');
@@ -239,7 +238,8 @@ describe('bugStore - selectBug with bugDetail', () => {
     expect(useSharedBugStore.getState().selectedBugId).toBe('test-bug');
     expect(useSharedBugStore.getState().bugDetail).toEqual(mockBugDetail);
     expect(mockApiClient.getBugDetail).toHaveBeenCalledWith('test-bug');
-    expect(mockApiClient.switchAgentWatchScope).toHaveBeenCalledWith('bug:test-bug');
+    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
+    // projectAgentWatcher now monitors all categories with a single watcher
   });
 
   it('should handle selectBug with null to clear selection', async () => {
@@ -252,7 +252,6 @@ describe('bugStore - selectBug with bugDetail', () => {
           artifacts: { report: null, analysis: null, fix: null, verification: null },
         },
       }),
-      switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     });
 
     await useSharedBugStore.getState().selectBug(mockApiClient, 'test-bug');
@@ -271,7 +270,6 @@ describe('bugStore - selectBug with bugDetail', () => {
         ok: false,
         error: { type: 'NOT_FOUND', message: 'Bug not found' },
       }),
-      switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     });
 
     await useSharedBugStore.getState().selectBug(mockApiClient, 'nonexistent-bug');

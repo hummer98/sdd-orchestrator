@@ -109,7 +109,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     // bugs-view-unification: Additional ApiClient methods for watching
-    switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
     startBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     stopBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     onBugsChanged: vi.fn().mockReturnValue(() => {}),

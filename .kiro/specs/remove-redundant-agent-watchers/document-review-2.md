@@ -1,0 +1,187 @@
+# Specification Review Report #2
+
+**Feature**: remove-redundant-agent-watchers
+**Review Date**: 2026-01-31
+**Documents Reviewed**:
+- spec.json
+- requirements.md
+- design.md
+- tasks.md
+- document-review-1.md
+- document-review-1-reply.md
+- steering/product.md
+- steering/structure.md
+
+## Executive Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | 0 |
+| Warning | 0 |
+| Info | 2 |
+
+**総評**: 前回レビュー（#1）で指摘された W1 の修正が適用され、tasks.md が更新された。全ての Warning が解決済みであり、本スペックは実装準備完了状態である。追加確認で軽微な Info レベルの事項のみ確認。
+
+## 1. Document Consistency Analysis
+
+### 1.1 Requirements ↔ Design Alignment
+
+**結果: ✅ 良好（変更なし）**
+
+前回レビューと同様、すべての Requirement が Design の Requirements Traceability テーブルで網羅されている。
+
+### 1.2 Design ↔ Tasks Alignment
+
+**結果: ✅ 良好（改善済み）**
+
+前回の W1 指摘に基づき、Task 7.3 が以下のように改善された：
+- E2E テストスイート全体の実行を優先する記述に変更
+- Agent バッジ専用 E2E テストが存在しないことの Note を追加
+- `project-agent-startup.e2e.spec.ts` を参照先として明記
+
+### 1.3 Design ↔ Tasks Completeness
+
+| Category | Design Definition | Task Coverage | Status |
+|----------|-------------------|---------------|--------|
+| UI Components | なし（UI 変更なし） | N/A | ✅ |
+| Services | AgentRecordWatcherService | Task 1 | ✅ |
+| Types/Models | ApiClient, IPC_CHANNELS | Task 4, Task 2 | ✅ |
+| IPC | SWITCH_AGENT_WATCH_SCOPE | Task 2 | ✅ |
+| Stores | specDetailStore, bugStore | Task 3 | ✅ |
+
+### 1.4 Acceptance Criteria → Tasks Coverage
+
+**結果: ✅ 良好（変更なし）**
+
+全 28 Criteria が Tasks でカバーされている（tasks.md の Appendix: Requirements Coverage Matrix で確認可能）。
+
+**Validation Results**:
+- [x] All criterion IDs from requirements.md are mapped
+- [x] All criteria have corresponding tasks (Cleanup or Verification)
+- [x] No criterion relies solely on Infrastructure tasks without implementation
+
+### 1.5 Integration Test Coverage
+
+**結果: ✅ 該当なし（新規クロスバウンダリ通信なし）**
+
+本スペックは「削除」のみであり、新しい IPC/WebSocket/Store 連携は追加されない。
+
+### 1.6 Refactoring Integrity Check
+
+**結果: ✅ 良好（変更なし）**
+
+| Check | Validation | Status |
+|-------|------------|--------|
+| Deletion Tasks | Task 1, 2, 3, 4 で明示的に削除を指定 | ✅ |
+| Consumer Updates | Task 3 (Store), Task 5 (Test) で呼び出し元を更新 | ✅ |
+| No Parallel Implementation | 新規作成タスクなし、削除のみ | ✅ |
+
+### 1.7 Cross-Document Contradictions
+
+**検出なし** ✅
+
+## 2. Gap Analysis
+
+### 2.1 Technical Considerations
+
+| 観点 | 評価 | 詳細 |
+|------|------|------|
+| エラーハンドリング | ✅ | 削除のみのため新規エラーハンドリング不要 |
+| セキュリティ | ✅ | IPC チャネル削除でセキュリティ表面積が減少 |
+| パフォーマンス | ✅ | Design で「Spec/Bug 選択時の IPC 往復が 1 回削減」と明記 |
+| テスト戦略 | ✅ | Unit/Integration/E2E の各レベルで更新方針が記載 |
+| ロギング | ✅ | 変更なし |
+
+### 2.2 Operational Considerations
+
+| 観点 | 評価 | 詳細 |
+|------|------|------|
+| デプロイ | ✅ | 通常のアプリ更新で対応可能 |
+| ロールバック | ✅ | Git revert で対応可能（ステートマイグレーションなし） |
+| モニタリング | ✅ | 変更なし |
+| ドキュメント | ✅ | internal API のみ、外部ドキュメントなし |
+
+## 3. Ambiguities and Unknowns
+
+| 項目 | 状態 | 詳細 |
+|------|------|------|
+| 削除対象の特定 | ✅ 解決済み | Requirements と Design で具体的なプロパティ・メソッド名が列挙 |
+| テストファイル一覧 | ✅ 解決済み | 実装時に確認予定として整理済み |
+| E2E テスト名 | ✅ 解決済み | tasks.md で明確化（document-review-1-reply で修正適用済み） |
+
+## 4. Steering Alignment
+
+### 4.1 Architecture Compatibility
+
+**結果: ✅ 完全準拠**
+
+| Steering 原則 | 本スペックの対応 |
+|---------------|-----------------|
+| Main/Renderer プロセス境界 | Main Process のサービス（AgentRecordWatcherService）を変更、IPC チャネルを削除 |
+| State Management Rules | 共有 Store (specDetailStore, bugStore) からの呼び出し削除は structure.md の SSOT 原則に従う |
+| ApiClient 抽象化 | IpcApiClient と WebSocketApiClient の両方から統一的に削除 |
+
+### 4.2 Integration Concerns
+
+| 観点 | 評価 | 詳細 |
+|------|------|------|
+| 既存機能への影響 | ✅ 解決済み | document-review-1-reply で確認済み（既存 E2E でカバー） |
+| 共有リソース | ✅ | 共有リソースへの影響なし |
+| API 互換性 | ✅ | Internal API のみ（外部公開なし） |
+
+### 4.3 Migration Requirements
+
+| 観点 | 評価 | 詳細 |
+|------|------|------|
+| データマイグレーション | ✅ | 不要（永続データ変更なし） |
+| 段階的ロールアウト | ✅ | 不要（一括適用可能） |
+| 後方互換性 | ✅ 解決済み | Remote UI 呼び出し箇所は Tasks でカバー（document-review-1-reply で確認） |
+
+## 5. Recommendations
+
+### Critical Issues (Must Fix)
+
+なし
+
+### Warnings (Should Address)
+
+なし
+
+### Suggestions (Nice to Have)
+
+| ID | 提案 | 理由 |
+|----|------|------|
+| I1 | tasks.md の Requirements Coverage Matrix が網羅的 | 全 28 Criteria を Appendix でマッピングしており、実装時の参照に便利 |
+| I2 | document-review-1-reply の Applied Fixes セクションが明確 | 修正内容と diff が記載されており、変更履歴として有用 |
+
+## 6. Action Items
+
+| Priority | Issue | Recommended Action | Affected Documents |
+|----------|-------|--------------------|--------------------|
+| Info | I1: 良好な Coverage Matrix | そのまま維持 | - |
+| Info | I2: 良好な修正履歴 | そのまま維持 | - |
+
+---
+
+## Review Conclusion
+
+**Overall Assessment**: ✅ **実装準備完了**
+
+- Critical Issues: 0
+- Warnings: 0
+- Info: 2（肯定的なフィードバックのみ）
+
+前回レビュー（#1）で指摘された 2 件の Warning のうち、W1（E2E テスト名の不明確さ）は tasks.md に修正が適用された。W2（Remote UI 呼び出し箇所）は既存 Tasks でカバー済みであることが確認された。
+
+本スペックは全てのドキュメント整合性チェックをパスし、実装に進める状態である。
+
+### 前回レビューからの改善点
+
+| Issue | Status | Details |
+|-------|--------|---------|
+| W1: E2E テスト名不明 | ✅ 修正済み | tasks.md Task 7.3 に具体的なテスト名と Note を追加 |
+| W2: Remote UI 呼び出し確認 | ✅ 確認済み | bugStore.selectBug() のみ、Task 3.2 でカバー |
+
+---
+
+_This review was generated by the document-review command._

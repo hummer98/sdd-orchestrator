@@ -129,7 +129,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     // bugs-view-unification Task 8.1: Additional ApiClient methods for watching
-    switchAgentWatchScope: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
     startBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     stopBugsWatcher: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     onBugsChanged: vi.fn().mockReturnValue(() => {}),
@@ -325,11 +325,11 @@ describe('BugsView', () => {
         fireEvent.click(screen.getByTestId('bug-item-login-timeout-bug'));
       });
 
-      // Should call switchAgentWatchScope through store's selectBug
+      // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
+      // projectAgentWatcher now monitors all categories with a single watcher
+      // Verify bug is selected via getBugDetail call
       await waitFor(() => {
-        expect(mockApiClient.switchAgentWatchScope).toHaveBeenCalledWith(
-          'bug:login-timeout-bug'
-        );
+        expect(mockApiClient.getBugDetail).toHaveBeenCalledWith('login-timeout-bug');
       });
     });
   });

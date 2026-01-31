@@ -709,28 +709,12 @@ describe('IPC Handlers - ScheduleTaskCoordinator Integration (Task 8.3)', () => 
 });
 
 // =============================================================================
-// Inspection Fix Tasks - Round 1 (runtime-agents-restructure feature)
-// Requirements: 4.2, 4.3, 4.5, 5.1, 5.2, 5.4
+// Category determination tests (from runtime-agents-restructure feature)
+// Note: SWITCH_AGENT_WATCH_SCOPE IPC was removed (remove-redundant-agent-watchers)
+// These tests verify the agentCategory utility functions still work correctly
 // =============================================================================
 
-describe('IPC Handlers - SWITCH_AGENT_WATCH_SCOPE with Category (Task 10.1)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('SWITCH_AGENT_WATCH_SCOPE channel registration', () => {
-    it('should register switch-agent-watch-scope handler', async () => {
-      const { registerIpcHandlers } = await import('./handlers');
-      registerIpcHandlers();
-
-      const handleCalls = (ipcMain.handle as any).mock.calls;
-      const hasSwitchScope = handleCalls.some(
-        ([channel]: [string]) => channel === 'ipc:switch-agent-watch-scope'
-      );
-      expect(hasSwitchScope).toBe(true);
-    });
-  });
-
+describe('agentCategory utilities', () => {
   describe('Category determination from scopeId', () => {
     it('should determine specs category for regular specId', async () => {
       const { determineCategory, getEntityIdFromSpecId } = await import('../services/agentCategory');

@@ -2,11 +2,11 @@
   "feature_name": "test-feature",
   "name": "test-feature",
   "description": "E2Eテスト用のテスト機能",
-  "phase": "requirements-generated",
+  "phase": "initialized",
   "language": "ja",
   "approvals": {
     "requirements": {
-      "generated": true,
+      "generated": false,
       "approved": false
     },
     "design": {

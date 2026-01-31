@@ -83,12 +83,8 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
     }
 
     try {
-      // Bug fix: bugs-agent-list-not-updating (also applies to specs)
-      // Switch agent watcher scope to this spec's directory for real-time updates
-      // agent-watcher-optimization Task 4.2
-      const t0 = performance.now();
-      await window.electronAPI.switchAgentWatchScope(spec.name);
-      timings['switchAgentWatchScope'] = performance.now() - t0;
+      // remove-redundant-agent-watchers: projectAgentWatcher handles all categories
+      // No need to call switchAgentWatchScope - watcher already monitors all agent files
 
       // agent-watcher-optimization Task 4.2: Auto-select agent for this spec
       // Import and call autoSelectAgentForSpec from shared agentStore
@@ -247,17 +243,12 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
    * Clear selected spec
    * Requirement 2.4: clearSelectedSpec action to reset selection
    * Bug fix: spec-item-flash-wrong-content - also clear editor content
-   * agent-watcher-optimization Task 4.3: Clear watch scope on deselection
+   * remove-redundant-agent-watchers: No need to clear watch scope - projectAgentWatcher handles all
    */
   clearSelectedSpec: () => {
     set({ selectedSpec: null, specDetail: null });
     // Clear editor content to prevent showing old spec's content when switching projects
     useEditorStore.getState().clearEditor();
-    // agent-watcher-optimization Task 4.3: Clear spec watch scope
-    // Only ProjectAgent monitoring will continue
-    window.electronAPI.switchAgentWatchScope(null).catch((error) => {
-      console.error('[specDetailStore] Failed to clear agent watch scope:', error);
-    });
   },
 
   /**

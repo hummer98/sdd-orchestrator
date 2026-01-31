@@ -495,11 +495,6 @@ export class IpcApiClient implements ApiClient {
   // Requirements: 4.5, 4.7
   // ===========================================================================
 
-  async switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>> {
-    checkElectronAPI();
-    return wrapResult(() => window.electronAPI.switchAgentWatchScope(specId));
-  }
-
   async startBugsWatcher(): Promise<Result<void, ApiError>> {
     checkElectronAPI();
     return wrapResult(() => window.electronAPI.startBugsWatcher());

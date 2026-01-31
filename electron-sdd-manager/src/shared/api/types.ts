@@ -579,13 +579,6 @@ export interface ApiClient {
   // ===========================================================================
 
   /**
-   * Switch agent watch scope to a specific spec/bug
-   * bugs-view-unification: Task 1.1
-   * @param specId - Spec ID (feature name or bug:{name} format)
-   */
-  switchAgentWatchScope(specId: string): Promise<Result<void, ApiError>>;
-
-  /**
    * Start bugs watcher
    * bugs-view-unification: Task 1.1
    */

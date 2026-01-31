@@ -46,6 +46,12 @@ vi.mock('../services/logFileService', () => ({
     readLog: vi.fn(() => Promise.resolve([
       { timestamp: '2026-01-25T00:00:00Z', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"test"}]}}' },
     ])),
+    readLogWithFallback: vi.fn(() => Promise.resolve({
+      entries: [
+        { timestamp: '2026-01-25T00:00:00Z', stream: 'stdout', data: '{"type":"assistant","message":{"content":[{"type":"text","text":"test"}]}}' },
+      ],
+      usedFallback: false,
+    })),
   })),
 }));
 
@@ -82,7 +88,8 @@ vi.mock('../services/agentRecordWatcherService', () => ({
     start: vi.fn(),
     stop: vi.fn(() => Promise.resolve()),
     onChange: vi.fn(),
-    switchWatchScope: vi.fn(() => Promise.resolve()),
+    // Note: switchWatchScope removed (remove-redundant-agent-watchers feature)
+    // projectAgentWatcher now monitors all categories with a single watcher
   })),
 }));
 
@@ -163,7 +170,8 @@ describe('agentHandlers', () => {
       expect(registeredChannels).toContain('ipc:get-agent-logs');
 
       // Watcher handlers
-      expect(registeredChannels).toContain('ipc:switch-agent-watch-scope');
+      // Note: ipc:switch-agent-watch-scope was removed (remove-redundant-agent-watchers feature)
+      // projectAgentWatcher now monitors all categories with a single watcher
       expect(registeredChannels).toContain('ipc:get-running-agent-counts');
     });
 

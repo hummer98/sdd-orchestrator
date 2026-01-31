@@ -184,8 +184,8 @@ const mockElectronAPI = {
   // Phase/Review Sync APIs
   syncSpecPhase: vi.fn(),
   syncDocumentReview: vi.fn().mockResolvedValue(false),
-  // Agent Watcher APIs (bugs-agent-list-not-updating bug fix)
-  switchAgentWatchScope: vi.fn().mockResolvedValue(undefined),
+  // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)
+  // projectAgentWatcher now monitors all categories with a single watcher
   // Missing APIs found during test
   getRunningAgentCounts: vi.fn().mockResolvedValue({ projectCount: 0, specCount: 0, bugCount: 0 }),
   onBugsChanged: vi.fn(() => vi.fn()),

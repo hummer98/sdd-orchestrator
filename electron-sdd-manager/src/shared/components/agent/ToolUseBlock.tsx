@@ -21,6 +21,9 @@ import {
   Wrench,
   NotebookPen,
   CheckSquare,
+  Circle,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -31,6 +34,13 @@ export interface ToolUseBlockProps {
     input?: Record<string, unknown>;
   };
   defaultExpanded?: boolean;
+}
+
+/** TodoWrite tool input type */
+interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm: string;
 }
 
 /** Tool name to Lucide icon mapping (Requirement 2.5) */
@@ -49,6 +59,87 @@ const TOOL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   TodoWrite: CheckSquare,
   NotebookEdit: NotebookPen,
 };
+
+/**
+ * TodoWrite専用の表示コンポーネント
+ */
+function TodoListView({ todos }: { todos: TodoItem[] }): React.ReactElement {
+  const getStatusIcon = (status: TodoItem['status']) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'in_progress':
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      case 'pending':
+        return <Circle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusLabel = (status: TodoItem['status']) => {
+    switch (status) {
+      case 'completed':
+        return '完了';
+      case 'in_progress':
+        return '進行中';
+      case 'pending':
+        return '未着手';
+    }
+  };
+
+  return (
+    <div className="space-y-2 py-2">
+      {todos.map((todo, index) => (
+        <div
+          key={index}
+          className={clsx(
+            'flex items-start gap-3 px-3 py-2 rounded',
+            todo.status === 'completed' && 'bg-green-50 dark:bg-green-900/10',
+            todo.status === 'in_progress' && 'bg-blue-50 dark:bg-blue-900/10',
+            todo.status === 'pending' && 'bg-gray-50 dark:bg-gray-800/30'
+          )}
+        >
+          {/* ステータスアイコン */}
+          <div className="flex-shrink-0 mt-0.5">
+            {getStatusIcon(todo.status)}
+          </div>
+
+          {/* タスク内容 */}
+          <div className="flex-1 min-w-0">
+            <div
+              className={clsx(
+                'text-sm',
+                todo.status === 'completed' && 'line-through text-gray-500 dark:text-gray-400',
+                todo.status === 'in_progress' && 'font-medium text-blue-900 dark:text-blue-100',
+                todo.status === 'pending' && 'text-gray-700 dark:text-gray-300'
+              )}
+            >
+              {todo.content}
+            </div>
+            {todo.status === 'in_progress' && todo.activeForm && todo.activeForm !== todo.content && (
+              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">
+                {todo.activeForm}
+              </div>
+            )}
+          </div>
+
+          {/* ステータスラベル */}
+          <div className="flex-shrink-0">
+            <span
+              className={clsx(
+                'text-xs px-2 py-1 rounded-full',
+                todo.status === 'completed' && 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                todo.status === 'in_progress' && 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                todo.status === 'pending' && 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+              )}
+            >
+              {getStatusLabel(todo.status)}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Get tool-specific summary for collapsed display (Requirement 2.3)
@@ -86,6 +177,15 @@ function getToolSummary(name: string, input?: Record<string, unknown>): string {
       if (subagentType) parts.push(`[${subagentType}]`);
       if (description) parts.push(description);
       return parts.join(' ');
+    }
+
+    case 'TodoWrite': {
+      const todos = input.todos as TodoItem[] | undefined;
+      if (!todos || todos.length === 0) return '';
+      const completed = todos.filter(t => t.status === 'completed').length;
+      const inProgress = todos.filter(t => t.status === 'in_progress').length;
+      const pending = todos.filter(t => t.status === 'pending').length;
+      return `${todos.length}個のタスク (完了: ${completed}, 進行中: ${inProgress}, 未着手: ${pending})`;
     }
 
     default:
@@ -159,14 +259,18 @@ export function ToolUseBlock({
             'border-t border-yellow-200 dark:border-yellow-700'
           )}
         >
-          <pre
-            className={clsx(
-              'mt-2 text-xs font-mono whitespace-pre-wrap break-all overflow-auto max-h-96',
-              'text-yellow-900 dark:text-yellow-100'
-            )}
-          >
-            {JSON.stringify(input, null, 2)}
-          </pre>
+          {name === 'TodoWrite' && input.todos ? (
+            <TodoListView todos={input.todos as TodoItem[]} />
+          ) : (
+            <pre
+              className={clsx(
+                'mt-2 text-xs font-mono whitespace-pre-wrap break-all overflow-auto max-h-96',
+                'text-yellow-900 dark:text-yellow-100'
+              )}
+            >
+              {JSON.stringify(input, null, 2)}
+            </pre>
+          )}
         </div>
       )}
     </div>

@@ -124,18 +124,19 @@ export class AgentRecordWatcherService {
 
     logger.info('[AgentRecordWatcherService] Starting full-category watcher', { agentsDir });
 
-    // Full-category watcher: watch all categories with glob patterns
-    // This ensures all agent metadata files are visible immediately
+    // chokidar v4+ removed glob pattern support (Sep 2024)
+    // Must use directory paths with depth option instead of glob patterns like 'specs/*/*.json'
     const watchPaths = [
-      path.join(agentsDir, 'specs/*/*.json'),    // specs/{specId}/agent-*.json
-      path.join(agentsDir, 'bugs/*/*.json'),     // bugs/{bugId}/agent-*.json
-      path.join(agentsDir, 'project/*.json'),    // project/agent-*.json
+      path.join(agentsDir, 'specs'),
+      path.join(agentsDir, 'bugs'),
+      path.join(agentsDir, 'project'),
     ];
 
     this._projectAgentWatcher = chokidar.watch(watchPaths, {
-      ignoreInitial: false, // Process existing files on startup
+      ignoreInitial: true, // Skip existing files - only watch for new changes
       persistent: true,
-      ignored: '**/logs/**', // Exclude log files (handled separately via GET_AGENT_LOGS)
+      depth: 2, // Sufficient for {category}/{entityId}/agent-*.json
+      ignored: (filePath: string) => filePath.includes('/logs/'), // Function-based (chokidar v4+ recommended)
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 50,

@@ -16,7 +16,7 @@ import { Bot, MessageSquare } from 'lucide-react';
 import { useAgentStore, type AgentInfo } from '../stores/agentStore';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { ScheduleTaskSettingView } from '@shared/components/schedule';
@@ -41,12 +41,21 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
 }
 
 export function ProjectAgentPanel() {
-  const { selectedAgentId, stopAgent, selectAgent, getProjectAgents, removeAgent, addAgent, selectForProjectAgents } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, getProjectAgents, removeAgent, addAgent, selectForProjectAgents, loadAgents, agents } = useAgentStore();
   const { currentProject } = useProjectStore();
   const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
   // Task 8.1: Schedule Task Setting dialog state
   const [isScheduleTaskDialogOpen, setIsScheduleTaskDialogOpen] = useState(false);
+
+  // Bug fix: project-agent-initial-load
+  // Load agents when component mounts or when agents map is empty
+  // This ensures project agents are displayed immediately after project selection
+  useEffect(() => {
+    if (agents.size === 0) {
+      loadAgents();
+    }
+  }, [agents.size, loadAgents]);
 
   const projectAgents = getProjectAgents()
     // Sort: running first, then by lastActivityAt descending (most recently active first)

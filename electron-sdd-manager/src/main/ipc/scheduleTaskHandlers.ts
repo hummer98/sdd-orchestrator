@@ -21,7 +21,18 @@ import {
   type ExecutionResult as CoordinatorExecutionResult,
 } from '../services/scheduleTaskCoordinator';
 import { logger } from '../services/logger';
-import { setLastActivityTime } from '../services/idleTimeTracker';
+import { setLastActivityTime, getIdleTimeMs as getIdleTimeMsFromTracker } from '../services/idleTimeTracker';
+import { getClaudeCommand } from '../services/agentProcess';
+import { buildClaudeArgs, SpecManagerService } from '../services/specManagerService';
+import { WorktreeService } from '../services/worktreeService';
+import type {
+  StartScheduleAgentFn,
+  CreateScheduleWorktreeFn,
+  StartScheduleAgentOptions,
+  CreateScheduleWorktreeOptions,
+  ScheduleAgentStartResult,
+  ScheduleWorktreeInfo,
+} from '../services/scheduleTaskCoordinator';
 import type {
   ScheduleTask,
   ScheduleTaskInput,
@@ -106,6 +117,207 @@ function toSharedExecutionResult(result: CoordinatorExecutionResult): ExecutionR
 }
 
 // ============================================================
+// Task 1.1: startScheduleAgentWrapper
+// Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+// ============================================================
+
+/**
+ * Create a wrapper function for starting schedule task agents
+ * Uses SpecManagerService.startAgent with specId='' (project-level) and phase='schedule-{taskName}'
+ *
+ * @param projectPath - Current project path
+ * @param specManagerService - SpecManagerService instance
+ * @returns StartScheduleAgentFn function
+ */
+export function createStartScheduleAgentWrapper(
+  projectPath: string,
+  specManagerService: SpecManagerService
+): StartScheduleAgentFn {
+  return async (options: StartScheduleAgentOptions) => {
+    const { taskId, taskName, prompt, promptIndex, worktreePath } = options;
+
+    logger.info('[ScheduleTaskHandlers] Starting schedule agent', {
+      taskId,
+      taskName,
+      promptIndex,
+      worktreePath,
+    });
+
+    try {
+      // Requirement 3.2: specId='' for project-level agent, phase='schedule-{taskName}'
+      const phase = `schedule-${taskName}`;
+
+      // Requirement 3.3: Pass prompt via args using buildClaudeArgs
+      const result = await specManagerService.startAgent({
+        specId: '', // Project-level agent
+        phase,
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command: prompt }),
+        prompt, // Store original prompt in agent metadata
+        worktreeCwd: worktreePath, // Pass worktree path if workflow mode
+      });
+
+      if (result.ok) {
+        // Requirement 3.4: Return agentId on success
+        logger.info('[ScheduleTaskHandlers] Schedule agent started successfully', {
+          taskId,
+          agentId: result.value.id,
+        });
+        return {
+          ok: true as const,
+          value: { agentId: result.value.id },
+        };
+      } else {
+        // Requirement 3.5: Error handling
+        logger.error('[ScheduleTaskHandlers] Failed to start schedule agent', {
+          taskId,
+          error: result.error,
+        });
+        return {
+          ok: false as const,
+          error: {
+            type: result.error.type,
+            message: 'message' in result.error ? result.error.message : `Agent start failed: ${result.error.type}`,
+          },
+        };
+      }
+    } catch (error) {
+      // Requirement 3.5: Unexpected error handling
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('[ScheduleTaskHandlers] Unexpected error starting schedule agent', {
+        taskId,
+        error: message,
+      });
+      return {
+        ok: false as const,
+        error: { type: 'AGENT_START_FAILED', message },
+      };
+    }
+  };
+}
+
+// ============================================================
+// Task 2.1: createScheduleWorktreeWrapper
+// Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+// ============================================================
+
+/**
+ * Convert task name to safe branch name
+ * Replaces spaces with hyphens and converts to lowercase
+ */
+function toSafeBranchName(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * Generate date suffix in YYYYMMDD-HHmmss format
+ */
+function generateDateSuffix(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  const hours = String(now.getUTCHours()).padStart(2, '0');
+  const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(now.getUTCSeconds()).padStart(2, '0');
+  return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
+
+/**
+ * Create a wrapper function for creating schedule task worktrees
+ * Uses WorktreeService.createEntityWorktree with naming convention schedule/{task-name}/{suffix}
+ *
+ * @param projectPath - Current project path
+ * @param worktreeService - WorktreeService instance
+ * @returns CreateScheduleWorktreeFn function
+ */
+export function createScheduleWorktreeWrapper(
+  projectPath: string,
+  worktreeService: WorktreeService
+): CreateScheduleWorktreeFn {
+  return async (options: CreateScheduleWorktreeOptions) => {
+    const { taskName, suffixMode, customSuffix, promptIndex } = options;
+
+    // Requirement 4.2: Naming convention schedule/{task-name}/{suffix}
+    const safeName = toSafeBranchName(taskName);
+    const dateSuffix = generateDateSuffix();
+
+    // Requirement 4.3 & 4.4: Generate suffix based on mode
+    let suffix: string;
+    if (suffixMode === 'custom' && customSuffix) {
+      // Custom suffix + date
+      suffix = `${customSuffix}-${dateSuffix}`;
+    } else {
+      // Auto: date only
+      suffix = dateSuffix;
+    }
+
+    // Add promptIndex suffix for multi-prompt tasks (promptIndex > 0)
+    if (promptIndex > 0) {
+      suffix = `${suffix}-${promptIndex}`;
+    }
+
+    // Full worktree name: {task-name}/{suffix}
+    const worktreeName = `${safeName}/${suffix}`;
+
+    logger.info('[ScheduleTaskHandlers] Creating schedule worktree', {
+      taskName,
+      worktreeName,
+      suffixMode,
+      promptIndex,
+    });
+
+    try {
+      // Requirement 4.1: Use WorktreeService
+      const result = await worktreeService.createEntityWorktree('schedule', worktreeName);
+
+      if (result.ok) {
+        // Requirement 4.5: Return absolutePath on success
+        const absolutePath = `${projectPath}/${result.value.path}`;
+        logger.info('[ScheduleTaskHandlers] Schedule worktree created', {
+          taskName,
+          worktreeName,
+          absolutePath,
+        });
+        return {
+          ok: true as const,
+          value: {
+            path: result.value.path,
+            absolutePath,
+            branch: result.value.branch,
+            created_at: result.value.created_at,
+          },
+        };
+      } else {
+        // Requirement 4.6: Error handling
+        logger.error('[ScheduleTaskHandlers] Failed to create schedule worktree', {
+          taskName,
+          error: result.error,
+        });
+        return {
+          ok: false as const,
+          error: {
+            type: 'WORKTREE_ERROR',
+            message: 'message' in result.error ? result.error.message : `Worktree creation failed: ${result.error.type}`,
+          },
+        };
+      }
+    } catch (error) {
+      // Requirement 4.6: Unexpected error handling
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('[ScheduleTaskHandlers] Unexpected error creating schedule worktree', {
+        taskName,
+        error: message,
+      });
+      return {
+        ok: false as const,
+        error: { type: 'WORKTREE_ERROR', message },
+      };
+    }
+  };
+}
+
+// ============================================================
 // Module State
 // ============================================================
 
@@ -122,21 +334,38 @@ let handlersRegistered = false;
 /**
  * Initialize ScheduleTaskCoordinator for a project
  * Called when project is selected
+ *
+ * Task 3.1: Dependency injection and scheduler auto-start
+ * Requirements: 1.1, 1.3, 2.1, 3.1, 4.1
+ *
  * @param projectPath - Project path to initialize coordinator for
+ * @param specManagerService - Optional SpecManagerService for testing
+ * @param worktreeService - Optional WorktreeService for testing
  */
-export async function initScheduleTaskCoordinator(projectPath: string): Promise<void> {
-  // Dispose existing coordinator if any
+export async function initScheduleTaskCoordinator(
+  projectPath: string,
+  specManagerService?: SpecManagerService,
+  worktreeService?: WorktreeService
+): Promise<void> {
+  // Dispose existing coordinator if any (Requirement 1.3)
   disposeScheduleTaskCoordinator();
 
   const fileService = getDefaultScheduleTaskFileService();
 
+  // Create service instances if not provided (for testing)
+  const sms = specManagerService ?? SpecManagerService.getInstance();
+  const wts = worktreeService ?? new WorktreeService(projectPath);
+
+  // Task 3.1: Create wrapper functions for dependency injection
+  // Requirement 3.1: startScheduleAgent uses SpecManagerService.startAgent
+  const startScheduleAgent = createStartScheduleAgentWrapper(projectPath, sms);
+  // Requirement 4.1: createScheduleWorktree uses WorktreeService
+  const createScheduleWorktree = createScheduleWorktreeWrapper(projectPath, wts);
+
   // Create coordinator with dependencies
   scheduleTaskCoordinator = createScheduleTaskCoordinator(projectPath, {
-    getIdleTimeMs: () => {
-      // TODO: Task 7.1 - Integrate with humanActivityTracker
-      // For now, return 0 (never idle)
-      return 0;
-    },
+    // Requirement 2.1: getIdleTimeMs uses idleTimeTracker.getIdleTimeMs()
+    getIdleTimeMs: () => getIdleTimeMsFromTracker(),
     getAllTasks: async (path: string) => {
       const service = getDefaultScheduleTaskService();
       return service.getAllTasks(path);
@@ -185,11 +414,19 @@ export async function initScheduleTaskCoordinator(projectPath: string): Promise<
       });
     },
     logger,
-    // TODO: Task 2.5 - Add createScheduleWorktree and startScheduleAgent dependencies
+    // Task 3.1: Inject wrapper functions for Agent and Worktree operations
+    // Requirement 3.1: startScheduleAgent for Agent execution
+    startScheduleAgent,
+    // Requirement 4.1: createScheduleWorktree for workflow mode
+    createScheduleWorktree,
   });
 
   await scheduleTaskCoordinator.initialize();
-  logger.info('[ScheduleTaskHandlers] Coordinator initialized', { projectPath });
+
+  // Requirement 1.1: Call startScheduler() after initialize()
+  scheduleTaskCoordinator.startScheduler();
+
+  logger.info('[ScheduleTaskHandlers] Coordinator initialized and scheduler started', { projectPath });
 }
 
 /**

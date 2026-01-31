@@ -462,7 +462,8 @@ export class WorktreeService {
     }
 
     // Branch prefix depends on type
-    const branchPrefix = type === 'specs' ? 'feature' : 'bugfix';
+    // schedule-task-scheduler-activation: Added 'schedule' type support
+    const branchPrefix = type === 'specs' ? 'feature' : type === 'schedule' ? 'schedule' : 'bugfix';
     const branchName = `${branchPrefix}/${name}`;
     const { relative: relativePath, absolute: absolutePath } = this.getEntityWorktreePath(type, name);
 
@@ -520,7 +521,8 @@ export class WorktreeService {
    * @returns void on success
    */
   async removeEntityWorktree(type: EntityType, name: string): Promise<WorktreeServiceResult<void>> {
-    const branchPrefix = type === 'specs' ? 'feature' : 'bugfix';
+    // schedule-task-scheduler-activation: Added 'schedule' type support
+    const branchPrefix = type === 'specs' ? 'feature' : type === 'schedule' ? 'schedule' : 'bugfix';
     const branchName = `${branchPrefix}/${name}`;
     const { absolute: absolutePath } = this.getEntityWorktreePath(type, name);
 

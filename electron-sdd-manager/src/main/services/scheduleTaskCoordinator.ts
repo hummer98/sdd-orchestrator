@@ -365,6 +365,13 @@ export class ScheduleTaskCoordinator implements ScheduleTaskCoordinatorService {
    * スケジューラ開始
    * 1分間隔でスケジュール条件をチェック
    */
+  /**
+   * スケジューラ開始
+   * 1分間隔でスケジュール条件をチェックし、キューを処理
+   *
+   * schedule-task-scheduler-activation Requirement 1.2:
+   * - 1分間隔でcheckScheduleConditionsとprocessQueueを順番に実行
+   */
   startScheduler(): void {
     if (this.schedulerIntervalId !== null) {
       this.logger.warn('[ScheduleTaskCoordinator] Scheduler already running');
@@ -376,9 +383,12 @@ export class ScheduleTaskCoordinator implements ScheduleTaskCoordinatorService {
     });
 
     this.schedulerIntervalId = setInterval(() => {
-      this.checkScheduleConditions().catch((error) => {
-        this.logger.error('[ScheduleTaskCoordinator] Schedule check failed', { error });
-      });
+      // Requirement 1.2: Execute checkScheduleConditions and processQueue in sequence
+      this.checkScheduleConditions()
+        .then(() => this.processQueue())
+        .catch((error) => {
+          this.logger.error('[ScheduleTaskCoordinator] Schedule check or queue processing failed', { error });
+        });
     }, SCHEDULE_CHECK_INTERVAL_MS);
   }
 

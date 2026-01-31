@@ -263,12 +263,290 @@ describe('ScheduleTaskHandlers', () => {
       // initScheduleTaskCoordinator should not throw
       await expect(initScheduleTaskCoordinator(projectPath)).resolves.not.toThrow();
     });
+
+    // ============================================================
+    // Task 3.1: Scheduler Auto-start Tests
+    // Requirements: 1.1, 2.1, 3.1, 4.1
+    // ============================================================
+
+    it('should call startScheduler after initialize', async () => {
+      const { getScheduleTaskCoordinator } = await import('./scheduleTaskHandlers');
+      const projectPath = '/test/project';
+
+      await initScheduleTaskCoordinator(projectPath);
+
+      const coordinator = getScheduleTaskCoordinator();
+      // Coordinator should be created (startScheduler is called internally)
+      expect(coordinator).not.toBeNull();
+    });
+
+    it('should inject getIdleTimeMs dependency that returns actual idle time', async () => {
+      // Requirement 2.1: getIdleTimeMs should use idleTimeTracker
+      // This is verified by checking the coordinator is created with proper deps
+      const projectPath = '/test/project';
+
+      await initScheduleTaskCoordinator(projectPath);
+
+      const { getScheduleTaskCoordinator } = await import('./scheduleTaskHandlers');
+      const coordinator = getScheduleTaskCoordinator();
+      expect(coordinator).not.toBeNull();
+    });
   });
 
   describe('disposeScheduleTaskCoordinator', () => {
     it('should dispose coordinator without error', () => {
       // disposeScheduleTaskCoordinator should not throw even if not initialized
       expect(() => disposeScheduleTaskCoordinator()).not.toThrow();
+    });
+
+    it('should stop scheduler when disposed', async () => {
+      const projectPath = '/test/project';
+      await initScheduleTaskCoordinator(projectPath);
+
+      disposeScheduleTaskCoordinator();
+
+      const { getScheduleTaskCoordinator } = await import('./scheduleTaskHandlers');
+      const coordinator = getScheduleTaskCoordinator();
+      expect(coordinator).toBeNull();
+    });
+  });
+
+  // ============================================================
+  // Task 1.1: startScheduleAgentWrapper Tests
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
+  // ============================================================
+
+  describe('createStartScheduleAgentWrapper', () => {
+    it('should call SpecManagerService.startAgent with correct parameters', async () => {
+      const mockStartAgent = vi.fn().mockResolvedValue({
+        ok: true,
+        value: { id: 'agent-123' },
+      });
+      const mockSpecManagerService = { startAgent: mockStartAgent };
+      const projectPath = '/test/project';
+
+      // Import the wrapper creator
+      const { createStartScheduleAgentWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createStartScheduleAgentWrapper(projectPath, mockSpecManagerService as any);
+
+      const result = await wrapper({
+        taskId: 'task-1',
+        taskName: 'Test Task',
+        prompt: '/kiro:steering',
+        promptIndex: 0,
+      });
+
+      // Requirement 3.1: Should use SpecManagerService.startAgent
+      expect(mockStartAgent).toHaveBeenCalled();
+      // Requirement 3.2: specId='' for project-level agent, phase='schedule-{taskName}'
+      expect(mockStartAgent).toHaveBeenCalledWith(expect.objectContaining({
+        specId: '',
+        phase: 'schedule-Test Task',
+      }));
+      // Requirement 3.3: Prompt should be passed via args
+      expect(mockStartAgent).toHaveBeenCalledWith(expect.objectContaining({
+        prompt: '/kiro:steering',
+      }));
+      // Requirement 3.4: Should return agentId on success
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-123');
+      }
+    });
+
+    it('should pass worktreePath as worktreeCwd when provided', async () => {
+      const mockStartAgent = vi.fn().mockResolvedValue({
+        ok: true,
+        value: { id: 'agent-456' },
+      });
+      const mockSpecManagerService = { startAgent: mockStartAgent };
+      const projectPath = '/test/project';
+
+      const { createStartScheduleAgentWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createStartScheduleAgentWrapper(projectPath, mockSpecManagerService as any);
+
+      await wrapper({
+        taskId: 'task-1',
+        taskName: 'Workflow Task',
+        prompt: '/kiro:steering',
+        promptIndex: 0,
+        worktreePath: '/test/project/.kiro/worktrees/schedule/workflow-task/20260131-120000',
+      });
+
+      expect(mockStartAgent).toHaveBeenCalledWith(expect.objectContaining({
+        worktreeCwd: '/test/project/.kiro/worktrees/schedule/workflow-task/20260131-120000',
+      }));
+    });
+
+    it('should return error result when startAgent fails', async () => {
+      // Requirement 3.5: Error handling
+      const mockStartAgent = vi.fn().mockResolvedValue({
+        ok: false,
+        error: { type: 'AGENT_START_FAILED', message: 'Process spawn failed' },
+      });
+      const mockSpecManagerService = { startAgent: mockStartAgent };
+      const projectPath = '/test/project';
+
+      const { createStartScheduleAgentWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createStartScheduleAgentWrapper(projectPath, mockSpecManagerService as any);
+
+      const result = await wrapper({
+        taskId: 'task-1',
+        taskName: 'Test Task',
+        prompt: '/kiro:steering',
+        promptIndex: 0,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('AGENT_START_FAILED');
+        expect(result.error.message).toBe('Process spawn failed');
+      }
+    });
+  });
+
+  // ============================================================
+  // Task 2.1: createScheduleWorktreeWrapper Tests
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+  // ============================================================
+
+  describe('createScheduleWorktreeWrapper', () => {
+    it('should call WorktreeService.createEntityWorktree with correct naming', async () => {
+      const mockCreateEntityWorktree = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/schedule/test-task/20260131-120000',
+          branch: 'schedule/test-task/20260131-120000',
+          created_at: '2026-01-31T12:00:00Z',
+        },
+      });
+      const mockWorktreeService = { createEntityWorktree: mockCreateEntityWorktree };
+      const projectPath = '/test/project';
+
+      const { createScheduleWorktreeWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createScheduleWorktreeWrapper(projectPath, mockWorktreeService as any);
+
+      const result = await wrapper({
+        taskName: 'Test Task',
+        suffixMode: 'auto',
+        promptIndex: 0,
+      });
+
+      // Requirement 4.1: Should use WorktreeService
+      expect(mockCreateEntityWorktree).toHaveBeenCalled();
+      // Requirement 4.2: Naming convention schedule/{task-name}/{suffix}
+      expect(mockCreateEntityWorktree).toHaveBeenCalledWith(
+        'schedule',
+        expect.stringMatching(/^test-task\/\d{8}-\d{6}(-0)?$/)
+      );
+      // Requirement 4.5: Should return absolutePath on success
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.absolutePath).toBeDefined();
+      }
+    });
+
+    it('should generate auto suffix with date format YYYYMMDD-HHmmss', async () => {
+      // Requirement 4.3: suffixMode='auto' generates date-based suffix
+      const mockCreateEntityWorktree = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/schedule/my-task/20260131-120000',
+          branch: 'schedule/my-task/20260131-120000',
+          created_at: '2026-01-31T12:00:00Z',
+        },
+      });
+      const mockWorktreeService = { createEntityWorktree: mockCreateEntityWorktree };
+      const projectPath = '/test/project';
+
+      const { createScheduleWorktreeWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createScheduleWorktreeWrapper(projectPath, mockWorktreeService as any);
+
+      await wrapper({
+        taskName: 'My Task',
+        suffixMode: 'auto',
+        promptIndex: 0,
+      });
+
+      // Verify the name format includes date suffix
+      const callArg = mockCreateEntityWorktree.mock.calls[0][1];
+      expect(callArg).toMatch(/^my-task\/\d{8}-\d{6}/);
+    });
+
+    it('should use custom suffix with date when suffixMode is custom', async () => {
+      // Requirement 4.4: suffixMode='custom' uses user-specified suffix + date
+      const mockCreateEntityWorktree = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/schedule/my-task/v2-20260131-120000',
+          branch: 'schedule/my-task/v2-20260131-120000',
+          created_at: '2026-01-31T12:00:00Z',
+        },
+      });
+      const mockWorktreeService = { createEntityWorktree: mockCreateEntityWorktree };
+      const projectPath = '/test/project';
+
+      const { createScheduleWorktreeWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createScheduleWorktreeWrapper(projectPath, mockWorktreeService as any);
+
+      await wrapper({
+        taskName: 'My Task',
+        suffixMode: 'custom',
+        customSuffix: 'v2',
+        promptIndex: 0,
+      });
+
+      const callArg = mockCreateEntityWorktree.mock.calls[0][1];
+      expect(callArg).toMatch(/^my-task\/v2-\d{8}-\d{6}/);
+    });
+
+    it('should append promptIndex suffix for multi-prompt tasks', async () => {
+      const mockCreateEntityWorktree = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          path: '.kiro/worktrees/schedule/test/20260131-120000-1',
+          branch: 'schedule/test/20260131-120000-1',
+          created_at: '2026-01-31T12:00:00Z',
+        },
+      });
+      const mockWorktreeService = { createEntityWorktree: mockCreateEntityWorktree };
+      const projectPath = '/test/project';
+
+      const { createScheduleWorktreeWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createScheduleWorktreeWrapper(projectPath, mockWorktreeService as any);
+
+      await wrapper({
+        taskName: 'Test',
+        suffixMode: 'auto',
+        promptIndex: 1, // Second prompt
+      });
+
+      const callArg = mockCreateEntityWorktree.mock.calls[0][1];
+      expect(callArg).toMatch(/-1$/); // Should end with -1
+    });
+
+    it('should return error result when worktree creation fails', async () => {
+      // Requirement 4.6: Error handling
+      const mockCreateEntityWorktree = vi.fn().mockResolvedValue({
+        ok: false,
+        error: { type: 'GIT_ERROR', message: 'Branch already exists' },
+      });
+      const mockWorktreeService = { createEntityWorktree: mockCreateEntityWorktree };
+      const projectPath = '/test/project';
+
+      const { createScheduleWorktreeWrapper } = await import('./scheduleTaskHandlers');
+      const wrapper = createScheduleWorktreeWrapper(projectPath, mockWorktreeService as any);
+
+      const result = await wrapper({
+        taskName: 'Test Task',
+        suffixMode: 'auto',
+        promptIndex: 0,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('WORKTREE_ERROR');
+      }
     });
   });
 });

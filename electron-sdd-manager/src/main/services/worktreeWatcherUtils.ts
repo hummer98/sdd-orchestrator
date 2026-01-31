@@ -9,8 +9,11 @@ import * as path from 'path';
 
 /**
  * Entity type for watcher operations
+ * - specs: Spec-Driven Development features
+ * - bugs: Bug fix worktrees
+ * - schedule: Schedule task worktrees (schedule-task-scheduler-activation feature)
  */
-export type EntityType = 'specs' | 'bugs';
+export type EntityType = 'specs' | 'bugs' | 'schedule';
 
 /**
  * Detect worktree addition from directory path

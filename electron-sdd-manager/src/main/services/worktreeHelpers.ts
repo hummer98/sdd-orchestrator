@@ -10,8 +10,11 @@ import { logger } from './logger';
 
 /**
  * Entity type for worktree operations
+ * - specs: Spec-Driven Development features
+ * - bugs: Bug fix worktrees
+ * - schedule: Schedule task worktrees (schedule-task-scheduler-activation feature)
  */
-export type EntityType = 'specs' | 'bugs';
+export type EntityType = 'specs' | 'bugs' | 'schedule';
 
 /**
  * Worktree entity info returned by scanner

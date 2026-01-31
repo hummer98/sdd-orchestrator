@@ -195,97 +195,97 @@ export function AgentLogPanel({
     <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900" data-testid={testId}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Agent Log
-          </span>
-          {agent && (
-            <>
-              <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {agent.phase}
-              </span>
-              {/* Engine tag - shows Claude/Gemini badge */}
-              <span
-                data-testid="engine-tag"
-                className={clsx(
-                  'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                  getLLMEngine(agent.engineId).colorClass
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Agent Log
+            </span>
+            {agent && (
+              <>
+                <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {agent.phase}
+                </span>
+                {/* Engine tag - shows Claude/Gemini badge */}
+                <span
+                  data-testid="engine-tag"
+                  className={clsx(
+                    'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+                    getLLMEngine(agent.engineId).colorClass
+                  )}
+                >
+                  {getLLMEngine(agent.engineId).label}
+                </span>
+                {showSessionId && agent.sessionId && (
+                  <>
+                    <span className="text-sm text-gray-400 dark:text-gray-500">|</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-500 font-mono flex items-center gap-1">
+                      {agent.agentId} - Session: {agent.sessionId}
+                      <button
+                        onClick={() => navigator.clipboard.writeText(agent.sessionId || '')}
+                        className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        title="Copy session ID"
+                        data-testid="copy-session-id"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </>
                 )}
-              >
-                {getLLMEngine(agent.engineId).label}
-              </span>
-              {showSessionId && agent.sessionId && (
-                <>
-                  <span className="text-sm text-gray-400 dark:text-gray-500">|</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-500 font-mono flex items-center gap-1">
-                    {agent.agentId} - Session: {agent.sessionId}
-                    <button
-                      onClick={() => navigator.clipboard.writeText(agent.sessionId || '')}
-                      className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                      title="Copy session ID"
-                      data-testid="copy-session-id"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                  </span>
-                </>
-              )}
-            </>
-          )}
-          {/* Loading indicator */}
-          {isRunning && (
-            <Loader2
-              className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin"
-              data-testid="running-indicator"
-            />
-          )}
-          {/* Token usage display */}
-          {tokenUsage && tokenUsage.totalTokens > 0 && (
-            <div
-              className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700/50 text-xs text-gray-600 dark:text-gray-400"
-              data-testid="token-display"
-            >
-              <BarChart3 className="w-3 h-3" />
-              <span>Input: {tokenUsage.inputTokens.toLocaleString()}</span>
-              <span className="text-gray-400 dark:text-gray-600">|</span>
-              <span>Output: {tokenUsage.outputTokens.toLocaleString()}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Copy button - copies log file path */}
-          <button
-            onClick={handleCopy}
-            disabled={!agent?.logFilePath && logs.length === 0}
-            className={clsx(
-              'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
-              'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              </>
             )}
-            title={agent?.logFilePath ? 'Copy log file path' : 'Copy logs'}
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-          {/* Clear button */}
-          {onClear && (
+            {/* Loading indicator */}
+            {isRunning && (
+              <Loader2
+                className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin"
+                data-testid="running-indicator"
+              />
+            )}
+            {/* Token usage display */}
+            {tokenUsage && tokenUsage.totalTokens > 0 && (
+              <div
+                className="flex items-center gap-1 ml-2 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700/50 text-xs text-gray-600 dark:text-gray-400"
+                data-testid="token-display"
+              >
+                <BarChart3 className="w-3 h-3" />
+                <span>Input: {tokenUsage.inputTokens.toLocaleString()}</span>
+                <span className="text-gray-400 dark:text-gray-600">|</span>
+                <span>Output: {tokenUsage.outputTokens.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Copy button - copies log file path */}
             <button
-              onClick={onClear}
-              disabled={logs.length === 0}
+              onClick={handleCopy}
+              disabled={!agent?.logFilePath && logs.length === 0}
               className={clsx(
                 'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
                 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
-              title="Clear logs"
+              title={agent?.logFilePath ? 'Copy log file path' : 'Copy logs'}
             >
-              <Trash2 className="w-4 h-4" />
+              <Copy className="w-4 h-4" />
             </button>
-          )}
+            {/* Clear button */}
+            {onClear && (
+              <button
+                onClick={onClear}
+                disabled={logs.length === 0}
+                className={clsx(
+                  'p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700',
+                  'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+                title="Clear logs"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Log content - using shared LogEntryBlock components */}
       <div

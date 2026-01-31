@@ -148,20 +148,9 @@ export function DesktopLayout({
       {!isFooterCollapsed ? (
         <div
           style={{ height: footerHeight }}
-          className="shrink-0 flex flex-col border-t border-gray-200 dark:border-gray-700 bg-gray-900"
+          className="shrink-0 flex flex-col border-t border-gray-200 dark:border-gray-700"
         >
-          <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between bg-gray-800 text-gray-300">
-            <span className="text-sm font-medium">Agent Logs</span>
-            <button
-              onClick={() => setFooterCollapsed(true)}
-              className="text-xs px-2 py-1 hover:bg-gray-700 rounded"
-            >
-              Collapse
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {footer || <FooterPlaceholder />}
-          </div>
+          {footer || <FooterPlaceholder />}
         </div>
       ) : (
         <button

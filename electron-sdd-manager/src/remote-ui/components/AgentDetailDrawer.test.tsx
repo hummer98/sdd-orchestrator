@@ -77,9 +77,9 @@ describe('AgentDetailDrawer', () => {
       expect(content).toContain('agent: AgentInfo');
     });
 
-    it('should have logs prop of type LogEntry[]', () => {
+    it('should have logs prop of type ParsedLogEntry[]', () => {
       const content = readFileSync(componentPath, 'utf-8');
-      expect(content).toContain('logs: LogEntry[]');
+      expect(content).toContain('logs: ParsedLogEntry[]');
     });
 
     it('should have isOpen prop', () => {

@@ -78,58 +78,6 @@ const DEFAULT_HEIGHT_VH = 50;
 const SWIPE_CLOSE_THRESHOLD_VH = 20;
 
 // =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Get status display configuration
- */
-function getStatusConfig(status: AgentInfo['status']): {
-  label: string;
-  color: string;
-  bgColor: string;
-} {
-  switch (status) {
-    case 'running':
-      return {
-        label: 'Running',
-        color: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-      };
-    case 'completed':
-      return {
-        label: 'Completed',
-        color: 'text-green-600 dark:text-green-400',
-        bgColor: 'bg-green-100 dark:bg-green-900/30',
-      };
-    case 'interrupted':
-      return {
-        label: 'Interrupted',
-        color: 'text-yellow-600 dark:text-yellow-400',
-        bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
-      };
-    case 'hang':
-      return {
-        label: 'Hang',
-        color: 'text-orange-600 dark:text-orange-400',
-        bgColor: 'bg-orange-100 dark:bg-orange-900/30',
-      };
-    case 'failed':
-      return {
-        label: 'Failed',
-        color: 'text-red-600 dark:text-red-400',
-        bgColor: 'bg-red-100 dark:bg-red-900/30',
-      };
-    default:
-      return {
-        label: status,
-        color: 'text-gray-600 dark:text-gray-400',
-        bgColor: 'bg-gray-100 dark:bg-gray-900/30',
-      };
-  }
-}
-
-// =============================================================================
 // Component
 // =============================================================================
 
@@ -151,7 +99,6 @@ export function AgentDetailDrawer({
   onContinue,
   testId = 'agent-detail-drawer',
 }: AgentDetailDrawerProps): React.ReactElement | null {
-  const statusConfig = getStatusConfig(agent.status);
   const isRunning = agent.status === 'running' || agent.status === 'hang';
 
   // ==========================================================================
@@ -312,56 +259,27 @@ export function AgentDetailDrawer({
         style={{ height: `${drawerHeight}vh` }}
         data-testid={testId}
       >
-        {/* Drag handle area - touch-none prevents scroll interference (Task 3.2) */}
-        <div
-          className={clsx(
-            'flex justify-center py-2 cursor-grab touch-none',
-            isDragging && 'cursor-grabbing'
-          )}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          data-testid={`${testId}-drag-handle`}
-        >
+        {/* Drag handle area with close button - touch-none prevents scroll interference (Task 3.2) */}
+        <div className="flex items-center justify-between px-4 py-2">
           <div
             className={clsx(
-              'w-12 h-1 rounded-full transition-colors',
-              isDragging
-                ? 'bg-blue-500 dark:bg-blue-400'
-                : 'bg-gray-300 dark:bg-gray-600'
+              'flex-1 flex justify-center cursor-grab touch-none',
+              isDragging && 'cursor-grabbing'
             )}
-            data-dragging={isDragging || undefined}
-          />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Agent phase/name */}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                Agent: {agent.phase}
-              </span>
-              {agent.id && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
-                  ({agent.id})
-                </span>
-              )}
-            </div>
-
-            {/* Status badge */}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            data-testid={`${testId}-drag-handle`}
+          >
             <div
               className={clsx(
-                'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-                statusConfig.bgColor,
-                statusConfig.color
+                'w-12 h-1 rounded-full transition-colors',
+                isDragging
+                  ? 'bg-blue-500 dark:bg-blue-400'
+                  : 'bg-gray-300 dark:bg-gray-600'
               )}
-            >
-              {isRunning && (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              )}
-              <span>{statusConfig.label}</span>
-            </div>
+              data-dragging={isDragging || undefined}
+            />
           </div>
 
           {/* Close button */}

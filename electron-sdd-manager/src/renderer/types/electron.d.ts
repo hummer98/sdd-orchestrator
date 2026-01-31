@@ -1841,6 +1841,29 @@ export interface ElectronAPI {
     ok: false;
     error: { type: string; message: string; reason?: string };
   }>;
+
+  // ============================================================
+  // Clipboard Operations
+  // ============================================================
+
+  /**
+   * Copy text to clipboard
+   * @param text Text to copy
+   */
+  copyToClipboard(text: string): Promise<void>;
+
+  // ============================================================
+  // Artifact Path Resolution
+  // ============================================================
+
+  /**
+   * Get full path of an artifact file
+   * @param name Spec or bug name
+   * @param filename Artifact filename (e.g., 'requirements.md')
+   * @param entityType Entity type ('spec' or 'bug')
+   * @returns Full absolute path to the artifact file
+   */
+  getArtifactPath(name: string, filename: string, entityType?: 'spec' | 'bug'): Promise<string>;
 }
 
 declare global {

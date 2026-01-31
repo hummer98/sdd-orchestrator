@@ -6,8 +6,8 @@
  * Bug fix: bugs-tab-spec-editing-feature
  */
 
-import { useEffect, useMemo, useCallback, useRef } from 'react';
-import { Save, Eye, Edit, Loader2, Circle } from 'lucide-react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { Save, Eye, Edit, Loader2, Circle, Copy, Check } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { useEditorStore, notify } from '../stores';
 import type { ArtifactType } from '../stores/editorStore';
@@ -85,6 +85,9 @@ export function ArtifactEditor({
 
   // Ref for preview container (used by PreviewHighlightLayer)
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // Copy state
+  const [isCopied, setIsCopied] = useState(false);
 
   // Human activity tracking
   const { recordActivity } = useHumanActivity();
@@ -187,6 +190,20 @@ export function ArtifactEditor({
     }
     recordActivity('artifact-tab-change');
     setActiveTab(tab);
+  };
+
+  const handleCopyPath = async () => {
+    if (!baseName) return;
+
+    try {
+      const filename = `${activeTab}.md`;
+      const fullPath = await window.electronAPI.getArtifactPath(baseName, filename, entityType);
+      await window.electronAPI.copyToClipboard(fullPath);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      notify.error('パスのコピーに失敗しました');
+    }
   };
 
   // Get display label for current tab in status bar
@@ -327,12 +344,25 @@ export function ArtifactEditor({
 
       {/* Status bar */}
       <div className="flex items-center justify-between px-4 py-1 text-xs text-gray-500 border-t border-gray-200 dark:border-gray-700">
-        <span>
-          {isDirty && (
-            <span className="text-orange-500 mr-2">未保存の変更あり</span>
-          )}
-          {getTabDisplayName(activeTab)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span>
+            {isDirty && (
+              <span className="text-orange-500 mr-2">未保存の変更あり</span>
+            )}
+            {getTabDisplayName(activeTab)}
+          </span>
+          <button
+            onClick={handleCopyPath}
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            title="フルパスをクリップボードにコピー"
+          >
+            {isCopied ? (
+              <Check className="w-3 h-3 text-green-500" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+        </div>
         <span>
           {(content || '').length} 文字 | {(content || '').split('\n').length} 行
         </span>

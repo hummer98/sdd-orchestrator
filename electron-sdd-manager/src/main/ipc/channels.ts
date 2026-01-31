@@ -405,6 +405,12 @@ export const IPC_CHANNELS = {
   // Git View Source Mode (git-view-source-mode feature)
   // Requirements: 5.1 (readFileContent IPC API)
   READ_FILE_CONTENT: 'git:read-file-content',
+
+  // Clipboard Operations
+  COPY_TO_CLIPBOARD: 'ipc:copy-to-clipboard',
+
+  // Artifact Path Resolution
+  GET_ARTIFACT_PATH: 'ipc:get-artifact-path',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

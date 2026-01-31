@@ -2562,6 +2562,31 @@ const electronAPI = {
     ): Promise<import('../shared/types').Result<import('../shared/api/types').FileContentResult, import('../shared/api/types').ApiError>> =>
       ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, projectPath, filePath),
   },
+
+  // ============================================================
+  // Clipboard Operations
+  // ============================================================
+
+  /**
+   * Copy text to clipboard
+   * @param text Text to copy
+   */
+  copyToClipboard: (text: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.COPY_TO_CLIPBOARD, text),
+
+  // ============================================================
+  // Artifact Path Resolution
+  // ============================================================
+
+  /**
+   * Get full path of an artifact file
+   * @param name Spec or bug name
+   * @param filename Artifact filename (e.g., 'requirements.md')
+   * @param entityType Entity type ('spec' or 'bug')
+   * @returns Full absolute path to the artifact file
+   */
+  getArtifactPath: (name: string, filename: string, entityType: 'spec' | 'bug' = 'spec'): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_ARTIFACT_PATH, name, filename, entityType),
 };
 
 // Expose API to renderer

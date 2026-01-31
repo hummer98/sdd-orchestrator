@@ -138,6 +138,32 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   );
 
   // ============================================================
+  // Artifact Path Resolution
+  // ============================================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.GET_ARTIFACT_PATH,
+    async (_event, name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') => {
+      logger.debug('[fileHandlers] GET_ARTIFACT_PATH called', { name, filename, entityType });
+
+      const currentProjectPath = getCurrentProjectPath();
+      if (!currentProjectPath) {
+        throw new Error('Project not selected');
+      }
+
+      // Use appropriate path resolver based on entityType
+      const pathResult = entityType === 'bug'
+        ? await fileService.resolveBugPath(currentProjectPath, name)
+        : await fileService.resolveSpecPath(currentProjectPath, name);
+      if (!pathResult.ok) {
+        throw new Error(`${entityType === 'bug' ? 'Bug' : 'Spec'} not found: ${name}`);
+      }
+
+      return path.join(pathResult.value, filename);
+    }
+  );
+
+  // ============================================================
   // VSCode Integration
   // ============================================================
 

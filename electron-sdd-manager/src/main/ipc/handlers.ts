@@ -56,6 +56,7 @@ import { registerCloudflareHandlers } from './cloudflareHandlers';
 import { registerConfigHandlers, registerEngineConfigHandlers } from './configHandlers';
 import { registerInstallHandlers } from './installHandlers';
 import { registerFileHandlers } from './fileHandlers';
+import { registerClipboardHandlers } from './clipboardHandlers';
 import { registerBugHandlers, startBugsWatcher as startBugsWatcherImpl, stopBugsWatcher as stopBugsWatcherImpl } from './bugHandlers';
 import { registerAgentHandlers, startAgentRecordWatcher, stopAgentRecordWatcher } from './agentHandlers';
 import { registerProjectHandlers, validateProjectPath as validateProjectPathImpl, isProjectSelectionInProgress as isProjectSelectionInProgressImpl, setProjectSelectionLock as setProjectSelectionLockImpl, resetProjectSelectionLock as resetProjectSelectionLockImpl } from './projectHandlers';
@@ -440,6 +441,7 @@ export function registerIpcHandlers(): void {
     getManualInstallInstructions,
   });
   registerFileHandlers({ fileService, getCurrentProjectPath });
+  registerClipboardHandlers();
 
   const specHandlersDeps = {
     fileService, getCurrentProjectPath, getSpecManagerService, registerEventCallbacks,

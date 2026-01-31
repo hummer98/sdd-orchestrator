@@ -339,7 +339,15 @@ async function setupRemoteAccessProviders(projectPath: string): Promise<void> {
         specInfos.push({ id: spec.name, name: spec.name, feature_name: spec.name, phase: 'initialized', path: '' });
       }
     }
-    return specInfos;
+
+    // Bug fix: remote-ui-spec-list-old-order
+    // Sort specs by updatedAt descending (newest first) to match Electron UI behavior
+    // This matches specListStore.ts:97-112 default sorting (sortBy: 'updatedAt', sortOrder: 'desc')
+    return specInfos.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || 0).getTime();
+      return timeB - timeA; // Descending order (newest first)
+    });
   };
 
   const getBugsForRemote = async (): Promise<BugInfo[] | null> => {

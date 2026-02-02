@@ -326,6 +326,56 @@ Error tracking, logging, and health monitoring implementation.
 - E2E/UI Tests (if applicable): 3–5 critical user paths (e.g., forms, dashboards)
 - Performance/Load (if applicable): 3–4 items (e.g., concurrency, high-volume ops)
 
+## Verification Contract
+
+_Include this section to define how the feature will be verified through E2E testing. This section enables automated E2E task generation and inspection validation._
+
+### User Journey Definition
+
+Define the key user journeys that must be verified through E2E testing.
+
+| Journey ID | Operation Flow | Expected Result | E2E Required |
+|------------|---------------|-----------------|--------------|
+| UJ-001 | [User action sequence] | [Observable outcome] | Yes/No |
+| UJ-002 | [User action sequence] | [Observable outcome] | Yes/No |
+
+**Guidelines**:
+- Journey ID format: `UJ-{NNN}` (zero-padded 3 digits)
+- Operation Flow: 1-2 sentences describing the user's action sequence
+- Expected Result: Observable outcome that can be verified
+- E2E Required = Yes: Generates E2E test task in tasks.md automatically
+- E2E Required = No: Manual testing sufficient or covered by other tests
+
+**When to mark E2E Required = Yes**:
+- Critical user-facing workflows
+- Integration points between components
+- State transitions that affect multiple views
+- Features with complex UI interactions
+
+**When to mark E2E Required = No**:
+- Simple display-only components
+- Backend-only logic (unit tests sufficient)
+- Flows already covered by existing E2E tests
+
+### Impact Analysis Contract
+
+Define the expected changes to existing files as part of this feature implementation.
+
+| Target File | Action | Reason |
+|-------------|--------|--------|
+| path/to/file.ts | DELETE | [Why this file will be removed] |
+| path/to/other.ts | UPDATE | [What changes and why] |
+| path/to/new.ts | CREATE | [Why this new file is needed] |
+
+**Guidelines**:
+- DELETE: Files that will be physically removed
+- UPDATE: Files that require modification (specify the type of change)
+- CREATE: New files that will be added
+- Include placeholder removal when applicable
+- This section replaces the need for separate "Integration & Deprecation Strategy" section
+
+> This section enables e2e-planner to determine test scope and e2e-runner to classify failures as Critical (User Journey related) vs Warning (unrelated).
+
 ## Optional Sections (include when relevant)
 
 ### Security Considerations

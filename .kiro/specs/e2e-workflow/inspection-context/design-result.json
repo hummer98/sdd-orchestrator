@@ -1,0 +1,252 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-02T10:00:00Z",
+  "checks": [
+    {
+      "id": "design-template-verification-contract",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "design.md Template contains Verification Contract section with User Journey Definition and Impact Analysis Contract subsections",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.kiro/settings/templates/specs/design.md:329 - ## Verification Contract",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.kiro/settings/templates/specs/design.md:333 - ### User Journey Definition",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.kiro/settings/templates/specs/design.md:360 - ### Impact Analysis Contract"
+      ]
+    },
+    {
+      "id": "design-spec-design-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-design-agent.md exists and contains Verification Contract generation logic (Step 5)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-design.md:124 - Generate Verification Contract Section (CRITICAL)"
+      ]
+    },
+    {
+      "id": "design-spec-tasks-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-tasks-agent.md exists and contains E2E task auto-generation from User Journeys (Step 2.5)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-tasks.md:75 - Extract and process User Journey Definition",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-tasks.md:91 - Step 2.5: Generate E2E Test Tasks from User Journeys"
+      ]
+    },
+    {
+      "id": "design-spec-inspection-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-inspection-agent.md exists with Full Mode support, E2E Pipeline integration, and --full option",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-inspection.md:38 - Phase 2.5: E2E Pipeline (Full Mode only)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-inspection.md:62 - --full: Enable Full Mode",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/spec-inspection.md:670 - Full Mode (--full)"
+      ]
+    },
+    {
+      "id": "design-e2e-planner-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-planner-agent.md exists with User Journey extraction and scope decision logic",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/e2e-planner.md"
+      ]
+    },
+    {
+      "id": "design-e2e-creator-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-creator-agent.md exists with test generation logic and helper reuse",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/e2e-creator.md"
+      ]
+    },
+    {
+      "id": "design-e2e-validator-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-validator-agent.md exists with 3-run stability check and FLAKY fix logic",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/e2e-validator.md"
+      ]
+    },
+    {
+      "id": "design-e2e-runner-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-runner-agent.md exists with environment check, evidence collection, and failure classification",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/e2e-runner.md"
+      ]
+    },
+    {
+      "id": "design-generate-inspection-e2e-agent",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "generate-inspection-e2e-agent.md exists with framework detection and steering generation",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/e2e-workflow/.claude/agents/kiro/generate-inspection-e2e.md"
+      ]
+    },
+    {
+      "id": "design-interface-e2e-planner",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-planner interface matches design: extractUserJourneys, analyzeExistingCoverage, determineScopeDecision, generatePlan",
+      "evidence": [
+        "Step 1: extractUserJourneys - UserJourney[] extraction from design.md",
+        "Step 2: analyzeExistingCoverage - TestCoverage analysis",
+        "Step 3: determineScopeDecision - Create/Execute/Defer decision",
+        "Step 4: generatePlan - E2EPlan JSON output"
+      ]
+    },
+    {
+      "id": "design-interface-e2e-creator",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-creator interface matches design: loadPlan, loadFrameworkInfo, analyzeExistingHelpers, generateTest, writeTests",
+      "evidence": [
+        "Step 1: loadPlan - Load e2e-plan.json",
+        "Step 2: loadFrameworkInfo - FrameworkInfo extraction",
+        "Step 3: analyzeExistingHelpers - HelperInfo[] extraction",
+        "Step 4: generateTest - GeneratedTest creation",
+        "Step 5: writeTests - Test file output to e2e-wdio/generated/"
+      ]
+    },
+    {
+      "id": "design-interface-e2e-validator",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-validator interface matches design: loadGeneratedTests, runTestMultipleTimes, analyzeStability, attemptFix, updatePlanWithValidation",
+      "evidence": [
+        "Step 1: loadGeneratedTests - Load pending tests",
+        "Step 2: runTestMultipleTimes - 3 runs per test",
+        "Step 3: analyzeStability - STABLE/FLAKY/FAILED status",
+        "Step 4: attemptFix - Single fix attempt for FLAKY",
+        "Step 5: updatePlanWithValidation - Update e2e-plan.json"
+      ]
+    },
+    {
+      "id": "design-interface-e2e-runner",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-runner interface matches design: checkEnvironment, loadExecutionPlan, runTests, collectEvidence, classifyFailure, generateReport, generateE2EResult",
+      "evidence": [
+        "Step 1: checkEnvironment - EnvironmentCheck (Electron, port 9222, build)",
+        "Step 2: loadExecutionPlan - ExecutionPlan loading",
+        "Step 3: runTests - Test execution",
+        "Step 4: collectEvidence - Evidence collection (screenshot, DOM, logs)",
+        "Step 5: classifyFailure - Critical/Warning/Info classification",
+        "Step 6: generateE2EResult - e2e-result.json output",
+        "Step 7: generateReport - e2e-report-{n}.md generation"
+      ]
+    },
+    {
+      "id": "design-interface-generate-inspection-e2e",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "generate-inspection-e2e interface matches design: detectFramework, analyzeTestStructure, extractHelpers, extractFixtures, generateCoverageSummary, generateSteeringDoc",
+      "evidence": [
+        "Step 1: detectFramework - DetectedFramework (wdio/playwright/other)",
+        "Step 2: analyzeTestStructure - TestStructure analysis",
+        "Step 3: extractHelpers - HelperSummary[] extraction",
+        "Step 4: extractFixtures - FixtureSummary[] extraction",
+        "Step 5: generateCoverageSummary - CoverageSummary generation",
+        "Step 6: generateSteeringDoc - inspection-e2e.md output"
+      ]
+    },
+    {
+      "id": "steering-structure-agents",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All agent files are placed in .claude/agents/kiro/ directory as required by structure.md",
+      "evidence": [
+        "structure.md pattern: .claude/agents/kiro/*.md",
+        "e2e-planner.md, e2e-creator.md, e2e-validator.md, e2e-runner.md, generate-inspection-e2e.md all in correct location"
+      ]
+    },
+    {
+      "id": "steering-tech-e2e-framework",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2E implementation uses WebdriverIO + wdio-electron-service as specified in tech.md",
+      "evidence": [
+        "tech.md: WebdriverIO による E2E テスト",
+        "e2e-runner.md uses: npx wdio run wdio.conf.ts",
+        "e2e-creator.md: e2e-wdio/generated/ output directory"
+      ]
+    },
+    {
+      "id": "steering-product-scope",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals: Spec ライフサイクル管理 and AIエージェント連携",
+      "evidence": [
+        "product.md: Spec ライフサイクル管理",
+        "Feature: E2E Workflow Integration enhances inspection phase of SDD lifecycle"
+      ]
+    },
+    {
+      "id": "design-data-model-e2e-plan",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2EPlan data model matches design specification",
+      "evidence": [
+        "journeys: Array with journeyId, decision, reason, targetTests",
+        "summary: { create, execute, defer } counts",
+        "generatedTests: Array with journeyId, testPath, status"
+      ]
+    },
+    {
+      "id": "design-data-model-e2e-result",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "E2EResult data model matches design specification",
+      "evidence": [
+        "agent: 'e2e-runner'",
+        "checks: Array with id, journeyId, testFile, status, failureType, duration, evidence",
+        "stats: { total, passed, failed, critical, warning, info }"
+      ]
+    },
+    {
+      "id": "design-file-structure",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Physical data model (file structure) matches design specification",
+      "evidence": [
+        "inspection-context/: e2e-plan.json, e2e-result.json",
+        "spec directory: e2e-report-{n}.md",
+        "generated tests: e2e-wdio/generated/uj-{NNN}-{feature}.spec.ts"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 20
+  }
+}

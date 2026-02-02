@@ -72,6 +72,9 @@ Generate implementation tasks for the feature based on approved requirements and
 - Explicitly note dependencies preventing `(P)` when tasks appear parallel but are not safe
 - If sequential mode is true, omit `(P)` entirely
 - If existing tasks.md found, merge with new content
+- **Extract and process User Journey Definition from design.md Verification Contract section**:
+  - Parse the User Journey Definition table
+  - For each journey with E2E Required = Yes, generate an E2E test task (see Step 2.5)
 - **Include implementation method when specified in design.md**:
   - If design.md specifies "use X", "call Y", or "via Z" for a component, include it in task description
   - Add `_Method:` field listing function/class/pattern names that MUST be used
@@ -84,6 +87,50 @@ Generate implementation tasks for the feature based on approved requirements and
       - _Verify: Grep "executeProjectAgent|startAgent" in channels.ts_
     ```
   - This makes method requirements explicit and verifiable during inspection
+
+### Step 2.5: Generate E2E Test Tasks from User Journeys
+
+**Extract User Journeys from design.md**:
+1. Read the `## Verification Contract` section from design.md
+2. Parse the `### User Journey Definition` table
+3. For each row where E2E Required = Yes:
+   - Extract Journey ID (UJ-NNN format)
+   - Extract Operation Flow description
+   - Extract Expected Result
+
+**Generate E2E Task Format**:
+```markdown
+- [ ] X.1 (P) UJ-{id} のE2Eテスト作成
+  - {Operation Flow}の検証テスト
+  - 期待結果: {Expected Result}
+  - _Requirements: UJ-{id}_
+```
+
+**Task Placement**:
+- E2E tasks are placed in a dedicated "E2E Tests" task group
+- The task group number (X) follows the last implementation task group
+- All E2E tasks can be marked with `(P)` as they are typically parallelizable
+
+**Example**:
+If design.md contains:
+```markdown
+| UJ-001 | ユーザーがSpecを選択しワークフローを実行 | ワークフローが完了しspec.jsonが更新される | Yes |
+```
+
+Generate:
+```markdown
+## E2E Tests
+
+- [ ] 5.1 (P) UJ-001 のE2Eテスト作成
+  - ユーザーがSpecを選択しワークフローを実行の検証テスト
+  - 期待結果: ワークフローが完了しspec.jsonが更新される
+  - _Requirements: UJ-001_
+```
+
+**Skip E2E Task Generation When**:
+- No Verification Contract section exists in design.md
+- No User Journeys have E2E Required = Yes
+- In such cases, add a note: "Note: No E2E tasks generated - no User Journeys marked as E2E Required"
 
 ### Step 3: Finalize
 

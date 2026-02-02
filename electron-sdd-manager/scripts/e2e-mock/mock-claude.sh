@@ -78,6 +78,10 @@ for arg in "$@"; do
       ;;
     /kiro:spec-inspection*)
       PHASE="inspection"
+      # Check for --full flag
+      if [[ "$@" == *"--full"* ]]; then
+        PHASE="inspection-full"
+      fi
       ;;
     --resume)
       PHASE="resume"
@@ -137,6 +141,11 @@ sleep "$MOCK_DELAY"
 # E2E_MOCK_INSPECTION_MAX_NOGO: number (default: 2)
 #   - Maximum number of NOGO rounds before returning GO
 #   - Used to test autofix loop behavior
+#
+# E2E_MOCK_E2E_RESULT: "pass" or "fail" (default: "pass")
+#   - Controls the E2E test result in Full Mode (--full)
+#   - "pass": E2E tests pass, inspection returns GO
+#   - "fail": E2E test fails with Critical, inspection returns NOGO
 # =============================================================================
 
 # =============================================================================
@@ -972,6 +981,227 @@ EOF
   fi
 }
 
+# =============================================================================
+# E2E Pipeline Functions (Full Mode)
+# =============================================================================
+
+# Generate e2e-plan.json for e2e-planner
+generate_e2e_plan() {
+  local spec_dir="$1"
+  local context_dir="${spec_dir}/inspection-context"
+  mkdir -p "$context_dir"
+  local output_file="${context_dir}/e2e-plan.json"
+
+  cat > "$output_file" << EOF
+{
+  "feature": "${FEATURE_NAME}",
+  "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "flow": "User selects Spec and executes workflow",
+      "expectedResult": "Workflow completes and spec.json is updated",
+      "decision": "Execute",
+      "reason": "Covered by existing workflow-integration.e2e.spec.ts",
+      "targetTests": ["e2e-wdio/workflow-integration.e2e.spec.ts"]
+    },
+    {
+      "journeyId": "UJ-002",
+      "flow": "User starts auto-execution",
+      "expectedResult": "All phases execute sequentially",
+      "decision": "Execute",
+      "reason": "Covered by existing auto-execution-flow.e2e.spec.ts",
+      "targetTests": ["e2e-wdio/auto-execution-flow.e2e.spec.ts"]
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "execute": 2,
+    "defer": 0,
+    "total": 2
+  }
+}
+EOF
+}
+
+# Generate e2e-result.json for e2e-runner
+generate_e2e_result() {
+  local spec_dir="$1"
+  local result="${2:-pass}"
+  local context_dir="${spec_dir}/inspection-context"
+  mkdir -p "$context_dir"
+  local output_file="${context_dir}/e2e-result.json"
+
+  if [ "$result" = "pass" ]; then
+    cat > "$output_file" << EOF
+{
+  "agent": "e2e-runner",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "mode": "Full",
+  "environmentCheck": {
+    "electronStopped": true,
+    "port9222Available": true,
+    "buildComplete": true,
+    "lockAcquired": true
+  },
+  "checks": [
+    {
+      "id": "e2e-uj-001",
+      "journeyId": "UJ-001",
+      "testFile": "e2e-wdio/workflow-integration.e2e.spec.ts",
+      "status": "PASS",
+      "failureType": null,
+      "duration": 15000
+    },
+    {
+      "id": "e2e-uj-002",
+      "journeyId": "UJ-002",
+      "testFile": "e2e-wdio/auto-execution-flow.e2e.spec.ts",
+      "status": "PASS",
+      "failureType": null,
+      "duration": 20000
+    }
+  ],
+  "stats": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "critical": 0,
+    "warning": 0,
+    "info": 0
+  }
+}
+EOF
+  else
+    cat > "$output_file" << EOF
+{
+  "agent": "e2e-runner",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "mode": "Full",
+  "environmentCheck": {
+    "electronStopped": true,
+    "port9222Available": true,
+    "buildComplete": true,
+    "lockAcquired": true
+  },
+  "checks": [
+    {
+      "id": "e2e-uj-001",
+      "journeyId": "UJ-001",
+      "testFile": "e2e-wdio/workflow-integration.e2e.spec.ts",
+      "status": "FAIL",
+      "failureType": "Critical",
+      "duration": 15000,
+      "evidence": {
+        "screenshot": ".wdio-electron-data/screenshots/failure-001.png",
+        "consoleLogs": ["Error: timeout waiting for element"]
+      }
+    },
+    {
+      "id": "e2e-uj-002",
+      "journeyId": "UJ-002",
+      "testFile": "e2e-wdio/auto-execution-flow.e2e.spec.ts",
+      "status": "PASS",
+      "failureType": null,
+      "duration": 20000
+    }
+  ],
+  "stats": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "critical": 1,
+    "warning": 0,
+    "info": 0
+  }
+}
+EOF
+  fi
+}
+
+# Generate e2e-report-{n}.md for e2e-runner
+generate_e2e_report() {
+  local spec_dir="$1"
+  local round_number="${2:-1}"
+  local result="${3:-pass}"
+  local output_file="${spec_dir}/e2e-report-${round_number}.md"
+
+  if [ "$result" = "pass" ]; then
+    cat > "$output_file" << EOF
+# E2E Test Report - ${FEATURE_NAME}
+
+## Summary
+- **Date**: $(date +%Y-%m-%d)
+- **Scope**: Full Mode E2E
+- **Result**: PASS
+- **Mode**: Full
+
+## Test Plan
+### User Journeys Verified
+| Journey ID | Description | Decision |
+|------------|-------------|----------|
+| UJ-001 | Spec selection workflow | Execute (existing) |
+| UJ-002 | Auto-execution flow | Execute (existing) |
+
+### Scope Decisions
+- Create: 0 (no new tests needed)
+- Execute: 2 (existing tests used)
+- Defer: 0 (skipped)
+
+## Executed Tests
+| Test File | Journey | Status | Duration | Failure Type |
+|-----------|---------|--------|----------|--------------|
+| workflow-integration.e2e.spec.ts | UJ-001 | PASS | 15.0s | - |
+| auto-execution-flow.e2e.spec.ts | UJ-002 | PASS | 20.0s | - |
+
+## Coverage Analysis
+### User Journey Coverage
+- UJ-001: Verified via existing test
+- UJ-002: Verified via existing test
+
+---
+_Generated by Mock Claude CLI for E2E Testing_
+EOF
+  else
+    cat > "$output_file" << EOF
+# E2E Test Report - ${FEATURE_NAME}
+
+## Summary
+- **Date**: $(date +%Y-%m-%d)
+- **Scope**: Full Mode E2E
+- **Result**: FAIL
+- **Mode**: Full
+
+## Test Plan
+### User Journeys Verified
+| Journey ID | Description | Decision |
+|------------|-------------|----------|
+| UJ-001 | Spec selection workflow | Execute (existing) |
+| UJ-002 | Auto-execution flow | Execute (existing) |
+
+## Executed Tests
+| Test File | Journey | Status | Duration | Failure Type |
+|-----------|---------|--------|----------|--------------|
+| workflow-integration.e2e.spec.ts | UJ-001 | FAIL | 15.0s | Critical |
+| auto-execution-flow.e2e.spec.ts | UJ-002 | PASS | 20.0s | - |
+
+## Failure Analysis
+### Critical: workflow-integration.e2e.spec.ts
+- **Failure Type**: Critical (User Journey UJ-001)
+- **Error**: Timeout waiting for element [data-testid="workflow-view"]
+- **Impact**: Core workflow feature verification failed
+
+## Evidence
+### workflow-integration.e2e.spec.ts
+- Screenshot: \`.wdio-electron-data/screenshots/failure-001.png\`
+- Console: \`Error: timeout waiting for element\`
+
+---
+_Generated by Mock Claude CLI for E2E Testing_
+EOF
+  fi
+}
+
 # Update spec.json for inspection
 # Handles both GO and NOGO results, and autofix behavior
 update_spec_json_inspection() {
@@ -1276,6 +1506,45 @@ case "$PHASE" in
     fi
     sleep 0.2
     echo '{"type":"result","subtype":"success","duration_ms":2000,"num_turns":1,"total_cost_usd":0.002,"session_id":"'"$SESSION_ID"'"}'
+    ;;
+
+  inspection-full)
+    # Full Mode Inspection with E2E Pipeline
+    SPEC_DIR=$(get_spec_dir)
+    RESULT="go"
+    ROUND_NUMBER=1
+
+    if [ -d "$SPEC_DIR" ] && [ -f "$SPEC_DIR/spec.json" ]; then
+      EXISTING_ROUNDS=$(python3 -c "import json; f=open('$SPEC_DIR/spec.json'); d=json.load(f); print(len(d.get('inspection',{}).get('rounds',[])))" 2>/dev/null || echo "0")
+      ROUND_NUMBER=$((EXISTING_ROUNDS + 1))
+    fi
+
+    # Default: Return GO for Full Mode (E2E passes)
+    E2E_RESULT="pass"
+    if [ -n "$E2E_MOCK_E2E_RESULT" ]; then
+      E2E_RESULT="$E2E_MOCK_E2E_RESULT"
+    fi
+
+    if [ "$E2E_RESULT" = "fail" ]; then
+      RESULT="nogo"
+    fi
+
+    # Generate E2E pipeline artifacts
+    if [ -d "$SPEC_DIR" ]; then
+      generate_e2e_plan "$SPEC_DIR"
+      generate_e2e_result "$SPEC_DIR" "$E2E_RESULT"
+      generate_e2e_report "$SPEC_DIR" "$ROUND_NUMBER" "$E2E_RESULT"
+      generate_inspection_report "$SPEC_DIR" "$ROUND_NUMBER" "$RESULT"
+      update_spec_json_inspection "$SPEC_DIR" "$RESULT" "false"
+    fi
+
+    if [ "$RESULT" = "go" ]; then
+      echo '{"type":"assistant","message":{"id":"msg_mock_inspection_full","type":"message","role":"assistant","content":[{"type":"text","text":"## Full Mode Inspection Complete (Round '"$ROUND_NUMBER"')\n\n### Result: ✅ GO\n\n**Static Checks**: All passed\n- Requirements Coverage: PASS\n- Design Alignment: PASS\n- Code Quality: PASS\n- Integration: PASS\n\n**E2E Pipeline**: All passed\n- User Journeys: 2/2 verified\n- E2E Tests: 2/2 passed\n\nSee detailed E2E report at .kiro/specs/'"$FEATURE_NAME"'/e2e-report-'"$ROUND_NUMBER"'.md\n\n✅ Inspection report created at .kiro/specs/'"$FEATURE_NAME"'/inspection-'"$ROUND_NUMBER"'.md"}],"model":"claude-sonnet-4-20250514","stop_reason":"end_turn","usage":{"input_tokens":300,"output_tokens":200}}}'
+    else
+      echo '{"type":"assistant","message":{"id":"msg_mock_inspection_full","type":"message","role":"assistant","content":[{"type":"text","text":"## Full Mode Inspection Complete (Round '"$ROUND_NUMBER"')\n\n### Result: ❌ NOGO\n\n**Static Checks**: All passed\n\n**E2E Pipeline**: FAILED\n- User Journey UJ-001 test failed (Critical)\n- 1/2 E2E tests failed\n\nSee detailed E2E report at .kiro/specs/'"$FEATURE_NAME"'/e2e-report-'"$ROUND_NUMBER"'.md\n\n✅ Inspection report created at .kiro/specs/'"$FEATURE_NAME"'/inspection-'"$ROUND_NUMBER"'.md"}],"model":"claude-sonnet-4-20250514","stop_reason":"end_turn","usage":{"input_tokens":300,"output_tokens":200}}}'
+    fi
+    sleep 0.3
+    echo '{"type":"result","subtype":"success","duration_ms":5000,"num_turns":2,"total_cost_usd":0.005,"session_id":"'"$SESSION_ID"'"}'
     ;;
 
   *)

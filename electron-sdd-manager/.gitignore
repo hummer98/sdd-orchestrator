@@ -35,3 +35,6 @@ test-results/
 
 # E2E test fixtures - runtime generated files
 e2e-wdio/fixtures/*/.kiro/runtime/
+
+# Auto-generated E2E tests (from inspection E2E pipeline)
+e2e-wdio/generated/

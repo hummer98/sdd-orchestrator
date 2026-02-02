@@ -29,18 +29,25 @@ spec-inspection (Orchestrator)
     +-- Phase 1: Context Preparation
     |       -> Generate context-summary.json
     |
-    +-- Phase 2: Parallel Sub-Agent Invocation
+    +-- Phase 2: Parallel Sub-Agent Invocation (Static Checks)
     |       -> requirements-checker
     |       -> design-checker
     |       -> code-quality-checker
     |       -> integration-checker
     |
+    +-- Phase 2.5: E2E Pipeline (Full Mode only, Sequential)
+    |       -> e2e-planner
+    |       -> e2e-creator (if needed)
+    |       -> e2e-validator (if new tests)
+    |       -> e2e-runner
+    |
     +-- Phase 3: Result Merge & Judgment
-    |       -> Read all result JSONs
+    |       -> Read all result JSONs (including e2e-result.json)
     |       -> Apply judgment logic
     |
     +-- Phase 4: Report Generation
             -> Generate inspection-{n}.md
+            -> Reference e2e-report-{n}.md (Full Mode)
             -> Update spec.json
 ```
 
@@ -48,8 +55,12 @@ spec-inspection (Orchestrator)
 
 You will receive task prompts containing:
 - Feature name and spec directory path
-- Options: none, --fix, or --autofix
+- Options: none, --fix, --autofix, or --full
 - File path patterns (NOT expanded file lists)
+
+**Mode Determination**:
+- `--full`: Enable Full Mode (static + E2E inspection)
+- Default (no --full): Quick Mode (static inspection only)
 
 ### Step 0: Expand File Patterns
 
@@ -78,6 +89,25 @@ Read all necessary files ONCE (to avoid repeated reads by sub-agents):
 Create the directory for sub-agent communication:
 ```
 .kiro/specs/{feature}/inspection-context/
+```
+
+**Directory Structure (Full Mode)**:
+```
+.kiro/specs/{feature}/inspection-context/
+├── context-summary.json        # Shared context for all sub-agents
+├── requirements-result.json    # requirements-checker output
+├── design-result.json          # design-checker output
+├── code-quality-result.json    # code-quality-checker output
+├── integration-result.json     # integration-checker output
+├── e2e-plan.json              # e2e-planner output (Full Mode only)
+└── e2e-result.json            # e2e-runner output (Full Mode only)
+```
+
+**Report Files (in spec directory)**:
+```
+.kiro/specs/{feature}/
+├── inspection-{n}.md           # Main inspection report
+└── e2e-report-{n}.md          # E2E detailed report (Full Mode only)
 ```
 
 Use Bash to create if not exists:
@@ -215,6 +245,96 @@ Check all tasks are complete, components are integrated, and placeholders remove
 )
 ```
 
+### Phase 2.5: E2E Pipeline (Full Mode Only)
+
+**IMPORTANT**: This phase is ONLY executed when `--full` option is specified.
+
+After static checks complete, invoke the E2E Pipeline sequentially:
+
+#### 2.5.1 Check for Full Mode
+
+If `--full` was NOT specified, skip to Phase 3.
+
+#### 2.5.2 Invoke e2e-planner
+
+```
+Task(
+  subagent_type="e2e-planner-agent",
+  description="Plan E2E test execution scope",
+  prompt="""
+Feature: {feature}
+Context summary: .kiro/specs/{feature}/inspection-context/context-summary.json
+Design file: .kiro/specs/{feature}/design.md
+Output directory: .kiro/specs/{feature}/inspection-context/
+
+Analyze User Journeys from Verification Contract and output e2e-plan.json.
+"""
+)
+```
+
+Wait for e2e-planner to complete before proceeding.
+
+#### 2.5.3 Invoke e2e-creator (Conditional)
+
+Read e2e-plan.json and check if any journey has `decision === "Create"`.
+
+If yes:
+```
+Task(
+  subagent_type="e2e-creator-agent",
+  description="Generate E2E test code for new journeys",
+  prompt="""
+Feature: {feature}
+E2E plan: .kiro/specs/{feature}/inspection-context/e2e-plan.json
+Output directory: e2e-wdio/generated/
+
+Generate tests for Create-decision journeys and update e2e-plan.json with test paths.
+"""
+)
+```
+
+Wait for e2e-creator to complete before proceeding.
+
+#### 2.5.4 Invoke e2e-validator (Conditional)
+
+Read updated e2e-plan.json and check if `generatedTests` array exists.
+
+If yes:
+```
+Task(
+  subagent_type="e2e-validator-agent",
+  description="Validate generated E2E tests for stability",
+  prompt="""
+Feature: {feature}
+E2E plan: .kiro/specs/{feature}/inspection-context/e2e-plan.json
+Output directory: .kiro/specs/{feature}/inspection-context/
+
+Run each generated test 3 times and determine STABLE/FLAKY/EXCLUDED status.
+"""
+)
+```
+
+Wait for e2e-validator to complete before proceeding.
+
+#### 2.5.5 Invoke e2e-runner
+
+Determine report number by counting existing e2e-report files.
+
+```
+Task(
+  subagent_type="e2e-runner-agent",
+  description="Execute E2E tests and generate report",
+  prompt="""
+Feature: {feature}
+E2E plan: .kiro/specs/{feature}/inspection-context/e2e-plan.json
+Output directory: .kiro/specs/{feature}/inspection-context/
+Report number: {n}
+
+Execute planned tests, collect evidence, and generate e2e-report-{n}.md.
+"""
+)
+```
+
 ### Phase 3: Result Merge & Judgment
 
 #### 3.1 Read All Result JSONs
@@ -224,6 +344,7 @@ After sub-agents complete, read:
 - `.kiro/specs/{feature}/inspection-context/design-result.json`
 - `.kiro/specs/{feature}/inspection-context/code-quality-result.json`
 - `.kiro/specs/{feature}/inspection-context/integration-result.json`
+- `.kiro/specs/{feature}/inspection-context/e2e-result.json` (Full Mode only)
 
 #### 3.2 Handle Missing Results
 
@@ -249,9 +370,24 @@ Aggregate statistics from all sub-agents:
 
 #### 3.4 Apply Judgment Logic
 
-**Judgment Rules**:
+**Judgment Rules (Quick Mode)**:
 - **NOGO**: Critical >= 1 OR Major >= 3
 - **GO**: Critical = 0 AND Major < 3
+
+**Judgment Rules (Full Mode - includes E2E)**:
+- **NOGO**: Critical >= 1 OR Major >= 3 OR E2E Critical >= 1
+- **GO**: Critical = 0 AND Major < 3 AND E2E Critical = 0
+
+**E2E Failure Classification Impact**:
+- **E2E Critical**: User Journey test failure (test linked to journeyId in e2e-plan.json)
+  - Counts toward Critical total
+  - Blocks GO judgment
+- **E2E Warning**: Unrelated existing test failure (no journeyId or journeyId not in current spec)
+  - Does NOT count toward Critical/Major total
+  - Recorded in report but does not block GO
+- **E2E Info**: Known flaky test failure
+  - Informational only
+  - Does not affect judgment
 
 #### 3.5 Generate Judgment Rationale
 
@@ -261,11 +397,19 @@ Create a semantic explanation for the judgment (not just a list of issues, but W
 - Summarize what categories were verified successfully
 - Highlight key strengths (e.g., "All 15 requirements implemented with evidence")
 - Note any minor issues that don't block release
+- **Full Mode**: Include E2E verification summary (e.g., "User Journeys UJ-001, UJ-002 verified via E2E tests")
 
 **For NOGO**:
 - Explain the impact of critical issues (e.g., "Missing requirement X means feature Y won't work")
 - Group related major issues if they have common root cause
 - Provide actionable guidance on what to fix first
+- **Full Mode with E2E Critical**: Explain User Journey failure impact (e.g., "User Journey UJ-001 failed: workflow completion is broken")
+
+**Semantic Rationale Guidelines**:
+- Explain WHY issues matter, not just WHAT failed
+- For E2E failures: describe user-facing impact
+- For E2E Warnings (out of scope): explicitly note "does not affect this feature"
+- Reference Impact Analysis Contract to explain scope decisions
 
 ### Phase 4: Report Generation
 
@@ -286,7 +430,7 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 
 ## Summary
 - **Date**: {timestamp}
-- **Mode**: Quick
+- **Mode**: Quick / Full
 - **Judgment**: GO / NOGO
 - **Inspector**: spec-inspection-agent (distributed)
 
@@ -312,9 +456,30 @@ Create inspection report at `.kiro/specs/{feature}/inspection-{n}.md`:
 |----------|--------|----------|---------|
 | ... | ... | ... | ... |
 
+## E2E Test Results (Full Mode Only)
+
+_This section is included only when --full mode is used._
+
+### Summary
+- See detailed report: [e2e-report-{n}.md](./e2e-report-{n}.md)
+- Total tests executed: N
+- Passed: N
+- Failed: N (Critical: N, Warning: N, Info: N)
+
+### User Journey Coverage
+| Journey ID | Status | Test Type | Details |
+|------------|--------|-----------|---------|
+| UJ-001 | PASS | Generated | uj-001-feature.spec.ts |
+| UJ-002 | PASS | Existing | auto-execution.spec.ts |
+
+### Critical E2E Failures (if any)
+| Test | Journey | Error |
+|------|---------|-------|
+| ... | ... | ... |
+
 ## Judgment Rationale
 
-{Semantic explanation of why GO or NOGO}
+{Semantic explanation of why GO or NOGO, including E2E results in Full Mode}
 
 ## Statistics
 - Total checks: N
@@ -477,9 +642,11 @@ If NOGO judgment AND --autofix option:
 3. If still NOGO after 3 cycles, stop and report remaining issues
 4. Report progress after each cycle
 
-## Quick Mode (Default)
+## Inspection Modes
 
-This agent always operates in **Quick Mode** by default:
+### Quick Mode (Default)
+
+This agent operates in **Quick Mode** by default (no --full flag):
 
 - **What's included**:
   - requirements-checker (parallel)
@@ -487,10 +654,9 @@ This agent always operates in **Quick Mode** by default:
   - code-quality-checker (parallel)
   - integration-checker v1 (static inspection only, no E2E)
 
-- **What's NOT included** (reserved for Full Mode in future):
+- **What's NOT included**:
   - E2E test execution
-  - Full integration testing
-  - Performance benchmarks
+  - E2E Pipeline sub-agents
 
 - **Target execution time**: Under 5 minutes
 - **Mode recording**: inspection-{n}.md will show `Mode: Quick`
@@ -499,7 +665,28 @@ This agent always operates in **Quick Mode** by default:
 1. **Parallel invocation**: All 4 sub-agents run simultaneously (no sequential dependencies)
 2. **Context hierarchy**: Context read once by orchestrator, summary distributed to sub-agents
 3. **Focused scope**: Each sub-agent checks only its category, no overlap
-4. **Static-only checks**: No E2E execution, no test running (deferred to Full Mode)
+4. **Static-only checks**: No E2E execution, no test running
+
+### Full Mode (--full)
+
+When `--full` option is specified:
+
+- **What's included**:
+  - All Quick Mode checks (parallel)
+  - E2E Pipeline (sequential, after static checks):
+    - e2e-planner (plan test scope)
+    - e2e-creator (generate new tests if needed)
+    - e2e-validator (validate generated tests)
+    - e2e-runner (execute tests and generate report)
+
+- **Target execution time**: 10-30 minutes (depends on E2E scope)
+- **Mode recording**: inspection-{n}.md will show `Mode: Full`
+
+**Execution Flow**:
+1. Run static checks (Quick Mode) in parallel
+2. If static checks pass, invoke E2E Pipeline sequentially
+3. Merge all results for final judgment
+4. Generate e2e-report-{n}.md (referenced from inspection-{n}.md)
 
 ## Important Constraints
 

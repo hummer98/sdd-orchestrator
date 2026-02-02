@@ -1,0 +1,275 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-02T10:00:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No significant code duplication found. Each E2E agent has distinct responsibilities with minimal interface overlap.",
+      "evidence": [
+        "UserJourney interface defined only in e2e-planner.md",
+        "Each agent uses focused, purpose-specific interfaces"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-plan.json serves as single source of truth for E2E pipeline state. Result files are clearly separated.",
+      "evidence": [
+        "e2e-plan.json tracks journey decisions, generated tests, and validation results",
+        "e2e-result.json, integration-result.json maintain separate concerns"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Each E2E sub-agent follows single responsibility principle with clear separation of concerns.",
+      "evidence": [
+        "e2e-planner: planning only",
+        "e2e-creator: test generation only",
+        "e2e-validator: stability validation only",
+        "e2e-runner: execution and reporting only"
+      ]
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unused features or premature generalizations detected. Implementation matches design specification.",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No deletion targets specified in design.md (Integration & Deprecation Strategy confirms no files need deletion)",
+      "evidence": [
+        "design.md line 985: 'なし（既存ファイルの拡張のみ）'"
+      ]
+    },
+    {
+      "id": "impact-placeholder-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No implementation placeholders found in new agent files. Detected patterns are documentation examples only.",
+      "evidence": [
+        "code-quality-checker.md lines 81-86: documentation of placeholder patterns to detect",
+        "integration-checker.md lines 112-116: documentation of placeholder patterns to detect"
+      ]
+    },
+    {
+      "id": "dead-code-e2e-planner",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-planner-agent is properly referenced from spec-inspection-agent.md",
+      "evidence": [
+        "spec-inspection.md Phase 2.5.2 invokes e2e-planner-agent"
+      ]
+    },
+    {
+      "id": "dead-code-e2e-creator",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-creator-agent is properly referenced from spec-inspection-agent.md",
+      "evidence": [
+        "spec-inspection.md Phase 2.5.3 invokes e2e-creator-agent conditionally"
+      ]
+    },
+    {
+      "id": "dead-code-e2e-validator",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-validator-agent is properly referenced from spec-inspection-agent.md",
+      "evidence": [
+        "spec-inspection.md Phase 2.5.4 invokes e2e-validator-agent conditionally"
+      ]
+    },
+    {
+      "id": "dead-code-e2e-runner",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-runner-agent is properly referenced from spec-inspection-agent.md",
+      "evidence": [
+        "spec-inspection.md Phase 2.5.5 invokes e2e-runner-agent"
+      ]
+    },
+    {
+      "id": "dead-code-generate-inspection-e2e",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "generate-inspection-e2e-agent is a standalone utility agent for steering generation",
+      "evidence": [
+        "Agent is invoked via /kiro:generate-inspection-e2e command"
+      ]
+    },
+    {
+      "id": "method-verify-e2e-planner",
+      "category": "method-implementation",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All design-specified methods implemented in e2e-planner.md",
+      "evidence": [
+        "extractUserJourneys: Step 1 (line 32)",
+        "analyzeExistingCoverage: Step 2 (line 54)",
+        "determineScopeDecision: Step 3 (line 81)",
+        "generatePlan: Step 4 (line 113)"
+      ]
+    },
+    {
+      "id": "method-verify-e2e-creator",
+      "category": "method-implementation",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All design-specified methods implemented in e2e-creator.md",
+      "evidence": [
+        "loadPlan: Step 1 (line 32)",
+        "loadFrameworkInfo: Step 2 (line 48)",
+        "analyzeExistingHelpers: Step 3 (line 72)",
+        "generateTest: Step 4 (line 95)",
+        "writeTests: Step 5 (line 136)"
+      ]
+    },
+    {
+      "id": "method-verify-e2e-validator",
+      "category": "method-implementation",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All design-specified methods implemented in e2e-validator.md",
+      "evidence": [
+        "loadGeneratedTests: Step 1 (line 32)",
+        "runTestMultipleTimes: Step 2 (line 49)",
+        "analyzeStability: Step 3 (line 76)",
+        "attemptFix: Step 4 (line 95)",
+        "updatePlanWithValidation: Step 5 (line 119)"
+      ]
+    },
+    {
+      "id": "method-verify-e2e-runner",
+      "category": "method-implementation",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All design-specified methods implemented in e2e-runner.md",
+      "evidence": [
+        "checkEnvironment: Step 1 (line 35)",
+        "loadExecutionPlan: Step 2 (line 70)",
+        "runTests: Step 3 (line 96)",
+        "collectEvidence: Step 4 (line 123)",
+        "classifyFailure: Step 5 (line 141)",
+        "generateE2EResult: Step 6 (line 168)",
+        "generateReport: Step 7 (line 218)"
+      ]
+    },
+    {
+      "id": "method-verify-generate-inspection-e2e",
+      "category": "method-implementation",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All design-specified methods implemented in generate-inspection-e2e.md",
+      "evidence": [
+        "detectFramework: Step 1 (line 32)",
+        "analyzeTestStructure: Step 2 (line 55)",
+        "extractHelpers: Step 3 (line 82)",
+        "extractFixtures: Step 4 (line 107)",
+        "generateCoverageSummary: Step 5 (line 128)",
+        "generateSteeringDoc: Step 6 (line 153)"
+      ]
+    },
+    {
+      "id": "gitignore-generated-tests",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "e2e-wdio/generated/ is properly added to .gitignore",
+      "evidence": [
+        "electron-sdd-manager/.gitignore line 40: 'e2e-wdio/generated/'"
+      ]
+    },
+    {
+      "id": "template-verification-contract",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Verification Contract section properly added to design.md template",
+      "evidence": [
+        ".kiro/settings/templates/specs/design.md lines 329-377: Verification Contract section with User Journey Definition and Impact Analysis Contract"
+      ]
+    },
+    {
+      "id": "spec-design-vc-generation",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-design-agent.md properly includes Verification Contract generation logic",
+      "evidence": [
+        "worktree spec-design.md Step 3.5: Generate Verification Contract Section (lines 124-135)"
+      ]
+    },
+    {
+      "id": "spec-tasks-e2e-generation",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-tasks-agent.md properly includes E2E task auto-generation logic",
+      "evidence": [
+        "worktree spec-tasks.md Step 2.5: Generate E2E Test Tasks from User Journeys (lines 91-133)"
+      ]
+    },
+    {
+      "id": "spec-inspection-full-mode",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-inspection-agent.md properly includes Full Mode and E2E Pipeline support",
+      "evidence": [
+        "worktree spec-inspection.md Phase 2.5: E2E Pipeline (lines 248-336)",
+        "worktree spec-inspection.md Full Mode section (lines 670-689)"
+      ]
+    },
+    {
+      "id": "mock-cli-full-mode",
+      "category": "integration",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "mock-claude.sh properly supports --full option and E2E pipeline mock",
+      "evidence": [
+        "mock-claude.sh lines 79-85: inspection-full phase detection",
+        "mock-claude.sh lines 145-148: E2E_MOCK_E2E_RESULT environment variable",
+        "mock-claude.sh lines 988-1025: generate_e2e_plan function",
+        "mock-claude.sh lines 1027-1120: generate_e2e_result function",
+        "mock-claude.sh lines 1122-1203: generate_e2e_report function",
+        "mock-claude.sh lines 1511-1548: inspection-full case handling"
+      ]
+    },
+    {
+      "id": "logging-not-applicable",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Logging compliance check not applicable - feature consists of agent prompt files, not runtime code",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 24
+  }
+}

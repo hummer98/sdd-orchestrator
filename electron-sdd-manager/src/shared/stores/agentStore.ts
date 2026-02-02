@@ -53,13 +53,18 @@ export interface SharedAgentActions {
   loadAgents: (apiClient: ApiClient) => Promise<void>;
   /**
    * agent-log-store-unification Task 1.1
-   * Requirements: 1.1, 1.2, 1.3
+   * project-agent-store-unification Task 1.1: Added specIdHint parameter
+   * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4
    * Ensure logs are loaded for an agent.
    * - Running agents: load only if no logs exist (IPC adds more in real-time)
    * - Completed/failed agents: always load from file (may have more logs)
    * - Uses ID-based deduplication to merge file logs with existing logs
+   * @param apiClient - API client for fetching logs
+   * @param agentId - Target agent ID
+   * @param specIdHint - Optional specId to use when agent is not in store.
+   *                     Defaults to '' (empty string) if not provided.
    */
-  ensureLogsLoaded: (apiClient: ApiClient, agentId: string) => Promise<void>;
+  ensureLogsLoaded: (apiClient: ApiClient, agentId: string, specIdHint?: string) => Promise<void>;
   /** Agentを選択する */
   selectAgent: (agentId: string | null) => void;
   /**
@@ -192,31 +197,33 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
 
   /**
    * agent-log-store-unification Task 1.1
-   * Requirements: 1.1, 1.2, 1.3
+   * project-agent-store-unification Task 1.1: Added specIdHint parameter
+   * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4
    * Ensure logs are loaded for an agent.
    * - Running agents: load only if no logs exist (IPC adds more in real-time)
    * - Completed/failed agents: always load from file (may have more logs)
    * - Uses ID-based deduplication to merge file logs with existing logs
+   * - When agent is not in store, uses specIdHint (defaults to '')
    */
-  ensureLogsLoaded: async (apiClient: ApiClient, agentId: string) => {
-    console.log('[ensureLogsLoaded] Called with agentId:', agentId);
+  ensureLogsLoaded: async (apiClient: ApiClient, agentId: string, specIdHint?: string) => {
+    console.log('[ensureLogsLoaded] Called with agentId:', agentId, 'specIdHint:', specIdHint);
     const state = get();
     const agent = state.getAgentById(agentId);
     console.log('[ensureLogsLoaded] Found agent:', agent ? { agentId: agent.agentId, specId: agent.specId, status: agent.status } : 'NOT FOUND');
 
-    // Early return if agent not found
-    if (!agent) {
-      console.log('[ensureLogsLoaded] Agent not found, returning early');
-      return;
-    }
+    // project-agent-store-unification: Determine specId to use
+    // If agent exists, use agent.specId (backward compatibility)
+    // Otherwise use specIdHint, defaulting to '' (empty string for ProjectAgent)
+    const specId = agent ? agent.specId : (specIdHint ?? '');
 
     const existingLogs = state.logs.get(agentId) || [];
     const hasLogs = existingLogs.length > 0;
-    const isRunning = agent.status === 'running';
+    const isRunning = agent?.status === 'running';
 
     // Running agents: skip API call if logs already exist (real-time logs via IPC)
     // Completed/failed agents: always load from file (may have additional logs)
-    const shouldLoad = !hasLogs || !isRunning;
+    // Non-existent agents (using specIdHint): always load
+    const shouldLoad = !agent || !hasLogs || !isRunning;
     console.log('[ensureLogsLoaded] hasLogs:', hasLogs, 'isRunning:', isRunning, 'shouldLoad:', shouldLoad);
 
     if (!shouldLoad) {
@@ -225,8 +232,8 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     }
 
     // Call API to get logs
-    console.log('[ensureLogsLoaded] Calling getAgentLogs API with specId:', agent.specId, 'agentId:', agentId);
-    const result = await apiClient.getAgentLogs(agent.specId, agentId);
+    console.log('[ensureLogsLoaded] Calling getAgentLogs API with specId:', specId, 'agentId:', agentId);
+    const result = await apiClient.getAgentLogs(specId, agentId);
     console.log('[ensureLogsLoaded] API result:', result.ok ? `OK, ${result.value.length} logs` : `ERROR: ${result.error}`);
 
     if (!result.ok) {

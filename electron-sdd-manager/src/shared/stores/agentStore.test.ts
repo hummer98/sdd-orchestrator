@@ -1032,20 +1032,24 @@ describe('SharedAgentStore', () => {
         expect(getAgentLogsCalled).toBe(true);
       });
 
-      it('should early return when agent not found', async () => {
+      it('should use specIdHint when agent not found (project-agent-store-unification)', async () => {
         const store = getSharedAgentStore();
         const apiClient = createMockApiClient();
 
         let getAgentLogsCalled = false;
-        apiClient.getAgentLogs = async () => {
+        let calledSpecId = '';
+        apiClient.getAgentLogs = async (specId: string, _agentId: string) => {
           getAgentLogsCalled = true;
+          calledSpecId = specId;
           return { ok: true, value: [] };
         };
 
-        // Try to load logs for non-existent agent
+        // Try to load logs for non-existent agent - should use default specIdHint ''
         await store.ensureLogsLoaded(apiClient, 'non-existent');
 
-        expect(getAgentLogsCalled).toBe(false);
+        // project-agent-store-unification: Now calls API with specIdHint (defaults to '')
+        expect(getAgentLogsCalled).toBe(true);
+        expect(calledSpecId).toBe('');
       });
     });
 
@@ -1113,6 +1117,110 @@ describe('SharedAgentStore', () => {
         expect(logs).toHaveLength(1);
         // Should keep the existing one (not replaced)
         expect(logs![0].timestamp).toBe(1000);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // project-agent-store-unification: specIdHint parameter
+    // Requirements: 2.1, 2.2, 2.3, 2.4
+    // -------------------------------------------------------------------------
+    describe('specIdHint parameter (project-agent-store-unification)', () => {
+      it('should use specIdHint when agent is not in store (Requirement 2.1, 2.2)', async () => {
+        const store = getSharedAgentStore();
+        // Note: Agent is NOT added to store
+
+        const mockLogs = [createParsedLogEntry('log-1')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        let calledSpecId = '';
+        apiClient.getAgentLogs = async (specId: string, _agentId: string) => {
+          calledSpecId = specId;
+          return { ok: true, value: mockLogs };
+        };
+
+        // Call with specIdHint
+        await store.ensureLogsLoaded(apiClient, 'unknown-agent', 'my-spec-hint');
+
+        // Should use specIdHint as specId when agent not found
+        expect(calledSpecId).toBe('my-spec-hint');
+      });
+
+      it('should use empty string as default when specIdHint is not provided and agent not in store (Requirement 2.3)', async () => {
+        const store = getSharedAgentStore();
+        // Note: Agent is NOT added to store
+
+        const mockLogs = [createParsedLogEntry('log-1')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        let calledSpecId: string | undefined;
+        apiClient.getAgentLogs = async (specId: string, _agentId: string) => {
+          calledSpecId = specId;
+          return { ok: true, value: mockLogs };
+        };
+
+        // Call WITHOUT specIdHint
+        await store.ensureLogsLoaded(apiClient, 'unknown-agent');
+
+        // Should use empty string as default specId
+        expect(calledSpecId).toBe('');
+      });
+
+      it('should use agent.specId when agent exists in store, ignoring specIdHint (Requirement 2.4 backward compat)', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'actual-spec', 'completed');
+        store.addAgent('actual-spec', agent);
+
+        const mockLogs = [createParsedLogEntry('log-1')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        let calledSpecId = '';
+        apiClient.getAgentLogs = async (specId: string, _agentId: string) => {
+          calledSpecId = specId;
+          return { ok: true, value: mockLogs };
+        };
+
+        // Call with specIdHint - should be ignored because agent exists
+        await store.ensureLogsLoaded(apiClient, 'agent-1', 'different-hint');
+
+        // Should use agent's specId, not the hint
+        expect(calledSpecId).toBe('actual-spec');
+      });
+
+      it('should maintain backward compatibility when called without specIdHint for existing agent (Requirement 2.4)', async () => {
+        const store = getSharedAgentStore();
+        const agent = createAgent('agent-1', 'my-spec', 'running');
+        store.addAgent('my-spec', agent);
+
+        const mockLogs = [createParsedLogEntry('log-1')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        let calledSpecId = '';
+        apiClient.getAgentLogs = async (specId: string, _agentId: string) => {
+          calledSpecId = specId;
+          return { ok: true, value: mockLogs };
+        };
+
+        // Call without specIdHint (backward compatible call pattern)
+        await store.ensureLogsLoaded(apiClient, 'agent-1');
+
+        // Should work as before - use agent's specId
+        expect(calledSpecId).toBe('my-spec');
+      });
+
+      it('should add logs to store when using specIdHint for unknown agent', async () => {
+        const store = getSharedAgentStore();
+        // Agent NOT in store
+
+        const mockLogs = [createParsedLogEntry('log-1'), createParsedLogEntry('log-2')];
+        const apiClient = createMockApiClient({ ok: true, value: mockLogs });
+
+        // Call with specIdHint for project agent (empty string)
+        await store.ensureLogsLoaded(apiClient, 'new-agent', '');
+
+        const freshState = getSharedAgentStore();
+        const logs = freshState.logs.get('new-agent');
+        expect(logs).toBeDefined();
+        expect(logs).toHaveLength(2);
       });
     });
 

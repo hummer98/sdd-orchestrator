@@ -12,7 +12,7 @@
  * - Footer: Agentログエリア
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
 import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView } from './views';
@@ -121,85 +121,61 @@ function LeftSidebar({
 }: LeftSidebarProps) {
   const apiClient = useApi();
 
-  // Agent Store
-  const { selectAgent, selectedAgentId, addAgent, getAgentById } = useSharedAgentStore();
+  /**
+   * project-agent-store-unification Task 2.1: Use SharedAgentStore as SSOT
+   * Requirements: 1.1, 1.2, 1.3, 1.4
+   * - Removed projectAgents local state
+   * - Removed 3-second polling useEffect
+   * - Using getAgentsForSpec('') from SharedAgentStore
+   * - WebSocket events handled by useAgentStoreInit hook in DesktopAppContent
+   */
+  const { selectAgent, selectedAgentId, removeAgent, getAgentsForSpec } = useSharedAgentStore();
 
-  // Project Agent state
-  const [projectAgents, setProjectAgents] = useState<AgentInfo[]>([]);
+  /**
+   * project-agent-store-unification Task 2.2: Sorting logic
+   * Requirement: 1.5 - running first, then by startedAt descending
+   */
+  const projectAgents = useMemo(() => {
+    const agents = getAgentsForSpec('');
+    return [...agents].sort((a, b) => {
+      // Running first
+      if (a.status === 'running' && b.status !== 'running') return -1;
+      if (a.status !== 'running' && b.status === 'running') return 1;
+      // Then by startedAt descending
+      const aTime = typeof a.startedAt === 'number' ? a.startedAt : new Date(a.startedAt as string).getTime();
+      const bTime = typeof b.startedAt === 'number' ? b.startedAt : new Date(b.startedAt as string).getTime();
+      return bTime - aTime;
+    });
+  }, [getAgentsForSpec]);
+
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 
   // Create dialog state (Task 3.1)
   const [createDialogType, setCreateDialogType] = useState<CreateDialogType>(null);
 
-  // Load project agents (specId === '')
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadProjectAgents() {
-      const result = await apiClient.getAgents();
-      if (!isMounted) return;
-
-      if (result.ok) {
-        const filtered = result.value
-          .filter((a) => a.specId === '')
-          .sort((a, b) => {
-            // Running first, then by startedAt descending
-            if (a.status === 'running' && b.status !== 'running') return -1;
-            if (a.status !== 'running' && b.status === 'running') return 1;
-            const aTime = typeof a.startedAt === 'number' ? a.startedAt : new Date(a.startedAt).getTime();
-            const bTime = typeof b.startedAt === 'number' ? b.startedAt : new Date(b.startedAt).getTime();
-            return bTime - aTime;
-          });
-        setProjectAgents(filtered);
-      }
-    }
-
-    loadProjectAgents();
-
-    // Poll for updates
-    const interval = setInterval(loadProjectAgents, 3000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [apiClient]);
-
-  // Subscribe to agent status changes
-  useEffect(() => {
-    const unsubscribe = apiClient.onAgentStatusChange((agentId, status) => {
-      setProjectAgents((prev) =>
-        prev.map((agent) =>
-          agent.agentId === agentId ? { ...agent, status } : agent
-        )
-      );
-    });
-    return unsubscribe;
-  }, [apiClient]);
-
-  // Project Agent handlers
-  // Bug fix: Add agent to shared store before selecting (for ensureLogsLoaded to work)
+  /**
+   * project-agent-store-unification Task 2.3: Simplified handleSelectAgent
+   * Requirements: 3.1, 3.2, 3.3
+   * - Removed addAgent workaround (agents already in SharedAgentStore)
+   * - Just call selectAgent(agentId)
+   */
   const handleSelectAgent = useCallback((agentId: string) => {
-    // Find agent in local projectAgents state
-    const agent = projectAgents.find(a => a.agentId === agentId);
-    if (agent) {
-      // Add to shared store if not already there (project agents have specId='')
-      if (!getAgentById(agentId)) {
-        addAgent('', agent);
-      }
-    }
     selectAgent(agentId);
-  }, [projectAgents, selectAgent, addAgent, getAgentById]);
+  }, [selectAgent]);
 
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
     await apiClient.stopAgent(agentId);
   }, [apiClient]);
 
+  /**
+   * project-agent-store-unification: Use store's removeAgent
+   * Agent removal now goes through SharedAgentStore
+   */
   const handleRemoveAgent = useCallback((e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    setProjectAgents((prev) => prev.filter((a) => a.agentId !== agentId));
-  }, []);
+    removeAgent(agentId);
+  }, [removeAgent]);
 
   const handleAskExecute = useCallback(async (prompt: string) => {
     // websocket-command-unification: Use unified executeProjectCommand API
@@ -209,12 +185,8 @@ function LeftSidebar({
     const result = await apiClient.executeProjectCommand(command, 'project-ask');
     if (result.ok) {
       setIsAskDialogOpen(false);
-      // Refresh agents list
-      const agentsResult = await apiClient.getAgents();
-      if (agentsResult.ok) {
-        const filtered = agentsResult.value.filter((a) => a.specId === '');
-        setProjectAgents(filtered);
-      }
+      // project-agent-store-unification: No manual refresh needed
+      // SharedAgentStore is updated automatically via WebSocket events (useAgentStoreInit)
     }
   }, [apiClient]);
 
@@ -469,7 +441,7 @@ function RightSidebar({
   onAutoExecution,
 }: RightSidebarProps) {
   const apiClient = useApi();
-  const { selectAgent, selectedAgentId, addAgent, getAgentById } = useSharedAgentStore();
+  const { selectAgent, selectedAgentId } = useSharedAgentStore();
 
   // Spec Agents state (filtered by selected spec)
   const [specAgents, setSpecAgents] = useState<AgentInfo[]>([]);
@@ -537,19 +509,15 @@ function RightSidebar({
     return unsubscribe;
   }, [apiClient]);
 
-  // Agent handlers
-  // Bug fix: Add agent to shared store before selecting (for ensureLogsLoaded to work)
+  /**
+   * project-agent-store-unification Task 3.1: Simplified handleSelectAgent
+   * Requirements: 3.1, 3.2, 3.3
+   * - Removed addAgent workaround (agents already in SharedAgentStore via useAgentStoreInit)
+   * - Just call selectAgent(agentId)
+   */
   const handleSelectAgent = useCallback((agentId: string) => {
-    // Find agent in local specAgents state
-    const agent = specAgents.find(a => a.agentId === agentId);
-    if (agent && selectedSpec) {
-      // Add to shared store if not already there
-      if (!getAgentById(agentId)) {
-        addAgent(selectedSpec.name, agent);
-      }
-    }
     selectAgent(agentId);
-  }, [specAgents, selectedSpec, selectAgent, addAgent, getAgentById]);
+  }, [selectAgent]);
 
   const handleStopAgent = useCallback(async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
@@ -649,18 +617,19 @@ function FooterContent() {
   const logs = selectedAgentId ? agentStore.logs.get(selectedAgentId) ?? [] : [];
 
   /**
-   * Bug fix: Desktop Remote UI past logs not displaying
-   * Ensure logs are loaded when agent is selected (same as AgentLogPage for mobile)
+   * project-agent-store-unification Task 4.1: Remove selectedAgent from deps
+   * Requirements: 2.5
+   * - Removed selectedAgent from dependency array (timing dependency eliminated)
+   * - Added specIdHint='' for ProjectAgent support (specIdHint defaults to empty string)
+   * - ensureLogsLoaded now works even when agent is not yet in store
    * agent-log-store-unification: Call ensureLogsLoaded to fetch past logs
-   * Note: ensureLogsLoaded internally checks if agent exists in store via getAgentById
-   * selectedAgent in deps ensures re-trigger when agent becomes available in store
-   * (handles timing issue where user clicks before loadAgents completes)
    */
   useEffect(() => {
     if (selectedAgentId) {
-      agentStore.ensureLogsLoaded(apiClient, selectedAgentId);
+      // project-agent-store-unification: Pass empty specIdHint for ProjectAgent fallback
+      agentStore.ensureLogsLoaded(apiClient, selectedAgentId, '');
     }
-  }, [apiClient, selectedAgentId, agentStore, selectedAgent]);
+  }, [apiClient, selectedAgentId, agentStore]);
 
   // Transform AgentInfo to AgentLogInfo
   const agentLogInfo: AgentLogInfo | undefined = selectedAgent ? {

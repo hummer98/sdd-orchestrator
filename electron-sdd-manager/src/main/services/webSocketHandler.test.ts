@@ -2648,120 +2648,10 @@ describe('WebSocketHandler - GET_BUG_AUTO_EXECUTION_STATUS Handler (bug-auto-exe
 });
 
 // ============================================================
-// agent-ask-execution Task 6: ASK_PROJECT/ASK_SPEC Message Handler Tests
-// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+// websocket-command-unification: ASK_PROJECT/ASK_SPEC handlers removed
+// These handlers have been replaced by EXECUTE_PROJECT_COMMAND and EXECUTE_SPEC_COMMAND
+// See Task 3.1, 3.2 in tasks.md
 // ============================================================
-
-describe('WebSocketHandler - ASK_PROJECT/ASK_SPEC Handlers (agent-ask-execution)', () => {
-  let mockWss: WebSocketServer;
-  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
-
-  // Helper function to create mock WebSocket
-  function createMockWebSocket(): WebSocket {
-    return {
-      readyState: WebSocket.OPEN,
-      send: vi.fn(),
-      close: vi.fn(),
-      on: vi.fn(),
-    } as unknown as WebSocket;
-  }
-
-  // Helper function to create mock request
-  function createMockRequest(ip: string): IncomingMessage {
-    return {
-      socket: { remoteAddress: ip },
-      headers: {},
-    } as unknown as IncomingMessage;
-  }
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    connectionHandler = null;
-    mockWss = {
-      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
-        if (event === 'connection') {
-          connectionHandler = handler;
-        }
-      }),
-      clients: new Set<WebSocket>(),
-    } as unknown as WebSocketServer;
-
-    vi.doMock('./accessTokenService', () => ({
-      accessTokenService: {
-        validateToken: vi.fn(() => true),
-      },
-    }));
-  });
-
-  describe('ASK_PROJECT message handling (Requirement 6.1, 6.3)', () => {
-    it('should send error when projectPath or prompt is missing', async () => {
-      const { WebSocketHandler } = await import('./webSocketHandler');
-      const handler = new WebSocketHandler();
-      handler.initialize(mockWss);
-
-      const mockWs = createMockWebSocket();
-      const mockMessageHandler = vi.fn();
-      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
-        if (event === 'message') {
-          mockMessageHandler.mockImplementation(handlerFn);
-        }
-      });
-
-      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
-
-      // Send ASK_PROJECT without projectPath
-      const message = JSON.stringify({
-        type: 'ASK_PROJECT',
-        payload: { prompt: 'test' },
-        requestId: 'req-1',
-        timestamp: Date.now(),
-      });
-      mockMessageHandler(message);
-
-      // Wait for async handling
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Without workflowController, should send NO_CONTROLLER error
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"ERROR"')
-      );
-    });
-  });
-
-  describe('ASK_SPEC message handling (Requirement 6.2, 6.4)', () => {
-    it('should send error when specId or prompt is missing', async () => {
-      const { WebSocketHandler } = await import('./webSocketHandler');
-      const handler = new WebSocketHandler();
-      handler.initialize(mockWss);
-
-      const mockWs = createMockWebSocket();
-      const mockMessageHandler = vi.fn();
-      mockWs.on = vi.fn((event: string, handlerFn: (data: string) => void) => {
-        if (event === 'message') {
-          mockMessageHandler.mockImplementation(handlerFn);
-        }
-      });
-
-      connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
-
-      // Send ASK_SPEC without specId
-      const message = JSON.stringify({
-        type: 'ASK_SPEC',
-        payload: { prompt: 'test prompt' },
-        requestId: 'req-1',
-        timestamp: Date.now(),
-      });
-      mockMessageHandler(message);
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Without workflowController, should send NO_CONTROLLER error
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"ERROR"')
-      );
-    });
-  });
-});
 
 // ============================================================
 // remote-ui-bug-advanced-features Task 1.1: Bug Auto Execution Handlers
@@ -4294,5 +4184,505 @@ describe('WebSocketHandler - GET_AGENT_LOGS (handleSelectAgent)', () => {
 
     expect(errorResponse).toBeDefined();
     expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+});
+
+// ============================================================
+// websocket-command-unification: Task 2.1 - EXECUTE_PROJECT_COMMAND handler
+// Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_PROJECT_COMMAND (Task 2.1)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('should return EXECUTE_PROJECT_COMMAND_STARTED on success (Req 1.4)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeProjectCommand: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-project-123' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    const message = JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: {
+        command: '/kiro:project-ask "What is this project?"',
+        title: 'project-ask',
+      },
+      requestId: 'req-project-1',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const response = sentMessages.find((m) => m.type === 'EXECUTE_PROJECT_COMMAND_STARTED');
+
+    expect(response).toBeDefined();
+    expect(response.payload.agentId).toBe('agent-project-123');
+    expect(response.requestId).toBe('req-project-1');
+  });
+
+  it('should call executeProjectCommand with command and title (Req 1.2)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeProjectCommand: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-123' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: {
+        command: '/kiro:release',
+        title: 'release',
+      },
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    expect(mockWorkflowController.executeProjectCommand).toHaveBeenCalledWith(
+      '/kiro:release',
+      'release'
+    );
+  });
+
+  it('should return INVALID_PAYLOAD error when command is missing (Req 1.3)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeProjectCommand: vi.fn(),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: { title: 'release' }, // missing command
+      requestId: 'req-invalid-1',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+
+  it('should return INVALID_PAYLOAD error when title is missing (Req 1.3)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeProjectCommand: vi.fn(),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: { command: '/kiro:release' }, // missing title
+      requestId: 'req-invalid-2',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+
+  it('should return ERROR when agent startup fails (Req 1.5)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeProjectCommand: vi.fn().mockResolvedValue({
+        ok: false,
+        error: { type: 'SPAWN_ERROR', message: 'Failed to spawn agent' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: {
+        command: '/kiro:release',
+        title: 'release',
+      },
+      requestId: 'req-error-1',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('SPAWN_ERROR');
+  });
+
+  it('should return ERROR when workflowController is not set', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+    // Note: workflowController NOT set
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_PROJECT_COMMAND',
+      payload: {
+        command: '/kiro:release',
+        title: 'release',
+      },
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('NO_CONTROLLER');
+  });
+});
+
+// ============================================================
+// websocket-command-unification: Task 2.2 - EXECUTE_SPEC_COMMAND handler
+// Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+// ============================================================
+
+describe('WebSocketHandler - EXECUTE_SPEC_COMMAND (Task 2.2)', () => {
+  let mockWss: WebSocketServer;
+  let connectionHandler: ((ws: WebSocket, req: IncomingMessage) => void) | null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    connectionHandler = null;
+    mockWss = {
+      on: vi.fn((event: string, handler: (ws: WebSocket, req: IncomingMessage) => void) => {
+        if (event === 'connection') {
+          connectionHandler = handler;
+        }
+      }),
+      clients: new Set<WebSocket>(),
+    } as unknown as WebSocketServer;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('should return EXECUTE_SPEC_COMMAND_STARTED on success (Req 2.4)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeSpecCommand: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-spec-456' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    const message = JSON.stringify({
+      type: 'EXECUTE_SPEC_COMMAND',
+      payload: {
+        specId: 'my-feature',
+        featureName: 'my-feature',
+        command: '/kiro:spec-ask "How does this work?"',
+        title: 'spec-ask',
+      },
+      requestId: 'req-spec-1',
+      timestamp: Date.now(),
+    });
+    await messageHandler!(Buffer.from(message));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const response = sentMessages.find((m) => m.type === 'EXECUTE_SPEC_COMMAND_STARTED');
+
+    expect(response).toBeDefined();
+    expect(response.payload.agentId).toBe('agent-spec-456');
+    expect(response.payload.specId).toBe('my-feature');
+    expect(response.requestId).toBe('req-spec-1');
+  });
+
+  it('should call executeSpecCommand with all parameters (Req 2.2)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeSpecCommand: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { agentId: 'agent-123' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_SPEC_COMMAND',
+      payload: {
+        specId: 'my-feature',
+        featureName: 'my-feature',
+        command: '/kiro:spec-ask "test"',
+        title: 'spec-ask',
+      },
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    expect(mockWorkflowController.executeSpecCommand).toHaveBeenCalledWith(
+      'my-feature',
+      'my-feature',
+      '/kiro:spec-ask "test"',
+      'spec-ask'
+    );
+  });
+
+  it('should return INVALID_PAYLOAD error when specId is missing (Req 2.3)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeSpecCommand: vi.fn(),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_SPEC_COMMAND',
+      payload: {
+        featureName: 'my-feature',
+        command: '/kiro:spec-ask "test"',
+        title: 'spec-ask',
+      }, // missing specId
+      requestId: 'req-invalid-1',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+
+  it('should return INVALID_PAYLOAD error when command is missing (Req 2.3)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeSpecCommand: vi.fn(),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_SPEC_COMMAND',
+      payload: {
+        specId: 'my-feature',
+        featureName: 'my-feature',
+        title: 'spec-ask',
+      }, // missing command
+      requestId: 'req-invalid-2',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('INVALID_PAYLOAD');
+  });
+
+  it('should return ERROR when agent startup fails (Req 2.5)', async () => {
+    const { WebSocketHandler } = await import('./webSocketHandler');
+    const { RateLimiter } = await import('../utils/rateLimiter');
+
+    const mockRateLimiter = new RateLimiter({ maxRequests: 100, windowMs: 60000 });
+    const handler = new WebSocketHandler({ rateLimiter: mockRateLimiter });
+
+    const mockWorkflowController = {
+      executePhase: vi.fn(),
+      stopAgent: vi.fn(),
+      resumeAgent: vi.fn(),
+      executeSpecCommand: vi.fn().mockResolvedValue({
+        ok: false,
+        error: { type: 'SPEC_NOT_FOUND', message: 'Spec not found' },
+      }),
+    };
+    handler.setWorkflowController(mockWorkflowController);
+    handler.initialize(mockWss);
+
+    const mockWs = createMockWebSocket();
+    connectionHandler!(mockWs, createMockRequest('192.168.1.1'));
+
+    const messageHandler = mockWs.on.mock.calls.find(([event]) => event === 'message')?.[1];
+
+    await messageHandler!(Buffer.from(JSON.stringify({
+      type: 'EXECUTE_SPEC_COMMAND',
+      payload: {
+        specId: 'nonexistent',
+        featureName: 'nonexistent',
+        command: '/kiro:spec-ask "test"',
+        title: 'spec-ask',
+      },
+      requestId: 'req-error-1',
+      timestamp: Date.now(),
+    })));
+    await vi.runAllTimersAsync();
+
+    const sentMessages = mockWs.send.mock.calls.map((call) => JSON.parse(call[0]));
+    const errorResponse = sentMessages.find((m) => m.type === 'ERROR');
+
+    expect(errorResponse).toBeDefined();
+    expect(errorResponse.payload.code).toBe('SPEC_NOT_FOUND');
   });
 });

@@ -863,4 +863,206 @@ describe('WorkflowController.executeDocumentReview() (Task 2.3)', () => {
       }
     });
   });
+
+  // ============================================================
+  // websocket-command-unification: Task 1.1 - WorkflowController generic command methods
+  // Requirements: 3.1, 3.2, 3.3, 3.4
+  // ============================================================
+
+  describe('executeProjectCommand method', () => {
+    it('should have executeProjectCommand method on WorkflowController', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      expect(controller.executeProjectCommand).toBeDefined();
+      expect(typeof controller.executeProjectCommand).toBe('function');
+    });
+
+    it('should call startAgent with correct parameters for project command', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({
+          ok: true,
+          value: { agentId: 'agent-project-123' },
+        }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeProjectCommand!(
+        '/kiro:project-ask "What is this project?"',
+        'project-ask'
+      );
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: '',
+          phase: 'project-ask',
+          args: expect.arrayContaining(['/kiro:project-ask "What is this project?"']),
+        })
+      );
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-project-123');
+      }
+    });
+
+    it('should handle executeProjectCommand errors', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPAWN_ERROR', message: 'Failed to spawn agent' },
+        }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeProjectCommand!('/kiro:release', 'release');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPAWN_ERROR');
+      }
+    });
+  });
+
+  describe('executeSpecCommand method', () => {
+    it('should have executeSpecCommand method on WorkflowController', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      expect(controller.executeSpecCommand).toBeDefined();
+      expect(typeof controller.executeSpecCommand).toBe('function');
+    });
+
+    it('should call startAgent with correct parameters for spec command', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({
+          ok: true,
+          value: { agentId: 'agent-spec-456' },
+        }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeSpecCommand!(
+        'my-feature',
+        'my-feature',
+        '/kiro:spec-ask "How does this work?"',
+        'spec-ask'
+      );
+
+      expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          specId: 'my-feature',
+          phase: 'spec-ask',
+          args: expect.arrayContaining(['/kiro:spec-ask "How does this work?"']),
+        })
+      );
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.agentId).toBe('agent-spec-456');
+      }
+    });
+
+    it('should handle executeSpecCommand errors', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'SPEC_NOT_FOUND', message: 'Spec not found' },
+        }),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      const result = await controller.executeSpecCommand!(
+        'nonexistent',
+        'nonexistent',
+        '/kiro:spec-ask "test"',
+        'spec-ask'
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
+    });
+  });
+
+  describe('deprecated methods removal', () => {
+    it('should NOT have executeAskProject method (removed)', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      // executeAskProject should be removed as per Requirements 3.3
+      expect(controller.executeAskProject).toBeUndefined();
+    });
+
+    it('should NOT have executeAskSpec method (removed)', async () => {
+      const { createWorkflowController } = await import('./remoteAccessHandlers');
+
+      const mockSpecManagerService = {
+        execute: vi.fn(),
+        stopAgent: vi.fn(),
+        resumeAgent: vi.fn(),
+        startAgent: vi.fn(),
+        getProjectPath: vi.fn().mockReturnValue('/test/project'),
+      };
+
+      const controller = createWorkflowController(mockSpecManagerService as any);
+
+      // executeAskSpec should be removed as per Requirements 3.3
+      expect(controller.executeAskSpec).toBeUndefined();
+    });
+  });
 });

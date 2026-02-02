@@ -402,32 +402,27 @@ export interface ApiClient {
   /**
    * Execute a project-level command
    * release-button-api-fix: Task 5.1
+   * websocket-command-unification: Unified API for all project-level commands
    * Requirements: 1.1 - executeProjectCommand API
    * @param command - Command string to execute (e.g., '/release', '/kiro:project-ask "prompt"')
-   * @param title - Display title for Agent list (e.g., 'release', 'ask')
+   * @param title - Display title for Agent list (e.g., 'release', 'project-ask')
    */
   executeProjectCommand(command: string, title: string): Promise<Result<AgentInfo, ApiError>>;
 
   /**
-   * Execute project-level ask command
-   * remote-ui-ask-agent-fix: Fixed message type to ASK_PROJECT
-   * Requirements: 1.1, 1.2, 1.3, 1.4
-   * @param prompt - Question/prompt to ask
-   */
-  executeAskProject?(prompt: string): Promise<Result<AgentInfo, ApiError>>;
-
-  /**
-   * Execute spec-level ask command
-   * remote-ui-ask-agent-fix: New method for Spec Ask functionality
-   * Requirements: 2.1, 2.2, 2.3, 2.4, 4.1, 4.2
+   * Execute a spec-level command
+   * websocket-command-unification: Task 5.1 - New unified API for spec-level commands
+   * Requirements: 5.5
    * @param specId - Spec identifier (feature name)
    * @param featureName - Feature name for context
-   * @param prompt - Question/prompt to ask
+   * @param command - Command string to execute (e.g., '/kiro:spec-ask "prompt"')
+   * @param title - Display title for Agent list (e.g., 'spec-ask')
    */
-  executeAskSpec?(
+  executeSpecCommand?(
     specId: string,
     featureName: string,
-    prompt: string
+    command: string,
+    title: string
   ): Promise<Result<AgentInfo, ApiError>>;
 
   // ===========================================================================

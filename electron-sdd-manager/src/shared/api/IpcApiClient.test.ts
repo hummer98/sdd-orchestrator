@@ -102,6 +102,43 @@ describe('IpcApiClient', () => {
   });
 
   // ===========================================================================
+  // websocket-command-unification: Task 6.1 - executeSpecCommand
+  // Requirements: 7.1, 7.2
+  // ===========================================================================
+
+  describe('executeSpecCommand method', () => {
+    it('should implement executeSpecCommand method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async executeSpecCommand(');
+    });
+
+    it('should accept specId, featureName, command, and title parameters', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Method signature: executeSpecCommand(specId: string, featureName: string, command: string, title: string)
+      expect(content).toMatch(/executeSpecCommand\s*\(\s*specId\s*:\s*string\s*,\s*featureName\s*:\s*string\s*,\s*command\s*:\s*string\s*,\s*title\s*:\s*string/);
+    });
+
+    it('should use executeProjectCommand IPC channel with spec context in command', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should delegate to window.electronAPI.executeProjectCommand
+      // with spec context included in the command string
+      expect(content).toMatch(/executeSpecCommand[\s\S]*?window\.electronAPI\.executeProjectCommand/);
+    });
+
+    it('should return AgentInfo on success', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should return result wrapped in Result type with AgentInfo structure
+      expect(content).toMatch(/executeSpecCommand[\s\S]*?wrapResult/);
+    });
+
+    it('should handle NO_PROJECT error when no project is selected', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Method should check for current project and return NO_PROJECT error if none
+      expect(content).toMatch(/executeSpecCommand[\s\S]*?NO_PROJECT/);
+    });
+  });
+
+  // ===========================================================================
   // auto-execution-projectpath-fix: Task 4.4 - startAutoExecution projectPath
   // Requirements: 4.2
   // ===========================================================================

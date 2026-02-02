@@ -294,12 +294,12 @@ export interface WorkflowController {
   /** Execute inspection fix */
   executeInspectionFix?(specId: string, featureName: string, roundNumber: number): Promise<WorkflowResult<AgentInfo>>;
 
-  // Ask Agent methods (agent-ask-execution feature)
-  // Requirements: 5.1-5.6
-  /** Execute Project Ask with custom prompt */
-  executeAskProject?(projectPath: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
-  /** Execute Spec Ask with custom prompt */
-  executeAskSpec?(specId: string, featureName: string, prompt: string): Promise<WorkflowResult<AgentInfo>>;
+  // websocket-command-unification: Generic command methods
+  // Requirements: 3.1, 3.2 (replaced executeAskProject/executeAskSpec)
+  /** Execute project-level command (e.g., project-ask, release, spec-plan) */
+  executeProjectCommand?(command: string, title: string): Promise<WorkflowResult<AgentInfo>>;
+  /** Execute spec-level command (e.g., spec-ask) */
+  executeSpecCommand?(specId: string, featureName: string, command: string, title: string): Promise<WorkflowResult<AgentInfo>>;
 
   // Create methods (remote-ui-missing-create-buttons bug fix)
   /** Create a new spec with spec-init */
@@ -884,13 +884,16 @@ export class WebSocketHandler {
       case 'AUTO_EXECUTE_ALL_STATUS':
         await this.handleAutoExecuteAllStatus(client, message);
         break;
-      // Ask Agent handlers (agent-ask-execution feature)
-      case 'ASK_PROJECT':
-        await this.handleAskProject(client, message);
+      // websocket-command-unification: Generic command handlers
+      // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5
+      case 'EXECUTE_PROJECT_COMMAND':
+        await this.handleExecuteProjectCommand(client, message);
         break;
-      case 'ASK_SPEC':
-        await this.handleAskSpec(client, message);
+      case 'EXECUTE_SPEC_COMMAND':
+        await this.handleExecuteSpecCommand(client, message);
         break;
+      // Note: ASK_PROJECT and ASK_SPEC handlers removed (websocket-command-unification)
+      // Use EXECUTE_PROJECT_COMMAND and EXECUTE_SPEC_COMMAND instead
       // Create handlers (remote-ui-missing-create-buttons bug fix)
       case 'CREATE_SPEC':
         await this.handleCreateSpec(client, message);
@@ -2302,15 +2305,15 @@ export class WebSocketHandler {
   }
 
   // ============================================================
-  // Ask Agent Handlers (agent-ask-execution feature)
-  // Requirements: 5.1-5.6
+  // websocket-command-unification: Generic Command Handlers
+  // Requirements: 1.1-1.5, 2.1-2.5
   // ============================================================
 
   /**
-   * Handle ASK_PROJECT message
-   * Requirements: 5.1-5.3 (agent-ask-execution)
+   * Handle EXECUTE_PROJECT_COMMAND message
+   * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
    */
-  private async handleAskProject(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+  private async handleExecuteProjectCommand(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     if (!this.workflowController) {
       this.send(client.id, {
         type: 'ERROR',
@@ -2321,10 +2324,10 @@ export class WebSocketHandler {
       return;
     }
 
-    if (!this.workflowController.executeAskProject) {
+    if (!this.workflowController.executeProjectCommand) {
       this.send(client.id, {
         type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Project Ask execution not supported' },
+        payload: { code: 'NOT_SUPPORTED', message: 'Project command execution not supported' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });
@@ -2332,26 +2335,25 @@ export class WebSocketHandler {
     }
 
     const payload = message.payload || {};
-    const projectPath = payload.projectPath as string;
-    const prompt = payload.prompt as string;
+    const command = payload.command as string;
+    const title = payload.title as string;
 
-    if (!projectPath || !prompt) {
+    if (!command || !title) {
       this.send(client.id, {
         type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing projectPath or prompt' },
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing command or title' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });
       return;
     }
 
-    const result = await this.workflowController.executeAskProject(projectPath, prompt);
+    const result = await this.workflowController.executeProjectCommand(command, title);
 
     if (result.ok) {
       this.send(client.id, {
-        type: 'ASK_PROJECT_STARTED',
+        type: 'EXECUTE_PROJECT_COMMAND_STARTED',
         payload: {
-          projectPath,
           agentId: result.value.agentId,
         },
         requestId: message.requestId,
@@ -2362,7 +2364,7 @@ export class WebSocketHandler {
         type: 'ERROR',
         payload: {
           code: result.error.type,
-          message: result.error.message || 'Project Ask execution failed',
+          message: result.error.message || 'Project command execution failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),
@@ -2371,10 +2373,10 @@ export class WebSocketHandler {
   }
 
   /**
-   * Handle ASK_SPEC message
-   * Requirements: 5.4-5.6 (agent-ask-execution)
+   * Handle EXECUTE_SPEC_COMMAND message
+   * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
    */
-  private async handleAskSpec(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+  private async handleExecuteSpecCommand(client: ClientInfo, message: WebSocketMessage): Promise<void> {
     if (!this.workflowController) {
       this.send(client.id, {
         type: 'ERROR',
@@ -2385,10 +2387,10 @@ export class WebSocketHandler {
       return;
     }
 
-    if (!this.workflowController.executeAskSpec) {
+    if (!this.workflowController.executeSpecCommand) {
       this.send(client.id, {
         type: 'ERROR',
-        payload: { code: 'NOT_SUPPORTED', message: 'Spec Ask execution not supported' },
+        payload: { code: 'NOT_SUPPORTED', message: 'Spec command execution not supported' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });
@@ -2398,26 +2400,26 @@ export class WebSocketHandler {
     const payload = message.payload || {};
     const specId = payload.specId as string;
     const featureName = (payload.featureName as string) || specId;
-    const prompt = payload.prompt as string;
+    const command = payload.command as string;
+    const title = payload.title as string;
 
-    if (!specId || !prompt) {
+    if (!specId || !command || !title) {
       this.send(client.id, {
         type: 'ERROR',
-        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId or prompt' },
+        payload: { code: 'INVALID_PAYLOAD', message: 'Missing specId, command, or title' },
         requestId: message.requestId,
         timestamp: Date.now(),
       });
       return;
     }
 
-    const result = await this.workflowController.executeAskSpec(specId, featureName, prompt);
+    const result = await this.workflowController.executeSpecCommand(specId, featureName, command, title);
 
     if (result.ok) {
       this.send(client.id, {
-        type: 'ASK_SPEC_STARTED',
+        type: 'EXECUTE_SPEC_COMMAND_STARTED',
         payload: {
           specId,
-          featureName,
           agentId: result.value.agentId,
         },
         requestId: message.requestId,
@@ -2428,7 +2430,7 @@ export class WebSocketHandler {
         type: 'ERROR',
         payload: {
           code: result.error.type,
-          message: result.error.message || 'Spec Ask execution failed',
+          message: result.error.message || 'Spec command execution failed',
         },
         requestId: message.requestId,
         timestamp: Date.now(),

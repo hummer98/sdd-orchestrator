@@ -926,50 +926,34 @@ export class WebSocketApiClient implements ApiClient {
 
   /**
    * Execute project-level command
-   * release-button-api-fix: Task 5.3 - Stub implementation
-   * Requirements: 1.1
-   * Remote UI support is out of scope - returns NOT_IMPLEMENTED error
-   * @param _command - Command string to execute (unused in stub)
-   * @param _title - Display title for Agent list (unused in stub)
+   * websocket-command-unification: Task 4.1 - Full implementation
+   * Requirements: 5.1
+   * @param command - Command string to execute (e.g., '/kiro:project-ask "prompt"')
+   * @param title - Display title for Agent list (e.g., 'project-ask')
    */
   async executeProjectCommand(
-    _command: string,
-    _title: string
+    command: string,
+    title: string
   ): Promise<Result<AgentInfo, ApiError>> {
-    return {
-      ok: false,
-      error: {
-        type: 'NOT_IMPLEMENTED',
-        message: 'executeProjectCommand is not yet supported via WebSocket',
-      },
-    };
+    return this.wrapRequest<AgentInfo>('EXECUTE_PROJECT_COMMAND', { command, title });
   }
 
   /**
-   * Execute project-level ask command
-   * remote-ui-ask-agent-fix: Fixed message type to ASK_PROJECT
-   * Requirements: 1.1, 1.2, 1.3, 1.4
-   * @param prompt - Question/prompt to ask
-   */
-  async executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>> {
-    const projectPath = this.getProjectPath();
-    return this.wrapRequest<AgentInfo>('ASK_PROJECT', { projectPath, prompt });
-  }
-
-  /**
-   * Execute spec-level ask command
-   * remote-ui-ask-agent-fix: New method for Spec Ask functionality
-   * Requirements: 2.1, 2.2, 2.3, 2.4
+   * Execute spec-level command
+   * websocket-command-unification: Task 4.2 - New method
+   * Requirements: 5.2
    * @param specId - Spec identifier (feature name)
    * @param featureName - Feature name for context
-   * @param prompt - Question/prompt to ask
+   * @param command - Command string to execute (e.g., '/kiro:spec-ask "prompt"')
+   * @param title - Display title for Agent list (e.g., 'spec-ask')
    */
-  async executeAskSpec(
+  async executeSpecCommand(
     specId: string,
     featureName: string,
-    prompt: string
+    command: string,
+    title: string
   ): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('ASK_SPEC', { specId, featureName, prompt });
+    return this.wrapRequest<AgentInfo>('EXECUTE_SPEC_COMMAND', { specId, featureName, command, title });
   }
 
   // ===========================================================================

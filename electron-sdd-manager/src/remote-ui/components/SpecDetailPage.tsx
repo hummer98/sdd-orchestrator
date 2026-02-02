@@ -317,14 +317,18 @@ function SpecTabContent({
     setIsAskDialogOpen(true);
   }, []);
 
-  /** Handle Spec Ask execute - calls executeAskSpec and updates store */
+  /** Handle Spec Ask execute - calls executeSpecCommand and updates store */
   const handleAskExecute = useCallback(async (prompt: string) => {
-    if (!apiClient.executeAskSpec) {
-      console.error('[SpecDetailPage] executeAskSpec not available on apiClient');
+    // websocket-command-unification: Use unified executeSpecCommand API
+    // Format: /kiro:spec-ask "${prompt}" for spec-level ask
+    if (!apiClient.executeSpecCommand) {
+      console.error('[SpecDetailPage] executeSpecCommand not available on apiClient');
       return;
     }
 
-    const result = await apiClient.executeAskSpec(spec.name, spec.name, prompt);
+    const escapedPrompt = prompt.replace(/"/g, '\\"');
+    const command = `/kiro:spec-ask "${escapedPrompt}"`;
+    const result = await apiClient.executeSpecCommand(spec.name, spec.name, command, 'spec-ask');
 
     if (result.ok) {
       // Success: Add agent to store and select it (Req 3.6)

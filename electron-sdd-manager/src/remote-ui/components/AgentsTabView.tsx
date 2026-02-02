@@ -217,16 +217,15 @@ export function AgentsTabView({
   /**
    * Execute project-level prompt
    * Requirement 5.4: プロジェクトレベルプロンプト実行機能
-   * release-button-api-fix: executeAskProject is optional (deprecated, kept for backward compatibility)
+   * websocket-command-unification: Use unified executeProjectCommand API
    */
   const handleAskExecute = useCallback(async (prompt: string) => {
     try {
-      if (!apiClient.executeAskProject) {
-        console.warn('executeAskProject is not available');
-        setIsAskDialogOpen(false);
-        return;
-      }
-      const result = await apiClient.executeAskProject(prompt);
+      // websocket-command-unification: Use unified executeProjectCommand API
+      // Format: /kiro:project-ask "${prompt}" for project-level ask
+      const escapedPrompt = prompt.replace(/"/g, '\\"');
+      const command = `/kiro:project-ask "${escapedPrompt}"`;
+      const result = await apiClient.executeProjectCommand(command, 'project-ask');
       if (result.ok) {
         // Add the new agent to the store with empty specId (project-level)
         const newAgent = result.value;

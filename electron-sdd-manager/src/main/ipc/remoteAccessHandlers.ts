@@ -352,6 +352,78 @@ export function createWorkflowController(
       };
     },
 
+    // websocket-command-unification: Generic command methods
+    // Requirements: 3.1, 3.2, 3.4
+
+    /**
+     * Execute a project-level command (e.g., project-ask, release, spec-plan)
+     * @param command - Command string to execute (e.g., '/kiro:project-ask "prompt"')
+     * @param title - Display title/phase for Agent list
+     */
+    executeProjectCommand: async (command: string, title: string): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.startAgent({
+        specId: '', // Empty specId for project-level agent
+        phase: title,
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command }),
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
+    /**
+     * Execute a spec-level command (e.g., spec-ask)
+     * @param specId - Spec identifier (feature name)
+     * @param featureName - Feature name for context
+     * @param command - Command string to execute (e.g., '/kiro:spec-ask "prompt"')
+     * @param title - Display title/phase for Agent list
+     */
+    executeSpecCommand: async (
+      specId: string,
+      _featureName: string,
+      command: string,
+      title: string
+    ): Promise<WorkflowResult<AgentInfo>> => {
+      const result = await specManagerService.startAgent({
+        specId,
+        phase: title,
+        command: getClaudeCommand(),
+        args: buildClaudeArgs({ command }),
+      });
+
+      if (result.ok) {
+        return {
+          ok: true,
+          value: {
+            agentId: result.value.agentId,
+          },
+        };
+      }
+
+      return {
+        ok: false,
+        error: {
+          type: result.error.type,
+          message: 'message' in result.error ? result.error.message : undefined,
+        },
+      };
+    },
+
     // Release methods (steering-release-integration feature)
     // Requirements: 3.4, 3.5
     checkReleaseMd: async (): Promise<{ releaseMdExists: boolean }> => {

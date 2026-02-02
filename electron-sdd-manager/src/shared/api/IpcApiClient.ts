@@ -326,6 +326,38 @@ export class IpcApiClient implements ApiClient {
   }
 
   // ===========================================================================
+  // websocket-command-unification: Task 6.1 - executeSpecCommand
+  // Requirements: 7.1, 7.2
+  // ===========================================================================
+
+  async executeSpecCommand(
+    specId: string,
+    featureName: string,
+    command: string,
+    title: string
+  ): Promise<Result<AgentInfo, ApiError>> {
+    checkElectronAPI();
+    const projectPath = getCurrentProjectPath();
+    if (!projectPath) {
+      return { ok: false, error: { type: 'NO_PROJECT', message: 'No project selected' } };
+    }
+    // Delegate to executeProjectCommand with spec context embedded in the command
+    // The command already contains the spec context (e.g., '/kiro:spec-ask "prompt"')
+    // We add featureName context using the -s flag pattern for spec-level execution
+    const specCommand = `${command} ${featureName}`;
+    return wrapResult(async () => {
+      const result = await window.electronAPI.executeProjectCommand(projectPath, specCommand, title);
+      return {
+        agentId: result.agentId,
+        specId: specId,
+        phase: result.phase,
+        status: result.status as AgentStatus,
+        startedAt: result.startedAt,
+      } as AgentInfo;
+    });
+  }
+
+  // ===========================================================================
   // Review Operations
   // ===========================================================================
 

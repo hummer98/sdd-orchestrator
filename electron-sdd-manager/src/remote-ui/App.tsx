@@ -202,12 +202,11 @@ function LeftSidebar({
   }, []);
 
   const handleAskExecute = useCallback(async (prompt: string) => {
-    // release-button-api-fix: executeAskProject is optional (deprecated, kept for backward compatibility)
-    if (!apiClient.executeAskProject) {
-      console.warn('executeAskProject is not available');
-      return;
-    }
-    const result = await apiClient.executeAskProject(prompt);
+    // websocket-command-unification: Use unified executeProjectCommand API
+    // Format: /kiro:project-ask "${prompt}" for project-level ask
+    const escapedPrompt = prompt.replace(/"/g, '\\"');
+    const command = `/kiro:project-ask "${escapedPrompt}"`;
+    const result = await apiClient.executeProjectCommand(command, 'project-ask');
     if (result.ok) {
       setIsAskDialogOpen(false);
       // Refresh agents list

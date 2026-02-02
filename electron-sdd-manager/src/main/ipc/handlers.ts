@@ -896,16 +896,20 @@ function registerAutoExecutionEvents(coordinator: AutoExecutionCoordinator): voi
       // ============================================================
       // document-review-phase Task 3.2: Handle inspection phase
       // Requirements: 5.2, 5.3
+      // e2e-workflow: E2E Pipeline enabled by default (skipE2e not set)
       // ============================================================
       if (phase === 'inspection') {
         logger.info('[handlers] execute-next-phase: executing inspection phase', { specPath, context });
 
+        // e2e-workflow: E2E Pipeline runs by default (Full Mode)
+        // Set skipE2e: true to disable E2E Pipeline (Quick Mode)
         const result = await service.execute({
           type: 'inspection',
           specId: context.specId,
           featureName: context.featureName,
           commandPrefix: 'kiro',
           autofix: true,
+          // skipE2e: false, // E2E Pipeline enabled by default
         });
 
         if (!result.ok) {

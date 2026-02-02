@@ -128,9 +128,13 @@ export interface ExecuteDocumentReviewFix extends ExecutePhaseBase {
 
 /**
  * Execute inspection phase
- * Command: /kiro:spec-inspection {featureName} [--autofix]
+ * Command: /kiro:spec-inspection {featureName} [--autofix] [--skip-e2e]
  *
  * group: 'impl' - worktreeCwd will be auto-resolved
+ *
+ * E2E Pipeline (e2e-workflow feature):
+ * - By default, E2E Pipeline is executed (Full Mode)
+ * - When skipE2e is true, only static checks are performed (Quick Mode)
  *
  * When autofix is true:
  * - Runs inspection
@@ -141,6 +145,8 @@ export interface ExecuteInspection extends ExecutePhaseBase {
   type: 'inspection';
   /** When true, appends --autofix flag for automatic fix and re-inspection loop */
   autofix?: boolean;
+  /** When true, appends --skip-e2e flag to skip E2E Pipeline (Quick Mode) */
+  skipE2e?: boolean;
 }
 
 /**

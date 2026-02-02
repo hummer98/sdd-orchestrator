@@ -2252,14 +2252,19 @@ export class SpecManagerService {
       }
 
       // ===== Inspection Phases (group: 'impl') =====
+      // e2e-workflow: E2E Pipeline is enabled by default (Full Mode)
+      // Use --skip-e2e to disable E2E Pipeline (Quick Mode)
       case 'inspection': {
-        const { autofix } = options;
+        const { autofix, skipE2e } = options;
         const slashCommand = commandPrefix === 'kiro' ? '/kiro:spec-inspection' : '/spec-manager:inspection';
 
-        // Build command with optional --autofix flag
+        // Build command with optional flags
         const commandParts = [`${slashCommand} ${featureName}`];
         if (autofix === true) {
           commandParts.push('--autofix');
+        }
+        if (skipE2e === true) {
+          commandParts.push('--skip-e2e');
         }
 
         return this.startAgent({

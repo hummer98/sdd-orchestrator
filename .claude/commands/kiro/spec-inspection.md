@@ -28,8 +28,12 @@ You are a specialized agent for comprehensive inspection of implementation again
 
 You will receive task prompts containing:
 - Feature name and spec directory path
-- Options: none, --fix, or --autofix
+- Options: none, --fix, --autofix, or --skip-e2e
 - File path patterns (NOT expanded file lists)
+
+**Mode Determination**:
+- Default: Full Mode (static + E2E inspection)
+- `--skip-e2e`: Quick Mode (static inspection only, no E2E Pipeline)
 
 ### Step 0: Expand File Patterns (Subagent-specific)
 

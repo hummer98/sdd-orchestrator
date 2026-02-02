@@ -55,12 +55,12 @@ spec-inspection (Orchestrator)
 
 You will receive task prompts containing:
 - Feature name and spec directory path
-- Options: none, --fix, --autofix, or --full
+- Options: none, --fix, --autofix, or --skip-e2e
 - File path patterns (NOT expanded file lists)
 
 **Mode Determination**:
-- `--full`: Enable Full Mode (static + E2E inspection)
-- Default (no --full): Quick Mode (static inspection only)
+- Default: Full Mode (static + E2E inspection)
+- `--skip-e2e`: Quick Mode (static inspection only, no E2E Pipeline)
 
 ### Step 0: Expand File Patterns
 
@@ -245,15 +245,15 @@ Check all tasks are complete, components are integrated, and placeholders remove
 )
 ```
 
-### Phase 2.5: E2E Pipeline (Full Mode Only)
+### Phase 2.5: E2E Pipeline (Default, Skip with --skip-e2e)
 
-**IMPORTANT**: This phase is ONLY executed when `--full` option is specified.
+**IMPORTANT**: This phase is executed by default. Skip ONLY when `--skip-e2e` option is specified.
 
 After static checks complete, invoke the E2E Pipeline sequentially:
 
-#### 2.5.1 Check for Full Mode
+#### 2.5.1 Check for Skip E2E Flag
 
-If `--full` was NOT specified, skip to Phase 3.
+If `--skip-e2e` was specified, skip to Phase 3.
 
 #### 2.5.2 Invoke e2e-planner
 
@@ -649,15 +649,40 @@ If NOGO judgment AND --autofix option:
 
 ## Inspection Modes
 
-### Quick Mode (Default)
+### Full Mode (Default)
 
-This agent operates in **Quick Mode** by default (no --full flag):
+This agent operates in **Full Mode** by default (includes E2E Pipeline):
+
+- **What's included**:
+  - Static checks (parallel):
+    - requirements-checker
+    - design-checker
+    - code-quality-checker
+    - integration-checker
+  - E2E Pipeline (sequential, after static checks):
+    - e2e-planner (plan test scope based on User Journeys)
+    - e2e-creator (generate new tests if needed)
+    - e2e-validator (validate generated tests)
+    - e2e-runner (execute tests and generate report)
+
+- **Target execution time**: 10-30 minutes (depends on E2E scope)
+- **Mode recording**: inspection-{n}.md will show `Mode: Full`
+
+**Execution Flow**:
+1. Run static checks in parallel
+2. After static checks complete, invoke E2E Pipeline sequentially
+3. Merge all results for final judgment
+4. Generate e2e-report-{n}.md (referenced from inspection-{n}.md)
+
+### Quick Mode (--skip-e2e)
+
+When `--skip-e2e` option is specified:
 
 - **What's included**:
   - requirements-checker (parallel)
   - design-checker (parallel)
   - code-quality-checker (parallel)
-  - integration-checker v1 (static inspection only, no E2E)
+  - integration-checker (static inspection only, no E2E)
 
 - **What's NOT included**:
   - E2E test execution
@@ -672,35 +697,14 @@ This agent operates in **Quick Mode** by default (no --full flag):
 3. **Focused scope**: Each sub-agent checks only its category, no overlap
 4. **Static-only checks**: No E2E execution, no test running
 
-### Full Mode (--full)
-
-When `--full` option is specified:
-
-- **What's included**:
-  - All Quick Mode checks (parallel)
-  - E2E Pipeline (sequential, after static checks):
-    - e2e-planner (plan test scope)
-    - e2e-creator (generate new tests if needed)
-    - e2e-validator (validate generated tests)
-    - e2e-runner (execute tests and generate report)
-
-- **Target execution time**: 10-30 minutes (depends on E2E scope)
-- **Mode recording**: inspection-{n}.md will show `Mode: Full`
-
-**Execution Flow**:
-1. Run static checks (Quick Mode) in parallel
-2. If static checks pass, invoke E2E Pipeline sequentially
-3. Merge all results for final judgment
-4. Generate e2e-report-{n}.md (referenced from inspection-{n}.md)
-
 ## Important Constraints
 
-- **Parallel execution**: Sub-agents have no dependencies, invoke all 4 in parallel
+- **Parallel execution**: Static check sub-agents have no dependencies, invoke all 4 in parallel
 - **Context hierarchy**: Only load context once in orchestrator
 - **Result aggregation**: Sub-agent results are the source of truth
 - **Backward compatibility**: inspection-{n}.md format maintains existing sections
-- **Quick Mode default**: Always runs as Quick Mode (static inspection only)
-- **No E2E in v1**: integration-checker performs static verification only
+- **Full Mode default**: E2E Pipeline runs by default; use --skip-e2e for static-only checks
+- **E2E scope limiting**: e2e-planner limits scope to User Journeys defined in the spec's Verification Contract
 
 ## Tool Guidance
 

@@ -1509,7 +1509,6 @@ export class SpecManagerService {
       }
 
       // agent-state-file-ssot: No need to register in memory - files are SSOT
-      console.log(`[SpecManagerService] Restored agent: ${record.agentId} (pid: ${record.pid}, status: ${record.status}, alive: ${isAlive})`);
     }
   }
 

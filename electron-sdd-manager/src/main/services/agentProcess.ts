@@ -7,15 +7,18 @@
 import { spawn, ChildProcess } from 'child_process';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirement 1.3)
 import { projectLogger as logger } from './projectLogger';
+// claude-path-resolver: Use resolved claude command path (Requirements 1.4, 3.1, 3.2)
+import { getClaudePathResolverService } from './claudePathResolverService';
 
 /**
  * Get the command to use for Claude CLI
- * Supports E2E testing by allowing mock command via environment variable
+ * claude-path-resolver: Delegates to ClaudePathResolverService
+ * Supports E2E testing via E2E_MOCK_CLAUDE_COMMAND environment variable
  *
- * @returns The command path (default: 'claude', or E2E_MOCK_CLAUDE_COMMAND if set)
+ * @returns The command path (resolved path, 'claude' if not resolved, or E2E mock)
  */
 export function getClaudeCommand(): string {
-  return process.env.E2E_MOCK_CLAUDE_COMMAND || 'claude';
+  return getClaudePathResolverService().getClaudePath();
 }
 
 export interface AgentProcessOptions {
@@ -67,15 +70,14 @@ class AgentProcessImpl implements AgentProcess {
     // stdin: 'pipe' and immediately close it to signal EOF
     // This is required for claude -p which waits for stdin to close
     // stdout/stderr: 'pipe' to capture output
+    // claude-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
+    // The command path is now resolved by ClaudePathResolverService at startup
+    // and used as a full path, so PATH manipulation is no longer needed
     this.process = spawn(options.command, options.args, {
       cwd: options.cwd,
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        // Ensure PATH includes common locations for claude command
-        PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH || ''}`,
-      },
+      env: process.env,
     });
     logger.info('[AgentProcess] Process spawned', { agentId: this.agentId, pid: this.process.pid });
 

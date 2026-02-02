@@ -200,14 +200,12 @@ export async function createProviderAgentProcess(
     // Get the appropriate provider
     const provider = providerFactory.getProcessProvider(providerType);
 
-    // Build spawn options with environment variables
+    // claude-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
+    // The command path is now resolved by ClaudePathResolverService at startup
+    // and used as a full path, so PATH manipulation is no longer needed
     const spawnOptions: SpawnOptions = {
       cwd,
-      env: {
-        // Include PATH for finding claude command
-        PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH || ''}`,
-        ...env,
-      },
+      env: env ? { ...env } : undefined,
     };
 
     // Spawn the process
@@ -281,11 +279,10 @@ export function createAgentProcessSync(
   const agentProcess = new ProviderAgentProcessImpl(agentId, sessionId);
 
   // Start spawn asynchronously but return immediately
+  // claude-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
+  // The command path is now resolved by ClaudePathResolverService at startup
   const spawnOptions: SpawnOptions = {
     cwd,
-    env: {
-      PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH || ''}`,
-    },
   };
 
   localProvider.spawn(command, args, spawnOptions).then((result) => {

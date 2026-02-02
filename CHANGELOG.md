@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.65.0] - 2026-02-02
+
+### Fixed
+- 明確なフィールド名の使用に関する重要な指示を追加
+- Remove unnecessary logging in SpecManagerService
+- Project Agent白画面クラッシュの修正
+
+### Changed
+- Add analysis documents for workflow verification gaps and remote UI log state architecture
+
+
 ## [0.64.0] - 2026-02-02
 
 ### Added

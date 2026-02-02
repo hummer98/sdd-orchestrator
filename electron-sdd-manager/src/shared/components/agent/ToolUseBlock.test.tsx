@@ -230,6 +230,91 @@ describe('ToolUseBlock', () => {
     });
   });
 
+  describe('corrupted TodoWrite data defense', () => {
+    it('should not crash when todos contains individual characters instead of objects', () => {
+      // Reproduce the actual crash: todos = ["[", "{", "\"", ...]
+      const corruptedTodos = '[{"content":"task"}]'.split('');
+
+      render(
+        <ToolUseBlock
+          tool={{
+            name: 'TodoWrite',
+            input: { todos: corruptedTodos },
+          }}
+        />
+      );
+
+      // Should render without crashing and show invalid format indicator
+      expect(screen.getByText('TodoWrite')).toBeInTheDocument();
+      expect(screen.getByText(/invalid format/)).toBeInTheDocument();
+    });
+
+    it('should fall back to JSON view when expanded with corrupted todos', () => {
+      const corruptedTodos = '[{"content":"task"}]'.split('');
+
+      render(
+        <ToolUseBlock
+          tool={{
+            name: 'TodoWrite',
+            input: { todos: corruptedTodos },
+          }}
+          defaultExpanded={true}
+        />
+      );
+
+      // Should show JSON fallback instead of TodoListView
+      expect(screen.getByTestId('tool-use-details')).toBeInTheDocument();
+      // Should NOT crash trying to render TodoListView
+      expect(screen.getByText('TodoWrite')).toBeInTheDocument();
+    });
+
+    it('should render TodoListView when todos data is valid', () => {
+      render(
+        <ToolUseBlock
+          tool={{
+            name: 'TodoWrite',
+            input: {
+              todos: [
+                { content: 'Fix bug', status: 'completed', activeForm: 'Fixing bug' },
+                { content: 'Add tests', status: 'in_progress', activeForm: 'Adding tests' },
+              ],
+            },
+          }}
+          defaultExpanded={true}
+        />
+      );
+
+      expect(screen.getByText('Fix bug')).toBeInTheDocument();
+      expect(screen.getByText('Add tests')).toBeInTheDocument();
+    });
+
+    it('should handle empty todos array gracefully', () => {
+      render(
+        <ToolUseBlock
+          tool={{
+            name: 'TodoWrite',
+            input: { todos: [] },
+          }}
+        />
+      );
+
+      expect(screen.getByText('TodoWrite')).toBeInTheDocument();
+    });
+
+    it('should handle todos as non-array type gracefully', () => {
+      render(
+        <ToolUseBlock
+          tool={{
+            name: 'TodoWrite',
+            input: { todos: 'not an array' },
+          }}
+        />
+      );
+
+      expect(screen.getByText('TodoWrite')).toBeInTheDocument();
+    });
+  });
+
   describe('theme support', () => {
     it('should have dark mode classes', () => {
       const { container } = render(

@@ -43,6 +43,16 @@ interface TodoItem {
   activeForm: string;
 }
 
+/** Type guard for TodoItem validation (defense against corrupted log data) */
+function isTodoItem(item: unknown): item is TodoItem {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    typeof (item as TodoItem).content === 'string' &&
+    typeof (item as TodoItem).status === 'string'
+  );
+}
+
 /** Tool name to Lucide icon mapping (Requirement 2.5) */
 const TOOL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Read: FileText,
@@ -180,8 +190,10 @@ function getToolSummary(name: string, input?: Record<string, unknown>): string {
     }
 
     case 'TodoWrite': {
-      const todos = input.todos as TodoItem[] | undefined;
-      if (!todos || todos.length === 0) return '';
+      const todos = input.todos;
+      if (!Array.isArray(todos) || todos.length === 0) return '';
+      // Validate that items are actual TodoItem objects (not corrupted data like individual characters)
+      if (!isTodoItem(todos[0])) return `${todos.length} items (invalid format)`;
       const completed = todos.filter(t => t.status === 'completed').length;
       const inProgress = todos.filter(t => t.status === 'in_progress').length;
       const pending = todos.filter(t => t.status === 'pending').length;
@@ -205,7 +217,12 @@ export function ToolUseBlock({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const Icon = TOOL_ICONS[name] || Wrench;
-  const summary = getToolSummary(name, input);
+  let summary: string;
+  try {
+    summary = getToolSummary(name, input);
+  } catch {
+    summary = '(display error)';
+  }
 
   return (
     <div
@@ -259,7 +276,7 @@ export function ToolUseBlock({
             'border-t border-yellow-200 dark:border-yellow-700'
           )}
         >
-          {name === 'TodoWrite' && input.todos ? (
+          {name === 'TodoWrite' && Array.isArray(input.todos) && input.todos.length > 0 && isTodoItem(input.todos[0]) ? (
             <TodoListView todos={input.todos as TodoItem[]} />
           ) : (
             <pre

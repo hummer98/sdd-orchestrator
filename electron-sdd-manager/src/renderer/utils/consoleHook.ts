@@ -123,6 +123,9 @@ function formatMessage(args: unknown[]): string {
       if (typeof arg === 'string') {
         return arg;
       }
+      if (arg instanceof Error) {
+        return `${arg.name}: ${arg.message}`;
+      }
       if (typeof arg === 'object' && arg !== null) {
         try {
           return JSON.stringify(arg);

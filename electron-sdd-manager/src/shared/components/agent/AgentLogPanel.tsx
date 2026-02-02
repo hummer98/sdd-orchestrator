@@ -24,6 +24,7 @@ import { throttle } from '@shared/utils/throttle';
 // main-process-log-parser Task 10.9: useIncrementalLogParser removed - logs are pre-parsed by Main process
 import { useIncrementalTokenAggregator } from '@shared/hooks/useIncrementalTokenAggregator';
 import { LogEntryBlock } from './LogEntryBlock';
+import { LogEntryErrorBoundary } from './LogEntryErrorBoundary';
 // main-process-log-parser Task 10.9: Changed LogEntry to ParsedLogEntry
 import type { ParsedLogEntry, AgentStatus } from '@shared/api/types';
 import type { ActivityEventType } from '../../../renderer/services/humanActivityTracker';
@@ -306,7 +307,9 @@ export function AgentLogPanel({
         ) : (
           <div className="space-y-2">
             {parsedEntries.map((entry) => (
-              <LogEntryBlock key={entry.id} entry={entry} />
+              <LogEntryErrorBoundary key={entry.id} entryId={entry.id}>
+                <LogEntryBlock entry={entry} />
+              </LogEntryErrorBoundary>
             ))}
           </div>
         )}

@@ -335,9 +335,14 @@ If NOGO judgment AND --autofix option:
   - `inspectedAt`: ISO 8601 timestamp of inspection completion
   - `fixedAt`: ISO 8601 timestamp (optional) - set by spec-impl agent after --inspection-fix
 
+**CRITICAL: Use EXACT field names as shown above:**
+- `"number"` - NOT `"roundNumber"` or `"round"`
+- `"result"` - NOT `"judgment"` or `"status"` (values must be lowercase: `"go"` or `"nogo"`)
+- `"inspectedAt"` - NOT `"timestamp"` or `"date"`
+
 **Update Logic**:
 1. Read existing `inspection.rounds` from spec.json (or initialize as empty array if missing)
-2. Append new round to `rounds` array with:
+2. Append new round to `rounds` array with **EXACT field names**:
    - `number`: current length of rounds + 1
    - `result`: `"go"` or `"nogo"` based on judgment
    - `inspectedAt`: current ISO 8601 timestamp

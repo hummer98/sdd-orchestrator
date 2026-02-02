@@ -504,7 +504,7 @@ _This section is included only when --full mode is used._
 
 1. Read existing spec.json
 2. Get or initialize `inspection.rounds` array
-3. Append new round:
+3. Append new round with **EXACT field names** (do NOT rename fields):
    ```json
    {
      "number": (existing rounds count + 1),
@@ -514,6 +514,11 @@ _This section is included only when --full mode is used._
    ```
 4. Update `updated_at` timestamp
 5. Write spec.json
+
+**CRITICAL: Use EXACT field names as shown above:**
+- `"number"` - NOT `"roundNumber"` or `"round"`
+- `"result"` - NOT `"judgment"` or `"status"` (values must be lowercase: `"go"` or `"nogo"`)
+- `"inspectedAt"` - NOT `"timestamp"` or `"date"`
 
 **Example after first inspection (NOGO)**:
 ```json

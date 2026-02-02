@@ -1167,4 +1167,174 @@ describe('SpecDetailPage', () => {
       expect(screen.queryByTestId('spec-refresh-button')).not.toBeInTheDocument();
     });
   });
+
+  // =============================================================================
+  // remote-ui-ask-agent-fix: Task 4.3 - Spec Ask button tests
+  // Requirements: 5.3 (3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8)
+  // ===========================================================================
+
+  describe('Spec Ask button (remote-ui-ask-agent-fix)', () => {
+    it('should render Spec Ask button in Agent list header (Req 3.1)', () => {
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      // Spec Ask button should be present in the Agent list header
+      expect(screen.getByTestId('spec-ask-button')).toBeInTheDocument();
+    });
+
+    it('should use MessageSquare icon with purple color (Req 3.2)', () => {
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      const askButton = screen.getByTestId('spec-ask-button');
+      // Button should have purple styling
+      expect(askButton).toHaveClass('text-purple-600');
+    });
+
+    it('should open AskAgentDialog with agentType="spec" when clicked (Req 3.3)', async () => {
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      const askButton = screen.getByTestId('spec-ask-button');
+      fireEvent.click(askButton);
+
+      // AskAgentDialog should appear
+      await waitFor(() => {
+        expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass specName to AskAgentDialog (Req 3.4)', async () => {
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      const askButton = screen.getByTestId('spec-ask-button');
+      fireEvent.click(askButton);
+
+      // Dialog should show and contain Spec Agent - Ask title with spec name
+      await waitFor(() => {
+        const dialog = screen.getByTestId('ask-agent-dialog');
+        expect(dialog).toBeInTheDocument();
+        // Dialog should contain "Spec Agent - Ask" title (agentType="spec")
+        expect(screen.getByText('Spec Agent - Ask')).toBeInTheDocument();
+        // Spec name should be visible in parentheses within the dialog
+        const dialogContent = screen.getByTestId('dialog-content');
+        expect(dialogContent.textContent).toContain('test-feature');
+      });
+    });
+
+    it('should call executeAskSpec when dialog executes (Req 3.5)', async () => {
+      const mockExecuteAskSpec = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          agentId: 'agent-new',
+          specId: 'test-feature',
+          phase: 'spec-ask',
+          status: 'running',
+          startedAt: '2024-01-01T00:00:00Z',
+        },
+      });
+      mockApiClient.executeAskSpec = mockExecuteAskSpec;
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      // Open dialog
+      const askButton = screen.getByTestId('spec-ask-button');
+      fireEvent.click(askButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+      });
+
+      // Enter prompt
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'Test prompt' } });
+
+      // Click execute
+      const executeButton = screen.getByTestId('ask-execute-button');
+      fireEvent.click(executeButton);
+
+      await waitFor(() => {
+        expect(mockExecuteAskSpec).toHaveBeenCalledWith(
+          mockSpec.name, // specId
+          mockSpec.name, // featureName
+          'Test prompt' // prompt
+        );
+      });
+    });
+
+    it('should close dialog on successful execution (Req 3.7)', async () => {
+      const mockExecuteAskSpec = vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          agentId: 'agent-new',
+          specId: 'test-feature',
+          phase: 'spec-ask',
+          status: 'running',
+          startedAt: '2024-01-01T00:00:00Z',
+        },
+      });
+      mockApiClient.executeAskSpec = mockExecuteAskSpec;
+
+      render(
+        <SpecDetailPage
+          spec={mockSpec}
+          specDetail={mockSpecDetail}
+          apiClient={mockApiClient}
+          onBack={() => {}}
+        />
+      );
+
+      // Open dialog
+      const askButton = screen.getByTestId('spec-ask-button');
+      fireEvent.click(askButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('ask-agent-dialog')).toBeInTheDocument();
+      });
+
+      // Enter prompt and execute
+      const promptInput = screen.getByTestId('ask-prompt-input');
+      fireEvent.change(promptInput, { target: { value: 'Test prompt' } });
+
+      const executeButton = screen.getByTestId('ask-execute-button');
+      fireEvent.click(executeButton);
+
+      // Dialog should close after successful execution
+      await waitFor(() => {
+        expect(screen.queryByTestId('ask-agent-dialog')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -406,13 +406,26 @@ export interface ApiClient {
   executeProjectCommand(command: string, title: string): Promise<Result<AgentInfo, ApiError>>;
 
   /**
-   * Execute project-level ask command (DEPRECATED)
-   * release-button-api-fix: Kept for Remote UI backward compatibility
-   * Remote UI migration is out of scope - this method will be removed in a future release
-   * @deprecated Use executeProjectCommand with '/kiro:project-ask "${prompt}"' instead
+   * Execute project-level ask command
+   * remote-ui-ask-agent-fix: Fixed message type to ASK_PROJECT
+   * Requirements: 1.1, 1.2, 1.3, 1.4
    * @param prompt - Question/prompt to ask
    */
   executeAskProject?(prompt: string): Promise<Result<AgentInfo, ApiError>>;
+
+  /**
+   * Execute spec-level ask command
+   * remote-ui-ask-agent-fix: New method for Spec Ask functionality
+   * Requirements: 2.1, 2.2, 2.3, 2.4, 4.1, 4.2
+   * @param specId - Spec identifier (feature name)
+   * @param featureName - Feature name for context
+   * @param prompt - Question/prompt to ask
+   */
+  executeAskSpec?(
+    specId: string,
+    featureName: string,
+    prompt: string
+  ): Promise<Result<AgentInfo, ApiError>>;
 
   // ===========================================================================
   // Review Operations

@@ -44,6 +44,12 @@ export interface AgentListProps {
   /** ヘッダーのタイトル（デフォルト: "Agent"） */
   headerTitle?: string;
 
+  /**
+   * ヘッダー右側に表示するアクション要素
+   * remote-ui-ask-agent-fix: Spec Ask button support
+   */
+  headerAction?: React.ReactNode;
+
   /** data-testid属性 */
   testId?: string;
 
@@ -80,17 +86,32 @@ export function AgentList({
   emptyMessage = 'Agentはありません',
   showHeader = false,
   headerTitle = 'Agent',
+  headerAction,
   testId = 'agent-list',
   className = '',
 }: AgentListProps): React.ReactElement {
-  // Empty state
+  // Empty state - still render header with action if showHeader is true
   if (agents.length === 0) {
     return (
-      <div
-        data-testid={`${testId}-empty`}
-        className={`text-sm text-gray-500 dark:text-gray-400 text-center py-2 ${className}`}
-      >
-        {emptyMessage}
+      <div className={className}>
+        {/* Optional header - also shown in empty state for header actions */}
+        {showHeader && (
+          <div
+            data-testid={`${testId}-header`}
+            className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2"
+          >
+            <Bot className="w-4 h-4" />
+            <span className="flex-1">{headerTitle} (0)</span>
+            {/* remote-ui-ask-agent-fix: Header action slot for Spec Ask button */}
+            {headerAction}
+          </div>
+        )}
+        <div
+          data-testid={`${testId}-empty`}
+          className="text-sm text-gray-500 dark:text-gray-400 text-center py-2"
+        >
+          {emptyMessage}
+        </div>
       </div>
     );
   }
@@ -99,13 +120,15 @@ export function AgentList({
     <div className={className}>
       {/* Optional header */}
       {showHeader && (
-        <h3
+        <div
           data-testid={`${testId}-header`}
           className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2"
         >
           <Bot className="w-4 h-4" />
-          {headerTitle} ({agents.length})
-        </h3>
+          <span className="flex-1">{headerTitle} ({agents.length})</span>
+          {/* remote-ui-ask-agent-fix: Header action slot for Spec Ask button */}
+          {headerAction}
+        </div>
       )}
 
       {/* Agent list */}

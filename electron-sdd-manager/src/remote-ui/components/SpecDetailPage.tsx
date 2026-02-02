@@ -20,14 +20,15 @@
  * Design: SpecDetailPage component in design.md
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { ArrowLeft, FileText } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ArrowLeft, FileText, MessageSquare } from 'lucide-react';
 import { SubTabBar } from './SubTabBar';
 import { RemoteArtifactEditor } from './RemoteArtifactEditor';
 import { MobilePullToRefresh } from './MobilePullToRefresh';
 import { RefreshButton } from './RefreshButton';
 import { RemoteWorkflowView } from '../views/RemoteWorkflowView';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
+import { AskAgentDialog } from '@shared/components/project/AskAgentDialog';
 import { useSharedAgentStore, type AgentInfo } from '@shared/stores/agentStore';
 import { useDeviceType } from '@shared/hooks/useDeviceType';
 import type {
@@ -304,6 +305,47 @@ function SpecTabContent({
   );
 
   // ---------------------------------------------------------------------------
+  // remote-ui-ask-agent-fix: Spec Ask Dialog State (Task 3.1-3.4)
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8
+  // ---------------------------------------------------------------------------
+
+  /** Spec Ask dialog open state */
+  const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+
+  /** Handle Spec Ask button click */
+  const handleAskButtonClick = useCallback(() => {
+    setIsAskDialogOpen(true);
+  }, []);
+
+  /** Handle Spec Ask execute - calls executeAskSpec and updates store */
+  const handleAskExecute = useCallback(async (prompt: string) => {
+    if (!apiClient.executeAskSpec) {
+      console.error('[SpecDetailPage] executeAskSpec not available on apiClient');
+      return;
+    }
+
+    const result = await apiClient.executeAskSpec(spec.name, spec.name, prompt);
+
+    if (result.ok) {
+      // Success: Add agent to store and select it (Req 3.6)
+      useSharedAgentStore.getState().addAgent(spec.name, result.value);
+      useSharedAgentStore.getState().selectAgent(result.value.agentId);
+      // Close dialog (Req 3.7)
+      setIsAskDialogOpen(false);
+    } else {
+      // Error: Show notification (Req 3.8)
+      console.error('[SpecDetailPage] Spec Ask failed:', result.error);
+      // TODO: Add proper error notification when toast system is available
+      alert(`Spec Ask failed: ${result.error.message}`);
+    }
+  }, [apiClient, spec.name]);
+
+  /** Handle dialog cancel */
+  const handleAskCancel = useCallback(() => {
+    setIsAskDialogOpen(false);
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Handlers (Task 5.2)
   // mobile-agent-log-fullscreen Task 5.1: Changed to use onSelectAgent callback
   // ---------------------------------------------------------------------------
@@ -370,6 +412,17 @@ function SpecTabContent({
           headerTitle="Agents"
           testId="spec-agent-list"
           className="p-2"
+          headerAction={
+            /* remote-ui-ask-agent-fix: Spec Ask button (Req 3.1, 3.2) */
+            <button
+              data-testid="spec-ask-button"
+              onClick={handleAskButtonClick}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-purple-600"
+              title="Spec Ask"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          }
         />
       </div>
 
@@ -390,6 +443,15 @@ function SpecTabContent({
 
       {/* mobile-agent-log-fullscreen Task 5.1: AgentDetailDrawer removed */}
       {/* Agent selection now navigates to AgentLogPage via onSelectAgent callback */}
+
+      {/* remote-ui-ask-agent-fix: Spec Ask Dialog (Req 3.3, 3.4, 3.5, 3.7) */}
+      <AskAgentDialog
+        isOpen={isAskDialogOpen}
+        agentType="spec"
+        specName={spec.name}
+        onExecute={handleAskExecute}
+        onCancel={handleAskCancel}
+      />
     </div>
   );
 }

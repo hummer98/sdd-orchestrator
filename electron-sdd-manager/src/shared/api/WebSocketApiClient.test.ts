@@ -81,13 +81,12 @@ describe('WebSocketApiClient', () => {
       expect(content).toContain('executeProjectCommand is not yet supported via WebSocket');
     });
 
-    it('should keep executeAskProject for Remote UI backward compatibility', () => {
+    it('should keep executeAskProject with fixed ASK_PROJECT message type', () => {
       const content = readFileSync(clientPath, 'utf-8');
-      // executeAskProject is kept for Remote UI backward compatibility (Out of Scope)
-      // Remote UI migration is a separate task, so the deprecated method is preserved
-      // See design.md: "Remote UI side is not in scope"
+      // remote-ui-ask-agent-fix: executeAskProject now uses ASK_PROJECT message type
+      // and includes projectPath from getProjectPath()
       expect(content).toContain('async executeAskProject(');
-      expect(content).toContain('@deprecated');
+      expect(content).toMatch(/executeAskProject[\s\S]*?ASK_PROJECT/);
     });
   });
 
@@ -323,6 +322,99 @@ describe('WebSocketApiClient', () => {
       const content = readFileSync(clientPath, 'utf-8');
       expect(content).toContain('MAX_RECONNECT_ATTEMPTS');
       expect(content).toMatch(/MAX_RECONNECT_ATTEMPTS\s*=\s*5/);
+    });
+  });
+
+  // ===========================================================================
+  // remote-ui-ask-agent-fix: Task 4.1 - executeAskProject message type fix
+  // Requirements: 5.1 (1.1, 1.2, 1.3, 1.4)
+  // ===========================================================================
+
+  describe('executeAskProject message type fix', () => {
+    it('should use ASK_PROJECT message type (not EXECUTE_ASK_PROJECT)', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // The message type must be 'ASK_PROJECT' to match the server handler
+      expect(content).toMatch(/executeAskProject[\s\S]*?wrapRequest<AgentInfo>\(['"]ASK_PROJECT['"]/);
+    });
+
+    it('should include projectPath in payload from getProjectPath()', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Payload must include projectPath retrieved from this.getProjectPath()
+      expect(content).toMatch(/executeAskProject[\s\S]*?\{[\s\S]*?projectPath[\s\S]*?this\.getProjectPath/);
+    });
+
+    it('should include prompt in payload', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Payload must include the prompt parameter
+      expect(content).toMatch(/executeAskProject[\s\S]*?\{[\s\S]*?prompt/);
+    });
+
+    it('should return AgentInfo from ASK_PROJECT_STARTED response', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Return type should be Result<AgentInfo, ApiError>
+      expect(content).toMatch(/executeAskProject[\s\S]*?Promise<Result<AgentInfo/);
+    });
+  });
+
+  // ===========================================================================
+  // remote-ui-ask-agent-fix: Task 2 - ApiClient interface executeAskSpec
+  // Requirements: 4.1, 4.2
+  // ===========================================================================
+
+  describe('ApiClient interface executeAskSpec', () => {
+    it('should have executeAskSpec defined in types.ts', () => {
+      const typesPath = resolve(__dirname, 'types.ts');
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toContain('executeAskSpec');
+    });
+
+    it('should have correct signature in ApiClient interface', () => {
+      const typesPath = resolve(__dirname, 'types.ts');
+      const content = readFileSync(typesPath, 'utf-8');
+      // Should define executeAskSpec with specId, featureName, prompt parameters
+      expect(content).toMatch(/executeAskSpec\?\s*\(\s*specId\s*:\s*string\s*,\s*featureName\s*:\s*string\s*,\s*prompt\s*:\s*string/);
+    });
+
+    it('should return Promise<Result<AgentInfo, ApiError>>', () => {
+      const typesPath = resolve(__dirname, 'types.ts');
+      const content = readFileSync(typesPath, 'utf-8');
+      expect(content).toMatch(/executeAskSpec[\s\S]*?Promise<Result<AgentInfo,\s*ApiError>>/);
+    });
+  });
+
+  // ===========================================================================
+  // remote-ui-ask-agent-fix: Task 4.2 - executeAskSpec new method
+  // Requirements: 5.2 (2.1, 2.2, 2.3, 2.4)
+  // ===========================================================================
+
+  describe('executeAskSpec method', () => {
+    it('should implement executeAskSpec method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('async executeAskSpec(');
+    });
+
+    it('should accept specId, featureName, and prompt parameters', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Method signature: executeAskSpec(specId: string, featureName: string, prompt: string)
+      expect(content).toMatch(/executeAskSpec\s*\(\s*specId\s*:\s*string\s*,\s*featureName\s*:\s*string\s*,\s*prompt\s*:\s*string/);
+    });
+
+    it('should use ASK_SPEC message type', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Should send ASK_SPEC message type
+      expect(content).toMatch(/executeAskSpec[\s\S]*?wrapRequest<AgentInfo>\(['"]ASK_SPEC['"]/);
+    });
+
+    it('should include specId, featureName, and prompt in payload', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Payload must include all three parameters
+      expect(content).toMatch(/executeAskSpec[\s\S]*?\{[\s\S]*?specId[\s\S]*?featureName[\s\S]*?prompt/);
+    });
+
+    it('should return Result<AgentInfo, ApiError>', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Return type should be Promise<Result<AgentInfo, ApiError>>
+      expect(content).toMatch(/executeAskSpec[\s\S]*?Promise<Result<AgentInfo, ApiError>>/);
     });
   });
 

@@ -1,0 +1,210 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-02T12:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 (executeAskProject message type fix) marked as complete"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 (executeAskSpec method) marked as complete"
+    },
+    {
+      "id": "task-2",
+      "checkType": "task-completion",
+      "target": "2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2 (ApiClient interface executeAskSpec) marked as complete"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 (Spec Ask button) marked as complete"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 (AskAgentDialog integration) marked as complete"
+    },
+    {
+      "id": "task-3.3",
+      "checkType": "task-completion",
+      "target": "3.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.3 (Agent Store integration) marked as complete"
+    },
+    {
+      "id": "task-3.4",
+      "checkType": "task-completion",
+      "target": "3.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.4 (Error handling) marked as complete"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 (executeAskProject test update) marked as complete"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 (executeAskSpec test) marked as complete"
+    },
+    {
+      "id": "task-4.3",
+      "checkType": "task-completion",
+      "target": "4.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.3 (SpecDetailPage Spec Ask test) marked as complete"
+    },
+    {
+      "id": "verify-1.1-ASK_PROJECT",
+      "checkType": "method-verification",
+      "target": "WebSocketApiClient.ts - ASK_PROJECT message type",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "executeAskProject uses 'ASK_PROJECT' message type with projectPath and prompt in payload",
+      "evidence": [
+        "WebSocketApiClient.ts:956 - wrapRequest<AgentInfo>('ASK_PROJECT', { projectPath, prompt })"
+      ]
+    },
+    {
+      "id": "verify-1.2-ASK_SPEC",
+      "checkType": "method-verification",
+      "target": "WebSocketApiClient.ts - ASK_SPEC message type",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "executeAskSpec uses 'ASK_SPEC' message type with specId, featureName, prompt in payload",
+      "evidence": [
+        "WebSocketApiClient.ts:972 - wrapRequest<AgentInfo>('ASK_SPEC', { specId, featureName, prompt })"
+      ]
+    },
+    {
+      "id": "verify-2-types",
+      "checkType": "method-verification",
+      "target": "types.ts - executeAskSpec interface",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "executeAskSpec is defined in ApiClient interface as optional method with correct signature",
+      "evidence": [
+        "types.ts:424 - executeAskSpec?(specId: string, featureName: string, prompt: string): Promise<Result<AgentInfo, ApiError>>"
+      ]
+    },
+    {
+      "id": "verify-4.1-test-ASK_PROJECT",
+      "checkType": "test-verification",
+      "target": "WebSocketApiClient.test.ts - ASK_PROJECT tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tests verify ASK_PROJECT message type and payload structure",
+      "evidence": [
+        "WebSocketApiClient.test.ts:333-357 - executeAskProject message type fix tests"
+      ]
+    },
+    {
+      "id": "verify-4.2-test-executeAskSpec",
+      "checkType": "test-verification",
+      "target": "WebSocketApiClient.test.ts - executeAskSpec tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tests verify executeAskSpec method, ASK_SPEC message type, and payload",
+      "evidence": [
+        "WebSocketApiClient.test.ts:390-418 - executeAskSpec method tests"
+      ]
+    },
+    {
+      "id": "verify-4.3-test-SpecAsk",
+      "checkType": "test-verification",
+      "target": "SpecDetailPage.test.tsx - Spec Ask tests",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tests verify Spec Ask button, AskAgentDialog integration, and executeAskSpec calls",
+      "evidence": [
+        "SpecDetailPage.test.tsx:1172-1339 - Spec Ask button tests"
+      ]
+    },
+    {
+      "id": "import-AskAgentDialog",
+      "checkType": "import",
+      "target": "AskAgentDialog",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AskAgentDialog is imported in SpecDetailPage.tsx",
+      "evidence": [
+        "SpecDetailPage.tsx:31 - import { AskAgentDialog } from '@shared/components/project/AskAgentDialog'"
+      ]
+    },
+    {
+      "id": "usage-AskAgentDialog",
+      "checkType": "usage",
+      "target": "AskAgentDialog",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "AskAgentDialog is rendered in SpecTabContent with correct props",
+      "evidence": [
+        "SpecDetailPage.tsx:448-454 - <AskAgentDialog isOpen={isAskDialogOpen} agentType=\"spec\" specName={spec.name} onExecute={handleAskExecute} onCancel={handleAskCancel} />"
+      ]
+    },
+    {
+      "id": "usage-executeAskSpec",
+      "checkType": "usage",
+      "target": "executeAskSpec API call",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "executeAskSpec is called in SpecDetailPage when dialog executes",
+      "evidence": [
+        "SpecDetailPage.tsx:327 - const result = await apiClient.executeAskSpec(spec.name, spec.name, prompt)"
+      ]
+    },
+    {
+      "id": "integration-SpecDetailPage-to-WebSocketApiClient",
+      "checkType": "integration",
+      "target": "SpecDetailPage -> WebSocketApiClient.executeAskSpec",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Complete data flow: Button click -> AskAgentDialog -> handleAskExecute -> apiClient.executeAskSpec -> Agent Store update"
+    },
+    {
+      "id": "placeholder-SpecDetailPage",
+      "checkType": "placeholder",
+      "target": "SpecDetailPage.tsx:338",
+      "status": "INFO",
+      "severity": "Minor",
+      "details": "TODO comment found but it is for future enhancement (toast system), not a spec requirement: '// TODO: Add proper error notification when toast system is available'"
+    }
+  ],
+  "stats": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 20
+  }
+}

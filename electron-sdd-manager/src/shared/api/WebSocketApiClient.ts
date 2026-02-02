@@ -946,14 +946,30 @@ export class WebSocketApiClient implements ApiClient {
   }
 
   /**
-   * Execute project-level ask command (DEPRECATED)
-   * release-button-api-fix: Kept for Remote UI backward compatibility
-   * Remote UI migration is out of scope - will be migrated in a future release
-   * @deprecated Use executeProjectCommand with '/kiro:project-ask "${prompt}"' instead
+   * Execute project-level ask command
+   * remote-ui-ask-agent-fix: Fixed message type to ASK_PROJECT
+   * Requirements: 1.1, 1.2, 1.3, 1.4
    * @param prompt - Question/prompt to ask
    */
   async executeAskProject(prompt: string): Promise<Result<AgentInfo, ApiError>> {
-    return this.wrapRequest<AgentInfo>('EXECUTE_ASK_PROJECT', { prompt });
+    const projectPath = this.getProjectPath();
+    return this.wrapRequest<AgentInfo>('ASK_PROJECT', { projectPath, prompt });
+  }
+
+  /**
+   * Execute spec-level ask command
+   * remote-ui-ask-agent-fix: New method for Spec Ask functionality
+   * Requirements: 2.1, 2.2, 2.3, 2.4
+   * @param specId - Spec identifier (feature name)
+   * @param featureName - Feature name for context
+   * @param prompt - Question/prompt to ask
+   */
+  async executeAskSpec(
+    specId: string,
+    featureName: string,
+    prompt: string
+  ): Promise<Result<AgentInfo, ApiError>> {
+    return this.wrapRequest<AgentInfo>('ASK_SPEC', { specId, featureName, prompt });
   }
 
   // ===========================================================================

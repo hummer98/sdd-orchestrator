@@ -1,0 +1,98 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-02T10:00:00Z",
+  "findings": [
+    {
+      "componentId": "WebSocketApiClient.executeAskProject",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/shared/api/WebSocketApiClient.ts:954-957",
+      "details": "executeAskProject method exists with correct signature. Uses ASK_PROJECT message type and includes projectPath from getProjectPath() and prompt parameter as per design (Requirements 1.1-1.4)."
+    },
+    {
+      "componentId": "WebSocketApiClient.executeAskSpec",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/shared/api/WebSocketApiClient.ts:967-973",
+      "details": "executeAskSpec method exists with correct signature: (specId: string, featureName: string, prompt: string). Uses ASK_SPEC message type and returns Result<AgentInfo, ApiError> as per design (Requirements 2.1-2.4)."
+    },
+    {
+      "componentId": "ApiClient.executeAskSpec",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/shared/api/types.ts:420-428",
+      "details": "executeAskSpec method defined in ApiClient interface with optional marker (?). Signature matches design: (specId: string, featureName: string, prompt: string): Promise<Result<AgentInfo, ApiError>> (Requirements 4.1, 4.2)."
+    },
+    {
+      "componentId": "SpecDetailPage.SpecAskButton",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/remote-ui/components/SpecDetailPage.tsx:417-425",
+      "details": "Spec Ask button exists in headerAction prop of AgentList. Uses MessageSquare icon with purple styling (text-purple-600) as per design (Requirements 3.1, 3.2)."
+    },
+    {
+      "componentId": "SpecDetailPage.AskAgentDialog",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/remote-ui/components/SpecDetailPage.tsx:448-454",
+      "details": "AskAgentDialog integrated with agentType='spec' and specName={spec.name}. Connected to handleAskExecute which calls apiClient.executeAskSpec (Requirements 3.3, 3.4, 3.5)."
+    },
+    {
+      "componentId": "SpecDetailPage.AgentStoreIntegration",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/remote-ui/components/SpecDetailPage.tsx:329-334",
+      "details": "On successful executeAskSpec, agent is added to AgentStore via addAgent() and selected via selectAgent(). Dialog closes on success (Requirements 3.6, 3.7)."
+    },
+    {
+      "componentId": "SpecDetailPage.ErrorHandling",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/remote-ui/components/SpecDetailPage.tsx:336-340",
+      "details": "Error handling implemented with console.error and alert for failed requests. TODO comment indicates future toast system integration (Requirement 3.8)."
+    },
+    {
+      "componentId": "WebSocketApiClient.test.executeAskProject",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/shared/api/WebSocketApiClient.test.ts:333-357",
+      "details": "Unit tests for executeAskProject: verifies ASK_PROJECT message type, projectPath from getProjectPath(), prompt in payload, and AgentInfo return type (Requirement 5.1)."
+    },
+    {
+      "componentId": "WebSocketApiClient.test.executeAskSpec",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/shared/api/WebSocketApiClient.test.ts:390-418",
+      "details": "Unit tests for executeAskSpec: verifies method existence, parameter signature (specId, featureName, prompt), ASK_SPEC message type, and Result<AgentInfo, ApiError> return (Requirement 5.2)."
+    },
+    {
+      "componentId": "SpecDetailPage.test.SpecAskButton",
+      "status": "ALIGNED",
+      "severity": "Info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/remote-ui-ask-agent-fix/electron-sdd-manager/src/remote-ui/components/SpecDetailPage.test.tsx:1176-1339",
+      "details": "Unit tests for Spec Ask button: button rendering, MessageSquare icon with purple color, AskAgentDialog opening, specName prop, executeAskSpec calls, dialog close on success (Requirement 5.3)."
+    }
+  ],
+  "steeringCompliance": {
+    "tech": "COMPLIANT",
+    "structure": "COMPLIANT",
+    "details": [
+      {
+        "file": "tech.md",
+        "status": "COMPLIANT",
+        "notes": "Implementation uses React 19, TypeScript 5.8+, WebSocket (ws), and Zustand as specified in tech.md. Test files use Vitest as specified."
+      },
+      {
+        "file": "structure.md",
+        "status": "COMPLIANT",
+        "notes": "Files are correctly placed: WebSocketApiClient in src/shared/api/, types in src/shared/api/types.ts, SpecDetailPage in src/remote-ui/components/. Tests are co-located with implementations. Shared stores used for domain state (agentStore in src/shared/stores/)."
+      }
+    ]
+  },
+  "summary": {
+    "total": 10,
+    "aligned": 10,
+    "deviated": 0,
+    "missing": 0
+  }
+}

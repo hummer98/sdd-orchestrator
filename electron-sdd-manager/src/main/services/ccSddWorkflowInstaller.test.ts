@@ -122,6 +122,9 @@ describe('CcSddWorkflowInstaller', () => {
       'templates/bugs/analysis.md',
       'templates/bugs/fix.md',
       'templates/bugs/verification.md',
+      // E2E templates - e2e-workflow feature
+      'templates/specs/e2e-report.md',
+      'templates/specs/e2e-test.spec.ts',
     ];
     for (const template of settingsTemplates) {
       const filePath = path.join(templateDir, 'settings', template);
@@ -173,7 +176,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_COMMANDS.length).toBe(25);
     });
 
-    it('should define all cc-sdd agents (12 types)', () => {
+    it('should define all cc-sdd agents (17 types)', () => {
       // Spec Agents (4)
       expect(CC_SDD_AGENTS).toContain('spec-design');
       expect(CC_SDD_AGENTS).toContain('spec-impl');
@@ -191,8 +194,14 @@ describe('CcSddWorkflowInstaller', () => {
       expect(CC_SDD_AGENTS).toContain('validate-impl');
       // Inspection Agent (1)
       expect(CC_SDD_AGENTS).toContain('spec-inspection');
+      // E2E Agents (5) - e2e-workflow feature
+      expect(CC_SDD_AGENTS).toContain('e2e-planner');
+      expect(CC_SDD_AGENTS).toContain('e2e-creator');
+      expect(CC_SDD_AGENTS).toContain('e2e-validator');
+      expect(CC_SDD_AGENTS).toContain('e2e-runner');
+      expect(CC_SDD_AGENTS).toContain('generate-inspection-e2e');
       // Total count
-      expect(CC_SDD_AGENTS.length).toBe(12);
+      expect(CC_SDD_AGENTS.length).toBe(17);
     });
 
     // claudemd-profile-install-merge: CC_SDD_WORKFLOW_CLAUDE_MD_SECTION test removed
@@ -301,12 +310,12 @@ describe('CcSddWorkflowInstaller', () => {
   });
 
   describe('installAgents', () => {
-    it('should install all 12 cc-sdd agents to .claude/agents/kiro/', async () => {
+    it('should install all 17 cc-sdd agents to .claude/agents/kiro/', async () => {
       const result = await installer.installAgents(tempDir);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed.length).toBe(12);
+        expect(result.value.installed.length).toBe(17);
         expect(result.value.installed).toContain('spec-design');
         expect(result.value.installed).toContain('spec-impl');
         expect(result.value.installed).toContain('spec-requirements');
@@ -318,6 +327,12 @@ describe('CcSddWorkflowInstaller', () => {
         expect(result.value.installed).toContain('validate-gap');
         expect(result.value.installed).toContain('validate-impl');
         expect(result.value.installed).toContain('spec-inspection');
+        // E2E Agents (5)
+        expect(result.value.installed).toContain('e2e-planner');
+        expect(result.value.installed).toContain('e2e-creator');
+        expect(result.value.installed).toContain('e2e-validator');
+        expect(result.value.installed).toContain('e2e-runner');
+        expect(result.value.installed).toContain('generate-inspection-e2e');
       }
 
       // Verify files were created in correct location
@@ -339,7 +354,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.skipped).toContain('spec-design');
-        expect(result.value.installed.length).toBe(11); // 12 - 1 skipped
+        expect(result.value.installed.length).toBe(16); // 17 - 1 skipped
       }
 
       // Verify existing file was not overwritten
@@ -358,7 +373,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.overwritten).toContain('spec-design');
-        expect(result.value.installed.length).toBe(11); // 12 - 1 overwritten
+        expect(result.value.installed.length).toBe(16); // 17 - 1 overwritten
       }
 
       // Verify file was overwritten
@@ -392,7 +407,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.commands.installed.length).toBe(25);
-        expect(result.value.agents.installed.length).toBe(12);
+        expect(result.value.agents.installed.length).toBe(17);
         // claudeMd property removed from result
         expect(result.value).not.toHaveProperty('claudeMd');
       }
@@ -414,7 +429,7 @@ describe('CcSddWorkflowInstaller', () => {
         expect(result.value.commands.skipped).toContain('spec-init');
         expect(result.value.agents.skipped).toContain('spec-design');
         expect(result.value.commands.installed.length).toBe(24); // 25 - 1 skipped
-        expect(result.value.agents.installed.length).toBe(11); // 12 - 1 skipped
+        expect(result.value.agents.installed.length).toBe(16); // 17 - 1 skipped
       }
     });
   });
@@ -429,7 +444,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(status.commands.installed).toEqual([]);
       expect(status.commands.missing.length).toBe(25);
       expect(status.agents.installed).toEqual([]);
-      expect(status.agents.missing.length).toBe(12);
+      expect(status.agents.missing.length).toBe(17);
       // claudeMd property removed from status
       expect(status).not.toHaveProperty('claudeMd');
     });
@@ -442,7 +457,7 @@ describe('CcSddWorkflowInstaller', () => {
 
       expect(status.commands.installed.length).toBe(25);
       expect(status.commands.missing).toEqual([]);
-      expect(status.agents.installed.length).toBe(12);
+      expect(status.agents.installed.length).toBe(17);
       expect(status.agents.missing).toEqual([]);
       // claudeMd property removed from status
       expect(status).not.toHaveProperty('claudeMd');
@@ -464,7 +479,7 @@ describe('CcSddWorkflowInstaller', () => {
       expect(status.commands.missing.length).toBe(24); // 25 - 1 installed
       expect(status.agents.installed).toContain('spec-design');
       expect(status.agents.missing).not.toContain('spec-design');
-      expect(status.agents.missing.length).toBe(11); // 12 - 1 installed
+      expect(status.agents.missing.length).toBe(16); // 17 - 1 installed
     });
   });
 });
@@ -555,6 +570,9 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
       'templates/bugs/analysis.md',
       'templates/bugs/fix.md',
       'templates/bugs/verification.md',
+      // E2E templates - e2e-workflow feature
+      'templates/specs/e2e-report.md',
+      'templates/specs/e2e-test.spec.ts',
     ];
     for (const template of settingsTemplates) {
       const filePath = path.join(templateDir, 'settings', template);
@@ -596,7 +614,7 @@ describe('CcSddWorkflowInstaller - Parallel Operation', () => {
     if (result.ok) {
       expect(result.value.commands.installed.length).toBe(24); // 25 - 1 skipped
       expect(result.value.commands.skipped).toContain('bug-create');
-      expect(result.value.agents.installed.length).toBe(12);
+      expect(result.value.agents.installed.length).toBe(17);
     }
   });
 

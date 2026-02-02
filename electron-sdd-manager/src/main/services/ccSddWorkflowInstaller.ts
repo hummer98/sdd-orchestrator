@@ -54,7 +54,7 @@ export const CC_SDD_COMMANDS = [
 ] as const;
 
 /**
- * cc-sdd エージェント一覧（12種類）
+ * cc-sdd エージェント一覧（17種類）
  * Claude Code subagent として使用されるエージェント定義ファイル
  */
 export const CC_SDD_AGENTS = [
@@ -75,6 +75,12 @@ export const CC_SDD_AGENTS = [
   'validate-impl',
   // Inspection Agent (1)
   'spec-inspection',
+  // E2E Agents (5) - e2e-workflow feature
+  'e2e-planner',
+  'e2e-creator',
+  'e2e-validator',
+  'e2e-runner',
+  'generate-inspection-e2e',
 ] as const;
 
 /**
@@ -119,6 +125,9 @@ export const CC_SDD_SETTINGS = [
   'templates/bugs/analysis.md',
   'templates/bugs/fix.md',
   'templates/bugs/verification.md',
+  // E2E templates - e2e-workflow feature
+  'templates/specs/e2e-report.md',
+  'templates/specs/e2e-test.spec.ts',
 ] as const;
 
 /**

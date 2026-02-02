@@ -1,0 +1,167 @@
+# Response to Document Review #1
+
+**Feature**: inspection-distributed
+**Review Date**: 2026-02-02
+**Reply Date**: 2026-02-01
+
+---
+
+## Response Summary
+
+| Severity | Issues | Fix Required | No Fix Needed | Needs Discussion |
+| -------- | ------ | ------------ | ------------- | ---------------- |
+| Critical | 0      | 0            | 0             | 0                |
+| Warning  | 3      | 3            | 0             | 0                |
+| Info     | 2      | 0            | 2             | 0                |
+
+---
+
+## Response to Critical Issues
+
+（該当なし）
+
+---
+
+## Response to Warnings
+
+### W1: サブエージェント失敗時のユーザー通知
+
+**Issue**: エラー発生時のユーザーへの通知方法が不明確。inspection-{n}.mdのWarningsセクションにサブエージェントエラー情報を含めることをTask 3.1に明記すべき。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+design.md Error Handling（L597-609）に「サブエージェント実行失敗 → 該当カテゴリをスキップ、警告としてレポート」と記載済み。tasks.md Task 2.3でも「サブエージェント実行失敗時は該当カテゴリをスキップしWarning記録」と言及。しかし、Task 3.1のinspection-{n}.mdフォーマット詳細に「サブエージェントエラー情報の報告」が明記されていない。
+
+**Action Items**:
+- tasks.md Task 3.1 に「サブエージェント実行エラー時はWarningsセクションにエラー情報（エージェント名、エラー理由）を含める」を追加
+
+---
+
+### W2: 個別サブエージェントのタイムアウト
+
+**Issue**: 全体5分目標は設定されているが、個別のサブエージェント制限がない。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+design.md DD-005（L681-691）でQuick Modeの5分目標を記載。しかし、Task toolのデフォルトタイムアウト（2分）が適用されることが設計に明記されていない。明示的な記載により設計の完全性が向上。
+
+**Action Items**:
+- design.md Error Handlingセクションに「各サブエージェントはTask toolのデフォルトタイムアウト（2分）が適用され、超過時は該当カテゴリをスキップしWarning記録」を追加
+
+---
+
+### W3: .gitignore設定の確認
+
+**Issue**: inspection-context/を.gitignoreに追加すべきか未決定。
+
+**Judgment**: **Fix Required** ✅
+
+**Evidence**:
+design.md DD-004（L673-679）で「.gitignore設定が必要な場合あり」と曖昧な記載。inspection-context/は一時的な検査結果であり、バージョン管理不要。明確な設計判断が必要。
+
+**Action Items**:
+- design.md DD-004に「inspection-context/は.gitignoreに追加を推奨。ただし、デバッグ目的でコミットする場合はプロジェクト単位で判断可能」を追加
+- tasks.md Task 2.2に「.gitignoreへのinspection-context/追加を確認/推奨する」を追加
+
+---
+
+## Response to Info (Low Priority)
+
+| #   | Issue                               | Judgment      | Reason                                   |
+| --- | ----------------------------------- | ------------- | ---------------------------------------- |
+| I1  | サブエージェント実行時間のログ       | No Fix Needed | design.md Monitoringに記載済み。Task 5.1の手動検証で対応可能。将来機能として検討 |
+| I2  | inspection-context/の自動クリーンアップ | No Fix Needed | Spec削除時に自動クリーンアップされる設計。将来オプション機能として記録済み |
+
+---
+
+## Files to Modify
+
+| File       | Changes                                                                              |
+| ---------- | ------------------------------------------------------------------------------------ |
+| design.md  | Error Handlingに個別タイムアウト記載追加、DD-004に.gitignore推奨を追加              |
+| tasks.md   | Task 3.1にエラー報告を追加、Task 2.2に.gitignore確認を追加                          |
+
+---
+
+## Conclusion
+
+3件のWarningについて全てFix Requiredと判定。いずれも設計・タスクドキュメントへの明確化追記であり、アーキテクチャの変更は不要。
+
+修正内容:
+1. サブエージェントエラーのレポート出力をTask 3.1に明記
+2. 個別タイムアウト（Task toolデフォルト2分）をdesign.mdに追記
+3. .gitignore設定の推奨をdesign.md DD-004に追記、Task 2.2に確認項目追加
+
+---
+
+## Applied Fixes
+
+**Applied Date**: 2026-02-01
+**Applied By**: --autofix
+
+### Summary
+
+| File      | Changes Applied                                                                 |
+| --------- | ------------------------------------------------------------------------------- |
+| design.md | Timeout Strategy追加、Error Categoriesにレポート出力詳細追加、DD-004に.gitignore推奨追加 |
+| tasks.md  | Task 2.2に.gitignore確認追加、Task 3.1にWarningsセクションのエラー情報詳細追加          |
+
+### Details
+
+#### design.md
+
+**Issue(s) Addressed**: W1, W2, W3
+
+**Changes**:
+- Error Handlingセクションに「Timeout Strategy」サブセクションを新規追加（Task toolのデフォルトタイムアウト2分の適用を明記）
+- Sub-Agent Errorsの記述を拡張し、inspection-{n}.mdのWarningsセクションへのエラー情報記録を明記
+- DD-004のDecision/Rationale/Consequencesに.gitignore追加推奨を追記
+
+**Diff Summary**:
+```diff
+ ## Error Handling
++### Timeout Strategy
++
++各サブエージェントはTask toolのデフォルトタイムアウト（2分）が適用される。タイムアウト超過時は該当カテゴリをスキップし、inspection-{n}.mdのWarningsセクションにエラー情報を記録する。
+
+ **Sub-Agent Errors**:
+-- サブエージェント実行失敗 → 該当カテゴリをスキップ、警告としてレポート
+-- 結果JSON生成失敗 → 空の結果として扱い、警告としてレポート
+++ サブエージェント実行失敗 → 該当カテゴリをスキップ、inspection-{n}.mdのWarningsセクションにエラー情報（エージェント名、エラー理由）を記録
+++ 結果JSON生成失敗 → 空の結果として扱い、inspection-{n}.mdのWarningsセクションに警告を記録
+
+ DD-004:
+-| Consequences | Specディレクトリにファイルが増加（5ファイル）、.gitignore設定が必要な場合あり |
++| Decision | `.kiro/specs/{feature}/inspection-context/` に配置。`.gitignore`への追加を推奨 |
++| Consequences | Specディレクトリにファイルが増加（5ファイル）。`.gitignore`に`**/inspection-context/`の追加を推奨。ただしデバッグ目的でコミットする場合はプロジェクト単位で判断可能 |
+```
+
+#### tasks.md
+
+**Issue(s) Addressed**: W1, W3
+
+**Changes**:
+- Task 2.2に.gitignore確認/推奨メッセージ出力を追加
+- Task 3.1のWarningsセクションにサブエージェントエラー情報の詳細を追加
+
+**Diff Summary**:
+```diff
+ - [ ] 2.2 context-summary.json生成ロジックを実装する
+   - inspection-context/ディレクトリに出力
++  - .gitignoreに`**/inspection-context/`が含まれていない場合は追加を推奨するメッセージを出力
+
+ - [ ] 3.1 inspection-{n}.mdフォーマットを拡張する
+   - Statisticsセクション（チェック数、Pass/Fail数）
++  - Warningsセクション（サブエージェント実行エラー時はエラー情報（エージェント名、エラー理由）を含める）
+   - Next Stepsセクション
+```
+
+---
+
+_Fixes applied by document-review-reply command._
+
+---
+
+_This reply was generated by the document-review-reply command._

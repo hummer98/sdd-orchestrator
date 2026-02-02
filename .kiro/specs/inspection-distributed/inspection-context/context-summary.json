@@ -1,0 +1,121 @@
+{
+  "spec_overview": "spec-inspectionの責務肥大化問題を解決するため、検査責務を複数のサブエージェントに分散し、spec-inspectionは統合・判定に専念するアーキテクチャを実装する。4つのサブエージェント（requirements-checker, design-checker, code-quality-checker, integration-checker v1）への分散構成に変更。",
+  "key_components": [
+    {
+      "name": "spec-inspection-agent.md",
+      "type": "agent",
+      "path": ".claude/agents/kiro/spec-inspection.md",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "2.1", "2.2", "2.3", "2.4", "7.1", "7.2", "7.3", "7.4", "7.5", "8.1", "8.2", "8.3", "8.4", "9.1", "9.2", "9.3", "9.4", "9.5"]
+    },
+    {
+      "name": "requirements-checker-agent.md",
+      "type": "agent",
+      "path": ".claude/agents/kiro/requirements-checker.md",
+      "requirements": ["3.1", "3.2", "3.3", "3.4", "3.5"]
+    },
+    {
+      "name": "design-checker-agent.md",
+      "type": "agent",
+      "path": ".claude/agents/kiro/design-checker.md",
+      "requirements": ["4.1", "4.2", "4.3", "4.4", "4.5"]
+    },
+    {
+      "name": "code-quality-checker-agent.md",
+      "type": "agent",
+      "path": ".claude/agents/kiro/code-quality-checker.md",
+      "requirements": ["5.1", "5.2", "5.3", "5.4", "5.5"]
+    },
+    {
+      "name": "integration-checker-agent.md",
+      "type": "agent",
+      "path": ".claude/agents/kiro/integration-checker.md",
+      "requirements": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6"]
+    },
+    {
+      "name": "ContextSummary",
+      "type": "type",
+      "path": "N/A (embedded in spec-inspection-agent.md)",
+      "requirements": ["2.2"]
+    },
+    {
+      "name": "SubAgentResult",
+      "type": "type",
+      "path": "N/A (embedded in each checker agent)",
+      "requirements": ["1.2", "3.5", "4.5", "5.5", "6.6"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "spec-inspection-agent.md",
+      "target": "requirements-checker-agent.md",
+      "type": "call"
+    },
+    {
+      "source": "spec-inspection-agent.md",
+      "target": "design-checker-agent.md",
+      "type": "call"
+    },
+    {
+      "source": "spec-inspection-agent.md",
+      "target": "code-quality-checker-agent.md",
+      "type": "call"
+    },
+    {
+      "source": "spec-inspection-agent.md",
+      "target": "integration-checker-agent.md",
+      "type": "call"
+    },
+    {
+      "source": "spec-inspection-agent.md",
+      "target": "spec-tdd-impl-agent",
+      "type": "call"
+    },
+    {
+      "source": "requirements-checker-agent.md",
+      "target": "context-summary.json",
+      "type": "import"
+    },
+    {
+      "source": "design-checker-agent.md",
+      "target": "context-summary.json",
+      "type": "import"
+    },
+    {
+      "source": "code-quality-checker-agent.md",
+      "target": "context-summary.json",
+      "type": "import"
+    },
+    {
+      "source": "integration-checker-agent.md",
+      "target": "context-summary.json",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": ".claude/agents/kiro/spec-inspection.md",
+      "action": "UPDATE",
+      "reason": "完全書き換え（サブエージェント呼び出し構造に変更）"
+    },
+    {
+      "target": ".claude/agents/kiro/requirements-checker.md",
+      "action": "CREATE",
+      "reason": "要件検査サブエージェント新規作成"
+    },
+    {
+      "target": ".claude/agents/kiro/design-checker.md",
+      "action": "CREATE",
+      "reason": "設計検査サブエージェント新規作成"
+    },
+    {
+      "target": ".claude/agents/kiro/code-quality-checker.md",
+      "action": "CREATE",
+      "reason": "品質検査サブエージェント新規作成"
+    },
+    {
+      "target": ".claude/agents/kiro/integration-checker.md",
+      "action": "CREATE",
+      "reason": "統合検査サブエージェント（v1: 静的検査）新規作成"
+    }
+  ]
+}

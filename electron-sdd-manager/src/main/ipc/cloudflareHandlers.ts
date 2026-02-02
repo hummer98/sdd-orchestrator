@@ -10,7 +10,8 @@ import { getCloudflareConfigStore } from '../services/cloudflareConfigStore';
 import { getAccessTokenService } from '../services/accessTokenService';
 import { getCloudflaredBinaryChecker } from '../services/cloudflaredBinaryChecker';
 import { getCloudflareTunnelManager } from '../services/cloudflareTunnelManager';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 
 /**
  * Track if handlers are already registered to prevent duplicate registration

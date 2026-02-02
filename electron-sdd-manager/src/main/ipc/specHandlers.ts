@@ -31,7 +31,8 @@ import {
   SPEC_PLAN_COMMANDS,
   CommandPrefix,
 } from '../services/specManagerService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import type { Phase } from '../../renderer/types';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
 // spec-event-log: Event log service import

@@ -15,7 +15,8 @@ import type {
   FSError,
 } from './fileSystemProvider';
 import type { SSHConnectionService } from './sshConnectionService';
-import { logger } from '../logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../projectLogger';
 
 /**
  * SSH FileSystem Provider options

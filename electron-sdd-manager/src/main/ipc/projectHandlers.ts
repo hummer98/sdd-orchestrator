@@ -21,7 +21,8 @@ import { IPC_CHANNELS } from './channels';
 import type { FileService } from '../services/fileService';
 import type { ConfigStore } from '../services/configStore';
 import type { SelectProjectResult, SelectProjectError } from '../../renderer/types';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { projectLogger } from '../services/projectLogger';
 import { updateMenu } from '../menu';
 import {

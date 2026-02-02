@@ -14,7 +14,8 @@ import type {
 } from './ssh/processProvider';
 import { LocalProcessProvider } from './ssh/processProvider';
 import { providerFactory, type ProviderType } from './ssh/providerFactory';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 /**
  * Options for creating a provider-aware agent process

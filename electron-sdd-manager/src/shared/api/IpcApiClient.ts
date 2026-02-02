@@ -27,6 +27,8 @@ import type {
   BugsChangeEvent,
   // main-process-log-parser Task 10.2: Import ParsedLogEntry for onAgentLog
   ParsedLogEntry,
+  // agent-error-notification Task 7.1: Import AgentStartError for onAgentStartError
+  AgentStartError,
 } from './types';
 
 function getCurrentProjectPath(): string | null {
@@ -488,6 +490,18 @@ export class IpcApiClient implements ApiClient {
     checkElectronAPI();
     return window.electronAPI.onAgentLog((agentId, log) => {
       callback(agentId, log);
+    });
+  }
+
+  // ===========================================================================
+  // agent-error-notification Task 7.1: onAgentStartError implementation
+  // Requirements: 3.3
+  // ===========================================================================
+
+  onAgentStartError(callback: (agentId: string, specId: string, error: AgentStartError) => void): () => void {
+    checkElectronAPI();
+    return window.electronAPI.onAgentStartError((data) => {
+      callback(data.agentId, data.specId, data.error);
     });
   }
 

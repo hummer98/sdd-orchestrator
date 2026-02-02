@@ -9,7 +9,8 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { IPC_CHANNELS } from './channels';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { FileService } from '../services/fileService';
 import type {
   AutoExecutionCoordinator,

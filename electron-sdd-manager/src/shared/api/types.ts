@@ -33,6 +33,9 @@ import type { WorktreeConfig } from '@shared/types/worktree';
 import type { BugMetadata, BugDetail, BugAction } from '@renderer/types/bug';
 import type { LLMEngineId } from '@shared/registry';
 
+// agent-error-notification Task 7.1: Import AgentStartError for IpcApiClient
+import type { AgentStartError } from '@shared/types/agentStartError';
+
 // =============================================================================
 // spec-path-ssot-refactor: Remote UI specific types with path
 // Remote UI uses WebSocket which still provides paths
@@ -785,6 +788,8 @@ export type {
   BugAction,
   // main-process-log-parser Task 10.2: Export ParsedLogEntry
   ParsedLogEntry,
+  // agent-error-notification Task 7.1: Export AgentStartError
+  AgentStartError,
 };
 
 // bugs-view-unification: Re-export BugsChangeEvent

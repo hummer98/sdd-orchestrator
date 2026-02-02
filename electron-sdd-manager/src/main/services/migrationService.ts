@@ -11,7 +11,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { determineCategory, getEntityIdFromSpecId, getCategoryBasePath } from './agentCategory';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 export interface MigrationInfo {
   specId: string;

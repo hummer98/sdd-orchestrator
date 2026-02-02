@@ -8,7 +8,8 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { handleImplStartWithWorktree, handleImplStartNormalMode } from './worktreeImplHandlers';
 import { getCurrentProjectPath } from './handlers';
 import type {

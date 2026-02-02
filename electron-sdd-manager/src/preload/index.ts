@@ -12,6 +12,8 @@ import type { ExecutionGroup } from '../main/services/specManagerService';
 import type { AgentInfo, AgentStatus } from '../main/services/agentRecordService';
 // main-process-log-parser Task 10.2: Import ParsedLogEntry for type-safe IPC
 import type { ParsedLogEntry } from '../shared/utils/parserTypes';
+// agent-error-notification Task 7.1: Import AgentStartError for type-safe IPC
+import type { AgentStartError } from '../shared/types/agentStartError';
 import type { SpecsChangeEvent } from '../main/services/specsWatcherService';
 import type { FullCheckResult, FileCheckResult } from '../main/services/projectChecker';
 import type { FullInstallResult, InstallResult, InstallError, Result } from '../main/services/commandInstallerService';
@@ -326,6 +328,30 @@ const electronAPI = {
     // Return cleanup function
     return () => {
       ipcRenderer.removeListener(IPC_CHANNELS.AGENT_EXIT_ERROR, handler);
+    };
+  },
+
+  /**
+   * agent-error-notification Task 7.1: Subscribe to agent start error events
+   * Called when agent startup fails (spawn error, immediate exit, auth error, etc.)
+   * Requirements: 3.3
+   * @param callback Function called when agent start error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentStartError: (
+    callback: (data: { agentId: string; specId: string; error: AgentStartError }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { agentId: string; specId: string; error: AgentStartError }
+    ) => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.AGENT_START_ERROR, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.AGENT_START_ERROR, handler);
     };
   },
 

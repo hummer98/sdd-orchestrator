@@ -23,7 +23,8 @@ import { FileService } from '../services/fileService';
 import { getConfigStore } from '../services/configStore';
 import { setMenuProjectPath, updateWindowTitle } from '../menu';
 import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError } from '../services/specManagerService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { projectLogger } from '../services/projectLogger';
 import { ProjectChecker } from '../services/projectChecker';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
@@ -1161,6 +1162,30 @@ function registerEventCallbacks(service: SpecManagerService, window: BrowserWind
     logger.warn('[handlers] Agent exit error', { agentId, error: error.message });
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.AGENT_EXIT_ERROR, { agentId, error: error.message });
+    }
+  });
+
+  // agent-error-notification: Register agent start error callback
+  // Requirements: 3.1, 5.1, 5.2, 6.1
+  service.onAgentStartError((agentId, specId, error) => {
+    logger.warn('[handlers] Agent start error', {
+      agentId,
+      specId,
+      errorType: error.type,
+      errorMessage: error.message,
+    });
+    // Broadcast to all windows via AGENT_START_ERROR channel
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(IPC_CHANNELS.AGENT_START_ERROR, { agentId, specId, error });
+      }
+    }
+    // Also broadcast to Remote UI via WebSocket
+    const remoteServer = getRemoteAccessServer();
+    const wsHandler = remoteServer.getWebSocketHandler();
+    if (wsHandler) {
+      // Note: Remote UI error notification is out of scope for this feature
+      // but the infrastructure is in place for future implementation
     }
   });
 }

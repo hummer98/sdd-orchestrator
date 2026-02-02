@@ -19,7 +19,8 @@ import {
   createInitialReviewState,
   isDocumentReviewState,
 } from '../../renderer/types/documentReview';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 // spec-event-log: Event logging for document review
 import { getDefaultEventLogService } from './eventLogService';
 import type { EventLogInput } from '../../shared/types';

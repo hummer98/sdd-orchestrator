@@ -13,7 +13,8 @@ import { AgentRecordWatcherService } from './agentRecordWatcherService';
 import { BugsWatcherService } from './bugsWatcherService';
 import { FileService } from './fileService';
 import { getConfigStore } from './configStore';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 import { layoutConfigService } from './layoutConfigService';
 import type { WindowBounds } from '../../renderer/types';
 

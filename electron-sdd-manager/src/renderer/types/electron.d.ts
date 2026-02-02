@@ -660,6 +660,17 @@ export interface ElectronAPI {
     callback: (data: { agentId: string; error: string }) => void
   ): () => void;
 
+  /**
+   * agent-error-notification Task 7.1: Subscribe to agent start error events
+   * Called when agent startup fails (spawn error, immediate exit, auth error, etc.)
+   * Requirements: 3.3
+   * @param callback Function called when agent start error occurs
+   * @returns Cleanup function to unsubscribe
+   */
+  onAgentStartError(
+    callback: (data: { agentId: string; specId: string; error: import('@shared/types/agentStartError').AgentStartError }) => void
+  ): () => void;
+
   // Config
   getRecentProjects(): Promise<string[]>;
   addRecentProject(path: string): Promise<void>;

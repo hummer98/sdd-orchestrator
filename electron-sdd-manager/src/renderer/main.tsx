@@ -9,6 +9,10 @@ import './styles/index.css';
 import { useProjectStore, useSpecStore, useSharedBugStore, notify } from './stores';
 import { setNotificationHandler } from '@shared/stores/notificationStore';
 
+// agent-error-notification Task 7.2: Import getAgentStartErrorMessage for localized error display
+// Requirements: 3.3, 3.4
+import { getAgentStartErrorMessage } from '@shared/types/agentStartErrorMessages';
+
 // renderer-unified-logging feature: Initialize console hook before React rendering
 // Requirements: 1.1, 1.3, 1.4
 import { initializeConsoleHook } from './utils/consoleHook';
@@ -33,6 +37,17 @@ setNotificationHandler((n) => {
   else if (n.type === 'warning') notify.warning(n.message);
   else notify.info(n.message);
 });
+
+// agent-error-notification Task 7.2: Register agent start error listener
+// Requirements: 3.3, 3.5, 5.3
+// Displays Toast notification when agent startup fails (spawn error, auth error, etc.)
+// Auto-dismiss after 8 seconds (notify.error default behavior)
+if (typeof window !== 'undefined' && window.electronAPI) {
+  window.electronAPI.onAgentStartError((data) => {
+    const message = getAgentStartErrorMessage(data.error);
+    notify.error(message);
+  });
+}
 
 // Export stores for debugging (dev only)
 // bugs-view-unification Task 6.1: Use shared bugStore

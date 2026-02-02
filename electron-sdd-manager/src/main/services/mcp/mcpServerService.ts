@@ -7,7 +7,8 @@
  */
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
-import { logger } from '../logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../projectLogger';
 // MCP SDK uses package.json exports which TypeScript's bundler mode doesn't fully resolve
 // The module is marked as external in vite.config.ts, so it's resolved at runtime by Node.js
 // @ts-expect-error: MCP SDK subpath exports not resolved by TypeScript bundler mode

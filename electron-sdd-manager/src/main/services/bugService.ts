@@ -19,7 +19,8 @@ import type {
 } from '../../renderer/types';
 import { isBugWorktreeConfig } from '../../renderer/types/bugJson';
 import { scanWorktreeEntities } from './worktreeHelpers';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 /**
  * Result type for readBugs with warnings support

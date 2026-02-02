@@ -12,7 +12,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { WorktreeService } from '../services/worktreeService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import type { SpecManagerService, CommandPrefix } from '../services/specManagerService';
 import type { WorktreeConfig } from '../../renderer/types/worktree';
 

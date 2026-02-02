@@ -16,7 +16,8 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import { IPC_CHANNELS } from './channels';
 import type { FileService } from '../services/fileService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 
 /**
  * Dependencies required for file handlers

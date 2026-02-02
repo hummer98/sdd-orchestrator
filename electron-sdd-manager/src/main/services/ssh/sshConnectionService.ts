@@ -9,7 +9,8 @@ import type { Result } from '../../../renderer/types';
 import type { SSHUri } from './sshUriParser';
 import { SSHAuthService } from './sshAuthService';
 import { HostKeyManager } from './hostKeyManager';
-import { logger } from '../logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../projectLogger';
 
 /**
  * Connection status values

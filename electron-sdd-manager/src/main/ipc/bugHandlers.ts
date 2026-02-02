@@ -22,7 +22,8 @@ import type { SpecManagerService } from '../services/specManagerService';
 import type { BugPhase } from '../../renderer/types/bug';
 import type { BugInfo } from '../services/webSocketHandler';
 import { BugsWatcherService } from '../services/bugsWatcherService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { getRemoteAccessServer } from './remoteAccessHandlers';
 
 /**

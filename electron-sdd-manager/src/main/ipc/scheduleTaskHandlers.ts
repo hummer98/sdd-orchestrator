@@ -20,7 +20,8 @@ import {
   type RunningTaskInfo as CoordinatorRunningTaskInfo,
   type ExecutionResult as CoordinatorExecutionResult,
 } from '../services/scheduleTaskCoordinator';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { setLastActivityTime, getIdleTimeMs as getIdleTimeMsFromTracker } from '../services/idleTimeTracker';
 import { getClaudeCommand } from '../services/agentProcess';
 import { buildClaudeArgs, SpecManagerService } from '../services/specManagerService';

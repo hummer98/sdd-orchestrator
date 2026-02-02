@@ -20,7 +20,8 @@ import { FileService } from './fileService';
 import { LogParserService, ResultSubtype } from './logParserService';
 // execution-store-consolidation: ImplCompletionAnalyzer REMOVED (Req 6.2)
 // import { ImplCompletionAnalyzer, CheckImplResult, createImplCompletionAnalyzer, AnalyzeError } from './implCompletionAnalyzer';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 import type { ProviderType } from './ssh/providerFactory';
 import { getWorktreeCwd } from '../ipc/worktreeImplHandlers';
 import { BugService } from './bugService';
@@ -41,6 +42,10 @@ import { getDefaultMetricsService } from './metricsService';
 // main-process-log-parser Task 10.5: Unified parser for session_id extraction
 import { unifiedParser } from '../utils/unifiedParser';
 // MetricsWorkflowPhase import removed - now using AgentPhase (string) for all phases
+// agent-error-notification: Error classification and notification
+// Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 4.1
+import type { AgentStartError } from '../../shared/types/agentStartError';
+import { classifySpawnError, classifyExitError } from './agentStartErrorClassifier';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -190,6 +195,13 @@ export type ExecutionGroup = 'doc' | 'impl';
  * Requirements: 3.1
  */
 export type AgentExitErrorCallback = (agentId: string, error: Error) => void;
+
+/**
+ * agent-error-notification: Agent start error callback type
+ * Called when an agent fails to start (spawn error, auth error, etc.)
+ * Requirements: 3.1, 5.1, 5.2
+ */
+export type AgentStartErrorCallback = (agentId: string, specId: string, error: AgentStartError) => void;
 
 /**
  * Worktree lifecycle phases - phases that modify worktree existence
@@ -476,6 +488,13 @@ export class SpecManagerService {
    */
   private agentExitErrorCallbacks: AgentExitErrorCallback[] = [];
 
+  /**
+   * agent-error-notification: Agent start error callbacks
+   * Called when an agent fails to start (spawn error, immediate exit, etc.)
+   * Requirements: 3.1, 5.1, 5.2
+   */
+  private agentStartErrorCallbacks: AgentStartErrorCallback[] = [];
+
   // Provider type for local/SSH transparency (defaults to 'local')
   private providerType: ProviderType = 'local';
 
@@ -494,6 +513,17 @@ export class SpecManagerService {
 
   // skip-permissions-main-process: DI for layoutConfigService
   private layoutConfigService: LayoutConfigServiceDependency | null = null;
+
+  // agent-error-notification: Track agent start times for immediate exit detection
+  // Requirements: 5.2 (5 second threshold)
+  private agentStartTimes: Map<string, number> = new Map();
+
+  // agent-error-notification: Buffer stderr for immediate exit classification
+  // Requirements: 5.2
+  private agentStderrBuffers: Map<string, string> = new Map();
+
+  // agent-error-notification: Track command for each agent (for error details)
+  private agentCommands: Map<string, string> = new Map();
 
   constructor(projectPath: string, options?: SpecManagerServiceOptions) {
     this.projectPath = projectPath;
@@ -946,6 +976,12 @@ export class SpecManagerService {
       // agent-state-file-ssot: Store process handle for stdin/kill operations
       this.processes.set(agentId, process);
 
+      // agent-error-notification: Track start time and command for immediate exit detection
+      // Requirements: 5.2
+      this.agentStartTimes.set(agentId, Date.now());
+      this.agentStderrBuffers.set(agentId, '');
+      this.agentCommands.set(agentId, command);
+
       // IMPORTANT: Register event handlers BEFORE any async operation
       // This prevents race conditions where the process exits before we register handlers
       // Events that fire before the file is written will wait for the file to exist
@@ -971,12 +1007,13 @@ export class SpecManagerService {
         this.handleAgentExit(agentId, specId, code);
       });
 
-      process.onError(() => {
+      // agent-error-notification: Capture error for classification (Requirements 2.1, 5.1)
+      process.onError((error) => {
         if (!fileWritten) {
-          pendingEvents.push({ type: 'error' });
+          pendingEvents.push({ type: 'error', data: error });
           return;
         }
-        this.handleAgentError(agentId, specId);
+        this.handleAgentError(agentId, specId, error as NodeJS.ErrnoException, command);
       });
 
       // agent-state-file-ssot: Write agent record to file (SSOT)
@@ -1023,7 +1060,8 @@ export class SpecManagerService {
             this.handleAgentExit(agentId, specId, event.data as number);
             break;
           case 'error':
-            this.handleAgentError(agentId, specId);
+            // agent-error-notification: Pass error and command for classification
+            this.handleAgentError(agentId, specId, event.data as NodeJS.ErrnoException, command);
             break;
         }
       }
@@ -1073,6 +1111,13 @@ export class SpecManagerService {
       lastActivityAt: new Date().toISOString(),
     });
 
+    // agent-error-notification: Buffer stderr for immediate exit classification
+    // Requirements: 5.2
+    if (stream === 'stderr') {
+      const currentBuffer = this.agentStderrBuffers.get(agentId) || '';
+      this.agentStderrBuffers.set(agentId, currentBuffer + data);
+    }
+
     // Parse sessionId from Claude Code init message
     if (stream === 'stdout') {
       this.parseAndUpdateSessionId(agentId, specId, data);
@@ -1120,6 +1165,39 @@ export class SpecManagerService {
 
     // agent-exit-robustness: Get isForcedSuccess early for fallback handling
     const isForcedSuccess = this.forcedKillSuccess.has(agentId);
+
+    // agent-error-notification: Detect immediate exit and classify error
+    // Requirements: 5.2 (5 second threshold)
+    const IMMEDIATE_EXIT_THRESHOLD_MS = 5000;
+    const startTime = this.agentStartTimes.get(agentId);
+    const stderr = this.agentStderrBuffers.get(agentId) || '';
+    const command = this.agentCommands.get(agentId) || 'claude';
+    const isImmediateExit = startTime !== undefined && (Date.now() - startTime) < IMMEDIATE_EXIT_THRESHOLD_MS;
+
+    // Clean up tracking state
+    this.agentStartTimes.delete(agentId);
+    this.agentStderrBuffers.delete(agentId);
+    this.agentCommands.delete(agentId);
+
+    // agent-error-notification: Notify if immediate exit with non-zero code
+    // Requirements: 2.2, 2.3, 2.4, 2.5, 3.1, 5.2
+    if (isImmediateExit && code !== 0 && !isForcedSuccess) {
+      const classifiedError = classifyExitError(code, stderr, command);
+
+      // Requirement 4.1: Log error with full details
+      logger.error('[SpecManagerService] Agent immediate exit error', {
+        agentId,
+        specId,
+        errorType: classifiedError.type,
+        errorMessage: classifiedError.message,
+        command: classifiedError.details?.command,
+        exitCode: classifiedError.details?.exitCode,
+        stderr: classifiedError.details?.stderr,
+      });
+
+      // Requirement 5.2: Call agentStartErrorCallbacks
+      this.agentStartErrorCallbacks.forEach((cb) => cb(agentId, specId, classifiedError));
+    }
 
     // metrics-file-based-tracking: Task 3.1 - Record exit timestamp
     const exitTimestamp = new Date().toISOString();
@@ -1246,18 +1324,55 @@ export class SpecManagerService {
     this.sessionIdParseBuffers.delete(agentId);
     // main-process-log-parser Task 10.5: Clear engineId cache
     this.clearEngineIdCache(agentId);
+    // agent-error-notification: Clear error tracking state
+    this.agentStartTimes.delete(agentId);
+    this.agentStderrBuffers.delete(agentId);
+    this.agentCommands.delete(agentId);
   }
 
   /**
    * Handle agent error event
    * agent-state-file-ssot: Extracted for reuse with pending events
+   * agent-error-notification: Now accepts optional error for classification
+   * Requirements: 2.1, 2.2, 4.1, 5.1, 5.3
+   *
+   * @param agentId - Agent ID
+   * @param specId - Spec ID
+   * @param spawnError - Optional spawn error for classification
+   * @param command - Optional command for error details
    */
-  private handleAgentError(agentId: string, specId: string): void {
+  private handleAgentError(
+    agentId: string,
+    specId: string,
+    spawnError?: NodeJS.ErrnoException,
+    command?: string
+  ): void {
+    // Requirement 5.1: statusCallbacks still called with 'failed' status
     this.statusCallbacks.forEach((cb) => cb(agentId, 'failed'));
     this.processes.delete(agentId);
     this.sessionIdParseBuffers.delete(agentId);
     // main-process-log-parser Task 10.5: Clear engineId cache
     this.clearEngineIdCache(agentId);
+
+    // agent-error-notification: Classify and notify spawn error
+    // Requirements: 2.1, 2.2, 3.1, 4.1, 5.2
+    if (spawnError) {
+      const classifiedError = classifySpawnError(spawnError, command || 'claude');
+
+      // Requirement 4.1: Log error with full details
+      logger.error('[SpecManagerService] Agent start error', {
+        agentId,
+        specId,
+        errorType: classifiedError.type,
+        errorMessage: classifiedError.message,
+        command: classifiedError.details?.command,
+        exitCode: classifiedError.details?.exitCode,
+        stderr: classifiedError.details?.stderr,
+      });
+
+      // Requirement 5.2: Call agentStartErrorCallbacks
+      this.agentStartErrorCallbacks.forEach((cb) => cb(agentId, specId, classifiedError));
+    }
 
     // spec-event-log: Log agent:fail event (Requirement 1.3)
     this.logAgentEvent(specId, {
@@ -1265,7 +1380,7 @@ export class SpecManagerService {
       message: `Agent failed: process error`,
       agentId,
       phase: 'unknown',
-      errorMessage: 'Process error occurred',
+      errorMessage: spawnError?.message || 'Process error occurred',
     });
 
     // agent-state-file-ssot: Update agent record on error (SSOT)
@@ -1509,12 +1624,13 @@ export class SpecManagerService {
         this.handleAgentExit(agentId, agent.specId, code);
       });
 
-      process.onError(() => {
+      // agent-error-notification: Capture error for classification (Requirements 2.1, 5.1)
+      process.onError((error) => {
         if (!recordWritten) {
-          pendingEvents.push({ type: 'error' });
+          pendingEvents.push({ type: 'error', data: error });
           return;
         }
-        this.handleAgentError(agentId, agent.specId);
+        this.handleAgentError(agentId, agent.specId, error as NodeJS.ErrnoException, command);
       });
 
       // Update agent info (keep same agentId)
@@ -1587,7 +1703,8 @@ export class SpecManagerService {
             this.handleAgentExit(agentId, agent.specId, event.data as number);
             break;
           case 'error':
-            this.handleAgentError(agentId, agent.specId);
+            // agent-error-notification: Pass error and command for classification
+            this.handleAgentError(agentId, agent.specId, event.data as NodeJS.ErrnoException, command);
             break;
         }
       }
@@ -1753,6 +1870,26 @@ export class SpecManagerService {
     const index = this.agentExitErrorCallbacks.indexOf(callback);
     if (index !== -1) {
       this.agentExitErrorCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * agent-error-notification: Register agent start error callback
+   * Called when an agent fails to start (spawn error, immediate exit, etc.)
+   * Requirements: 3.1, 5.1, 5.2
+   */
+  onAgentStartError(callback: AgentStartErrorCallback): void {
+    this.agentStartErrorCallbacks.push(callback);
+  }
+
+  /**
+   * agent-error-notification: Unregister agent start error callback
+   * Requirements: 3.1, 5.1, 5.2
+   */
+  offAgentStartError(callback: AgentStartErrorCallback): void {
+    const index = this.agentStartErrorCallbacks.indexOf(callback);
+    if (index !== -1) {
+      this.agentStartErrorCallbacks.splice(index, 1);
     }
   }
 

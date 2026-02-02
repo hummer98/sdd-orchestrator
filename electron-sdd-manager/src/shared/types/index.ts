@@ -36,6 +36,11 @@ export * from './scheduleTask';
 // Requirements: 9.1, 9.2
 export * from './toolCheck';
 
+// Agent start error types (agent-error-notification feature)
+// Requirements: 2.6, 3.4
+export * from './agentStartError';
+export * from './agentStartErrorMessages';
+
 // Result type for consistent error handling (git-diff-viewer feature)
 export type Result<T, E> =
   | { success: true; data: T }

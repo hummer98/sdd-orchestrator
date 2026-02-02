@@ -13,7 +13,8 @@ import {
   getRecentRemoteProjectsService,
   type ConnectionStatus,
 } from '../services/ssh';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 
 /**
  * Register SSH-related IPC handlers

@@ -7,7 +7,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { getDefaultMetricsService, initDefaultMetricsService } from '../services/metricsService';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import type { HumanSessionData, SpecMetrics, ProjectMetrics } from '../types/metrics';
 
 // =============================================================================

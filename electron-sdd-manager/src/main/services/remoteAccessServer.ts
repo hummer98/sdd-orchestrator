@@ -14,7 +14,8 @@ import { StaticFileServer } from './staticFileServer';
 import { WebSocketHandler } from './webSocketHandler';
 import { getAccessTokenService, AccessTokenService } from './accessTokenService';
 import { CloudflareTunnelManager } from './cloudflareTunnelManager';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 /**
  * Tunnel status types

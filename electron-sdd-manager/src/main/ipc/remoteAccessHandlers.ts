@@ -8,7 +8,8 @@ import { ipcMain, BrowserWindow, app } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import { setMenuRemoteServerStatus } from '../menu';
 import type { StateProvider, WorkflowController, WorkflowResult, AgentInfo, AgentStateInfo, SpecInfo, BugInfo, BugAction, AgentLogsProvider, ProfileConfig, SpecDetailProvider, BugDetailProvider, BugDetailResult } from '../services/webSocketHandler';
 import { FileService } from '../services/fileService';

@@ -210,4 +210,34 @@ describe('IpcApiClient', () => {
       }
     });
   });
+
+  // ===========================================================================
+  // agent-error-notification: Task 7.1 - onAgentStartError listener
+  // Requirements: 3.3
+  // ===========================================================================
+
+  describe('onAgentStartError method', () => {
+    it('should implement onAgentStartError method', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('onAgentStartError(');
+    });
+
+    it('should call window.electronAPI.onAgentStartError', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      expect(content).toContain('window.electronAPI.onAgentStartError');
+    });
+
+    it('should return a cleanup function', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Method should return () => void for unsubscription
+      // Pattern: onAgentStartError(...): () => void
+      expect(content).toMatch(/onAgentStartError\([^)]+\)[^{]*:\s*\(\)\s*=>\s*void/);
+    });
+
+    it('should pass callback with agentId, specId, and AgentStartError', () => {
+      const content = readFileSync(clientPath, 'utf-8');
+      // Callback should receive agentId, specId, and AgentStartError
+      expect(content).toMatch(/onAgentStartError[\s\S]*?agentId[\s\S]*?specId[\s\S]*?error/);
+    });
+  });
 });

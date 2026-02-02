@@ -6,7 +6,8 @@
 
 import * as path from 'path';
 import * as fsPromises from 'fs/promises';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 /**
  * Entity type for worktree operations

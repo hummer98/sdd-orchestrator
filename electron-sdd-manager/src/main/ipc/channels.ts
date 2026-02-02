@@ -42,6 +42,9 @@ export const IPC_CHANNELS = {
   AGENT_STATUS_CHANGE: 'ipc:agent-status-change',
   // main-process-log-parser Task 10.2: Parsed log entries from Main process
   AGENT_LOG: 'ipc:agent-log',
+  // agent-error-notification feature: Agent startup error notification
+  // Requirements: 3.2
+  AGENT_START_ERROR: 'ipc:agent-start-error',
 
   // Project
   SET_PROJECT_PATH: 'ipc:set-project-path',

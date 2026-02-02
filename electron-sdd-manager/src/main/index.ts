@@ -16,7 +16,8 @@ import { registerBugWorktreeHandlers } from './ipc/bugWorktreeHandlers';
 import { registerConvertWorktreeHandlers } from './ipc/convertWorktreeHandlers';
 import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
-import { logger } from './services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './services/projectLogger';
 import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser';
 import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';

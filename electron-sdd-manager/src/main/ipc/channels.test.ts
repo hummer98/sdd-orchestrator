@@ -34,6 +34,20 @@ describe('IPC_CHANNELS - Project Command Execution', () => {
   });
 });
 
+describe('IPC_CHANNELS - Agent Error Notification', () => {
+  describe('AGENT_START_ERROR channel (agent-error-notification Task 2.1)', () => {
+    it('should define AGENT_START_ERROR channel for agent startup error notification', () => {
+      // Requirement 3.2: AGENT_START_ERROR channel must be defined
+      expect(IPC_CHANNELS.AGENT_START_ERROR).toBe('ipc:agent-start-error');
+    });
+
+    it('should use ipc: prefix for consistency with other agent channels', () => {
+      // Verify naming convention consistency with existing agent channels
+      expect(IPC_CHANNELS.AGENT_START_ERROR).toMatch(/^ipc:/);
+    });
+  });
+});
+
 describe('IPC_CHANNELS - MCP Server', () => {
   describe('MCP Server Control Channels', () => {
     it('should define MCP_START channel for starting MCP server', () => {

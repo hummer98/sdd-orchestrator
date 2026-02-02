@@ -17,7 +17,8 @@ import { getProcessUtils, type ProcessUtils } from './processUtils';
 import { AgentWatchdog } from './agentWatchdog';
 import { getDefaultAgentRecordService } from './agentRecordService';
 import { determineCategory, getEntityIdFromSpecId } from './agentCategory';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 // Singleton instances
 let agentRegistry: AgentRegistry | null = null;

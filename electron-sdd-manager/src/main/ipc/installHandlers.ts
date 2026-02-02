@@ -22,7 +22,8 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
 import { access, rm } from 'fs/promises';
 import { join } from 'path';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import type { CommandInstallerService } from '../services/commandInstallerService';
 import type { ProjectChecker } from '../services/projectChecker';
 import type { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';

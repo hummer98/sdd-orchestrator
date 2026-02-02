@@ -5,7 +5,8 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirement 1.3)
+import { projectLogger as logger } from './projectLogger';
 
 /**
  * Get the command to use for Claude CLI

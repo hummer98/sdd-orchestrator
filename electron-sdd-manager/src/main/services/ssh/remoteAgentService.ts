@@ -6,7 +6,8 @@
 
 import type { Result } from '../../../renderer/types';
 import type { ProcessProvider, ProcessHandle } from './processProvider';
-import { logger } from '../logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../projectLogger';
 
 /**
  * Claude Code availability information

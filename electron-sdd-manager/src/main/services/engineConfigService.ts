@@ -8,7 +8,8 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getLLMEngine, type LLMEngine, type LLMEngineId } from '../../shared/registry/llmEngineRegistry';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 
 // ============================================================
 // Type Definitions

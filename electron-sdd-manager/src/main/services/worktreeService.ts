@@ -10,7 +10,8 @@ import { exec as nodeExec } from 'child_process';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 import type {
   WorktreeConfig,
   WorktreeInfo,

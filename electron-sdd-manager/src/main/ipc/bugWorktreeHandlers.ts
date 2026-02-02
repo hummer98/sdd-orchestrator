@@ -15,7 +15,8 @@ import { BugWorkflowService } from '../services/bugWorkflowService';
 import { ConvertBugWorktreeService } from '../services/convertBugWorktreeService';
 import { getDefaultEventLogService } from '../services/eventLogService';
 import { getCurrentProjectPath } from './handlers';
-import { logger } from '../services/logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from '../services/projectLogger';
 import type {
   WorktreeInfo,
   WorktreeServiceResult,

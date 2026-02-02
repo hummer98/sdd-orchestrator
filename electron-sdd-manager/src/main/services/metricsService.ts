@@ -5,7 +5,8 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 2.12, 3.1, 3.2, 3.3
  */
 
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 import { MetricsFileWriter, getDefaultMetricsFileWriter } from './metricsFileWriter';
 import { MetricsFileReader, getDefaultMetricsFileReader } from './metricsFileReader';
 import type {

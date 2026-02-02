@@ -10,7 +10,8 @@
  */
 
 import { EventEmitter } from 'events';
-import { logger } from './logger';
+// agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
+import { projectLogger as logger } from './projectLogger';
 import type { WorkflowPhase } from './specManagerService';
 import { FileService } from './fileService';
 // spec-event-log: Event logging for auto-execution activities

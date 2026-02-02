@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.64.0] - 2026-02-02
+
+### Added
+- エージェント起動エラー通知機能の実装
+- Remote UI Ask Agent 機能の修正
+- E2Eテスト自動化ワークフローの実装
+- 分散Inspection機能の実装
+
+### Changed
+- Project Agent過去ログ表示のE2Eテストを追加
+
+
 ## [0.63.1] - 2026-02-01
 
 ### Fixed

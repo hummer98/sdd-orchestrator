@@ -529,12 +529,13 @@ export function registerIpcHandlers(): void {
 
       // Requirement 1.2: command is passed directly to args (no wrapping)
       // Requirement 1.3: title is used as phase for Agent display name
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await service.startAgent({
         specId: '', // Empty specId for project agent
         phase: title, // title is used as phase for display (Requirement 1.3)
-        command: 'claude',
         args: [command], // command passed directly without wrapping (Requirement 1.2)
         group: 'doc',
+        engineId: 'claude',
       });
 
       if (!result.ok) {
@@ -756,7 +757,8 @@ function registerSteeringHandlers(): void {
     const service = getSpecManagerService();
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window && !eventCallbacksRegistered) registerEventCallbacks(service, window);
-    const result = await service.startAgent({ specId: '', phase: 'steering-verification', command: 'claude', args: ['/kiro:steering-verification'], group: 'doc' });
+    // unified-engine-command-resolution: command parameter removed, engineId used instead
+    const result = await service.startAgent({ specId: '', phase: 'steering-verification', args: ['/kiro:steering-verification'], group: 'doc', engineId: 'claude' });
     if (!result.ok) throw new Error(getErrorMessage(result.error));
     return result.value;
   });
@@ -778,7 +780,8 @@ function registerSteeringHandlers(): void {
     const service = getSpecManagerService();
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window && !eventCallbacksRegistered) registerEventCallbacks(service, window);
-    const result = await service.startAgent({ specId: '', phase: 'generate-release', command: 'claude', args: ['/kiro:generate-release'], group: 'doc' });
+    // unified-engine-command-resolution: command parameter removed, engineId used instead
+    const result = await service.startAgent({ specId: '', phase: 'generate-release', args: ['/kiro:generate-release'], group: 'doc', engineId: 'claude' });
     if (!result.ok) throw new Error(getErrorMessage(result.error));
     return result.value;
   });
@@ -811,7 +814,8 @@ function registerBugAutoExecutionEvents(bugCoordinator: ReturnType<typeof getBug
       if (phase === 'deploy' && isWorktreeMode) command = '/kiro:bug-merge';
       const effectiveCwd = getBugAgentEffectiveCwd(phase, worktreeCwd, currentProjectPath!);
 
-      const result = await service.startAgent({ specId: `bug:${context.bugName}`, phase, command: 'claude', args: [`${command} ${context.bugName}`], worktreeCwd: effectiveCwd });
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
+      const result = await service.startAgent({ specId: `bug:${context.bugName}`, phase, args: [`${command} ${context.bugName}`], worktreeCwd: effectiveCwd, engineId: 'claude' });
       if (result.ok) {
         const agentId = result.value.agentId;
         bugCoordinator.setCurrentPhase(bugPath, phase, agentId);

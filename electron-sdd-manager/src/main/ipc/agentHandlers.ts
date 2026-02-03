@@ -23,7 +23,6 @@ import type { SpecManagerService, ExecutionGroup } from '../services/specManager
 import type { AgentInfo } from '../services/agentRecordService';
 import { getDefaultAgentRecordService } from '../services/agentRecordService';
 import { AgentRecordWatcherService } from '../services/agentRecordWatcherService';
-import { getClaudeCommand } from '../services/agentProcess';
 // Task 7.3: Agent Lifecycle Management integration (agent-lifecycle-management feature)
 import { getAgentLifecycleManager } from '../services/agentLifecycleSetup';
 // DRY: Uses shared readParsedLogs from logFileService
@@ -88,21 +87,20 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   // Requirements: 5.1-5.8, 10.1-10.3
   // ============================================================
 
+  // unified-engine-command-resolution: command parameter removed, engineId used instead
   ipcMain.handle(
     IPC_CHANNELS.START_AGENT,
     async (
       event,
       specId: string,
       phase: string,
-      command: string,
       args: string[],
       group?: ExecutionGroup,
       sessionId?: string,
-      _skipPermissions?: boolean // skip-permissions-main-process: Deprecated, now auto-fetched from layoutConfigService
+      engineId?: import('@shared/registry').LLMEngineId
     ) => {
-      // Replace 'claude' command with mock CLI command if configured (for E2E testing)
-      const resolvedCommand = command === 'claude' ? getClaudeCommand() : command;
-      logger.info('[agentHandlers] START_AGENT called', { specId, phase, command: resolvedCommand, args, group, sessionId });
+      const resolvedEngineId = engineId ?? 'claude';
+      logger.info('[agentHandlers] START_AGENT called', { specId, phase, engineId: resolvedEngineId, args, group, sessionId });
       const service = getSpecManagerService();
       const window = BrowserWindow.fromWebContents(event.sender);
 
@@ -115,13 +113,14 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
 
       logger.info('[agentHandlers] Calling service.startAgent');
       // skip-permissions-main-process: skipPermissions is now auto-fetched from layoutConfigService
+      // unified-engine-command-resolution: command resolved internally via EngineCommandResolverService
       const result = await service.startAgent({
         specId,
         phase,
-        command: resolvedCommand,
         args,
         group,
         sessionId,
+        engineId: resolvedEngineId,
       });
 
       if (!result.ok) {

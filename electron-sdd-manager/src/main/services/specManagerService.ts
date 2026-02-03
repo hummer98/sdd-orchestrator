@@ -7,7 +7,8 @@
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { readFile, writeFile } from 'fs/promises';
-import { createAgentProcess, AgentProcess, getClaudeCommand } from './agentProcess';
+import { createAgentProcess, AgentProcess } from './agentProcess';
+// unified-engine-command-resolution: getClaudeCommand removed - use EngineCommandResolverService instead
 import {
   createProviderAgentProcess,
   getProviderTypeFromPath,
@@ -46,6 +47,8 @@ import { unifiedParser } from '../utils/unifiedParser';
 // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 4.1
 import type { AgentStartError } from '../../shared/types/agentStartError';
 import { classifySpawnError, classifyExitError } from './agentStartErrorClassifier';
+// unified-engine-command-resolution: Task 2.2 - Centralized command resolution
+import { getEngineCommandResolverService } from './engineCommandResolverService';
 
 // execution-store-consolidation: AnalyzeError type retained for backward compatibility
 export type AnalyzeError =
@@ -324,10 +327,14 @@ export function getAllowedToolsForPhase(phase: string): string[] | undefined {
   return undefined;
 }
 
+/**
+ * StartAgentOptions
+ * unified-engine-command-resolution: Task 2.1 - Removed `command` parameter
+ * Command resolution is now handled internally via EngineCommandResolverService
+ */
 export interface StartAgentOptions {
   specId: string;
   phase: string;
-  command: string;
   args: string[];
   group?: ExecutionGroup;
   sessionId?: string;
@@ -340,11 +347,19 @@ export interface StartAgentOptions {
   /** Prompt used to start the agent (for recording in agent metadata) */
   prompt?: string;
   /**
-   * LLM engine ID for this agent
+   * LLM engine ID for this agent (defaults to 'claude')
+   * unified-engine-command-resolution: Task 2.1 - engineId determines command resolution
    * llm-stream-log-parser: Task 6.2 - engineId in StartAgentOptions
-   * Requirements: 2.1
+   * Requirements: 1.1, 1.2, 2.1
    */
   engineId?: LLMEngineId;
+  /**
+   * Command override for non-LLM tools (e.g., debatex)
+   * unified-engine-command-resolution: Edge case support for tools that are not LLM CLIs
+   * When specified, bypasses EngineCommandResolverService and uses this command directly
+   * @deprecated Use engineId for LLM engines. This is only for non-LLM tools like debatex.
+   */
+  commandOverride?: string;
 }
 
 /** Document Review execution options (Requirements: 6.1) */
@@ -814,9 +829,13 @@ export class SpecManagerService {
    * Now supports both local and SSH providers for transparent remote execution
    */
   async startAgent(options: StartAgentOptions): Promise<Result<AgentInfo, AgentError>> {
-    const { specId, phase, command, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd } = options;
-    // engineId: デフォルト適用 - 以降は必須として扱う
+    // unified-engine-command-resolution: Task 2.2 - Remove command from destructuring
+    const { specId, phase, args, group, sessionId, providerType, skipPermissions: _legacySkipPermissions, worktreeCwd, commandOverride } = options;
+    // unified-engine-command-resolution: Task 2.2 - engineId determines command resolution
     const engineId: LLMEngineId = options.engineId ?? DEFAULT_LLM_ENGINE;
+    // unified-engine-command-resolution: Task 2.2 - Resolve command internally via EngineCommandResolverService
+    // Edge case: commandOverride bypasses resolution for non-LLM tools (e.g., debatex)
+    const command = commandOverride ?? getEngineCommandResolverService().resolveCommand(engineId);
     const effectiveProviderType = providerType ?? this.providerType;
     // Extract prompt from options or args
     const effectivePrompt = options.prompt ?? extractPromptFromArgs(args);
@@ -856,8 +875,8 @@ export class SpecManagerService {
       effectiveCwd = this.projectPath;
     }
 
-    // Check if this is a Claude CLI command
-    const isClaudeCommand = command === 'claude' || command === getClaudeCommand();
+    // unified-engine-command-resolution: Task 2.2 - Use engineId for Claude check
+    const isClaudeCommand = engineId === 'claude';
 
     // skip-permissions-main-process: Auto-fetch skipPermissions from layoutConfigService
     // Only fetch for Claude commands to avoid unnecessary IO for non-Claude processes
@@ -1570,7 +1589,9 @@ export class SpecManagerService {
       allowedTools,
       skipPermissions: effectiveSkipPermissions,
     });
-    const command = getClaudeCommand();
+    // unified-engine-command-resolution: Use stored engineId or default to claude
+    const engineId = agent.engineId ?? DEFAULT_LLM_ENGINE;
+    const command = getEngineCommandResolverService().resolveCommand(engineId);
     const now = new Date().toISOString();
 
     // Bug fix: agent-resume-cwd-mismatch
@@ -1927,7 +1948,7 @@ export class SpecManagerService {
       return this.startAgent({
         specId,
         phase: 'document-review',
-        command: getClaudeCommand(),
+        // unified-engine-command-resolution: command resolved internally via engineId
         args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
         group: 'doc',
         engineId,
@@ -1960,33 +1981,36 @@ export class SpecManagerService {
         args,
       });
 
-      const command = engine.command;
-      const cmdString = Array.isArray(command) ? command[0] : command;
-      const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+      const engineCommand = engine.command;
+      const cmdString = Array.isArray(engineCommand) ? engineCommand[0] : engineCommand;
+      const cmdArgs = Array.isArray(engineCommand) ? [...engineCommand.slice(1), ...args] : args;
 
+      // unified-engine-command-resolution: debatex uses commandOverride since it's not an LLM CLI
       return this.startAgent({
         specId,
         phase: 'document-review',
-        command: cmdString,
         args: cmdArgs,
         group: 'doc',
         engineId,
+        commandOverride: cmdString,
       });
     }
 
     // For Gemini CLI, use the engine configuration
-    const command = engine.command;
-    const args = engine.buildArgs(featureName);
-    const cmdString = Array.isArray(command) ? command[0] : command;
-    const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+    const engineCommand = engine.command;
+    const engineArgs = engine.buildArgs(featureName);
+    const cmdString = Array.isArray(engineCommand) ? engineCommand[0] : engineCommand;
+    const cmdArgs = Array.isArray(engineCommand) ? [...engineCommand.slice(1), ...engineArgs] : engineArgs;
 
+    // unified-engine-command-resolution: For gemini-cli, engineId 'gemini' handles command resolution
+    // But we use commandOverride to be explicit since this is a different code path
     return this.startAgent({
       specId,
       phase: 'document-review',
-      command: cmdString,
       args: cmdArgs,
       group: 'doc',
       engineId,
+      commandOverride: cmdString,
     });
   }
 
@@ -2011,7 +2035,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'document-review-reply',
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({ command: fullCommand }),
       group: 'doc',
     });
@@ -2030,7 +2054,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'document-review-fix',
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
       group: 'doc',
     });
@@ -2064,7 +2088,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'inspection',
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'impl',
       worktreeCwd,
@@ -2092,7 +2116,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'inspection-fix',
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
       group: 'impl',
       worktreeCwd,
@@ -2123,7 +2147,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId,
       phase: 'spec-merge',
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
       group: 'doc',
     });
@@ -2179,7 +2203,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'requirements',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'doc',
         });
@@ -2190,7 +2214,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'design',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'doc',
         });
@@ -2201,7 +2225,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'tasks',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'doc',
         });
@@ -2212,7 +2236,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'deploy',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'doc',
         });
@@ -2231,7 +2255,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase,
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: commandStr }),
           group: 'impl',
         });
@@ -2245,7 +2269,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'auto-impl',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'impl',
         });
@@ -2270,7 +2294,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'inspection',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: commandParts.join(' ') }),
           group: 'impl',
         });
@@ -2281,7 +2305,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'inspection-fix',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName} --fix` }),
           group: 'impl',
         });
@@ -2300,7 +2324,7 @@ export class SpecManagerService {
           return this.startAgent({
             specId,
             phase: 'document-review',
-            command: getClaudeCommand(),
+            // unified-engine-command-resolution: command resolved internally via engineId
             args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
             group: 'doc',
             engineId,
@@ -2323,33 +2347,35 @@ export class SpecManagerService {
           };
 
           const args = engine.buildArgs(buildArgsContext);
-          const command = engine.command;
-          const cmdString = Array.isArray(command) ? command[0] : command;
-          const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+          const engineCommand = engine.command;
+          const cmdString = Array.isArray(engineCommand) ? engineCommand[0] : engineCommand;
+          const cmdArgs = Array.isArray(engineCommand) ? [...engineCommand.slice(1), ...args] : args;
 
+          // unified-engine-command-resolution: debatex uses commandOverride since it's not an LLM CLI
           return this.startAgent({
             specId,
             phase: 'document-review',
-            command: cmdString,
             args: cmdArgs,
             group: 'doc',
             engineId,
+            commandOverride: cmdString,
           });
         }
 
         // For Gemini CLI, use the engine configuration
-        const command = engine.command;
-        const args = engine.buildArgs(featureName);
-        const cmdString = Array.isArray(command) ? command[0] : command;
-        const cmdArgs = Array.isArray(command) ? [...command.slice(1), ...args] : args;
+        const engineCommand = engine.command;
+        const engineArgs = engine.buildArgs(featureName);
+        const cmdString = Array.isArray(engineCommand) ? engineCommand[0] : engineCommand;
+        const cmdArgs = Array.isArray(engineCommand) ? [...engineCommand.slice(1), ...engineArgs] : engineArgs;
 
+        // unified-engine-command-resolution: For gemini-cli, use commandOverride
         return this.startAgent({
           specId,
           phase: 'document-review',
-          command: cmdString,
           args: cmdArgs,
           group: 'doc',
           engineId,
+          commandOverride: cmdString,
         });
       }
 
@@ -2367,7 +2393,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'document-review-reply',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: fullCommand }),
           group: 'doc',
         });
@@ -2380,7 +2406,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'document-review-fix',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName} ${reviewNumber} --fix` }),
           group: 'doc',
         });
@@ -2392,7 +2418,7 @@ export class SpecManagerService {
         return this.startAgent({
           specId,
           phase: 'spec-merge',
-          command: getClaudeCommand(),
+          // unified-engine-command-resolution: command resolved internally via engineId
           args: buildClaudeArgs({ command: `${slashCommand} ${featureName}` }),
           group: 'doc',
         });
@@ -2641,7 +2667,7 @@ export class SpecManagerService {
       const result = await this.startAgent({
         specId,
         phase: phase === 'impl' && taskId ? `spec-manager-impl-${taskId}` : `spec-manager-${phase}`,
-        command: getClaudeCommand(),
+        // unified-engine-command-resolution: command resolved internally via engineId
         args: commandArgs,
         group: phase === 'impl' ? 'impl' : 'doc',
       });
@@ -2710,7 +2736,7 @@ export class SpecManagerService {
     return this.startAgent({
       specId: originalAgent.specId,
       phase: originalAgent.phase,
-      command: getClaudeCommand(),
+      // unified-engine-command-resolution: command resolved internally via engineId
       args: buildClaudeArgs({
         resumeSessionId: sessionId,
         resumePrompt: 'continue',

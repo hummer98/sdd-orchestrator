@@ -110,15 +110,16 @@ const electronAPI = {
   // Agent Management (Task 27.1, 28.1)
   // Requirements: 5.1-5.8
   // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+  // unified-engine-command-resolution: command parameter removed, engineId used instead
   startAgent: (
     specId: string,
     phase: string,
-    command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string
+    sessionId?: string,
+    engineId?: import('../shared/registry').LLMEngineId
   ): Promise<AgentInfo> =>
-    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, command, args, group, sessionId),
+    ipcRenderer.invoke(IPC_CHANNELS.START_AGENT, specId, phase, args, group, sessionId, engineId),
 
   stopAgent: (agentId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.STOP_AGENT, agentId),

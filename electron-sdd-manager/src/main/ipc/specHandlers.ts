@@ -332,12 +332,13 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
       // Start agent with specId='' (global agent)
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await service.startAgent({
         specId: '', // Empty specId for global agent
         phase: 'spec-init',
-        command: 'claude',
         args: [`${slashCommand} "${description}"${worktreeFlag}`], // Base flags added by service
         group: 'doc',
+        engineId: 'claude',
       });
 
       if (!result.ok) {
@@ -386,12 +387,13 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
       // Start agent with specId='' (global agent)
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await service.startAgent({
         specId: '', // Empty specId for global agent
         phase: 'spec-plan',
-        command: 'claude',
         args: [`${slashCommand} "${description}"${worktreeFlag}`], // Base flags added by service
         group: 'doc',
+        engineId: 'claude',
       });
 
       if (!result.ok) {
@@ -428,13 +430,14 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
       // Start agent with specId (spec agent)
       // Uses /kiro:spec-ask or equivalent command
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const slashCommand = `/${commandPrefix}:spec-ask`;
       const result = await service.startAgent({
         specId,
         phase: 'ask',
-        command: 'claude',
         args: [`${slashCommand} "${featureName}" "${prompt.replace(/"/g, '\\"')}"`],
         group: 'doc',
+        engineId: 'claude',
       });
 
       if (!result.ok) {

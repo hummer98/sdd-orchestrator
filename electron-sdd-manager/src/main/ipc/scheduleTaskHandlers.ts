@@ -23,7 +23,7 @@ import {
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
 import { setLastActivityTime, getIdleTimeMs as getIdleTimeMsFromTracker } from '../services/idleTimeTracker';
-import { getClaudeCommand } from '../services/agentProcess';
+// unified-engine-command-resolution: getClaudeCommand removed - command resolution is now internal to startAgent
 import { buildClaudeArgs, SpecManagerService } from '../services/specManagerService';
 import { WorktreeService } from '../services/worktreeService';
 import type {
@@ -147,13 +147,14 @@ export function createStartScheduleAgentWrapper(
       const phase = `schedule-${taskName}`;
 
       // Requirement 3.3: Pass prompt via args using buildClaudeArgs
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '', // Project-level agent
         phase,
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command: prompt }),
         prompt, // Store original prompt in agent metadata
         worktreeCwd: worktreePath, // Pass worktree path if workflow mode
+        engineId: 'claude',
       });
 
       if (result.ok) {

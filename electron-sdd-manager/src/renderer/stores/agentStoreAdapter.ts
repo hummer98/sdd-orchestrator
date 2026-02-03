@@ -76,24 +76,25 @@ interface RendererAgentInfo {
 export const agentOperations = {
   /**
    * Start a new agent
+   * unified-engine-command-resolution: command parameter removed, engineId used instead
    * @returns agentId on success, null on failure
    */
   async startAgent(
     specId: string,
     phase: string,
-    command: string,
     args: string[],
     group?: 'doc' | 'impl',
-    sessionId?: string
+    sessionId?: string,
+    engineId?: import('@shared/registry').LLMEngineId
   ): Promise<string | null> {
     try {
       const newAgent = await window.electronAPI.startAgent(
         specId,
         phase,
-        command,
         args,
         group,
-        sessionId
+        sessionId,
+        engineId
       );
 
       const agentInfo = toSharedAgentInfo(newAgent as RendererAgentInfo);

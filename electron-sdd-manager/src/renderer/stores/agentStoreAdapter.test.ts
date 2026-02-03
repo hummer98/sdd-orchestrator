@@ -90,41 +90,46 @@ describe('agentStoreAdapter', () => {
         };
         mockElectronAPI.startAgent.mockResolvedValue(mockAgent);
 
+        // unified-engine-command-resolution: command parameter removed, engineId used instead
         const result = await agentOperations.startAgent(
           'spec-a',
           'requirements',
-          'claude',
           ['-p'],
           'doc',
-          'session-1'
+          'session-1',
+          'claude'
         );
 
         expect(mockElectronAPI.startAgent).toHaveBeenCalledWith(
           'spec-a',
           'requirements',
-          'claude',
           ['-p'],
           'doc',
-          'session-1'
+          'session-1',
+          'claude'
         );
         expect(result).toBe('agent-1');
 
         // zustand-agent-selector-hooks: Verify agent was added to shared store
         // Use agents Map directly since getAgentsForSpec was removed
         const state = getSharedAgentStore();
-        const specAgents = state.agents.get('spec-a') || [];
-        expect(specAgents).toHaveLength(1);
-        expect(specAgents[0].id).toBe('agent-1');
+        const agents = state.getAgentsForSpec('spec-a');
+        expect(agents).toHaveLength(1);
+        // agentId-unification: Use agentId instead of id
+        expect(agents[0].agentId).toBe('agent-1');
       });
 
       it('should return null on error', async () => {
         mockElectronAPI.startAgent.mockRejectedValue(new Error('Spawn failed'));
 
+        // unified-engine-command-resolution: command parameter removed, engineId used instead
         const result = await agentOperations.startAgent(
           'spec-a',
           'requirements',
-          'claude',
-          []
+          [],
+          undefined,
+          undefined,
+          'claude'
         );
 
         expect(result).toBeNull();
@@ -174,8 +179,9 @@ describe('agentStoreAdapter', () => {
     describe('removeAgent', () => {
       it('should call window.electronAPI.deleteAgent and remove from shared store', async () => {
         // First add the agent
+        // agentId-unification: Use agentId instead of id
         const mockAgent = {
-          id: 'agent-1',
+          agentId: 'agent-1',
           specId: 'spec-a',
           phase: 'requirements',
           status: 'completed' as const,
@@ -268,8 +274,9 @@ describe('agentStoreAdapter', () => {
 
     it('should update agent status in shared store when onAgentStatusChange callback is invoked', () => {
       // First add an agent
+      // agentId-unification: Use agentId instead of id
       const mockAgent = {
-        id: 'agent-1',
+        agentId: 'agent-1',
         specId: 'spec-a',
         phase: 'requirements',
         status: 'running' as const,

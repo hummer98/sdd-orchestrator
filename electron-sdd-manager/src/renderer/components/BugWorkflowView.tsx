@@ -223,13 +223,14 @@ export function BugWorkflowView() {
       const fullCommand = `${command} ${selectedBug.name}`;
 
       // Base flags (-p, --output-format stream-json, --verbose) are added by specManagerService
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       await window.electronAPI.startAgent(
         `bug:${selectedBug.name}`, // Use bug:{name} format for consistent AgentListPanel filtering
         effectivePhase,
-        'claude',
         [fullCommand], // Args: full command (base flags added by service)
-        undefined,
-        undefined
+        undefined, // group
+        undefined, // sessionId
+        'claude'   // engineId
       );
     } catch (error) {
       // bug-deploy-phase Task 3.2, 4.2: Rollback phase on failure

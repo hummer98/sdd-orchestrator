@@ -220,12 +220,15 @@ export class IpcApiClient implements ApiClient {
     const phaseCommand = `/kiro:bug-${action}`;
     // Note: useWorktree option is not yet supported via IPC
     // Task 6.3 (remote-ui-bug-advanced-features): WebSocket API supports useWorktree
+    // unified-engine-command-resolution: command parameter removed, engineId used instead
     return wrapResult(async () => {
       const result = await window.electronAPI.startAgent(
         bugName,
         action,
-        'claude',
-        ['-p', phaseCommand, bugName]
+        ['-p', phaseCommand, bugName],
+        undefined, // group
+        undefined, // sessionId
+        'claude'   // engineId
       );
       return {
         agentId: result.agentId,

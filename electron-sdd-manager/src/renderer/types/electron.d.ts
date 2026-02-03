@@ -518,13 +518,14 @@ export interface ElectronAPI {
   // Agent Management (Task 27.1)
   // Requirements: 5.1-5.8
   // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
+  // unified-engine-command-resolution: command parameter removed, engineId used instead
   startAgent(
     specId: string,
     phase: string,
-    command: string,
     args: string[],
     group?: ExecutionGroup,
-    sessionId?: string
+    sessionId?: string,
+    engineId?: LLMEngineId
   ): Promise<AgentInfo>;
   stopAgent(agentId: string): Promise<void>;
   // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process

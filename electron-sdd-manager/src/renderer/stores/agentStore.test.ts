@@ -287,16 +287,16 @@ describe('useAgentStore', () => {
         // agent-store-unification: Facade delegates to adapter, which returns agentId
         (agentOperations.startAgent as ReturnType<typeof vi.fn>).mockResolvedValue('agent-1');
 
-        const result = await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
+        // unified-engine-command-resolution: command parameter removed, engineId used instead
+        const result = await useAgentStore.getState().startAgent('spec-1', 'requirements', ['-p'], undefined, undefined, 'claude');
 
-        // skip-permissions-main-process: skipPermissions is now auto-fetched in Main Process
         expect(agentOperations.startAgent).toHaveBeenCalledWith(
           'spec-1',
           'requirements',
-          'claude',
           ['-p'],
           undefined,
-          undefined
+          undefined,
+          'claude'
         );
 
         expect(result).toBe('agent-1');
@@ -305,7 +305,8 @@ describe('useAgentStore', () => {
       it('should handle start error', async () => {
         (agentOperations.startAgent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Spawn failed'));
 
-        await useAgentStore.getState().startAgent('spec-1', 'requirements', 'claude', ['-p']);
+        // unified-engine-command-resolution: command parameter removed, engineId used instead
+        await useAgentStore.getState().startAgent('spec-1', 'requirements', ['-p'], undefined, undefined, 'claude');
 
         const state = useAgentStore.getState();
         expect(state.error).toBe('Spawn failed');

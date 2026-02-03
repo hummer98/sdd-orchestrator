@@ -16,7 +16,7 @@ import { FileService } from '../services/fileService';
 import { projectConfigService } from '../services/layoutConfigService';
 import type { SpecManagerService } from '../services/specManagerService';
 import { buildClaudeArgs, getAllowedToolsForPhase } from '../services/specManagerService';
-import { getClaudeCommand } from '../services/agentProcess';
+// unified-engine-command-resolution: getClaudeCommand removed - command resolution is now internal to startAgent
 import { BugService } from '../services/bugService';
 import { join } from 'path';
 import type { ExecuteOptions } from '../../shared/types/executeOptions';
@@ -229,12 +229,13 @@ export function createWorkflowController(
       const bugService = new BugService();
       const worktreeCwd = await bugService.getAgentCwd(bugPath, projectPath);
 
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '',
         phase: bugPhase,
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `${slashCommand} ${bugName}`, allowedTools }),
         worktreeCwd,
+        engineId: 'claude',
       });
 
       if (result.ok) {
@@ -294,11 +295,12 @@ export function createWorkflowController(
      * @param description - Spec description
      */
     createSpec: async (description: string): Promise<WorkflowResult<AgentInfo>> => {
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '',
         phase: 'spec-init',
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `/kiro:spec-init "${description}"` }),
+        engineId: 'claude',
       });
 
       if (result.ok) {
@@ -327,11 +329,12 @@ export function createWorkflowController(
      * @param description - Bug description
      */
     createBug: async (name: string, description: string): Promise<WorkflowResult<AgentInfo>> => {
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '',
         phase: 'bug-create',
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command: `/kiro:bug-create ${name} "${description}"` }),
+        engineId: 'claude',
       });
 
       if (result.ok) {
@@ -361,11 +364,12 @@ export function createWorkflowController(
      * @param title - Display title/phase for Agent list
      */
     executeProjectCommand: async (command: string, title: string): Promise<WorkflowResult<AgentInfo>> => {
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '', // Empty specId for project-level agent
         phase: title,
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command }),
+        engineId: 'claude',
       });
 
       if (result.ok) {
@@ -399,11 +403,12 @@ export function createWorkflowController(
       command: string,
       title: string
     ): Promise<WorkflowResult<AgentInfo>> => {
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId,
         phase: title,
-        command: getClaudeCommand(),
         args: buildClaudeArgs({ command }),
+        engineId: 'claude',
       });
 
       if (result.ok) {
@@ -444,12 +449,13 @@ export function createWorkflowController(
 
     generateReleaseMd: async (): Promise<WorkflowResult<AgentInfo>> => {
       const slashCommand = '/kiro:generate-release';
+      // unified-engine-command-resolution: command parameter removed, engineId used instead
       const result = await specManagerService.startAgent({
         specId: '', // Empty specId for project agent
         phase: 'generate-release',
-        command: 'claude',
         args: [slashCommand],
         group: 'doc',
+        engineId: 'claude',
       });
 
       if (result.ok) {

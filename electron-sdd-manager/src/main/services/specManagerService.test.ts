@@ -518,9 +518,10 @@ describe('SpecManagerService', () => {
         featureName: 'my-feature',
       });
 
+      // unified-engine-command-resolution: command is now resolved internally via engineId
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: 'claude',
+          engineId: 'claude',
           args: expect.arrayContaining(['--verbose', '--output-format', 'stream-json']),
         })
       );
@@ -1767,9 +1768,10 @@ describe('executeDocumentReview - multi-engine support', () => {
       scheme: 'claude-code',
     });
 
+    // unified-engine-command-resolution: command is now resolved internally via engineId
     expect(startAgentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: 'claude',
+        engineId: 'claude',
         args: expect.arrayContaining(['/kiro:document-review my-feature']),
       })
     );
@@ -1786,9 +1788,10 @@ describe('executeDocumentReview - multi-engine support', () => {
       scheme: 'gemini-cli',
     });
 
+    // unified-engine-command-resolution: gemini-cli uses commandOverride
     expect(startAgentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: 'gemini',
+        commandOverride: 'gemini',
         args: expect.arrayContaining(['--yolo', '--output-format', 'stream-json']),
       })
     );
@@ -1865,10 +1868,10 @@ describe('executeDocumentReview - multi-engine support', () => {
     });
 
     // debatex uses ['npx', 'debatex'] as command, which gets split:
-    // command: 'npx', args: ['debatex', 'sdd-document-review', 'my-feature']
+    // unified-engine-command-resolution: commandOverride: 'npx', args: ['debatex', 'sdd-document-review', 'my-feature']
     expect(startAgentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: 'npx',
+        commandOverride: 'npx',
         args: expect.arrayContaining(['debatex', 'sdd-document-review', 'my-feature']),
       })
     );
@@ -1901,9 +1904,10 @@ describe('executeDocumentReview - multi-engine support', () => {
       });
 
       // Should include --output with the correct path
+      // unified-engine-command-resolution: debatex uses commandOverride
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: 'npx',
+          commandOverride: 'npx',
           args: expect.arrayContaining([
             'debatex',
             'sdd-document-review',
@@ -1978,9 +1982,10 @@ describe('executeDocumentReview - multi-engine support', () => {
       // No scheme specified
     });
 
+    // unified-engine-command-resolution: command is now resolved internally via engineId
     expect(startAgentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: 'claude',
+        engineId: 'claude',
       })
     );
 
@@ -1996,9 +2001,10 @@ describe('executeDocumentReview - multi-engine support', () => {
       scheme: 'unknown-engine' as any,
     });
 
+    // unified-engine-command-resolution: command is now resolved internally via engineId
     expect(startAgentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: 'claude',
+        engineId: 'claude',
       })
     );
 
@@ -2191,12 +2197,13 @@ describe('executeDocumentReview - multi-engine support', () => {
         featureName: 'my-feature',
       });
 
+      // unified-engine-command-resolution: command is now resolved internally via engineId
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: 'test-spec',
           phase: 'document-review',
           group: 'doc',
-          command: 'claude',
+          engineId: 'claude',
         })
       );
 
@@ -2320,11 +2327,12 @@ describe('executeDocumentReview - multi-engine support', () => {
         scheme: 'gemini-cli',
       });
 
+      // unified-engine-command-resolution: gemini-cli uses commandOverride
       expect(startAgentSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           specId: 'test-spec',
           phase: 'document-review',
-          command: 'gemini',
+          commandOverride: 'gemini',
         })
       );
 
@@ -2567,12 +2575,13 @@ describe('executeDocumentReview - multi-engine support', () => {
         layoutConfigService: mockLayoutConfigService,
       });
 
+      // unified-engine-command-resolution: command removed, use engineId instead
       const result = await serviceWithMock.startAgent({
         specId: 'skip-perm-test',
         phase: 'impl-1.1',
-        command: 'claude',
         args: ['/kiro:spec-impl skip-perm-test'],
         group: 'impl',
+        engineId: 'claude',
       });
 
       expect(result.ok).toBe(true);
@@ -2598,12 +2607,13 @@ describe('executeDocumentReview - multi-engine support', () => {
         layoutConfigService: mockLayoutConfigService,
       });
 
+      // unified-engine-command-resolution: command removed, use engineId instead
       const result = await serviceWithMock.startAgent({
         specId: 'no-skip-perm-test',
         phase: 'impl-1.1',
-        command: 'claude',
         args: ['/kiro:spec-impl no-skip-perm-test'],
         group: 'impl',
+        engineId: 'claude',
       });
 
       expect(result.ok).toBe(true);

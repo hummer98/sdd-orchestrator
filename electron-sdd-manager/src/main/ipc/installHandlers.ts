@@ -221,12 +221,13 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
         if (specManagerService) {
           // Fire-and-forget: Don't await the Agent startup
           // Requirements: 2.4, 2.5 - Background execution, return result immediately
+          // unified-engine-command-resolution: command parameter removed, engineId used instead
           specManagerService.startAgent({
             specId: '',
             phase: 'claudemd-merge',
-            command: 'claude',
             args: ['/internal:claudemd-merge'],
             group: 'doc',
+            engineId: 'claude',
           }).then((agentResult) => {
             if (agentResult.ok) {
               logger.info('[installHandlers] claudemd-merge agent started', { agentId: agentResult.value.agentId });

@@ -193,14 +193,16 @@ interface AgentActions {
   loadAgentLogs: (specId: string, agentId: string) => Promise<void>;
   /** Add an agent to the store */
   addAgent: (specId: string, agent: AgentInfo) => void;
-  /** Start a new agent */
+  /** Start a new agent
+   * unified-engine-command-resolution: command parameter removed, engineId used instead
+   */
   startAgent: (
     specId: string,
     phase: string,
-    command: string,
     args: string[],
     group?: 'doc' | 'impl',
-    sessionId?: string
+    sessionId?: string,
+    engineId?: import('@shared/registry').LLMEngineId
   ) => Promise<string | null>;
   /** Stop a running agent */
   stopAgent: (agentId: string) => Promise<void>;
@@ -431,17 +433,18 @@ export const useAgentStore = create<AgentStore>()(
       set({ agents: getAgentsFromShared() });
     },
 
+    // unified-engine-command-resolution: command parameter removed, engineId used instead
     startAgent: async (
       specId: string,
       phase: string,
-      command: string,
       args: string[],
       group?: 'doc' | 'impl',
-      sessionId?: string
+      sessionId?: string,
+      engineId?: import('@shared/registry').LLMEngineId
     ) => {
       set({ isLoading: true, error: null });
       try {
-        const agentId = await agentOperations.startAgent(specId, phase, command, args, group, sessionId);
+        const agentId = await agentOperations.startAgent(specId, phase, args, group, sessionId, engineId);
         set({
           isLoading: false,
           agents: getAgentsFromShared(),

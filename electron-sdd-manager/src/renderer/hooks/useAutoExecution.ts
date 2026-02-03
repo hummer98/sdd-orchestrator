@@ -9,25 +9,14 @@
 
 import { useCallback, useState } from 'react';
 import type { WorkflowPhase } from '../types/workflow';
-import type { AutoExecutionStatus } from '../types';
+import type { AutoExecutionStatus, AutoExecutionPermissions } from '../types';
+
+// Re-export for backward compatibility
+export type { AutoExecutionPermissions } from '../types';
 
 // ============================================================
 // Types
 // ============================================================
-
-/**
- * Auto execution permissions for each phase
- * inspection-permission-unification Task 1.1: Added inspection and deploy as required fields
- * Requirements: 1.3, 1.5
- */
-export interface AutoExecutionPermissions {
-  readonly requirements: boolean;
-  readonly design: boolean;
-  readonly tasks: boolean;
-  readonly impl: boolean;
-  readonly inspection: boolean;
-  readonly deploy: boolean;
-}
 
 /**
  * Approval phase status

@@ -214,6 +214,51 @@ describe('DocsTabs', () => {
   });
 
   // ============================================================
+  // project-config-editor Task 4.1: Project tab support
+  // Requirements: 1.1, 1.2, 1.3
+  // ============================================================
+  describe('Project tab support', () => {
+    it('should display Project tab', () => {
+      render(<DocsTabsWrapper />);
+
+      expect(screen.getByTestId('tab-project')).toBeInTheDocument();
+    });
+
+    it('should switch to Project tab when clicked', () => {
+      render(<DocsTabsWrapper />);
+
+      fireEvent.click(screen.getByTestId('tab-project'));
+
+      expect(screen.getByTestId('tab-project')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('tab-specs')).toHaveAttribute('aria-selected', 'false');
+    });
+
+    it('should not show create button on Project tab', () => {
+      render(<DocsTabsWrapper initialTab="project" />);
+
+      // Create button should not be visible for Project tab
+      expect(screen.queryByTestId('create-button')).not.toBeInTheDocument();
+    });
+
+    it('should call onTabChange with project when Project tab is clicked', () => {
+      const onTabChange = vi.fn();
+      render(<DocsTabs activeTab="specs" onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByTestId('tab-project'));
+
+      expect(onTabChange).toHaveBeenCalledWith('project');
+    });
+
+    it('should clear agent selection when switching to Project tab', () => {
+      render(<DocsTabsWrapper />);
+
+      fireEvent.click(screen.getByTestId('tab-project'));
+
+      expect(mockSelectAgent).toHaveBeenCalledWith(null);
+    });
+  });
+
+  // ============================================================
   // Accessibility
   // ============================================================
   describe('accessibility', () => {
@@ -227,7 +272,8 @@ describe('DocsTabs', () => {
       render(<DocsTabsWrapper />);
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs).toHaveLength(2);
+      // Now 3 tabs: specs, bugs, project
+      expect(tabs).toHaveLength(3);
     });
 
     it('should have tabpanel role on content', () => {

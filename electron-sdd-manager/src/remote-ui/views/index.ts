@@ -33,6 +33,10 @@ export type { ProjectAgentViewProps } from './ProjectAgentView';
 export { RemoteWorkflowView } from './RemoteWorkflowView';
 export type { RemoteWorkflowViewProps } from './RemoteWorkflowView';
 
+// project-config-editor Task 6.1: Project file list view for Remote UI
+export { ProjectView } from './ProjectView';
+export type { ProjectViewProps } from './ProjectView';
+
 // Task 10.2: Mobile Layout Refine - 新規コンポーネントの再エクスポート
 // これらのコンポーネントはremote-ui/components/で実装されており、
 // viewsからのインポートを好むコンシューマー向けに再エクスポートする
@@ -43,6 +47,9 @@ export {
   AgentsTabView,
   AgentDetailDrawer,
   SubTabBar,
+  // project-config-editor Task 6.2, 6.3: Project file editor components
+  RemoteProjectEditor,
+  ProjectDetailPage,
 } from '../components';
 export type {
   SpecDetailPageProps,
@@ -52,4 +59,7 @@ export type {
   AgentsTabViewProps,
   AgentDetailDrawerProps,
   SubTabBarProps,
+  // project-config-editor Task 6.2, 6.3: Project file editor types
+  RemoteProjectEditorProps,
+  ProjectDetailPageProps,
 } from '../components';

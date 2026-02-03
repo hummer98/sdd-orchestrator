@@ -22,6 +22,7 @@ import type {
   BugMetadataWithPath,
   BugDetail,
   AgentInfo,
+  ProjectFileInfo,
 } from '@shared/api/types';
 
 // =============================================================================
@@ -30,9 +31,10 @@ import type {
 
 /**
  * Mobile tab identifiers
- * specs/bugs/agents are the main tabs
+ * specs/bugs/agents/project are the main tabs
+ * project-config-editor Task 7.2: Added 'project' tab
  */
-export type MobileTab = 'specs' | 'bugs' | 'agents';
+export type MobileTab = 'specs' | 'bugs' | 'agents' | 'project';
 
 /**
  * Detail context for Spec detail page
@@ -68,10 +70,22 @@ export interface AgentLogContext {
 }
 
 /**
+ * Detail context for Project file detail page
+ * project-config-editor Task 7.2: Added for project file editing
+ * Requirements: 6.3 - Mobile詳細ページ
+ */
+export interface ProjectDetailContext {
+  type: 'project';
+  /** Project file to edit */
+  file: ProjectFileInfo;
+}
+
+/**
  * Union type for detail context
  * mobile-agent-log-fullscreen: Extended to include AgentLogContext
+ * project-config-editor: Extended to include ProjectDetailContext
  */
-export type DetailContext = SpecDetailContext | BugDetailContext | AgentLogContext;
+export type DetailContext = SpecDetailContext | BugDetailContext | AgentLogContext | ProjectDetailContext;
 
 /**
  * Navigation state interface
@@ -98,6 +112,7 @@ export interface UseNavigationStackOptions {
  * Hook return type
  * Matches design.md UseNavigationStackReturn specification
  * mobile-agent-log-fullscreen: Extended with pushAgentLog
+ * project-config-editor: Extended with pushProjectDetail
  */
 export interface UseNavigationStackReturn {
   /** Current navigation state */
@@ -114,6 +129,12 @@ export interface UseNavigationStackReturn {
    * Requirements: 5.4
    */
   pushAgentLog: (agent: AgentInfo, sourceType: 'spec' | 'bug' | 'agents', sourceEntityId?: string) => void;
+  /**
+   * Push project file detail page onto stack
+   * project-config-editor: Task 7.2
+   * Requirements: 6.3
+   */
+  pushProjectDetail: (file: ProjectFileInfo) => void;
   /** Pop current page from stack */
   popPage: () => void;
   /** Derived: is currently showing a detail page */
@@ -211,6 +232,19 @@ export function useNavigationStack(
   }, []);
 
   /**
+   * Push project file detail page onto navigation stack
+   * project-config-editor: Task 7.2
+   * Requirements: 6.3
+   * Automatically hides tab bar (follows existing pattern)
+   */
+  const pushProjectDetail = useCallback((file: ProjectFileInfo) => {
+    setDetailContext({
+      type: 'project',
+      file,
+    });
+  }, []);
+
+  /**
    * Pop current page from navigation stack (Req 2.4)
    * Automatically shows tab bar (Req 2.5)
    * Preserves active tab
@@ -240,6 +274,7 @@ export function useNavigationStack(
     pushSpecDetail,
     pushBugDetail,
     pushAgentLog,
+    pushProjectDetail,
     popPage,
     isDetailPage,
   };

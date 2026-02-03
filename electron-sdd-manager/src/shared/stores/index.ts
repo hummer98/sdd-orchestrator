@@ -73,3 +73,17 @@ export type { GitViewDiffMode, GitViewViewMode } from './gitViewStore';
 export { useNotificationStore, setNotificationHandler } from './notificationStore';
 export type { NotificationData, SharedNotificationStore } from './notificationStore';
 
+// Project Editor store (project-config-editor feature)
+// Task 1.2: Project file editing state management
+// Requirements: 4.1, 4.4, 5.2
+export {
+  useProjectEditorStore,
+  resetProjectEditorStore,
+  getProjectEditorStore,
+} from './projectEditorStore';
+export type {
+  ProjectEditorState,
+  ProjectEditorActions,
+  ProjectEditorStore,
+} from './projectEditorStore';
+

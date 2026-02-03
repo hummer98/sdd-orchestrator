@@ -29,6 +29,8 @@ import type {
   BugsChangeEvent,
   // main-process-log-parser Task 10.2: Import ParsedLogEntry for onAgentLog
   ParsedLogEntry,
+  // project-config-editor Task 5.1: Project file types
+  ProjectFilesState,
 } from './types';
 import type { ExecuteOptions } from '../types/executeOptions';
 
@@ -1345,5 +1347,29 @@ export class WebSocketApiClient implements ApiClient {
       conflict?: boolean;
       error?: string;
     }>('worktree:rebase-from-main', { specOrBugPath });
+  }
+
+  // ===========================================================================
+  // Project File Operations (project-config-editor Task 5.1)
+  // Requirements: 3.1, 4.1, 6.2
+  // ===========================================================================
+
+  async listProjectFiles(): Promise<Result<ProjectFilesState, ApiError>> {
+    return this.wrapRequest<ProjectFilesState>('PROJECT_FILE_LIST');
+  }
+
+  async readProjectFile(filePath: string): Promise<Result<string, ApiError>> {
+    return this.wrapRequest<string>('PROJECT_FILE_READ', { filePath });
+  }
+
+  async writeProjectFile(filePath: string, content: string): Promise<Result<void, ApiError>> {
+    return this.wrapRequest<void>('PROJECT_FILE_WRITE', { filePath, content });
+  }
+
+  onProjectFileChanged(listener: (filePath: string) => void): () => void {
+    return this.on('projectFileChanged', (data) => {
+      const { filePath } = data as { filePath: string };
+      listener(filePath);
+    });
   }
 }

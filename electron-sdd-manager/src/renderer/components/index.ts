@@ -97,6 +97,12 @@ export {
   AgentBehaviorEditor,
   type AgentBehaviorEditorProps,
 } from '@shared/components/schedule';
+// project-config-editor: Project configuration editing components
+export { ProjectFileList } from './ProjectFileList';
+export { ProjectFileEditor } from './ProjectFileEditor';
+export { ExternalChangeDialog } from './ExternalChangeDialog';
+export { ProjectPane } from './ProjectPane';
+
 // git-diff-viewer Task 10.5: Git components (re-export from shared)
 // git-view-source-mode Task 8.3: Extended with Source view components
 export {

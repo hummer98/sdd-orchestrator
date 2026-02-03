@@ -2635,6 +2635,51 @@ const electronAPI = {
    */
   getArtifactPath: (name: string, filename: string, entityType: 'spec' | 'bug' = 'spec'): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_ARTIFACT_PATH, name, filename, entityType),
+
+  // ============================================================
+  // Project Config Editor (project-config-editor feature)
+  // Requirements: 2.1, 2.2, 3.1, 4.1, 5.1
+  // ============================================================
+
+  /**
+   * List project files (CLAUDE.md and steering files)
+   * @returns ProjectFilesState with claudeMd and steeringFiles
+   */
+  listProjectFiles: (): Promise<import('../shared/api/types').ProjectFilesState> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROJECT_FILE_LIST),
+
+  /**
+   * Read project file content
+   * @param filePath Absolute file path
+   * @returns File content as string
+   */
+  readProjectFile: (filePath: string): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROJECT_FILE_READ, filePath),
+
+  /**
+   * Write project file content
+   * @param filePath Absolute file path
+   * @param content File content to write
+   */
+  writeProjectFile: (filePath: string, content: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROJECT_FILE_WRITE, filePath, content),
+
+  /**
+   * Subscribe to project file changes
+   * @param callback Function called when a project file changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onProjectFileChanged: (callback: (filePath: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, filePath: string) => {
+      callback(filePath);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PROJECT_FILE_CHANGED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PROJECT_FILE_CHANGED, handler);
+    };
+  },
 };
 
 // Expose API to renderer

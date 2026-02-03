@@ -66,6 +66,8 @@ import { registerSpecHandlers, startSpecsWatcher as startSpecsWatcherImpl, stopS
 import { MigrationService, type MigrationInfo } from '../services/migrationService';
 // git-diff-viewer: Git handlers
 import { registerGitHandlers } from './gitHandlers';
+// project-config-editor: Project file handlers
+import { registerProjectFileHandlers, startProjectFileWatcher, stopProjectFileWatcher } from './projectFileHandlers';
 
 // Types
 import type { SelectProjectResult } from '../../renderer/types';
@@ -280,6 +282,11 @@ export async function setProjectPath(projectPath: string): Promise<void> {
   await stopSpecsWatcherImpl();
   await stopAgentRecordWatcher();
   await stopBugsWatcherImpl();
+  await stopProjectFileWatcher();
+
+  // project-config-editor: Start project file watcher
+  // Requirements: 5.1
+  await startProjectFileWatcher(projectPath);
 
   // Setup Remote Access
   setupRemoteAccessProviders(projectPath);
@@ -495,6 +502,10 @@ export function registerIpcHandlers(): void {
 
   // Git Diff Viewer Handlers (git-diff-viewer feature)
   registerGitHandlers();
+
+  // Project Config Editor Handlers (project-config-editor feature)
+  // Requirements: 2.1, 2.2, 3.1, 4.1, 5.1
+  registerProjectFileHandlers({ getCurrentProjectPath });
 
   // ============================================================
   // Project Command Execution (release-button-api-fix feature)

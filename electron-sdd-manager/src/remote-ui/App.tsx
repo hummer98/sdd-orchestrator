@@ -15,7 +15,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
-import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView } from './views';
+import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView, ProjectView } from './views';
+import { ProjectDetailPage } from './components/ProjectDetailPage';
+import { RemoteProjectEditor } from './components/RemoteProjectEditor';
 import { AgentsTabView } from './components/AgentsTabView';
 import { ToastContainer } from './components/ToastContainer';
 import { RefreshButton } from './components/RefreshButton';
@@ -33,7 +35,7 @@ import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CreateSpecDialogRemote } from './components/CreateSpecDialogRemote';
 import { CreateBugDialogRemote } from './components/CreateBugDialogRemote';
-import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo as SharedAgentInfo, AgentStatus } from '../shared/api/types';
+import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecutionOptions, AgentInfo as SharedAgentInfo, AgentStatus, ProjectFileInfo } from '../shared/api/types';
 
 // mobile-agent-log-fullscreen: Re-export for local use
 type AgentInfo = SharedAgentInfo;
@@ -47,7 +49,8 @@ import { useAgentLogSubscription } from '../shared/hooks/useAgentLogSubscription
 // Types
 // =============================================================================
 
-type DocsTab = 'specs' | 'bugs';
+// project-config-editor Task 8.1: Extended DocsTab to include 'project'
+type DocsTab = 'specs' | 'bugs' | 'project';
 
 // =============================================================================
 // Helper Functions for Project Agent
@@ -105,8 +108,12 @@ interface LeftSidebarProps {
   onTabChange: (tab: DocsTab) => void;
   selectedSpecId?: string;
   selectedBugId?: string;
+  /** project-config-editor Task 8.1: Selected project file path */
+  selectedProjectFilePath?: string;
   onSelectSpec: (spec: SpecMetadataWithPath) => void;
   onSelectBug: (bug: BugMetadataWithPath) => void;
+  /** project-config-editor Task 8.1: Handler for project file selection */
+  onSelectProjectFile?: (file: ProjectFileInfo) => void;
   deviceType: 'desktop' | 'smartphone';
   /** Task 7.3: Callback to refresh agents (Req 4.3) */
   onRefreshAgents?: () => Promise<void>;
@@ -119,8 +126,10 @@ function LeftSidebar({
   onTabChange,
   selectedSpecId,
   selectedBugId,
+  selectedProjectFilePath,
   onSelectSpec,
   onSelectBug,
+  onSelectProjectFile,
   deviceType,
   onRefreshAgents,
   isRefreshingAgents = false,
@@ -203,6 +212,7 @@ function LeftSidebar({
   return (
     <div className="flex flex-col h-full">
       {/* Tabs - Electron版のDocsTabsに準拠 */}
+      {/* project-config-editor Task 8.1: Added Project tab */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => onTabChange('specs')}
@@ -224,8 +234,19 @@ function LeftSidebar({
         >
           Bugs
         </button>
-        {/* Create button - Desktop only (Task 3.2) */}
-        {!isSmartphone && (
+        {/* project-config-editor Task 8.1: Project tab for DesktopLayout (Req 6.1) */}
+        <button
+          onClick={() => onTabChange('project')}
+          className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'project'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Project
+        </button>
+        {/* Create button - Desktop only (Task 3.2), hide for Project tab */}
+        {!isSmartphone && activeTab !== 'project' && (
           <button
             data-testid={activeTab === 'specs' ? 'create-spec-button' : 'create-bug-button'}
             onClick={handleCreateClick}
@@ -243,18 +264,28 @@ function LeftSidebar({
       </div>
 
       {/* List */}
+      {/* project-config-editor Task 8.1: Added ProjectView for project tab (Req 6.2) */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {activeTab === 'specs' ? (
+        {activeTab === 'specs' && (
           <SpecsView
             apiClient={apiClient}
             selectedSpecId={selectedSpecId}
             onSelectSpec={onSelectSpec}
           />
-        ) : (
+        )}
+        {activeTab === 'bugs' && (
           <BugsView
             apiClient={apiClient}
             selectedBugId={selectedBugId}
             onSelectBug={onSelectBug}
+          />
+        )}
+        {activeTab === 'project' && onSelectProjectFile && (
+          <ProjectView
+            apiClient={apiClient}
+            selectedFilePath={selectedProjectFilePath}
+            onSelectFile={onSelectProjectFile}
+            testId="desktop-project-view"
           />
         )}
       </div>
@@ -371,9 +402,11 @@ interface MainPanelProps {
   selectedSpec: SpecMetadataWithPath | null;
   specDetail: SpecDetail | null;
   selectedBug: BugMetadataWithPath | null;
+  // project-config-editor Task 8.2: Selected project file for editor display
+  selectedProjectFile?: ProjectFileInfo | null;
 }
 
-function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug }: MainPanelProps) {
+function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug, selectedProjectFile }: MainPanelProps) {
   const apiClient = useApi();
 
   // Spec選択時: RemoteArtifactEditorを表示
@@ -405,12 +438,31 @@ function MainPanel({ activeTab, selectedSpec, specDetail, selectedBug }: MainPan
     );
   }
 
+  // project-config-editor Task 8.2: Project file selected - show RemoteProjectEditor
+  // Requirements: 6.2 - DesktopLayout用ProjectViewの統合
+  if (activeTab === 'project' && selectedProjectFile) {
+    return (
+      <div className="flex flex-col h-full">
+        <RemoteProjectEditor
+          file={selectedProjectFile}
+          apiClient={apiClient}
+          testId="desktop-remote-project-editor"
+        />
+      </div>
+    );
+  }
+
   // Placeholder when nothing selected
+  // project-config-editor Task 8.2: Updated placeholder message
   return (
     <div className="h-full flex items-center justify-center">
       <div className="text-center text-gray-500 dark:text-gray-400">
-        <p className="text-lg">SpecまたはBugを選択</p>
-        <p className="text-sm mt-2">してドキュメントを表示</p>
+        <p className="text-lg">
+          {activeTab === 'project' ? 'ファイルを選択' : 'SpecまたはBugを選択'}
+        </p>
+        <p className="text-sm mt-2">
+          {activeTab === 'project' ? 'してエディタを表示' : 'してドキュメントを表示'}
+        </p>
       </div>
     </div>
   );
@@ -687,6 +739,8 @@ function DesktopAppContent() {
   const [selectedSpec, setSelectedSpec] = useState<SpecMetadataWithPath | null>(null);
   const [selectedSpecDetail, setSelectedSpecDetail] = useState<SpecDetail | null>(null);
   const [selectedBug, setSelectedBug] = useState<BugMetadataWithPath | null>(null);
+  // project-config-editor Task 8.2: State for selected project file
+  const [selectedProjectFile, setSelectedProjectFile] = useState<ProjectFileInfo | null>(null);
 
   // Auto execution state
   const [isAutoExecuting, setIsAutoExecuting] = useState(false);
@@ -722,12 +776,19 @@ function DesktopAppContent() {
   }, []);
 
   // Handle tab change
+  // project-config-editor Task 8.2: Clear project file on tab change
   const handleTabChange = useCallback((tab: DocsTab) => {
     setActiveTab(tab);
     setSelectedSpec(null);
     setSelectedSpecDetail(null);
     setSelectedBug(null);
+    setSelectedProjectFile(null);
     setIsAutoExecuting(false);
+  }, []);
+
+  // project-config-editor Task 8.2: Handle project file selection
+  const handleSelectProjectFile = useCallback((file: ProjectFileInfo) => {
+    setSelectedProjectFile(file);
   }, []);
 
   // Handle auto execution start/stop
@@ -772,21 +833,26 @@ function DesktopAppContent() {
           onTabChange={handleTabChange}
           selectedSpecId={selectedSpec?.name}
           selectedBugId={selectedBug?.name}
+          selectedProjectFilePath={selectedProjectFile?.relativePath}
           onSelectSpec={handleSelectSpec}
           onSelectBug={handleSelectBug}
+          onSelectProjectFile={handleSelectProjectFile}
           deviceType="desktop"
           onRefreshAgents={refreshAgents}
           isRefreshingAgents={isAgentRefreshing}
         />
       }
       rightSidebar={
-        <RightSidebar
-          activeTab={activeTab}
-          selectedSpec={selectedSpec}
-          specDetail={selectedSpecDetail}
-          isAutoExecuting={isAutoExecuting}
-          onAutoExecution={handleAutoExecution}
-        />
+        // project-config-editor Task 8.2: Hide right sidebar when project tab is active (Req 3.3)
+        activeTab === 'project' ? undefined : (
+          <RightSidebar
+            activeTab={activeTab}
+            selectedSpec={selectedSpec}
+            specDetail={selectedSpecDetail}
+            isAutoExecuting={isAutoExecuting}
+            onAutoExecution={handleAutoExecution}
+          />
+        )
       }
       footer={<FooterContent />}
     >
@@ -795,6 +861,7 @@ function DesktopAppContent() {
         selectedSpec={selectedSpec}
         specDetail={selectedSpecDetail}
         selectedBug={selectedBug}
+        selectedProjectFile={selectedProjectFile}
       />
     </DesktopLayout>
   );
@@ -817,12 +884,14 @@ function MobileAppContent() {
   // Task 8.1: useNavigationStack Hookの導入
   // Manages activeTab, detailContext, showTabBar states
   // mobile-agent-log-fullscreen: Added pushAgentLog for agent log page navigation
+  // project-config-editor Task 7.2: Added pushProjectDetail for project file editing
   const {
     state: navigationState,
     setActiveTab,
     pushSpecDetail,
     pushBugDetail,
     pushAgentLog,
+    pushProjectDetail,
     popPage,
   } = useNavigationStack();
 
@@ -880,12 +949,20 @@ function MobileAppContent() {
     pushAgentLog(agent, 'agents');
   }, [pushAgentLog]);
 
+  /**
+   * project-config-editor Task 7.2: Project file selection handler
+   * Requirements: 6.2 - Navigate to ProjectDetailPage
+   */
+  const handleSelectProjectFile = useCallback((file: ProjectFileInfo) => {
+    pushProjectDetail(file);
+  }, [pushProjectDetail]);
+
   // Task 8.1: タブ切替ハンドラ - setActiveTabを使用
   // setActiveTabは自動的にdetailContextをクリアする (Req 2.6)
-  // Note: LayoutMobileTab includes legacy values, filter to valid 3-tab values
+  // project-config-editor Task 7.2: Added 'project' tab support
   const handleTabChange = useCallback((tab: LayoutMobileTab) => {
-    // Only process the 3 valid tabs (specs/bugs/agents)
-    if (tab === 'specs' || tab === 'bugs' || tab === 'agents') {
+    // Process all valid tabs (specs/bugs/agents/project)
+    if (tab === 'specs' || tab === 'bugs' || tab === 'agents' || tab === 'project') {
       setActiveTab(tab);
     }
   }, [setActiveTab]);
@@ -944,6 +1021,21 @@ function MobileAppContent() {
           />
         );
       }
+
+      // project-config-editor Task 7.2: ProjectDetailPageの表示 (Req 6.3)
+      // - ProjectViewのファイルタップ時にpushProjectDetailを呼び出し
+      // - 戻るボタンでpopPageを呼び出し → onBack={handleBackToList}で接続
+      if (detailContext.type === 'project') {
+        const { file } = detailContext;
+        return (
+          <ProjectDetailPage
+            file={file}
+            apiClient={apiClient}
+            onBack={handleBackToList}
+            testId="project-detail-page"
+          />
+        );
+      }
     }
 
     // Task 8.1: リスト表示（detailContextがnull）
@@ -978,6 +1070,17 @@ function MobileAppContent() {
             onRefresh={refreshAgents}
             isRefreshing={isAgentRefreshing}
             testId="agents-tab-view"
+          />
+        );
+
+      // project-config-editor Task 7.2: ProjectタブをMobileAppContentに統合
+      // Requirements: 6.1, 6.2 - Mobile版タブ追加、ファイル一覧表示
+      case 'project':
+        return (
+          <ProjectView
+            apiClient={apiClient}
+            onSelectFile={handleSelectProjectFile}
+            testId="project-view"
           />
         );
 

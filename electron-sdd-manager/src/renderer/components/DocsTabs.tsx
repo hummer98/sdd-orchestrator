@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { FileText, Bug, Plus } from 'lucide-react';
+import { FileText, Bug, Plus, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SpecList } from './SpecList';
 import { BugList } from './BugList';
@@ -13,7 +13,8 @@ import { CreateSpecDialog } from './CreateSpecDialog';
 import { CreateBugDialog } from './CreateBugDialog';
 import { useProjectStore, useAgentStore } from '../stores';
 
-export type DocsTab = 'specs' | 'bugs';
+// project-config-editor Task 1.1: Add 'project' tab type
+export type DocsTab = 'specs' | 'bugs' | 'project';
 
 interface DocsTabsProps {
   className?: string;
@@ -27,12 +28,15 @@ interface TabConfig {
   id: DocsTab;
   label: string;
   icon: typeof FileText;
-  createLabel: string;
+  /** Create button label, null if no create button for this tab */
+  createLabel: string | null;
 }
 
+// project-config-editor Task 4.1: Add Project tab
 const TAB_CONFIGS: TabConfig[] = [
   { id: 'specs', label: 'Specs', icon: FileText, createLabel: 'Spec' },
   { id: 'bugs', label: 'Bugs', icon: Bug, createLabel: 'Bug' },
+  { id: 'project', label: 'Project', icon: FolderOpen, createLabel: null },
 ];
 
 /**
@@ -105,8 +109,8 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
           })}
         </div>
 
-        {/* Create button */}
-        {currentProject && (
+        {/* Create button - only for tabs with createLabel */}
+        {currentProject && activeConfig?.createLabel && (
           <button
             onClick={handleCreateClick}
             className={clsx(
@@ -114,18 +118,18 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
               'bg-blue-500 hover:bg-blue-600 text-white',
               'transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500'
             )}
-            title={activeConfig?.createLabel}
+            title={activeConfig.createLabel}
             data-testid="create-button"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{activeConfig?.createLabel}</span>
+            <span className="hidden sm:inline">{activeConfig.createLabel}</span>
           </button>
         )}
       </div>
 
-      {/* Tab content */}
+      {/* Tab content - only show Specs/Bugs content, Project is handled by App.tsx */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'specs' ? (
+        {activeTab === 'specs' && (
           <div
             role="tabpanel"
             id="tabpanel-specs"
@@ -135,7 +139,8 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
           >
             <SpecList />
           </div>
-        ) : (
+        )}
+        {activeTab === 'bugs' && (
           <div
             role="tabpanel"
             id="tabpanel-bugs"
@@ -146,6 +151,7 @@ export function DocsTabs({ className, activeTab, onTabChange }: DocsTabsProps): 
             <BugList />
           </div>
         )}
+        {/* Note: activeTab === 'project' content is rendered in App.tsx as ProjectPane */}
       </div>
 
       {/* Dialogs */}

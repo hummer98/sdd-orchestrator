@@ -17,7 +17,7 @@
  */
 
 import React, { ReactNode, useState, useEffect } from 'react';
-import { FileText, Bug, Bot } from 'lucide-react';
+import { FileText, Bug, Bot, FolderOpen } from 'lucide-react';
 import { ProfileBadge } from '../../shared/components/ui';
 import { useApi } from '../../shared';
 import type { ProfileName } from '../../shared/components/ui/ProfileBadge';
@@ -59,18 +59,20 @@ export interface MobileLayoutProps {
 // =============================================================================
 
 /**
- * TAB_CONFIG - 3-tab configuration for mobile navigation
+ * TAB_CONFIG - 4-tab configuration for mobile navigation
  *
- * Task 2.2: MobileTabBar 3-tab configuration
+ * Task 2.2: MobileTabBar configuration
+ * project-config-editor Task 7.1: Added Project tab (Requirements: 6.1)
  * Requirements:
- * - 1.1: Display bottom tab bar with three tabs: Specs, Bugs, and Agents
+ * - 1.1: Display bottom tab bar with tabs: Specs, Bugs, Agents, Project
  * - 1.3: Visual indication of active tab (handled in MobileTabBar)
  * - 1.5: 44x44px touch target (handled by touch-target class)
  */
-const TAB_CONFIG: { id: MobileTab; label: string; icon: 'specs' | 'bugs' | 'agents' }[] = [
+const TAB_CONFIG: { id: MobileTab; label: string; icon: 'specs' | 'bugs' | 'agents' | 'project' }[] = [
   { id: 'specs', label: 'Specs', icon: 'specs' },
   { id: 'bugs', label: 'Bugs', icon: 'bugs' },
   { id: 'agents', label: 'Agents', icon: 'agents' },
+  { id: 'project', label: 'Project', icon: 'project' },
 ];
 
 // =============================================================================
@@ -294,7 +296,7 @@ function MobileTabBar({
 }
 
 interface TabIconProps {
-  name: 'specs' | 'bugs' | 'agents';
+  name: 'specs' | 'bugs' | 'agents' | 'project';
   active: boolean;
 }
 
@@ -302,7 +304,8 @@ interface TabIconProps {
  * TabIcon - Lucide icon component for tab bar
  *
  * Task 2.2: Uses Lucide React icons for consistency with the project.
- * Icons: FileText (Specs), Bug (Bugs), Bot (Agents)
+ * project-config-editor Task 7.1: Added Project icon (Requirements: 6.1)
+ * Icons: FileText (Specs), Bug (Bugs), Bot (Agents), FolderOpen (Project)
  */
 function TabIcon({ name, active }: TabIconProps): React.ReactElement {
   const iconSize = active ? 24 : 20;
@@ -315,6 +318,8 @@ function TabIcon({ name, active }: TabIconProps): React.ReactElement {
       return <Bug size={iconSize} className={iconClassName} />;
     case 'agents':
       return <Bot size={iconSize} className={iconClassName} />;
+    case 'project':
+      return <FolderOpen size={iconSize} className={iconClassName} />;
     default:
       // Exhaustive check - should never reach here
       return <FileText size={iconSize} className={iconClassName} />;

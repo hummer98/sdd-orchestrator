@@ -1892,6 +1892,41 @@ export interface ElectronAPI {
    * @returns Full absolute path to the artifact file
    */
   getArtifactPath(name: string, filename: string, entityType?: 'spec' | 'bug'): Promise<string>;
+
+  // ============================================================
+  // Project Configuration Editor (project-config-editor feature)
+  // Task 3.4: Project file operations
+  // Requirements: 3.1, 4.1, 5.2
+  // ============================================================
+
+  /**
+   * List project configuration files
+   * Returns CLAUDE.md and .kiro/steering/*.md files
+   * @returns ProjectFilesState with file list
+   */
+  listProjectFiles(): Promise<import('../../shared/api/types').ProjectFilesState>;
+
+  /**
+   * Read a project configuration file
+   * @param filePath Absolute path to the file
+   * @returns File content as string
+   */
+  readProjectFile(filePath: string): Promise<string>;
+
+  /**
+   * Write content to a project configuration file
+   * @param filePath Absolute path to the file
+   * @param content Content to write
+   */
+  writeProjectFile(filePath: string, content: string): Promise<void>;
+
+  /**
+   * Subscribe to project file change events
+   * Called when CLAUDE.md or steering files are modified externally
+   * @param callback Function called when a file changes
+   * @returns Cleanup function to unsubscribe
+   */
+  onProjectFileChanged(callback: (filePath: string) => void): () => void;
 }
 
 declare global {

@@ -33,6 +33,8 @@ import {
   // Bug fix: bugs-tab-agent-list-missing - タブベースのペイン切り替え
   SpecPane,
   BugPane,
+  // project-config-editor Task 4.2: Project view integration
+  ProjectPane,
   // debatex-document-review Task 4.1: Project Settings Dialog
   ProjectSettingsDialog,
   // project-selection-view feature: プロジェクト選択画面
@@ -56,6 +58,9 @@ import { useMcpStore } from '../shared/stores/mcpStore';
 // agent-log-store-unification Task 4.4: Shared log subscription hook
 import { useAgentLogSubscription } from '../shared/hooks';
 import { IpcApiClient } from '../shared/api/IpcApiClient';
+// project-config-editor Task 4.2: Project editor store for tab switching cleanup
+import { useProjectEditorStore } from '../shared/stores/projectEditorStore';
+import type { ProjectFilesState } from '../shared/api/types';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -124,6 +129,15 @@ export function App() {
   const [activeTab, setActiveTab] = useState<DocsTab>('specs');
   // debatex-document-review Task 4.2: Project Settings Dialog
   const [isProjectSettingsDialogOpen, setIsProjectSettingsDialogOpen] = useState(false);
+  // project-config-editor Task 4.2: Project files state
+  const [projectFiles, setProjectFiles] = useState<ProjectFilesState>({
+    claudeMd: null,
+    steeringFiles: [],
+    isLoading: false,
+    error: null,
+  });
+  // project-config-editor: Project editor store for tab switching cleanup
+  const { clearEditor } = useProjectEditorStore();
 
   // ペインサイズの状態（pane-layout-persistence feature）
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LAYOUT.leftPaneWidth);
@@ -480,6 +494,35 @@ export function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
+  // project-config-editor Task 4.2: Load project files when switching to Project tab
+  const loadProjectFiles = useCallback(async () => {
+    if (!currentProject) return;
+
+    setProjectFiles(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const files = await window.electronAPI.listProjectFiles();
+      setProjectFiles(files);
+    } catch (error) {
+      console.error('[App] Failed to load project files:', error);
+      setProjectFiles(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load project files',
+      }));
+    }
+  }, [currentProject]);
+
+  // project-config-editor Task 4.2: Load project files when tab changes to 'project'
+  useEffect(() => {
+    if (activeTab === 'project' && currentProject) {
+      loadProjectFiles();
+    }
+    // Clear project editor state when leaving project tab
+    if (activeTab !== 'project') {
+      clearEditor();
+    }
+  }, [activeTab, currentProject, loadProjectFiles, clearEditor]);
+
   const handleConfirmNavigation = () => {
     setShowUnsavedDialog(false);
     if (pendingNavigation) {
@@ -651,8 +694,15 @@ export function App() {
           {/* Main area */}
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
             {/* Bug fix: bugs-tab-agent-list-missing - タブ選択に応じてペインを切り替え */}
+            {/* project-config-editor Task 4.2: Project tab shows ProjectPane without right sidebar */}
             {currentProject && kiroValidation?.exists ? (
-              activeTab === 'specs' ? (
+              activeTab === 'project' ? (
+                // Project tab: Full width, no right sidebar (Requirements 3.3)
+                <ProjectPane
+                  files={projectFiles}
+                  onRefreshFiles={loadProjectFiles}
+                />
+              ) : activeTab === 'specs' ? (
                 <SpecPane
                   rightPaneWidth={rightPaneWidth}
                   agentListHeight={agentListHeight}

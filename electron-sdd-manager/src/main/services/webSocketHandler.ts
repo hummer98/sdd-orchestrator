@@ -992,6 +992,17 @@ export class WebSocketHandler {
       case 'GIT_UNWATCH_CHANGES':
         await this.handleGitUnwatchChanges(client, message);
         break;
+      // project-config-editor Task 5.3: Project File Operations
+      // Requirements: 5.2, 6.2
+      case 'PROJECT_FILE_LIST':
+        await this.handleProjectFileList(client, message);
+        break;
+      case 'PROJECT_FILE_READ':
+        await this.handleProjectFileRead(client, message);
+        break;
+      case 'PROJECT_FILE_WRITE':
+        await this.handleProjectFileWrite(client, message);
+        break;
       default:
         this.send(client.id, {
           type: 'ERROR',
@@ -3961,5 +3972,168 @@ export class WebSocketHandler {
         timestamp: Date.now(),
       });
     }
+  }
+
+  // ===========================================================================
+  // Project File Operations (project-config-editor Task 5.3)
+  // Requirements: 5.2, 6.2
+  // ===========================================================================
+
+  /**
+   * Handle PROJECT_FILE_LIST request
+   * Returns list of project configuration files (CLAUDE.md, steering files)
+   */
+  private async handleProjectFileList(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const projectPath = this.stateProvider?.getProjectPath();
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project selected' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      // Import the listProjectFiles function from projectFileHandlers
+      const { listProjectFilesCore } = await import('../ipc/projectFileHandlers');
+      const files = await listProjectFilesCore(projectPath);
+
+      this.send(client.id, {
+        type: 'PROJECT_FILE_LIST_RESULT',
+        payload: files as unknown as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'LIST_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle PROJECT_FILE_READ request
+   * Reads content of a project configuration file
+   */
+  private async handleProjectFileRead(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { filePath?: string } | undefined;
+    const filePath = payload?.filePath;
+
+    if (!filePath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_FILE_PATH', message: 'filePath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const projectPath = this.stateProvider?.getProjectPath();
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project selected' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const { readProjectFileCore } = await import('../ipc/projectFileHandlers');
+      const content = await readProjectFileCore(projectPath, filePath);
+
+      this.send(client.id, {
+        type: 'PROJECT_FILE_READ_RESULT',
+        payload: { content } as Record<string, unknown>,
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'READ_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Handle PROJECT_FILE_WRITE request
+   * Writes content to a project configuration file
+   */
+  private async handleProjectFileWrite(client: ClientInfo, message: WebSocketMessage): Promise<void> {
+    const payload = message.payload as { filePath?: string; content?: string } | undefined;
+    const filePath = payload?.filePath;
+    const fileContent = payload?.content;
+
+    if (!filePath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_FILE_PATH', message: 'filePath is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    if (fileContent === undefined) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'MISSING_CONTENT', message: 'content is required' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const projectPath = this.stateProvider?.getProjectPath();
+    if (!projectPath) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'NO_PROJECT', message: 'No project selected' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    try {
+      const { writeProjectFileCore } = await import('../ipc/projectFileHandlers');
+      await writeProjectFileCore(projectPath, filePath, fileContent);
+
+      this.send(client.id, {
+        type: 'PROJECT_FILE_WRITE_RESULT',
+        payload: { success: true },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      this.send(client.id, {
+        type: 'ERROR',
+        payload: { code: 'WRITE_ERROR', message: error instanceof Error ? error.message : 'Unknown error' },
+        requestId: message.requestId,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * Broadcast project file change event to all connected clients
+   * Called by ProjectFileWatcherService when a file changes
+   */
+  public broadcastProjectFileChanged(filePath: string): void {
+    this.broadcast({
+      type: 'projectFileChanged',
+      payload: { filePath },
+      timestamp: Date.now(),
+    });
   }
 }

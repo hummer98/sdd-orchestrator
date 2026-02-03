@@ -29,6 +29,8 @@ import type {
   ParsedLogEntry,
   // agent-error-notification Task 7.1: Import AgentStartError for onAgentStartError
   AgentStartError,
+  // project-config-editor Task 5.2: Project file types
+  ProjectFilesState,
 } from './types';
 
 function getCurrentProjectPath(): string | null {
@@ -667,5 +669,30 @@ export class IpcApiClient implements ApiClient {
     } else {
       return { ok: false, error: result.error };
     }
+  }
+
+  // ===========================================================================
+  // Project File Operations (project-config-editor Task 5.2)
+  // Requirements: 3.1, 4.1
+  // ===========================================================================
+
+  async listProjectFiles(): Promise<Result<ProjectFilesState, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.listProjectFiles());
+  }
+
+  async readProjectFile(filePath: string): Promise<Result<string, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.readProjectFile(filePath));
+  }
+
+  async writeProjectFile(filePath: string, content: string): Promise<Result<void, ApiError>> {
+    checkElectronAPI();
+    return wrapResult(() => window.electronAPI.writeProjectFile(filePath, content));
+  }
+
+  onProjectFileChanged(listener: (filePath: string) => void): () => void {
+    checkElectronAPI();
+    return window.electronAPI.onProjectFileChanged(listener);
   }
 }

@@ -419,6 +419,14 @@ export const IPC_CHANNELS = {
 
   // Artifact Path Resolution
   GET_ARTIFACT_PATH: 'ipc:get-artifact-path',
+
+  // Project Config Editor (project-config-editor feature)
+  // Requirements: 2.1, 2.2, 2.3, 3.1, 4.1, 5.1
+  PROJECT_FILE_LIST: 'project-file:list',
+  PROJECT_FILE_READ: 'project-file:read',
+  PROJECT_FILE_WRITE: 'project-file:write',
+  // Event: External file change notification (Main -> Renderer)
+  PROJECT_FILE_CHANGED: 'project-file:changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

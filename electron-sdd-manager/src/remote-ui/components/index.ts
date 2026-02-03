@@ -42,3 +42,10 @@ export type { AgentLogPageProps } from './AgentLogPage';
 
 export { AgentLogActionArea } from './AgentLogActionArea';
 export type { AgentLogActionAreaProps } from './AgentLogActionArea';
+
+// project-config-editor Task 6.2, 6.3: Project file editor components for Remote UI
+export { RemoteProjectEditor } from './RemoteProjectEditor';
+export type { RemoteProjectEditorProps } from './RemoteProjectEditor';
+
+export { ProjectDetailPage } from './ProjectDetailPage';
+export type { ProjectDetailPageProps } from './ProjectDetailPage';

@@ -1,0 +1,168 @@
+/**
+ * ProjectFileEditor Component
+ *
+ * project-config-editor Task 3.2: Project file markdown editor
+ * Requirements: 3.4, 4.1, 4.2, 4.3, 4.4
+ *
+ * Features:
+ * - Markdown editing with MDEditor
+ * - Cmd+S/Ctrl+S save shortcut
+ * - Dirty indicator
+ * - Edit/Preview mode toggle
+ */
+
+import { useEffect, useCallback } from 'react';
+import { Save, Eye, Edit, Circle, Loader2 } from 'lucide-react';
+import MDEditor from '@uiw/react-md-editor';
+import { clsx } from 'clsx';
+import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
+import { useNotificationStore } from '@shared/stores/notificationStore';
+
+export interface ProjectFileEditorProps {
+  /** Callback to handle save (receives apiClient internally) */
+  onSave: () => Promise<void>;
+}
+
+/**
+ * ProjectFileEditor - Markdown editor for project configuration files
+ */
+export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
+  const {
+    currentFilePath,
+    currentFileName,
+    content,
+    isDirty,
+    isSaving,
+    mode,
+    error,
+    setContent,
+    setMode,
+  } = useProjectEditorStore();
+
+  const { showNotification } = useNotificationStore();
+
+  // Handle save with notification
+  const handleSave = useCallback(async () => {
+    if (!isDirty || isSaving) return;
+
+    try {
+      await onSave();
+      showNotification({
+        type: 'success',
+        message: '保存しました',
+      });
+    } catch (err) {
+      showNotification({
+        type: 'error',
+        message: `保存に失敗しました: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      });
+    }
+  }, [isDirty, isSaving, onSave, showNotification]);
+
+  // Keyboard shortcut for save (Cmd+S / Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSave]);
+
+  // No file loaded - show placeholder
+  if (!currentFilePath) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-950">
+        <span className="text-gray-400 dark:text-gray-500">
+          ファイルを選択してください
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-gray-950" data-testid="project-file-editor">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentFileName}
+          </span>
+          {isDirty && (
+            <Circle
+              className="w-2 h-2 fill-orange-500 text-orange-500"
+              data-testid="dirty-indicator"
+            />
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Mode toggle */}
+          <button
+            onClick={() => setMode(mode === 'edit' ? 'preview' : 'edit')}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
+              'transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+              'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+            )}
+            aria-label={mode === 'edit' ? 'プレビュー' : '編集'}
+          >
+            {mode === 'edit' ? (
+              <>
+                <Eye className="w-4 h-4" />
+                プレビュー
+              </>
+            ) : (
+              <>
+                <Edit className="w-4 h-4" />
+                編集
+              </>
+            )}
+          </button>
+
+          {/* Save button */}
+          <button
+            onClick={handleSave}
+            disabled={!isDirty || isSaving}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
+              'transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+              isDirty && !isSaving
+                ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+            )}
+            aria-label="保存"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            保存
+          </button>
+        </div>
+      </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Editor */}
+      <div className="flex-1 overflow-hidden" data-color-mode="light">
+        <MDEditor
+          value={content}
+          onChange={(value) => setContent(value || '')}
+          preview={mode}
+          height="100%"
+          hideToolbar={mode === 'preview'}
+        />
+      </div>
+    </div>
+  );
+}

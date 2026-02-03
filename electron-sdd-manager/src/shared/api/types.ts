@@ -536,6 +536,42 @@ export interface ApiClient {
   ): Promise<Result<string, ApiError>>;
 
   // ===========================================================================
+  // Project File Operations (project-config-editor)
+  // Requirements: 3.1, 4.1, 6.2
+  // ===========================================================================
+
+  /**
+   * List project files (CLAUDE.md and .kiro/steering/*.md)
+   * project-config-editor Task 5.1/5.2
+   * @returns ProjectFilesState with claudeMd and steeringFiles
+   */
+  listProjectFiles?(): Promise<Result<ProjectFilesState, ApiError>>;
+
+  /**
+   * Read project file content
+   * project-config-editor Task 5.1/5.2
+   * @param filePath - Relative path to file from project root
+   * @returns File content as string
+   */
+  readProjectFile?(filePath: string): Promise<Result<string, ApiError>>;
+
+  /**
+   * Write project file content
+   * project-config-editor Task 5.1/5.2
+   * @param filePath - Relative path to file from project root
+   * @param content - File content to write
+   */
+  writeProjectFile?(filePath: string, content: string): Promise<Result<void, ApiError>>;
+
+  /**
+   * Subscribe to project file change events
+   * project-config-editor Task 5.1/5.2
+   * @param listener - Callback receiving file path of changed file
+   * @returns Unsubscribe function
+   */
+  onProjectFileChanged?(listener: (filePath: string) => void): () => void;
+
+  // ===========================================================================
   // Event Subscriptions
   // ===========================================================================
 
@@ -842,4 +878,48 @@ export interface FileContentResult {
   fileType: 'code' | 'markdown' | 'image' | 'binary';
   /** Programming language for syntax highlighting (code files only) */
   language?: string;
+}
+
+// =============================================================================
+// Project Config Editor Types (project-config-editor feature)
+// Requirements: 2.2, 2.3
+// =============================================================================
+
+/**
+ * Project file group
+ * 'claude' - CLAUDE.md file
+ * 'steering' - .kiro/steering/*.md files
+ */
+export type ProjectFileGroup = 'claude' | 'steering';
+
+/**
+ * Project file information
+ * project-config-editor Task 1.1
+ * Requirements: 2.2, 2.3
+ */
+export interface ProjectFileInfo {
+  /** File path (relative to project root) */
+  relativePath: string;
+  /** File name */
+  fileName: string;
+  /** File group (claude or steering) */
+  group: ProjectFileGroup;
+  /** Whether file exists */
+  exists: boolean;
+}
+
+/**
+ * Project files state
+ * project-config-editor Task 1.1
+ * Requirements: 2.1, 2.4, 2.5
+ */
+export interface ProjectFilesState {
+  /** CLAUDE.md file info (null if not exists) */
+  claudeMd: ProjectFileInfo | null;
+  /** Steering files list */
+  steeringFiles: ProjectFileInfo[];
+  /** Whether loading */
+  isLoading: boolean;
+  /** Error message (if any) */
+  error: string | null;
 }

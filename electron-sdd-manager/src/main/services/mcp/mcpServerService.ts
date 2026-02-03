@@ -16,8 +16,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 
 /**
  * Default port for MCP server
+ * Port 9100 chosen to avoid conflicts with common dev servers (Next.js 3000, Vite 5173, etc.)
  */
-const DEFAULT_PORT = 3001;
+const DEFAULT_PORT = 9100;
 
 /**
  * Result of successfully starting the MCP server

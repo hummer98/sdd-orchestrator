@@ -94,6 +94,11 @@ function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
 // Dialog type for create dialogs
 type CreateDialogType = 'spec' | 'bug' | null;
 
+// Project Agent Panel height constraints (Electron parity)
+const PROJECT_AGENT_PANEL_MIN = 80;
+const PROJECT_AGENT_PANEL_MAX = 300;
+const PROJECT_AGENT_PANEL_DEFAULT = 160;
+
 interface LeftSidebarProps {
   activeTab: DocsTab;
   onTabChange: (tab: DocsTab) => void;
@@ -152,6 +157,16 @@ function LeftSidebar({
 
   // Create dialog state (Task 3.1)
   const [createDialogType, setCreateDialogType] = useState<CreateDialogType>(null);
+
+  // Project Agent Panel height state (Electron parity - ResizeHandle support)
+  const [projectAgentPanelHeight, setProjectAgentPanelHeight] = useState(PROJECT_AGENT_PANEL_DEFAULT);
+
+  // Resize handler for Project Agent Panel (上方向にリサイズ = deltaを反転)
+  const handleProjectAgentPanelResize = useCallback((delta: number) => {
+    setProjectAgentPanelHeight((prev) =>
+      Math.min(PROJECT_AGENT_PANEL_MAX, Math.max(PROJECT_AGENT_PANEL_MIN, prev - delta))
+    );
+  }, []);
 
   /**
    * project-agent-store-unification Task 2.3: Simplified handleSelectAgent
@@ -261,13 +276,17 @@ function LeftSidebar({
         )}
       </div>
 
-      {/* Project Agent Panel - Electron版と同じ位置 */}
+      {/* ResizeHandle between SpecList and ProjectAgentPanel (Electron parity) */}
+      <ResizeHandle direction="vertical" onResize={handleProjectAgentPanelResize} />
+
+      {/* Project Agent Panel - Electron版と同じ位置、リサイズ可能 */}
       <div
         data-testid="project-agent-panel"
-        className="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+        style={{ height: projectAgentPanelHeight }}
+        className="shrink-0 flex flex-col border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-2">
+        <div className="shrink-0 flex items-center gap-2 px-4 py-2">
           <Bot className="w-4 h-4 text-gray-500" />
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             Project Agent
@@ -299,7 +318,7 @@ function LeftSidebar({
         </div>
 
         {/* Agent List */}
-        <div className="px-2 pb-2 max-h-32 overflow-y-auto">
+        <div className="flex-1 px-2 pb-2 overflow-y-auto">
           <AgentList
             agents={projectAgents.map(mapAgentInfoToItemInfo)}
             selectedAgentId={selectedAgentId}

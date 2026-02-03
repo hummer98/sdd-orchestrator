@@ -2,6 +2,8 @@
  * LeftSidebar Tests for remote-ui-create-buttons feature
  *
  * Requirements: 1.1, 1.2, 1.3, 4.1, 4.2, 4.3, 5.2, 5.3 (remote-ui-create-buttons)
+ *
+ * Additional: Project Agent Panel ResizeHandle tests (Electron parity)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -55,6 +57,41 @@ describe('LeftSidebar - Create Buttons Feature', () => {
     it('should have FAB with data-testid for smartphone', () => {
       const content = readFileSync(appPath, 'utf-8');
       expect(content).toContain('data-testid="create-fab"');
+    });
+  });
+
+  describe('Project Agent Panel ResizeHandle (Electron parity)', () => {
+    it('should have ResizeHandle between SpecList and ProjectAgentPanel', () => {
+      const content = readFileSync(appPath, 'utf-8');
+      // ResizeHandle import should exist
+      expect(content).toContain('ResizeHandle');
+      // ResizeHandle should be used in LeftSidebar with vertical direction
+      // Pattern: ResizeHandle followed by project-agent-panel
+      expect(content).toMatch(/ResizeHandle.*direction.*vertical.*onResize.*handleProjectAgentPanelResize/s);
+    });
+
+    it('should have projectAgentPanelHeight state for resizable height', () => {
+      const content = readFileSync(appPath, 'utf-8');
+      expect(content).toContain('projectAgentPanelHeight');
+      expect(content).toContain('setProjectAgentPanelHeight');
+    });
+
+    it('should have resize handler function for ProjectAgentPanel', () => {
+      const content = readFileSync(appPath, 'utf-8');
+      // Handler function should exist
+      expect(content).toContain('handleProjectAgentPanelResize');
+    });
+
+    it('should have min/max constants for ProjectAgentPanel height', () => {
+      const content = readFileSync(appPath, 'utf-8');
+      expect(content).toContain('PROJECT_AGENT_PANEL_MIN');
+      expect(content).toContain('PROJECT_AGENT_PANEL_MAX');
+    });
+
+    it('should apply dynamic height style to ProjectAgentPanel container', () => {
+      const content = readFileSync(appPath, 'utf-8');
+      // Style with height should be applied to project agent panel
+      expect(content).toMatch(/style=\{\{.*height:.*projectAgentPanelHeight/s);
     });
   });
 });

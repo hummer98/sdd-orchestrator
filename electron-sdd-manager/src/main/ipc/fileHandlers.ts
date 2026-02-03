@@ -11,13 +11,20 @@
  * - OPEN_IN_VSCODE
  */
 
-import { ipcMain, dialog } from 'electron';
+import { dialog } from 'electron';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 import type { FileService } from '../services/fileService';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
+
+/**
+ * Track if handlers are already registered to prevent duplicate registration
+ * E2E-fix: Prevents "Attempted to register a second handler" errors in test environments
+ */
+let handlersRegistered = false;
 
 /**
  * Dependencies required for file handlers
@@ -33,17 +40,24 @@ export interface FileHandlersDependencies {
 /**
  * Register all file-related IPC handlers
  * Requirements: 1.3, 2.1, 4.1, 4.2
+ * E2E-fix: Use safeHandle for idempotent registration
  *
  * @param deps - Dependencies for file handlers (fileService, getCurrentProjectPath)
  */
 export function registerFileHandlers(deps: FileHandlersDependencies): void {
+  // E2E-fix: Prevent duplicate registration in test environments
+  if (handlersRegistered) {
+    logger.warn('[fileHandlers] Handlers already registered, skipping');
+    return;
+  }
+
   const { fileService, getCurrentProjectPath } = deps;
 
   // ============================================================
   // File Dialog
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.SHOW_OPEN_DIALOG, async () => {
+  safeHandle(IPC_CHANNELS.SHOW_OPEN_DIALOG, async () => {
     logger.debug('[fileHandlers] SHOW_OPEN_DIALOG called');
 
     const result = await dialog.showOpenDialog({
@@ -65,7 +79,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // Main process resolves the full path using resolveSpecPath or resolveBugPath
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_ARTIFACT,
     async (_event, name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') => {
       logger.debug('[fileHandlers] READ_ARTIFACT called', { name, filename, entityType });
@@ -96,7 +110,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // Bug fix: worktree-artifact-save
   // writeArtifact uses the same path resolution as readArtifact
   // This ensures artifacts are saved to the correct location (worktree or main)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WRITE_ARTIFACT,
     async (_event, name: string, filename: string, content: string, entityType: 'spec' | 'bug' = 'spec') => {
       logger.debug('[fileHandlers] WRITE_ARTIFACT called', { name, filename, entityType });
@@ -126,7 +140,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // Direct File Write
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WRITE_FILE,
     async (_event, filePath: string, content: string) => {
       logger.debug('[fileHandlers] WRITE_FILE called', { filePath });
@@ -142,7 +156,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // Artifact Path Resolution
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GET_ARTIFACT_PATH,
     async (_event, name: string, filename: string, entityType: 'spec' | 'bug' = 'spec') => {
       logger.debug('[fileHandlers] GET_ARTIFACT_PATH called', { name, filename, entityType });
@@ -168,7 +182,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // VSCode Integration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.OPEN_IN_VSCODE,
     async (_event, projectPath: string) => {
       logger.info('[fileHandlers] OPEN_IN_VSCODE called', { projectPath });
@@ -197,7 +211,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
   // Requirements: 4.1
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LIST_MARKDOWN_FILES_IN_SPEC,
     async (_event, name: string, entityType: 'spec' | 'bug' = 'spec') => {
       logger.debug('[fileHandlers] LIST_MARKDOWN_FILES_IN_SPEC called', { name, entityType });
@@ -215,7 +229,7 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
         throw new Error(`${entityType === 'bug' ? 'Bug' : 'Spec'} not found: ${name}`);
       }
 
-      const result = await fileService.listMarkdownFilesInSpec(pathResult.value);
+      const result = await fileService.listMarkdownFilesInSpec(pathResult.value, entityType);
       if (!result.ok) {
         throw new Error(`Failed to list markdown files: ${result.error.type}`);
       }
@@ -224,5 +238,6 @@ export function registerFileHandlers(deps: FileHandlersDependencies): void {
     }
   );
 
+  handlersRegistered = true;
   logger.info('[fileHandlers] File handlers registered');
 }

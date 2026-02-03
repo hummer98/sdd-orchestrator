@@ -656,7 +656,8 @@ export function createBugDetailProvider(_projectPath: string): BugDetailProvider
 
         // artifact-all-markdown-files: Task 3.2 - Get markdown files list for bugs
         // Requirements: 6.3
-        const markdownFilesResult = await fileService.listMarkdownFilesInSpec(bugPath);
+        // Bug directory support: Pass 'bug' entityType to check bug.json instead of spec.json
+        const markdownFilesResult = await fileService.listMarkdownFilesInSpec(bugPath, 'bug');
         const markdownFiles = markdownFilesResult.ok ? markdownFilesResult.value : [];
 
         // BugService returns BugDetail which has BugMetadata (without path)

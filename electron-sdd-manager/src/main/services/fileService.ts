@@ -1109,13 +1109,18 @@ ${description}
   }
 
   /**
-   * List all *.md files in spec directory (excluding fixed/dynamic tabs)
+   * List all *.md files in spec/bug directory (excluding fixed/dynamic tabs)
    * artifact-all-markdown-files: Requirements 1.1, 1.2, 4.2, 4.3, 7.1
+   * Bug directory support: Fix SPEC_NOT_FOUND error for BugList selection
    *
-   * @param specPath - Absolute path to spec directory
+   * @param specPath - Absolute path to spec or bug directory
+   * @param entityType - 'spec' (default) or 'bug' - determines which JSON file to check
    * @returns Result with array of filenames (e.g., ["architecture.md", "notes.md"])
    */
-  async listMarkdownFilesInSpec(specPath: string): Promise<Result<string[], FileError>> {
+  async listMarkdownFilesInSpec(
+    specPath: string,
+    entityType: 'spec' | 'bug' = 'spec'
+  ): Promise<Result<string[], FileError>> {
     // Validate path for security (prevent directory traversal)
     const normalizedPath = normalize(resolve(specPath));
     if (!normalizedPath.includes('.kiro')) {
@@ -1129,9 +1134,10 @@ ${description}
       };
     }
 
-    // Check if spec.json exists to verify valid spec directory
+    // Check if spec.json or bug.json exists based on entityType
+    const jsonFileName = entityType === 'bug' ? 'bug.json' : 'spec.json';
     try {
-      await access(join(specPath, 'spec.json'));
+      await access(join(specPath, jsonFileName));
     } catch {
       return {
         ok: false,
@@ -1146,13 +1152,19 @@ ${description}
     try {
       const dirents = await readdir(specPath, { withFileTypes: true });
 
-      // Filter for *.md files (exclude directories, fixed tabs, dynamic tabs)
-      const fixedTabs = new Set([
+      // Define fixed tabs based on entity type
+      const specFixedTabs = new Set([
         'requirements.md',
         'design.md',
         'tasks.md',
         'research.md',
       ]);
+      const bugFixedTabs = new Set([
+        'analysis.md',
+        'fix.md',
+        'verification.md',
+      ]);
+      const fixedTabs = entityType === 'bug' ? bugFixedTabs : specFixedTabs;
 
       const markdownFiles = dirents
         .filter((dirent) => {

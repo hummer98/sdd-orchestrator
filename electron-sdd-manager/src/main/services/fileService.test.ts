@@ -1138,3 +1138,97 @@ describe('FileService - listMarkdownFilesInSpec', () => {
     });
   });
 });
+
+// ============================================================
+// Bug directory support for listMarkdownFilesInSpec
+// Fix: SPEC_NOT_FOUND error when selecting bug in BugList
+// ============================================================
+describe('FileService - listMarkdownFilesInSpec (bug directory support)', () => {
+  let fileService: FileService;
+  let tempDir: string;
+  let bugPath: string;
+
+  beforeEach(async () => {
+    fileService = new FileService();
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'list-md-files-bug-test-'));
+    bugPath = path.join(tempDir, '.kiro', 'bugs', 'test-bug');
+    await fs.mkdir(bugPath, { recursive: true });
+    // Create bug.json (NOT spec.json) to mark as valid bug directory
+    await fs.writeFile(
+      path.join(bugPath, 'bug.json'),
+      JSON.stringify({ name: 'test-bug', phase: 'reported' }, null, 2),
+      'utf-8'
+    );
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe('bug directory operations', () => {
+    it('should return empty array for bug directory without markdown files', async () => {
+      const result = await fileService.listMarkdownFilesInSpec(bugPath, 'bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('should list markdown files in bug directory (excluding fixed tabs)', async () => {
+      // Create fixed bug files (should be excluded)
+      await fs.writeFile(path.join(bugPath, 'analysis.md'), '# Analysis', 'utf-8');
+      await fs.writeFile(path.join(bugPath, 'fix.md'), '# Fix', 'utf-8');
+      await fs.writeFile(path.join(bugPath, 'verification.md'), '# Verification', 'utf-8');
+
+      // Create additional markdown files (should be included)
+      await fs.writeFile(path.join(bugPath, 'notes.md'), '# Notes', 'utf-8');
+      await fs.writeFile(path.join(bugPath, 'references.md'), '# References', 'utf-8');
+
+      const result = await fileService.listMarkdownFilesInSpec(bugPath, 'bug');
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value).toContain('notes.md');
+        expect(result.value).toContain('references.md');
+        // Verify bug fixed tabs are excluded
+        expect(result.value).not.toContain('analysis.md');
+        expect(result.value).not.toContain('fix.md');
+        expect(result.value).not.toContain('verification.md');
+      }
+    });
+
+    it('should return error when bug.json does not exist and entityType is bug', async () => {
+      const invalidBugPath = path.join(tempDir, '.kiro', 'bugs', 'invalid-bug');
+      await fs.mkdir(invalidBugPath, { recursive: true });
+
+      const result = await fileService.listMarkdownFilesInSpec(invalidBugPath, 'bug');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('SPEC_NOT_FOUND');
+      }
+    });
+
+    it('should default to spec entityType for backward compatibility', async () => {
+      // Without entityType, should check spec.json (existing behavior)
+      const specPath = path.join(tempDir, '.kiro', 'specs', 'test-spec');
+      await fs.mkdir(specPath, { recursive: true });
+      await fs.writeFile(
+        path.join(specPath, 'spec.json'),
+        JSON.stringify({ feature_name: 'test-spec', phase: 'initialized' }, null, 2),
+        'utf-8'
+      );
+      await fs.writeFile(path.join(specPath, 'notes.md'), '# Notes', 'utf-8');
+
+      // Call without entityType (defaults to 'spec')
+      const result = await fileService.listMarkdownFilesInSpec(specPath);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toContain('notes.md');
+      }
+    });
+  });
+});

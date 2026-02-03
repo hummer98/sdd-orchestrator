@@ -15,8 +15,23 @@ import { projectLogger as logger } from '../services/projectLogger';
 
 /**
  * Track if handlers are already registered to prevent duplicate registration
+ * Note: In E2E test environments, use cleanupCloudflareHandlers() before re-registration
  */
 let handlersRegistered = false;
+
+/**
+ * Safely register an IPC handler (idempotent)
+ * Removes existing handler before registering new one to prevent duplicate registration errors
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeHandle(channel: string, handler: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any): void {
+  try {
+    ipcMain.removeHandler(channel);
+  } catch {
+    // Handler doesn't exist yet, ignore
+  }
+  ipcMain.handle(channel, handler);
+}
 
 /**
  * Binary check result with optional install instructions
@@ -60,14 +75,15 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_GET_SETTINGS handler
   // Requirements: 2.1, 2.2, 2.3
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_GET_SETTINGS, async () => {
+  // E2E-fix: Use safeHandle for idempotent registration
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_GET_SETTINGS, async () => {
     logger.debug('[cloudflareHandlers] CLOUDFLARE_GET_SETTINGS called');
     return configStore.getAllSettings();
   });
 
   // CLOUDFLARE_SET_TUNNEL_TOKEN handler
   // Requirements: 2.2
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CLOUDFLARE_SET_TUNNEL_TOKEN,
     async (_event, token: string) => {
       logger.info('[cloudflareHandlers] CLOUDFLARE_SET_TUNNEL_TOKEN called');
@@ -77,21 +93,21 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_REFRESH_ACCESS_TOKEN handler
   // Requirements: 3.3
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_REFRESH_ACCESS_TOKEN, async () => {
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_REFRESH_ACCESS_TOKEN, async () => {
     logger.info('[cloudflareHandlers] CLOUDFLARE_REFRESH_ACCESS_TOKEN called');
     return accessTokenService.refreshToken();
   });
 
   // CLOUDFLARE_ENSURE_ACCESS_TOKEN handler
   // Requirements: 3.1
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_ENSURE_ACCESS_TOKEN, async () => {
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_ENSURE_ACCESS_TOKEN, async () => {
     logger.debug('[cloudflareHandlers] CLOUDFLARE_ENSURE_ACCESS_TOKEN called');
     return accessTokenService.ensureToken();
   });
 
   // CLOUDFLARE_CHECK_BINARY handler
   // Requirements: 4.1, 4.2
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_CHECK_BINARY, async (): Promise<BinaryCheckResponse> => {
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_CHECK_BINARY, async (): Promise<BinaryCheckResponse> => {
     logger.debug('[cloudflareHandlers] CLOUDFLARE_CHECK_BINARY called');
     const result = await binaryChecker.checkBinaryExists();
 
@@ -110,7 +126,7 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_SET_PUBLISH_TO_CLOUDFLARE handler
   // Requirements: 5.1
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CLOUDFLARE_SET_PUBLISH_TO_CLOUDFLARE,
     async (_event, enabled: boolean) => {
       logger.info('[cloudflareHandlers] CLOUDFLARE_SET_PUBLISH_TO_CLOUDFLARE called', { enabled });
@@ -120,7 +136,7 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_SET_CLOUDFLARED_PATH handler
   // Requirements: 4.5
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CLOUDFLARE_SET_CLOUDFLARED_PATH,
     async (_event, path: string | null) => {
       logger.info('[cloudflareHandlers] CLOUDFLARE_SET_CLOUDFLARED_PATH called', { path });
@@ -130,7 +146,7 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_START_TUNNEL handler
   // Requirements: 1.1, 4.3, 4.4
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CLOUDFLARE_START_TUNNEL,
     async (_event, localPort: number) => {
       logger.info('[cloudflareHandlers] CLOUDFLARE_START_TUNNEL called', { localPort });
@@ -140,14 +156,14 @@ export function registerCloudflareHandlers(): void {
 
   // CLOUDFLARE_STOP_TUNNEL handler
   // Requirements: 2.4
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_STOP_TUNNEL, async () => {
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_STOP_TUNNEL, async () => {
     logger.info('[cloudflareHandlers] CLOUDFLARE_STOP_TUNNEL called');
     return tunnelManager.stop();
   });
 
   // CLOUDFLARE_GET_TUNNEL_STATUS handler
   // Requirements: 4.4
-  ipcMain.handle(IPC_CHANNELS.CLOUDFLARE_GET_TUNNEL_STATUS, async () => {
+  safeHandle(IPC_CHANNELS.CLOUDFLARE_GET_TUNNEL_STATUS, async () => {
     logger.debug('[cloudflareHandlers] CLOUDFLARE_GET_TUNNEL_STATUS called');
     return tunnelManager.getStatus();
   });

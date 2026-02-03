@@ -134,17 +134,42 @@ function toSerializableResult(
 // ============================================================
 
 /**
+ * Track if handlers are already registered to prevent duplicate registration
+ */
+let handlersRegistered = false;
+
+/**
+ * Safely register an IPC handler (idempotent)
+ * E2E-fix: Removes existing handler before registering new one
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeHandle(channel: string, handler: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any): void {
+  try {
+    ipcMain.removeHandler(channel);
+  } catch {
+    // Handler doesn't exist yet, ignore
+  }
+  ipcMain.handle(channel, handler);
+}
+
+/**
  * Register all auto-execution IPC handlers
  * @param coordinator AutoExecutionCoordinator instance
  */
 export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordinator): void {
+  // E2E-fix: Skip if already registered (idempotent registration)
+  if (handlersRegistered) {
+    logger.warn('[autoExecutionHandlers] Handlers already registered, skipping');
+    return;
+  }
+
   logger.info('[autoExecutionHandlers] Registering IPC handlers');
 
   // AUTO_EXECUTION_START
   // Bug fix: start-impl-path-resolution-missing
   // spec-path-ssot-refactor: Resolve path from name
   const fileService = new FileService();
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_START,
     async (_event, params: StartParams): Promise<Result<SerializableAutoExecutionState, AutoExecutionError>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_START', { specName: params.specPath });
@@ -175,7 +200,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   );
 
   // AUTO_EXECUTION_STOP
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_STOP,
     async (_event, params: StopParams): Promise<Result<void, AutoExecutionError>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_STOP', { specPath: params.specPath });
@@ -197,7 +222,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   );
 
   // AUTO_EXECUTION_STATUS
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_STATUS,
     async (_event, params: StatusParams): Promise<SerializableAutoExecutionState | null> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_STATUS', { specPath: params.specPath });
@@ -206,7 +231,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   );
 
   // AUTO_EXECUTION_ALL_STATUS
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_ALL_STATUS,
     async (): Promise<Record<string, SerializableAutoExecutionState>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_ALL_STATUS');
@@ -223,7 +248,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   );
 
   // AUTO_EXECUTION_RETRY_FROM
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_RETRY_FROM,
     async (_event, params: RetryFromParams): Promise<Result<SerializableAutoExecutionState, AutoExecutionError>> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_RETRY_FROM', {
@@ -237,7 +262,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
 
   // AUTO_EXECUTION_RESET (E2E Test Support)
   // WARNING: This handler is intended for E2E tests only.
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_RESET,
     async (): Promise<void> => {
       logger.info('[autoExecutionHandlers] AUTO_EXECUTION_RESET (E2E test support)');
@@ -247,7 +272,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
 
   // impl-task-completion-guard Task 4.2: Reset impl retry count
   // Requirements: 3.4
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.AUTO_EXECUTION_RESET_IMPL_RETRY,
     async (_event, params: { specPath: string }): Promise<void> => {
       logger.debug('[autoExecutionHandlers] AUTO_EXECUTION_RESET_IMPL_RETRY', { specPath: params.specPath });
@@ -258,7 +283,7 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   // SET_MOCK_ENV (E2E Test Support)
   // WARNING: This handler is intended for E2E tests only.
   // Allows dynamic setting of mock environment variables during tests.
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SET_MOCK_ENV,
     async (_event, key: string, value: string): Promise<void> => {
       // Only allow E2E mock environment variables
@@ -279,6 +304,9 @@ export function registerAutoExecutionHandlers(coordinator: AutoExecutionCoordina
   // Register event forwarding to Renderer
   setupEventForwarding(coordinator);
 
+  // E2E-fix: Mark handlers as registered
+  handlersRegistered = true;
+
   logger.info('[autoExecutionHandlers] IPC handlers registered');
 }
 
@@ -297,6 +325,9 @@ export function unregisterAutoExecutionHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS.SET_MOCK_ENV);
   // impl-task-completion-guard Task 4.2
   ipcMain.removeHandler(IPC_CHANNELS.AUTO_EXECUTION_RESET_IMPL_RETRY);
+
+  // E2E-fix: Reset registration flag
+  handlersRegistered = false;
 
   logger.info('[autoExecutionHandlers] IPC handlers unregistered');
 }

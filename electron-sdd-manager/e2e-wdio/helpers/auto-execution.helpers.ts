@@ -81,6 +81,77 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
 }
 
 /**
+ * Helper: Wait for spec detail to be loaded and ready
+ *
+ * E2E-fix: This function waits until specDetail is fully loaded before
+ * proceeding with tests that depend on UI elements like agent-list-panel.
+ *
+ * @param specName The spec name to wait for
+ * @param timeout Timeout in milliseconds
+ */
+export async function waitForSpecDetailReady(
+  specName: string,
+  timeout: number = 15000
+): Promise<boolean> {
+  return waitForCondition(
+    async () => {
+      return browser.execute((name: string) => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.spec?.getState) return false;
+
+        const state = stores.spec.getState();
+        // Check that specDetail is loaded and matches the expected spec
+        return (
+          state.specDetail !== null &&
+          !state.isDetailLoading &&
+          state.specDetail?.metadata?.name === name
+        );
+      }, specName);
+    },
+    timeout,
+    200, // Check frequently for better responsiveness
+    `spec-detail-ready-${specName}`
+  );
+}
+
+/**
+ * Helper: Wait for UI to be fully rendered after project selection
+ *
+ * E2E-fix: Waits for key UI elements to be visible after project selection.
+ * This helps prevent timeout errors when tests try to interact with
+ * elements that haven't rendered yet.
+ *
+ * @param timeout Timeout in milliseconds
+ */
+export async function waitForProjectUIReady(timeout: number = 10000): Promise<boolean> {
+  const startTime = Date.now();
+
+  // Wait for docs-tabs to appear (indicates project is loaded)
+  const docsTabsExists = await waitForCondition(
+    async () => {
+      const element = await $('[data-testid="docs-tabs"]');
+      return element.isExisting();
+    },
+    timeout,
+    200,
+    'docs-tabs-visible'
+  );
+
+  if (!docsTabsExists) {
+    console.warn('[E2E] docs-tabs not visible after project selection');
+    return false;
+  }
+
+  // Wait a bit for React to finish any remaining renders
+  await browser.pause(100);
+
+  console.log(
+    `[E2E] Project UI ready after ${Date.now() - startTime}ms`
+  );
+  return true;
+}
+
+/**
  * Helper: Select spec using Zustand specStore action
  */
 export async function selectSpecViaStore(specId: string): Promise<boolean> {
@@ -608,6 +679,62 @@ export async function fullAutoExecutionCleanup(): Promise<void> {
 
   // 3. Reset AutoExecutionService
   await resetAutoExecutionService();
+}
+
+/**
+ * Helper: Standard E2E test setup sequence
+ *
+ * E2E-fix: This function provides a standardized setup sequence that:
+ * 1. Cleans up previous auto-execution state
+ * 2. Selects the project
+ * 3. Waits for UI to be ready
+ * 4. Selects the spec
+ * 5. Waits for spec detail to be loaded
+ *
+ * Use this in beforeEach for reliable test setup.
+ *
+ * @param projectPath Path to the project
+ * @param specName Spec name to select
+ * @returns true if setup succeeded, false otherwise
+ */
+export async function standardE2ESetup(
+  projectPath: string,
+  specName: string
+): Promise<boolean> {
+  // 1. Clean up auto-execution state from previous tests
+  await fullAutoExecutionCleanup();
+  await browser.pause(100);
+
+  // 2. Select project
+  const projectSelected = await selectProjectViaStore(projectPath);
+  if (!projectSelected) {
+    console.error('[E2E] standardE2ESetup: Failed to select project');
+    return false;
+  }
+
+  // 3. Wait for project UI to be ready
+  const uiReady = await waitForProjectUIReady(15000);
+  if (!uiReady) {
+    console.warn('[E2E] standardE2ESetup: UI not ready, continuing anyway');
+  }
+
+  // 4. Select spec
+  const specSelected = await selectSpecViaStore(specName);
+  if (!specSelected) {
+    console.error('[E2E] standardE2ESetup: Failed to select spec');
+    return false;
+  }
+
+  // 5. Wait for spec detail to be loaded
+  const specReady = await waitForSpecDetailReady(specName, 15000);
+  if (!specReady) {
+    console.warn('[E2E] standardE2ESetup: Spec detail not ready, continuing anyway');
+  }
+
+  // Allow UI to settle
+  await browser.pause(200);
+
+  return true;
 }
 
 /**

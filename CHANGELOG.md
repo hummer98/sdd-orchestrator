@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [0.67.0] - 2026-02-03
+
+### Added
+- Project/Agent Store分離と統一
+
+### Fixed
+- claudeパス解決で.zshrcのPATH設定が読み込まれない問題を修正
+- auto-execution-workflowテストのパーミッション検証修正
+- schedule-taskテストのモーダル/入力問題修正
+- UI要素検出失敗テストの修正
+
+### Changed
+- E2Eテストレポートを修正結果で更新
+
+
 ## [0.66.0] - 2026-02-02
 
 ### Added

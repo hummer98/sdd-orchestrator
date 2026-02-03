@@ -149,14 +149,23 @@ export function RemoteArtifactEditor({
   }, [specDetail?.markdownFiles]);
 
   // Build available tabs
-  // Note: Remote UI's SpecDetailProvider doesn't provide artifact existence info,
-  // so we show all base tabs and let getArtifactContent return empty string for non-existent files
+  // Filter base tabs by artifact existence using specDetail.artifacts
   // artifact-all-markdown-files: Task 7.4 - Include additional markdown tabs
   const availableTabs = useMemo((): TabInfo[] => {
-    // Always show base tabs for specs
+    // Filter base tabs based on artifact existence in specDetail
+    const artifacts = specDetail?.artifacts;
+    let filteredBaseTabs = SPEC_TABS;
+
+    if (artifacts) {
+      filteredBaseTabs = SPEC_TABS.filter((tab) => {
+        const artifact = artifacts[tab.key as keyof typeof artifacts];
+        return artifact !== null && artifact?.exists;
+      });
+    }
+
     // Dynamic tabs (document review, inspection, additional markdown) are added based on specDetail state
-    return [...SPEC_TABS, ...documentReviewTabs, ...inspectionTabs, ...additionalMarkdownTabs];
-  }, [documentReviewTabs, inspectionTabs, additionalMarkdownTabs]);
+    return [...filteredBaseTabs, ...documentReviewTabs, ...inspectionTabs, ...additionalMarkdownTabs];
+  }, [specDetail?.artifacts, documentReviewTabs, inspectionTabs, additionalMarkdownTabs]);
 
   // Load artifact content
   const loadArtifact = useCallback(async (specId: string, artifactType: ArtifactType) => {

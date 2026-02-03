@@ -22,3 +22,7 @@ export type { SpecWorkflowFooterProps, SpecJsonForFooter } from './SpecWorkflowF
 // workflow-view-unification: Core workflow view component (props-driven)
 export { WorkflowViewCore } from './WorkflowViewCore';
 export type { WorkflowViewCoreProps, TaskItem } from './WorkflowViewCore';
+
+// remote-ui-task-display: Task progress bar with expandable content
+export { TaskProgressBar } from './TaskProgressBar';
+export type { TaskProgressBarProps } from './TaskProgressBar';

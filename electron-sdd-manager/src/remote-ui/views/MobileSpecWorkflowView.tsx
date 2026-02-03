@@ -9,6 +9,7 @@
  * git-worktree-support: Task 13.2 - worktree information display (Requirements: 4.1, 4.2)
  * gemini-document-review: Task 10.1, 10.2 - scheme tag and selector (Requirements: 7.1, 7.2, 7.3, 7.4)
  * convert-spec-to-worktree: Task 4.3 - Remote UI Worktree conversion button (Requirements: 4.1, 4.2, 4.3)
+ * remote-ui-task-display: Task 5.1 - TaskProgressBar integration for Mobile
  *
  * Requirements: 7.1
  */
@@ -16,9 +17,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, AlertCircle, GitBranch, FolderGit2, Calendar } from 'lucide-react';
 import { clsx } from 'clsx';
-import { PhaseItem } from '@shared/components/workflow/PhaseItem';
+import { PhaseItem, TaskProgressBar } from '@shared/components/workflow';
 import { AutoExecutionStatusDisplay } from '@shared/components/execution/AutoExecutionStatusDisplay';
 import { Spinner } from '@shared/components/ui/Spinner';
+import { useRemoteTaskProgress } from '../hooks/useRemoteTaskProgress';
 import type {
   ApiClient,
   SpecMetadataWithPath,
@@ -321,6 +323,14 @@ export function MobileSpecWorkflowView({
 
   const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
 
+  // remote-ui-task-display Task 5.1: Use useRemoteTaskProgress for task progress
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 5.3
+  const { taskProgress, tasksContent, isLoading: isTaskProgressLoading } = useRemoteTaskProgress({
+    apiClient,
+    specId: spec.name,
+    specDetail,
+  });
+
   return (
     <div data-testid="remote-spec-detail" className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
@@ -393,6 +403,15 @@ export function MobileSpecWorkflowView({
             />
           );
         })}
+
+        {/* remote-ui-task-display Task 5.1: Task Progress Bar for Mobile */}
+        {/* Requirements: 4.1, 4.2, 4.3, 4.4 */}
+        <TaskProgressBar
+          taskProgress={taskProgress}
+          tasksContent={tasksContent}
+          isLoading={isTaskProgressLoading}
+          testId="mobile-task-progress"
+        />
       </div>
     </div>
   );

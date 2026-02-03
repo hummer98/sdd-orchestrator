@@ -13,6 +13,7 @@ import { DEFAULT_SPEC_DETAIL_STATE } from './types';
 import { useEditorStore } from '../editorStore';
 import { DEFAULT_REVIEWER_SCHEME, type ReviewerScheme } from '@shared/registry';
 import { parseTasksContent } from '@shared/utils/taskParallelParser';
+import { parseTaskProgress } from '@shared/utils/taskProgressParser';
 
 type SpecDetailStore = SpecDetailState & SpecDetailActions;
 
@@ -137,24 +138,18 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
       timings['readArtifacts'] = performance.now() - t2;
 
       // Calculate task progress from tasks.md content
+      // remote-ui-task-display Task 1.2: Use shared parseTaskProgress function (DRY)
       let taskProgress: TaskProgress | null = null;
       if (tasks?.content) {
-        const completedMatches = tasks.content.match(/^- \[x\]/gim) || [];
-        const pendingMatches = tasks.content.match(/^- \[ \]/gm) || [];
-        const total = completedMatches.length + pendingMatches.length;
-        const completed = completedMatches.length;
-        taskProgress = {
-          total,
-          completed,
-          percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-        };
+        const parsed = parseTaskProgress(tasks.content);
+        taskProgress = parsed.total > 0 ? parsed : null;
         console.log('[specDetailStore] Task progress calculated:', { spec: spec.name, taskProgress });
 
         // Auto-fix spec.json phase if task completion doesn't match phase
         // Bug fix: spec-phase-downgrade-on-select - don't downgrade advanced phases
-        if (total > 0) {
+        if (parsed.total > 0) {
           const currentPhase = specJson.phase;
-          const isAllComplete = completed === total;
+          const isAllComplete = parsed.completed === parsed.total;
           const advancedPhases = ['implementation-complete', 'inspection-complete', 'deploy-complete'];
 
           if (isAllComplete && !advancedPhases.includes(currentPhase)) {

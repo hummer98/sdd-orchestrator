@@ -25,3 +25,8 @@ export type { UseRemoteWorkflowStateConfig } from './useRemoteWorkflowState';
 // remote-ui-agent-store-init: Task 2.1
 export { useAgentStoreInit } from './useAgentStoreInit';
 export type { UseAgentStoreInitReturn } from './useAgentStoreInit';
+
+// Task progress hook for Remote UI
+// remote-ui-task-display: Task 2.1
+export { useRemoteTaskProgress } from './useRemoteTaskProgress';
+export type { UseRemoteTaskProgressConfig, TaskProgressState } from './useRemoteTaskProgress';

@@ -6,11 +6,13 @@
  * WorkflowViewCoreにpropsとして渡す
  *
  * workflow-view-unification: 統一されたワークフロービュー
+ * remote-ui-task-display: Task 4.1 - TaskProgressBar integration
  */
 
 import React from 'react';
-import { WorkflowViewCore } from '@shared/components/workflow';
+import { WorkflowViewCore, TaskProgressBar } from '@shared/components/workflow';
 import { useRemoteWorkflowState } from '../hooks/useRemoteWorkflowState';
+import { useRemoteTaskProgress } from '../hooks/useRemoteTaskProgress';
 import type { ApiClient, SpecMetadataWithPath, SpecDetail, WorkflowPhase, Phase } from '@shared/api/types';
 
 // =============================================================================
@@ -52,14 +54,30 @@ export function RemoteWorkflowView({
     onApprovalUpdated,
   });
 
-  // Remote UI currently doesn't have metrics or task progress views
-  // These can be added later when the APIs are implemented
+  // remote-ui-task-display Task 4.1: Use useRemoteTaskProgress for task progress
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 5.3
+  const { taskProgress, tasksContent, isLoading: isTaskProgressLoading } = useRemoteTaskProgress({
+    apiClient,
+    specId: spec?.name ?? null,
+    specDetail: state.specDetail,
+  });
+
+  // Render task progress bar via renderTaskProgress prop
+  const renderTaskProgress = () => (
+    <TaskProgressBar
+      taskProgress={taskProgress}
+      tasksContent={tasksContent}
+      isLoading={isTaskProgressLoading}
+      testId="remote-task-progress"
+    />
+  );
 
   return (
     <WorkflowViewCore
       state={state}
       handlers={handlers}
       disableFooterSafeArea={disableFooterSafeArea}
+      renderTaskProgress={renderTaskProgress}
     />
   );
 }

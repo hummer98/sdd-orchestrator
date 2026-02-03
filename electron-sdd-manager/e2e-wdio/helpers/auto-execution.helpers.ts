@@ -387,24 +387,28 @@ export async function getAutoExecutionServiceDebugInfo(): Promise<{
 
 /**
  * Helper: Get running agents count from AgentStore for a spec
+ * zustand-agent-selector-hooks: Use agents Map directly instead of getAgentsForSpec
  */
 export async function getRunningAgentsCount(specName: string): Promise<number> {
   return browser.execute((spec: string) => {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return 0;
-    const agents = stores.agent.getState().getAgentsForSpec(spec);
+    const agentsMap = stores.agent.getState().agents;
+    const agents = agentsMap.get(spec) || [];
     return agents.filter((a: any) => a.status === 'running').length;
   }, specName);
 }
 
 /**
  * Helper: Get agents count from AgentStore for a spec
+ * zustand-agent-selector-hooks: Use agents Map directly instead of getAgentsForSpec
  */
 export async function getAgentsCount(specName: string): Promise<number> {
   return browser.execute((spec: string) => {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return 0;
-    return stores.agent.getState().getAgentsForSpec(spec).length;
+    const agentsMap = stores.agent.getState().agents;
+    return (agentsMap.get(spec) || []).length;
   }, specName);
 }
 
@@ -754,6 +758,7 @@ export async function waitForAgentComplete(
 
 /**
  * Helper: Get first agent for a spec
+ * zustand-agent-selector-hooks: Use agents Map directly instead of getAgentsForSpec
  *
  * @param specName The spec name
  * @returns The first agent info or null
@@ -762,7 +767,8 @@ export async function getFirstAgentForSpec(specName: string): Promise<any | null
   return browser.execute((spec: string) => {
     const stores = (window as any).__STORES__;
     if (!stores?.agent?.getState) return null;
-    const agents = stores.agent.getState().getAgentsForSpec(spec);
+    const agentsMap = stores.agent.getState().agents;
+    const agents = agentsMap.get(spec) || [];
     return agents.length > 0 ? agents[0] : null;
   }, specName);
 }

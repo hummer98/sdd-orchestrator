@@ -12,7 +12,7 @@
  * - Footer: Agentログエリア
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ApiClientProvider, PlatformProvider, useDeviceType, useApi } from '../shared';
 import { MobileLayout, DesktopLayout, type MobileTab as LayoutMobileTab } from './layouts';
 import { SpecsView, BugsView, BugDetailView, RemoteWorkflowView } from './views';
@@ -27,6 +27,7 @@ import { SpecWorkflowFooter } from '../shared/components/workflow';
 import { AgentList, type AgentItemInfo, type AgentItemStatus, AgentLogPanel, type AgentLogInfo } from '../shared/components/agent';
 import { AskAgentDialog } from '../shared/components/project';
 import { useSharedAgentStore } from '../shared/stores/agentStore';
+import { useProjectAgents } from '../shared/hooks';
 import { ResizeHandle } from '../shared/components/ui';
 import { Bot, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -127,31 +128,13 @@ function LeftSidebar({
   const apiClient = useApi();
 
   /**
-   * project-agent-store-unification Task 2.1: Use SharedAgentStore as SSOT
-   * Requirements: 1.1, 1.2, 1.3, 1.4
-   * - Removed projectAgents local state
-   * - Removed 3-second polling useEffect
-   * - Using getAgentsForSpec('') from SharedAgentStore
-   * - WebSocket events handled by useAgentStoreInit hook in DesktopAppContent
+   * zustand-agent-selector-hooks Task 4.1: Use useProjectAgents hook
+   * Requirements: 3.1 - use useProjectAgents() hook instead of getAgentsForSpec('')
+   * - Hook returns sorted agents (running first, then by startedAt descending)
+   * - Hook reactively subscribes to agents Map changes
    */
-  const { selectAgent, selectedAgentId, removeAgent, getAgentsForSpec } = useSharedAgentStore();
-
-  /**
-   * project-agent-store-unification Task 2.2: Sorting logic
-   * Requirement: 1.5 - running first, then by startedAt descending
-   */
-  const projectAgents = useMemo(() => {
-    const agents = getAgentsForSpec('');
-    return [...agents].sort((a, b) => {
-      // Running first
-      if (a.status === 'running' && b.status !== 'running') return -1;
-      if (a.status !== 'running' && b.status === 'running') return 1;
-      // Then by startedAt descending
-      const aTime = typeof a.startedAt === 'number' ? a.startedAt : new Date(a.startedAt as string).getTime();
-      const bTime = typeof b.startedAt === 'number' ? b.startedAt : new Date(b.startedAt as string).getTime();
-      return bTime - aTime;
-    });
-  }, [getAgentsForSpec]);
+  const { selectAgent, selectedAgentId, removeAgent } = useSharedAgentStore();
+  const projectAgents = useProjectAgents();
 
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
 

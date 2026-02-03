@@ -16,9 +16,10 @@ vi.mock('../../shared/stores/bugStore', () => ({
   useSharedBugStore: vi.fn(),
 }));
 
-// Mock the agentStore
-vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(),
+// zustand-agent-selector-hooks: Mock shared agentStore (not renderer agentStore)
+// BugList now uses useSharedAgentStore to subscribe to agents Map directly
+vi.mock('../../shared/stores/agentStore', () => ({
+  useSharedAgentStore: vi.fn(),
 }));
 
 // Mock the ApiClientProvider
@@ -32,7 +33,8 @@ vi.mock('../../shared/api/ApiClientProvider', () => ({
 }));
 
 import { useSharedBugStore } from '../../shared/stores/bugStore';
-import { useAgentStore } from '../stores/agentStore';
+// zustand-agent-selector-hooks: Use shared agentStore instead of renderer agentStore
+import { useSharedAgentStore } from '../../shared/stores/agentStore';
 
 // Mock BugListItem in shared components (used by BugListContainer)
 vi.mock('@shared/components/bug/BugListItem', () => ({
@@ -79,14 +81,20 @@ describe('BugList', () => {
     selectBug: mockSelectBug,
   };
 
-  const defaultAgentMockState = {
-    getAgentsForSpec: vi.fn().mockReturnValue([]),
-  };
+  // zustand-agent-selector-hooks: Mock agents Map for useSharedAgentStore selector
+  // BugList subscribes to agents Map directly with (state) => state.agents
+  const defaultAgentsMap = new Map<string, { agentId: string; status: string }[]>();
 
   beforeEach(() => {
     vi.clearAllMocks();
     (useSharedBugStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultMockState);
-    (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue(defaultAgentMockState);
+    // zustand-agent-selector-hooks: Mock useSharedAgentStore selector
+    // The component calls useSharedAgentStore((state) => state.agents)
+    // So the mock should execute the selector with state containing agents
+    (useSharedAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) => {
+      const state = { agents: defaultAgentsMap };
+      return selector(state);
+    });
   });
 
   // ============================================================
@@ -257,24 +265,24 @@ describe('BugList', () => {
 
   // ============================================================
   // Running agent count
+  // zustand-agent-selector-hooks: Updated to use agents Map mock
   // ============================================================
   describe('running agent count', () => {
     it('should pass runningAgentCount to BugListItem', () => {
-      const mockGetAgentsForSpec = vi.fn().mockImplementation((specId: string) => {
-        if (specId === 'bug:bug-1') {
-          return [
-            { agentId: 'agent-1', status: 'running' },
-            { agentId: 'agent-2', status: 'running' },
-          ];
-        }
-        if (specId === 'bug:bug-2') {
-          return [{ agentId: 'agent-3', status: 'completed' }];
-        }
-        return [];
-      });
+      // zustand-agent-selector-hooks: Mock agents Map with bug specId keys
+      const agentsMap = new Map<string, { agentId: string; status: string }[]>();
+      agentsMap.set('bug:bug-1', [
+        { agentId: 'agent-1', status: 'running' },
+        { agentId: 'agent-2', status: 'running' },
+      ]);
+      agentsMap.set('bug:bug-2', [
+        { agentId: 'agent-3', status: 'completed' },
+      ]);
+      // bug-3 has no agents (not in map)
 
-      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAgentsForSpec: mockGetAgentsForSpec,
+      (useSharedAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) => {
+        const state = { agents: agentsMap };
+        return selector(state);
       });
 
       render(<BugList />);
@@ -292,19 +300,22 @@ describe('BugList', () => {
       expect(bug3Item).toHaveAttribute('data-running-count', '0');
     });
 
-    it('should call getAgentsForSpec with correct bug specId format', () => {
-      const mockGetAgentsForSpec = vi.fn().mockReturnValue([]);
+    it('should use agents Map with bug: prefix key format', () => {
+      // zustand-agent-selector-hooks: Verify component uses agents.get('bug:{bugName}')
+      // This test verifies the Map key format by checking that running count works
+      const agentsMap = new Map<string, { agentId: string; status: string }[]>();
+      agentsMap.set('bug:bug-1', [{ agentId: 'agent-1', status: 'running' }]);
 
-      (useAgentStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        getAgentsForSpec: mockGetAgentsForSpec,
+      (useSharedAgentStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) => {
+        const state = { agents: agentsMap };
+        return selector(state);
       });
 
       render(<BugList />);
 
-      // Should be called with bug:{bugName} format
-      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-1');
-      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-2');
-      expect(mockGetAgentsForSpec).toHaveBeenCalledWith('bug:bug-3');
+      // Verify that bug-1 correctly gets the agent count using bug: prefix
+      const bug1Item = screen.getByTestId('bug-item-bug-1');
+      expect(bug1Item).toHaveAttribute('data-running-count', '1');
     });
   });
 });

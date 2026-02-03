@@ -20,6 +20,9 @@ import { useSharedBugStore } from '@shared/stores/bugStore';
 import { useSharedAgentStore } from '@shared/stores/agentStore';
 import type { ApiClient, BugMetadataWithPath, BugMetadata } from '@shared/api/types';
 
+// Note: We can't use useRunningAgentCount hook here because it's called per bug item in a callback.
+// Instead, we subscribe to the agents Map directly for reactivity.
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -57,8 +60,11 @@ export function BugsView({
     stopWatching,
   } = useSharedBugStore();
 
-  // bugs-view-unification Task 8.3: Use shared agentStore for running agent counts (Requirements: 6.4)
-  const { getAgentsForSpec } = useSharedAgentStore();
+  /**
+   * zustand-agent-selector-hooks Task 4.3: Subscribe to agents Map directly
+   * Requirements: 3.3 - use proper Zustand selector pattern for reactivity
+   */
+  const agents = useSharedAgentStore((state) => state.agents);
 
   // bugs-view-unification Task 8.2: Use shared filtering/sorting logic with phase filter enabled (Requirements: 6.3)
   const {
@@ -87,10 +93,13 @@ export function BugsView({
     };
   }, [apiClient, loadBugs, startWatching, stopWatching]);
 
-  // bugs-view-unification Task 8.3: Get running agent count for a bug (Requirements: 6.4)
+  /**
+   * zustand-agent-selector-hooks Task 4.3: Get running agent count for a bug
+   * Requirements: 3.3 - use agents Map directly for reactivity
+   */
   const getRunningAgentCount = (bugName: string): number => {
-    const agents = getAgentsForSpec(`bug:${bugName}`);
-    return agents.filter((a) => a.status === 'running').length;
+    const bugAgents = agents.get(`bug:${bugName}`) || [];
+    return bugAgents.filter((a) => a.status === 'running').length;
   };
 
   // Handle bug selection

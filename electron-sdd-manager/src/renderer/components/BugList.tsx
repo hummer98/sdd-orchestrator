@@ -8,7 +8,7 @@
 
 // bugs-view-unification Task 6.1: Use shared bugStore with ApiClient
 import { useSharedBugStore } from '../../shared/stores/bugStore';
-import { useAgentStore } from '../stores/agentStore';
+import { useSharedAgentStore } from '../../shared/stores/agentStore';
 import { BugListContainer } from '@shared/components/bug/BugListContainer';
 import { useBugListLogic } from '@shared/hooks/useBugListLogic';
 import { useApi } from '../../shared/api/ApiClientProvider';
@@ -34,8 +34,11 @@ export function BugList(): React.ReactElement {
     selectBug,
   } = useSharedBugStore();
 
-  // Get agent store for running agent counts
-  const { getAgentsForSpec } = useAgentStore();
+  /**
+   * zustand-agent-selector-hooks Task 5.3: Subscribe to agents Map directly
+   * Requirements: 4.3 - Use proper Zustand selector for reactivity
+   */
+  const agents = useSharedAgentStore((state) => state.agents);
 
   // Use shared filtering/sorting logic (Requirements: 2.1, 2.3, 2.4)
   const {
@@ -47,10 +50,13 @@ export function BugList(): React.ReactElement {
     initialPhaseFilter: 'all',
   });
 
-  // Get running agent count for a bug (Requirements: 1.8)
+  /**
+   * zustand-agent-selector-hooks Task 5.3: Get running agent count for a bug
+   * Requirements: 4.3 - Use agents Map directly for reactivity
+   */
   const getRunningAgentCount = (bugName: string): number => {
-    const agents = getAgentsForSpec(`bug:${bugName}`);
-    return agents.filter((a) => a.status === 'running').length;
+    const bugAgents = agents.get(`bug:${bugName}`) || [];
+    return bugAgents.filter((a) => a.status === 'running').length;
   };
 
   // Handle bug selection

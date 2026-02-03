@@ -15,7 +15,7 @@ import { useApi } from '../../shared/api/ApiClientProvider';
 // bugs-workflow-footer Task 6.1, 6.2: Removed Play, Square, GitBranch - moved to footer
 // bugs-view-unification Task 6.1: Use shared bugStore
 import { useSharedBugStore } from '../../shared/stores/bugStore';
-import { useAgentStore } from '../stores/agentStore';
+import { useAgentsBySpec } from '@shared/hooks';
 import { useWorkflowStore } from '../stores/workflowStore';
 // auto-execution-projectpath-fix Task 4.5: Import useProjectStore for currentProject
 import { useProjectStore } from '../stores/projectStore';
@@ -79,8 +79,13 @@ export function BugWorkflowView() {
   // Compute selectedBug from bugs + selectedBugId
   const { bugs, selectedBugId, bugDetail } = useSharedBugStore();
   const selectedBug = selectedBugId ? bugs.find(b => b.name === selectedBugId) : null;
-  const agents = useAgentStore((state) => state.agents);
-  const getAgentsForBug = useAgentStore((state) => state.getAgentsForSpec);
+
+  /**
+   * zustand-agent-selector-hooks Task 5.6: Use useAgentsBySpec hook
+   * Requirements: 4.3 - Replace getAgentsForSpec with hook
+   */
+  const bugAgentSpecId = selectedBug ? `bug:${selectedBug.name}` : '';
+  const bugAgents = useAgentsBySpec(bugAgentSpecId);
   const bugAutoExecutionPermissions = useWorkflowStore((state) => state.bugAutoExecutionPermissions);
   // auto-execution-projectpath-fix Task 4.5: Get currentProject from store
   const currentProject = useProjectStore((state) => state.currentProject);
@@ -131,16 +136,17 @@ export function BugWorkflowView() {
     }
   }, [bugName, fetchBugAutoExecutionState, refreshMainBranchStatus]);
 
-  // Get running phases for the selected bug
-  // Use bug:{name} format to match AgentListPanel filtering
+  /**
+   * zustand-agent-selector-hooks Task 5.6: Get running phases from hook result
+   * Requirements: 4.3 - Use bugAgents from useAgentsBySpec hook
+   */
   const runningPhases = useMemo(() => {
     if (!selectedBug) return new Set<string>();
-    const bugAgents = getAgentsForBug(`bug:${selectedBug.name}`);
     const running = bugAgents
       .filter((a) => a.status === 'running')
       .map((a) => a.phase);
     return new Set(running);
-  }, [agents, selectedBug, getAgentsForBug]);
+  }, [selectedBug, bugAgents]);
 
   // Calculate phase statuses
   const phaseStatuses = useMemo(() => {

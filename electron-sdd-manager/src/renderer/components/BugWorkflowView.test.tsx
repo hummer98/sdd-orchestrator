@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BugWorkflowView } from './BugWorkflowView';
-import { useAgentStore } from '../stores/agentStore';
+// zustand-agent-selector-hooks: Removed useAgentStore import - component now uses useAgentsBySpec hook
 import { useWorkflowStore } from '../stores/workflowStore';
 import type { BugDetail, BugMetadata } from '../types/bug';
 
@@ -28,20 +28,13 @@ vi.mock('../../shared/api/ApiClientProvider', () => ({
 
 import { useSharedBugStore } from '../../shared/stores/bugStore';
 
-vi.mock('../stores/agentStore', () => {
-  // Create a mock that includes subscribe for Zustand store compatibility
-  const mockFn = vi.fn();
-  mockFn.subscribe = vi.fn(() => vi.fn());
-  mockFn.getState = vi.fn(() => ({
-    agents: new Map(),
-    selectedAgentId: null,
-    logs: new Map(),
-    isLoading: false,
-    error: null,
-  }));
-  mockFn.setState = vi.fn();
-  return { useAgentStore: mockFn };
-});
+// zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of useAgentStore
+vi.mock('@shared/hooks', () => ({
+  useAgentsBySpec: vi.fn(),
+}));
+
+import { useAgentsBySpec } from '@shared/hooks';
+const mockUseAgentsBySpec = useAgentsBySpec as unknown as ReturnType<typeof vi.fn>;
 
 vi.mock('../stores/workflowStore', () => ({
   useWorkflowStore: vi.fn(),
@@ -116,7 +109,6 @@ const mockBugDetail: BugDetail = {
 describe('BugWorkflowView', () => {
   // bugs-view-unification Task 6.1: Use shared bugStore mock
   const mockUseSharedBugStore = useSharedBugStore as unknown as ReturnType<typeof vi.fn>;
-  const mockUseAgentStore = useAgentStore as unknown as ReturnType<typeof vi.fn>;
   const mockUseWorkflowStore = useWorkflowStore as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -131,13 +123,9 @@ describe('BugWorkflowView', () => {
       setUseWorktree: vi.fn(),
     });
 
-    mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-      const state = {
-        agents: new Map(),
-        getAgentsForSpec: () => [],
-      };
-      return selector ? selector(state) : state;
-    });
+    // zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of useAgentStore
+    // The hook returns an array of agents for the given specId
+    mockUseAgentsBySpec.mockReturnValue([]);
 
     mockUseWorkflowStore.mockReturnValue({
       commandPrefix: '/kiro:',
@@ -254,13 +242,8 @@ describe('BugWorkflowView', () => {
         useWorktree: false,
         setUseWorktree: vi.fn(),
       });
-      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-        const state = {
-          agents: new Map(),
-          getAgentsForSpec: () => [],
-        };
-        return selector ? selector(state) : state;
-      });
+      // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
+      mockUseAgentsBySpec.mockReturnValue([]);
 
       render(<BugWorkflowView />);
 
@@ -338,13 +321,8 @@ describe('BugWorkflowView', () => {
         useWorktree: false,
         setUseWorktree: vi.fn(),
       });
-      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-        const state = {
-          agents: new Map(),
-          getAgentsForSpec: () => [],
-        };
-        return selector ? selector(state) : state;
-      });
+      // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
+      mockUseAgentsBySpec.mockReturnValue([]);
 
       render(<BugWorkflowView />);
 
@@ -373,13 +351,8 @@ describe('BugWorkflowView', () => {
         useWorktree: false,
         setUseWorktree: vi.fn(),
       });
-      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-        const state = {
-          agents: new Map(),
-          getAgentsForSpec: () => [],
-        };
-        return selector ? selector(state) : state;
-      });
+      // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
+      mockUseAgentsBySpec.mockReturnValue([]);
 
       render(<BugWorkflowView />);
 
@@ -419,13 +392,8 @@ describe('BugWorkflowView', () => {
         useWorktree: false,
         setUseWorktree: vi.fn(),
       });
-      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-        const state = {
-          agents: new Map(),
-          getAgentsForSpec: () => [],
-        };
-        return selector ? selector(state) : state;
-      });
+      // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
+      mockUseAgentsBySpec.mockReturnValue([]);
 
       render(<BugWorkflowView />);
 
@@ -441,13 +409,8 @@ describe('BugWorkflowView', () => {
         useWorktree: false,
         setUseWorktree: vi.fn(),
       });
-      mockUseAgentStore.mockImplementation((selector?: (state: unknown) => unknown) => {
-        const state = {
-          agents: new Map(),
-          getAgentsForSpec: () => [],
-        };
-        return selector ? selector(state) : state;
-      });
+      // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
+      mockUseAgentsBySpec.mockReturnValue([]);
 
       render(<BugWorkflowView />);
 

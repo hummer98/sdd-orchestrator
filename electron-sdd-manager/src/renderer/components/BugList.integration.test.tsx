@@ -12,11 +12,14 @@ import { useSharedBugStore, resetSharedBugStore } from '../../shared/stores/bugS
 import type { BugMetadata, BugsChangeEvent } from '../types';
 import type { ApiClient } from '../../shared/api/types';
 
-vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(() => ({
-    startAgent: vi.fn().mockResolvedValue('agent-123'),
-    getAgentsForSpec: vi.fn().mockReturnValue([]),
-  })),
+// zustand-agent-selector-hooks: Mock shared agentStore (not renderer agentStore)
+// BugList now uses useSharedAgentStore to subscribe to agents Map directly
+vi.mock('../../shared/stores/agentStore', () => ({
+  useSharedAgentStore: vi.fn((selector) => {
+    // Mock agents Map - empty by default for integration tests
+    const state = { agents: new Map() };
+    return selector(state);
+  }),
 }));
 
 vi.mock('../stores/notificationStore', () => ({

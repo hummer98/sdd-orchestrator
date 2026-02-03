@@ -853,21 +853,9 @@ describe('useAgentStore', () => {
       });
     });
 
-    describe('getAgentsForSpec', () => {
-      it('should return agents for specific spec', () => {
-        // agent-store-unification: Use addAgent to add to shared store
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo2);
-
-        const specAgents = useAgentStore.getState().getAgentsForSpec('spec-1');
-        expect(specAgents).toHaveLength(2);
-      });
-
-      it('should return empty array for unknown spec', () => {
-        const specAgents = useAgentStore.getState().getAgentsForSpec('unknown');
-        expect(specAgents).toEqual([]);
-      });
-    });
+    // zustand-agent-selector-hooks: getAgentsForSpec was removed from renderer store.
+    // Use useAgentsBySpec hook instead for reactive agent filtering.
+    // See shared/hooks/useAgentsBySpec.ts for the new hook implementation.
 
     describe('clearError', () => {
       it('should clear error state', () => {
@@ -881,78 +869,11 @@ describe('useAgentStore', () => {
     });
 
     // ============================================================
-    // Task 4.1: getProjectAgents
-    // Requirements: 4.2 (sidebar-refactor)
-    // プロジェクトエージェント（specIdが空文字、null、undefined）を取得
+    // Task 4.1: getProjectAgents - REMOVED
+    // zustand-agent-selector-hooks: getProjectAgents was removed from renderer store.
+    // Use useProjectAgents hook instead for reactive project agent filtering.
+    // See shared/hooks/useAgentsBySpec.ts for the new hook implementation.
     // ============================================================
-    describe('getProjectAgents', () => {
-      it('should return agents with empty string specId', () => {
-        const projectAgent: AgentInfo = {
-          ...mockAgentInfo,
-          agentId: 'project-agent-1',
-          specId: '', // 空文字列 = プロジェクトエージェント
-          phase: 'project-task',
-        };
-        // agent-store-unification: Use addAgent to add to shared store
-        useAgentStore.getState().addAgent('', projectAgent);
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
-
-        const projectAgents = useAgentStore.getState().getProjectAgents();
-        expect(projectAgents).toHaveLength(1);
-        expect(projectAgents[0].agentId).toBe('project-agent-1');
-      });
-
-      it('should return empty array when no project agents exist', () => {
-        // agent-store-unification: Use addAgent to add to shared store
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
-        useAgentStore.getState().addAgent('spec-2', mockAgentInfo3);
-
-        const projectAgents = useAgentStore.getState().getProjectAgents();
-        expect(projectAgents).toEqual([]);
-      });
-
-      it('should return all project agents from empty specId key', () => {
-        const projectAgent1: AgentInfo = {
-          ...mockAgentInfo,
-          agentId: 'project-1',
-          specId: '',
-          phase: 'steering',
-        };
-        const projectAgent2: AgentInfo = {
-          ...mockAgentInfo2,
-          agentId: 'project-2',
-          specId: '',
-          phase: 'bug-fix',
-        };
-        // agent-store-unification: Use addAgent to add to shared store
-        useAgentStore.getState().addAgent('', projectAgent1);
-        useAgentStore.getState().addAgent('', projectAgent2);
-
-        const projectAgents = useAgentStore.getState().getProjectAgents();
-        expect(projectAgents).toHaveLength(2);
-        expect(projectAgents[0].agentId).toBe('project-1');
-        expect(projectAgents[1].agentId).toBe('project-2');
-      });
-
-      it('should not include agents with non-empty specId', () => {
-        const projectAgent: AgentInfo = {
-          ...mockAgentInfo,
-          agentId: 'project-1',
-          specId: '',
-          phase: 'project-task',
-        };
-        // agent-store-unification: Use addAgent to add to shared store
-        useAgentStore.getState().addAgent('', projectAgent);
-        useAgentStore.getState().addAgent('spec-1', mockAgentInfo);
-        useAgentStore.getState().addAgent('spec-2', mockAgentInfo3);
-
-        const projectAgents = useAgentStore.getState().getProjectAgents();
-        expect(projectAgents).toHaveLength(1);
-        // spec-1やspec-2のエージェントは含まれない
-        expect(projectAgents.some(a => a.specId === 'spec-1')).toBe(false);
-        expect(projectAgents.some(a => a.specId === 'spec-2')).toBe(false);
-      });
-    });
 
     // ============================================================
     // skipPermissions control

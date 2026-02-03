@@ -104,7 +104,7 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
         useSpecDetailStore.setState({ selectedSpec: mockSpec });
 
         // Add a running agent to sharedAgentStore (SSOT)
-        // agentStore.getAgentsForSpec delegates to sharedAgentStore
+        // zustand-agent-selector-hooks: Components now use useAgentsBySpec hook
         const sharedAgents = new Map();
         sharedAgents.set('test-spec', [{
           id: 'agent-1',

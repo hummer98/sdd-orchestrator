@@ -242,10 +242,8 @@ interface AgentActions {
   getAgentById: (agentId: string) => AgentInfo | undefined;
   /** Get selected agent */
   getSelectedAgent: () => AgentInfo | undefined;
-  /** Get agents for a spec */
-  getAgentsForSpec: (specId: string) => AgentInfo[];
-  /** Get project agents (specId = '') */
-  getProjectAgents: () => AgentInfo[];
+  // zustand-agent-selector-hooks: getAgentsForSpec REMOVED (use useAgentsBySpec hook)
+  // zustand-agent-selector-hooks: getProjectAgents REMOVED (use useProjectAgents hook)
   /** Find agent by ID (pure function for selectors) */
   findAgentById: (agentId: string | null) => AgentInfo | undefined;
   /** Clear error */
@@ -624,14 +622,8 @@ export const useAgentStore = create<AgentStore>()(
       return get().getAgentById(selectedAgentId);
     },
 
-    getAgentsForSpec: (specId: string) => {
-      const shared = useSharedAgentStore.getState().getAgentsForSpec(specId);
-      return shared.map(toRendererAgentInfo);
-    },
-
-    getProjectAgents: () => {
-      return get().getAgentsForSpec('');
-    },
+    // zustand-agent-selector-hooks: getAgentsForSpec REMOVED (use useAgentsBySpec hook)
+    // zustand-agent-selector-hooks: getProjectAgents REMOVED (use useProjectAgents hook)
 
     findAgentById: (agentId: string | null) => {
       if (!agentId) return undefined;

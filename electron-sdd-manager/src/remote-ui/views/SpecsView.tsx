@@ -51,8 +51,13 @@ export function SpecsView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // remote-ui-spec-list-agent-count: Use shared agentStore for running agent counts
-  const { getAgentsForSpec } = useSharedAgentStore();
+  /**
+   * zustand-agent-selector-hooks Task 4.2: Subscribe to agents Map directly
+   * Requirements: 3.2 - use proper Zustand selector pattern
+   * - Subscribe to agents Map for reactivity
+   * - Compute running count from Map subscription
+   */
+  const agents = useSharedAgentStore((state) => state.agents);
 
   // spec-list-unification: Use shared hook for sorting/filtering
   // remote-ui-spec-list-optimization: specs already include phase/updatedAt, no specJsonMap needed
@@ -61,13 +66,14 @@ export function SpecsView({
     enableTextSearch: true,
   });
 
-  // remote-ui-spec-list-agent-count: Get running agent count for a spec
+  // zustand-agent-selector-hooks Task 4.2: Get running agent count for a spec
+  // Using agents Map directly for reactivity
   const getRunningAgentCount = useCallback(
     (specName: string): number => {
-      const agents = getAgentsForSpec(specName);
-      return agents.filter((a) => a.status === 'running').length;
+      const specAgents = agents.get(specName) || [];
+      return specAgents.filter((a) => a.status === 'running').length;
     },
-    [getAgentsForSpec]
+    [agents]
   );
 
   // Load specs on mount

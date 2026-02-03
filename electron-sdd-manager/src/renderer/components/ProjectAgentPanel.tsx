@@ -13,7 +13,8 @@
  */
 
 import { Bot, MessageSquare } from 'lucide-react';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import { useProjectAgents } from '@shared/hooks';
 import { useProjectStore, notify } from '../stores';
 import { clsx } from 'clsx';
 import { useState, useEffect } from 'react';
@@ -21,32 +22,45 @@ import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
 import { ScheduleTaskSettingView } from '@shared/components/schedule';
 import { ProjectAgentFooter } from './ProjectAgentFooter';
+import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
 
 // =============================================================================
 // Type Mapping
 // =============================================================================
 
 /**
- * Electron版AgentInfoをshared版AgentItemInfoに変換
+ * zustand-agent-selector-hooks: Map shared AgentInfo to AgentItemInfo
+ * Hook returns shared AgentInfo, convert to AgentItemInfo for AgentList component
  */
-function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
+function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
+  const startedAt = typeof agent.startedAt === 'number'
+    ? new Date(agent.startedAt).toISOString()
+    : agent.startedAt as string;
   return {
     agentId: agent.agentId,
-    sessionId: agent.sessionId,
+    sessionId: agent.sessionId || '',
     phase: agent.phase,
     status: agent.status,
-    startedAt: agent.startedAt,
-    lastActivityAt: agent.lastActivityAt,
+    startedAt,
+    lastActivityAt: agent.lastActivityAt || startedAt,
   };
 }
 
 export function ProjectAgentPanel() {
-  const { selectedAgentId, stopAgent, selectAgent, getProjectAgents, removeAgent, addAgent, selectForProjectAgents, loadAgents, agents } = useAgentStore();
+  const { selectedAgentId, stopAgent, selectAgent, removeAgent, addAgent, selectForProjectAgents, loadAgents, agents } = useAgentStore();
   const { currentProject } = useProjectStore();
-  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
+  // zustand-agent-selector-hooks: Use SharedAgentInfo since projectAgents returns shared type
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
   // Task 8.1: Schedule Task Setting dialog state
   const [isScheduleTaskDialogOpen, setIsScheduleTaskDialogOpen] = useState(false);
+
+  /**
+   * zustand-agent-selector-hooks Task 5.4: Use useProjectAgents hook
+   * Requirements: 4.3 - Replace getProjectAgents with hook
+   * Hook returns agents sorted (running first, then by startedAt descending)
+   */
+  const projectAgents = useProjectAgents();
 
   // Bug fix: project-agent-initial-load
   // Load agents when component mounts or when agents map is empty
@@ -56,16 +70,6 @@ export function ProjectAgentPanel() {
       loadAgents();
     }
   }, [agents.size, loadAgents]);
-
-  const projectAgents = getProjectAgents()
-    // Sort: running first, then by lastActivityAt descending (most recently active first)
-    .sort((a, b) => {
-      // Running agents first
-      if (a.status === 'running' && b.status !== 'running') return -1;
-      if (a.status !== 'running' && b.status === 'running') return 1;
-      // Then by lastActivityAt descending (most recently active first)
-      return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
-    });
 
   /**
    * Task 6.3: isReleaseRunning判定ロジックを更新

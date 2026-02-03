@@ -74,12 +74,6 @@ export interface SharedAgentActions {
    */
   getAgentById: (agentId: string) => AgentInfo | undefined;
   /**
-   * Spec/Bug IDでAgentsを取得する
-   * agent-store-unification Task 1.2
-   * Requirements: 1.2
-   */
-  getAgentsForSpec: (specId: string) => AgentInfo[];
-  /**
    * Agentを追加する
    * agent-store-unification Task 1.4
    * Requirements: 1.4
@@ -297,10 +291,7 @@ export const useSharedAgentStore = create<SharedAgentStore>((set, get) => ({
     return found?.agent;
   },
 
-  // agent-store-unification Task 1.2: agents.get(specId) || []
-  getAgentsForSpec: (specId: string) => {
-    return get().agents.get(specId) || [];
-  },
+  // zustand-agent-selector-hooks: getAgentsForSpec REMOVED (use useAgentsBySpec hook instead)
 
   // agent-store-unification Task 1.4: 該当specの配列に追加
   addAgent: (specId: string, agent: AgentInfo) => {

@@ -66,6 +66,9 @@ function mapAgentStatusToImplTaskStatus(status?: AgentStatus): ImplTaskStatus | 
 /**
  * Compute specManagerExecution state from agentStore (Req 3.1, 3.2, 3.3, 3.4)
  * This replaces the old specManagerExecutionStore
+ *
+ * zustand-agent-selector-hooks Task 5.5: Use agents Map directly
+ * Requirements: 4.2 - Replace getAgentsForSpec with Map access
  */
 function getSpecManagerExecution(specId: string | null): SpecManagerExecutionState {
   if (!specId) {
@@ -73,7 +76,7 @@ function getSpecManagerExecution(specId: string | null): SpecManagerExecutionSta
   }
 
   const agentState = useAgentStore.getState();
-  const specAgents = agentState.getAgentsForSpec(specId);
+  const specAgents = agentState.agents.get(specId) || [];
   const runningAgents = specAgents.filter((a: AgentInfo) => a.status === 'running');
 
   // Sort by startedAt to get the latest running agent (Req 3.4)

@@ -9,13 +9,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { DocumentReviewPanel } from '@shared/components/review';
 import type { DocumentReviewState } from '@shared/types';
 
-// Mock the stores
-vi.mock('../stores/agentStore', () => ({
-  useAgentStore: vi.fn(() => ({
-    agents: new Map(),
-    getAgentsForSpec: () => [],
-  })),
-}));
+// zustand-agent-selector-hooks: Removed agentStore mock - DocumentReviewPanel doesn't use it
+// The component is from @shared/components/review and has no dependency on agentStore
 
 vi.mock('../stores/specStore', () => ({
   useSpecStore: vi.fn(() => ({

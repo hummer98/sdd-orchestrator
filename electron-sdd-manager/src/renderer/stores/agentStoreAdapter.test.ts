@@ -109,11 +109,12 @@ describe('agentStoreAdapter', () => {
         );
         expect(result).toBe('agent-1');
 
-        // Verify agent was added to shared store
+        // zustand-agent-selector-hooks: Verify agent was added to shared store
+        // Use agents Map directly since getAgentsForSpec was removed
         const state = getSharedAgentStore();
-        const agents = state.getAgentsForSpec('spec-a');
-        expect(agents).toHaveLength(1);
-        expect(agents[0].id).toBe('agent-1');
+        const specAgents = state.agents.get('spec-a') || [];
+        expect(specAgents).toHaveLength(1);
+        expect(specAgents[0].id).toBe('agent-1');
       });
 
       it('should return null on error', async () => {
@@ -189,10 +190,11 @@ describe('agentStoreAdapter', () => {
 
         expect(mockElectronAPI.deleteAgent).toHaveBeenCalledWith('spec-a', 'agent-1');
 
-        // Verify agent was removed from shared store
+        // zustand-agent-selector-hooks: Verify agent was removed from shared store
+        // Use agents Map directly since getAgentsForSpec was removed
         const state = getSharedAgentStore();
-        const agents = state.getAgentsForSpec('spec-a');
-        expect(agents).toHaveLength(0);
+        const specAgents = state.agents.get('spec-a') || [];
+        expect(specAgents).toHaveLength(0);
       });
     });
 

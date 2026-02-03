@@ -9,28 +9,33 @@
 
 import { useState, useEffect } from 'react';
 import { Bot, GitBranch, MessageSquare } from 'lucide-react';
-import { useAgentStore, type AgentInfo } from '../stores/agentStore';
+import { useAgentStore } from '../stores/agentStore';
+import { useAgentsBySpec } from '@shared/hooks';
 import { notify } from '../stores';
 import { clsx } from 'clsx';
 import { AskAgentDialog } from '@shared/components/project';
 import { AgentList, type AgentItemInfo } from '@shared/components/agent';
+import type { AgentInfo as SharedAgentInfo } from '@shared/api/types';
 
 // =============================================================================
 // Type Mapping
 // =============================================================================
 
 /**
- * Electron版AgentInfoをshared版AgentItemInfoに変換
- * Phase 1: AgentListItem共通化のための型マッピング
+ * zustand-agent-selector-hooks: Map shared AgentInfo to AgentItemInfo
+ * Hook returns shared AgentInfo, convert to AgentItemInfo for AgentList component
  */
-function mapAgentInfoToItemInfo(agent: AgentInfo): AgentItemInfo {
+function mapAgentInfoToItemInfo(agent: SharedAgentInfo): AgentItemInfo {
+  const startedAt = typeof agent.startedAt === 'number'
+    ? new Date(agent.startedAt).toISOString()
+    : agent.startedAt as string;
   return {
     agentId: agent.agentId,
-    sessionId: agent.sessionId,
+    sessionId: agent.sessionId || '',
     phase: agent.phase,
     status: agent.status,
-    startedAt: agent.startedAt,
-    lastActivityAt: agent.lastActivityAt,
+    startedAt,
+    lastActivityAt: agent.lastActivityAt || startedAt,
   };
 }
 
@@ -55,9 +60,17 @@ interface AgentListPanelProps {
 }
 
 export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', isBugPanel = false, worktreePath }: AgentListPanelProps) {
-  const { selectedAgentId, stopAgent, selectAgent, getAgentsForSpec, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions, addAgent } = useAgentStore();
-  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<AgentInfo | null>(null);
+  const { selectedAgentId, stopAgent, selectAgent, getAgentById, removeAgent, loadAgents, agents, skipPermissions, setSkipPermissions, addAgent } = useAgentStore();
+  // zustand-agent-selector-hooks: Use SharedAgentInfo since filteredAgents returns shared type
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState<SharedAgentInfo | null>(null);
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
+
+  /**
+   * zustand-agent-selector-hooks Task 5.2: Use useAgentsBySpec hook
+   * Requirements: 4.3 - Replace getAgentsForSpec with hook
+   * Hook returns agents sorted (running first, then by startedAt descending)
+   */
+  const filteredAgents = useAgentsBySpec(specId);
 
   // Load agents when component mounts or when agents map is empty
   useEffect(() => {
@@ -66,19 +79,10 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
     }
   }, [agents.size, loadAgents]);
 
-  // Get agents for this spec/bug (sorted: running first, then by startedAt descending)
-  const filteredAgents = getAgentsForSpec(specId)
-    .sort((a, b) => {
-      // Running agents first
-      if (a.status === 'running' && b.status !== 'running') return -1;
-      if (a.status !== 'running' && b.status === 'running') return 1;
-      // Then by startedAt descending
-      return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-    });
-
-  // Auto-select running agent when specId changes
-  // Only auto-select if there's an agent currently running for this spec/bug
-  // Clear selection if moving to a spec with no agents
+  /**
+   * zustand-agent-selector-hooks Task 5.2: Auto-select using hook result
+   * Requirements: 4.3 - Use filteredAgents from useAgentsBySpec hook
+   */
   useEffect(() => {
     if (!specId) return;
 
@@ -89,23 +93,20 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
       if (currentAgent && currentAgent.specId === '') return;
     }
 
-    // Get agents for the new spec/bug
-    const currentAgents = getAgentsForSpec(specId);
-
     // If an agent is already selected for this spec/bug, don't auto-select
-    const currentSelectedAgent = currentAgents.find(a => a.agentId === selectedAgentId);
+    const currentSelectedAgent = filteredAgents.find(a => a.agentId === selectedAgentId);
     if (currentSelectedAgent) return;
 
     // Only auto-select if there's a running agent
-    const runningAgent = currentAgents.find(a => a.status === 'running');
+    const runningAgent = filteredAgents.find(a => a.status === 'running');
     if (runningAgent) {
       selectAgent(runningAgent.agentId);
-    } else if (currentAgents.length === 0) {
+    } else if (filteredAgents.length === 0) {
       // Clear selection when moving to a spec with no agents
       // This prevents stale agent logs from previous spec being displayed
       selectAgent(null);
     }
-  }, [specId, selectedAgentId, getAgentsForSpec, getAgentById, selectAgent]);
+  }, [specId, selectedAgentId, filteredAgents, getAgentById, selectAgent]);
 
   if (!specId) {
     return null;
@@ -116,7 +117,7 @@ export function AgentListPanel({ specId, specName, testId = 'agent-list-panel', 
     await stopAgent(agentId);
   };
 
-  const handleRemoveClick = (agent: AgentInfo, e: React.MouseEvent) => {
+  const handleRemoveClick = (agent: SharedAgentInfo, e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDeleteAgent(agent);
   };

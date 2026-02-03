@@ -50,7 +50,8 @@ const mockProjectAgent3: AgentInfo = {
 
 /**
  * Helper to set agents in both stores
- * agentStore.getAgentsForSpec delegates to sharedAgentStore, so we need to update both
+ * zustand-agent-selector-hooks: useProjectAgents hook subscribes to sharedAgentStore.agents Map
+ * We update both stores to ensure reactivity works correctly
  */
 function setAgentsInStores(agents: Map<string, AgentInfo[]>) {
   // Convert renderer AgentInfo (agentId) to shared AgentInfo (id) format
@@ -894,9 +895,9 @@ describe('ProjectAgentPanel', () => {
       expect(agentItem).toHaveTextContent('release');
     });
 
-    it('should use getProjectAgents selector to get agent list', async () => {
-      // This test verifies that the implementation uses getProjectAgents selector
-      // by checking that only specId='' agents are considered
+    it('should use useProjectAgents hook to get agent list', async () => {
+      // zustand-agent-selector-hooks: This test verifies that the implementation
+      // uses useProjectAgents hook by checking that only specId='' agents are considered
 
       const agents = new Map<string, AgentInfo[]>();
       // Add a spec-bound agent with phase='release' (should be ignored)

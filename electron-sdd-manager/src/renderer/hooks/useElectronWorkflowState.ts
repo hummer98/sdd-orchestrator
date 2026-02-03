@@ -12,7 +12,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useSpecStore } from '../stores/specStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useWorkflowStore, DEFAULT_AUTO_EXECUTION_PERMISSIONS } from '../stores/workflowStore';
-import { useAgentStore } from '../stores/agentStore';
+import { useAgentsBySpec } from '@shared/hooks';
 import { useAutoExecutionStore } from '../stores/spec/autoExecutionStore';
 import { useSpecDetailStore, getResolvedScheme } from '../stores/spec/specDetailStore';
 import { useParallelModeStore } from '@shared/stores/parallelModeStore';
@@ -62,12 +62,16 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
   // auto-execution-projectpath-fix Task 4.5: Get project path from store
   const currentProject = useProjectStore((state) => state.currentProject);
   const workflowStore = useWorkflowStore();
-  const agents = useAgentStore((state) => state.agents);
-  const getAgentsForSpec = useAgentStore((state) => state.getAgentsForSpec);
+
+  /**
+   * zustand-agent-selector-hooks Task 5.1: Use useAgentsBySpec hook
+   * Requirements: 4.1 - Replace getAgentsForSpec with hook
+   */
+  const specId = specDetail?.metadata.name ?? '';
+  const specAgents = useAgentsBySpec(specId);
 
   // Auto Execution
   const autoExecution = useAutoExecution();
-  const specId = specDetail?.metadata.name ?? '';
   const autoExecutionRuntimeMap = useSpecStore((state) => state.autoExecutionRuntimeMap);
   const autoExecutionRuntime = useMemo(() => {
     return autoExecutionRuntimeMap.get(specId) ?? {
@@ -117,15 +121,17 @@ export function useElectronWorkflowState(): UseWorkflowStateReturn {
     return statuses;
   }, [specJson, specDetail?.taskProgress?.percentage]);
 
-  // Running phases
+  /**
+   * zustand-agent-selector-hooks Task 5.1: Use specAgents from hook
+   * Requirements: 4.1 - Running phases derived from useAgentsBySpec result
+   */
   const runningPhases = useMemo(() => {
     if (!specDetail) return new Set<string>();
-    const specAgents = getAgentsForSpec(specDetail.metadata.name);
     const running = specAgents
       .filter((a) => a.status === 'running')
       .map((a) => a.phase);
     return new Set(running);
-  }, [agents, specDetail, getAgentsForSpec]);
+  }, [specDetail, specAgents]);
 
   // Document Review State
   const documentReviewState = useMemo((): DocumentReviewState | null => {

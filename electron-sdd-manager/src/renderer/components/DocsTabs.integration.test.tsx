@@ -68,14 +68,11 @@ vi.mock('./CreateBugDialog', () => ({
     ) : null,
 }));
 
+// zustand-agent-selector-hooks: Removed getAgentsForSpec from mock
+// DocsTabs only uses selectAgent from useAgentStore
 vi.mock('../stores/agentStore', () => ({
   useAgentStore: vi.fn(() => ({
-    startAgent: vi.fn().mockResolvedValue('agent-123'),
-    selectForProjectAgents: vi.fn(),
     selectAgent: vi.fn(),
-    getAgentsForSpec: vi.fn().mockReturnValue([]),
-    agents: [],
-    projectAgents: [],
   })),
 }));
 

@@ -374,11 +374,13 @@ describe('ParsedLogEntry Display E2E Test - Task 9.1', () => {
       await browser.pause(2000);
 
       // Check agentStore.logs contains ParsedLogEntry[]
+      // zustand-agent-selector-hooks: Use agents Map directly instead of getAgentsForSpec
       const logsInfo = await browser.execute((specName: string) => {
         const stores = (window as any).__STORES__;
         if (!stores?.agent?.getState) return { hasLogs: false, logCount: 0, sampleLog: null };
 
-        const agents = stores.agent.getState().getAgentsForSpec(specName);
+        const agentsMap = stores.agent.getState().agents;
+        const agents = agentsMap.get(specName) || [];
         if (agents.length === 0) return { hasLogs: false, logCount: 0, sampleLog: null };
 
         const agentId = agents[0].agentId;

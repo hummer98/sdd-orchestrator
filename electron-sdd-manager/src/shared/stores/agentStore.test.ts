@@ -79,38 +79,11 @@ describe('SharedAgentStore', () => {
     });
 
     // -------------------------------------------------------------------------
-    // Task 1.2: getAgentsForSpec(specId) メソッド
-    // Requirements: 1.2
+    // Task 1.2: getAgentsForSpec(specId) メソッド - REMOVED
+    // zustand-agent-selector-hooks: getAgentsForSpec was removed and replaced with
+    // useAgentsBySpec hook for proper Zustand reactivity.
+    // See shared/hooks/useAgentsBySpec.ts for the new hook implementation.
     // -------------------------------------------------------------------------
-    describe('Task 1.2: getAgentsForSpec(specId)', () => {
-      it('should return agents array for existing specId', () => {
-        const store = getSharedAgentStore();
-        const agent1 = createAgent('agent-1', 'spec-a', 'running');
-        const agent2 = createAgent('agent-2', 'spec-a', 'completed');
-
-        store.addAgent('spec-a', agent1);
-        store.addAgent('spec-a', agent2);
-
-        const agents = store.getAgentsForSpec('spec-a');
-        expect(agents).toHaveLength(2);
-        expect(agents[0].agentId).toBe('agent-1');
-        expect(agents[1].agentId).toBe('agent-2');
-      });
-
-      it('should return empty array for non-existent specId', () => {
-        const store = getSharedAgentStore();
-
-        const agents = store.getAgentsForSpec('non-existent');
-        expect(agents).toEqual([]);
-      });
-
-      it('should return empty array for empty store', () => {
-        const store = getSharedAgentStore();
-
-        const agents = store.getAgentsForSpec('any-spec');
-        expect(agents).toEqual([]);
-      });
-    });
 
     // -------------------------------------------------------------------------
     // Task 1.3: getAgentById(agentId) メソッド修正

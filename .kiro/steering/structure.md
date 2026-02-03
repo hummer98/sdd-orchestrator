@@ -147,6 +147,24 @@ Electron機能の設計時、以下を必ず確認する:
 2. **Renderer側のステートは「Mainのキャッシュ」になっているか？** → Rendererが真実の情報源にならない
 3. **ステート変更の流れは Renderer → IPC → Main → ブロードキャスト → Renderer か？** → 逆方向のフローは設計ミス
 
+### Renderer Process Module Restrictions (Strict)
+
+`src/renderer/`、`src/shared/` はViteでブラウザ向けにビルドされる。**Node.js built-inモジュールは使用禁止**（実行時エラーとなる）。
+
+| 禁止 | 代替 |
+|------|------|
+| `path`, `fs`, `os`, `child_process` | IPC経由でMainに依頼 |
+| `crypto` | Web Crypto API |
+| `node:*` | 上記と同様 |
+
+```typescript
+// ❌ NG
+import * as path from 'path';
+
+// ✅ OK: 文字列操作またはIPC経由
+const fullPath = `${basePath}/${relativePath}`;
+```
+
 ## Component Organization Rules (Strict)
 
 ### 1. Shared Components (SSOT)

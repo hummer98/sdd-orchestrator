@@ -91,8 +91,10 @@ export class ClaudePathResolverService {
     this.initialized = true;
 
     // Get user's shell (Requirement 1.2)
+    // Use -il flags to load both login (.zprofile) and interactive (.zshrc) configs
+    // This ensures PATH modifications in .zshrc (e.g., ~/.local/bin) are included
     const shell = process.env.SHELL || '/bin/sh';
-    const command = `${shell} -l -c 'which claude'`;
+    const command = `${shell} -il -c 'which claude'`;
 
     logger.info('[ClaudePathResolver] Resolving claude path', { shell, command });
 

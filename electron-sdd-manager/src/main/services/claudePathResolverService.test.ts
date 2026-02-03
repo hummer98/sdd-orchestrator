@@ -51,7 +51,7 @@ describe('ClaudePathResolverService', () => {
       expect(result.resolved).toBe(true);
       expect(result.path).toBe('/usr/local/bin/claude');
       expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/zsh -l -c 'which claude'",
+        "/bin/zsh -il -c 'which claude'",
         expect.any(Object)
       );
     });
@@ -71,7 +71,7 @@ describe('ClaudePathResolverService', () => {
       await service.resolveClaudePath();
 
       expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/bash -l -c 'which claude'",
+        "/bin/bash -il -c 'which claude'",
         expect.any(Object)
       );
     });
@@ -91,7 +91,7 @@ describe('ClaudePathResolverService', () => {
       await service.resolveClaudePath();
 
       expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/sh -l -c 'which claude'",
+        "/bin/sh -il -c 'which claude'",
         expect.any(Object)
       );
     });

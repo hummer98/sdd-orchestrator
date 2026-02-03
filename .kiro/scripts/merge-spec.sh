@@ -21,7 +21,9 @@ if [ -z "$1" ]; then
 fi
 
 FEATURE_NAME="$1"
-SPEC_JSON=".kiro/specs/${FEATURE_NAME}/spec.json"
+WORKTREE_PATH=".kiro/worktrees/specs/${FEATURE_NAME}"
+WORKTREE_SPEC_JSON="${WORKTREE_PATH}/.kiro/specs/${FEATURE_NAME}/spec.json"
+MAIN_SPEC_JSON=".kiro/specs/${FEATURE_NAME}/spec.json"
 
 # Preconditions: Check if jq is installed
 if ! command -v jq >/dev/null 2>&1; then
@@ -29,9 +31,15 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 2
 fi
 
-# Preconditions: Check if spec.json exists
-if [ ! -f "$SPEC_JSON" ]; then
-  echo "Error: $SPEC_JSON not found" >&2
+# Preconditions: Check if spec.json exists (prefer worktree, fallback to main)
+if [ -f "$WORKTREE_SPEC_JSON" ]; then
+  SPEC_JSON="$WORKTREE_SPEC_JSON"
+  echo "Using spec.json from worktree: $SPEC_JSON"
+elif [ -f "$MAIN_SPEC_JSON" ]; then
+  SPEC_JSON="$MAIN_SPEC_JSON"
+  echo "Using spec.json from main: $SPEC_JSON"
+else
+  echo "Error: spec.json not found in worktree ($WORKTREE_SPEC_JSON) or main ($MAIN_SPEC_JSON)" >&2
   exit 2
 fi
 
@@ -104,7 +112,6 @@ else
 fi
 
 # Cleanup: Remove worktree
-WORKTREE_PATH=".kiro/worktrees/specs/${FEATURE_NAME}"
 if [ -d "$WORKTREE_PATH" ]; then
   if git worktree remove "$WORKTREE_PATH" 2>&1; then
     echo "Worktree removed: $WORKTREE_PATH"

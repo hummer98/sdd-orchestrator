@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## [0.68.0] - 2026-02-04
+
+### Added
+- プロジェクト設定ファイルエディタ機能を実装
+- Remote UIにタスク進捗表示機能を追加
+- Unified Engine Command Resolution実装
+- useAgentsBySpec hooksを追加（効率的なエージェントフィルタリング）
+- LeftSidebarにProjectAgentPanel用ResizeHandleを追加
+
+### Fixed
+- worktree-executionテストのタイミング問題を修正
+- E2Eテストのタイミング問題を修正
+- IPCハンドラ重複登録エラーと無限再帰を修正
+- BugList選択時のSPEC_NOT_FOUNDエラーを修正
+- RemoteArtifactEditorで存在しないファイルのタブを非表示に修正
+- worktree側のspec.jsonを優先して参照するよう修正
+
+### Changed
+- MCPデフォルトポートを3001から9100に変更
+- AutoExecutionPermissions型を共通型定義に統一
+- E2E安定性向上とツール追加
+- spec-inspection.mdをE2E Pipeline対応版に同期
+- Renderer Process Module Restrictions ドキュメント追加
+
+
 ## [0.67.0] - 2026-02-03
 
 ### Added

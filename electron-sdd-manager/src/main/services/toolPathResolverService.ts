@@ -52,13 +52,23 @@ export interface ToolStatus {
 export interface ExecDeps {
   execAsync: (
     command: string,
-    options?: { timeout?: number }
+    options?: { timeout?: number; env?: NodeJS.ProcessEnv }
   ) => Promise<{ stdout: string; stderr: string }>;
 }
 
 // ============================================================
 // Constants - Requirements: 1.2, 5.1, 5.2, 5.3
 // ============================================================
+
+/**
+ * Get shell execution environment with macOS session save disabled.
+ * SHELL_SESSIONS_DISABLE=1 prevents zsh from outputting "Saving session..."
+ * when running with -i flag. See: https://github.com/sindresorhus/pure/issues/664
+ */
+const getShellExecEnv = (): NodeJS.ProcessEnv => ({
+  ...process.env,
+  SHELL_SESSIONS_DISABLE: '1',
+});
 
 /**
  * Tool definitions - Requirements: 1.2, 5.1, 5.2, 5.3
@@ -203,6 +213,7 @@ export class ToolPathResolverService {
       // Requirement 2.1: Execute which within login shell
       const { stdout, stderr } = await this.execDeps.execAsync(whichCommand, {
         timeout: ToolPathResolverService.TIMEOUT_MS, // Requirement 2.4
+        env: getShellExecEnv(),
       });
 
       const resolvedPath = stdout.trim();
@@ -223,6 +234,7 @@ export class ToolPathResolverService {
         const versionCommand = `${shell} -il -c '${resolvedPath} ${definition.versionCommand}'`;
         const versionResult = await this.execDeps.execAsync(versionCommand, {
           timeout: ToolPathResolverService.TIMEOUT_MS,
+          env: getShellExecEnv(),
         });
         version = versionResult.stdout.trim();
       } catch (versionError) {

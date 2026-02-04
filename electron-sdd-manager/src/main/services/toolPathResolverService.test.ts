@@ -176,6 +176,31 @@ describe('ToolPathResolverService', () => {
       );
     });
 
+    it('should set SHELL_SESSIONS_DISABLE=1 to prevent macOS zsh session save messages', async () => {
+      // Fix for: "zsh: error on TTY read" and "Saving session..." messages on macOS
+      // See: https://github.com/sindresorhus/pure/issues/664
+      const execDeps = createExecDeps({
+        execAsync: vi.fn().mockResolvedValue({
+          stdout: '/usr/local/bin/claude\n',
+          stderr: '',
+        }),
+      });
+
+      const service = new ToolPathResolverService(execDeps);
+      process.env.SHELL = '/bin/zsh';
+
+      await service.resolveTool('claude');
+
+      expect(execDeps.execAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          env: expect.objectContaining({
+            SHELL_SESSIONS_DISABLE: '1',
+          }),
+        })
+      );
+    });
+
     it('should use $SHELL environment variable for shell detection', async () => {
       // Requirement 2.2: .zshrc/.zprofile should be loaded
       const execDeps = createExecDeps({

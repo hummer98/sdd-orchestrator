@@ -10,7 +10,6 @@
  * - Empty state handling
  */
 
-import * as path from 'path';
 import { FileText, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProjectFilesState, ProjectFileInfo } from '@shared/api/types';
@@ -83,7 +82,10 @@ export function ProjectFileList({
   const { claudeMd, steeringFiles, isLoading, error } = files;
 
   const getAbsolutePath = (relativePath: string) => {
-    return path.join(projectPath, relativePath);
+    // Browser-compatible path join (avoid Node.js 'path' module in renderer)
+    const base = projectPath.endsWith('/') ? projectPath.slice(0, -1) : projectPath;
+    const rel = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+    return `${base}/${rel}`;
   };
 
   const handleFileClick = (file: ProjectFileInfo) => {

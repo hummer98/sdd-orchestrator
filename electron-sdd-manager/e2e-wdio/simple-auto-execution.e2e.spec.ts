@@ -27,6 +27,8 @@ import {
   debugGetAllAgents,
   stopAutoExecution,
   resetAutoExecutionCoordinator,
+  waitForSpecDetailReady,
+  waitForProjectUIReady,
 } from './helpers/auto-execution.helpers';
 
 const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/auto-exec-test');
@@ -116,20 +118,39 @@ describe('Simple Auto Execution E2E Test', () => {
     // AutoExecutionServiceの状態をリセット（テスト分離のため）
     await resetAutoExecutionService();
 
-    // プロジェクトとspecを選択
+    // プロジェクトを選択
     const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
 
-    // ファイル監視経由でspecが更新されるのを待つ
-    await browser.pause(500);
-    await refreshSpecStore();
-    await browser.pause(500);
+    // E2E-fix: プロジェクトUIが完全にロードされるまで待機
+    const projectUIReady = await waitForProjectUIReady(10000);
+    if (!projectUIReady) {
+      console.log('[E2E] WARNING: Project UI not ready after selection');
+    }
 
+    // Specを選択
     const specSuccess = await selectSpecViaStore(SPEC_NAME);
     expect(specSuccess).toBe(true);
-    await browser.pause(500);
 
-    // Specストアを更新
+    // E2E-fix: Spec詳細がロードされるまで待機（Zustand store状態を直接確認）
+    const specDetailReady = await waitForSpecDetailReady(SPEC_NAME, 15000);
+    if (!specDetailReady) {
+      console.log('[E2E] WARNING: Spec detail not ready after selection');
+      // デバッグ情報を出力
+      const debugInfo = await browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.spec?.getState) return { error: 'stores not available' };
+        const state = stores.spec.getState();
+        return {
+          specDetail: state.specDetail?.metadata?.name || null,
+          isDetailLoading: state.isDetailLoading,
+          selectedSpec: state.selectedSpec?.name || null,
+        };
+      });
+      console.log('[E2E] DEBUG: specStore state:', JSON.stringify(debugInfo));
+    }
+
+    // Specストアを更新（念のため）
     await refreshSpecStore();
 
     // agent-list-panelが表示されるまで待機

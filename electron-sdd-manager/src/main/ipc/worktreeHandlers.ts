@@ -5,7 +5,7 @@
  * worktree-rebase-from-main: Task 13.1, 13.4 - Import getCurrentProjectPath for rebase handler
  */
 
-import { ipcMain } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
@@ -175,7 +175,7 @@ export function registerWorktreeHandlers(): void {
   logger.info('[worktreeHandlers] Registering worktree IPC handlers');
 
   // worktree:check-main
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_CHECK_MAIN,
     async (_event, projectPath: string) => {
       return handleWorktreeCheckMain(projectPath);
@@ -183,7 +183,7 @@ export function registerWorktreeHandlers(): void {
   );
 
   // worktree:create
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_CREATE,
     async (_event, projectPath: string, featureName: string) => {
       return handleWorktreeCreate(projectPath, featureName);
@@ -191,7 +191,7 @@ export function registerWorktreeHandlers(): void {
   );
 
   // worktree:remove
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_REMOVE,
     async (_event, projectPath: string, featureName: string) => {
       return handleWorktreeRemove(projectPath, featureName);
@@ -199,7 +199,7 @@ export function registerWorktreeHandlers(): void {
   );
 
   // worktree:resolve-path
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_RESOLVE_PATH,
     async (_event, projectPath: string, relativePath: string) => {
       return handleWorktreeResolvePath(projectPath, relativePath);
@@ -208,7 +208,7 @@ export function registerWorktreeHandlers(): void {
 
   // worktree:impl-start - Task 14.3: Start impl in worktree mode
   // Requirements: 9.5, 9.6, 9.7
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_IMPL_START,
     async (_event, projectPath: string, specPath: string, featureName: string) => {
       logger.info('[worktreeHandlers] worktree:impl-start called', {
@@ -222,7 +222,7 @@ export function registerWorktreeHandlers(): void {
 
   // worktree-execution-ui Task 5.1: Normal mode impl start
   // Requirements: 9.1, 9.2
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.NORMAL_MODE_IMPL_START,
     async (_event, projectPath: string, specPath: string) => {
       logger.info('[worktreeHandlers] worktree:normal-mode-impl-start called', {
@@ -236,7 +236,7 @@ export function registerWorktreeHandlers(): void {
   // worktree-rebase-from-main: Task 3.2, Task 13.1 - Rebase from main
   // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
   // Task 13.1: Updated to get projectPath from session state (spec-path-ssot-refactor compliance)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.WORKTREE_REBASE_FROM_MAIN,
     async (_event, specOrBugPath: string) => {
       const projectPath = getCurrentProjectPath();

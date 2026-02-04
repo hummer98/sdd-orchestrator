@@ -15,8 +15,9 @@
  * projectAgentWatcher now monitors all categories (specs/*, bugs/*, project/) with a single watcher
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
 import type { SpecManagerService, ExecutionGroup } from '../services/specManagerService';
@@ -64,7 +65,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   // agent-watcher-optimization Task 2.2: Get running agent counts per spec
   // Requirements: 2.1 - Get running agent counts efficiently
   // agent-state-file-ssot: Now uses AgentRecordService (file-based SSOT)
-  ipcMain.handle(IPC_CHANNELS.GET_RUNNING_AGENT_COUNTS, async () => {
+  safeHandle(IPC_CHANNELS.GET_RUNNING_AGENT_COUNTS, async () => {
     try {
       const recordService = getDefaultAgentRecordService();
       const countsMap = await recordService.getRunningAgentCounts();
@@ -88,7 +89,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   // ============================================================
 
   // unified-engine-command-resolution: command parameter removed, engineId used instead
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.START_AGENT,
     async (
       event,
@@ -135,7 +136,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
 
   // Task 7.3: Use AgentLifecycleManager for stop agent (agent-lifecycle-management feature)
   // Requirement: 1.5 - Route through AgentLifecycleManager
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.STOP_AGENT,
     async (_event, agentId: string) => {
       logger.info('[agentHandlers] STOP_AGENT called', { agentId });
@@ -175,7 +176,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.RESUME_AGENT,
     async (event, agentId: string, prompt?: string, _skipPermissions?: boolean) => {
       // skip-permissions-main-process: skipPermissions is now auto-fetched from layoutConfigService
@@ -197,7 +198,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.DELETE_AGENT,
     async (_event, specId: string, agentId: string) => {
       logger.info('[agentHandlers] DELETE_AGENT called', { specId, agentId });
@@ -215,7 +216,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   // Task 4.1 (agent-state-file-ssot): Update handler to use async getAgents
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GET_AGENTS,
     async (_event, specId: string) => {
       const service = getSpecManagerService();
@@ -224,7 +225,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   );
 
   // Task 4.2 (agent-state-file-ssot): Update handler to use async getAllAgents
-  ipcMain.handle(IPC_CHANNELS.GET_ALL_AGENTS, async () => {
+  safeHandle(IPC_CHANNELS.GET_ALL_AGENTS, async () => {
     const service = getSpecManagerService();
     const agentsMap = await service.getAllAgents();
 
@@ -241,7 +242,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
   // Agent Operation Handlers
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SEND_AGENT_INPUT,
     async (_event, agentId: string, input: string) => {
       const service = getSpecManagerService();
@@ -255,7 +256,7 @@ export function registerAgentHandlers(deps: AgentHandlersDependencies): void {
 
   // Agent Logs Handler (Bug fix: agent-log-display-issue)
   // DRY: Uses shared readParsedLogs function
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GET_AGENT_LOGS,
     async (_event, specId: string, agentId: string): Promise<ParsedLogEntry[]> => {
       logger.debug('[agentHandlers] GET_AGENT_LOGS called', { specId, agentId });

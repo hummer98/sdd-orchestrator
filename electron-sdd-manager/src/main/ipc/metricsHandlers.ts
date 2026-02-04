@@ -4,7 +4,8 @@
  * Requirements: 2.12, 5.1
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { getDefaultMetricsService, initDefaultMetricsService } from '../services/metricsService';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
@@ -23,7 +24,7 @@ export function registerMetricsHandlers(getCurrentProjectPath: () => string | nu
   // ===========================================================================
   // RECORD_HUMAN_SESSION: Record human activity session (Requirement 2.12)
   // ===========================================================================
-  ipcMain.handle(IPC_CHANNELS.RECORD_HUMAN_SESSION, async (
+  safeHandle(IPC_CHANNELS.RECORD_HUMAN_SESSION, async (
     _event,
     session: HumanSessionData
   ): Promise<{ ok: true } | { ok: false; error: string }> => {
@@ -57,7 +58,7 @@ export function registerMetricsHandlers(getCurrentProjectPath: () => string | nu
   // ===========================================================================
   // GET_SPEC_METRICS: Get aggregated metrics for a spec (Requirement 5.1)
   // ===========================================================================
-  ipcMain.handle(IPC_CHANNELS.GET_SPEC_METRICS, async (
+  safeHandle(IPC_CHANNELS.GET_SPEC_METRICS, async (
     _event,
     specId: string
   ): Promise<{ ok: true; value: SpecMetrics } | { ok: false; error: string }> => {
@@ -89,7 +90,7 @@ export function registerMetricsHandlers(getCurrentProjectPath: () => string | nu
   // ===========================================================================
   // GET_PROJECT_METRICS: Get project-wide aggregated metrics (Optional)
   // ===========================================================================
-  ipcMain.handle(IPC_CHANNELS.GET_PROJECT_METRICS, async (
+  safeHandle(IPC_CHANNELS.GET_PROJECT_METRICS, async (
     _event
   ): Promise<{ ok: true; value: ProjectMetrics } | { ok: false; error: string }> => {
     const projectPath = getCurrentProjectPath();

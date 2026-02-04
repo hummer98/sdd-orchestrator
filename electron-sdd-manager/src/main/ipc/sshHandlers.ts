@@ -5,6 +5,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { SSH_IPC_CHANNELS } from './sshChannels';
 import {
   sshConnectionService,
@@ -24,7 +25,7 @@ export function registerSSHHandlers(): void {
 
   // SSH_CONNECT - Connect to SSH server
   // Requirements: 1.1, 2.1
-  ipcMain.handle(
+  safeHandle(
     SSH_IPC_CHANNELS.SSH_CONNECT,
     async (_event, uri: string, _options?: { onPasswordRequired?: boolean; onPassphraseRequired?: boolean; onHostKeyVerification?: boolean }) => {
       logger.info('[sshHandlers] SSH_CONNECT called', { uri });
@@ -75,7 +76,7 @@ export function registerSSHHandlers(): void {
 
   // SSH_DISCONNECT - Disconnect from SSH server
   // Requirements: 6.5
-  ipcMain.handle(SSH_IPC_CHANNELS.SSH_DISCONNECT, async () => {
+  safeHandle(SSH_IPC_CHANNELS.SSH_DISCONNECT, async () => {
     logger.info('[sshHandlers] SSH_DISCONNECT called');
 
     await sshConnectionService.disconnect();
@@ -86,28 +87,28 @@ export function registerSSHHandlers(): void {
 
   // SSH_GET_STATUS - Get current connection status
   // Requirements: 6.1
-  ipcMain.handle(SSH_IPC_CHANNELS.SSH_GET_STATUS, async () => {
+  safeHandle(SSH_IPC_CHANNELS.SSH_GET_STATUS, async () => {
     logger.debug('[sshHandlers] SSH_GET_STATUS called');
     return sshConnectionService.getStatus();
   });
 
   // SSH_GET_CONNECTION_INFO - Get connection information
   // Requirements: 6.6
-  ipcMain.handle(SSH_IPC_CHANNELS.SSH_GET_CONNECTION_INFO, async () => {
+  safeHandle(SSH_IPC_CHANNELS.SSH_GET_CONNECTION_INFO, async () => {
     logger.debug('[sshHandlers] SSH_GET_CONNECTION_INFO called');
     return sshConnectionService.getConnectionInfo();
   });
 
   // SSH_GET_RECENT_REMOTE_PROJECTS - Get recent remote projects
   // Requirements: 8.2
-  ipcMain.handle(SSH_IPC_CHANNELS.SSH_GET_RECENT_REMOTE_PROJECTS, async () => {
+  safeHandle(SSH_IPC_CHANNELS.SSH_GET_RECENT_REMOTE_PROJECTS, async () => {
     logger.debug('[sshHandlers] SSH_GET_RECENT_REMOTE_PROJECTS called');
     return getRecentRemoteProjectsService().getRecentRemoteProjects();
   });
 
   // SSH_ADD_RECENT_REMOTE_PROJECT - Add to recent remote projects
   // Requirements: 8.1
-  ipcMain.handle(
+  safeHandle(
     SSH_IPC_CHANNELS.SSH_ADD_RECENT_REMOTE_PROJECT,
     async (_event, uri: string, displayName: string, connectionSuccessful: boolean = true) => {
       logger.info('[sshHandlers] SSH_ADD_RECENT_REMOTE_PROJECT called', { uri, displayName });
@@ -117,7 +118,7 @@ export function registerSSHHandlers(): void {
 
   // SSH_REMOVE_RECENT_REMOTE_PROJECT - Remove from recent remote projects
   // Requirements: 8.5
-  ipcMain.handle(
+  safeHandle(
     SSH_IPC_CHANNELS.SSH_REMOVE_RECENT_REMOTE_PROJECT,
     async (_event, uri: string) => {
       logger.info('[sshHandlers] SSH_REMOVE_RECENT_REMOTE_PROJECT called', { uri });

@@ -10,6 +10,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { getDefaultScheduleTaskService, type ScheduleTaskInput as ServiceScheduleTaskInput } from '../services/scheduleTaskService';
 import { getDefaultScheduleTaskFileService } from '../services/scheduleTaskFileService';
@@ -490,7 +491,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   // ============================================================
 
   // REPORT_IDLE_TIME: Receive last activity time from Renderer
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_REPORT_IDLE_TIME,
     async (_event, lastActivityTime: number): Promise<void> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_REPORT_IDLE_TIME', {
@@ -506,7 +507,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   // ============================================================
 
   // GET_ALL: Get all tasks for a project
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_GET_ALL,
     async (_event, params: ScheduleTaskGetAllRequest): Promise<ScheduleTask[]> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_GET_ALL', { projectPath: params.projectPath });
@@ -515,7 +516,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // GET: Get a single task by ID
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_GET,
     async (_event, params: ScheduleTaskGetRequest): Promise<ScheduleTask | null> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_GET', { projectPath: params.projectPath, taskId: params.taskId });
@@ -524,7 +525,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // CREATE: Create a new task
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_CREATE,
     async (_event, params: ScheduleTaskCreateRequest): Promise<Result<ScheduleTask, ScheduleTaskServiceError>> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_CREATE', { projectPath: params.projectPath, taskName: params.task.name });
@@ -533,7 +534,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // UPDATE: Update an existing task
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_UPDATE,
     async (_event, params: ScheduleTaskUpdateRequest): Promise<Result<ScheduleTask, ScheduleTaskServiceError>> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_UPDATE', { projectPath: params.projectPath, taskId: params.taskId });
@@ -542,7 +543,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // DELETE: Delete a task
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_DELETE,
     async (_event, params: ScheduleTaskDeleteRequest): Promise<Result<void, TaskNotFoundError>> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_DELETE', { projectPath: params.projectPath, taskId: params.taskId });
@@ -556,7 +557,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
 
   // EXECUTE_IMMEDIATELY: Execute a task immediately
   // Method: executeProjectAgent, startAgent (via coordinator)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_EXECUTE_IMMEDIATELY,
     async (_event, params: ScheduleTaskExecuteImmediatelyRequest): Promise<Result<ExecutionResult, ExecutionError>> => {
       logger.info('[ScheduleTaskHandlers] SCHEDULE_TASK_EXECUTE_IMMEDIATELY', {
@@ -607,7 +608,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // GET_QUEUE: Get queued tasks
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_GET_QUEUE,
     async (_event, _params: ScheduleTaskGetQueueRequest): Promise<QueuedTask[]> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_GET_QUEUE');
@@ -621,7 +622,7 @@ export function registerScheduleTaskHandlers(_getCurrentProjectPath: () => strin
   );
 
   // GET_RUNNING: Get running tasks
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SCHEDULE_TASK_GET_RUNNING,
     async (_event, _params: ScheduleTaskGetRunningRequest): Promise<RunningTaskInfo[]> => {
       logger.debug('[ScheduleTaskHandlers] SCHEDULE_TASK_GET_RUNNING');

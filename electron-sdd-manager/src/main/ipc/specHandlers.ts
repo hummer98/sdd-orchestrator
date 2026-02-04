@@ -18,9 +18,10 @@
  * - その他: SYNC_DOCUMENT_REVIEW, EVENT_LOG_GET, PARSE_TASKS_FOR_PARALLEL
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import * as path from 'path';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 import type { FileService } from '../services/fileService';
 import { SpecsWatcherService } from '../services/specsWatcherService';
 import {
@@ -128,7 +129,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Spec CRUD Handlers
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_SPECS,
     async (_event, projectPath: string) => {
       const result = await fileService.readSpecs(projectPath);
@@ -141,7 +142,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
   // spec-path-ssot-refactor Task 5.1: Change from specPath to specName
   // Main process resolves path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_SPEC_JSON,
     async (_event, specName: string) => {
       const currentProjectPath = getCurrentProjectPath();
@@ -160,7 +161,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CREATE_SPEC,
     async (
       _event,
@@ -185,7 +186,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
   // spec-path-ssot-refactor Task 5.2: Change from specPath to specName
   // Main process resolves path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.UPDATE_APPROVAL,
     async (_event, specName: string, phase: Phase, approved: boolean) => {
       const currentProjectPath = getCurrentProjectPath();
@@ -206,7 +207,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // spec-scoped-auto-execution-state: Update spec.json handler
   // spec-path-ssot-refactor Task 5.3: Change from specPath to specName
   // Main process resolves path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.UPDATE_SPEC_JSON,
     async (_event, specName: string, updates: Record<string, unknown>) => {
       const currentProjectPath = getCurrentProjectPath();
@@ -227,7 +228,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Phase Sync Handler - Auto-fix spec.json phase based on task completion
   // spec-path-ssot-refactor Task 5.4: Change from specPath to specName
   // Main process resolves path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SYNC_SPEC_PHASE,
     async (_event, specName: string, completedPhase: 'impl' | 'impl-complete', options?: { skipTimestamp?: boolean }) => {
       logger.info('[specHandlers] SYNC_SPEC_PHASE called', { specName, completedPhase, options });
@@ -258,14 +259,14 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Specs Watcher Handlers
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.START_SPECS_WATCHER, async (event) => {
+  safeHandle(IPC_CHANNELS.START_SPECS_WATCHER, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
       await startSpecsWatcher(window, deps);
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.STOP_SPECS_WATCHER, async () => {
+  safeHandle(IPC_CHANNELS.STOP_SPECS_WATCHER, async () => {
     await stopSpecsWatcher();
   });
 
@@ -276,7 +277,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
   // execute-method-unification: Task 4.2 - Unified EXECUTE handler
   // Requirements: 4.2
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE,
     async (event, options: ExecuteOptions) => {
       logger.info('[specHandlers] EXECUTE called', { type: options.type, specId: options.specId, featureName: options.featureName });
@@ -306,7 +307,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Launch spec-init agent with description only
   // specId='' for global agent, command: claude -p /kiro:spec-init "{description}" or /spec-manager:init "{description}"
   // Returns agentId immediately without waiting for completion
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_SPEC_INIT,
     async (
       event,
@@ -357,7 +358,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // spec-plan-ui-integration feature
   // spec-worktree-early-creation: Task 4.2 - worktreeModeパラメータ追加
   // ============================================================
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_SPEC_PLAN,
     async (
       event,
@@ -416,7 +417,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
 
   // Execute Spec Ask: Launch spec-ask agent with feature name and prompt
   // Loads steering files and spec files as context
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_ASK_SPEC,
     async (event, specId: string, featureName: string, prompt: string, commandPrefix: CommandPrefix = 'kiro') => {
       logger.info('[specHandlers] EXECUTE_ASK_SPEC called', { specId, featureName, prompt: prompt.substring(0, 100), commandPrefix });
@@ -458,7 +459,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Document Review Sync Handler - Auto-fix spec.json documentReview based on file system
   // spec-path-ssot-refactor: Change from specPath to specName
   // Main process resolves path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SYNC_DOCUMENT_REVIEW,
     async (_event, specName: string) => {
       logger.info('[specHandlers] SYNC_DOCUMENT_REVIEW called', { specName });
@@ -477,7 +478,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   );
 
   // execute-method-unification: Delegate to unified execute method
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[specHandlers] EXECUTE_DOCUMENT_REVIEW called (delegating to execute)', { specId, featureName, commandPrefix });
@@ -502,7 +503,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_REPLY,
     async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager', autofix?: boolean) => {
       logger.info('[specHandlers] EXECUTE_DOCUMENT_REVIEW_REPLY called (delegating to execute)', { specId, featureName, reviewNumber, commandPrefix, autofix });
@@ -527,7 +528,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_DOCUMENT_REVIEW_FIX,
     async (event, specId: string, featureName: string, reviewNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[specHandlers] EXECUTE_DOCUMENT_REVIEW_FIX called (delegating to execute)', { specId, featureName, reviewNumber, commandPrefix });
@@ -552,7 +553,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.APPROVE_DOCUMENT_REVIEW,
     async (_event, specPath: string) => {
       logger.info('[specHandlers] APPROVE_DOCUMENT_REVIEW called', { specPath });
@@ -574,7 +575,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // ============================================================
 
   // execute-method-unification: Delegate to unified execute method
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_INSPECTION,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[specHandlers] EXECUTE_INSPECTION called (delegating to execute)', { specId, featureName, commandPrefix });
@@ -599,7 +600,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_INSPECTION_FIX,
     async (event, specId: string, featureName: string, roundNumber: number, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[specHandlers] EXECUTE_INSPECTION_FIX called (delegating to execute)', { specId, featureName, roundNumber, commandPrefix });
@@ -624,7 +625,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SET_INSPECTION_AUTO_EXECUTION_FLAG,
     async (_event, specPath: string, flag: 'run' | 'pause') => {
       logger.info('[specHandlers] SET_INSPECTION_AUTO_EXECUTION_FLAG called', { specPath, flag });
@@ -640,7 +641,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // ============================================================
 
   // execute-method-unification: Delegate to unified execute method
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_SPEC_MERGE,
     async (event, specId: string, featureName: string, commandPrefix?: 'kiro' | 'spec-manager') => {
       logger.info('[specHandlers] EXECUTE_SPEC_MERGE called (delegating to execute)', { specId, featureName, commandPrefix });
@@ -672,7 +673,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Bug fix: start-impl-path-resolution-missing
   // spec-path-ssot-refactor: Resolve path from name
   // ============================================================
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.START_IMPL,
     async (event, specName: string, featureName: string, commandPrefix: string) => {
       logger.info('[specHandlers] START_IMPL called', { specName, featureName, commandPrefix });
@@ -729,7 +730,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Event Log Handler (spec-event-log feature)
   // Requirements: 5.4
   // ============================================================
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EVENT_LOG_GET,
     async (_event, specId: string) => {
       logger.debug('[specHandlers] EVENT_LOG_GET called', { specId });
@@ -757,7 +758,7 @@ export function registerSpecHandlers(deps: SpecHandlersDependencies): void {
   // Parallel Task Parser (parallel-task-impl feature)
   // Requirements: 2.1 - Parse tasks.md for parallel execution
   // ============================================================
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.PARSE_TASKS_FOR_PARALLEL,
     async (_event, specName: string): Promise<ParseResult | null> => {
       logger.debug('[specHandlers] PARSE_TASKS_FOR_PARALLEL called', { specName });

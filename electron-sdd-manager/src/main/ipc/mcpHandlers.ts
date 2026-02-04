@@ -6,7 +6,7 @@
  * @file mcpHandlers.ts
  */
 
-import { ipcMain } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { getMcpServerService } from '../services/mcp/mcpAutoStart';
 import { getConfigStore } from '../services/configStore';
@@ -30,7 +30,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_START handler
   // Requirements: 6.4 - Start MCP server
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.MCP_START,
     async (_event, preferredPort?: number) => {
       logger.info('[McpHandlers] MCP_START called', { preferredPort });
@@ -52,7 +52,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_STOP handler
   // Requirements: 6.3 - Stop MCP server
-  ipcMain.handle(IPC_CHANNELS.MCP_STOP, async () => {
+  safeHandle(IPC_CHANNELS.MCP_STOP, async () => {
     logger.info('[McpHandlers] MCP_STOP called');
 
     await service.stop();
@@ -62,7 +62,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_GET_STATUS handler
   // Get current MCP server status
-  ipcMain.handle(IPC_CHANNELS.MCP_GET_STATUS, async () => {
+  safeHandle(IPC_CHANNELS.MCP_GET_STATUS, async () => {
     logger.debug('[McpHandlers] MCP_GET_STATUS called');
 
     return service.getStatus();
@@ -70,7 +70,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_GET_SETTINGS handler
   // Get MCP settings from ConfigStore
-  ipcMain.handle(IPC_CHANNELS.MCP_GET_SETTINGS, async () => {
+  safeHandle(IPC_CHANNELS.MCP_GET_SETTINGS, async () => {
     logger.debug('[McpHandlers] MCP_GET_SETTINGS called');
 
     return configStore.getMcpSettings();
@@ -78,7 +78,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_SET_ENABLED handler
   // Requirements: 6.3, 6.4 - Enable/disable MCP server
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.MCP_SET_ENABLED,
     async (_event, enabled: boolean) => {
       logger.info('[McpHandlers] MCP_SET_ENABLED called', { enabled });
@@ -100,7 +100,7 @@ export function registerMcpHandlers(): void {
 
   // MCP_SET_PORT handler
   // Requirements: 6.5 - Set MCP server port
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.MCP_SET_PORT,
     async (_event, port: number) => {
       logger.info('[McpHandlers] MCP_SET_PORT called', { port });

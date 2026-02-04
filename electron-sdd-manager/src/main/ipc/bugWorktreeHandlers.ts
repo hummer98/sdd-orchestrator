@@ -6,7 +6,7 @@
  * bug-worktree-spec-alignment: Uses ConvertBugWorktreeService for worktree conversion
  */
 
-import { ipcMain } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { WorktreeService } from '../services/worktreeService';
 import { BugService } from '../services/bugService';
@@ -125,7 +125,7 @@ export function registerBugWorktreeHandlers(): void {
 
   // bug-worktree:create
   // Preload passes only bugName; projectPath/bugPath are derived internally
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_WORKTREE_CREATE,
     async (_event, bugName: string) => {
       const projectPath = getCurrentProjectPath();
@@ -143,7 +143,7 @@ export function registerBugWorktreeHandlers(): void {
 
   // bug-worktree:remove
   // Preload passes only bugName; projectPath/bugPath are derived internally
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_WORKTREE_REMOVE,
     async (_event, bugName: string) => {
       const projectPath = getCurrentProjectPath();
@@ -160,7 +160,7 @@ export function registerBugWorktreeHandlers(): void {
   );
 
   // settings:bugs-worktree-default:get
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SETTINGS_BUGS_WORKTREE_DEFAULT_GET,
     async () => {
       logger.info('[bugWorktreeHandlers] settings:bugs-worktree-default:get called');
@@ -170,7 +170,7 @@ export function registerBugWorktreeHandlers(): void {
   );
 
   // settings:bugs-worktree-default:set
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SETTINGS_BUGS_WORKTREE_DEFAULT_SET,
     async (_event, value: boolean) => {
       logger.info('[bugWorktreeHandlers] settings:bugs-worktree-default:set called', { value });
@@ -181,7 +181,7 @@ export function registerBugWorktreeHandlers(): void {
 
   // bug-worktree:auto-execution (Task 19.1)
   // Requirements: 12.1, 12.2, 12.3, 12.4
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_WORKTREE_AUTO_EXECUTION,
     async (_event, bugName: string) => {
       logger.info('[bugWorktreeHandlers] bug-worktree:auto-execution called', { bugName });
@@ -210,7 +210,7 @@ export function registerBugWorktreeHandlers(): void {
 
   // bugs-workflow-footer: bug-worktree:convert
   // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_CONVERT_TO_WORKTREE,
     async (_event, bugName: string) => {
       logger.info('[bugWorktreeHandlers] bug-worktree:convert called', { bugName });

@@ -11,6 +11,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import * as path from 'path';
 import { access, stat } from 'fs/promises';
 import { join } from 'path';
@@ -515,7 +516,7 @@ export function registerIpcHandlers(): void {
 
   // Execute Project Command: Launch project-level agent with any command
   // Command is passed directly without wrapping, title is used as phase (display name)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_PROJECT_COMMAND,
     async (event, projectPath: string, command: string, title: string) => {
       // Requirement 1.5: Validate parameters
@@ -570,7 +571,7 @@ export function registerIpcHandlers(): void {
   // ============================================================
 
   // CHECK_JJ_AVAILABILITY: Check if jj is installed
-  ipcMain.handle(IPC_CHANNELS.CHECK_JJ_AVAILABILITY, async () => {
+  safeHandle(IPC_CHANNELS.CHECK_JJ_AVAILABILITY, async () => {
     logger.info('[handlers] CHECK_JJ_AVAILABILITY called');
     const result = await projectChecker.checkJjAvailability();
     logger.info('[handlers] CHECK_JJ_AVAILABILITY result', { available: result.available });
@@ -578,7 +579,7 @@ export function registerIpcHandlers(): void {
   });
 
   // INSTALL_JJ: Install jj via brew
-  ipcMain.handle(IPC_CHANNELS.INSTALL_JJ, async () => {
+  safeHandle(IPC_CHANNELS.INSTALL_JJ, async () => {
     logger.info('[handlers] INSTALL_JJ called');
 
     try {
@@ -603,7 +604,7 @@ export function registerIpcHandlers(): void {
   });
 
   // IGNORE_JJ_INSTALL: Set jjInstallIgnored flag in .kiro/sdd-orchestrator.json
-  ipcMain.handle(IPC_CHANNELS.IGNORE_JJ_INSTALL, async (_event, projectPath: string, ignored: boolean) => {
+  safeHandle(IPC_CHANNELS.IGNORE_JJ_INSTALL, async (_event, projectPath: string, ignored: boolean) => {
     logger.info('[handlers] IGNORE_JJ_INSTALL called', { projectPath, ignored });
 
     const { SettingsFileManager } = await import('../services/settingsFileManager');
@@ -627,7 +628,7 @@ export function registerIpcHandlers(): void {
 
   // CHECK_MIGRATION_NEEDED: Check if legacy runtime agents exist and need migration for a specific spec/bug
   // Returns MigrationInfo per spec with fileCount and totalSize
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_MIGRATION_NEEDED,
     async (_event, projectPath: string, specId: string): Promise<MigrationInfo | null> => {
       logger.info('[handlers] CHECK_MIGRATION_NEEDED called', { projectPath, specId });
@@ -657,7 +658,7 @@ export function registerIpcHandlers(): void {
   );
 
   // ACCEPT_MIGRATION: Perform migration of legacy runtime agents for a specific spec/bug
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.ACCEPT_MIGRATION,
     async (_event, projectPath: string, specId: string): Promise<{ ok: true; migratedCount: number } | { ok: false; error: string }> => {
       logger.info('[handlers] ACCEPT_MIGRATION called', { projectPath, specId });
@@ -691,7 +692,7 @@ export function registerIpcHandlers(): void {
   );
 
   // DECLINE_MIGRATION: Mark migration as declined for a specific spec (don't show again this session)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.DECLINE_MIGRATION,
     async (_event, projectPath: string, specId: string): Promise<{ ok: true } | { ok: false; error: string }> => {
       logger.info('[handlers] DECLINE_MIGRATION called', { projectPath, specId });
@@ -752,7 +753,7 @@ function getErrorMessage(error: AgentError): string {
 
 function registerSteeringHandlers(): void {
   // Check steering files
-  ipcMain.handle(IPC_CHANNELS.CHECK_STEERING_FILES, async (_event, projectPath: string) => {
+  safeHandle(IPC_CHANNELS.CHECK_STEERING_FILES, async (_event, projectPath: string) => {
     try {
       const verificationMdPath = path.join(projectPath, '.kiro', 'steering', 'verification-commands.md');
       const exists = await stat(verificationMdPath).then(() => true).catch(() => false);
@@ -763,7 +764,7 @@ function registerSteeringHandlers(): void {
   });
 
   // Generate verification.md
-  ipcMain.handle(IPC_CHANNELS.GENERATE_VERIFICATION_MD, async (event, projectPath: string) => {
+  safeHandle(IPC_CHANNELS.GENERATE_VERIFICATION_MD, async (event, projectPath: string) => {
     logger.info('[handlers] GENERATE_VERIFICATION_MD called', { projectPath });
     const service = getSpecManagerService();
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -775,7 +776,7 @@ function registerSteeringHandlers(): void {
   });
 
   // Check release.md
-  ipcMain.handle(IPC_CHANNELS.CHECK_RELEASE_MD, async (_event, projectPath: string) => {
+  safeHandle(IPC_CHANNELS.CHECK_RELEASE_MD, async (_event, projectPath: string) => {
     try {
       const releaseMdPath = path.join(projectPath, '.claude', 'commands', 'release.md');
       const exists = await stat(releaseMdPath).then(() => true).catch(() => false);
@@ -786,7 +787,7 @@ function registerSteeringHandlers(): void {
   });
 
   // Generate release.md
-  ipcMain.handle(IPC_CHANNELS.GENERATE_RELEASE_MD, async (event, projectPath: string) => {
+  safeHandle(IPC_CHANNELS.GENERATE_RELEASE_MD, async (event, projectPath: string) => {
     logger.info('[handlers] GENERATE_RELEASE_MD called', { projectPath });
     const service = getSpecManagerService();
     const window = BrowserWindow.fromWebContents(event.sender);

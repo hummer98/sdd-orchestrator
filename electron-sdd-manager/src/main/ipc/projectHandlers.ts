@@ -14,10 +14,11 @@
  * - ADD_SHELL_PERMISSIONS, ADD_MISSING_PERMISSIONS, CHECK_REQUIRED_PERMISSIONS
  */
 
-import { ipcMain, app, shell, BrowserWindow } from 'electron';
+import { app, shell, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { access, stat, readdir } from 'fs/promises';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 import type { FileService } from '../services/fileService';
 import type { ConfigStore } from '../services/configStore';
 import type { SelectProjectResult, SelectProjectError } from '../../renderer/types';
@@ -169,7 +170,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // Requirements: 1.1-1.6, 5.1-5.4, 6.1-6.4
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.VALIDATE_KIRO_DIRECTORY,
     async (_event, dirPath: string) => {
       logger.debug('[projectHandlers] VALIDATE_KIRO_DIRECTORY called', { dirPath });
@@ -177,7 +178,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SET_PROJECT_PATH,
     async (_event, projectPath: string) => {
       logger.debug('[projectHandlers] SET_PROJECT_PATH called', { projectPath });
@@ -185,7 +186,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SELECT_PROJECT,
     async (
       event,
@@ -225,12 +226,12 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // Recent Projects (History Management)
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.GET_RECENT_PROJECTS, async () => {
+  safeHandle(IPC_CHANNELS.GET_RECENT_PROJECTS, async () => {
     logger.debug('[projectHandlers] GET_RECENT_PROJECTS called');
     return configStore.getRecentProjects();
   });
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.ADD_RECENT_PROJECT,
     async (_event, projectPath: string) => {
       logger.debug('[projectHandlers] ADD_RECENT_PROJECT called', { projectPath });
@@ -243,17 +244,17 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // App Information
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, async () => {
+  safeHandle(IPC_CHANNELS.GET_APP_VERSION, async () => {
     logger.debug('[projectHandlers] GET_APP_VERSION called');
     return app.getVersion();
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_PLATFORM, async () => {
+  safeHandle(IPC_CHANNELS.GET_PLATFORM, async () => {
     logger.debug('[projectHandlers] GET_PLATFORM called');
     return process.platform;
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH, async () => {
+  safeHandle(IPC_CHANNELS.GET_INITIAL_PROJECT_PATH, async () => {
     logger.debug('[projectHandlers] GET_INITIAL_PROJECT_PATH called');
     return getInitialProjectPath();
   });
@@ -262,7 +263,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // E2E Test Support
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.GET_IS_E2E_TEST, () => {
+  safeHandle(IPC_CHANNELS.GET_IS_E2E_TEST, () => {
     logger.debug('[projectHandlers] GET_IS_E2E_TEST called');
     return process.argv.includes('--e2e-test');
   });
@@ -272,12 +273,12 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // Requirements: 6.1, 6.2, 6.3
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.GET_PROJECT_LOG_PATH, async () => {
+  safeHandle(IPC_CHANNELS.GET_PROJECT_LOG_PATH, async () => {
     logger.debug('[projectHandlers] GET_PROJECT_LOG_PATH called');
     return projectLogger.getProjectLogPath();
   });
 
-  ipcMain.handle(IPC_CHANNELS.OPEN_LOG_IN_BROWSER, async () => {
+  safeHandle(IPC_CHANNELS.OPEN_LOG_IN_BROWSER, async () => {
     logger.info('[projectHandlers] OPEN_LOG_IN_BROWSER called');
     const logPath = projectLogger.getProjectLogPath();
 
@@ -307,7 +308,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
   // Permissions Handlers
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.ADD_SHELL_PERMISSIONS,
     async (_event, projectPath: string) => {
       logger.info('[projectHandlers] ADD_SHELL_PERMISSIONS called', { projectPath });
@@ -319,7 +320,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.ADD_MISSING_PERMISSIONS,
     async (_event, projectPath: string, permissions: string[]) => {
       logger.info('[projectHandlers] ADD_MISSING_PERMISSIONS called', { projectPath, count: permissions.length });
@@ -331,7 +332,7 @@ export function registerProjectHandlers(deps: ProjectHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_REQUIRED_PERMISSIONS,
     async (_event, projectPath: string) => {
       const result = await checkRequiredPermissions(

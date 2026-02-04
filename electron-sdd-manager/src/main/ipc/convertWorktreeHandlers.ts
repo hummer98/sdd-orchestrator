@@ -4,6 +4,7 @@
  * Requirements: 3.1, 3.2, 3.3 (convert-spec-to-worktree feature)
  */
 
+import { safeHandle } from './ipcUtils';
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
@@ -37,7 +38,7 @@ export function registerConvertWorktreeHandlers(): void {
   // Handler: Check if spec can be converted
   // Requirements: 3.1
   // spec-path-ssot-refactor: Changed from specPath to specName, resolve path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CONVERT_CHECK,
     async (_event, projectPath: string, specName: string): Promise<ConvertResult<boolean>> => {
       logger.debug('[ConvertWorktreeHandlers] CONVERT_CHECK called', { projectPath, specName });
@@ -71,7 +72,7 @@ export function registerConvertWorktreeHandlers(): void {
   // Handler: Execute conversion to worktree mode
   // Requirements: 3.2
   // spec-path-ssot-refactor: Changed from specPath to specName, resolve path using resolveSpecPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CONVERT_TO_WORKTREE,
     async (
       _event,

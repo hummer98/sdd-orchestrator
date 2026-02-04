@@ -18,12 +18,19 @@
  * - CHECK_COMMANDSET_VERSIONS, CONFIRM_COMMON_COMMANDS
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 import { access, rm } from 'fs/promises';
 import { join } from 'path';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
+
+/**
+ * Track if handlers are already registered to prevent duplicate registration
+ * E2E-fix: Prevents "Attempted to register a second handler" errors in test environments
+ */
+let handlersRegistered = false;
 import type { CommandInstallerService } from '../services/commandInstallerService';
 import type { ProjectChecker } from '../services/projectChecker';
 import type { CcSddWorkflowInstaller } from '../services/ccSddWorkflowInstaller';
@@ -93,10 +100,17 @@ export interface InstallHandlersDependencies {
 /**
  * Register all install-related IPC handlers
  * Requirements: 1.2, 2.1, 4.1, 4.2
+ * E2E-fix: Use safeHandle for idempotent registration
  *
  * @param deps - Dependencies for install handlers
  */
 export function registerInstallHandlers(deps: InstallHandlersDependencies): void {
+  // E2E-fix: Prevent duplicate registration in test environments
+  if (handlersRegistered) {
+    logger.warn('[installHandlers] Handlers already registered, skipping');
+    return;
+  }
+
   const {
     commandInstallerService,
     projectChecker,
@@ -112,7 +126,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // spec-manager Install Handlers (Requirements: 4.1-4.6)
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_SPEC_MANAGER_FILES,
     async (_event, projectPath: string) => {
       // Only log if there are issues (normal checks are silent)
@@ -125,7 +139,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_SPEC_MANAGER_COMMANDS,
     async (_event, projectPath: string, missingCommands: string[]) => {
       logger.info('[installHandlers] INSTALL_SPEC_MANAGER_COMMANDS called', { projectPath, missingCommands });
@@ -133,7 +147,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_SPEC_MANAGER_SETTINGS,
     async (_event, projectPath: string, missingSettings: string[]) => {
       logger.info('[installHandlers] INSTALL_SPEC_MANAGER_SETTINGS called', { projectPath, missingSettings });
@@ -141,7 +155,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_SPEC_MANAGER_ALL,
     async (_event, projectPath: string) => {
       logger.info('[installHandlers] INSTALL_SPEC_MANAGER_ALL called', { projectPath });
@@ -149,7 +163,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.FORCE_REINSTALL_SPEC_MANAGER_ALL,
     async (_event, projectPath: string) => {
       logger.info('[installHandlers] FORCE_REINSTALL_SPEC_MANAGER_ALL called', { projectPath });
@@ -162,7 +176,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Requirements: 11.1
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_COMMANDSET_STATUS,
     async (_event, projectPath: string): Promise<UnifiedInstallStatus> => {
       logger.info('[installHandlers] CHECK_COMMANDSET_STATUS called', { projectPath });
@@ -170,7 +184,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_COMMANDSET_BY_PROFILE,
     async (
       event,
@@ -253,7 +267,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Requirements: 3.4, 3.5
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CONFIRM_COMMON_COMMANDS,
     async (
       _event,
@@ -305,7 +319,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Agent Folder Management (commandset-profile-agent-cleanup)
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_AGENT_FOLDER_EXISTS,
     async (_event, projectPath: string): Promise<boolean> => {
       logger.info('[installHandlers] CHECK_AGENT_FOLDER_EXISTS called', { projectPath });
@@ -319,7 +333,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.DELETE_AGENT_FOLDER,
     async (_event, projectPath: string): Promise<{ ok: true } | { ok: false; error: string }> => {
       logger.info('[installHandlers] DELETE_AGENT_FOLDER called', { projectPath });
@@ -341,7 +355,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Requirements: 2.1-2.4, 3.1-3.6, 4.1-4.4, 7.1-7.4
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_EXPERIMENTAL_DEBUG,
     async (
       _event,
@@ -353,7 +367,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_EXPERIMENTAL_TOOL_EXISTS,
     async (
       _event,
@@ -370,7 +384,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_EXPERIMENTAL_GEMINI_DOC_REVIEW,
     async (
       _event,
@@ -382,7 +396,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_EXPERIMENTAL_GEMINI_DOC_REVIEW_EXISTS,
     async (
       _event,
@@ -397,7 +411,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // CLI Install Handlers
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GET_CLI_INSTALL_STATUS,
     async (_event, location: 'user' | 'system' = 'user') => {
       logger.info(`[installHandlers] GET_CLI_INSTALL_STATUS called (location: ${location})`);
@@ -405,7 +419,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.INSTALL_CLI_COMMAND,
     async (_event, location: 'user' | 'system' = 'user') => {
       logger.info(`[installHandlers] INSTALL_CLI_COMMAND called (location: ${location})`);
@@ -422,7 +436,7 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
   // Requirements: 2.1
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.CHECK_COMMANDSET_VERSIONS,
     async (_event, projectPath: string) => {
       logger.info('[installHandlers] CHECK_COMMANDSET_VERSIONS called', { projectPath });
@@ -435,5 +449,6 @@ export function registerInstallHandlers(deps: InstallHandlersDependencies): void
     }
   );
 
+  handlersRegistered = true;
   logger.info('[installHandlers] Install handlers registered');
 }

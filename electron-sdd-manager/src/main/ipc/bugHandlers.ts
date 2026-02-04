@@ -14,7 +14,8 @@
  * - BUG_PHASE_UPDATE
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import type { BugService } from '../services/bugService';
 import type { FileService } from '../services/fileService';
@@ -89,7 +90,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
   // Requirements: 3.1, 6.1, 6.3, 6.5
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_BUGS,
     async (_event, projectPath: string) => {
       logger.info('[bugHandlers] READ_BUGS called', { projectPath });
@@ -103,7 +104,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
 
   // spec-path-ssot-refactor Task 6.1: Change from bugPath to bugName
   // Main process resolves path using resolveBugPath
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_BUG_DETAIL,
     async (_event, bugName: string) => {
       logger.info('[bugHandlers] READ_BUG_DETAIL called', { bugName });
@@ -128,7 +129,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
   // Requirements: 6.5
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.START_BUGS_WATCHER, async (event) => {
+  safeHandle(IPC_CHANNELS.START_BUGS_WATCHER, async (event) => {
     logger.info('[bugHandlers] START_BUGS_WATCHER called');
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
@@ -136,7 +137,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.STOP_BUGS_WATCHER, async () => {
+  safeHandle(IPC_CHANNELS.STOP_BUGS_WATCHER, async () => {
     logger.info('[bugHandlers] STOP_BUGS_WATCHER called');
     await stopBugsWatcher();
   });
@@ -146,7 +147,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
   // bug-create-dialog-unification: worktreeMode parameter added
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.EXECUTE_BUG_CREATE,
     async (event, projectPath: string, description: string, worktreeMode: boolean = false) => {
       logger.info('[bugHandlers] EXECUTE_BUG_CREATE called', { projectPath, description, worktreeMode });
@@ -211,7 +212,7 @@ export function registerBugHandlers(deps: BugHandlersDependencies): void {
   // Moved from bugWorktreeHandlers.ts
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_PHASE_UPDATE,
     async (_event, bugName: string, phase: BugPhase) => {
       logger.info('[bugHandlers] BUG_PHASE_UPDATE called', { bugName, phase });

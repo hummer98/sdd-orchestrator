@@ -11,7 +11,8 @@
  * - git:changes-detected: Event broadcast when changes detected
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { GitService } from '../services/GitService';
 import { GitFileWatcherService } from '../services/GitFileWatcherService';
@@ -76,7 +77,7 @@ function getGitFileWatcherService(): GitFileWatcherService {
  */
 export function registerGitHandlers(): void {
   // GIT_GET_STATUS: Get git status for a project
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GIT_GET_STATUS,
     async (_event, projectPath: string): Promise<Result<GitStatusResult, ApiError>> => {
       logger.debug('[gitHandlers] GIT_GET_STATUS called', { projectPath });
@@ -113,7 +114,7 @@ export function registerGitHandlers(): void {
   );
 
   // GIT_GET_DIFF: Get diff for a specific file
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GIT_GET_DIFF,
     async (_event, projectPath: string, filePath: string): Promise<Result<string, ApiError>> => {
       logger.debug('[gitHandlers] GIT_GET_DIFF called', { projectPath, filePath });
@@ -151,7 +152,7 @@ export function registerGitHandlers(): void {
   );
 
   // GIT_WATCH_CHANGES: Start watching for file changes
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GIT_WATCH_CHANGES,
     async (_event, projectPath: string): Promise<Result<void, ApiError>> => {
       logger.info('[gitHandlers] GIT_WATCH_CHANGES called', { projectPath });
@@ -184,7 +185,7 @@ export function registerGitHandlers(): void {
   );
 
   // GIT_UNWATCH_CHANGES: Stop watching for file changes
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GIT_UNWATCH_CHANGES,
     async (_event, projectPath: string): Promise<Result<void, ApiError>> => {
       logger.info('[gitHandlers] GIT_UNWATCH_CHANGES called', { projectPath });
@@ -220,7 +221,7 @@ export function registerGitHandlers(): void {
   // git-view-source-mode Task 3.1: READ_FILE_CONTENT handler
   // Requirements: 5.1
   // ============================================================
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.READ_FILE_CONTENT,
     async (_event, projectPath: string, filePath: string): Promise<Result<FileContentResult, ApiError>> => {
       logger.debug('[gitHandlers] READ_FILE_CONTENT called', { projectPath, filePath });

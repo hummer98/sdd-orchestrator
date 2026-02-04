@@ -13,7 +13,8 @@
  * - PROJECT_FILE_CHANGED: External file change notification
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
@@ -167,7 +168,7 @@ export function registerProjectFileHandlers(deps: ProjectFileHandlersDependencie
   // Requirements: 2.1, 2.2, 2.3
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.PROJECT_FILE_LIST, async () => {
+  safeHandle(IPC_CHANNELS.PROJECT_FILE_LIST, async () => {
     logger.debug('[projectFileHandlers] PROJECT_FILE_LIST called');
 
     const projectPath = getCurrentProjectPath();
@@ -189,7 +190,7 @@ export function registerProjectFileHandlers(deps: ProjectFileHandlersDependencie
   // Requirements: 3.1
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.PROJECT_FILE_READ, async (_event, filePath: string) => {
+  safeHandle(IPC_CHANNELS.PROJECT_FILE_READ, async (_event, filePath: string) => {
     logger.debug('[projectFileHandlers] PROJECT_FILE_READ called', { filePath });
 
     const projectPath = getCurrentProjectPath();
@@ -205,7 +206,7 @@ export function registerProjectFileHandlers(deps: ProjectFileHandlersDependencie
   // Requirements: 4.1
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.PROJECT_FILE_WRITE,
     async (_event, filePath: string, content: string) => {
       logger.debug('[projectFileHandlers] PROJECT_FILE_WRITE called', { filePath });

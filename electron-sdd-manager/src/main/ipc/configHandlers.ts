@@ -13,12 +13,19 @@
  * - LOAD_PROFILE
  */
 
-import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from './channels';
+import { safeHandle } from './ipcUtils';
 import type { ConfigStore, LayoutValues } from '../services/configStore';
 import type { projectConfigService, ProfileConfig, ProjectDefaults } from '../services/layoutConfigService';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
+
+/**
+ * Track if handlers are already registered to prevent duplicate registration
+ * E2E-fix: Prevents "Attempted to register a second handler" errors in test environments
+ */
+let handlersRegistered = false;
+let engineHandlersRegistered = false;
 
 /**
  * Type definition for layoutConfigService
@@ -44,19 +51,26 @@ export interface ConfigHandlersDependencies {
  * @param deps - Dependencies for config handlers (configStore, layoutConfigService)
  */
 export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
+  // E2E-fix: Prevent duplicate registration in test environments
+  if (handlersRegistered) {
+    logger.warn('[configHandlers] Handlers already registered, skipping');
+    return;
+  }
+
   const { configStore, layoutConfigService } = deps;
 
   // ============================================================
   // Hang Threshold Configuration
   // Requirements: 13.1, 13.2 (from original handlers.ts)
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(IPC_CHANNELS.GET_HANG_THRESHOLD, async () => {
+  safeHandle(IPC_CHANNELS.GET_HANG_THRESHOLD, async () => {
     logger.debug('[configHandlers] GET_HANG_THRESHOLD called');
     return configStore.getHangThreshold();
   });
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SET_HANG_THRESHOLD,
     async (_event, thresholdMs: number) => {
       logger.debug('[configHandlers] SET_HANG_THRESHOLD called', { thresholdMs });
@@ -67,9 +81,10 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
   // ============================================================
   // Layout Config (app-wide, moved from project-specific storage)
   // Requirements: 1.1-1.4, 2.1-2.4, 3.1-3.2
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LOAD_LAYOUT_CONFIG,
     async (): Promise<LayoutValues | null> => {
       logger.debug('[configHandlers] LOAD_LAYOUT_CONFIG called');
@@ -77,7 +92,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SAVE_LAYOUT_CONFIG,
     async (_event, layout: LayoutValues): Promise<void> => {
       logger.debug('[configHandlers] SAVE_LAYOUT_CONFIG called', { layout });
@@ -85,7 +100,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.RESET_LAYOUT_CONFIG,
     async (): Promise<void> => {
       logger.info('[configHandlers] RESET_LAYOUT_CONFIG called');
@@ -95,9 +110,10 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
 
   // ============================================================
   // Skip Permissions Config (bug fix: persist-skip-permission-per-project)
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LOAD_SKIP_PERMISSIONS,
     async (_event, projectPath: string): Promise<boolean> => {
       logger.debug('[configHandlers] LOAD_SKIP_PERMISSIONS called', { projectPath });
@@ -105,7 +121,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SAVE_SKIP_PERMISSIONS,
     async (_event, projectPath: string, skipPermissions: boolean): Promise<void> => {
       logger.debug('[configHandlers] SAVE_SKIP_PERMISSIONS called', { projectPath, skipPermissions });
@@ -116,9 +132,10 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
   // ============================================================
   // Project Defaults Config (debatex-document-review Task 3.3)
   // Requirements: 4.1
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LOAD_PROJECT_DEFAULTS,
     async (_event, projectPath: string): Promise<ProjectDefaults | undefined> => {
       logger.debug('[configHandlers] LOAD_PROJECT_DEFAULTS called', { projectPath });
@@ -126,7 +143,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SAVE_PROJECT_DEFAULTS,
     async (_event, projectPath: string, defaults: ProjectDefaults): Promise<void> => {
       logger.debug('[configHandlers] SAVE_PROJECT_DEFAULTS called', { projectPath, defaults });
@@ -137,9 +154,10 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
   // ============================================================
   // Profile Badge (header-profile-badge feature)
   // Requirements: 1.1, 1.2, 1.3
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LOAD_PROFILE,
     async (_event, projectPath: string): Promise<ProfileConfig | null> => {
       logger.debug('[configHandlers] LOAD_PROFILE called', { projectPath });
@@ -150,9 +168,10 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
   // ============================================================
   // Remote UI Auto Start Config (remote-ui-auto-start feature)
   // Requirements: 1.3
+  // E2E-fix: Use safeHandle for idempotent registration
   // ============================================================
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.LOAD_REMOTE_UI_AUTO_START,
     async (_event, projectPath: string): Promise<boolean> => {
       logger.debug('[configHandlers] LOAD_REMOTE_UI_AUTO_START called', { projectPath });
@@ -160,7 +179,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SAVE_REMOTE_UI_AUTO_START,
     async (_event, projectPath: string, enabled: boolean): Promise<void> => {
       logger.debug('[configHandlers] SAVE_REMOTE_UI_AUTO_START called', { projectPath, enabled });
@@ -168,6 +187,7 @@ export function registerConfigHandlers(deps: ConfigHandlersDependencies): void {
     }
   );
 
+  handlersRegistered = true;
   logger.info('[configHandlers] Config handlers registered');
 }
 
@@ -182,9 +202,16 @@ import { getAvailableLLMEngines, type LLMEngineId } from '../../shared/registry/
 /**
  * Register LLM engine config IPC handlers
  * Requirements: 6.1
+ * E2E-fix: Use safeHandle for idempotent registration
  */
 export function registerEngineConfigHandlers(): void {
-  ipcMain.handle(
+  // E2E-fix: Prevent duplicate registration in test environments
+  if (engineHandlersRegistered) {
+    logger.warn('[configHandlers] Engine handlers already registered, skipping');
+    return;
+  }
+
+  safeHandle(
     IPC_CHANNELS.LOAD_ENGINE_CONFIG,
     async (_event, projectPath: string): Promise<EngineConfig> => {
       logger.debug('[configHandlers] LOAD_ENGINE_CONFIG called', { projectPath });
@@ -192,7 +219,7 @@ export function registerEngineConfigHandlers(): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.SAVE_ENGINE_CONFIG,
     async (_event, projectPath: string, config: EngineConfig): Promise<void> => {
       logger.debug('[configHandlers] SAVE_ENGINE_CONFIG called', { projectPath, config });
@@ -200,7 +227,7 @@ export function registerEngineConfigHandlers(): void {
     }
   );
 
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.GET_AVAILABLE_LLM_ENGINES,
     async (): Promise<Array<{ id: LLMEngineId; label: string }>> => {
       logger.debug('[configHandlers] GET_AVAILABLE_LLM_ENGINES called');
@@ -208,5 +235,6 @@ export function registerEngineConfigHandlers(): void {
     }
   );
 
+  engineHandlersRegistered = true;
   logger.info('[configHandlers] Engine config handlers registered');
 }

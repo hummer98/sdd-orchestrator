@@ -5,6 +5,7 @@
  */
 
 import { ipcMain, BrowserWindow, app } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 import { RemoteAccessServer } from '../services/remoteAccessServer';
 import type { ServerStatus } from '../services/remoteAccessServer';
@@ -736,7 +737,7 @@ export function registerRemoteAccessHandlers(): void {
 
   // START_REMOTE_SERVER handler
   // Requirements: 1.1 - Start HTTP/WebSocket server
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.START_REMOTE_SERVER,
     async (_event, preferredPort?: number) => {
       logger.info('[remoteAccessHandlers] START_REMOTE_SERVER called', { preferredPort });
@@ -758,7 +759,7 @@ export function registerRemoteAccessHandlers(): void {
 
   // STOP_REMOTE_SERVER handler
   // Requirements: 1.2 - Stop server and disconnect all clients
-  ipcMain.handle(IPC_CHANNELS.STOP_REMOTE_SERVER, async () => {
+  safeHandle(IPC_CHANNELS.STOP_REMOTE_SERVER, async () => {
     logger.info('[remoteAccessHandlers] STOP_REMOTE_SERVER called');
 
     await server.stop();
@@ -768,7 +769,7 @@ export function registerRemoteAccessHandlers(): void {
 
   // GET_REMOTE_SERVER_STATUS handler
   // Requirements: 1.6 - Get server status
-  ipcMain.handle(IPC_CHANNELS.GET_REMOTE_SERVER_STATUS, async () => {
+  safeHandle(IPC_CHANNELS.GET_REMOTE_SERVER_STATUS, async () => {
     logger.debug('[remoteAccessHandlers] GET_REMOTE_SERVER_STATUS called');
 
     return server.getStatus();
@@ -776,7 +777,7 @@ export function registerRemoteAccessHandlers(): void {
 
   // REFRESH_ACCESS_TOKEN handler
   // Task 15.2.2: Refresh access token and regenerate QR code
-  ipcMain.handle(IPC_CHANNELS.REFRESH_ACCESS_TOKEN, async () => {
+  safeHandle(IPC_CHANNELS.REFRESH_ACCESS_TOKEN, async () => {
     logger.info('[remoteAccessHandlers] REFRESH_ACCESS_TOKEN called');
 
     const result = await server.refreshAccessToken();

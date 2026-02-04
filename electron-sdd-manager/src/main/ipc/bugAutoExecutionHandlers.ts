@@ -8,6 +8,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { safeHandle } from './ipcUtils';
 import { IPC_CHANNELS } from './channels';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
@@ -107,7 +108,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
 
   // BUG_AUTO_EXECUTION_START
   // Requirement 3.3: projectPathをcoordinator.start()に渡す
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_START,
     async (_event, params: BugStartParams): Promise<Result<SerializableBugAutoExecutionState, BugAutoExecutionError>> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_START', { bugPath: params.bugPath });
@@ -123,7 +124,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   );
 
   // BUG_AUTO_EXECUTION_STOP
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_STOP,
     async (_event, params: BugStopParams): Promise<Result<void, BugAutoExecutionError>> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_STOP', { bugPath: params.bugPath });
@@ -132,7 +133,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   );
 
   // BUG_AUTO_EXECUTION_STATUS
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_STATUS,
     async (_event, params: BugStatusParams): Promise<SerializableBugAutoExecutionState | null> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_STATUS', { bugPath: params.bugPath });
@@ -141,7 +142,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   );
 
   // BUG_AUTO_EXECUTION_ALL_STATUS
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_ALL_STATUS,
     async (): Promise<Record<string, SerializableBugAutoExecutionState>> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_ALL_STATUS');
@@ -158,7 +159,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   );
 
   // BUG_AUTO_EXECUTION_RETRY_FROM
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_RETRY_FROM,
     async (_event, params: BugRetryFromParams): Promise<Result<SerializableBugAutoExecutionState, BugAutoExecutionError>> => {
       logger.debug('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_RETRY_FROM', {
@@ -171,7 +172,7 @@ export function registerBugAutoExecutionHandlers(coordinator: BugAutoExecutionCo
   );
 
   // BUG_AUTO_EXECUTION_RESET (E2E Test Support)
-  ipcMain.handle(
+  safeHandle(
     IPC_CHANNELS.BUG_AUTO_EXECUTION_RESET,
     async (): Promise<void> => {
       logger.info('[bugAutoExecutionHandlers] BUG_AUTO_EXECUTION_RESET (E2E test support)');

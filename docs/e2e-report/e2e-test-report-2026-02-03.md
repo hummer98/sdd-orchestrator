@@ -462,3 +462,114 @@ export async function standardE2ESetup(
 ---
 
 _修正レポート生成日時: 2026-02-04_
+
+---
+
+# 修正レポート - 2026-02-04 (追加修正)
+
+## 修正概要
+
+| 項目 | 内容 |
+|------|------|
+| 修正日時 | 2026-02-04 |
+| 対象問題 | IPCハンドラ重複登録エラー（全ハンドラ対応）、無限再帰エラー |
+| 修正方針 | safeHandleパターンを全IPCハンドラに一括適用 |
+| コミット | `750091d8` |
+
+## 修正結果
+
+| 項目 | 修正前 | 修正後 |
+|------|--------|--------|
+| 成功 | 18 | 22 |
+| 失敗 | 31 | 28 |
+| 成功率 | 36.7% | 44% |
+| IPC重複登録エラー | 多数発生 | 0件 |
+| 無限再帰エラー | 発生 | 0件 |
+
+## 根本原因と対応
+
+### 1. IPC重複登録エラーの全面対応
+
+**問題**: 前回の修正で `cloudflareHandlers.ts` と `autoExecutionHandlers.ts` に対応したが、他のIPCハンドラファイルでも同様の問題が残存していた。
+
+**対応**:
+1. `src/main/ipc/ipcUtils.ts` を新規作成し、共通の `safeHandle` 関数を定義
+2. 全20個のIPCハンドラファイルに `safeHandle` パターンを適用
+
+### 2. 無限再帰エラーの修正
+
+**問題**: `cloudflareHandlers.ts` と `autoExecutionHandlers.ts` のローカル `safeHandle` 関数内で、`ipcMain.handle()` の代わりに `safeHandle()` 自身を呼び出していた。
+
+```typescript
+// 修正前（無限再帰）
+function safeHandle(channel: string, handler: ...): void {
+  ipcMain.removeHandler(channel);
+  safeHandle(channel, handler);  // ← 自分自身を呼び出し
+}
+
+// 修正後
+function safeHandle(channel: string, handler: ...): void {
+  ipcMain.removeHandler(channel);
+  ipcMain.handle(channel, handler);  // ← 正しい呼び出し
+}
+```
+
+## 修正ファイル一覧 (20ファイル)
+
+### 新規作成
+
+| ファイル | 内容 |
+|----------|------|
+| `src/main/ipc/ipcUtils.ts` | 共通 `safeHandle` 関数を提供 |
+
+### 修正対象
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `agentHandlers.ts` | `safeHandle` パターン適用 |
+| `autoExecutionHandlers.ts` | 無限再帰バグ修正 |
+| `bugAutoExecutionHandlers.ts` | `safeHandle` パターン適用 |
+| `bugHandlers.ts` | `safeHandle` パターン適用 |
+| `bugWorktreeHandlers.ts` | `safeHandle` パターン適用 |
+| `clipboardHandlers.ts` | `safeHandle` パターン適用 |
+| `cloudflareHandlers.ts` | 無限再帰バグ修正 |
+| `configHandlers.ts` | `safeHandle` パターン適用 |
+| `convertWorktreeHandlers.ts` | `safeHandle` パターン適用 |
+| `gitHandlers.ts` | `safeHandle` パターン適用 |
+| `handlers.ts` | `safeHandle` パターン適用 |
+| `installHandlers.ts` | `safeHandle` パターン適用 |
+| `mcpHandlers.ts` | `safeHandle` パターン適用 |
+| `metricsHandlers.ts` | `safeHandle` パターン適用 |
+| `projectFileHandlers.ts` | `safeHandle` パターン適用 |
+| `projectHandlers.ts` | `safeHandle` パターン適用 |
+| `remoteAccessHandlers.ts` | `safeHandle` パターン適用 |
+| `scheduleTaskHandlers.ts` | `safeHandle` パターン適用 |
+| `specHandlers.ts` | `safeHandle` パターン適用 |
+| `sshHandlers.ts` | `safeHandle` パターン適用 |
+| `worktreeHandlers.ts` | `safeHandle` パターン適用 |
+
+## 設計原則の適用
+
+### DRY (Don't Repeat Yourself)
+
+- `ipcUtils.ts` に共通関数を集約し、各ハンドラファイルでインポートして使用
+- 同じ `safeHandle` パターンを重複実装せず一元化
+
+### SSOT (Single Source of Truth)
+
+- `ipcUtils.ts` がIPC登録ユーティリティの唯一の定義場所
+- 既存のローカル定義を持つファイル（cloudflareHandlers, autoExecutionHandlers）はそのまま維持（動作確認済みのため）
+
+## 残存する課題
+
+E2E成功率は44%（22/50）まで改善したが、以下の課題が残存:
+
+1. **UI要素タイムアウト**: `[data-testid="auto-execution-button"]` などが見つからない
+2. **プロジェクト選択後のUI更新タイミング**: 非同期状態更新の待機が不十分
+3. **auto-execution関連テスト**: 状態遷移の検証で失敗
+
+これらは前回の修正で追加した `waitForSpecDetailReady()`, `waitForProjectUIReady()`, `standardE2ESetup()` ヘルパー関数を各テストファイルに適用することで改善見込み。
+
+---
+
+_追加修正レポート生成日時: 2026-02-04_

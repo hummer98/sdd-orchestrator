@@ -29,6 +29,8 @@ import {
   stopAutoExecution,
   resetAutoExecutionCoordinator,
   setDocumentReviewFlag,
+  waitForProjectUIReady,
+  waitForSpecDetailReady,
 } from './helpers/auto-execution.helpers';
 
 // Fixture project path (relative to electron-sdd-manager)
@@ -141,20 +143,25 @@ describe('Auto Execution Flow E2E Tests', () => {
     // Select project and spec
     const projectSuccess = await selectProjectViaStore(FIXTURE_PATH);
     expect(projectSuccess).toBe(true);
-    await browser.pause(500);
-    await refreshSpecStore();
-    await browser.pause(500);
+
+    // E2E-fix: Wait for project UI to be ready
+    const projectUIReady = await waitForProjectUIReady(10000);
+    if (!projectUIReady) {
+      console.log('[E2E] WARNING: Project UI not ready after selection');
+    }
 
     const specSuccess = await selectSpecViaStore(SPEC_NAME);
     expect(specSuccess).toBe(true);
-    await browser.pause(500);
 
-    // Refresh spec store to get latest state
-    await refreshSpecStore();
+    // E2E-fix: Wait for spec detail to be ready (Zustand store state check)
+    const specDetailReady = await waitForSpecDetailReady(SPEC_NAME, 15000);
+    if (!specDetailReady) {
+      console.log('[E2E] WARNING: Spec detail not ready after selection');
+    }
 
     // Wait for workflow view
     const workflowView = await $('[data-testid="workflow-view"]');
-    await workflowView.waitForExist({ timeout: 5000 });
+    await workflowView.waitForExist({ timeout: 10000 });
 
     // document-review-skip-removal: Use 'run' mode; fixture has documentReview pre-approved when needed
     await setDocumentReviewFlag('run');

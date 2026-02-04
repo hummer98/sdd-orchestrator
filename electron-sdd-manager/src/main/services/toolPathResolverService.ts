@@ -61,13 +61,16 @@ export interface ExecDeps {
 // ============================================================
 
 /**
- * Get shell execution environment with macOS session save disabled.
- * SHELL_SESSIONS_DISABLE=1 prevents zsh from outputting "Saving session..."
- * when running with -i flag. See: https://github.com/sindresorhus/pure/issues/664
+ * Get shell execution environment with macOS session save disabled and ANSI escapes suppressed.
+ * - SHELL_SESSIONS_DISABLE=1: prevents zsh from outputting "Saving session..."
+ *   when running with -i flag. See: https://github.com/sindresorhus/pure/issues/664
+ * - TERM=dumb: prevents VSCode shell integration and other tools from outputting
+ *   ANSI escape sequences (e.g., ]633;P;ContinuationPrompt=...) that corrupt command output
  */
 const getShellExecEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
   SHELL_SESSIONS_DISABLE: '1',
+  TERM: 'dumb',
 });
 
 /**

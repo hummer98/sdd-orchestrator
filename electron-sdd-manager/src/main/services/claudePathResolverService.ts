@@ -103,7 +103,11 @@ export class ClaudePathResolverService {
         timeout: ClaudePathResolverService.TIMEOUT_MS,
       });
 
-      const resolvedPath = stdout.trim();
+      // Extract only the last non-empty line from stdout
+      // This handles macOS zsh session restore messages that may appear in stdout
+      // (e.g., "Restored session: ..." when using -i flag)
+      const lines = stdout.trim().split('\n');
+      const resolvedPath = lines[lines.length - 1]?.trim() || '';
 
       if (!resolvedPath) {
         logger.warn('[ClaudePathResolver] which returned empty output', { stderr });

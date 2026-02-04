@@ -154,6 +154,24 @@ describe('ClaudePathResolverService', () => {
       expect(result.error).toBeDefined();
     });
 
+    it('should extract path from last line when session restore messages are present', async () => {
+      // Handle macOS zsh session restore messages (e.g., "Restored session: ...")
+      const execDeps = createExecDeps({
+        execAsync: vi.fn().mockResolvedValue({
+          stdout: 'Restored session: 2026年 2月 4日 水曜日 12時00分00秒 JST\n/opt/homebrew/bin/claude\n',
+          stderr: '',
+        }),
+      });
+
+      const service = new ClaudePathResolverService(execDeps);
+      process.env.SHELL = '/bin/zsh';
+
+      const result = await service.resolveClaudePath();
+
+      expect(result.resolved).toBe(true);
+      expect(result.path).toBe('/opt/homebrew/bin/claude');
+    });
+
     it('should handle timeout gracefully', async () => {
       // Design: 5 second timeout for shell command
       const execDeps = createExecDeps({

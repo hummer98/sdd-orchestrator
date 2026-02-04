@@ -27,7 +27,9 @@ import { SpecManagerService, ExecutionGroup, WorkflowPhase, AgentError } from '.
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
 import { projectLogger } from '../services/projectLogger';
-import { ProjectChecker } from '../services/projectChecker';
+import { ProjectChecker, type ToolCheck } from '../services/projectChecker';
+// unified-tool-path-resolver: Use unified tool path resolver for jj/jq availability
+import { getToolPathResolverService } from '../services/toolPathResolverService';
 import { CommandInstallerService, getTemplateDir } from '../services/commandInstallerService';
 import { initDefaultLogFileService } from '../services/logFileService';
 // main-process-log-parser Task 10.7: LogStreamingService for parsed log distribution
@@ -571,14 +573,27 @@ export function registerIpcHandlers(): void {
   // ============================================================
 
   // CHECK_JJ_AVAILABILITY: Check if jj is installed
-  safeHandle(IPC_CHANNELS.CHECK_JJ_AVAILABILITY, async () => {
+  // unified-tool-path-resolver: Use ToolPathResolverService instead of ProjectChecker
+  safeHandle(IPC_CHANNELS.CHECK_JJ_AVAILABILITY, async (): Promise<ToolCheck> => {
     logger.info('[handlers] CHECK_JJ_AVAILABILITY called');
-    const result = await projectChecker.checkJjAvailability();
+    const status = getToolPathResolverService().getStatus('jj');
+    if (!status) {
+      logger.warn('[handlers] CHECK_JJ_AVAILABILITY: jj not defined in TOOL_DEFINITIONS');
+      return { name: 'jj', available: false, installGuidance: 'brew install jj' };
+    }
+    // ToolStatus -> ToolCheck conversion to maintain IPC compatibility
+    const result: ToolCheck = {
+      name: status.definition.name,
+      available: status.resolution.resolved,
+      version: status.resolution.version,
+      installGuidance: status.definition.installGuidance,
+    };
     logger.info('[handlers] CHECK_JJ_AVAILABILITY result', { available: result.available });
     return result;
   });
 
   // INSTALL_JJ: Install jj via brew
+  // unified-tool-path-resolver: After installation, re-resolve jj to update cache
   safeHandle(IPC_CHANNELS.INSTALL_JJ, async () => {
     logger.info('[handlers] INSTALL_JJ called');
 
@@ -586,10 +601,12 @@ export function registerIpcHandlers(): void {
       const { execAsync } = await import('../utils/execAsync');
       await execAsync('brew install jj');
 
-      // After installation, check if jj is now available
-      const checkResult = await projectChecker.checkJjAvailability();
+      // After installation, re-resolve jj to update the cache
+      // Use forceResolve to clear cache and pick up the new installation
+      const resolver = getToolPathResolverService();
+      const checkResult = await resolver.resolveTool('jj', { forceResolve: true });
 
-      if (checkResult.available) {
+      if (checkResult.resolved) {
         logger.info('[handlers] INSTALL_JJ succeeded', { version: checkResult.version });
         return { success: true };
       } else {

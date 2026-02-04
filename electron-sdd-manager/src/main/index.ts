@@ -18,8 +18,8 @@ import { createMenu } from './menu';
 import { getConfigStore } from './services/configStore';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './services/projectLogger';
-// claude-path-resolver: Dynamic claude command path resolution (Requirements 1.1, 2.1, 2.2, 2.3)
-import { getClaudePathResolverService } from './services/claudePathResolverService';
+// unified-tool-path-resolver: Unified tool path resolution (Requirements 1.1, 2.1, 4.1)
+import { getToolPathResolverService } from './services/toolPathResolverService';
 import { parseCLIArgs, printHelp, type CLIOptions } from './utils/cliArgsParser';
 import { getAccessTokenService } from './services/accessTokenService';
 import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAutoStart';
@@ -139,32 +139,33 @@ if (!isAppPackaged && !isE2ETest) {
 }
 
 /**
- * claude-path-resolver: Resolve claude command path at startup
- * Requirements: 1.1, 2.1, 2.2, 2.3
+ * unified-tool-path-resolver: Resolve all tool paths at startup
+ * Requirements: 4.1, 4.2, 4.3
  *
- * - Resolves the path using user's login shell
- * - Shows warning dialog if resolution fails (only once at startup)
+ * - Resolves all registered tools in parallel using user's login shell
+ * - Shows warning dialog if claude (required tool) resolution fails
  * - Warning message: Japanese message as specified in requirements
  */
-async function resolveClaudePathAtStartup(): Promise<void> {
-  const resolver = getClaudePathResolverService();
+async function resolveToolPathsAtStartup(): Promise<void> {
+  const resolver = getToolPathResolverService();
 
-  // Requirement 1.1, 1.2: Resolve path using login shell
-  const result = await resolver.resolveClaudePath();
+  // Requirement 4.1, 4.2: Resolve all tools in parallel at startup
+  await resolver.resolveAll();
 
-  if (result.resolved) {
-    logger.info('[main] Claude path resolved successfully', { path: result.path });
-  } else {
-    // Requirement 2.1, 2.2, 2.3: Show warning dialog once at startup
-    logger.warn('[main] Claude path resolution failed', { error: result.error });
+  // Check claude (required tool) - show warning if not resolved
+  const claudeStatus = resolver.getStatus('claude');
+  if (claudeStatus && !claudeStatus.resolution.resolved) {
+    logger.warn('[main] Claude path resolution failed', { error: claudeStatus.resolution.error });
 
-    // Show warning dialog with Japanese message (Requirement 2.2)
+    // Show warning dialog with Japanese message
     dialog.showMessageBox({
       type: 'warning',
       title: 'Claude Command Not Found',
       message: 'claudeコマンドが見つかりません。Claude Codeがインストールされているか、PATHが通っているか確認してください',
       buttons: ['OK'],
     });
+  } else if (claudeStatus) {
+    logger.info('[main] Claude path resolved successfully', { path: claudeStatus.resolution.path });
   }
 }
 
@@ -230,9 +231,9 @@ app.whenReady().then(async () => {
     app.setName(`${app.name} (dev)`);
   }
 
-  // claude-path-resolver: Resolve claude command path at startup (Requirements 1.1, 2.1, 2.2, 2.3)
+  // unified-tool-path-resolver: Resolve all tool paths at startup (Requirements 4.1, 4.2, 4.3)
   // This must be done early, before any agent processes are started
-  await resolveClaudePathAtStartup();
+  await resolveToolPathsAtStartup();
 
   // Register IPC handlers
   registerIpcHandlers();

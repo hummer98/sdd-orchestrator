@@ -200,8 +200,8 @@ export async function createProviderAgentProcess(
     // Get the appropriate provider
     const provider = providerFactory.getProcessProvider(providerType);
 
-    // claude-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
-    // The command path is now resolved by ClaudePathResolverService at startup
+    // unified-tool-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
+    // The command path is now resolved by ToolPathResolverService at startup
     // and used as a full path, so PATH manipulation is no longer needed
     const spawnOptions: SpawnOptions = {
       cwd,
@@ -279,8 +279,8 @@ export function createAgentProcessSync(
   const agentProcess = new ProviderAgentProcessImpl(agentId, sessionId);
 
   // Start spawn asynchronously but return immediately
-  // claude-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
-  // The command path is now resolved by ClaudePathResolverService at startup
+  // unified-tool-path-resolver: Removed hardcoded PATH additions (Requirement 3.1)
+  // The command path is now resolved by ToolPathResolverService at startup
   const spawnOptions: SpawnOptions = {
     cwd,
   };

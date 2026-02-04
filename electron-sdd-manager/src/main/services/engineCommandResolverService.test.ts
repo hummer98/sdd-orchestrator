@@ -10,23 +10,27 @@ import {
   getEngineCommandResolverService,
   resetEngineCommandResolverService,
 } from './engineCommandResolverService';
-import * as claudePathResolverModule from './claudePathResolverService';
+import * as toolPathResolverModule from './toolPathResolverService';
 
 describe('EngineCommandResolverService', () => {
   let service: EngineCommandResolverService;
-  let mockGetClaudePath: ReturnType<typeof vi.fn>;
+  let mockGetPath: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     // Reset singleton for each test
     resetEngineCommandResolverService();
 
-    // Mock ClaudePathResolverService
-    mockGetClaudePath = vi.fn().mockReturnValue('/usr/local/bin/claude');
-    vi.spyOn(claudePathResolverModule, 'getClaudePathResolverService').mockReturnValue({
-      getClaudePath: mockGetClaudePath,
-      resolveClaudePath: vi.fn(),
+    // Mock ToolPathResolverService
+    mockGetPath = vi.fn().mockReturnValue('/usr/local/bin/claude');
+    vi.spyOn(toolPathResolverModule, 'getToolPathResolverService').mockReturnValue({
+      getPath: mockGetPath,
+      resolveTool: vi.fn(),
+      resolveAll: vi.fn(),
+      getDefinition: vi.fn(),
+      getStatus: vi.fn(),
+      getAllStatuses: vi.fn(),
       isResolved: vi.fn().mockReturnValue(true),
-    } as unknown as claudePathResolverModule.ClaudePathResolverService);
+    } as unknown as toolPathResolverModule.ToolPathResolverService);
 
     service = new EngineCommandResolverService();
   });
@@ -38,16 +42,16 @@ describe('EngineCommandResolverService', () => {
   });
 
   describe('resolveCommand', () => {
-    // Requirement 2.2: 'claude' delegates to ClaudePathResolverService
-    it('should resolve claude engine to ClaudePathResolverService path', () => {
+    // Requirement 2.2: 'claude' delegates to ToolPathResolverService
+    it('should resolve claude engine to ToolPathResolverService path', () => {
       const result = service.resolveCommand('claude');
       expect(result).toBe('/usr/local/bin/claude');
-      expect(mockGetClaudePath).toHaveBeenCalled();
+      expect(mockGetPath).toHaveBeenCalledWith('claude');
     });
 
     // Requirement 2.1: Service creation and method existence
     it('should return resolved path for claude engine', () => {
-      mockGetClaudePath.mockReturnValue('/home/user/.local/bin/claude');
+      mockGetPath.mockReturnValue('/home/user/.local/bin/claude');
       const result = service.resolveCommand('claude');
       expect(result).toBe('/home/user/.local/bin/claude');
     });
@@ -56,13 +60,13 @@ describe('EngineCommandResolverService', () => {
     it('should return engineId as-is for unknown engines (gemini)', () => {
       const result = service.resolveCommand('gemini');
       expect(result).toBe('gemini');
-      expect(mockGetClaudePath).not.toHaveBeenCalled();
+      expect(mockGetPath).not.toHaveBeenCalled();
     });
 
     // Requirement 2.4: E2E_MOCK_CLAUDE_COMMAND environment variable support
     it('should respect E2E_MOCK_CLAUDE_COMMAND for claude engine', () => {
       process.env.E2E_MOCK_CLAUDE_COMMAND = '/tmp/mock-claude';
-      mockGetClaudePath.mockReturnValue('/tmp/mock-claude');
+      mockGetPath.mockReturnValue('/tmp/mock-claude');
 
       const result = service.resolveCommand('claude');
       expect(result).toBe('/tmp/mock-claude');
@@ -104,8 +108,8 @@ describe('EngineCommandResolverService', () => {
   });
 
   describe('resolveCommand with fallback', () => {
-    it('should return "claude" when ClaudePathResolverService returns "claude" (not resolved)', () => {
-      mockGetClaudePath.mockReturnValue('claude');
+    it('should return "claude" when ToolPathResolverService returns "claude" (not resolved)', () => {
+      mockGetPath.mockReturnValue('claude');
       const result = service.resolveCommand('claude');
       expect(result).toBe('claude');
     });

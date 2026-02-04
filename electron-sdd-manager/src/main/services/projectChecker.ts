@@ -6,11 +6,7 @@
 
 import { access } from 'fs/promises';
 import { join } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { checkRequiredPermissions, CheckPermissionsResult } from './permissionsService';
-
-const execAsync = promisify(exec);
 import {
   projectConfigService,
   ProfileName,
@@ -413,58 +409,7 @@ export class ProjectChecker {
     };
   }
 
-  /**
-   * Check if jq command is available on the system
-   * Requirements: 6.1 (merge-helper-scripts feature)
-   *
-   * @returns ToolCheck result for jq
-   */
-  async checkJqAvailability(): Promise<ToolCheck> {
-    const name = 'jq';
-    const installGuidance =
-      'brew install jq (macOS) / apt install jq (Ubuntu/Debian) / choco install jq (Windows)';
-
-    try {
-      const { stdout } = await execAsync('jq --version');
-      const version = stdout.trim();
-      return {
-        name,
-        available: true,
-        version,
-      };
-    } catch {
-      return {
-        name,
-        available: false,
-        installGuidance,
-      };
-    }
-  }
-
-  /**
-   * Check if jj command is available on the system
-   * Requirements: 3.1, 7.1, 7.2, 7.3, 7.4
-   *
-   * @returns ToolCheck result for jj
-   */
-  async checkJjAvailability(): Promise<ToolCheck> {
-    const name = 'jj';
-    const installGuidance = 'brew install jj';
-
-    try {
-      const { stdout } = await execAsync('jj --version');
-      const version = stdout.trim();
-      return {
-        name,
-        available: true,
-        version,
-      };
-    } catch {
-      return {
-        name,
-        available: false,
-        installGuidance,
-      };
-    }
-  }
+  // unified-tool-path-resolver: checkJqAvailability and checkJjAvailability removed
+  // These are now handled by ToolPathResolverService
+  // See handlers.ts CHECK_JJ_AVAILABILITY for usage
 }

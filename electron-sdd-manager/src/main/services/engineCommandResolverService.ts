@@ -5,11 +5,11 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4
  *
  * This service centralizes LLM engine command resolution.
- * Currently supports 'claude' (delegating to ClaudePathResolverService).
+ * Currently supports 'claude' (delegating to ToolPathResolverService).
  * Future engines (e.g., 'gemini') can be added via switch statement extension.
  */
 
-import { getClaudePathResolverService } from './claudePathResolverService';
+import { getToolPathResolverService } from './toolPathResolverService';
 import type { LLMEngineId } from '../../shared/registry/llmEngineRegistry';
 
 /**
@@ -29,17 +29,17 @@ export class EngineCommandResolverService {
    * @returns Command path (resolved path for claude, engineId as-is for others)
    *
    * @precondition engineId is a valid LLMEngineId
-   * @postcondition For 'claude', returns ClaudePathResolverService resolved path
+   * @postcondition For 'claude', returns ToolPathResolverService resolved path
    * @postcondition For unknown engines, returns engineId as-is (fallback)
-   * @invariant E2E_MOCK_CLAUDE_COMMAND is respected via ClaudePathResolverService
+   * @invariant E2E_MOCK_CLAUDE_COMMAND is respected via ToolPathResolverService
    */
   resolveCommand(engineId: LLMEngineId): string {
     // Requirement 2.2, 2.3: Switch statement for extensibility
     switch (engineId) {
       case 'claude':
-        // Requirement 2.2: Delegate to ClaudePathResolverService
-        // Requirement 2.4: E2E_MOCK_CLAUDE_COMMAND support is handled by ClaudePathResolverService
-        return getClaudePathResolverService().getClaudePath();
+        // Requirement 2.2: Delegate to ToolPathResolverService
+        // Requirement 2.4: E2E_MOCK_CLAUDE_COMMAND support is handled by ToolPathResolverService
+        return getToolPathResolverService().getPath('claude');
 
       case 'gemini':
         // Requirement 2.3: Future engine extension point

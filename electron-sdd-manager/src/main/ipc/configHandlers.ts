@@ -238,3 +238,76 @@ export function registerEngineConfigHandlers(): void {
   engineHandlersRegistered = true;
   logger.info('[configHandlers] Engine config handlers registered');
 }
+
+// ============================================================
+// Tool Path Handlers (well-known-tool-paths feature)
+// Requirements: 2.1, 2.4
+// ============================================================
+
+import { getToolPathResolverService, type ToolStatus, type ToolResolutionResult } from '../services/toolPathResolverService';
+import { getConfigStore } from '../services/configStore';
+
+let toolPathHandlersRegistered = false;
+
+/**
+ * Register tool path IPC handlers
+ * well-known-tool-paths feature
+ * Requirements: 2.1, 2.4
+ */
+export function registerToolPathHandlers(): void {
+  // Prevent duplicate registration
+  if (toolPathHandlersRegistered) {
+    logger.warn('[configHandlers] Tool path handlers already registered, skipping');
+    return;
+  }
+
+  // GET_TOOL_STATUSES: Get all tool statuses
+  safeHandle(
+    IPC_CHANNELS.GET_TOOL_STATUSES,
+    async (): Promise<ToolStatus[]> => {
+      logger.debug('[configHandlers] GET_TOOL_STATUSES called');
+      return getToolPathResolverService().getAllStatuses();
+    }
+  );
+
+  // SET_TOOL_PATH: Set manual path for a tool
+  safeHandle(
+    IPC_CHANNELS.SET_TOOL_PATH,
+    async (
+      _event,
+      { tool, path }: { tool: string; path: string | null }
+    ): Promise<ToolResolutionResult> => {
+      logger.info('[configHandlers] SET_TOOL_PATH called', { tool, path });
+
+      // Save to ConfigStore
+      const configStore = getConfigStore();
+      configStore.setToolPath(tool, path);
+
+      // Re-resolve the tool with forceResolve to pick up the new path
+      const resolver = getToolPathResolverService();
+      const result = await resolver.resolveTool(tool, { forceResolve: true });
+
+      logger.info('[configHandlers] SET_TOOL_PATH result', {
+        tool,
+        resolved: result.resolved,
+        path: result.path,
+        source: result.source,
+      });
+
+      return result;
+    }
+  );
+
+  // RESOLVE_TOOL: Re-resolve a single tool
+  safeHandle(
+    IPC_CHANNELS.RESOLVE_TOOL,
+    async (_event, { tool }: { tool: string }): Promise<ToolResolutionResult> => {
+      logger.debug('[configHandlers] RESOLVE_TOOL called', { tool });
+      const resolver = getToolPathResolverService();
+      return resolver.resolveTool(tool, { forceResolve: true });
+    }
+  );
+
+  toolPathHandlersRegistered = true;
+  logger.info('[configHandlers] Tool path handlers registered');
+}

@@ -1,25 +1,27 @@
 /**
  * ToolPathResolverService
- * Unified service for resolving external tool paths using user's login shell
- * Requirements: 1.1-1.3, 2.1-2.4, 3.1-3.3, 4.1-4.3, 5.1-5.3, 6.1-6.2, 8.1-8.2
+ * Well Known path resolution service (no shell spawn)
+ * well-known-tool-paths feature
+ * Requirements: 1.1-1.4, 2.4, 4.1-4.4
  *
- * This service replaces ClaudePathResolverService and ProjectChecker.checkJjAvailability/checkJqAvailability
- * with a unified approach that uses login shell for all tools, ensuring tools installed via Homebrew
- * are correctly detected when the app is launched from GUI.
+ * This service replaces the old shell-based approach with direct filesystem checks.
+ * Benefits:
+ * - No TTY errors, session save messages, or ANSI escape sequence pollution
+ * - Fast and predictable path resolution
+ * - Easy to debug and test
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import * as fs from 'fs';
 import { projectLogger as logger } from './projectLogger';
-
-const execPromise = promisify(exec);
+import { getConfigStore } from './configStore';
 
 // ============================================================
-// Types - Requirements: 6.1, 6.2
+// Types - Requirements: 1.1, 2.4
 // ============================================================
 
 /**
- * Tool definition - Requirements: 5.1, 5.2
+ * Tool definition
+ * Requirements: 1.4
  */
 export interface ToolDefinition {
   readonly name: string;
@@ -29,17 +31,18 @@ export interface ToolDefinition {
 }
 
 /**
- * Resolution result - Requirement 6.1
+ * Resolution result with source indicator
+ * Requirements: 1.1, 2.4
  */
 export interface ToolResolutionResult {
   readonly resolved: boolean;
   readonly path?: string;
-  readonly version?: string;
+  readonly source?: 'manual' | 'well-known' | 'not-found';
   readonly error?: string;
 }
 
 /**
- * Tool status combining definition and resolution - Requirement 6.2
+ * Tool status combining definition and resolution
  */
 export interface ToolStatus {
   readonly definition: ToolDefinition;
@@ -47,35 +50,37 @@ export interface ToolStatus {
 }
 
 /**
- * Exec dependencies for dependency injection (testing)
+ * Filesystem dependencies for dependency injection (testing)
  */
-export interface ExecDeps {
-  execAsync: (
-    command: string,
-    options?: { timeout?: number; env?: NodeJS.ProcessEnv }
-  ) => Promise<{ stdout: string; stderr: string }>;
+export interface FsDeps {
+  existsSync: (path: string) => boolean;
+}
+
+/**
+ * ConfigStore dependencies for dependency injection (testing)
+ */
+export interface ConfigStoreDeps {
+  getToolPath: (toolName: string) => string | null;
 }
 
 // ============================================================
-// Constants - Requirements: 1.2, 5.1, 5.2, 5.3
+// Constants - Requirements: 1.1, 1.4
 // ============================================================
 
 /**
- * Get shell execution environment with macOS session save disabled and ANSI escapes suppressed.
- * - SHELL_SESSIONS_DISABLE=1: prevents zsh from outputting "Saving session..."
- *   when running with -i flag. See: https://github.com/sindresorhus/pure/issues/664
- * - TERM=dumb: prevents VSCode shell integration and other tools from outputting
- *   ANSI escape sequences (e.g., ]633;P;ContinuationPrompt=...) that corrupt command output
+ * Well Known paths to check in order
+ * Requirements: 1.1
  */
-const getShellExecEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  SHELL_SESSIONS_DISABLE: '1',
-  TERM: 'dumb',
-});
+export const WELL_KNOWN_PATHS: readonly string[] = [
+  '/opt/homebrew/bin',    // Homebrew Apple Silicon
+  '/usr/local/bin',       // Homebrew Intel
+  `${process.env.HOME}/.local/bin`,  // npm global, pipx, etc.
+  '/usr/bin',             // System
+];
 
 /**
- * Tool definitions - Requirements: 1.2, 5.1, 5.2, 5.3
- * Adding a new tool only requires adding an entry here.
+ * Tool definitions
+ * Requirements: 1.4
  */
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   {
@@ -99,48 +104,45 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
 ] as const;
 
 // ============================================================
-// Default exec dependencies
+// Default dependencies
 // ============================================================
 
-const defaultExecDeps: ExecDeps = {
-  execAsync: async (command, options) => {
-    const result = await execPromise(command, options);
-    return {
-      stdout: result.stdout.toString(),
-      stderr: result.stderr.toString(),
-    };
-  },
+const defaultFsDeps: FsDeps = {
+  existsSync: (path: string) => fs.existsSync(path),
+};
+
+const defaultConfigStoreDeps: ConfigStoreDeps = {
+  getToolPath: (toolName: string) => getConfigStore().getToolPath(toolName),
 };
 
 // ============================================================
-// Service Implementation - Requirements: 1.1, 2.1-2.4, 3.1-3.3, 4.1-4.3
+// Service Implementation - Requirements: 1.1-1.4, 2.4, 4.1-4.4
 // ============================================================
 
 /**
  * ToolPathResolverService
- * Resolves and caches tool paths for all registered tools
+ * Resolves and caches tool paths using Well Known paths and manual configuration
  */
 export class ToolPathResolverService {
-  private execDeps: ExecDeps;
+  private fsDeps: FsDeps;
+  private configStoreDeps: ConfigStoreDeps;
   private resolvedCache: Map<string, ToolResolutionResult> = new Map();
 
-  /** Timeout for shell command execution (5 seconds) - Requirement 2.4 */
-  private static readonly TIMEOUT_MS = 5000;
-
-  constructor(execDeps: ExecDeps = defaultExecDeps) {
-    this.execDeps = execDeps;
+  constructor(
+    fsDeps: FsDeps = defaultFsDeps,
+    configStoreDeps: ConfigStoreDeps = defaultConfigStoreDeps
+  ) {
+    this.fsDeps = fsDeps;
+    this.configStoreDeps = configStoreDeps;
   }
 
   /**
    * Resolve all registered tools in parallel
-   * Requirements: 4.1, 4.2, 4.3
-   *
-   * @returns Promise that resolves when all tools are resolved
+   * Requirements: 4.1, 4.2
    */
   async resolveAll(): Promise<void> {
     logger.info('[ToolPathResolver] Resolving all tools in parallel');
 
-    // Requirement 4.2: Parallel resolution using Promise.all
     const promises = TOOL_DEFINITIONS.map((def) => this.resolveTool(def.name));
     await Promise.all(promises);
 
@@ -151,12 +153,12 @@ export class ToolPathResolverService {
   }
 
   /**
-   * Resolve a single tool's path using login shell
-   * Requirements: 2.1, 2.2, 2.3, 2.4, 8.1, 8.2
+   * Resolve a single tool's path
+   * Requirements: 1.1, 1.2, 1.3, 2.4
    *
    * @param toolName - Name of the tool to resolve
    * @param options - Optional parameters
-   * @param options.forceResolve - Skip cache and re-resolve (used after tool installation)
+   * @param options.forceResolve - Skip cache and re-resolve
    * @returns Resolution result with path or error
    */
   async resolveTool(
@@ -165,8 +167,7 @@ export class ToolPathResolverService {
   ): Promise<ToolResolutionResult> {
     const { forceResolve = false } = options || {};
 
-    // Check cache first - Requirement 3.1, 3.3
-    // Skip cache if forceResolve is true (used after installing a tool)
+    // Check cache first (unless forceResolve)
     if (!forceResolve) {
       const cached = this.resolvedCache.get(toolName);
       if (cached) {
@@ -178,17 +179,16 @@ export class ToolPathResolverService {
         return cached;
       }
     } else {
-      // Clear existing cache entry for this tool when forcing re-resolution
       this.resolvedCache.delete(toolName);
       logger.info('[ToolPathResolver] Force re-resolving tool (cache cleared)', { tool: toolName });
     }
 
-    // Check E2E mock environment variable - Requirement 8.1, 8.2
+    // Check E2E mock environment variable first
     const mockEnvVar = `E2E_MOCK_${toolName.toUpperCase()}_COMMAND`;
     const mockPath = process.env[mockEnvVar];
     if (mockPath) {
       logger.info('[ToolPathResolver] Using E2E mock path', { tool: toolName, path: mockPath });
-      const result: ToolResolutionResult = { resolved: true, path: mockPath };
+      const result: ToolResolutionResult = { resolved: true, path: mockPath, source: 'well-known' };
       this.resolvedCache.set(toolName, result);
       return result;
     }
@@ -199,78 +199,71 @@ export class ToolPathResolverService {
       logger.warn('[ToolPathResolver] Unknown tool', { tool: toolName });
       const result: ToolResolutionResult = {
         resolved: false,
+        source: 'not-found',
         error: `Unknown tool: ${toolName}`,
       };
       this.resolvedCache.set(toolName, result);
       return result;
     }
 
-    // Resolve using login shell
-    // Requirement 2.2, 2.3: Use $SHELL with -il flags, fallback to /bin/sh
-    const shell = process.env.SHELL || '/bin/sh';
-    const whichCommand = `${shell} -il -c 'which ${toolName}'`;
-
-    logger.info('[ToolPathResolver] Resolving tool path', { tool: toolName, shell, command: whichCommand });
-
-    try {
-      // Requirement 2.1: Execute which within login shell
-      const { stdout, stderr } = await this.execDeps.execAsync(whichCommand, {
-        timeout: ToolPathResolverService.TIMEOUT_MS, // Requirement 2.4
-        env: getShellExecEnv(),
-      });
-
-      const resolvedPath = stdout.trim();
-
-      if (!resolvedPath) {
-        logger.warn('[ToolPathResolver] which returned empty output', { tool: toolName, stderr });
+    // Check manual path from ConfigStore first (Requirement 2.4)
+    const manualPath = this.configStoreDeps.getToolPath(toolName);
+    if (manualPath) {
+      logger.info('[ToolPathResolver] Checking manual path', { tool: toolName, path: manualPath });
+      if (this.fsDeps.existsSync(manualPath)) {
+        logger.info('[ToolPathResolver] Manual path exists', { tool: toolName, path: manualPath });
+        const result: ToolResolutionResult = {
+          resolved: true,
+          path: manualPath,
+          source: 'manual',
+        };
+        this.resolvedCache.set(toolName, result);
+        return result;
+      } else {
+        logger.warn('[ToolPathResolver] Manual path does not exist', { tool: toolName, path: manualPath });
         const result: ToolResolutionResult = {
           resolved: false,
-          error: `${toolName} command not found (empty which output)`,
+          source: 'manual',
+          error: `Manual path does not exist: ${manualPath}`,
         };
         this.resolvedCache.set(toolName, result);
         return result;
       }
-
-      // Try to get version
-      let version: string | undefined;
-      try {
-        const versionCommand = `${shell} -il -c '${resolvedPath} ${definition.versionCommand}'`;
-        const versionResult = await this.execDeps.execAsync(versionCommand, {
-          timeout: ToolPathResolverService.TIMEOUT_MS,
-          env: getShellExecEnv(),
-        });
-        version = versionResult.stdout.trim();
-      } catch (versionError) {
-        logger.debug('[ToolPathResolver] Failed to get version', { tool: toolName, error: versionError });
-        // Version retrieval failure is not fatal
-      }
-
-      const result: ToolResolutionResult = { resolved: true, path: resolvedPath, version };
-      this.resolvedCache.set(toolName, result);
-
-      logger.info('[ToolPathResolver] Tool resolved successfully', {
-        tool: toolName,
-        path: resolvedPath,
-        version,
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.warn('[ToolPathResolver] Failed to resolve tool', { tool: toolName, error: errorMessage });
-
-      const result: ToolResolutionResult = {
-        resolved: false,
-        error: `${toolName} command not found: ${errorMessage}`,
-      };
-      this.resolvedCache.set(toolName, result);
-      return result;
     }
+
+    // Check Well Known paths in order (Requirement 1.1, 1.2, 1.3)
+    logger.info('[ToolPathResolver] Checking Well Known paths', { tool: toolName });
+    for (const basePath of WELL_KNOWN_PATHS) {
+      const fullPath = `${basePath}/${toolName}`;
+      if (this.fsDeps.existsSync(fullPath)) {
+        logger.info('[ToolPathResolver] Tool found in Well Known path', {
+          tool: toolName,
+          path: fullPath,
+        });
+        const result: ToolResolutionResult = {
+          resolved: true,
+          path: fullPath,
+          source: 'well-known',
+        };
+        this.resolvedCache.set(toolName, result);
+        return result;
+      }
+    }
+
+    // Tool not found
+    logger.warn('[ToolPathResolver] Tool not found in any Well Known path', { tool: toolName });
+    const result: ToolResolutionResult = {
+      resolved: false,
+      source: 'not-found',
+      error: `${toolName} not found in Well Known paths. Consider using Settings to specify a custom path.`,
+    };
+    this.resolvedCache.set(toolName, result);
+    return result;
   }
 
   /**
    * Get cached path for a tool
-   * Requirements: 3.2, 8.1, 8.2
+   * Requirements: 4.4 (backward compatibility)
    *
    * @param toolName - Name of the tool
    * @returns Full path to tool command, or tool name if not resolved
@@ -290,7 +283,6 @@ export class ToolPathResolverService {
 
   /**
    * Get tool definition by name
-   * Requirement 6.2
    *
    * @param toolName - Name of the tool
    * @returns Tool definition or undefined
@@ -301,7 +293,6 @@ export class ToolPathResolverService {
 
   /**
    * Get tool status (definition + resolution)
-   * Requirement 6.2
    *
    * @param toolName - Name of the tool
    * @returns Tool status or undefined for unknown tool
@@ -314,6 +305,7 @@ export class ToolPathResolverService {
 
     const resolution = this.resolvedCache.get(toolName) || {
       resolved: false,
+      source: 'not-found' as const,
       error: 'Not yet resolved',
     };
 
@@ -329,6 +321,7 @@ export class ToolPathResolverService {
     return TOOL_DEFINITIONS.map((definition) => {
       const resolution = this.resolvedCache.get(definition.name) || {
         resolved: false,
+        source: 'not-found' as const,
         error: 'Not yet resolved',
       };
       return { definition, resolution };
@@ -337,6 +330,7 @@ export class ToolPathResolverService {
 
   /**
    * Check if tool was successfully resolved
+   * Requirements: 4.4 (backward compatibility)
    *
    * @param toolName - Name of the tool
    * @returns True if tool was successfully resolved

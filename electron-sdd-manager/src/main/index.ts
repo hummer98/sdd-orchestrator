@@ -142,9 +142,10 @@ if (!isAppPackaged && !isE2ETest) {
  * unified-tool-path-resolver: Resolve all tool paths at startup
  * Requirements: 4.1, 4.2, 4.3
  *
- * - Resolves all registered tools in parallel using user's login shell
- * - Shows warning dialog if claude (required tool) resolution fails
- * - Warning message: Japanese message as specified in requirements
+ * - Resolves all registered tools in parallel using Well Known path checks
+ * - Logs warning if claude (required tool) resolution fails
+ * - Note (well-known-tool-paths feature): Warning dialog removed, Renderer now auto-shows
+ *   ToolSettingsPanel when claude is not resolved (Requirements: 3.1, 3.3)
  */
 async function resolveToolPathsAtStartup(): Promise<void> {
   const resolver = getToolPathResolverService();
@@ -152,18 +153,12 @@ async function resolveToolPathsAtStartup(): Promise<void> {
   // Requirement 4.1, 4.2: Resolve all tools in parallel at startup
   await resolver.resolveAll();
 
-  // Check claude (required tool) - show warning if not resolved
+  // Check claude (required tool) - log status for debugging
   const claudeStatus = resolver.getStatus('claude');
   if (claudeStatus && !claudeStatus.resolution.resolved) {
+    // well-known-tool-paths Task 6.3: Warning dialog removed
+    // Renderer now auto-shows ToolSettingsPanel when claude is not resolved
     logger.warn('[main] Claude path resolution failed', { error: claudeStatus.resolution.error });
-
-    // Show warning dialog with Japanese message
-    dialog.showMessageBox({
-      type: 'warning',
-      title: 'Claude Command Not Found',
-      message: 'claudeコマンドが見つかりません。Claude Codeがインストールされているか、PATHが通っているか確認してください',
-      buttons: ['OK'],
-    });
   } else if (claudeStatus) {
     logger.info('[main] Claude path resolved successfully', { path: claudeStatus.resolution.path });
   }

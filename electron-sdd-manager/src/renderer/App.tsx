@@ -55,6 +55,8 @@ import { ProfileBadge } from '../shared/components/ui';
 import { McpStatusIndicator } from '../shared/components/ui';
 // mcp-server-integration: MCP store for status synchronization
 import { useMcpStore } from '../shared/stores/mcpStore';
+// well-known-tool-paths feature: Tool path store for claude availability check
+import { useToolPathStore } from '../shared/stores/toolPathStore';
 // agent-log-store-unification Task 4.4: Shared log subscription hook
 import { useAgentLogSubscription } from '../shared/hooks';
 import { IpcApiClient } from '../shared/api/IpcApiClient';
@@ -292,6 +294,27 @@ export function App() {
     mcpStoreInitialized.current = true;
     initializeMcpStore();
   }, [initializeMcpStore]);
+
+  // well-known-tool-paths feature Task 6.2: Fetch tool statuses and auto-show settings if claude is not resolved
+  // Requirements: 3.1 - claude未検出時の設定画面自動表示
+  const { fetchStatuses: fetchToolStatuses } = useToolPathStore();
+  const toolPathInitialized = useRef(false);
+  useEffect(() => {
+    if (toolPathInitialized.current) {
+      return;
+    }
+    toolPathInitialized.current = true;
+
+    // Fetch tool statuses and check claude availability
+    fetchToolStatuses().then(() => {
+      // Use getState to get the latest state after fetch completes
+      const claudeResolved = useToolPathStore.getState().isClaudeResolved();
+      if (!claudeResolved) {
+        console.log('[App] Claude not resolved, auto-showing settings dialog');
+        setIsRemoteAccessDialogOpen(true);
+      }
+    });
+  }, [fetchToolStatuses]);
 
   // agent-log-store-unification Task 4.4: Setup real-time log subscription
   // Requirements: 2.4 - Use shared useAgentLogSubscription hook for log events

@@ -582,10 +582,10 @@ export function registerIpcHandlers(): void {
       return { name: 'jj', available: false, installGuidance: 'brew install jj' };
     }
     // ToolStatus -> ToolCheck conversion to maintain IPC compatibility
+    // Note: version is no longer retrieved (well-known-tool-paths feature)
     const result: ToolCheck = {
       name: status.definition.name,
       available: status.resolution.resolved,
-      version: status.resolution.version,
       installGuidance: status.definition.installGuidance,
     };
     logger.info('[handlers] CHECK_JJ_AVAILABILITY result', { available: result.available });
@@ -607,7 +607,7 @@ export function registerIpcHandlers(): void {
       const checkResult = await resolver.resolveTool('jj', { forceResolve: true });
 
       if (checkResult.resolved) {
-        logger.info('[handlers] INSTALL_JJ succeeded', { version: checkResult.version });
+        logger.info('[handlers] INSTALL_JJ succeeded', { path: checkResult.path });
         return { success: true };
       } else {
         logger.warn('[handlers] INSTALL_JJ completed but jj is not available');

@@ -136,6 +136,42 @@ export type WorkflowPhase = 'requirements' | 'design' | 'tasks' | 'document-revi
  */
 export type LLMEngineId = 'claude' | 'gemini';
 
+// ============================================================
+// Tool Path Types (well-known-tool-paths feature)
+// Requirements: 1.1, 2.1, 2.4
+// ============================================================
+
+/**
+ * Tool definition
+ * Requirements: 1.4
+ */
+export interface ToolDefinition {
+  readonly name: string;
+  readonly required: boolean;
+  readonly versionCommand: string;
+  readonly installGuidance: string;
+}
+
+/**
+ * Resolution result with source indicator
+ * Requirements: 1.1, 2.4
+ */
+export interface ToolResolutionResult {
+  readonly resolved: boolean;
+  readonly path?: string;
+  readonly source?: 'manual' | 'well-known' | 'not-found';
+  readonly error?: string;
+}
+
+/**
+ * Tool status combining definition and resolution
+ * Requirements: 2.3
+ */
+export interface ToolStatus {
+  readonly definition: ToolDefinition;
+  readonly resolution: ToolResolutionResult;
+}
+
 /**
  * LLM Engine Config type
  * llm-engine-abstraction feature
@@ -872,6 +908,41 @@ export interface ElectronAPI {
   loadEngineConfig(projectPath: string): Promise<EngineConfig>;
   saveEngineConfig(projectPath: string, config: EngineConfig): Promise<void>;
   getAvailableLLMEngines(): Promise<Array<{ id: string; label: string }>>;
+
+  // ============================================================
+  // Tool Path Settings (well-known-tool-paths feature)
+  // Requirements: 2.1, 2.4
+  // ============================================================
+
+  /**
+   * Tool path management API
+   * Provides methods for managing tool paths (claude, jj, jq)
+   */
+  toolPath: {
+    /**
+     * Get all tool statuses
+     * Returns status for each registered tool (claude, jj, jq)
+     * @returns Array of ToolStatus
+     */
+    getStatuses(): Promise<ToolStatus[]>;
+
+    /**
+     * Set manual path for a tool
+     * Saves path to ConfigStore and re-resolves the tool
+     * @param tool Tool name
+     * @param path Manual path (or null to clear)
+     * @returns ToolResolutionResult after re-resolution
+     */
+    setPath(tool: string, path: string | null): Promise<ToolResolutionResult>;
+
+    /**
+     * Re-resolve a single tool
+     * Forces cache invalidation and re-resolution
+     * @param tool Tool name
+     * @returns ToolResolutionResult
+     */
+    resolve(tool: string): Promise<ToolResolutionResult>;
+  };
 
   // Menu Events - Layout Reset
   onMenuResetLayout(callback: () => void): () => void;

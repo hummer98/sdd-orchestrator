@@ -1,29 +1,36 @@
 /**
  * ToolPathResolverService Unit Tests
- * TDD: Testing unified tool path resolution
- * Requirements: 1.1, 1.2, 1.3, 2.1-2.4, 3.1-3.3, 4.1-4.3, 5.1-5.3, 6.1-6.2, 8.1-8.2
+ * TDD: Testing Well Known path resolution (no shell spawn)
+ * well-known-tool-paths feature
+ * Requirements: 1.1-1.4, 2.4, 4.1-4.4
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   ToolPathResolverService,
   TOOL_DEFINITIONS,
+  WELL_KNOWN_PATHS,
   getToolPathResolverService,
   resetToolPathResolverService,
   type ToolDefinition,
   type ToolResolutionResult,
   type ToolStatus,
-  type ExecDeps,
+  type FsDeps,
+  type ConfigStoreDeps,
 } from './toolPathResolverService';
 
 describe('ToolPathResolverService', () => {
   // Store original env
   const originalEnv = process.env;
 
-  // Mock exec dependencies
-  const createExecDeps = (overrides: Partial<ExecDeps> = {}): ExecDeps => ({
-    execAsync: vi.fn().mockRejectedValue(new Error('not found')),
-    ...overrides,
+  // Mock fs dependencies
+  const createFsDeps = (existingPaths: string[] = []): FsDeps => ({
+    existsSync: vi.fn((path: string) => existingPaths.includes(path)),
+  });
+
+  // Mock ConfigStore dependencies
+  const createConfigStoreDeps = (toolPaths: Record<string, string | null> = {}): ConfigStoreDeps => ({
+    getToolPath: vi.fn((toolName: string) => toolPaths[toolName] ?? null),
   });
 
   beforeEach(() => {
@@ -33,7 +40,6 @@ describe('ToolPathResolverService', () => {
     delete process.env.E2E_MOCK_CLAUDE_COMMAND;
     delete process.env.E2E_MOCK_JJ_COMMAND;
     delete process.env.E2E_MOCK_JQ_COMMAND;
-    delete process.env.SHELL;
     // Reset singleton
     resetToolPathResolverService();
   });
@@ -43,13 +49,34 @@ describe('ToolPathResolverService', () => {
   });
 
   // ============================================================
-  // Task 1.1: TOOL_DEFINITIONS constant array
-  // Requirements: 1.2, 5.1, 5.2, 5.3
+  // WELL_KNOWN_PATHS constant
+  // Requirements: 1.1
+  // ============================================================
+
+  describe('WELL_KNOWN_PATHS', () => {
+    it('should define the correct well-known paths in order', () => {
+      // Requirement 1.1: Check paths in order
+      expect(WELL_KNOWN_PATHS).toContain('/opt/homebrew/bin');
+      expect(WELL_KNOWN_PATHS).toContain('/usr/local/bin');
+      expect(WELL_KNOWN_PATHS).toContain('/usr/bin');
+      // $HOME/.local/bin should be expanded
+      expect(WELL_KNOWN_PATHS.some((p) => p.includes('.local/bin'))).toBe(true);
+    });
+
+    it('should check /opt/homebrew/bin before /usr/local/bin', () => {
+      const homebrewIndex = WELL_KNOWN_PATHS.indexOf('/opt/homebrew/bin');
+      const usrLocalIndex = WELL_KNOWN_PATHS.indexOf('/usr/local/bin');
+      expect(homebrewIndex).toBeLessThan(usrLocalIndex);
+    });
+  });
+
+  // ============================================================
+  // TOOL_DEFINITIONS constant
+  // Requirements: 1.4
   // ============================================================
 
   describe('TOOL_DEFINITIONS', () => {
     it('should contain claude, jj, and jq tool definitions', () => {
-      // Requirement 1.2: Support claude, jj, jq
       const toolNames = TOOL_DEFINITIONS.map((t) => t.name);
       expect(toolNames).toContain('claude');
       expect(toolNames).toContain('jj');
@@ -57,16 +84,11 @@ describe('ToolPathResolverService', () => {
     });
 
     it('should have required fields for each tool', () => {
-      // Requirement 5.2: Each tool has name, required, versionCommand, installGuidance
       for (const tool of TOOL_DEFINITIONS) {
         expect(tool).toHaveProperty('name');
         expect(tool).toHaveProperty('required');
         expect(tool).toHaveProperty('versionCommand');
         expect(tool).toHaveProperty('installGuidance');
-        expect(typeof tool.name).toBe('string');
-        expect(typeof tool.required).toBe('boolean');
-        expect(typeof tool.versionCommand).toBe('string');
-        expect(typeof tool.installGuidance).toBe('string');
       }
     });
 
@@ -82,307 +104,197 @@ describe('ToolPathResolverService', () => {
   });
 
   // ============================================================
-  // Task 1.2: ToolResolutionResult and ToolStatus types
-  // Requirements: 6.1, 6.2
+  // resolveTool - Well Known path discovery
+  // Requirements: 1.1, 1.2, 1.3
   // ============================================================
 
-  describe('ToolResolutionResult type', () => {
-    it('should have resolved, path, version, and error fields', async () => {
-      // Requirement 6.1: Resolution result interface
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+  describe('resolveTool - Well Known paths', () => {
+    it('should find tool in /opt/homebrew/bin first', async () => {
+      // Requirement 1.1, 1.2: Check well-known paths in order
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude', '/usr/local/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const result = await service.resolveTool('claude');
 
-      // Check structure of successful result
-      expect(result).toHaveProperty('resolved');
       expect(result.resolved).toBe(true);
-      expect(result).toHaveProperty('path');
-      expect(result.path).toBe('/usr/local/bin/claude');
+      expect(result.path).toBe('/opt/homebrew/bin/claude');
+      expect(result.source).toBe('well-known');
+      // Requirement 1.3: No shell spawn - only fs.existsSync called
+      expect(fsDeps.existsSync).toHaveBeenCalled();
     });
 
-    it('should return error field on failure', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockRejectedValue(new Error('command not found')),
-      });
+    it('should find tool in /usr/local/bin when not in /opt/homebrew/bin', async () => {
+      const fsDeps = createFsDeps(['/usr/local/bin/jj']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+      const result = await service.resolveTool('jj');
 
+      expect(result.resolved).toBe(true);
+      expect(result.path).toBe('/usr/local/bin/jj');
+      expect(result.source).toBe('well-known');
+    });
+
+    it('should find tool in $HOME/.local/bin', async () => {
+      const homeLocalBin = `${process.env.HOME}/.local/bin/jq`;
+      const fsDeps = createFsDeps([homeLocalBin]);
+      const configStoreDeps = createConfigStoreDeps();
+
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+      const result = await service.resolveTool('jq');
+
+      expect(result.resolved).toBe(true);
+      expect(result.path).toBe(homeLocalBin);
+      expect(result.source).toBe('well-known');
+    });
+
+    it('should find tool in /usr/bin as last resort', async () => {
+      const fsDeps = createFsDeps(['/usr/bin/jq']);
+      const configStoreDeps = createConfigStoreDeps();
+
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+      const result = await service.resolveTool('jq');
+
+      expect(result.resolved).toBe(true);
+      expect(result.path).toBe('/usr/bin/jq');
+      expect(result.source).toBe('well-known');
+    });
+
+    it('should return not-found when tool is not in any well-known path', async () => {
+      const fsDeps = createFsDeps([]); // No paths exist
+      const configStoreDeps = createConfigStoreDeps();
+
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const result = await service.resolveTool('claude');
 
       expect(result.resolved).toBe(false);
       expect(result.path).toBeUndefined();
+      expect(result.source).toBe('not-found');
       expect(result.error).toBeDefined();
     });
-  });
 
-  describe('ToolStatus type', () => {
-    it('should combine definition and resolution result', async () => {
-      // Requirement 6.2: ToolStatus = definition + resolution
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+    it('should NOT use shell spawn (fs.existsSync only)', async () => {
+      // Requirement 1.3: No shell spawn
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveTool('claude');
-      const status = service.getStatus('claude');
 
-      expect(status).toBeDefined();
-      expect(status!.definition).toBeDefined();
-      expect(status!.definition.name).toBe('claude');
-      expect(status!.resolution).toBeDefined();
-      expect(status!.resolution.resolved).toBe(true);
+      // fs.existsSync should have been called
+      expect(fsDeps.existsSync).toHaveBeenCalled();
     });
   });
 
   // ============================================================
-  // Task 1.3: resolveTool - Single tool path resolution
-  // Requirements: 2.1, 2.2, 2.3, 2.4, 8.1, 8.2
+  // resolveTool - Manual path priority
+  // Requirements: 2.4
   // ============================================================
 
-  describe('resolveTool', () => {
-    it('should resolve tool path using login shell with which command', async () => {
-      // Requirement 2.1: Execute `which {tool}` within login shell
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+  describe('resolveTool - Manual path priority', () => {
+    it('should use manual path from ConfigStore when set', async () => {
+      // Requirement 2.4: Manual path takes priority
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude', '/custom/path/claude']);
+      const configStoreDeps = createConfigStoreDeps({ claude: '/custom/path/claude' });
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const result = await service.resolveTool('claude');
 
       expect(result.resolved).toBe(true);
-      expect(result.path).toBe('/usr/local/bin/claude');
-      expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/zsh -il -c 'which claude'",
-        expect.any(Object)
-      );
+      expect(result.path).toBe('/custom/path/claude');
+      expect(result.source).toBe('manual');
     });
 
-    it('should set SHELL_SESSIONS_DISABLE=1 and TERM=dumb to prevent shell output pollution', async () => {
-      // Fix for:
-      // - "zsh: error on TTY read" and "Saving session..." messages on macOS
-      //   See: https://github.com/sindresorhus/pure/issues/664
-      // - VSCode shell integration ANSI sequences (]633;P;ContinuationPrompt=...)
-      //   corrupting which command output
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+    it('should return error when manual path does not exist', async () => {
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']); // Manual path not in list
+      const configStoreDeps = createConfigStoreDeps({ claude: '/nonexistent/path/claude' });
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+      const result = await service.resolveTool('claude');
 
-      await service.resolveTool('claude');
-
-      expect(execDeps.execAsync).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          env: expect.objectContaining({
-            SHELL_SESSIONS_DISABLE: '1',
-            TERM: 'dumb',
-          }),
-        })
-      );
+      expect(result.resolved).toBe(false);
+      expect(result.source).toBe('manual');
+      expect(result.error).toContain('Manual path does not exist');
     });
 
-    it('should use $SHELL environment variable for shell detection', async () => {
-      // Requirement 2.2: .zshrc/.zprofile should be loaded
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/opt/homebrew/bin/jj\n',
-          stderr: '',
-        }),
-      });
+    it('should fallback to Well Known paths when manual path is null', async () => {
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/jj']);
+      const configStoreDeps = createConfigStoreDeps({ jj: null });
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/bash';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+      const result = await service.resolveTool('jj');
 
-      await service.resolveTool('jj');
-
-      expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/bash -il -c 'which jj'",
-        expect.any(Object)
-      );
+      expect(result.resolved).toBe(true);
+      expect(result.path).toBe('/opt/homebrew/bin/jj');
+      expect(result.source).toBe('well-known');
     });
+  });
 
-    it('should fallback to /bin/sh when $SHELL is not set', async () => {
-      // Requirement 2.3: Fallback to /bin/sh
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/bin/jq\n',
-          stderr: '',
-        }),
-      });
+  // ============================================================
+  // resolveTool - E2E Mock support
+  // ============================================================
 
-      const service = new ToolPathResolverService(execDeps);
-      delete process.env.SHELL;
-
-      await service.resolveTool('jq');
-
-      expect(execDeps.execAsync).toHaveBeenCalledWith(
-        "/bin/sh -il -c 'which jq'",
-        expect.any(Object)
-      );
-    });
-
-    it('should pass timeout option to execAsync (5 seconds)', async () => {
-      // Requirement 2.4: 5 second timeout
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
-
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      await service.resolveTool('claude');
-
-      expect(execDeps.execAsync).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ timeout: 5000 })
-      );
-    });
-
+  describe('resolveTool - E2E Mock support', () => {
     it('should return E2E_MOCK_CLAUDE_COMMAND when set', async () => {
-      // Requirement 8.1, 8.2: E2E mock environment variable support
-      const execDeps = createExecDeps();
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
       process.env.E2E_MOCK_CLAUDE_COMMAND = '/mock/claude';
 
-      const service = new ToolPathResolverService(execDeps);
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const result = await service.resolveTool('claude');
 
       expect(result.resolved).toBe(true);
       expect(result.path).toBe('/mock/claude');
-      // execAsync should NOT be called when E2E mock is set
-      expect(execDeps.execAsync).not.toHaveBeenCalled();
+      // fs.existsSync should NOT be called when E2E mock is set
+      expect(fsDeps.existsSync).not.toHaveBeenCalled();
     });
 
     it('should return E2E_MOCK_JJ_COMMAND when set', async () => {
-      // Requirement 8.1: E2E mock for any tool
-      const execDeps = createExecDeps();
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
       process.env.E2E_MOCK_JJ_COMMAND = '/mock/jj';
 
-      const service = new ToolPathResolverService(execDeps);
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const result = await service.resolveTool('jj');
 
       expect(result.resolved).toBe(true);
       expect(result.path).toBe('/mock/jj');
-      expect(execDeps.execAsync).not.toHaveBeenCalled();
-    });
-
-    it('should return error result when which command fails', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockRejectedValue(new Error('command not found')),
-      });
-
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      const result = await service.resolveTool('claude');
-
-      expect(result.resolved).toBe(false);
-      expect(result.path).toBeUndefined();
-      expect(result.error).toBeDefined();
-    });
-
-    it('should return error result when which returns empty output', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '',
-          stderr: '',
-        }),
-      });
-
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      const result = await service.resolveTool('claude');
-
-      expect(result.resolved).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should handle timeout gracefully', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockImplementation(() => {
-          return new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('ETIMEDOUT')), 100);
-          });
-        }),
-      });
-
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      const result = await service.resolveTool('claude');
-
-      expect(result.resolved).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should retrieve version using versionCommand', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi
-          .fn()
-          .mockResolvedValueOnce({
-            stdout: '/usr/local/bin/claude\n',
-            stderr: '',
-          })
-          .mockResolvedValueOnce({
-            stdout: 'claude 1.0.0\n',
-            stderr: '',
-          }),
-      });
-
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      const result = await service.resolveTool('claude');
-
-      expect(result.resolved).toBe(true);
-      expect(result.version).toBe('claude 1.0.0');
     });
   });
 
   // ============================================================
-  // Task 1.4: Session cache
-  // Requirements: 3.1, 3.2, 3.3
+  // resolveTool - forceResolve option
+  // ============================================================
+
+  describe('resolveTool - forceResolve', () => {
+    it('should skip cache and re-resolve when forceResolve is true', async () => {
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
+
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
+
+      // First call
+      await service.resolveTool('claude');
+      expect(fsDeps.existsSync).toHaveBeenCalledTimes(1);
+
+      // Second call with forceResolve
+      await service.resolveTool('claude', { forceResolve: true });
+      // Should have called existsSync again
+      expect(fsDeps.existsSync).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ============================================================
+  // Session cache
   // ============================================================
 
   describe('Session cache', () => {
     it('should cache the resolved path after first resolution', async () => {
-      // Requirement 3.1: Cache until session end
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
 
       // First call
       const result1 = await service.resolveTool('claude');
@@ -392,19 +304,15 @@ describe('ToolPathResolverService', () => {
       expect(result1.resolved).toBe(true);
       expect(result2.resolved).toBe(true);
       expect(result1.path).toBe(result2.path);
-      // execAsync should only be called once (once for which, once for version)
-      // Actually, due to caching, only the first resolveTool call invokes execAsync
-      expect(execDeps.execAsync).toHaveBeenCalledTimes(2); // which + version
+      // existsSync should only be called once (cached)
+      expect(fsDeps.existsSync).toHaveBeenCalledTimes(1);
     });
 
     it('should cache failure state as well', async () => {
-      // Requirement 3.3: Cache includes success/failure state
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockRejectedValue(new Error('not found')),
-      });
+      const fsDeps = createFsDeps([]); // No paths exist
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
 
       // First call - fails
       const result1 = await service.resolveTool('claude');
@@ -413,86 +321,49 @@ describe('ToolPathResolverService', () => {
 
       expect(result1.resolved).toBe(false);
       expect(result2.resolved).toBe(false);
-      // Only one execAsync call (cached failure)
-      expect(execDeps.execAsync).toHaveBeenCalledTimes(1);
+      // existsSync called for all well-known paths, but only once
+      expect(fsDeps.existsSync).toHaveBeenCalledTimes(WELL_KNOWN_PATHS.length);
     });
 
     it('should return cached path via getPath immediately', async () => {
-      // Requirement 3.2: getPath returns cached value immediately
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
 
       await service.resolveTool('claude');
       const path = service.getPath('claude');
 
-      expect(path).toBe('/usr/local/bin/claude');
+      expect(path).toBe('/opt/homebrew/bin/claude');
     });
   });
 
   // ============================================================
-  // Task 1.5: resolveAll and public APIs
-  // Requirements: 1.1, 4.1, 4.2, 4.3
+  // resolveAll
   // ============================================================
 
   describe('resolveAll', () => {
-    it('should resolve all registered tools in parallel', async () => {
-      // Requirement 4.1, 4.2: Resolve all tools at startup in parallel
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockImplementation((command: string) => {
-          if (command.includes('which claude')) {
-            return Promise.resolve({ stdout: '/usr/local/bin/claude\n', stderr: '' });
-          }
-          if (command.includes('which jj')) {
-            return Promise.resolve({ stdout: '/opt/homebrew/bin/jj\n', stderr: '' });
-          }
-          if (command.includes('which jq')) {
-            return Promise.resolve({ stdout: '/opt/homebrew/bin/jq\n', stderr: '' });
-          }
-          // Version commands
-          if (command.includes('--version')) {
-            return Promise.resolve({ stdout: 'version 1.0\n', stderr: '' });
-          }
-          return Promise.reject(new Error('unknown command'));
-        }),
-      });
+    it('should resolve all registered tools', async () => {
+      const fsDeps = createFsDeps([
+        '/opt/homebrew/bin/claude',
+        '/opt/homebrew/bin/jj',
+        '/usr/local/bin/jq',
+      ]);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      // Requirement 4.3: Promise completion notification
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveAll();
 
-      // All tools should be resolved
       expect(service.isResolved('claude')).toBe(true);
       expect(service.isResolved('jj')).toBe(true);
       expect(service.isResolved('jq')).toBe(true);
     });
 
     it('should handle partial failures gracefully', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockImplementation((command: string) => {
-          if (command.includes('which claude')) {
-            return Promise.resolve({ stdout: '/usr/local/bin/claude\n', stderr: '' });
-          }
-          if (command.includes('claude --version')) {
-            return Promise.resolve({ stdout: 'claude 1.0\n', stderr: '' });
-          }
-          // jj and jq not found
-          return Promise.reject(new Error('not found'));
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
-      // Should not throw
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveAll();
 
       expect(service.isResolved('claude')).toBe(true);
@@ -501,49 +372,54 @@ describe('ToolPathResolverService', () => {
     });
   });
 
+  // ============================================================
+  // getPath
+  // ============================================================
+
   describe('getPath', () => {
     it('should return cached path when resolved', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveTool('claude');
       const path = service.getPath('claude');
 
-      expect(path).toBe('/usr/local/bin/claude');
+      expect(path).toBe('/opt/homebrew/bin/claude');
     });
 
     it('should return tool name when not resolved', () => {
-      const execDeps = createExecDeps();
-      const service = new ToolPathResolverService(execDeps);
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
 
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const path = service.getPath('claude');
 
       expect(path).toBe('claude');
     });
 
     it('should return E2E mock path when environment variable is set', () => {
-      const execDeps = createExecDeps();
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
       process.env.E2E_MOCK_CLAUDE_COMMAND = '/mock/claude';
 
-      const service = new ToolPathResolverService(execDeps);
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const path = service.getPath('claude');
 
       expect(path).toBe('/mock/claude');
     });
   });
 
+  // ============================================================
+  // getDefinition, getStatus, getAllStatuses, isResolved
+  // ============================================================
+
   describe('getDefinition', () => {
     it('should return definition for known tool', () => {
-      const execDeps = createExecDeps();
-      const service = new ToolPathResolverService(execDeps);
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
 
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const definition = service.getDefinition('claude');
 
       expect(definition).toBeDefined();
@@ -552,9 +428,10 @@ describe('ToolPathResolverService', () => {
     });
 
     it('should return undefined for unknown tool', () => {
-      const execDeps = createExecDeps();
-      const service = new ToolPathResolverService(execDeps);
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
 
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const definition = service.getDefinition('unknown');
 
       expect(definition).toBeUndefined();
@@ -563,16 +440,10 @@ describe('ToolPathResolverService', () => {
 
   describe('getStatus', () => {
     it('should return status combining definition and resolution', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveTool('claude');
       const status = service.getStatus('claude');
 
@@ -582,9 +453,10 @@ describe('ToolPathResolverService', () => {
     });
 
     it('should return undefined for unknown tool', () => {
-      const execDeps = createExecDeps();
-      const service = new ToolPathResolverService(execDeps);
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
 
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       const status = service.getStatus('unknown');
 
       expect(status).toBeUndefined();
@@ -593,16 +465,10 @@ describe('ToolPathResolverService', () => {
 
   describe('getAllStatuses', () => {
     it('should return status for all defined tools', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/tool\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveAll();
       const statuses = service.getAllStatuses();
 
@@ -616,36 +482,29 @@ describe('ToolPathResolverService', () => {
 
   describe('isResolved', () => {
     it('should return false before resolution', () => {
-      const execDeps = createExecDeps();
-      const service = new ToolPathResolverService(execDeps);
+      const fsDeps = createFsDeps();
+      const configStoreDeps = createConfigStoreDeps();
+
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
 
       expect(service.isResolved('claude')).toBe(false);
     });
 
     it('should return true after successful resolution', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockResolvedValue({
-          stdout: '/usr/local/bin/claude\n',
-          stderr: '',
-        }),
-      });
+      const fsDeps = createFsDeps(['/opt/homebrew/bin/claude']);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveTool('claude');
 
       expect(service.isResolved('claude')).toBe(true);
     });
 
     it('should return false after failed resolution', async () => {
-      const execDeps = createExecDeps({
-        execAsync: vi.fn().mockRejectedValue(new Error('not found')),
-      });
+      const fsDeps = createFsDeps([]);
+      const configStoreDeps = createConfigStoreDeps();
 
-      const service = new ToolPathResolverService(execDeps);
-      process.env.SHELL = '/bin/zsh';
-
+      const service = new ToolPathResolverService(fsDeps, configStoreDeps);
       await service.resolveTool('claude');
 
       expect(service.isResolved('claude')).toBe(false);

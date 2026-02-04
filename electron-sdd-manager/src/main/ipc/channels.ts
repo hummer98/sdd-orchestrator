@@ -427,6 +427,12 @@ export const IPC_CHANNELS = {
   PROJECT_FILE_WRITE: 'project-file:write',
   // Event: External file change notification (Main -> Renderer)
   PROJECT_FILE_CHANGED: 'project-file:changed',
+
+  // Tool Path Settings (well-known-tool-paths feature)
+  // Requirements: 2.1, 2.4
+  GET_TOOL_STATUSES: 'tool-path:get-statuses',
+  SET_TOOL_PATH: 'tool-path:set',
+  RESOLVE_TOOL: 'tool-path:resolve',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

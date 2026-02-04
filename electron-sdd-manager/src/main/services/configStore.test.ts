@@ -293,6 +293,97 @@ describe('ConfigStore', () => {
   });
 
   // ============================================================
+  // well-known-tool-paths Task 1.1, 1.2: ToolPaths Settings
+  // Requirements: 2.1
+  // ============================================================
+  describe('toolPaths', () => {
+    it('should return null for all tools when toolPaths not stored', async () => {
+      mockStore.get.mockReturnValue(undefined);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getToolPaths();
+      expect(result).toEqual({ claude: null, jj: null, jq: null });
+    });
+
+    it('should return stored toolPaths', async () => {
+      const storedToolPaths = { claude: '/opt/homebrew/bin/claude', jj: null, jq: '/usr/local/bin/jq' };
+      mockStore.get.mockReturnValue(storedToolPaths);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getToolPaths();
+      expect(result).toEqual(storedToolPaths);
+    });
+
+    it('should return single tool path via getToolPath', async () => {
+      const storedToolPaths = { claude: '/opt/homebrew/bin/claude', jj: null, jq: null };
+      mockStore.get.mockReturnValue(storedToolPaths);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      expect(store.getToolPath('claude')).toBe('/opt/homebrew/bin/claude');
+      expect(store.getToolPath('jj')).toBeNull();
+    });
+
+    it('should return null for unknown tool', async () => {
+      const storedToolPaths = { claude: '/opt/homebrew/bin/claude', jj: null, jq: null };
+      mockStore.get.mockReturnValue(storedToolPaths);
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      expect(store.getToolPath('unknown')).toBeNull();
+    });
+
+    it('should set single tool path via setToolPath', async () => {
+      mockStore.get.mockReturnValue({ claude: null, jj: null, jq: null });
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      store.setToolPath('claude', '/custom/path/claude');
+
+      expect(mockStore.set).toHaveBeenCalledWith('toolPaths', {
+        claude: '/custom/path/claude',
+        jj: null,
+        jq: null,
+      });
+    });
+
+    it('should set tool path to null to clear manual override', async () => {
+      mockStore.get.mockReturnValue({ claude: '/custom/path/claude', jj: null, jq: null });
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      store.setToolPath('claude', null);
+
+      expect(mockStore.set).toHaveBeenCalledWith('toolPaths', {
+        claude: null,
+        jj: null,
+        jq: null,
+      });
+    });
+
+    it('should merge partial toolPaths with defaults', async () => {
+      // When only claude is stored, jj and jq should default to null
+      mockStore.get.mockReturnValue({ claude: '/path/to/claude' });
+
+      const { ConfigStore } = await import('./configStore');
+      const store = new ConfigStore(mockStore as any);
+
+      const result = store.getToolPaths();
+      expect(result.claude).toBe('/path/to/claude');
+      expect(result.jj).toBeNull();
+      expect(result.jq).toBeNull();
+    });
+  });
+
+  // ============================================================
   // Task 1.2: MCP Server Settings
   // Requirements: 5.3, 6.1
   // ============================================================

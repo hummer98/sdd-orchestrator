@@ -2680,6 +2680,40 @@ const electronAPI = {
       ipcRenderer.removeListener(IPC_CHANNELS.PROJECT_FILE_CHANGED, handler);
     };
   },
+
+  // ============================================================
+  // Tool Path Settings (well-known-tool-paths feature)
+  // Requirements: 2.1, 2.4
+  // ============================================================
+
+  /**
+   * Tool path settings API
+   */
+  toolPath: {
+    /**
+     * Get all tool statuses (definition + resolution)
+     * @returns Array of ToolStatus for all registered tools
+     */
+    getStatuses: (): Promise<import('../main/services/toolPathResolverService').ToolStatus[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GET_TOOL_STATUSES),
+
+    /**
+     * Set manual path for a tool
+     * @param tool Tool name (claude, jj, jq)
+     * @param path Manual path or null to clear
+     * @returns Resolution result after re-resolving
+     */
+    setPath: (tool: string, path: string | null): Promise<import('../main/services/toolPathResolverService').ToolResolutionResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SET_TOOL_PATH, { tool, path }),
+
+    /**
+     * Re-resolve a single tool (force refresh)
+     * @param tool Tool name (claude, jj, jq)
+     * @returns Resolution result
+     */
+    resolve: (tool: string): Promise<import('../main/services/toolPathResolverService').ToolResolutionResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.RESOLVE_TOOL, { tool }),
+  },
 };
 
 // Expose API to renderer

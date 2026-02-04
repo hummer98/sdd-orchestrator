@@ -13,13 +13,16 @@ import { clsx } from 'clsx';
 import { RemoteAccessPanel } from './RemoteAccessPanel';
 import { CloudflareSettingsPanel } from './CloudflareSettingsPanel';
 import { McpSettingsPanel } from './McpSettingsPanel';
+import { ToolSettingsPanel } from './ToolSettingsPanel';
 import { InstallCloudflaredDialog } from './InstallCloudflaredDialog';
 import { useRemoteAccessStore } from '../stores/remoteAccessStore';
 
 // Task 1.1: Tab identifier type definition
-type RemoteDialogTab = 'web-server' | 'mcp';
+// well-known-tool-paths Task 6.1: Added 'tools' tab
+type RemoteDialogTab = 'web-server' | 'mcp' | 'tools';
 
 // Task 1.1: Tab configuration
+// well-known-tool-paths Task 6.1: Added Tools tab config
 interface TabConfig {
   id: RemoteDialogTab;
   label: string;
@@ -28,6 +31,7 @@ interface TabConfig {
 const TAB_CONFIGS: TabConfig[] = [
   { id: 'web-server', label: 'Webサーバー' },
   { id: 'mcp', label: 'MCP' },
+  { id: 'tools', label: 'ツール' },
 ];
 
 export interface RemoteAccessDialogProps {
@@ -159,6 +163,18 @@ export function RemoteAccessDialog({ isOpen, onClose }: RemoteAccessDialogProps)
             >
               {/* McpSettingsPanel */}
               <McpSettingsPanel className="border-0 shadow-none m-4" />
+            </div>
+          )}
+
+          {/* well-known-tool-paths Task 6.1: Tools tab panel */}
+          {activeTab === 'tools' && (
+            <div
+              role="tabpanel"
+              id="tabpanel-tools"
+              aria-labelledby="tab-tools"
+            >
+              {/* ToolSettingsPanel */}
+              <ToolSettingsPanel className="border-0 shadow-none m-4" />
             </div>
           )}
         </div>

@@ -47,6 +47,26 @@ export interface McpSettings {
 }
 
 /**
+ * Tool paths configuration
+ * well-known-tool-paths feature
+ * Requirements: 2.1
+ */
+export interface ToolPathsConfig {
+  claude: string | null;
+  jj: string | null;
+  jq: string | null;
+}
+
+/**
+ * Default tool paths (all null - rely on Well Known path discovery)
+ */
+export const DEFAULT_TOOL_PATHS: ToolPathsConfig = {
+  claude: null,
+  jj: null,
+  jq: null,
+};
+
+/**
  * Default MCP Server settings
  */
 export const DEFAULT_MCP_SETTINGS: McpSettings = {
@@ -77,6 +97,8 @@ interface AppConfig {
   layout: LayoutValues | null;
   // mcp-server-integration: MCP server settings
   mcpServer: McpSettings | null;
+  // well-known-tool-paths: Manual tool path overrides
+  toolPaths: ToolPathsConfig | null;
 }
 
 const schema = {
@@ -150,6 +172,16 @@ const schema = {
     properties: {
       enabled: { type: 'boolean' },
       port: { type: 'number' },
+    },
+  },
+  // well-known-tool-paths: Manual tool path overrides
+  toolPaths: {
+    type: ['object', 'null'],
+    default: null,
+    properties: {
+      claude: { type: ['string', 'null'] },
+      jj: { type: ['string', 'null'] },
+      jq: { type: ['string', 'null'] },
     },
   },
 } as const;
@@ -340,6 +372,60 @@ export class ConfigStore {
    */
   setMcpSettings(settings: McpSettings): void {
     this.store.set('mcpServer', settings);
+  }
+
+  // ============================================================
+  // well-known-tool-paths Task 1.1, 1.2: Tool Paths Settings
+  // Requirements: 2.1
+  // ============================================================
+
+  /**
+   * Get all tool paths configuration
+   * Requirements: 2.1
+   * @returns ToolPathsConfig with defaults merged for missing fields
+   */
+  getToolPaths(): ToolPathsConfig {
+    const stored = this.store.get('toolPaths');
+    if (!stored) {
+      return DEFAULT_TOOL_PATHS;
+    }
+    // Merge with defaults to handle partial settings
+    return {
+      claude: stored.claude ?? null,
+      jj: stored.jj ?? null,
+      jq: stored.jq ?? null,
+    };
+  }
+
+  /**
+   * Get single tool path
+   * Requirements: 2.1
+   * @param toolName - Name of the tool (claude, jj, jq)
+   * @returns Tool path or null if not manually set
+   */
+  getToolPath(toolName: string): string | null {
+    const toolPaths = this.getToolPaths();
+    if (toolName === 'claude') return toolPaths.claude;
+    if (toolName === 'jj') return toolPaths.jj;
+    if (toolName === 'jq') return toolPaths.jq;
+    return null;
+  }
+
+  /**
+   * Set single tool path
+   * Requirements: 2.1
+   * @param toolName - Name of the tool (claude, jj, jq)
+   * @param path - Tool path or null to clear manual override
+   */
+  setToolPath(toolName: string, path: string | null): void {
+    const current = this.getToolPaths();
+    const updated: ToolPathsConfig = { ...current };
+
+    if (toolName === 'claude') updated.claude = path;
+    else if (toolName === 'jj') updated.jj = path;
+    else if (toolName === 'jq') updated.jq = path;
+
+    this.store.set('toolPaths', updated);
   }
 }
 

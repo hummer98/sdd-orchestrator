@@ -121,18 +121,11 @@ Generate technical design document for feature based on approved requirements.
    - Cover: architecture pattern, technology choices, data model decisions, interface design, trade-offs
    - Reference requirement IDs where applicable
 
-5. **Generate Verification Contract Section** (CRITICAL):
-   - **User Journey Definition**: Extract testable user journeys from requirements.md
-     - Identify user-facing scenarios that require E2E testing
-     - For each journey: assign ID (UJ-NNN format), describe operation flow, expected result
-     - Mark E2E Required = Yes for critical workflows, integration points, complex UI interactions
-     - Mark E2E Required = No for simple display components, backend-only logic
-   - **Impact Analysis Contract**: Define expected file changes (replaces separate "Integration & Deprecation Strategy")
-     - List files to DELETE with reason
-     - List files to UPDATE with change description
-     - List files to CREATE with purpose
-     - Include placeholder removal when applicable
-   - If no user journeys require E2E, include section with empty table and note explaining why
+5. **Generate Integration & Deprecation Strategy Section** (CRITICAL):
+   - List existing files that require modification (wiring points) to integrate new functionality
+   - List existing files that must be deleted (cleanup) as part of this change
+   - For refactoring tasks, explicitly state whether "file X will be replaced by Y" or "file Z will be created in parallel"
+   - If no files need modification or deletion, explicitly state "No existing files affected"
 
 6. **Internal Consistency Validation**:
    - Verify all sections describe the same architecture model

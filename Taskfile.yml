@@ -73,6 +73,22 @@ tasks:
     cmds:
       - npm run test:e2e
 
+  electron:test:e2e:remote:
+    desc: Run E2E tests on remote machine (requires REMOTE_E2E_HOST and REMOTE_E2E_USER)
+    cmds:
+      - ./scripts/run-remote-e2e.sh
+    env:
+      REMOTE_E2E_HOST: "{{.REMOTE_E2E_HOST}}"
+      REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
+
+  electron:check:remote:
+    desc: Check remote machine environment for E2E testing
+    cmds:
+      - ./scripts/check-remote-environment.sh
+    env:
+      REMOTE_E2E_HOST: "{{.REMOTE_E2E_HOST}}"
+      REMOTE_E2E_USER: "{{.REMOTE_E2E_USER}}"
+
   electron:cleanup:
     desc: Kill zombie Electron processes from E2E tests (safe - only kills orphaned processes)
     cmds:

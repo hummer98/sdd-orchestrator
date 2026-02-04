@@ -1,0 +1,169 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-colors",
+      "category": "principle",
+      "status": "FAIL",
+      "severity": "Minor",
+      "details": "Color output variable definitions are repeated across scripts (run-remote-e2e.sh, check-remote-environment.sh, parse-e2e-result.sh)",
+      "evidence": [
+        "scripts/run-remote-e2e.sh:38-42",
+        "scripts/check-remote-environment.sh:21-25",
+        "scripts/parse-e2e-result.sh:18-21"
+      ]
+    },
+    {
+      "id": "principle-dry-remote-exec",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "remote_exec helper function is defined per-script with different SSH options (acceptable)",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-config",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Environment variables (REMOTE_E2E_HOST, REMOTE_E2E_USER) are the single source for connection config",
+      "evidence": []
+    },
+    {
+      "id": "principle-ssot-cache-dir",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Remote cache directory (~/.sdd-e2e-cache) is defined as constant in run-remote-e2e.sh",
+      "evidence": []
+    },
+    {
+      "id": "principle-kiss-flow",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Scripts follow simple, linear execution flow without unnecessary abstractions",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-config",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No premature generalization or unused configuration options detected",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-unused-var",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "YELLOW variable in run-remote-e2e.sh defined but not used (acceptable for consistency)",
+      "evidence": [
+        "scripts/run-remote-e2e.sh:40"
+      ]
+    },
+    {
+      "id": "dead-code-functions",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All functions (calculate_hash, remote_exec, error_exit, output_failure) are called",
+      "evidence": []
+    },
+    {
+      "id": "dead-code-unreachable",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unreachable code paths detected",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-run-remote",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "scripts/run-remote-e2e.sh created as specified in design",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-check-env",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "scripts/check-remote-environment.sh created as specified in design",
+      "evidence": []
+    },
+    {
+      "id": "impact-create-parse",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "scripts/parse-e2e-result.sh created as specified in design",
+      "evidence": []
+    },
+    {
+      "id": "impact-update-taskfile",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Taskfile.yml updated with electron:test:e2e:remote and electron:check:remote tasks",
+      "evidence": [
+        "Taskfile.yml:76-90"
+      ]
+    },
+    {
+      "id": "placeholder-todo",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO comments found in new scripts",
+      "evidence": []
+    },
+    {
+      "id": "shell-shebang",
+      "category": "shell-practices",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All scripts start with #!/bin/bash shebang",
+      "evidence": []
+    },
+    {
+      "id": "shell-set-e",
+      "category": "shell-practices",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All scripts use set -e for error handling",
+      "evidence": []
+    },
+    {
+      "id": "shell-cleanup",
+      "category": "shell-practices",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Temporary files are cleaned up using trap EXIT in parse-e2e-result.sh",
+      "evidence": [
+        "scripts/parse-e2e-result.sh:31"
+      ]
+    },
+    {
+      "id": "exit-code-consistency",
+      "category": "exit-codes",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Exit codes (0,1,2,3,4,5,6,124) match design specification exactly",
+      "evidence": []
+    }
+  ],
+  "stats": {
+    "total": 18,
+    "passed": 17,
+    "failed": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 17
+  }
+}

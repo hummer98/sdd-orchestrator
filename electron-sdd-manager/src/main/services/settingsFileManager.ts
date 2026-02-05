@@ -2,12 +2,15 @@
  * SettingsFileManager
  * 設定ファイルの競合検出とマージ戦略の適用
  * Requirements: 6.1, 6.2, 6.3, 6.4
+ * vcs-scheme-switching: Task 1.2 - VCS Scheme settings management
+ * Requirements: 1.1, 1.2 (vcs-scheme-switching)
  */
 
 import { access } from 'fs/promises';
 import { join } from 'path';
 import { CommandsetName } from './unifiedCommandsetInstaller';
 import { Result } from './ccSddWorkflowInstaller';
+import { VcsScheme, isValidVcsScheme } from '../../shared/types/worktree';
 
 /**
  * Merge strategy types
@@ -109,10 +112,13 @@ async function fileExists(filePath: string): Promise<boolean> {
 /**
  * sdd-orchestrator.json config schema
  * jj-merge-support: Added jjInstallIgnored to settings
+ * vcs-scheme-switching Task 1.2: Added vcsScheme to settings
  */
 interface SddOrchestratorConfig {
   settings?: {
     jjInstallIgnored?: boolean;
+    /** VCS scheme for worktree operations (vcs-scheme-switching) */
+    vcsScheme?: VcsScheme;
     [key: string]: unknown;
   };
   [key: string]: unknown;
@@ -316,6 +322,78 @@ export class SettingsFileManager {
 
       // Return jjInstallIgnored (default to false)
       return { ok: true, value: config.settings?.jjInstallIgnored ?? false };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: configPath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Get VCS scheme setting from .kiro/sdd-orchestrator.json
+   * vcs-scheme-switching Task 1.2
+   * Requirements: 1.1, 1.2
+   * @param projectPath - Project root path
+   * @returns VcsScheme - "git" or "jj" (defaults to "git" if not set or invalid)
+   */
+  async getVcsScheme(projectPath: string): Promise<Result<VcsScheme, MergeError>> {
+    const configPath = join(projectPath, '.kiro', 'sdd-orchestrator.json');
+
+    try {
+      // Read existing config
+      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const config: SddOrchestratorConfig = JSON.parse(content);
+
+      // Return vcsScheme if valid, otherwise default to 'git'
+      const scheme = config.settings?.vcsScheme;
+      if (isValidVcsScheme(scheme)) {
+        return { ok: true, value: scheme };
+      }
+      return { ok: true, value: 'git' };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          type: 'READ_ERROR',
+          path: configPath,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Set VCS scheme setting in .kiro/sdd-orchestrator.json
+   * vcs-scheme-switching Task 1.2
+   * Requirements: 1.1
+   * @param projectPath - Project root path
+   * @param scheme - "git" or "jj"
+   */
+  async setVcsScheme(projectPath: string, scheme: VcsScheme): Promise<Result<void, MergeError>> {
+    const configPath = join(projectPath, '.kiro', 'sdd-orchestrator.json');
+
+    try {
+      // Read existing config
+      const content = await import('fs/promises').then(fs => fs.readFile(configPath, 'utf-8'));
+      const config: SddOrchestratorConfig = JSON.parse(content);
+
+      // Ensure settings object exists
+      if (!config.settings) {
+        config.settings = {};
+      }
+
+      // Update vcsScheme
+      config.settings.vcsScheme = scheme;
+
+      // Write back
+      await import('fs/promises').then(fs => fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8'));
+
+      return { ok: true, value: undefined };
     } catch (error) {
       return {
         ok: false,

@@ -1844,6 +1844,28 @@ export interface ElectronAPI {
   ignoreJjInstall(projectPath: string, ignored: boolean): Promise<{ success: boolean; error?: string }>;
 
   // ============================================================
+  // VCS Scheme Settings (vcs-scheme-switching feature)
+  // Task 3.2: Type definitions for VCS scheme API
+  // Requirements: 7.4
+  // ============================================================
+
+  /**
+   * Get VCS scheme setting from project
+   * @param projectPath Project root path
+   * @returns VcsScheme ('git' or 'jj'), defaults to 'git'
+   */
+  getVcsScheme(projectPath: string): Promise<import('../../shared/types/worktree').VcsScheme>;
+
+  /**
+   * Set VCS scheme setting in project
+   * Performs jj availability check when setting to 'jj'
+   * @param projectPath Project root path
+   * @param scheme VCS scheme to set ('git' or 'jj')
+   * @returns Success status with optional error message
+   */
+  setVcsScheme(projectPath: string, scheme: import('../../shared/types/worktree').VcsScheme): Promise<{ success: boolean; error?: string }>;
+
+  // ============================================================
   // Git Diff Viewer (git-diff-viewer feature)
   // Task 15.6: Git API definition
   // Requirements: 3.2

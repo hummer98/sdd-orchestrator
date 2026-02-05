@@ -1,0 +1,359 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-05T12:00:00Z",
+  "checks": [
+    {
+      "id": "DES-001",
+      "category": "component",
+      "target": "VcsSchemeSelector",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsSchemeSelector component exists at expected path with correct interface (scheme, onChange, projectPath, disabled, isDesktop props)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx"
+      ]
+    },
+    {
+      "id": "DES-002",
+      "category": "component",
+      "target": "SettingsFileManager",
+      "status": "pass",
+      "severity": "info",
+      "details": "SettingsFileManager service exists with getVcsScheme() and setVcsScheme() methods matching design signatures",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/services/settingsFileManager.ts"
+      ]
+    },
+    {
+      "id": "DES-003",
+      "category": "interface",
+      "target": "VcsScheme type",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsScheme type defined as 'git' | 'jj' with isValidVcsScheme and getWorktreeVcsScheme utility functions",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/shared/types/worktree.ts"
+      ]
+    },
+    {
+      "id": "DES-004",
+      "category": "interface",
+      "target": "WorktreeConfig.vcsScheme",
+      "status": "pass",
+      "severity": "info",
+      "details": "WorktreeConfig interface extended with optional vcsScheme?: VcsScheme field as designed",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/shared/types/worktree.ts:73"
+      ]
+    },
+    {
+      "id": "DES-005",
+      "category": "component",
+      "target": "IPC Channels (VCS_SCHEME_GET/SET)",
+      "status": "pass",
+      "severity": "info",
+      "details": "IPC channels VCS_SCHEME_GET and VCS_SCHEME_SET defined in channels.ts with correct channel names",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/channels.ts:440-441"
+      ]
+    },
+    {
+      "id": "DES-006",
+      "category": "component",
+      "target": "IPC Handlers (vcsScheme)",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS_SCHEME_GET and VCS_SCHEME_SET handlers implemented in handlers.ts with jj availability check on set",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/handlers.ts:647-692"
+      ]
+    },
+    {
+      "id": "DES-007",
+      "category": "component",
+      "target": "Preload API (vcsScheme)",
+      "status": "pass",
+      "severity": "info",
+      "details": "getVcsScheme and setVcsScheme exposed in preload/index.ts with correct type signatures",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/preload/index.ts:2556-2567"
+      ]
+    },
+    {
+      "id": "DES-008",
+      "category": "component",
+      "target": "ProjectSettingsDialog integration",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsSchemeSelector integrated into ProjectSettingsDialog with proper state management and handlers",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx:17-18,34,48,80,168-172"
+      ]
+    },
+    {
+      "id": "DES-009",
+      "category": "component",
+      "target": "create-spec-worktree.sh",
+      "status": "pass",
+      "severity": "info",
+      "details": "Script updated with VCS scheme argument support, git/jj mode handling, and jj workspace/bookmark operations",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh"
+      ]
+    },
+    {
+      "id": "DES-010",
+      "category": "component",
+      "target": "create-bug-worktree.sh",
+      "status": "pass",
+      "severity": "info",
+      "details": "Script updated with VCS scheme argument support, identical structure to create-spec-worktree.sh",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-bug-worktree.sh"
+      ]
+    },
+    {
+      "id": "DES-011",
+      "category": "component",
+      "target": "merge-spec.sh",
+      "status": "pass",
+      "severity": "info",
+      "details": "Script reads worktree.vcsScheme from spec.json, removed jj auto-detection, implements jj squash/bookmark delete/workspace forget",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:63,91-126"
+      ]
+    },
+    {
+      "id": "DES-012",
+      "category": "component",
+      "target": "merge-bug.sh",
+      "status": "pass",
+      "severity": "info",
+      "details": "Script reads worktree.vcsScheme from bug.json, removed jj auto-detection, implements jj merge operations",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-bug.sh:63,91-126"
+      ]
+    },
+    {
+      "id": "DES-013",
+      "category": "component",
+      "target": "rebase-worktree.sh",
+      "status": "pass",
+      "severity": "info",
+      "details": "Script reads worktree.vcsScheme from spec.json/bug.json, implements jj rebase -d main",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/rebase-worktree.sh:57,85-121"
+      ]
+    },
+    {
+      "id": "DES-014",
+      "category": "component",
+      "target": "WorktreeImplHandlers vcsScheme integration",
+      "status": "pass",
+      "severity": "info",
+      "details": "WorktreeImplHandlers reads vcsScheme from settings and records it in spec.json worktree config",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts:73-81,126"
+      ]
+    },
+    {
+      "id": "DES-015",
+      "category": "component",
+      "target": "electron.d.ts type declarations",
+      "status": "pass",
+      "severity": "info",
+      "details": "getVcsScheme and setVcsScheme type declarations added to electron.d.ts",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/types/electron.d.ts:1857,1866"
+      ]
+    },
+    {
+      "id": "DES-016",
+      "category": "component",
+      "target": "Template scripts (resources/templates/scripts)",
+      "status": "pass",
+      "severity": "info",
+      "details": "All 5 template scripts updated with vcsScheme support",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/resources/templates/scripts/create-spec-worktree.sh",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/resources/templates/scripts/create-bug-worktree.sh",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/resources/templates/scripts/merge-spec.sh",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/resources/templates/scripts/merge-bug.sh",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/resources/templates/scripts/rebase-worktree.sh"
+      ]
+    },
+    {
+      "id": "DES-017",
+      "category": "architecture",
+      "target": "SSOT compliance - VcsScheme settings",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsScheme settings stored in sdd-orchestrator.json (project default) and spec.json/bug.json (per-worktree) following SSOT pattern",
+      "evidence": [
+        "design.md Data Models section",
+        "settingsFileManager.ts:getVcsScheme/setVcsScheme",
+        "worktreeImplHandlers.ts:vcsScheme recording"
+      ]
+    },
+    {
+      "id": "DES-018",
+      "category": "steering",
+      "target": "DRY - checkJjAvailability reuse",
+      "status": "pass",
+      "severity": "info",
+      "details": "Existing ProjectChecker.checkJjAvailability (via ToolPathResolverService) is reused for jj installation checks",
+      "evidence": [
+        "handlers.ts:577-593 CHECK_JJ_AVAILABILITY",
+        "handlers.ts:671-678 VCS_SCHEME_SET jj check"
+      ]
+    },
+    {
+      "id": "DES-019",
+      "category": "steering",
+      "target": "Remote UI exclusion",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsSchemeSelector implements isDesktop prop and returns null when false, meeting Requirement 7.5",
+      "evidence": [
+        "VcsSchemeSelector.tsx:79-82"
+      ]
+    },
+    {
+      "id": "DES-020",
+      "category": "component",
+      "target": "Unit tests - VcsSchemeSelector",
+      "status": "pass",
+      "severity": "info",
+      "details": "Comprehensive test coverage for VcsSchemeSelector including jj availability checks and error handling",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.test.tsx"
+      ]
+    },
+    {
+      "id": "DES-021",
+      "category": "component",
+      "target": "Unit tests - SettingsFileManager vcsScheme",
+      "status": "pass",
+      "severity": "info",
+      "details": "getVcsScheme and setVcsScheme methods have comprehensive test coverage including default values and error cases",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/services/settingsFileManager.test.ts:325-473"
+      ]
+    },
+    {
+      "id": "DES-022",
+      "category": "component",
+      "target": "Unit tests - WorktreeConfig vcsScheme",
+      "status": "pass",
+      "severity": "info",
+      "details": "isValidVcsScheme and getWorktreeVcsScheme utility functions have comprehensive test coverage",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/shared/types/worktree.test.ts:24-82"
+      ]
+    },
+    {
+      "id": "DES-023",
+      "category": "interface",
+      "target": "SettingsFileManager.getVcsScheme signature",
+      "status": "pass",
+      "severity": "info",
+      "details": "Method signature matches design: getVcsScheme(projectPath: string): Promise<Result<VcsScheme, MergeError>>",
+      "evidence": [
+        "settingsFileManager.ts:344",
+        "design.md Service Interface section"
+      ]
+    },
+    {
+      "id": "DES-024",
+      "category": "interface",
+      "target": "SettingsFileManager.setVcsScheme signature",
+      "status": "pass",
+      "severity": "info",
+      "details": "Method signature matches design: setVcsScheme(projectPath: string, scheme: VcsScheme): Promise<Result<void, MergeError>>",
+      "evidence": [
+        "settingsFileManager.ts:377",
+        "design.md Service Interface section"
+      ]
+    },
+    {
+      "id": "DES-025",
+      "category": "steering",
+      "target": "File structure compliance",
+      "status": "pass",
+      "severity": "info",
+      "details": "All new/modified files follow structure.md patterns: VcsSchemeSelector in renderer/components, SettingsFileManager in main/services, VcsScheme type in shared/types",
+      "evidence": [
+        "structure.md Electron structure section"
+      ]
+    },
+    {
+      "id": "DES-026",
+      "category": "steering",
+      "target": "Tech stack compliance",
+      "status": "pass",
+      "severity": "info",
+      "details": "Implementation uses React, TypeScript, Zustand patterns as specified in tech.md",
+      "evidence": [
+        "tech.md Core Technologies section"
+      ]
+    },
+    {
+      "id": "DES-027",
+      "category": "architecture",
+      "target": "jj auto-detection removal",
+      "status": "pass",
+      "severity": "info",
+      "details": "All merge/rebase scripts removed 'command -v jj' auto-detection and now use recorded vcsScheme from spec.json/bug.json (Design Decision DD-002)",
+      "evidence": [
+        "merge-spec.sh:63 VCS_SCHEME from jq",
+        "merge-bug.sh:63 VCS_SCHEME from jq",
+        "rebase-worktree.sh:57 VCS_SCHEME from jq"
+      ]
+    },
+    {
+      "id": "DES-028",
+      "category": "architecture",
+      "target": "Error handling - jj not installed",
+      "status": "pass",
+      "severity": "info",
+      "details": "Japanese error message implemented for jj not installed case, matching design specification",
+      "evidence": [
+        "VcsSchemeSelector.tsx:138 error message",
+        "handlers.ts:673-676 IPC error response"
+      ]
+    },
+    {
+      "id": "DES-029",
+      "category": "architecture",
+      "target": "jj rollback strategy",
+      "status": "pass",
+      "severity": "info",
+      "details": "create-spec-worktree.sh implements rollback on bookmark creation failure: jj workspace forget",
+      "evidence": [
+        "create-spec-worktree.sh:72-75"
+      ]
+    },
+    {
+      "id": "DES-030",
+      "category": "architecture",
+      "target": "Backward compatibility - default git",
+      "status": "pass",
+      "severity": "info",
+      "details": "All components default to 'git' when vcsScheme is not set, maintaining backward compatibility (Requirement 3.2)",
+      "evidence": [
+        "getWorktreeVcsScheme defaults to 'git'",
+        "merge-spec.sh:63 jq '.worktree.vcsScheme // \"git\"'",
+        "settingsFileManager.ts:357 return 'git'"
+      ]
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "passed": 30,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 30
+  }
+}

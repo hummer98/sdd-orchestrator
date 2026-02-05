@@ -31,6 +31,9 @@ describe('ProjectSettingsDialog', () => {
       ...window.electronAPI,
       loadProjectDefaults: vi.fn().mockResolvedValue({ documentReview: { scheme: 'claude-code' } }),
       saveProjectDefaults: vi.fn().mockResolvedValue(undefined),
+      // vcs-scheme-switching: Mock VCS scheme API
+      getVcsScheme: vi.fn().mockResolvedValue('git'),
+      setVcsScheme: vi.fn().mockResolvedValue({ success: true }),
     };
   });
 

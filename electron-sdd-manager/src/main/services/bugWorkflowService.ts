@@ -2,16 +2,20 @@
  * BugWorkflowService
  * Service for bug workflow operations including auto-execution worktree handling
  * bugs-worktree-support Task 19.1: 自動worktree判定機能
+ * vcs-scheme-switching: Task 6.3 - VCS scheme recording for bug worktree
  * Requirements: 12.1, 12.2, 12.3, 12.4
+ * Requirements: 3.1 (vcs-scheme-switching)
  */
 
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
+import { SettingsFileManager } from './settingsFileManager';
 import type { ConfigStore } from './configStore';
 import type { WorktreeService } from './worktreeService';
 import type { BugService } from './bugService';
 import type { WorktreeServiceResult } from '../../renderer/types/worktree';
 import type { BugWorktreeConfig } from '../../renderer/types/bugJson';
+import type { VcsScheme } from '../../shared/types/worktree';
 
 /**
  * BugWorkflowService
@@ -86,6 +90,20 @@ export class BugWorkflowService {
     // This shares the same logic as handleBugWorktreeCreate in bugWorktreeHandlers
     const worktreeService = this.worktreeServiceFactory(projectPath);
 
+    // vcs-scheme-switching Task 6.3: Get VCS scheme from settings
+    // Requirements: 3.1 (vcs-scheme-switching)
+    const settingsFileManager = new SettingsFileManager();
+    let vcsScheme: VcsScheme = 'git';
+    const vcsSchemeResult = await settingsFileManager.getVcsScheme(projectPath);
+    if (vcsSchemeResult.ok) {
+      vcsScheme = vcsSchemeResult.value;
+      logger.info('[BugWorkflowService] Using VCS scheme from settings', { vcsScheme });
+    } else {
+      logger.warn('[BugWorkflowService] Failed to get VCS scheme, defaulting to git', {
+        error: vcsSchemeResult.error,
+      });
+    }
+
     // Create the worktree (includes main branch check)
     const createResult = await worktreeService.createBugWorktree(bugName);
     if (!createResult.ok) {
@@ -96,10 +114,12 @@ export class BugWorkflowService {
     }
 
     // Update bug.json with worktree field (same as handleBugWorktreeCreate)
+    // vcs-scheme-switching Task 6.3: Include vcsScheme in worktree config
     const worktreeConfig: BugWorktreeConfig = {
       path: createResult.value.path,
       branch: createResult.value.branch,
       created_at: createResult.value.created_at,
+      vcsScheme, // vcs-scheme-switching: Record VCS scheme used for this worktree
     };
 
     const updateResult = await this.bugService.addWorktreeField(bugPath, worktreeConfig);

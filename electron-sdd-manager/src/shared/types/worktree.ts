@@ -7,7 +7,40 @@
  * Requirements: 2.1, 2.2, 2.3 (git-worktree-support)
  * worktree-execution-ui: Task 1.1 - Extended for normal mode support
  * Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3 (worktree-execution-ui)
+ * vcs-scheme-switching: Task 1.1 - VcsScheme type and WorktreeConfig extension
+ * Requirements: 3.1, 3.2 (vcs-scheme-switching)
  */
+
+/**
+ * VCS Scheme for worktree operations
+ * vcs-scheme-switching: Task 1.1
+ * Requirements: 3.1 - VCS scheme stored in spec.json/bug.json worktree object
+ */
+export type VcsScheme = 'git' | 'jj';
+
+/**
+ * Check if a value is a valid VcsScheme
+ * vcs-scheme-switching: Task 1.1
+ * @param value - Value to check
+ * @returns true if value is 'git' or 'jj'
+ */
+export function isValidVcsScheme(value: unknown): value is VcsScheme {
+  return value === 'git' || value === 'jj';
+}
+
+/**
+ * Get VCS scheme from WorktreeConfig with fallback to 'git'
+ * vcs-scheme-switching: Task 1.1
+ * Requirements: 3.2 - If vcsScheme is not set, default to 'git' for backward compatibility
+ * @param worktree - WorktreeConfig object or null/undefined
+ * @returns VcsScheme ('git' or 'jj'), defaults to 'git'
+ */
+export function getWorktreeVcsScheme(worktree: WorktreeConfig | null | undefined): VcsScheme {
+  if (!worktree || !isValidVcsScheme(worktree.vcsScheme)) {
+    return 'git';
+  }
+  return worktree.vcsScheme;
+}
 
 /**
  * Worktree configuration stored in spec.json
@@ -30,6 +63,14 @@ export interface WorktreeConfig {
    * - false/undefined: normal mode is selected
    */
   enabled?: boolean;
+  /**
+   * VCS scheme used for this worktree (vcs-scheme-switching Task 1.1)
+   * Requirements: 3.1, 3.2
+   * - 'git': Use git worktree commands
+   * - 'jj': Use jj workspace/bookmark commands
+   * - undefined: Defaults to 'git' for backward compatibility
+   */
+  vcsScheme?: VcsScheme;
 }
 
 /**

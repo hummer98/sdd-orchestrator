@@ -2543,6 +2543,30 @@ const electronAPI = {
     ipcRenderer.invoke(IPC_CHANNELS.IGNORE_JJ_INSTALL, projectPath, ignored),
 
   // ============================================================
+  // VCS Scheme Settings (vcs-scheme-switching feature)
+  // Task 3.2: Preload API for VCS scheme management
+  // Requirements: 7.4
+  // ============================================================
+
+  /**
+   * Get VCS scheme setting from project
+   * @param projectPath Project root path
+   * @returns VcsScheme ('git' or 'jj'), defaults to 'git'
+   */
+  getVcsScheme: (projectPath: string): Promise<import('../shared/types/worktree').VcsScheme> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VCS_SCHEME_GET, projectPath),
+
+  /**
+   * Set VCS scheme setting in project
+   * Performs jj availability check when setting to 'jj'
+   * @param projectPath Project root path
+   * @param scheme VCS scheme to set ('git' or 'jj')
+   * @returns Success status with optional error message
+   */
+  setVcsScheme: (projectPath: string, scheme: import('../shared/types/worktree').VcsScheme): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VCS_SCHEME_SET, projectPath, scheme),
+
+  // ============================================================
   // Git Diff Viewer (git-diff-viewer feature)
   // Task 3.3: Expose git operations API via preload
   // Requirements: 3.2

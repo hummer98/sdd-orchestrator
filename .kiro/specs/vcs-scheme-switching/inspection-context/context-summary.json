@@ -1,0 +1,208 @@
+{
+  "spec_overview": "プロジェクト設定でVCSスキーム（git/jj）を選択可能にし、worktree作成/merge/rebase操作がspec.jsonに記録されたスキームに従って動作するようにする機能",
+  "key_components": [
+    {
+      "name": "VcsSchemeSelector",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx",
+      "requirements": ["1.3", "1.4", "7.1", "7.2", "7.3", "7.5"]
+    },
+    {
+      "name": "SettingsFileManager",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/settingsFileManager.ts",
+      "requirements": ["1.1", "1.2"]
+    },
+    {
+      "name": "VcsScheme type",
+      "type": "type",
+      "path": "electron-sdd-manager/src/shared/types/worktree.ts",
+      "requirements": ["3.1", "3.2"]
+    },
+    {
+      "name": "IPC Channels (VCS_SCHEME_GET/SET)",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/ipc/channels.ts",
+      "requirements": ["7.4"]
+    },
+    {
+      "name": "IPC Handlers",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/ipc/handlers.ts",
+      "requirements": ["2.2", "7.3", "7.4"]
+    },
+    {
+      "name": "Preload API",
+      "type": "service",
+      "path": "electron-sdd-manager/src/preload/index.ts",
+      "requirements": ["7.4"]
+    },
+    {
+      "name": "create-spec-worktree.sh",
+      "type": "script",
+      "path": ".kiro/scripts/create-spec-worktree.sh",
+      "requirements": ["4.1", "4.2", "4.3", "4.4", "4.5"]
+    },
+    {
+      "name": "create-bug-worktree.sh",
+      "type": "script",
+      "path": ".kiro/scripts/create-bug-worktree.sh",
+      "requirements": ["4.6"]
+    },
+    {
+      "name": "merge-spec.sh",
+      "type": "script",
+      "path": ".kiro/scripts/merge-spec.sh",
+      "requirements": ["5.1", "5.2", "5.3", "5.4", "5.6"]
+    },
+    {
+      "name": "merge-bug.sh",
+      "type": "script",
+      "path": ".kiro/scripts/merge-bug.sh",
+      "requirements": ["5.5"]
+    },
+    {
+      "name": "rebase-worktree.sh",
+      "type": "script",
+      "path": ".kiro/scripts/rebase-worktree.sh",
+      "requirements": ["6.1", "6.2", "6.3", "6.4"]
+    },
+    {
+      "name": "WorktreeImplHandlers",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts",
+      "requirements": ["2.4", "7.4"]
+    },
+    {
+      "name": "BugWorkflowService",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/bugWorkflowService.ts",
+      "requirements": ["3.1"]
+    },
+    {
+      "name": "ProjectSettingsDialog",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx",
+      "requirements": ["1.3", "1.5", "4.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "VcsSchemeSelector",
+      "target": "IPC Channels",
+      "type": "ipc"
+    },
+    {
+      "source": "IPC Handlers",
+      "target": "SettingsFileManager",
+      "type": "call"
+    },
+    {
+      "source": "IPC Handlers",
+      "target": "ProjectChecker",
+      "type": "call"
+    },
+    {
+      "source": "WorktreeImplHandlers",
+      "target": "SettingsFileManager",
+      "type": "call"
+    },
+    {
+      "source": "WorktreeImplHandlers",
+      "target": "Shell Scripts",
+      "type": "call"
+    },
+    {
+      "source": "Shell Scripts",
+      "target": "spec.json/bug.json",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx",
+      "action": "CREATE",
+      "reason": "新規UIコンポーネント - VCSスキーム選択ドロップダウン"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx",
+      "action": "UPDATE",
+      "reason": "VcsSchemeSelectorを統合"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/services/settingsFileManager.ts",
+      "action": "UPDATE",
+      "reason": "getVcsScheme/setVcsSchemeメソッド追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/ipc/channels.ts",
+      "action": "UPDATE",
+      "reason": "VCS_SCHEME_GET/SETチャンネル追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/ipc/handlers.ts",
+      "action": "UPDATE",
+      "reason": "vcsScheme IPCハンドラ追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/preload/index.ts",
+      "action": "UPDATE",
+      "reason": "vcsScheme API追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/types/worktree.ts",
+      "action": "UPDATE",
+      "reason": "VcsScheme型とWorktreeConfig.vcsScheme追加"
+    },
+    {
+      "target": ".kiro/scripts/create-spec-worktree.sh",
+      "action": "UPDATE",
+      "reason": "VCSスキーム引数対応"
+    },
+    {
+      "target": ".kiro/scripts/create-bug-worktree.sh",
+      "action": "UPDATE",
+      "reason": "VCSスキーム引数対応"
+    },
+    {
+      "target": ".kiro/scripts/merge-spec.sh",
+      "action": "UPDATE",
+      "reason": "vcsScheme読み取り、jj優先ロジック削除"
+    },
+    {
+      "target": ".kiro/scripts/merge-bug.sh",
+      "action": "UPDATE",
+      "reason": "vcsScheme読み取り、jj優先ロジック削除"
+    },
+    {
+      "target": ".kiro/scripts/rebase-worktree.sh",
+      "action": "UPDATE",
+      "reason": "vcsScheme読み取り、jj優先ロジック削除"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/create-spec-worktree.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版スクリプト更新"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/create-bug-worktree.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版スクリプト更新"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/merge-spec.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版スクリプト更新"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/merge-bug.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版スクリプト更新"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/rebase-worktree.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版スクリプト更新"
+    }
+  ]
+}

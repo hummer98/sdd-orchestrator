@@ -2,16 +2,21 @@
  * BugJson Types for Bug Worktree Support
  * Requirements: 1.1, 1.2, 1.3, 1.4 (bugs-worktree-support)
  * bug-deploy-phase: Requirements 2.1 - added phase field
+ * vcs-scheme-switching: Task 6.3 - added vcsScheme field
+ * Requirements: 3.1 (vcs-scheme-switching)
  *
  * This module defines types for managing bug metadata and worktree state in bug.json.
  * The worktree field is optional - its presence indicates worktree mode.
  */
 
 import type { BugPhase } from './bug';
+import type { VcsScheme } from '../../shared/types/worktree';
 
 /**
  * Worktree configuration for bugs
  * Requirements: 1.3, 3.4, 3.7 (bugs-worktree-support)
+ * vcs-scheme-switching: Task 6.3 - added vcsScheme field
+ * Requirements: 3.1 (vcs-scheme-switching)
  *
  * Stored in bug.json when a bug is being worked on in a worktree.
  * Path format: ../{project}-worktrees/bugs/{bug-name}
@@ -24,6 +29,11 @@ export interface BugWorktreeConfig {
   branch: string;
   /** Creation timestamp (ISO-8601) */
   created_at: string;
+  /**
+   * VCS scheme used for this worktree (vcs-scheme-switching)
+   * Optional for backward compatibility - defaults to 'git' if not present
+   */
+  vcsScheme?: VcsScheme;
 }
 
 /**

@@ -317,4 +317,158 @@ describe('SettingsFileManager', () => {
       });
     });
   });
+
+  // ============================================================
+  // vcs-scheme-switching: Task 1.2 - VCS Scheme Settings
+  // Requirements: 1.1, 1.2
+  // ============================================================
+  describe('vcsScheme settings', () => {
+    /**
+     * Helper to create sdd-orchestrator.json
+     */
+    async function createConfigFile(config: Record<string, unknown>): Promise<void> {
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
+      await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+
+    /**
+     * Helper to read sdd-orchestrator.json
+     */
+    async function readConfigFile(): Promise<Record<string, unknown>> {
+      const configPath = path.join(tempDir, '.kiro', 'sdd-orchestrator.json');
+      const content = await fs.readFile(configPath, 'utf-8');
+      return JSON.parse(content);
+    }
+
+    describe('getVcsScheme', () => {
+      it('should return "git" as default when vcsScheme is not set', async () => {
+        await createConfigFile({ settings: {} });
+
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('git');
+        }
+      });
+
+      it('should return "git" when settings object does not exist', async () => {
+        await createConfigFile({});
+
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('git');
+        }
+      });
+
+      it('should return "git" when vcsScheme is explicitly "git"', async () => {
+        await createConfigFile({ settings: { vcsScheme: 'git' } });
+
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('git');
+        }
+      });
+
+      it('should return "jj" when vcsScheme is "jj"', async () => {
+        await createConfigFile({ settings: { vcsScheme: 'jj' } });
+
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('jj');
+        }
+      });
+
+      it('should return "git" for invalid vcsScheme value', async () => {
+        await createConfigFile({ settings: { vcsScheme: 'svn' } });
+
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toBe('git');
+        }
+      });
+
+      it('should return error if config file does not exist', async () => {
+        const result = await manager.getVcsScheme(tempDir);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('READ_ERROR');
+        }
+      });
+    });
+
+    describe('setVcsScheme', () => {
+      it('should set vcsScheme to "git" in settings', async () => {
+        await createConfigFile({ settings: {} });
+
+        const result = await manager.setVcsScheme(tempDir, 'git');
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).vcsScheme).toBe('git');
+      });
+
+      it('should set vcsScheme to "jj" in settings', async () => {
+        await createConfigFile({ settings: {} });
+
+        const result = await manager.setVcsScheme(tempDir, 'jj');
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).vcsScheme).toBe('jj');
+      });
+
+      it('should create settings object if it does not exist', async () => {
+        await createConfigFile({});
+
+        const result = await manager.setVcsScheme(tempDir, 'jj');
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect(config.settings).toBeDefined();
+        expect((config.settings as Record<string, unknown>).vcsScheme).toBe('jj');
+      });
+
+      it('should preserve existing settings fields', async () => {
+        await createConfigFile({ settings: { existingField: 'value', jjInstallIgnored: true } });
+
+        const result = await manager.setVcsScheme(tempDir, 'jj');
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).existingField).toBe('value');
+        expect((config.settings as Record<string, unknown>).jjInstallIgnored).toBe(true);
+        expect((config.settings as Record<string, unknown>).vcsScheme).toBe('jj');
+      });
+
+      it('should overwrite existing vcsScheme value', async () => {
+        await createConfigFile({ settings: { vcsScheme: 'git' } });
+
+        const result = await manager.setVcsScheme(tempDir, 'jj');
+
+        expect(result.ok).toBe(true);
+        const config = await readConfigFile();
+        expect((config.settings as Record<string, unknown>).vcsScheme).toBe('jj');
+      });
+
+      it('should return error if config file does not exist', async () => {
+        const result = await manager.setVcsScheme(tempDir, 'git');
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.type).toBe('READ_ERROR');
+        }
+      });
+    });
+  });
 });

@@ -1,9 +1,10 @@
 #!/bin/bash
 # merge-spec.sh
 # Specマージスクリプト: worktreeブランチをmainブランチにマージ
-# jj優先、gitフォールバック方式
+# vcs-scheme-switching: spec.jsonからvcsSchemeを読み取り、適切なVCSコマンドを使用
 #
 # Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
+# vcs-scheme-switching: Requirements 5.1, 5.2, 5.3, 5.4, 5.6
 #
 # Usage: merge-spec.sh <feature-name>
 # Exit codes:
@@ -57,6 +58,11 @@ if [ -z "$FEATURE_BRANCH" ] || [ "$FEATURE_BRANCH" = "null" ]; then
   exit 2
 fi
 
+# vcs-scheme-switching: Read worktree.vcsScheme from spec.json
+# Requirements: 5.1, 5.2 - Default to "git" if not present
+VCS_SCHEME=$(jq -r '.worktree.vcsScheme // "git"' "$SPEC_JSON")
+echo "VCS Scheme: $VCS_SCHEME"
+
 echo "Feature branch: $FEATURE_BRANCH"
 echo "Current branch: $CURRENT_BRANCH"
 
@@ -78,14 +84,20 @@ if [ -f "$WORKTREE_SPEC_JSON" ]; then
   }
 fi
 
-# Phase 3: Perform merge (Requirement 1.5, 1.6)
+# Phase 3: Perform merge based on recorded vcsScheme
+# vcs-scheme-switching: Requirements 5.3, 5.4, 5.6 - Use recorded scheme instead of auto-detection
 echo "Merging branch $FEATURE_BRANCH into $CURRENT_BRANCH..."
 
-# Check if jj is available
-if command -v jj >/dev/null 2>&1; then
-  echo "Using jj for merge (conflict-tolerant)..."
+if [ "$VCS_SCHEME" = "jj" ]; then
+  echo "Using jj for merge (recorded in spec.json)..."
 
-  # Use jj squash to merge
+  # Check if jj is available
+  if ! command -v jj >/dev/null 2>&1; then
+    echo "Error: jj is not installed but spec was created with jj. Please install jj." >&2
+    exit 2
+  fi
+
+  # Use jj squash to merge (Requirement 5.4)
   if jj squash --from "$FEATURE_BRANCH" --into "$CURRENT_BRANCH" 2>&1; then
     echo "jj squash completed"
   else
@@ -106,10 +118,18 @@ if command -v jj >/dev/null 2>&1; then
     git commit -m "feat(${FEATURE_NAME}): merge from worktree branch ${FEATURE_BRANCH}"
     echo "Changes committed to $CURRENT_BRANCH"
   fi
-else
-  echo "jj not found, falling back to git merge..."
 
-  # Use git merge --squash as fallback
+  # Phase 4: Cleanup for jj mode (Requirement 5.4)
+  # jj bookmark delete and workspace forget
+  echo "Cleaning up jj workspace..."
+  jj bookmark delete "$FEATURE_BRANCH" 2>&1 || echo "Warning: Failed to delete jj bookmark $FEATURE_BRANCH" >&2
+  jj workspace forget "$WORKTREE_PATH" 2>&1 || echo "Warning: Failed to forget jj workspace $WORKTREE_PATH" >&2
+
+else
+  # git mode (default)
+  echo "Using git for merge (recorded in spec.json or default)..."
+
+  # Use git merge --squash
   if git merge --squash "$FEATURE_BRANCH" 2>&1; then
     echo "git merge --squash completed"
   else
@@ -129,30 +149,30 @@ else
     git commit -m "feat(${FEATURE_NAME}): merge from worktree branch ${FEATURE_BRANCH}"
     echo "Changes committed to $CURRENT_BRANCH"
   fi
-fi
 
-# Phase 4: Cleanup worktree (Requirement 1.7, 6.6)
-if [ -d "$WORKTREE_PATH" ]; then
-  if git worktree remove "$WORKTREE_PATH" 2>&1; then
-    echo "Worktree removed: $WORKTREE_PATH"
+  # Phase 4: Cleanup worktree for git mode (Requirement 1.7, 6.6)
+  if [ -d "$WORKTREE_PATH" ]; then
+    if git worktree remove "$WORKTREE_PATH" 2>&1; then
+      echo "Worktree removed: $WORKTREE_PATH"
+    else
+      echo "Warning: Failed to remove worktree $WORKTREE_PATH (you may need to clean up manually)" >&2
+      # Continue execution (non-fatal)
+    fi
   else
-    echo "Warning: Failed to remove worktree $WORKTREE_PATH (you may need to clean up manually)" >&2
-    # Continue execution (non-fatal)
+    echo "Worktree path not found: $WORKTREE_PATH (may already be removed)"
   fi
-else
-  echo "Worktree path not found: $WORKTREE_PATH (may already be removed)"
-fi
 
-# Phase 5: Cleanup feature branch (Requirement 1.8, 6.7)
-if git show-ref --verify --quiet "refs/heads/$FEATURE_BRANCH"; then
-  if git branch -D "$FEATURE_BRANCH" 2>&1; then
-    echo "Feature branch deleted: $FEATURE_BRANCH"
+  # Phase 5: Cleanup feature branch for git mode (Requirement 1.8, 6.7)
+  if git show-ref --verify --quiet "refs/heads/$FEATURE_BRANCH"; then
+    if git branch -D "$FEATURE_BRANCH" 2>&1; then
+      echo "Feature branch deleted: $FEATURE_BRANCH"
+    else
+      echo "Warning: Failed to delete branch $FEATURE_BRANCH (you may need to clean up manually)" >&2
+      # Continue execution (non-fatal)
+    fi
   else
-    echo "Warning: Failed to delete branch $FEATURE_BRANCH (you may need to clean up manually)" >&2
-    # Continue execution (non-fatal)
+    echo "Feature branch not found: $FEATURE_BRANCH (may already be deleted)"
   fi
-else
-  echo "Feature branch not found: $FEATURE_BRANCH (may already be deleted)"
 fi
 
 echo "Success: Merge completed, worktree and branch cleaned up"

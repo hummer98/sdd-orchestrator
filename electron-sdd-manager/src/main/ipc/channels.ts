@@ -433,6 +433,12 @@ export const IPC_CHANNELS = {
   GET_TOOL_STATUSES: 'tool-path:get-statuses',
   SET_TOOL_PATH: 'tool-path:set',
   RESOLVE_TOOL: 'tool-path:resolve',
+
+  // VCS Scheme Settings (vcs-scheme-switching feature)
+  // Task 3.1: IPC channels for VCS scheme management
+  // Requirements: 7.4
+  VCS_SCHEME_GET: 'settings:vcs-scheme:get',
+  VCS_SCHEME_SET: 'settings:vcs-scheme:set',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

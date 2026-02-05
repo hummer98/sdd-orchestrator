@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # rebase-worktree.sh
 # Rebase worktreeブランチにmainブランチの変更を取り込む
-# jj優先、gitフォールバック方式
+# vcs-scheme-switching: spec.json/bug.jsonからvcsSchemeを読み取り、適切なVCSコマンドを使用
 #
 # Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 10.3, 10.4
+# vcs-scheme-switching: Requirements 6.1, 6.2, 6.3, 6.4
 #
 # Usage: rebase-worktree.sh <feature-name>
 # Exit codes:
@@ -51,6 +52,11 @@ if [ -z "$FEATURE_BRANCH" ] || [ "$FEATURE_BRANCH" = "null" ]; then
   exit 2
 fi
 
+# vcs-scheme-switching: Read worktree.vcsScheme from config.json
+# Requirements: 6.1 - Default to "git" if not present
+VCS_SCHEME=$(jq -r '.worktree.vcsScheme // "git"' "$CONFIG_JSON")
+echo "VCS Scheme: $VCS_SCHEME" >&2
+
 # Check if this is a git repository
 if [ ! -d ".git" ]; then
   echo "Error: Not a git repository" >&2
@@ -74,12 +80,20 @@ git checkout "$FEATURE_BRANCH" 2>/dev/null || {
   exit 2
 }
 
-# Check if jj is available
-if command -v jj >/dev/null 2>&1; then
-  echo "Using jj for rebase..." >&2
+# vcs-scheme-switching: Perform rebase based on recorded vcsScheme
+# Requirements: 6.2, 6.3, 6.4 - Use recorded scheme instead of auto-detection
+if [ "$VCS_SCHEME" = "jj" ]; then
+  echo "Using jj for rebase (recorded in config)..." >&2
+
+  # Check if jj is available
+  if ! command -v jj >/dev/null 2>&1; then
+    echo "Error: jj is not installed but worktree was created with jj. Please install jj." >&2
+    exit 2
+  fi
+
   echo "[rebase-worktree.sh] Executing: jj rebase -d $MAIN_BRANCH" >&2
 
-  # Use jj rebase to rebase onto main
+  # Use jj rebase to rebase onto main (Requirement 6.3)
   if jj rebase -d "$MAIN_BRANCH" 2>&1; then
     echo "[rebase-worktree.sh] jj rebase exit code: 0 (success)" >&2
     # Check if already up to date
@@ -106,7 +120,8 @@ if command -v jj >/dev/null 2>&1; then
     fi
   fi
 else
-  echo "jj not found, falling back to git rebase..." >&2
+  # git mode (default)
+  echo "Using git for rebase (recorded in config or default)..." >&2
   echo "[rebase-worktree.sh] Executing: git rebase $MAIN_BRANCH" >&2
 
   # Fetch latest changes from main
@@ -124,7 +139,7 @@ else
     exit 0
   fi
 
-  # Use git rebase as fallback
+  # Use git rebase (Requirement 6.2)
   if git rebase "$MAIN_BRANCH" 2>&1; then
     echo "[rebase-worktree.sh] git rebase exit code: 0 (success)" >&2
     echo "[rebase-worktree.sh] Result: Rebase completed successfully" >&2

@@ -640,6 +640,60 @@ export function registerIpcHandlers(): void {
   });
 
   // ============================================================
+  // VCS Scheme Handlers (vcs-scheme-switching feature)
+  // Task 3.3: IPC handlers for VCS scheme management
+  // Requirements: 2.2, 7.3
+  // ============================================================
+
+  // VCS_SCHEME_GET: Get VCS scheme setting from project
+  safeHandle(IPC_CHANNELS.VCS_SCHEME_GET, async (_event, projectPath: string) => {
+    logger.info('[handlers] VCS_SCHEME_GET called', { projectPath });
+
+    const { SettingsFileManager } = await import('../services/settingsFileManager');
+    const settingsManager = new SettingsFileManager();
+    const result = await settingsManager.getVcsScheme(projectPath);
+
+    if (!result.ok) {
+      logger.error('[handlers] VCS_SCHEME_GET failed', { error: result.error });
+      // Default to 'git' on error (backward compatibility)
+      return 'git';
+    }
+
+    logger.info('[handlers] VCS_SCHEME_GET succeeded', { scheme: result.value });
+    return result.value;
+  });
+
+  // VCS_SCHEME_SET: Set VCS scheme setting in project
+  // Performs jj availability check when setting to 'jj'
+  safeHandle(IPC_CHANNELS.VCS_SCHEME_SET, async (_event, projectPath: string, scheme: 'git' | 'jj') => {
+    logger.info('[handlers] VCS_SCHEME_SET called', { projectPath, scheme });
+
+    // If setting to 'jj', check if jj is available
+    if (scheme === 'jj') {
+      const jjStatus = getToolPathResolverService().getStatus('jj');
+      if (!jjStatus || !jjStatus.resolution.resolved) {
+        logger.warn('[handlers] VCS_SCHEME_SET: jj not available');
+        return {
+          success: false,
+          error: 'jjがインストールされていません。インストール後に再度お試しください。',
+        };
+      }
+    }
+
+    const { SettingsFileManager } = await import('../services/settingsFileManager');
+    const settingsManager = new SettingsFileManager();
+    const result = await settingsManager.setVcsScheme(projectPath, scheme);
+
+    if (!result.ok) {
+      logger.error('[handlers] VCS_SCHEME_SET failed', { error: result.error });
+      return { success: false, error: result.error.message };
+    }
+
+    logger.info('[handlers] VCS_SCHEME_SET succeeded');
+    return { success: true };
+  });
+
+  // ============================================================
   // Migration Service Handlers (runtime-agents-restructure feature)
   // Task 10.2: Integrate MigrationService into IPC handlers
   // Requirements: 5.1, 5.2, 5.4

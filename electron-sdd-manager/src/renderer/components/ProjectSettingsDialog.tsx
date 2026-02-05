@@ -2,7 +2,8 @@
  * ProjectSettingsDialog Component
  * debatex-document-review Task 4.1: Project settings dialog for default scheme selection
  * llm-engine-abstraction: LLM Engine configuration section added
- * Requirements: 4.5, 6.1
+ * vcs-scheme-switching: Task 4.2 - VCS scheme selector integration
+ * Requirements: 4.5, 6.1, 1.5, 7.1
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,6 +14,8 @@ import { useSpecDetailStore } from '../stores/spec/specDetailStore';
 import { SchemeSelector, type ReviewerScheme } from '@shared/components/review';
 import { DEFAULT_REVIEWER_SCHEME } from '@shared/registry';
 import { EngineConfigSection } from './EngineConfigSection';
+import { VcsSchemeSelector } from './VcsSchemeSelector';
+import type { VcsScheme } from '../../shared/types/worktree';
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean;
@@ -28,6 +31,7 @@ export function ProjectSettingsDialog({
 
   // Local state for form
   const [selectedScheme, setSelectedScheme] = useState<ReviewerScheme>(DEFAULT_REVIEWER_SCHEME);
+  const [selectedVcsScheme, setSelectedVcsScheme] = useState<VcsScheme>('git');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,15 +41,21 @@ export function ProjectSettingsDialog({
     if (isOpen && currentProject) {
       setIsLoading(true);
       setError(null);
-      window.electronAPI
-        .loadProjectDefaults(currentProject)
-        .then((defaults) => {
+
+      // Load both project defaults and VCS scheme in parallel
+      Promise.all([
+        window.electronAPI.loadProjectDefaults(currentProject),
+        window.electronAPI.getVcsScheme(currentProject),
+      ])
+        .then(([defaults, vcsScheme]) => {
           const scheme = defaults?.documentReview?.scheme as ReviewerScheme | undefined;
           setSelectedScheme(scheme ?? DEFAULT_REVIEWER_SCHEME);
+          setSelectedVcsScheme(vcsScheme ?? 'git');
         })
         .catch((err) => {
           console.error('[ProjectSettingsDialog] Failed to load project defaults:', err);
           setSelectedScheme(DEFAULT_REVIEWER_SCHEME);
+          setSelectedVcsScheme('git');
         })
         .finally(() => {
           setIsLoading(false);
@@ -63,6 +73,12 @@ export function ProjectSettingsDialog({
 
   const handleSchemeChange = useCallback((scheme: ReviewerScheme) => {
     setSelectedScheme(scheme);
+  }, []);
+
+  // vcs-scheme-switching: Handle VCS scheme change
+  // Requirements: 1.5 - 設定変更は即座に保存
+  const handleVcsSchemeChange = useCallback((scheme: VcsScheme) => {
+    setSelectedVcsScheme(scheme);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -133,6 +149,34 @@ export function ProjectSettingsDialog({
           {/* Requirements: 6.1 */}
           {currentProject && (
             <EngineConfigSection projectPath={currentProject} />
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-gray-200 dark:border-gray-700" />
+
+          {/* VCS Scheme Section (vcs-scheme-switching feature) */}
+          {/* Requirements: 7.1, 7.2 */}
+          {currentProject && (
+            <div className="space-y-3">
+              <h3 className="font-medium text-gray-700 dark:text-gray-300">
+                VCSスキーム
+              </h3>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Worktree操作:
+                </span>
+                <VcsSchemeSelector
+                  scheme={selectedVcsScheme}
+                  onChange={handleVcsSchemeChange}
+                  projectPath={currentProject}
+                  disabled={isLoading || isSaving}
+                  isDesktop={true}
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                新規worktree作成時に使用するVCSを選択します
+              </p>
+            </div>
           )}
 
           {/* Divider */}

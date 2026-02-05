@@ -3,11 +3,14 @@
  * IPC handlers for impl start with automatic worktree creation
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 (git-worktree-support)
  * Requirements: 1.1, 1.2, 1.3, 4.3 (worktree-spec-symlink)
+ * vcs-scheme-switching: Task 6.1, 6.2 - VCS scheme support for worktree creation
+ * Requirements: 2.4, 3.1, 3.3, 7.4 (vcs-scheme-switching)
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { WorktreeService } from '../services/worktreeService';
+import { SettingsFileManager } from '../services/settingsFileManager';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from '../services/projectLogger';
 import type {
@@ -15,6 +18,7 @@ import type {
   WorktreeError,
 } from '../../renderer/types/worktree';
 import { hasWorktreePath } from '../../renderer/types/worktree';
+import type { VcsScheme } from '../../shared/types/worktree';
 
 /**
  * Extended error type for impl start operations
@@ -33,6 +37,8 @@ export type ImplStartWithWorktreeResult =
 /**
  * Handle impl start with automatic worktree creation
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
+ * vcs-scheme-switching: Task 6.1, 6.2 - Get VCS scheme and record in spec.json
+ * Requirements: 2.4, 3.1, 3.3, 7.4 (vcs-scheme-switching)
  *
  * @param projectPath - Path to the main project
  * @param specPath - Path to the spec directory (.kiro/specs/{feature})
@@ -45,6 +51,7 @@ export async function handleImplStartWithWorktree(
   featureName: string
 ): Promise<ImplStartWithWorktreeResult> {
   const worktreeService = new WorktreeService(projectPath);
+  const settingsFileManager = new SettingsFileManager();
 
   // Check if on main branch (Requirements 1.1, 1.2)
   const isMainResult = await worktreeService.isOnMainBranch();
@@ -61,11 +68,25 @@ export async function handleImplStartWithWorktree(
     };
   }
 
+  // vcs-scheme-switching Task 6.1: Get VCS scheme from settings
+  // Requirements: 7.4
+  let vcsScheme: VcsScheme = 'git';
+  const vcsSchemeResult = await settingsFileManager.getVcsScheme(projectPath);
+  if (vcsSchemeResult.ok) {
+    vcsScheme = vcsSchemeResult.value;
+    logger.info('[WorktreeImplHandlers] Using VCS scheme from settings', { vcsScheme });
+  } else {
+    logger.warn('[WorktreeImplHandlers] Failed to get VCS scheme, defaulting to git', {
+      error: vcsSchemeResult.error,
+    });
+  }
+
   // worktree-spec-symlink: Removed automatic commit of spec changes
   // Spec files will be shared via symlink, so commits are not needed before worktree creation
   // (Requirements 1.1, 1.2, 1.3 - worktree-spec-symlink)
 
   // Create worktree (Requirements 1.3, 1.4)
+  // Note: Currently WorktreeService uses git internally; jj support will be added in future
   const createResult = await worktreeService.createWorktree(featureName);
   if (!createResult.ok) {
     return createResult;
@@ -88,6 +109,8 @@ export async function handleImplStartWithWorktree(
   }
 
   // Update spec.json with worktree field (Requirement 1.5)
+  // vcs-scheme-switching Task 6.2: Include vcsScheme in worktree config
+  // Requirements: 3.1, 3.3
   const specJsonPath = path.join(specPath, 'spec.json');
 
   try {
@@ -95,11 +118,12 @@ export async function handleImplStartWithWorktree(
     const specJsonContent = await fs.readFile(specJsonPath, 'utf-8');
     const specJson = JSON.parse(specJsonContent);
 
-    // Add worktree configuration
+    // Add worktree configuration with vcsScheme
     const worktreeConfig: WorktreeConfig = {
       path: worktreeInfo.path,
       branch: worktreeInfo.branch,
       created_at: worktreeInfo.created_at,
+      vcsScheme, // vcs-scheme-switching: Record VCS scheme used for this worktree
     };
 
     specJson.worktree = worktreeConfig;
@@ -111,6 +135,7 @@ export async function handleImplStartWithWorktree(
       featureName,
       worktreePath: worktreeInfo.absolutePath,
       branch: worktreeInfo.branch,
+      vcsScheme,
     });
 
     return {

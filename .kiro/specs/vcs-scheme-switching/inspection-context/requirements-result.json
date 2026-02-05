@@ -1,0 +1,246 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "id": "REQ-1.1",
+      "requirement": "vcsScheme field in settings section of sdd-orchestrator.json",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/services/settingsFileManager.ts:116-125 - SddOrchestratorConfig interface with vcsScheme?: VcsScheme in settings"
+    },
+    {
+      "id": "REQ-1.2",
+      "requirement": "Default to 'git' when vcsScheme field does not exist",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/services/settingsFileManager.ts:352-357 - getVcsScheme returns 'git' as default when vcsScheme is not set or invalid"
+    },
+    {
+      "id": "REQ-1.3",
+      "requirement": "VCS scheme selector UI added to existing project settings dialog",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx:157-179 - VcsSchemeSelector component integrated into ProjectSettingsDialog"
+    },
+    {
+      "id": "REQ-1.4",
+      "requirement": "Two selection options: 'Git' and 'Jujutsu (jj)'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:22-33 - VCS_SCHEME_OPTIONS array with 'Git' and 'Jujutsu (jj)' labels"
+    },
+    {
+      "id": "REQ-1.5",
+      "requirement": "Settings changes saved immediately to sdd-orchestrator.json",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:144 - setVcsScheme IPC call triggered on selection; /Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/services/settingsFileManager.ts:377-406 - setVcsScheme immediately writes to file"
+    },
+    {
+      "id": "REQ-2.1",
+      "requirement": "Check jj command existence when VCS scheme is set to 'jj'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:129-141 - checkJjAvailability called when selecting 'jj'"
+    },
+    {
+      "id": "REQ-2.2",
+      "requirement": "Display error and reject settings change when jj is not installed",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:136-140 - Error message set and return if jj not available; /Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/handlers.ts:666-679 - IPC handler also validates jj availability"
+    },
+    {
+      "id": "REQ-2.3",
+      "requirement": "Error message: 'jjがインストールされていません。インストール後に再度お試しください。'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:138 - Exact Japanese error message implemented"
+    },
+    {
+      "id": "REQ-2.4",
+      "requirement": "Verify jj existence at worktree creation time and abort with error if not installed",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:52-56 - jj availability check with error exit; /Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-bug-worktree.sh:52-56 - Same check in bug worktree script"
+    },
+    {
+      "id": "REQ-3.1",
+      "requirement": "Add vcsScheme field to spec.json worktree object at worktree creation time",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts:121-127 - WorktreeConfig created with vcsScheme field; /Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/shared/types/worktree.ts:67-73 - vcsScheme field in WorktreeConfig interface"
+    },
+    {
+      "id": "REQ-3.2",
+      "requirement": "Default to 'git' for existing spec.json without worktree.vcsScheme (backward compatibility)",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/shared/types/worktree.ts:32-43 - getWorktreeVcsScheme function returns 'git' as default"
+    },
+    {
+      "id": "REQ-3.3",
+      "requirement": "VCS scheme recorded in spec.json does not change when project setting changes",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "By design: vcsScheme is recorded in spec.json at worktree creation time (/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts:126) and merge/rebase scripts read from spec.json (/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:63)"
+    },
+    {
+      "id": "REQ-4.1",
+      "requirement": "create-spec-worktree.sh accepts VCS scheme via argument or environment variable",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:8-9,27-38 - Accepts second argument or VCS_SCHEME env var, validates 'git' or 'jj'"
+    },
+    {
+      "id": "REQ-4.2",
+      "requirement": "Use git worktree add when VCS scheme is 'git'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:80-91 - git worktree add -b used in git mode"
+    },
+    {
+      "id": "REQ-4.3",
+      "requirement": "Use jj workspace add and jj bookmark create when VCS scheme is 'jj'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:64-77 - jj workspace add and jj bookmark create used in jj mode"
+    },
+    {
+      "id": "REQ-4.4",
+      "requirement": "jj mode operations: jj workspace add -r @- and jj bookmark create",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:66 - jj workspace add -r @-; line 72 - jj bookmark create"
+    },
+    {
+      "id": "REQ-4.5",
+      "requirement": "Path structure is common for git/jj: .kiro/worktrees/specs/{feature-name}",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-spec-worktree.sh:25 - WORKTREE_PATH='.kiro/worktrees/specs/${FEATURE_NAME}' used for both git and jj modes"
+    },
+    {
+      "id": "REQ-4.6",
+      "requirement": "create-bug-worktree.sh also supports VCS scheme",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/create-bug-worktree.sh - Full VCS scheme support matching create-spec-worktree.sh"
+    },
+    {
+      "id": "REQ-5.1",
+      "requirement": "merge-spec.sh reads worktree.vcsScheme from spec.json",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:61-64 - VCS_SCHEME read from spec.json using jq with default 'git'"
+    },
+    {
+      "id": "REQ-5.2",
+      "requirement": "Execute git merge when vcsScheme is missing or 'git'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:128-175 - git merge --squash used in else block (default git mode)"
+    },
+    {
+      "id": "REQ-5.3",
+      "requirement": "Execute jj merge commands when vcsScheme is 'jj'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:91-126 - jj squash and jj bookmark/workspace cleanup in jj mode"
+    },
+    {
+      "id": "REQ-5.4",
+      "requirement": "jj mode merge operations: jj squash --from, jj bookmark delete, jj workspace forget",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:101 - jj squash --from; line 125-126 - jj bookmark delete and jj workspace forget"
+    },
+    {
+      "id": "REQ-5.5",
+      "requirement": "merge-bug.sh also supports VCS scheme",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-bug.sh - Full VCS scheme support matching merge-spec.sh"
+    },
+    {
+      "id": "REQ-5.6",
+      "requirement": "Remove jj-priority/git-fallback logic, use spec.json record instead",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/merge-spec.sh:88 - Comment explicitly states 'Use recorded scheme instead of auto-detection'; no 'command -v jj' fallback logic exists"
+    },
+    {
+      "id": "REQ-6.1",
+      "requirement": "rebase-worktree.sh reads worktree.vcsScheme from spec.json",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/rebase-worktree.sh:55-58 - VCS_SCHEME read from config.json using jq with default 'git'"
+    },
+    {
+      "id": "REQ-6.2",
+      "requirement": "Use git rebase when vcsScheme is 'git'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/rebase-worktree.sh:122-161 - git rebase used in else block (default git mode)"
+    },
+    {
+      "id": "REQ-6.3",
+      "requirement": "Use jj rebase when vcsScheme is 'jj'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/rebase-worktree.sh:85-121 - jj rebase -d used in jj mode"
+    },
+    {
+      "id": "REQ-6.4",
+      "requirement": "jj mode rebase operation: jj rebase -d main",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/.kiro/scripts/rebase-worktree.sh:97 - jj rebase -d $MAIN_BRANCH"
+    },
+    {
+      "id": "REQ-7.1",
+      "requirement": "VCS scheme selector dropdown added to existing project settings dialog",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx:168 - VcsSchemeSelector component rendered in dialog"
+    },
+    {
+      "id": "REQ-7.2",
+      "requirement": "Option labels: 'Git' and 'Jujutsu (jj)'",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:23,28 - Labels exactly 'Git' and 'Jujutsu (jj)'"
+    },
+    {
+      "id": "REQ-7.3",
+      "requirement": "jj existence check on settings change with error display if not installed",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:129-140 - checkJjAvailability called, error message displayed if unavailable"
+    },
+    {
+      "id": "REQ-7.4",
+      "requirement": "Worktree creation IPC handler gets VCS scheme from project settings and passes to script",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts:71-82 - getVcsScheme from settingsFileManager; /Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/main/ipc/channels.ts:440-441 - VCS_SCHEME_GET/SET IPC channels"
+    },
+    {
+      "id": "REQ-7.5",
+      "requirement": "VCS scheme settings UI hidden in Remote UI (Desktop only)",
+      "status": "pass",
+      "severity": "info",
+      "evidence": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/vcs-scheme-switching/electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx:79-82 - Returns null when isDesktop is false"
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "passed": 30,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 30
+  }
+}

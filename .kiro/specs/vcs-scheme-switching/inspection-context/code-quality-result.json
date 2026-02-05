@@ -1,0 +1,308 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "id": "CQ-001",
+      "category": "dry",
+      "target": "SettingsFileManager",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS scheme methods (getVcsScheme/setVcsScheme) follow existing pattern from jjInstallIgnored methods without significant code duplication. The pattern of reading/writing JSON config is consistent and appropriate."
+    },
+    {
+      "id": "CQ-002",
+      "category": "dry",
+      "target": "Shell Scripts (create-spec-worktree.sh, create-bug-worktree.sh)",
+      "status": "pass",
+      "severity": "info",
+      "details": "Both scripts share similar VCS scheme handling logic, but duplication is acceptable as they operate on different worktree types (specs vs bugs) with different path patterns and branch naming conventions."
+    },
+    {
+      "id": "CQ-003",
+      "category": "dry",
+      "target": "Shell Scripts (merge-spec.sh, merge-bug.sh)",
+      "status": "pass",
+      "severity": "info",
+      "details": "Merge scripts share similar VCS scheme reading and branching logic. The duplication is justified due to different JSON source files (spec.json vs bug.json) and different commit message formats."
+    },
+    {
+      "id": "CQ-004",
+      "category": "ssot",
+      "target": "VcsScheme Type Definition",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsScheme type is defined once in electron-sdd-manager/src/shared/types/worktree.ts and imported throughout. Type guard functions (isValidVcsScheme, getWorktreeVcsScheme) are also centralized here."
+    },
+    {
+      "id": "CQ-005",
+      "category": "ssot",
+      "target": "VCS Scheme Storage",
+      "status": "pass",
+      "severity": "info",
+      "details": "Project default VCS scheme is stored in sdd-orchestrator.json (SSOT for project settings). Per-worktree VCS scheme is stored in spec.json/bug.json worktree field. This separation follows the design document's SSOT principle."
+    },
+    {
+      "id": "CQ-006",
+      "category": "kiss",
+      "target": "VcsSchemeSelector Component",
+      "status": "pass",
+      "severity": "info",
+      "details": "Component follows simple dropdown pattern with clear responsibilities. State management is straightforward with local state for UI interactions. Error handling is clear and user-friendly."
+    },
+    {
+      "id": "CQ-007",
+      "category": "yagni",
+      "target": "VcsScheme Implementation",
+      "status": "pass",
+      "severity": "info",
+      "details": "Implementation is focused on the required functionality (git/jj selection) without unnecessary features. Non-goals (spec-level override, jj colocated mode) are explicitly excluded per design."
+    },
+    {
+      "id": "CQ-008",
+      "category": "dead-code",
+      "target": "VcsSchemeSelector",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsSchemeSelector is imported and used in ProjectSettingsDialog.tsx. All exports (VcsSchemeSelector, VcsSchemeSelectorProps) are consumed.",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx",
+        "electron-sdd-manager/src/renderer/components/VcsSchemeSelector.test.tsx"
+      ]
+    },
+    {
+      "id": "CQ-009",
+      "category": "dead-code",
+      "target": "VcsScheme Type and Utilities",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsScheme type, isValidVcsScheme, and getWorktreeVcsScheme are imported in multiple files including settingsFileManager.ts, worktreeImplHandlers.ts, bugWorkflowService.ts, and test files.",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/settingsFileManager.ts",
+        "electron-sdd-manager/src/main/ipc/worktreeImplHandlers.ts",
+        "electron-sdd-manager/src/main/services/bugWorkflowService.ts",
+        "electron-sdd-manager/src/shared/types/worktree.test.ts"
+      ]
+    },
+    {
+      "id": "CQ-010",
+      "category": "dead-code",
+      "target": "IPC Channels (VCS_SCHEME_GET/SET)",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS_SCHEME_GET and VCS_SCHEME_SET channels are registered in handlers.ts and exposed via preload API. They are consumed by VcsSchemeSelector and ProjectSettingsDialog."
+    },
+    {
+      "id": "CQ-011",
+      "category": "impact",
+      "target": "VcsSchemeSelector.tsx",
+      "status": "pass",
+      "severity": "info",
+      "details": "File was created as specified in impact analysis (CREATE action)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/VcsSchemeSelector.tsx exists"
+      ]
+    },
+    {
+      "id": "CQ-012",
+      "category": "impact",
+      "target": "ProjectSettingsDialog.tsx",
+      "status": "pass",
+      "severity": "info",
+      "details": "File was updated to integrate VcsSchemeSelector as specified (UPDATE action)",
+      "evidence": [
+        "VcsSchemeSelector import and usage confirmed"
+      ]
+    },
+    {
+      "id": "CQ-013",
+      "category": "impact",
+      "target": "settingsFileManager.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "getVcsScheme/setVcsScheme methods added as specified (UPDATE action)",
+      "evidence": [
+        "Methods implemented at lines 337-407"
+      ]
+    },
+    {
+      "id": "CQ-014",
+      "category": "impact",
+      "target": "channels.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS_SCHEME_GET and VCS_SCHEME_SET channels added as specified (UPDATE action)",
+      "evidence": [
+        "Channels defined at lines 437-441"
+      ]
+    },
+    {
+      "id": "CQ-015",
+      "category": "impact",
+      "target": "handlers.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS scheme IPC handlers added as specified (UPDATE action)",
+      "evidence": [
+        "Handlers implemented at lines 640-692"
+      ]
+    },
+    {
+      "id": "CQ-016",
+      "category": "impact",
+      "target": "preload/index.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "getVcsScheme and setVcsScheme APIs added as specified (UPDATE action)",
+      "evidence": [
+        "APIs exposed at lines 2556-2569"
+      ]
+    },
+    {
+      "id": "CQ-017",
+      "category": "impact",
+      "target": "worktree.ts (shared types)",
+      "status": "pass",
+      "severity": "info",
+      "details": "VcsScheme type and WorktreeConfig.vcsScheme added as specified (UPDATE action)",
+      "evidence": [
+        "VcsScheme type at line 19",
+        "WorktreeConfig.vcsScheme at line 73",
+        "Type guards (isValidVcsScheme, getWorktreeVcsScheme) at lines 27-43"
+      ]
+    },
+    {
+      "id": "CQ-018",
+      "category": "impact",
+      "target": "Shell Scripts (.kiro/scripts/)",
+      "status": "pass",
+      "severity": "info",
+      "details": "All 5 shell scripts updated with VCS scheme support as specified (UPDATE action)",
+      "evidence": [
+        "create-spec-worktree.sh - VCS scheme argument support",
+        "create-bug-worktree.sh - VCS scheme argument support",
+        "merge-spec.sh - vcsScheme read from spec.json",
+        "merge-bug.sh - vcsScheme read from bug.json",
+        "rebase-worktree.sh - vcsScheme read from config"
+      ]
+    },
+    {
+      "id": "CQ-019",
+      "category": "impact",
+      "target": "Template Scripts (resources/templates/scripts/)",
+      "status": "pass",
+      "severity": "info",
+      "details": "All 5 template scripts updated with VCS scheme support as specified (UPDATE action)",
+      "evidence": [
+        "create-spec-worktree.sh template updated",
+        "create-bug-worktree.sh template updated",
+        "merge-spec.sh template updated",
+        "merge-bug.sh template updated",
+        "rebase-worktree.sh template updated"
+      ]
+    },
+    {
+      "id": "CQ-020",
+      "category": "impact",
+      "target": "worktreeImplHandlers.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "Updated to get VCS scheme and record in spec.json worktree field",
+      "evidence": [
+        "VCS scheme retrieval at lines 71-82",
+        "vcsScheme included in worktreeConfig at line 126"
+      ]
+    },
+    {
+      "id": "CQ-021",
+      "category": "impact",
+      "target": "bugWorkflowService.ts",
+      "status": "pass",
+      "severity": "info",
+      "details": "Updated to get VCS scheme and record in bug.json worktree field",
+      "evidence": [
+        "VCS scheme retrieval at lines 94-105",
+        "vcsScheme included in worktreeConfig at line 122"
+      ]
+    },
+    {
+      "id": "CQ-022",
+      "category": "impact",
+      "target": "bugJson.ts types",
+      "status": "pass",
+      "severity": "info",
+      "details": "BugWorktreeConfig updated with vcsScheme field",
+      "evidence": [
+        "vcsScheme?: VcsScheme at line 36"
+      ]
+    },
+    {
+      "id": "CQ-023",
+      "category": "impact",
+      "target": "electron.d.ts types",
+      "status": "pass",
+      "severity": "info",
+      "details": "ElectronAPI type declarations updated with getVcsScheme/setVcsScheme",
+      "evidence": [
+        "getVcsScheme at line 1857",
+        "setVcsScheme at line 1866",
+        "checkJjAvailability at line 1830"
+      ]
+    },
+    {
+      "id": "CQ-024",
+      "category": "logging",
+      "target": "VcsSchemeSelector.tsx",
+      "status": "pass",
+      "severity": "info",
+      "details": "No console.* usage found in component. Error handling uses local state for UI display."
+    },
+    {
+      "id": "CQ-025",
+      "category": "logging",
+      "target": "ProjectSettingsDialog.tsx",
+      "status": "fail",
+      "severity": "minor",
+      "details": "Uses console.error directly instead of logger. This should use projectLogger or rendererLogger for consistency with logging.md guidelines.",
+      "evidence": [
+        "Line 56: console.error('[ProjectSettingsDialog] Failed to load project defaults:', err);"
+      ]
+    },
+    {
+      "id": "CQ-026",
+      "category": "logging",
+      "target": "Service Layer (settingsFileManager, worktreeImplHandlers, bugWorkflowService)",
+      "status": "pass",
+      "severity": "info",
+      "details": "All service layer files use projectLogger consistently with appropriate log levels (info, warn, error, debug)."
+    },
+    {
+      "id": "CQ-027",
+      "category": "logging",
+      "target": "IPC Handlers (handlers.ts)",
+      "status": "pass",
+      "severity": "info",
+      "details": "VCS scheme handlers use logger.info and logger.error appropriately for operation tracking and error reporting."
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "passed": 26,
+    "failed": 1,
+    "critical": 0,
+    "major": 0,
+    "minor": 1,
+    "info": 26
+  },
+  "summary": {
+    "design_principles": {
+      "dry": "PASS - No significant code duplication. Shared patterns are appropriately extracted.",
+      "ssot": "PASS - VcsScheme type defined once in shared/types/worktree.ts. Settings storage follows design document SSOT principles.",
+      "kiss": "PASS - Implementation is straightforward without unnecessary complexity.",
+      "yagni": "PASS - Only required functionality implemented. Non-goals explicitly excluded."
+    },
+    "dead_code": "PASS - All new components, types, and exports are properly imported and consumed.",
+    "impact_analysis": "PASS - All files listed in design.md impact analysis have been modified as specified.",
+    "logging": "1 MINOR ISSUE - ProjectSettingsDialog.tsx uses console.error instead of logger."
+  }
+}

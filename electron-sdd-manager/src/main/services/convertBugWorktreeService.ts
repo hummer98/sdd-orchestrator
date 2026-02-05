@@ -2,18 +2,22 @@
  * ConvertBugWorktreeService
  * Bug を Worktree モードに変換する処理を統括
  * bug-worktree-spec-alignment: Spec の ConvertWorktreeService と同等の動作を Bug に適用
+ * vcs-scheme-switching: Task 6.3 - VCS scheme recording for bug worktree
  *
  * Requirements: 1.1-1.4, 2.1-2.3, 3.1-3.4, 4.1-4.4, 5.1-5.4
+ * Requirements: 3.1 (vcs-scheme-switching)
  */
 
 import * as path from 'path';
 import * as fsPromises from 'fs/promises';
 // agent-error-notification: logger.ts -> projectLogger migration (Requirements 1.2, 1.3, 1.5)
 import { projectLogger as logger } from './projectLogger';
+import { SettingsFileManager } from './settingsFileManager';
 import type { WorktreeService } from './worktreeService';
 import type { BugService } from './bugService';
 import type { EventLogService } from './eventLogService';
 import type { WorktreeInfo } from '../../renderer/types/worktree';
+import type { VcsScheme } from '../../shared/types/worktree';
 
 /**
  * Bug の git コミット状態
@@ -299,16 +303,19 @@ export class ConvertBugWorktreeService {
   /**
    * Convert a bug to worktree mode
    * Requirements: 2.1-2.3, 3.1-3.4, 4.1-4.4, 5.1-5.4
+   * vcs-scheme-switching: Task 6.3 - Record VCS scheme in bug.json
+   * Requirements: 3.1 (vcs-scheme-switching)
    *
    * Processing order:
    * 1. Pre-validation (main branch, bug exists, not worktree mode, not committed-dirty)
    * 2. Get bug status (untracked or committed-clean)
-   * 3. git branch bugfix/{bugName} creation
-   * 4. git worktree add .kiro/worktrees/bugs/{bugName} bugfix/{bugName}
-   * 5. Move bug directory to worktree's .kiro/bugs/{bugName} (untracked only)
-   * 6. Verify bug exists in worktree (committed-clean only)
-   * 7. Create logs/runtime symlinks
-   * 8. Update bug.json with worktree config
+   * 3. Get VCS scheme from settings (vcs-scheme-switching)
+   * 4. git branch bugfix/{bugName} creation
+   * 5. git worktree add .kiro/worktrees/bugs/{bugName} bugfix/{bugName}
+   * 6. Move bug directory to worktree's .kiro/bugs/{bugName} (untracked only)
+   * 7. Verify bug exists in worktree (committed-clean only)
+   * 8. Create logs/runtime symlinks
+   * 9. Update bug.json with worktree config (including vcsScheme)
    *
    * @param projectPath - Project root path
    * @param bugPath - Bug directory path
@@ -339,6 +346,20 @@ export class ConvertBugWorktreeService {
     }
     const bugStatus = statusResult.value;
     logger.info('[ConvertBugWorktreeService] Bug status determined', { bugPath, bugStatus });
+
+    // vcs-scheme-switching Task 6.3: Get VCS scheme from settings
+    // Requirements: 3.1 (vcs-scheme-switching)
+    const settingsFileManager = new SettingsFileManager();
+    let vcsScheme: VcsScheme = 'git';
+    const vcsSchemeResult = await settingsFileManager.getVcsScheme(projectPath);
+    if (vcsSchemeResult.ok) {
+      vcsScheme = vcsSchemeResult.value;
+      logger.info('[ConvertBugWorktreeService] Using VCS scheme from settings', { vcsScheme });
+    } else {
+      logger.warn('[ConvertBugWorktreeService] Failed to get VCS scheme, defaulting to git', {
+        error: vcsSchemeResult.error,
+      });
+    }
 
     // Step 2: Create worktree (branch + worktree add)
     const createResult = await this.worktreeService.createBugWorktree(bugName);
@@ -454,11 +475,13 @@ export class ConvertBugWorktreeService {
       };
     }
 
-    // Step 5: Update bug.json with worktree config
+    // Step 5: Update bug.json with worktree config (including vcsScheme)
+    // vcs-scheme-switching Task 6.3: Record VCS scheme in bug.json
     const updateResult = await this.bugService.addWorktreeField(worktreeBugPath, {
       path: worktreeInfo.path,
       branch: worktreeInfo.branch,
       created_at: worktreeInfo.created_at,
+      vcsScheme, // vcs-scheme-switching: Record VCS scheme used for this worktree
     });
 
     if (!updateResult.ok) {

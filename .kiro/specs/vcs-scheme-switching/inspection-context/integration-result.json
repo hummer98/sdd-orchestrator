@@ -1,0 +1,379 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T07:30:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete - VcsScheme type defined in shared/types/worktree.ts"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete - SettingsFileManager has getVcsScheme/setVcsScheme methods"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete - ProjectChecker.checkJjAvailability reused"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete - VCS_SCHEME_GET/SET channels added to channels.ts"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete - preload API has getVcsScheme/setVcsScheme methods"
+    },
+    {
+      "id": "task-3.3",
+      "checkType": "task-completion",
+      "target": "3.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.3 marked as complete - IPC handlers implemented in handlers.ts"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete - VcsSchemeSelector component created"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete - VcsSchemeSelector integrated into ProjectSettingsDialog"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete - create-spec-worktree.sh updated with VCS scheme support"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete - create-bug-worktree.sh updated with VCS scheme support"
+    },
+    {
+      "id": "task-5.3",
+      "checkType": "task-completion",
+      "target": "5.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.3 marked as complete - Template scripts updated"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete - worktreeImplHandlers gets VCS scheme from settings"
+    },
+    {
+      "id": "task-6.2",
+      "checkType": "task-completion",
+      "target": "6.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.2 marked as complete - spec.json worktree object includes vcsScheme"
+    },
+    {
+      "id": "task-6.3",
+      "checkType": "task-completion",
+      "target": "6.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.3 marked as complete - bugWorktreeHandlers also updated"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 marked as complete - merge-spec.sh reads vcsScheme from spec.json"
+    },
+    {
+      "id": "task-7.2",
+      "checkType": "task-completion",
+      "target": "7.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.2 marked as complete - merge-bug.sh reads vcsScheme from bug.json"
+    },
+    {
+      "id": "task-7.3",
+      "checkType": "task-completion",
+      "target": "7.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.3 marked as complete - Template merge scripts updated"
+    },
+    {
+      "id": "task-8.1",
+      "checkType": "task-completion",
+      "target": "8.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.1 marked as complete - rebase-worktree.sh reads vcsScheme from config.json"
+    },
+    {
+      "id": "task-8.2",
+      "checkType": "task-completion",
+      "target": "8.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.2 marked as complete - Template rebase script updated"
+    },
+    {
+      "id": "task-9.1",
+      "checkType": "task-completion",
+      "target": "9.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.1 marked as complete - Backward compatibility confirmed with 'git' default"
+    },
+    {
+      "id": "task-10.1",
+      "checkType": "task-completion",
+      "target": "10.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.1 marked as complete - SettingsFileManager tests exist"
+    },
+    {
+      "id": "task-10.2",
+      "checkType": "task-completion",
+      "target": "10.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.2 marked as complete - VcsSchemeSelector tests exist"
+    },
+    {
+      "id": "task-10.3",
+      "checkType": "task-completion",
+      "target": "10.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.3 marked as complete - Integration tests implemented"
+    },
+    {
+      "id": "task-10.4",
+      "checkType": "task-completion",
+      "target": "10.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 10.4 marked as complete - Shell script tests documented"
+    },
+    {
+      "id": "import-VcsSchemeSelector",
+      "checkType": "import",
+      "target": "VcsSchemeSelector",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "VcsSchemeSelector is imported in ProjectSettingsDialog.tsx",
+      "evidence": ["electron-sdd-manager/src/renderer/components/ProjectSettingsDialog.tsx"]
+    },
+    {
+      "id": "usage-VcsSchemeSelector",
+      "checkType": "usage",
+      "target": "VcsSchemeSelector",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "VcsSchemeSelector is rendered in ProjectSettingsDialog.tsx",
+      "evidence": ["<VcsSchemeSelector found in JSX"]
+    },
+    {
+      "id": "import-VcsScheme-type",
+      "checkType": "import",
+      "target": "VcsScheme type",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "VcsScheme type is imported in multiple files",
+      "evidence": ["settingsFileManager.ts", "VcsSchemeSelector.tsx", "worktreeImplHandlers.ts", "preload/index.ts"]
+    },
+    {
+      "id": "import-isValidVcsScheme",
+      "checkType": "import",
+      "target": "isValidVcsScheme",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "isValidVcsScheme utility function is imported and used in settingsFileManager.ts",
+      "evidence": ["settingsFileManager.ts"]
+    },
+    {
+      "id": "ipc-VCS_SCHEME_GET",
+      "checkType": "integration",
+      "target": "VCS_SCHEME_GET channel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "VCS_SCHEME_GET IPC channel is defined in channels.ts, handled in handlers.ts, and exposed in preload/index.ts"
+    },
+    {
+      "id": "ipc-VCS_SCHEME_SET",
+      "checkType": "integration",
+      "target": "VCS_SCHEME_SET channel",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "VCS_SCHEME_SET IPC channel is defined in channels.ts, handled in handlers.ts, and exposed in preload/index.ts"
+    },
+    {
+      "id": "script-create-spec",
+      "checkType": "integration",
+      "target": "create-spec-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Script supports VCS_SCHEME argument/env and both git/jj modes"
+    },
+    {
+      "id": "script-create-bug",
+      "checkType": "integration",
+      "target": "create-bug-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Script supports VCS_SCHEME argument/env and both git/jj modes"
+    },
+    {
+      "id": "script-merge-spec",
+      "checkType": "integration",
+      "target": "merge-spec.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Script reads worktree.vcsScheme from spec.json and uses appropriate VCS commands"
+    },
+    {
+      "id": "script-merge-bug",
+      "checkType": "integration",
+      "target": "merge-bug.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Script reads worktree.vcsScheme from bug.json and uses appropriate VCS commands"
+    },
+    {
+      "id": "script-rebase",
+      "checkType": "integration",
+      "target": "rebase-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Script reads worktree.vcsScheme from config.json and uses appropriate VCS commands"
+    },
+    {
+      "id": "template-create-spec",
+      "checkType": "integration",
+      "target": "templates/scripts/create-spec-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template script synced with main script"
+    },
+    {
+      "id": "template-create-bug",
+      "checkType": "integration",
+      "target": "templates/scripts/create-bug-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template script synced with main script"
+    },
+    {
+      "id": "template-merge-spec",
+      "checkType": "integration",
+      "target": "templates/scripts/merge-spec.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template script synced with main script"
+    },
+    {
+      "id": "template-merge-bug",
+      "checkType": "integration",
+      "target": "templates/scripts/merge-bug.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template script synced with main script"
+    },
+    {
+      "id": "template-rebase",
+      "checkType": "integration",
+      "target": "templates/scripts/rebase-worktree.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template script synced with main script"
+    },
+    {
+      "id": "test-VcsSchemeSelector",
+      "checkType": "test",
+      "target": "VcsSchemeSelector.test.tsx",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists at electron-sdd-manager/src/renderer/components/VcsSchemeSelector.test.tsx"
+    },
+    {
+      "id": "test-settingsFileManager",
+      "checkType": "test",
+      "target": "settingsFileManager.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists at electron-sdd-manager/src/main/services/settingsFileManager.test.ts"
+    },
+    {
+      "id": "test-worktree-types",
+      "checkType": "test",
+      "target": "worktree.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test file exists at electron-sdd-manager/src/shared/types/worktree.test.ts"
+    },
+    {
+      "id": "placeholder-remote-ui",
+      "checkType": "placeholder",
+      "target": "electron-sdd-manager/src/remote-ui/views/SpecActionsView.tsx:311",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "TODO comment is unrelated to vcs-scheme-switching spec (about inspection auto permission)"
+    },
+    {
+      "id": "backward-compat-default",
+      "checkType": "integration",
+      "target": "Backward compatibility",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "All scripts and services default to 'git' when vcsScheme is not present (jq // \"git\" pattern)"
+    }
+  ],
+  "stats": {
+    "total": 45,
+    "passed": 45,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 45
+  }
+}

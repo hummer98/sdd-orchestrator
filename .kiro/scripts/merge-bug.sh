@@ -1,9 +1,10 @@
 #!/bin/bash
 # merge-bug.sh
 # Bugマージスクリプト: bugfix worktreeブランチをmainブランチにマージ
-# jj優先、gitフォールバック方式
+# vcs-scheme-switching: bug.jsonからvcsSchemeを読み取り、適切なVCSコマンドを使用
 #
 # Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
+# vcs-scheme-switching: Requirements 5.5, 5.6
 #
 # Usage: merge-bug.sh <bug-name>
 # Exit codes:
@@ -57,6 +58,11 @@ if [ -z "$BUGFIX_BRANCH" ] || [ "$BUGFIX_BRANCH" = "null" ]; then
   exit 2
 fi
 
+# vcs-scheme-switching: Read worktree.vcsScheme from bug.json
+# Requirements: 5.5 - Default to "git" if not present
+VCS_SCHEME=$(jq -r '.worktree.vcsScheme // "git"' "$BUG_JSON")
+echo "VCS Scheme: $VCS_SCHEME"
+
 echo "Bugfix branch: $BUGFIX_BRANCH"
 echo "Current branch: $CURRENT_BRANCH"
 
@@ -78,12 +84,18 @@ if [ -f "$WORKTREE_BUG_JSON" ]; then
   }
 fi
 
-# Phase 3: Perform merge (Requirement 2.5, 2.6)
+# Phase 3: Perform merge based on recorded vcsScheme
+# vcs-scheme-switching: Requirements 5.5, 5.6 - Use recorded scheme instead of auto-detection
 echo "Merging branch $BUGFIX_BRANCH into $CURRENT_BRANCH..."
 
-# Check if jj is available
-if command -v jj >/dev/null 2>&1; then
-  echo "Using jj for merge (conflict-tolerant)..."
+if [ "$VCS_SCHEME" = "jj" ]; then
+  echo "Using jj for merge (recorded in bug.json)..."
+
+  # Check if jj is available
+  if ! command -v jj >/dev/null 2>&1; then
+    echo "Error: jj is not installed but bug was created with jj. Please install jj." >&2
+    exit 2
+  fi
 
   # Use jj squash to merge
   if jj squash --from "$BUGFIX_BRANCH" --into "$CURRENT_BRANCH" 2>&1; then
@@ -106,8 +118,16 @@ if command -v jj >/dev/null 2>&1; then
     git commit -m "fix(${BUG_NAME}): merge from worktree branch ${BUGFIX_BRANCH}"
     echo "Changes committed to $CURRENT_BRANCH"
   fi
+
+  # Phase 4: Cleanup for jj mode
+  # jj bookmark delete and workspace forget
+  echo "Cleaning up jj workspace..."
+  jj bookmark delete "$BUGFIX_BRANCH" 2>&1 || echo "Warning: Failed to delete jj bookmark $BUGFIX_BRANCH" >&2
+  jj workspace forget "$WORKTREE_PATH" 2>&1 || echo "Warning: Failed to forget jj workspace $WORKTREE_PATH" >&2
+
 else
-  echo "jj not found, falling back to git merge..."
+  # git mode (default)
+  echo "Using git for merge (recorded in bug.json or default)..."
 
   # Use git merge --squash as fallback
   if git merge --squash "$BUGFIX_BRANCH" 2>&1; then
@@ -129,30 +149,30 @@ else
     git commit -m "fix(${BUG_NAME}): merge from worktree branch ${BUGFIX_BRANCH}"
     echo "Changes committed to $CURRENT_BRANCH"
   fi
-fi
 
-# Phase 4: Cleanup worktree (Requirement 2.7, 6.6)
-if [ -d "$WORKTREE_PATH" ]; then
-  if git worktree remove "$WORKTREE_PATH" 2>&1; then
-    echo "Worktree removed: $WORKTREE_PATH"
+  # Phase 4: Cleanup worktree for git mode (Requirement 2.7, 6.6)
+  if [ -d "$WORKTREE_PATH" ]; then
+    if git worktree remove "$WORKTREE_PATH" 2>&1; then
+      echo "Worktree removed: $WORKTREE_PATH"
+    else
+      echo "Warning: Failed to remove worktree $WORKTREE_PATH (you may need to clean up manually)" >&2
+      # Continue execution (non-fatal)
+    fi
   else
-    echo "Warning: Failed to remove worktree $WORKTREE_PATH (you may need to clean up manually)" >&2
-    # Continue execution (non-fatal)
+    echo "Worktree path not found: $WORKTREE_PATH (may already be removed)"
   fi
-else
-  echo "Worktree path not found: $WORKTREE_PATH (may already be removed)"
-fi
 
-# Phase 5: Cleanup bugfix branch (Requirement 2.8, 6.7)
-if git show-ref --verify --quiet "refs/heads/$BUGFIX_BRANCH"; then
-  if git branch -D "$BUGFIX_BRANCH" 2>&1; then
-    echo "Bugfix branch deleted: $BUGFIX_BRANCH"
+  # Phase 5: Cleanup bugfix branch for git mode (Requirement 2.8, 6.7)
+  if git show-ref --verify --quiet "refs/heads/$BUGFIX_BRANCH"; then
+    if git branch -D "$BUGFIX_BRANCH" 2>&1; then
+      echo "Bugfix branch deleted: $BUGFIX_BRANCH"
+    else
+      echo "Warning: Failed to delete branch $BUGFIX_BRANCH (you may need to clean up manually)" >&2
+      # Continue execution (non-fatal)
+    fi
   else
-    echo "Warning: Failed to delete branch $BUGFIX_BRANCH (you may need to clean up manually)" >&2
-    # Continue execution (non-fatal)
+    echo "Bugfix branch not found: $BUGFIX_BRANCH (may already be deleted)"
   fi
-else
-  echo "Bugfix branch not found: $BUGFIX_BRANCH (may already be deleted)"
 fi
 
 echo "Success: Merge completed, worktree and branch cleaned up"

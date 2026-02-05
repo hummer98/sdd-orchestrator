@@ -83,6 +83,16 @@ function createMockRunningAgent(phase: string, specId?: string): RunningAgentInf
   };
 }
 
+/**
+ * Advance timer by 1 scheduler tick and flush all pending async operations.
+ * setInterval + async callback requires running pending timers and their
+ * resulting microtasks (Promise chains from checkScheduleConditions -> processQueue).
+ */
+const advanceSchedulerTick = async () => {
+  // Run only the currently pending timers (avoids infinite loop from setInterval)
+  await vi.runOnlyPendingTimersAsync();
+};
+
 // =============================================================================
 // Tests: Initialization
 // =============================================================================
@@ -136,7 +146,7 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
 
       // Fast-forward 1 minute and verify schedule check runs
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       expect(mockDeps.getAllTasks).toHaveBeenCalledTimes(2); // Once in initialize, once in scheduler
     });
@@ -194,7 +204,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -222,7 +232,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(0);
@@ -245,7 +255,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -280,7 +290,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -310,7 +320,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(0);
@@ -338,7 +348,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(0);
@@ -366,7 +376,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -397,7 +407,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(0);
@@ -427,7 +437,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -453,7 +463,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(0);
@@ -477,7 +487,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -511,7 +521,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be queued but marked as waiting for idle
       const queuedTasks = coordinator.getQueuedTasks();
@@ -542,7 +552,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -575,8 +585,8 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator.startScheduler();
 
       // Run scheduler twice
-      await vi.advanceTimersByTimeAsync(60_000);
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
+      await advanceSchedulerTick();
 
       const queuedTasks = coordinator.getQueuedTasks();
       expect(queuedTasks).toHaveLength(1);
@@ -600,7 +610,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       expect(coordinator.getQueuedTasks()).toHaveLength(1);
 
@@ -627,7 +637,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       expect(mockDeps.onTaskQueued).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -661,7 +671,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       expect(coordinator.getQueuedTasks()).toHaveLength(0);
     });
@@ -701,7 +711,7 @@ describe('ScheduleTaskCoordinator', () => {
       coordinator = new ScheduleTaskCoordinator('/project/path', mockDeps);
       await coordinator.initialize();
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       expect(coordinator.getQueuedTasks()).toHaveLength(1);
 
@@ -892,7 +902,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be in queue
       const queuedTasks = coordinator.getQueuedTasks();
@@ -937,7 +947,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be queued
       const queuedTasks = coordinator.getQueuedTasks();
@@ -1117,7 +1127,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be queued
       expect(coordinator.getQueuedTasks()).toHaveLength(1);
@@ -1157,7 +1167,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be queued with waitingForIdle=true
       const queuedTasks = coordinator.getQueuedTasks();
@@ -1203,7 +1213,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Task should be queued without waitingForIdle
       const queuedTasks = coordinator.getQueuedTasks();
@@ -1245,7 +1255,7 @@ describe('ScheduleTaskCoordinator', () => {
       await coordinator.initialize();
 
       coordinator.startScheduler();
-      await vi.advanceTimersByTimeAsync(60_000);
+      await advanceSchedulerTick();
 
       // Both tasks should be queued
       expect(coordinator.getQueuedTasks()).toHaveLength(2);
@@ -1772,7 +1782,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         // Task is queued
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
@@ -1797,7 +1807,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler(); // Second start should be no-op
 
         // Should only run scheduler once
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         // Only 2 calls: 1 from initialize, 1 from scheduler
         expect(mockDeps.getAllTasks).toHaveBeenCalledTimes(2);
@@ -1808,12 +1818,12 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         coordinator.stopScheduler();
         coordinator.startScheduler();
 
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         // Should have: initial + 1st scheduler run + restart scheduler run = 3
         expect(mockDeps.getAllTasks).toHaveBeenCalledTimes(3);
@@ -1857,7 +1867,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         const queuedTasks = coordinator.getQueuedTasks();
         expect(queuedTasks).toHaveLength(3);
@@ -1888,7 +1898,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         // Should be queued as elapsed time equals interval
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
@@ -1918,7 +1928,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         // Should NOT be queued
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
@@ -1948,7 +1958,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -1975,7 +1985,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -2001,7 +2011,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -2027,7 +2037,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -2052,7 +2062,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -2075,7 +2085,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
       });
@@ -2098,7 +2108,7 @@ describe('ScheduleTaskCoordinator', () => {
         await coordinator.initialize();
 
         coordinator.startScheduler();
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
 
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
@@ -2250,7 +2260,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
 
         // First check: Not idle enough
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
         expect(mockGetIdleTimeMs).toHaveBeenCalled();
 
@@ -2258,7 +2268,7 @@ describe('ScheduleTaskCoordinator', () => {
         simulatedIdleMs = 5 * 60 * 1000; // 5 minutes idle
 
         // Second check: Now idle enough
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
         expect(coordinator.getQueuedTasks()[0].reason).toBe('idle');
       });
@@ -2290,7 +2300,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
 
         // First check: Schedule condition met, task queued with waitingForIdle
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
         expect(coordinator.getQueuedTasks()[0].waitingForIdle).toBe(true);
 
@@ -2334,17 +2344,17 @@ describe('ScheduleTaskCoordinator', () => {
 
         // Check 1: 3 minutes idle - not enough
         simulatedIdleMs = 3 * 60 * 1000;
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
 
         // Check 2: 6 minutes idle - still not enough
         simulatedIdleMs = 6 * 60 * 1000;
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
 
         // Check 3: 10 minutes idle - threshold met
         simulatedIdleMs = 10 * 60 * 1000;
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
 
@@ -2373,17 +2383,17 @@ describe('ScheduleTaskCoordinator', () => {
 
         // Idle time reaches near threshold
         simulatedIdleMs = 4 * 60 * 1000; // 4 minutes
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
 
         // User resumes activity - idle time resets
         simulatedIdleMs = 0;
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(0);
 
         // Idle time accumulates again to threshold
         simulatedIdleMs = 5 * 60 * 1000;
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
       });
     });
@@ -2438,7 +2448,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
 
         // Step 1: Schedule check detects task is due
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
 
         // Step 2: Process queue - should trigger agent start
@@ -2587,7 +2597,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
 
         // Task gets queued
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
 
         // Process queue while spec-merge is running - should wait
@@ -2720,7 +2730,7 @@ describe('ScheduleTaskCoordinator', () => {
         coordinator.startScheduler();
 
         // Step 1: Schedule check - task should be queued with waitingForIdle
-        await vi.advanceTimersByTimeAsync(60_000);
+        await advanceSchedulerTick();
         expect(coordinator.getQueuedTasks()).toHaveLength(1);
         expect(coordinator.getQueuedTasks()[0].waitingForIdle).toBe(true);
         expect(flowEvents).toContain('task-queued');

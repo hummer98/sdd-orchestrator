@@ -13,9 +13,12 @@
       "type": "stdio",
       "command": "npx",
       "args": [
+        "-y",
         "@playwright/mcp@latest"
       ],
-      "env": {}
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+      }
     }
   }
 }

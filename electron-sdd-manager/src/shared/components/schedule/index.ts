@@ -40,3 +40,7 @@ export type { WorkflowModeEditorProps } from './WorkflowModeEditor';
 // Task 6.6: AgentBehaviorEditor
 export { AgentBehaviorEditor } from './AgentBehaviorEditor';
 export type { AgentBehaviorEditorProps } from './AgentBehaviorEditor';
+
+// IdleDetectionInfoDialog
+export { IdleDetectionInfoDialog } from './IdleDetectionInfoDialog';
+export type { IdleDetectionInfoDialogProps } from './IdleDetectionInfoDialog';

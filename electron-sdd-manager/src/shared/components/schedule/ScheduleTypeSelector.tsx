@@ -12,14 +12,16 @@
  * Requirements: 3.1, 3.2, 3.3, 4.1, 4.2
  */
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { clsx } from 'clsx';
+import { Info } from 'lucide-react';
 import type {
   ScheduleCondition,
   IntervalSchedule,
   WeeklySchedule,
   IdleSchedule,
 } from '../../types/scheduleTask';
+import { IdleDetectionInfoDialog } from './IdleDetectionInfoDialog';
 
 // =============================================================================
 // Types
@@ -433,6 +435,9 @@ export function ScheduleTypeSelector({
   const category = getScheduleCategory(value);
   const fixedType = getFixedScheduleType(value);
 
+  // State for idle detection info dialog
+  const [isIdleInfoDialogOpen, setIsIdleInfoDialogOpen] = useState(false);
+
   // Handle category change
   const handleCategoryChange = useCallback(
     (newCategory: ScheduleCategory) => {
@@ -632,12 +637,29 @@ export function ScheduleTypeSelector({
       {/* Wait for Idle Toggle (only for fixed schedules) */}
       {category === 'fixed' && (
         <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-          <label
-            htmlFor="wait-for-idle"
-            className="text-sm text-gray-700 dark:text-gray-300"
-          >
-            アイドル後に実行
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label
+              htmlFor="wait-for-idle"
+              className="text-sm text-gray-700 dark:text-gray-300"
+            >
+              アイドル後に実行
+            </label>
+            <button
+              type="button"
+              data-testid="idle-detection-info-button"
+              onClick={() => setIsIdleInfoDialogOpen(true)}
+              className={clsx(
+                'p-0.5 rounded-full',
+                'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300',
+                'hover:bg-gray-100 dark:hover:bg-gray-700',
+                'transition-colors duration-150',
+                'focus:outline-none focus:ring-2 focus:ring-blue-500'
+              )}
+              aria-label="アイドル検出方法の説明を表示"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          </div>
           <ToggleSwitch
             checked={value.type !== 'idle' && value.waitForIdle}
             onChange={handleWaitForIdleToggle}
@@ -647,6 +669,12 @@ export function ScheduleTypeSelector({
           />
         </div>
       )}
+
+      {/* Idle Detection Info Dialog */}
+      <IdleDetectionInfoDialog
+        isOpen={isIdleInfoDialogOpen}
+        onClose={() => setIsIdleInfoDialogOpen(false)}
+      />
     </div>
   );
 }

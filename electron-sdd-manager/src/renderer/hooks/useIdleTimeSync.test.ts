@@ -1,36 +1,21 @@
 /**
  * useIdleTimeSync Hook Tests
  * Task 7.1: useHumanActivityフックの拡張 - 定期的なアイドル時間のMain Processへの報告
- * Task 3.1: useIdleTimeSync のテストケース追加
- * Requirements: 4.3 (アイドル検出時キュー追加), 5.1 (Spec追跡優先ロジック), 5.3 (プロジェクト未選択)
  *
  * Renderer側で最終アクティビティ時刻をMain Processに定期同期するフック
+ * - HumanActivityTracker（HAT）によるUI操作追跡のみを使用
+ * - ウィンドウフォーカスはアイドル判定に使用しない
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useIdleTimeSync, IDLE_SYNC_INTERVAL_MS } from './useIdleTimeSync';
-import {
-  getHumanActivityTracker,
-  initHumanActivityTracker,
-} from '../services/humanActivityTracker';
-import { useWindowFocusTracker } from './useWindowFocusTracker';
+import { getHumanActivityTracker } from '../services/humanActivityTracker';
 
 // Mock humanActivityTracker
 vi.mock('../services/humanActivityTracker', () => ({
   getHumanActivityTracker: vi.fn(),
   initHumanActivityTracker: vi.fn(),
-}));
-
-// Mock useWindowFocusTracker
-const mockFocusTrackerGetLastActivityTime = vi.fn();
-const mockFocusTrackerIsFocused = vi.fn();
-
-vi.mock('./useWindowFocusTracker', () => ({
-  useWindowFocusTracker: vi.fn(() => ({
-    getLastActivityTime: mockFocusTrackerGetLastActivityTime,
-    isFocused: mockFocusTrackerIsFocused,
-  })),
 }));
 
 // Mock window.electronAPI
@@ -43,10 +28,6 @@ describe('useIdleTimeSync', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-
-    // Default focus tracker mocks (unfocused, no activity time)
-    mockFocusTrackerGetLastActivityTime.mockReturnValue(null);
-    mockFocusTrackerIsFocused.mockReturnValue(false);
 
     // Setup window.electronAPI mock (use existing window object from jsdom)
     (window as Window & { electronAPI?: { reportIdleTime: typeof mockReportIdleTime } }).electronAPI = {
@@ -62,11 +43,11 @@ describe('useIdleTimeSync', () => {
   });
 
   // ===========================================================================
-  // Requirement 4.3: 定期的な同期
+  // 定期的な同期
   // ===========================================================================
 
   describe('periodic sync', () => {
-    it('should sync idle time periodically', async () => {
+    it('should sync idle time periodically when HAT is active', async () => {
       const lastActivityTime = Date.now();
       const mockTracker = {
         isActive: true,
@@ -145,10 +126,10 @@ describe('useIdleTimeSync', () => {
   });
 
   // ===========================================================================
-  // Requirement 1.2, 5.3: projectPath=null時の報告スキップ
+  // projectPath=null時の報告スキップ
   // ===========================================================================
 
-  describe('project path handling (Requirement 1.2, 5.3)', () => {
+  describe('project path handling', () => {
     it('should skip reporting when projectPath is null', async () => {
       const lastActivityTime = Date.now();
       const mockTracker = {
@@ -156,8 +137,6 @@ describe('useIdleTimeSync', () => {
         getLastActivityTime: () => lastActivityTime,
       };
       (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(lastActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
 
       renderHook(() => useIdleTimeSync({ projectPath: null }));
 
@@ -209,48 +188,16 @@ describe('useIdleTimeSync', () => {
   });
 
   // ===========================================================================
-  // Requirement 3.1, 3.2, 5.1: Spec追跡優先ロジック
+  // HAT非アクティブ時の動作（Spec未選択 = アイドル）
   // ===========================================================================
 
-  describe('Spec tracking priority (Requirement 3.1, 3.2, 5.1)', () => {
-    it('should use HAT activity time when HAT.isActive=true and lastActivityTime is not null', async () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      const hatActivityTime = now - 5000; // HAT: 5 seconds ago
-      const focusActivityTime = now - 10000; // Focus: 10 seconds ago
-
-      const mockTracker = {
-        isActive: true,
-        getLastActivityTime: () => hatActivityTime,
-      };
-      (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
-
-      renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(100);
-      });
-
-      // Should use HAT activity time (Spec tracking priority)
-      expect(mockReportIdleTime).toHaveBeenCalledWith(hatActivityTime);
-    });
-
-    it('should use focus tracker time when HAT.isActive=false', async () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      const focusActivityTime = now - 10000; // Focus: 10 seconds ago
-
+  describe('HAT inactive handling (Spec未選択 = アイドル)', () => {
+    it('should NOT report when HAT.isActive=false (Spec未選択)', async () => {
       const mockTracker = {
         isActive: false,
         getLastActivityTime: () => null,
       };
       (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
 
       renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
 
@@ -258,23 +205,16 @@ describe('useIdleTimeSync', () => {
         await vi.advanceTimersByTimeAsync(100);
       });
 
-      // Should use focus tracker time (fallback)
-      expect(mockReportIdleTime).toHaveBeenCalledWith(focusActivityTime);
+      // Should NOT sync - no activity means idle
+      expect(mockReportIdleTime).not.toHaveBeenCalled();
     });
 
-    it('should use focus tracker time when HAT.isActive=true but lastActivityTime is null', async () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      const focusActivityTime = now - 10000;
-
+    it('should NOT report when HAT.isActive=true but lastActivityTime is null', async () => {
       const mockTracker = {
         isActive: true,
         getLastActivityTime: () => null, // HAT active but no activity recorded yet
       };
       (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
 
       renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
 
@@ -282,76 +222,51 @@ describe('useIdleTimeSync', () => {
         await vi.advanceTimersByTimeAsync(100);
       });
 
-      // Should use focus tracker time (HAT has no activity)
-      expect(mockReportIdleTime).toHaveBeenCalledWith(focusActivityTime);
+      // Should NOT sync - no activity time available
+      expect(mockReportIdleTime).not.toHaveBeenCalled();
     });
 
-    it('should skip reporting when both HAT and focus tracker have no activity time', async () => {
-      const mockTracker = {
-        isActive: false,
-        getLastActivityTime: () => null,
-      };
-      (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(null);
-      mockFocusTrackerIsFocused.mockReturnValue(false);
+    it('should report when HAT becomes active with activity', async () => {
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      // Initially HAT is not active
+      let hatActive = false;
+      let hatTime: number | null = null;
+      (getHumanActivityTracker as Mock).mockReturnValue({
+        get isActive() { return hatActive; },
+        getLastActivityTime: () => hatTime,
+      });
 
       renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
 
+      // Initial sync - no activity (HAT not active)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(100);
       });
-
-      // Should not sync when no activity time available
       expect(mockReportIdleTime).not.toHaveBeenCalled();
+
+      // Simulate Spec selection (HAT becomes active)
+      hatActive = true;
+      hatTime = now - 5000;
+
+      // Next sync should report
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(IDLE_SYNC_INTERVAL_MS);
+      });
+      expect(mockReportIdleTime).toHaveBeenCalledWith(hatTime);
     });
   });
 
   // ===========================================================================
-  // Requirement 3.3, 3.4: Spec選択/解除時の切り替え
+  // Spec選択/解除時の動作
   // ===========================================================================
 
-  describe('Spec selection switching (Requirement 3.3, 3.4)', () => {
-    it('should switch from focus tracker to HAT when Spec is selected', async () => {
+  describe('Spec selection/deselection', () => {
+    it('should stop reporting when Spec is deselected (HAT becomes inactive)', async () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      const focusActivityTime = now - 10000;
-      const hatActivityTime = now - 5000;
-
-      // Initially HAT is not active
-      const mockTracker = {
-        isActive: false,
-        getLastActivityTime: () => null,
-      };
-      (getHumanActivityTracker as Mock).mockReturnValue(mockTracker);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
-
-      renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
-
-      // Initial sync with focus tracker
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(100);
-      });
-      expect(mockReportIdleTime).toHaveBeenCalledWith(focusActivityTime);
-
-      // Simulate Spec selection (HAT becomes active)
-      mockTracker.isActive = true;
-      (mockTracker as { getLastActivityTime: () => number | null }).getLastActivityTime = () => hatActivityTime;
-
-      // Next sync should use HAT
-      mockReportIdleTime.mockClear();
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(IDLE_SYNC_INTERVAL_MS);
-      });
-      expect(mockReportIdleTime).toHaveBeenCalledWith(hatActivityTime);
-    });
-
-    it('should switch from HAT to focus tracker when Spec is deselected', async () => {
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      const focusActivityTime = now - 10000;
       const hatActivityTime = now - 5000;
 
       // Initially HAT is active
@@ -361,8 +276,6 @@ describe('useIdleTimeSync', () => {
         get isActive() { return hatActive; },
         getLastActivityTime: () => hatTime,
       });
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
 
       renderHook(() => useIdleTimeSync({ projectPath: '/test/project' }));
 
@@ -376,12 +289,12 @@ describe('useIdleTimeSync', () => {
       hatActive = false;
       hatTime = null;
 
-      // Next sync should use focus tracker
+      // Next sync should NOT report (no fallback to focus tracker)
       mockReportIdleTime.mockClear();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(IDLE_SYNC_INTERVAL_MS);
       });
-      expect(mockReportIdleTime).toHaveBeenCalledWith(focusActivityTime);
+      expect(mockReportIdleTime).not.toHaveBeenCalled();
     });
   });
 
@@ -390,11 +303,8 @@ describe('useIdleTimeSync', () => {
   // ===========================================================================
 
   describe('edge cases', () => {
-    it('should handle null tracker gracefully with focus fallback', async () => {
-      const focusActivityTime = Date.now();
+    it('should handle null tracker gracefully', async () => {
       (getHumanActivityTracker as Mock).mockReturnValue(null);
-      mockFocusTrackerGetLastActivityTime.mockReturnValue(focusActivityTime);
-      mockFocusTrackerIsFocused.mockReturnValue(true);
 
       // Should not throw
       expect(() => {
@@ -406,8 +316,8 @@ describe('useIdleTimeSync', () => {
         await vi.advanceTimersByTimeAsync(IDLE_SYNC_INTERVAL_MS);
       });
 
-      // Should use focus tracker as fallback when HAT is null
-      expect(mockReportIdleTime).toHaveBeenCalledWith(focusActivityTime);
+      // Should NOT report when HAT is null
+      expect(mockReportIdleTime).not.toHaveBeenCalled();
     });
 
     it('should handle IPC errors gracefully', async () => {

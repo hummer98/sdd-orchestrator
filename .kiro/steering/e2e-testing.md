@@ -206,6 +206,25 @@ await selectProjectViaStore(FIXTURE_PROJECT_PATH);
 
 **理由**: UIダイアログやメニューバー経由のプロジェクト選択は不安定なため、Zustandストア経由でのプログラマティック選択を推奨。
 
+### SDD_PROJECT_PATH環境変数によるプロジェクト自動選択
+
+E2Eテスト起動時に特定のプロジェクトを自動的に選択した状態で開始できます：
+
+```bash
+# wdio.conf.tsで設定済み - appEnvに渡される
+SDD_PROJECT_PATH="$(pwd)/e2e-wdio/fixtures/mermaid-test" npm run test:e2e -- --spec e2e-wdio/mermaid-preview.e2e.spec.ts
+```
+
+**仕組み**:
+- `wdio.conf.ts`の`appEnv`で`SDD_PROJECT_PATH`を設定
+- Main processの`index.ts`で環境変数を読み取り、`selectProject()`を呼び出し
+- Renderer側の`loadInitialProject`は削除済み（Main processが一元管理）
+
+**利点**:
+- プロジェクト選択UIをスキップして直接テスト開始
+- テストの安定性向上（UI操作の不確実性を排除）
+- CI/CD環境での再現性向上
+
 ---
 
 ## テストファイル詳細
@@ -802,6 +821,110 @@ const hasAPI = await browser.execute(() => {
 });
 ```
 
+### プレビュー領域のスクロール
+
+Mermaidダイアグラムなど、表示領域外の要素を検証する場合はスクロールが必要：
+
+```typescript
+// 方法1: 特定要素までスクロール
+await browser.execute(() => {
+  const target = document.querySelector('[data-testid="mermaid-diagram"]');
+  if (target) {
+    target.scrollIntoView({ behavior: 'instant', block: 'center' });
+  }
+});
+
+// 方法2: スクロール可能なコンテナを直接操作
+await browser.execute(() => {
+  const container = document.querySelector('.markdown-body')?.closest('.overflow-auto');
+  if (container) {
+    container.scrollTop += 500;
+  }
+});
+
+// 方法3: waitForFunctionでスクロール後の要素表示を待機
+await browser.waitUntil(async () => {
+  return await browser.execute(() => {
+    const el = document.querySelector('[data-testid="mermaid-diagram"]');
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= window.innerHeight;
+  });
+}, { timeout: 10000, timeoutMsg: 'Element not visible in viewport' });
+```
+
+**注意**: `browser.execute()`内ではJSの戻り値が`0`や`false`の場合でも正常動作。戻り値の真偽チェックには注意。
+
+---
+
+## Remote UIテスト（Playwrightとの併用）
+
+Remote UIのテストではPlaywrightを併用してブラウザ側のテストを行います。
+
+### セットアップ
+
+```typescript
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
+
+let playwrightBrowser: Browser;
+let playwrightContext: BrowserContext;
+let remotePage: Page;
+
+async function initPlaywright(): Promise<void> {
+  playwrightBrowser = await chromium.launch({ headless: true });
+  playwrightContext = await playwrightBrowser.newContext({
+    viewport: { width: 1280, height: 800 },  // デスクトップサイズ
+  });
+  remotePage = await playwrightContext.newPage();
+}
+```
+
+### デスクトップ/モバイルレイアウトの切り替え
+
+Remote UIはビューポートサイズでレイアウトが変わります：
+- **デスクトップ**: width >= 1024px → `DesktopAppContent`
+- **タブレット**: 768px <= width < 1024px
+- **モバイル**: width < 768px → `MobileAppContent`
+
+```typescript
+// モバイルレイアウトでテストする場合
+playwrightContext = await playwrightBrowser.newContext({
+  viewport: { width: 375, height: 667 },  // iPhone SE サイズ
+});
+```
+
+### test-idの違い（デスクトップ vs モバイル）
+
+| 機能 | デスクトップ | モバイル |
+|-----|------------|---------|
+| Spec詳細表示 | `remote-artifact-editor` | `remote-spec-detail` |
+| Specリスト | `remote-spec-list` | `remote-spec-list` |
+| Specアイテム | `remote-spec-item-{name}` | `remote-spec-item-{name}` |
+
+**両対応のセレクタ**:
+```typescript
+// デスクトップとモバイル両方に対応
+await remotePage.waitForSelector(
+  '[data-testid="remote-artifact-editor"], [data-testid="remote-spec-detail"]',
+  { timeout: 10000 }
+);
+```
+
+### Remote UIでのスクロール
+
+```typescript
+// Playwrightでのスクロール
+await remotePage.evaluate(() => {
+  const container = document.querySelector('.markdown-body')?.closest('[class*="overflow"]');
+  if (container) {
+    container.scrollTop += 500;
+  }
+});
+
+// 要素が表示されるまでスクロール
+await remotePage.locator('[data-testid="mermaid-diagram"]').scrollIntoViewIfNeeded();
+```
+
 ---
 
 ## セキュリティアサーション
@@ -987,4 +1110,4 @@ Mock Claude CLIの導入により、**実際のClaude APIを呼び出さずに�
 
 ---
 
-_更新日: 2026-01-29_
+_更新日: 2026-02-05_

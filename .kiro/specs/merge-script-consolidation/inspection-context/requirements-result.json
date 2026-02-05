@@ -1,0 +1,381 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-05T10:30:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: merge-spec.sh reads worktree.branch from spec.json using jq at correct path",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:54 - FEATURE_BRANCH=$(jq -r '.worktree.branch' \"$SPEC_JSON\")",
+        ".kiro/scripts/merge-spec.sh:25 - WORKTREE_SPEC_JSON=\"${WORKTREE_PATH}/.kiro/specs/${FEATURE_NAME}/spec.json\""
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: merge-spec.sh checks current branch and exits with code 2 if not main/master/dev",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:35-39 - Branch check with exit 2 if not main/master/dev"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: merge-spec.sh updates spec.json in worktree: removes worktree field, sets phase to deploy-complete, updates updated_at",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:63-72 - jq command removes worktree, sets phase to deploy-complete, updates timestamp"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: merge-spec.sh commits spec.json changes in worktree",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:74-78 - Commits changes in worktree with appropriate message"
+      ]
+    },
+    {
+      "id": "req-1.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.5: merge-spec.sh performs jj squash or git merge --squash",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:81-132 - jj squash (line 89) with git merge --squash fallback (line 113)"
+      ]
+    },
+    {
+      "id": "req-1.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.6: merge-spec.sh creates commit on main after merge",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:104-108 - git commit after jj squash",
+        ".kiro/scripts/merge-spec.sh:128-131 - git commit after git merge --squash"
+      ]
+    },
+    {
+      "id": "req-1.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.7: merge-spec.sh removes worktree directory after commit",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:134-144 - git worktree remove with warning on failure"
+      ]
+    },
+    {
+      "id": "req-1.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.8: merge-spec.sh deletes feature branch after worktree removal",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:146-156 - git branch -D with warning on failure"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: merge-bug.sh reads worktree.branch from bug.json using jq at correct path",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:54 - BUGFIX_BRANCH=$(jq -r '.worktree.branch' \"$BUG_JSON\")",
+        ".kiro/scripts/merge-bug.sh:25 - WORKTREE_BUG_JSON=\"${WORKTREE_PATH}/.kiro/bugs/${BUG_NAME}/bug.json\""
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: merge-bug.sh checks current branch and exits with code 2 if not main/master/dev",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:35-39 - Branch check with exit 2 if not main/master/dev"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: merge-bug.sh updates bug.json in worktree: removes worktree field, updates updated_at",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:63-72 - jq command removes worktree and updates timestamp"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: merge-bug.sh commits bug.json changes in worktree",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:74-78 - Commits changes in worktree with appropriate message"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.5: merge-bug.sh performs jj squash or git merge --squash",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:81-132 - jj squash (line 89) with git merge --squash fallback (line 113)"
+      ]
+    },
+    {
+      "id": "req-2.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.6: merge-bug.sh creates commit on main after merge",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:104-108 - git commit after jj squash",
+        ".kiro/scripts/merge-bug.sh:128-131 - git commit after git merge --squash"
+      ]
+    },
+    {
+      "id": "req-2.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.7: merge-bug.sh removes worktree directory after commit",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:134-144 - git worktree remove with warning on failure"
+      ]
+    },
+    {
+      "id": "req-2.8",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.8: merge-bug.sh deletes bugfix branch after worktree removal",
+      "evidence": [
+        ".kiro/scripts/merge-bug.sh:146-156 - git branch -D with warning on failure"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: update-spec-for-deploy.sh has been deleted (no file found)",
+      "evidence": [
+        "Glob search: No files matching *update-*-for-deploy.sh found",
+        "Git status shows: D .kiro/scripts/update-spec-for-deploy.sh"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: update-bug-for-deploy.sh has been deleted (no file found)",
+      "evidence": [
+        "Glob search: No files matching *update-*-for-deploy.sh found",
+        "Git status shows: D .kiro/scripts/update-bug-for-deploy.sh"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: spec-merge.md no longer calls update-spec-for-deploy.sh",
+      "evidence": [
+        ".claude/commands/kiro/spec-merge.md - No reference to update-spec-for-deploy.sh in Step 2"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: spec-merge.md calls merge-spec.sh in Step 3",
+      "evidence": [
+        ".claude/commands/kiro/spec-merge.md:193 - bash .kiro/scripts/merge-spec.sh $1"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: spec-merge.md handles merge-spec.sh errors appropriately",
+      "evidence": [
+        ".claude/commands/kiro/spec-merge.md:207-227 - Exit code handling (0: success, 1: conflict, 2: error)"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: bug-merge.md no longer calls update-bug-for-deploy.sh",
+      "evidence": [
+        ".claude/commands/kiro/bug-merge.md - No reference to update-bug-for-deploy.sh in Step 2"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: bug-merge.md calls merge-bug.sh in Step 3",
+      "evidence": [
+        ".claude/commands/kiro/bug-merge.md:108 - bash .kiro/scripts/merge-bug.sh $1"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: bug-merge.md handles merge-bug.sh errors appropriately",
+      "evidence": [
+        ".claude/commands/kiro/bug-merge.md:122-141 - Exit code handling (0: success, 1: conflict, 2: error)"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: Both scripts check for jq installation and exit with code 2 with install instructions",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:29-32 - jq check with exit 2 and install instructions",
+        ".kiro/scripts/merge-bug.sh:29-32 - jq check with exit 2 and install instructions"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: Both scripts check for spec.json/bug.json existence and exit with code 2 with expected path",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:42-51 - spec.json existence check with exit 2",
+        ".kiro/scripts/merge-bug.sh:42-51 - bug.json existence check with exit 2"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: Both scripts check for worktree.branch and exit with code 2 with error cause",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:54-58 - worktree.branch check with exit 2",
+        ".kiro/scripts/merge-bug.sh:54-58 - worktree.branch check with exit 2"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.4: Both scripts check current branch and exit with code 2 with current branch name",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:35-39 - Branch check with current branch in error message",
+        ".kiro/scripts/merge-bug.sh:35-39 - Branch check with current branch in error message"
+      ]
+    },
+    {
+      "id": "req-6.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.5: Both scripts return exit code 1 on merge conflict (no cleanup)",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:94-96 - jj conflict exit 1",
+        ".kiro/scripts/merge-spec.sh:118-120 - git conflict exit 1",
+        ".kiro/scripts/merge-bug.sh:94-96 - jj conflict exit 1",
+        ".kiro/scripts/merge-bug.sh:118-120 - git conflict exit 1"
+      ]
+    },
+    {
+      "id": "req-6.6",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.6: Both scripts output warning and continue on worktree deletion failure",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:139-140 - Warning on worktree removal failure, continues execution",
+        ".kiro/scripts/merge-bug.sh:139-140 - Warning on worktree removal failure, continues execution"
+      ]
+    },
+    {
+      "id": "req-6.7",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.7: Both scripts output warning and continue on branch deletion failure",
+      "evidence": [
+        ".kiro/scripts/merge-spec.sh:151-152 - Warning on branch deletion failure, continues execution",
+        ".kiro/scripts/merge-bug.sh:151-152 - Warning on branch deletion failure, continues execution"
+      ]
+    },
+    {
+      "id": "req-template-spec",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-spec.sh in electron-sdd-manager matches .kiro/scripts version",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/scripts/merge-spec.sh - Contains identical implementation"
+      ]
+    },
+    {
+      "id": "req-template-bug",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-bug.sh in electron-sdd-manager has been created",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/scripts/merge-bug.sh - Contains identical implementation"
+      ]
+    },
+    {
+      "id": "req-installer-update",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ccSddWorkflowInstaller.ts HELPER_SCRIPTS list includes merge-spec.sh and merge-bug.sh",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.ts:139-144 - HELPER_SCRIPTS = ['merge-spec.sh', 'merge-bug.sh', 'create-spec-worktree.sh', 'create-bug-worktree.sh']"
+      ]
+    },
+    {
+      "id": "req-installer-test",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ccSddWorkflowInstaller.test.ts includes tests for merge-spec.sh and merge-bug.sh",
+      "evidence": [
+        "electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.test.ts:719-846 - Helper Scripts tests for merge-spec.sh and merge-bug.sh"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 35,
+    "passed": 35,
+    "failed": 0,
+    "partial": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 35
+  }
+}

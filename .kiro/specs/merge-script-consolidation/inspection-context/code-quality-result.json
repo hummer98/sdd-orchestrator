@@ -1,0 +1,225 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-05T11:15:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "INFO",
+      "severity": "Info",
+      "details": "merge-spec.sh and merge-bug.sh share significant structure (Phase 1-5 pattern, jq/git operations, error handling). This is intentional per DD-003 in design.md - scripts maintain independence for clarity despite code similarity.",
+      "evidence": [
+        "Both scripts share identical Phase structure (Phase 1-5)",
+        "Merge logic (jj/git fallback) is duplicated across both scripts",
+        "Design Decision DD-003 explicitly accepts this trade-off for script independence"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management follows SSOT - worktree.branch is read from JSON before updates, ensuring single source of truth for branch names",
+      "evidence": [
+        "merge-spec.sh line 54: FEATURE_BRANCH=$(jq -r '.worktree.branch' \"$SPEC_JSON\")",
+        "merge-bug.sh line 54: BUGFIX_BRANCH=$(jq -r '.worktree.branch' \"$BUG_JSON\")"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Scripts follow KISS principle - single responsibility per script, linear execution flow with clear phases",
+      "evidence": []
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unnecessary features detected - scripts implement only the required functionality per design.md",
+      "evidence": []
+    },
+    {
+      "id": "impact-delete-update-spec-for-deploy",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File .kiro/scripts/update-spec-for-deploy.sh successfully deleted",
+      "evidence": [
+        "Glob search for *update-*-for-deploy* returns no files in .kiro/scripts/"
+      ]
+    },
+    {
+      "id": "impact-delete-update-bug-for-deploy",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File .kiro/scripts/update-bug-for-deploy.sh successfully deleted",
+      "evidence": [
+        "Glob search for *update-*-for-deploy* returns no files in .kiro/scripts/"
+      ]
+    },
+    {
+      "id": "impact-delete-template-update-spec-for-deploy",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template file electron-sdd-manager/resources/templates/scripts/update-spec-for-deploy.sh successfully deleted",
+      "evidence": [
+        "Glob search confirms file does not exist"
+      ]
+    },
+    {
+      "id": "impact-delete-template-update-bug-for-deploy",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template file electron-sdd-manager/resources/templates/scripts/update-bug-for-deploy.sh successfully deleted",
+      "evidence": [
+        "Glob search confirms file does not exist"
+      ]
+    },
+    {
+      "id": "impact-template-spec-merge-md-stale-reference",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template file electron-sdd-manager/resources/templates/commands/cc-sdd-agent/spec-merge.md correctly updated - calls merge-spec.sh, no reference to update-spec-for-deploy.sh",
+      "evidence": [
+        "Line 193: bash .kiro/scripts/merge-spec.sh $1",
+        "Grep search for 'update-spec-for-deploy' in template commands directory returns no matches"
+      ]
+    },
+    {
+      "id": "impact-template-bug-merge-md-stale-reference",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template file electron-sdd-manager/resources/templates/commands/bug/bug-merge.md correctly updated - calls merge-bug.sh, no reference to update-bug-for-deploy.sh",
+      "evidence": [
+        "Line 108: bash .kiro/scripts/merge-bug.sh $1",
+        "Grep search for 'update-bug-for-deploy' in template commands directory returns no matches"
+      ]
+    },
+    {
+      "id": "impact-ccSddWorkflowInstaller-updated",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HELPER_SCRIPTS constant updated correctly - removed old scripts, added merge-bug.sh",
+      "evidence": [
+        "ccSddWorkflowInstaller.ts line 139-144: HELPER_SCRIPTS = ['merge-spec.sh', 'merge-bug.sh', 'create-spec-worktree.sh', 'create-bug-worktree.sh']",
+        "Test file expects 4 scripts and includes merge-spec.sh and merge-bug.sh"
+      ]
+    },
+    {
+      "id": "impact-spec-merge-md-updated",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": ".claude/commands/kiro/spec-merge.md correctly updated - calls merge-spec.sh, no reference to update-spec-for-deploy.sh",
+      "evidence": [
+        "Line 193: bash .kiro/scripts/merge-spec.sh $1",
+        "Step 2.3 no longer calls update-spec-for-deploy.sh"
+      ]
+    },
+    {
+      "id": "impact-bug-merge-md-updated",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": ".claude/commands/kiro/bug-merge.md correctly updated - calls merge-bug.sh, no reference to update-bug-for-deploy.sh",
+      "evidence": [
+        "Line 108: bash .kiro/scripts/merge-bug.sh $1",
+        "Step 2.3 no longer calls update-bug-for-deploy.sh"
+      ]
+    },
+    {
+      "id": "dead-code-merge-spec-sh",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh is properly wired and used",
+      "evidence": [
+        "Called from .claude/commands/kiro/spec-merge.md line 193",
+        "Exported via HELPER_SCRIPTS in ccSddWorkflowInstaller.ts"
+      ]
+    },
+    {
+      "id": "dead-code-merge-bug-sh",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-bug.sh is properly wired and used",
+      "evidence": [
+        "Called from .claude/commands/kiro/bug-merge.md line 108",
+        "Exported via HELPER_SCRIPTS in ccSddWorkflowInstaller.ts"
+      ]
+    },
+    {
+      "id": "dead-code-template-merge-spec-sh",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-spec.sh exists and will be deployed via installScripts",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/scripts/merge-spec.sh exists",
+        "Content matches .kiro/scripts/merge-spec.sh"
+      ]
+    },
+    {
+      "id": "dead-code-template-merge-bug-sh",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-bug.sh exists and will be deployed via installScripts",
+      "evidence": [
+        "electron-sdd-manager/resources/templates/scripts/merge-bug.sh exists",
+        "Content matches .kiro/scripts/merge-bug.sh"
+      ]
+    },
+    {
+      "id": "placeholder-merge-scripts",
+      "category": "placeholder",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No TODO/FIXME/PLACEHOLDER comments found in merge scripts",
+      "evidence": [
+        "Grep for TODO|FIXME|PLACEHOLDER in .kiro/scripts/ returns no matches"
+      ]
+    },
+    {
+      "id": "placeholder-command-files",
+      "category": "placeholder",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No implementation placeholders in spec-merge.md or bug-merge.md",
+      "evidence": [
+        "Only unrelated TODO in generate-release.md (template generation)"
+      ]
+    },
+    {
+      "id": "logging-shell-scripts",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Shell scripts use echo for output with clear phase prefixes and error messages to stderr",
+      "evidence": [
+        "Errors use >&2 redirection: echo \"Error: ...\" >&2",
+        "Warnings clearly labeled: echo \"Warning: ...\" >&2",
+        "Success messages include context: echo \"Success: Merge completed, worktree and branch cleaned up\""
+      ]
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 20
+  }
+}

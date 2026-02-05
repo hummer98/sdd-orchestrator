@@ -160,31 +160,19 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
    ```
 2. Log: "Worktree内の未コミット変更をコミットしました"
 
-#### 2.3: Update spec.json in Worktree
-Update spec.json to deploy-complete state **in the worktree** using the helper script, so it's included in the squash merge.
-
-**merge-helper-scripts**: Use the helper script to ensure reliable execution in the worktree directory.
-
-1. Change directory to worktree and execute the script:
-   ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && .kiro/scripts/update-spec-for-deploy.sh $1
-   ```
-
-The script will:
-- Remove the `worktree` property from spec.json
-- Set `phase` to `"deploy-complete"`
-- Update `updated_at` to current UTC timestamp
-- Stage and commit the changes
-
-#### 2.4: Return to Main Project
+#### 2.3: Return to Main Project
 ```bash
 cd "$PROJECT_ROOT"
 ```
 
 ### Step 3: Perform Merge
 
-> **Note**: All changes (implementation + spec.json update) are already committed in the worktree.
-> Squash merge will include everything - no `git add` needed on main branch.
+> **Note**: merge-spec.sh handles all operations:
+> - Read worktree.branch before any JSON updates
+> - Update spec.json in worktree (remove worktree field, set phase to deploy-complete)
+> - Commit spec.json changes in worktree
+> - Perform squash merge (jj or git fallback)
+> - Cleanup worktree and branch
 
 **jj-merge-support**: Use the helper script to execute merge with jj/git fallback.
 
@@ -206,11 +194,15 @@ bash .kiro/scripts/merge-spec.sh $1
 ```
 
 The script will:
-- Check if jj is available
-- If jj exists: Use `jj squash --from {branch} --into {main}` for merge
-- If jj not found: Fallback to `git merge --squash {branch}`
-- If merge succeeds: Commit, remove worktree, delete branch
-- Return exit code: 0 (success), 1 (conflict), 2+ (error)
+- Check current branch is main/master/dev (exit 2 if not)
+- Read worktree.branch from spec.json BEFORE any updates
+- Update spec.json in worktree: remove worktree field, set phase to deploy-complete
+- Commit spec.json changes in worktree
+- Perform squash merge (jj squash or git merge --squash)
+- Commit merged changes on main
+- Remove worktree directory
+- Delete feature branch
+- Return exit code: 0 (success), 1 (conflict), 2 (error)
 
 #### 3.3: Check Exit Code
 Capture the exit code and handle accordingly:
@@ -223,12 +215,13 @@ Capture the exit code and handle accordingly:
 - Log: "Merge has conflicts - attempting AI-powered resolution"
 - **Go to Step 4** (Conflict Resolution)
 
-**Exit Code 2+ (Error)**:
-- **Error**: "Merge script failed with exit code {exit_code}"
+**Exit Code 2 (Error)**:
+- **Error**: "Merge script failed with exit code 2"
 - Display script error output (stderr)
 - **Suggested Action**:
   - If jq missing: "Install jq: brew install jq"
   - If spec.json missing: "spec.json not found in expected location"
+  - If wrong branch: "Must be on main/master/dev branch"
   - If permission denied: "Grant execute permission: chmod +x .kiro/scripts/merge-spec.sh"
 - **EXIT** (do not proceed)
 

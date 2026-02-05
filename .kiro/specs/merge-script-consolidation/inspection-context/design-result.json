@@ -1,0 +1,223 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-05T10:15:00Z",
+  "checks": [
+    {
+      "id": "design-component-merge-spec-sh",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh found at expected path with all required functionality (Req 1.1-1.8, 6.1-6.7)",
+      "evidence": [".kiro/scripts/merge-spec.sh"]
+    },
+    {
+      "id": "design-component-merge-bug-sh",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-bug.sh (NEW) found at expected path with all required functionality (Req 2.1-2.8, 6.1-6.7)",
+      "evidence": [".kiro/scripts/merge-bug.sh"]
+    },
+    {
+      "id": "design-component-spec-merge-md",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-merge.md found at expected path with updated merge-spec.sh integration (Req 4.1-4.3)",
+      "evidence": [".claude/commands/kiro/spec-merge.md"]
+    },
+    {
+      "id": "design-component-bug-merge-md",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bug-merge.md found at expected path with merge-bug.sh integration (Req 5.1-5.3)",
+      "evidence": [".claude/commands/kiro/bug-merge.md"]
+    },
+    {
+      "id": "design-component-template-merge-spec-sh",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-spec.sh found at expected path with identical implementation",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/merge-spec.sh"]
+    },
+    {
+      "id": "design-component-template-merge-bug-sh",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-bug.sh (NEW) found at expected path with identical implementation",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/merge-bug.sh"]
+    },
+    {
+      "id": "design-component-ccSddWorkflowInstaller",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ccSddWorkflowInstaller.ts found with updated HELPER_SCRIPTS constant (Req 3.1-3.2)",
+      "evidence": ["electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.ts"]
+    },
+    {
+      "id": "design-deletion-update-spec-for-deploy-sh",
+      "category": "file-deletion",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "update-spec-for-deploy.sh successfully deleted (Req 3.1)",
+      "evidence": [".kiro/scripts/update-spec-for-deploy.sh - NOT FOUND (expected)"]
+    },
+    {
+      "id": "design-deletion-update-bug-for-deploy-sh",
+      "category": "file-deletion",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "update-bug-for-deploy.sh successfully deleted (Req 3.2)",
+      "evidence": [".kiro/scripts/update-bug-for-deploy.sh - NOT FOUND (expected)"]
+    },
+    {
+      "id": "design-deletion-template-update-spec-for-deploy-sh",
+      "category": "file-deletion",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template update-spec-for-deploy.sh successfully deleted",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/update-spec-for-deploy.sh - NOT FOUND (expected)"]
+    },
+    {
+      "id": "design-deletion-template-update-bug-for-deploy-sh",
+      "category": "file-deletion",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template update-bug-for-deploy.sh successfully deleted",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/update-bug-for-deploy.sh - NOT FOUND (expected)"]
+    },
+    {
+      "id": "design-interface-merge-spec-sh",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh interface matches design: Usage: merge-spec.sh <feature-name>, Exit codes: 0 (Success), 1 (Conflict), 2 (Error)",
+      "evidence": ["Lines 8-12: Usage and exit code documentation matches design spec"]
+    },
+    {
+      "id": "design-interface-merge-bug-sh",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-bug.sh interface matches design: Usage: merge-bug.sh <bug-name>, Exit codes: 0 (Success), 1 (Conflict), 2 (Error)",
+      "evidence": ["Lines 8-12: Usage and exit code documentation matches design spec"]
+    },
+    {
+      "id": "design-interface-helper-scripts-constant",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HELPER_SCRIPTS constant updated with correct scripts: merge-spec.sh, merge-bug.sh, create-spec-worktree.sh, create-bug-worktree.sh",
+      "evidence": ["ccSddWorkflowInstaller.ts lines 139-144: HELPER_SCRIPTS = ['merge-spec.sh', 'merge-bug.sh', 'create-spec-worktree.sh', 'create-bug-worktree.sh']"]
+    },
+    {
+      "id": "design-interface-spec-merge-md-script-call",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-merge.md correctly calls merge-spec.sh (Req 4.2), no reference to update-spec-for-deploy.sh (Req 4.1)",
+      "evidence": ["Line 193: bash .kiro/scripts/merge-spec.sh $1", "No occurrences of update-spec-for-deploy.sh"]
+    },
+    {
+      "id": "design-interface-bug-merge-md-script-call",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bug-merge.md correctly calls merge-bug.sh (Req 5.2), no reference to update-bug-for-deploy.sh (Req 5.1)",
+      "evidence": ["Line 108: bash .kiro/scripts/merge-bug.sh $1", "No occurrences of update-bug-for-deploy.sh"]
+    },
+    {
+      "id": "design-req-1.1-branch-read-before-update",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh reads worktree.branch BEFORE updating JSON (Req 1.1)",
+      "evidence": ["Line 54: FEATURE_BRANCH=$(jq -r '.worktree.branch' \"$SPEC_JSON\") - executed before Phase 2 JSON update"]
+    },
+    {
+      "id": "design-req-1.2-branch-check",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh checks main/master/dev branch and exits with code 2 if not (Req 1.2, 6.4)",
+      "evidence": ["Lines 35-39: Branch check with exit 2 on failure"]
+    },
+    {
+      "id": "design-req-2.1-bug-branch-read-before-update",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-bug.sh reads worktree.branch BEFORE updating JSON (Req 2.1)",
+      "evidence": ["Line 54: BUGFIX_BRANCH=$(jq -r '.worktree.branch' \"$BUG_JSON\") - executed before Phase 2 JSON update"]
+    },
+    {
+      "id": "design-req-6.1-jq-check",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Both scripts check jq installation with exit 2 and install instructions (Req 6.1)",
+      "evidence": ["merge-spec.sh lines 29-32", "merge-bug.sh lines 29-32"]
+    },
+    {
+      "id": "design-req-6.6-worktree-cleanup-warning",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Both scripts output warning on worktree cleanup failure and continue (Req 6.6)",
+      "evidence": ["merge-spec.sh lines 135-144", "merge-bug.sh lines 135-144"]
+    },
+    {
+      "id": "design-req-6.7-branch-cleanup-warning",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Both scripts output warning on branch deletion failure and continue (Req 6.7)",
+      "evidence": ["merge-spec.sh lines 147-156", "merge-bug.sh lines 147-156"]
+    },
+    {
+      "id": "steering-tech-bash-jq",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation uses Bash and jq as specified in tech.md and design.md Technology Stack",
+      "evidence": ["Scripts use #!/bin/bash shebang", "jq dependency documented in Requirements header"]
+    },
+    {
+      "id": "steering-structure-scripts-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Scripts placed in .kiro/scripts/ directory per structure.md patterns",
+      "evidence": [".kiro/scripts/merge-spec.sh", ".kiro/scripts/merge-bug.sh"]
+    },
+    {
+      "id": "steering-product-workflow-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product.md Spec/Bug lifecycle management capabilities",
+      "evidence": ["product.md mentions Spec and Bug workflow management as core capabilities"]
+    },
+    {
+      "id": "design-test-helper-scripts-constant",
+      "category": "test-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ccSddWorkflowInstaller.test.ts verifies HELPER_SCRIPTS contains merge-spec.sh and merge-bug.sh",
+      "evidence": ["Lines 835-837: expect(HELPER_SCRIPTS).toContain('merge-spec.sh'), expect(HELPER_SCRIPTS).toContain('merge-bug.sh'), expect(HELPER_SCRIPTS.length).toBe(4)"]
+    }
+  ],
+  "stats": {
+    "total": 26,
+    "passed": 26,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 26
+  }
+}

@@ -75,51 +75,70 @@ cd "${WORKTREE_ABSOLUTE_PATH}" && git status --porcelain
    ```
 2. Log: "Worktree内の未コミット変更をコミットしました"
 
-#### 2.3: Update bug.json in Worktree
-Update bug.json to remove worktree field **in the worktree** using the helper script, so it's included in the squash merge.
-
-**merge-helper-scripts**: Use the helper script to ensure reliable execution in the worktree directory.
-
-1. Change directory to worktree and execute the script:
-   ```bash
-   cd "${WORKTREE_ABSOLUTE_PATH}" && .kiro/scripts/update-bug-for-deploy.sh $1
-   ```
-
-The script will:
-- Remove the `worktree` property from bug.json
-- Update `updated_at` to current UTC timestamp
-- Stage and commit the changes
-
-#### 2.4: Return to Main Project
+#### 2.3: Return to Main Project
 ```bash
 cd "$PROJECT_ROOT"
 ```
 
 ### Step 3: Perform Merge
 
-> **Note**: All changes (implementation + bug.json update) are already committed in the worktree.
-> Squash merge will include everything - no `git add` needed on main branch.
+> **Note**: merge-bug.sh handles all operations:
+> - Read worktree.branch before any JSON updates
+> - Update bug.json in worktree (remove worktree field, update updated_at)
+> - Commit bug.json changes in worktree
+> - Perform squash merge (jj or git fallback)
+> - Cleanup worktree and branch
 
-1. Fetch latest changes:
-   ```bash
-   git fetch origin
-   ```
-2. Verify main branch is clean:
-   ```bash
-   git status --porcelain
-   ```
-   - If there are uncommitted changes, warn and continue (they will NOT be included in merge)
-3. Merge the bugfix branch with squash:
-   ```bash
-   git merge --squash {worktree.branch}
-   ```
-4. If merge succeeds without conflicts:
-   - Create merge commit:
-     ```bash
-     git commit -m "fix($1): {bug summary from report.md}"
-     ```
-5. If merge has conflicts:
-   - Attempt AI-powered conflict resolution (see Step 4)
+**jj-merge-support**: Use the helper script to execute merge with jj/git fallback.
+
+#### 3.1: Check Script Existence
+Verify merge-bug.sh script is installed:
+```bash
+[ -f ".kiro/scripts/merge-bug.sh" ] && echo "OK" || echo "NOT_FOUND"
+```
+
+**IF** script not found:
+- **Error**: "merge-bug.sh not found at .kiro/scripts/merge-bug.sh"
+- **Suggested Action**: "Run commandset install to deploy helper scripts"
+- **EXIT** (do not proceed)
+
+#### 3.2: Execute Merge Script
+Run the merge script with bug name:
+```bash
+bash .kiro/scripts/merge-bug.sh $1
+```
+
+The script will:
+- Check current branch is main/master/dev (exit 2 if not)
+- Read worktree.branch from bug.json BEFORE any updates
+- Update bug.json in worktree: remove worktree field, update updated_at
+- Commit bug.json changes in worktree
+- Perform squash merge (jj squash or git merge --squash)
+- Commit merged changes on main
+- Remove worktree directory
+- Delete bugfix branch
+- Return exit code: 0 (success), 1 (conflict), 2 (error)
+
+#### 3.3: Check Exit Code
+Capture the exit code and handle accordingly:
+
+**Exit Code 0 (Success)**:
+- Log: "Merge completed successfully"
+- **Go to Step 6** (Report Success)
+
+**Exit Code 1 (Conflict)**:
+- Log: "Merge has conflicts - attempting AI-powered resolution"
+- **Go to Step 4** (Conflict Resolution)
+
+**Exit Code 2 (Error)**:
+- **Error**: "Merge script failed with exit code 2"
+- Display script error output (stderr)
+- **Suggested Action**:
+  - If jq missing: "Install jq: brew install jq"
+  - If bug.json missing: "bug.json not found in expected location"
+  - If wrong branch: "Must be on main/master/dev branch"
+  - If permission denied: "Grant execute permission: chmod +x .kiro/scripts/merge-bug.sh"
+- **EXIT** (do not proceed)
 
 ### Step 4: Conflict Resolution (if needed)
 **Maximum 7 attempts** - Track attempt count and exit after 7 failures.
@@ -203,9 +222,15 @@ Initialize: `attempt_count = 0`, `max_attempts = 7`
 - **EXIT** (do not continue to Step 5)
 
 ### Step 5: Cleanup Worktree
-Only proceed if merge was successful (Step 3 or Step 4 completed).
+**jj-merge-support**: Cleanup is handled by merge-bug.sh script in Step 3.
 
-Use `WORKTREE_ABSOLUTE_PATH` resolved in Step 2.1.
+**IF** Step 3 returned exit code 0:
+- Script already cleaned up worktree and deleted branch
+- **Skip this step** (Go to Step 6)
+
+**IF** Step 4 (Conflict Resolution) succeeded:
+- Conflicts resolved manually, need to cleanup
+- Use `WORKTREE_ABSOLUTE_PATH` resolved in Step 2.1
 
 #### 5.1: Remove Worktree Directory
 ```bash

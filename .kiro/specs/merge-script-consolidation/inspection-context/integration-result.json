@@ -1,0 +1,313 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T10:30:00Z",
+  "checks": [
+    {
+      "id": "task-1",
+      "checkType": "task-completion",
+      "target": "1. merge-spec.sh の責務統合",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete"
+    },
+    {
+      "id": "task-2",
+      "checkType": "task-completion",
+      "target": "2. merge-bug.sh の新規作成",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete"
+    },
+    {
+      "id": "task-3",
+      "checkType": "task-completion",
+      "target": "3. 不要スクリプトの削除",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 marked as complete"
+    },
+    {
+      "id": "task-4",
+      "checkType": "task-completion",
+      "target": "4. コマンドプロンプトの更新",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete"
+    },
+    {
+      "id": "task-4.2",
+      "checkType": "task-completion",
+      "target": "4.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.2 marked as complete"
+    },
+    {
+      "id": "task-5",
+      "checkType": "task-completion",
+      "target": "5. テンプレート版の同期更新",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 marked as complete"
+    },
+    {
+      "id": "task-5.3",
+      "checkType": "task-completion",
+      "target": "5.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.3 marked as complete"
+    },
+    {
+      "id": "task-5.4",
+      "checkType": "task-completion",
+      "target": "5.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.4 marked as complete"
+    },
+    {
+      "id": "task-6",
+      "checkType": "task-completion",
+      "target": "6. ccSddWorkflowInstaller の更新",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete"
+    },
+    {
+      "id": "task-7",
+      "checkType": "task-completion",
+      "target": "7. 検証",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Parent task marked as complete"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 marked as complete"
+    },
+    {
+      "id": "impl-merge-spec.sh",
+      "checkType": "import",
+      "target": "merge-spec.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-spec.sh exists at .kiro/scripts/merge-spec.sh with consolidated functionality (jq del(.worktree), phase=deploy-complete, git add/commit)",
+      "evidence": [".kiro/scripts/merge-spec.sh"]
+    },
+    {
+      "id": "impl-merge-bug.sh",
+      "checkType": "import",
+      "target": "merge-bug.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "merge-bug.sh exists at .kiro/scripts/merge-bug.sh with consolidated functionality (jq del(.worktree), updated_at, git merge --squash)",
+      "evidence": [".kiro/scripts/merge-bug.sh"]
+    },
+    {
+      "id": "impl-spec-merge.md",
+      "checkType": "usage",
+      "target": "spec-merge.md",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "spec-merge.md updated to use merge-spec.sh only (no update-spec-for-deploy.sh reference)",
+      "evidence": [".claude/commands/kiro/spec-merge.md"]
+    },
+    {
+      "id": "impl-bug-merge.md",
+      "checkType": "usage",
+      "target": "bug-merge.md",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "bug-merge.md updated to use merge-bug.sh only (no update-bug-for-deploy.sh reference)",
+      "evidence": [".claude/commands/kiro/bug-merge.md"]
+    },
+    {
+      "id": "impl-template-merge-spec.sh",
+      "checkType": "import",
+      "target": "template-merge-spec.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-spec.sh exists and matches .kiro/scripts/merge-spec.sh",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/merge-spec.sh"]
+    },
+    {
+      "id": "impl-template-merge-bug.sh",
+      "checkType": "import",
+      "target": "template-merge-bug.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template merge-bug.sh exists and matches .kiro/scripts/merge-bug.sh",
+      "evidence": ["electron-sdd-manager/resources/templates/scripts/merge-bug.sh"]
+    },
+    {
+      "id": "impl-ccSddWorkflowInstaller",
+      "checkType": "usage",
+      "target": "ccSddWorkflowInstaller.ts HELPER_SCRIPTS",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HELPER_SCRIPTS array includes merge-spec.sh and merge-bug.sh, and excludes update-*-for-deploy.sh",
+      "evidence": ["electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.ts:139-144"]
+    },
+    {
+      "id": "impl-ccSddWorkflowInstaller-test",
+      "checkType": "usage",
+      "target": "ccSddWorkflowInstaller.test.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tests updated to reference merge-spec.sh and merge-bug.sh in helper scripts tests",
+      "evidence": ["electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.test.ts:719-847"]
+    },
+    {
+      "id": "delete-update-spec-for-deploy.sh",
+      "checkType": "wiring",
+      "target": ".kiro/scripts/update-spec-for-deploy.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File does not exist (deleted as expected)"
+    },
+    {
+      "id": "delete-update-bug-for-deploy.sh",
+      "checkType": "wiring",
+      "target": ".kiro/scripts/update-bug-for-deploy.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File does not exist (deleted as expected)"
+    },
+    {
+      "id": "delete-template-update-spec-for-deploy.sh",
+      "checkType": "wiring",
+      "target": "electron-sdd-manager/resources/templates/scripts/update-spec-for-deploy.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File does not exist (deleted as expected)"
+    },
+    {
+      "id": "delete-template-update-bug-for-deploy.sh",
+      "checkType": "wiring",
+      "target": "electron-sdd-manager/resources/templates/scripts/update-bug-for-deploy.sh",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "File does not exist (deleted as expected)"
+    },
+    {
+      "id": "template-spec-merge-outdated",
+      "checkType": "wiring",
+      "target": "electron-sdd-manager/resources/templates/commands/cc-sdd-agent/spec-merge.md",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template spec-merge.md now correctly references merge-spec.sh (Step 3.1/3.2). No update-spec-for-deploy.sh references found.",
+      "evidence": ["electron-sdd-manager/resources/templates/commands/cc-sdd-agent/spec-merge.md:180-194"]
+    },
+    {
+      "id": "template-bug-merge-outdated",
+      "checkType": "wiring",
+      "target": "electron-sdd-manager/resources/templates/commands/bug/bug-merge.md",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Template bug-merge.md now correctly references merge-bug.sh (Step 3.1/3.2). No update-bug-for-deploy.sh references found.",
+      "evidence": ["electron-sdd-manager/resources/templates/commands/bug/bug-merge.md:94-109"]
+    },
+    {
+      "id": "placeholder-none",
+      "checkType": "placeholder",
+      "target": "Implementation files",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No spec-related placeholder comments found in implementation files"
+    }
+  ],
+  "stats": {
+    "total": 36,
+    "passed": 36,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 36
+  }
+}

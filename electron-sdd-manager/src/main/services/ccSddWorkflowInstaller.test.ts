@@ -718,13 +718,13 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
     const scriptsDir = path.join(templateDir, 'scripts');
     await fs.mkdir(scriptsDir, { recursive: true });
     await fs.writeFile(
-      path.join(scriptsDir, 'update-spec-for-deploy.sh'),
-      '#!/bin/bash\necho "update-spec-for-deploy"',
+      path.join(scriptsDir, 'merge-spec.sh'),
+      '#!/bin/bash\necho "merge-spec"',
       'utf-8'
     );
     await fs.writeFile(
-      path.join(scriptsDir, 'update-bug-for-deploy.sh'),
-      '#!/bin/bash\necho "update-bug-for-deploy"',
+      path.join(scriptsDir, 'merge-bug.sh'),
+      '#!/bin/bash\necho "merge-bug"',
       'utf-8'
     );
   });
@@ -741,14 +741,14 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.installed).toContain('update-spec-for-deploy.sh');
-        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+        expect(result.value.installed).toContain('merge-spec.sh');
+        expect(result.value.installed).toContain('merge-bug.sh');
         expect(result.value.installed.length).toBe(2);
       }
 
       // Verify files were created
-      const specScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
-      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'update-bug-for-deploy.sh');
+      const specScript = path.join(tempDir, '.kiro', 'scripts', 'merge-spec.sh');
+      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'merge-bug.sh');
       expect(await fileExists(specScript)).toBe(true);
       expect(await fileExists(bugScript)).toBe(true);
     });
@@ -756,8 +756,8 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
     it('should set executable permission on installed scripts', async () => {
       await installer.installScripts(tempDir);
 
-      const specScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
-      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'update-bug-for-deploy.sh');
+      const specScript = path.join(tempDir, '.kiro', 'scripts', 'merge-spec.sh');
+      const bugScript = path.join(tempDir, '.kiro', 'scripts', 'merge-bug.sh');
 
       // Check file mode includes executable bit (0o100 for owner execute)
       const specStat = await fs.stat(specScript);
@@ -778,7 +778,7 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
 
     it('should skip existing scripts when force is false', async () => {
       // Pre-create a script
-      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'merge-spec.sh');
       await fs.mkdir(path.dirname(existingScript), { recursive: true });
       await fs.writeFile(existingScript, '#!/bin/bash\necho "custom script"', 'utf-8');
 
@@ -786,8 +786,8 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.skipped).toContain('update-spec-for-deploy.sh');
-        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+        expect(result.value.skipped).toContain('merge-spec.sh');
+        expect(result.value.installed).toContain('merge-bug.sh');
       }
 
       // Verify existing script was not overwritten
@@ -797,7 +797,7 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
 
     it('should overwrite existing scripts when force is true', async () => {
       // Pre-create a script
-      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'update-spec-for-deploy.sh');
+      const existingScript = path.join(tempDir, '.kiro', 'scripts', 'merge-spec.sh');
       await fs.mkdir(path.dirname(existingScript), { recursive: true });
       await fs.writeFile(existingScript, '#!/bin/bash\necho "custom script"', 'utf-8');
 
@@ -805,13 +805,13 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.overwritten).toContain('update-spec-for-deploy.sh');
-        expect(result.value.installed).toContain('update-bug-for-deploy.sh');
+        expect(result.value.overwritten).toContain('merge-spec.sh');
+        expect(result.value.installed).toContain('merge-bug.sh');
       }
 
       // Verify script was overwritten
       const content = await fs.readFile(existingScript, 'utf-8');
-      expect(content).toContain('update-spec-for-deploy');
+      expect(content).toContain('merge-spec');
     });
 
     it('should return empty result when no script templates exist', async () => {
@@ -832,8 +832,8 @@ describe('CcSddWorkflowInstaller - Helper Scripts', () => {
     it('should define the expected helper scripts', async () => {
       // Import constant to test
       const { HELPER_SCRIPTS } = await import('./ccSddWorkflowInstaller');
-      expect(HELPER_SCRIPTS).toContain('update-spec-for-deploy.sh');
-      expect(HELPER_SCRIPTS).toContain('update-bug-for-deploy.sh');
+      expect(HELPER_SCRIPTS).toContain('merge-spec.sh');
+      expect(HELPER_SCRIPTS).toContain('merge-bug.sh');
       expect(HELPER_SCRIPTS.length).toBe(4);
     });
 

@@ -1,0 +1,131 @@
+{
+  "spec_overview": "Spec/Bug マージワークフローの責務統合。update-*-for-deploy.sh を削除し、merge-spec.sh/merge-bug.sh に全処理を統合することでタイミング問題を解決する。",
+  "key_components": [
+    {
+      "name": "merge-spec.sh",
+      "type": "service",
+      "path": ".kiro/scripts/merge-spec.sh",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7"]
+    },
+    {
+      "name": "merge-bug.sh",
+      "type": "service",
+      "path": ".kiro/scripts/merge-bug.sh",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7"]
+    },
+    {
+      "name": "spec-merge.md",
+      "type": "component",
+      "path": ".claude/commands/kiro/spec-merge.md",
+      "requirements": ["4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "bug-merge.md",
+      "type": "component",
+      "path": ".claude/commands/kiro/bug-merge.md",
+      "requirements": ["5.1", "5.2", "5.3"]
+    },
+    {
+      "name": "template-merge-spec.sh",
+      "type": "service",
+      "path": "electron-sdd-manager/resources/templates/scripts/merge-spec.sh",
+      "requirements": ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"]
+    },
+    {
+      "name": "template-merge-bug.sh",
+      "type": "service",
+      "path": "electron-sdd-manager/resources/templates/scripts/merge-bug.sh",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"]
+    },
+    {
+      "name": "ccSddWorkflowInstaller",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.ts",
+      "requirements": ["3.1", "3.2"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "spec-merge.md",
+      "target": "merge-spec.sh",
+      "type": "call"
+    },
+    {
+      "source": "bug-merge.md",
+      "target": "merge-bug.sh",
+      "type": "call"
+    },
+    {
+      "source": "ccSddWorkflowInstaller",
+      "target": "template-merge-spec.sh",
+      "type": "import"
+    },
+    {
+      "source": "ccSddWorkflowInstaller",
+      "target": "template-merge-bug.sh",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": ".kiro/scripts/merge-spec.sh",
+      "action": "UPDATE",
+      "reason": "責務統合（JSON 更新処理の追加）"
+    },
+    {
+      "target": ".kiro/scripts/merge-bug.sh",
+      "action": "CREATE",
+      "reason": "Bug マージ用新規スクリプト"
+    },
+    {
+      "target": ".kiro/scripts/update-spec-for-deploy.sh",
+      "action": "DELETE",
+      "reason": "merge-spec.sh に統合"
+    },
+    {
+      "target": ".kiro/scripts/update-bug-for-deploy.sh",
+      "action": "DELETE",
+      "reason": "merge-bug.sh に統合"
+    },
+    {
+      "target": ".claude/commands/kiro/spec-merge.md",
+      "action": "UPDATE",
+      "reason": "Step 2.3 削除、Step 3 簡素化"
+    },
+    {
+      "target": ".claude/commands/kiro/bug-merge.md",
+      "action": "UPDATE",
+      "reason": "Step 2.3 削除、Step 3 で merge-bug.sh 呼び出し"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/merge-spec.sh",
+      "action": "UPDATE",
+      "reason": "テンプレート版の同期更新"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/merge-bug.sh",
+      "action": "CREATE",
+      "reason": "テンプレート版新規作成"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/update-spec-for-deploy.sh",
+      "action": "DELETE",
+      "reason": "テンプレート版削除"
+    },
+    {
+      "target": "electron-sdd-manager/resources/templates/scripts/update-bug-for-deploy.sh",
+      "action": "DELETE",
+      "reason": "テンプレート版削除"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.ts",
+      "action": "UPDATE",
+      "reason": "HELPER_SCRIPTS リストの更新"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/services/ccSddWorkflowInstaller.test.ts",
+      "action": "UPDATE",
+      "reason": "HELPER_SCRIPTS テストの更新"
+    }
+  ]
+}

@@ -133,11 +133,12 @@ export const CC_SDD_SETTINGS = [
 /**
  * Helper scripts for merge operations
  * Requirements: 3.1, 3.2 (merge-helper-scripts feature)
+ * Requirements: 1.1, 2.1, 3.1, 3.2 (merge-script-consolidation feature)
  * Location: {projectRoot}/.kiro/scripts/
  */
 export const HELPER_SCRIPTS = [
-  'update-spec-for-deploy.sh',
-  'update-bug-for-deploy.sh',
+  'merge-spec.sh',
+  'merge-bug.sh',
   'create-spec-worktree.sh',
   'create-bug-worktree.sh',
 ] as const;

@@ -283,6 +283,15 @@ export function MobileSpecWorkflowView({
     await handleStartAutoExecution();
   }, [handleStartAutoExecution]);
 
+  // remote-ui-task-display Task 5.1: Use useRemoteTaskProgress for task progress
+  // Requirements: 4.1, 4.2, 4.3, 4.4, 5.3
+  // Note: Hook must be called unconditionally at top level (before early returns)
+  const { taskProgress, tasksContent, isLoading: isTaskProgressLoading } = useRemoteTaskProgress({
+    apiClient,
+    specId: spec.name,
+    specDetail,
+  });
+
   // Render loading state
   if (isLoading) {
     return (
@@ -322,14 +331,6 @@ export function MobileSpecWorkflowView({
   }
 
   const phases: WorkflowPhase[] = ['requirements', 'design', 'tasks', 'impl', 'inspection', 'deploy'];
-
-  // remote-ui-task-display Task 5.1: Use useRemoteTaskProgress for task progress
-  // Requirements: 4.1, 4.2, 4.3, 4.4, 5.3
-  const { taskProgress, tasksContent, isLoading: isTaskProgressLoading } = useRemoteTaskProgress({
-    apiClient,
-    specId: spec.name,
-    specDetail,
-  });
 
   return (
     <div data-testid="remote-spec-detail" className="flex flex-col h-full overflow-y-auto">

@@ -1689,7 +1689,7 @@ describe('SpecToolHandlers', () => {
       getAllAgents: Mock;
     };
     let mockLogFileService: {
-      readLog: Mock;
+      readLogWithFallback: Mock;
     };
 
     beforeEach(() => {
@@ -1697,7 +1697,7 @@ describe('SpecToolHandlers', () => {
         getAllAgents: vi.fn(),
       };
       mockLogFileService = {
-        readLog: vi.fn(),
+        readLogWithFallback: vi.fn(),
       };
       handlers.setSpecManagerService(mockSpecManagerService as any);
       handlers.setLogFileService(mockLogFileService as any);
@@ -1711,10 +1711,12 @@ describe('SpecToolHandlers', () => {
           ]],
         ])
       );
-      mockLogFileService.readLog.mockResolvedValue([
-        { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
-        { timestamp: '2024-01-01T00:00:01Z', stream: 'stdout', data: 'Log line 2' },
-      ]);
+      mockLogFileService.readLogWithFallback.mockResolvedValue({
+        entries: [
+          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
+          { timestamp: '2024-01-01T00:00:01Z', stream: 'stdout', data: 'Log line 2' },
+        ],
+      });
 
       const result = await handlers.getAgentLogs('test-feature');
 
@@ -1733,13 +1735,15 @@ describe('SpecToolHandlers', () => {
           ]],
         ])
       );
-      mockLogFileService.readLog.mockResolvedValue([
-        { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
-        { timestamp: '2024-01-01T00:00:01Z', stream: 'stdout', data: 'Log line 2' },
-        { timestamp: '2024-01-01T00:00:02Z', stream: 'stdout', data: 'Log line 3' },
-        { timestamp: '2024-01-01T00:00:03Z', stream: 'stdout', data: 'Log line 4' },
-        { timestamp: '2024-01-01T00:00:04Z', stream: 'stdout', data: 'Log line 5' },
-      ]);
+      mockLogFileService.readLogWithFallback.mockResolvedValue({
+        entries: [
+          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
+          { timestamp: '2024-01-01T00:00:01Z', stream: 'stdout', data: 'Log line 2' },
+          { timestamp: '2024-01-01T00:00:02Z', stream: 'stdout', data: 'Log line 3' },
+          { timestamp: '2024-01-01T00:00:03Z', stream: 'stdout', data: 'Log line 4' },
+          { timestamp: '2024-01-01T00:00:04Z', stream: 'stdout', data: 'Log line 5' },
+        ],
+      });
 
       const result = await handlers.getAgentLogs('test-feature', 3);
 
@@ -1771,7 +1775,7 @@ describe('SpecToolHandlers', () => {
           ]],
         ])
       );
-      mockLogFileService.readLog.mockResolvedValue([]);
+      mockLogFileService.readLogWithFallback.mockResolvedValue({ entries: [] });
 
       const result = await handlers.getAgentLogs('test-feature');
 
@@ -1787,7 +1791,7 @@ describe('SpecToolHandlers', () => {
       getAllAgents: Mock;
     };
     let mockLogFileService: {
-      readLog: Mock;
+      readLogWithFallback: Mock;
     };
 
     beforeEach(() => {
@@ -1795,7 +1799,7 @@ describe('SpecToolHandlers', () => {
         getAllAgents: vi.fn(),
       };
       mockLogFileService = {
-        readLog: vi.fn(),
+        readLogWithFallback: vi.fn(),
       };
       handlers.setSpecManagerService(mockSpecManagerService as any);
       handlers.setLogFileService(mockLogFileService as any);
@@ -1809,9 +1813,11 @@ describe('SpecToolHandlers', () => {
           ]],
         ])
       );
-      mockLogFileService.readLog.mockResolvedValue([
-        { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
-      ]);
+      mockLogFileService.readLogWithFallback.mockResolvedValue({
+        entries: [
+          { timestamp: '2024-01-01T00:00:00Z', stream: 'stdout', data: 'Log line 1' },
+        ],
+      });
 
       const result = await handlers.getAgentLogsToolHandler(
         { name: 'test-feature' },

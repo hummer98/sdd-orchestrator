@@ -610,7 +610,7 @@ describe('SharedAgentStore', () => {
       isReattached?: boolean,
       exitReason?: string
     ): AgentInfo => ({
-      id,
+      agentId: id,
       specId,
       status,
       startedAt: new Date().toISOString(),
@@ -776,7 +776,7 @@ describe('SharedAgentStore', () => {
       const freshState = getSharedAgentStore();
       const logs = freshState.getLogsForAgent('agent-1');
       expect(logs).toHaveLength(1);
-      expect(logs[0].agentId).toBe('log-parsed');
+      expect(logs[0].id).toBe('log-parsed');
     });
 
     it('should return ParsedLogEntry[] from getLogsForAgent (Requirement 4.1)', () => {

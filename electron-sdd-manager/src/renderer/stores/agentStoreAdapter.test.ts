@@ -113,10 +113,10 @@ describe('agentStoreAdapter', () => {
         // zustand-agent-selector-hooks: Verify agent was added to shared store
         // Use agents Map directly since getAgentsForSpec was removed
         const state = getSharedAgentStore();
-        const agents = state.getAgentsForSpec('spec-a');
+        const agents = state.agents.get('spec-a');
         expect(agents).toHaveLength(1);
         // agentId-unification: Use agentId instead of id
-        expect(agents[0].agentId).toBe('agent-1');
+        expect(agents![0].agentId).toBe('agent-1');
       });
 
       it('should return null on error', async () => {

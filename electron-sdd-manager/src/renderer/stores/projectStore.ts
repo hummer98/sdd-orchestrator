@@ -117,7 +117,6 @@ export interface AddPermissionsResult {
 interface ProjectActions {
   selectProject: (path: string) => Promise<void>;
   loadRecentProjects: () => Promise<void>;
-  loadInitialProject: () => Promise<void>;
   clearProject: () => void;
   clearError: () => void;
   // spec-manager extensions
@@ -431,17 +430,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }
   },
 
-  loadInitialProject: async () => {
-    try {
-      const initialPath = await window.electronAPI.getInitialProjectPath();
-      if (initialPath) {
-        // If initial project path was provided via command line, select it
-        await get().selectProject(initialPath);
-      }
-    } catch (error) {
-      console.error('Failed to load initial project:', error);
-    }
-  },
 
   clearProject: () => {
     set({

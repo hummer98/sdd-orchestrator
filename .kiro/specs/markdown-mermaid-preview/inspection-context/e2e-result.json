@@ -1,0 +1,229 @@
+{
+  "agent": "e2e-runner",
+  "timestamp": "2026-02-05T05:16:44Z",
+  "mode": "Full",
+  "autofixCycle": 6,
+  "autofixNote": "Final autofix attempt with all 5 fixes applied. Test still fails - specs array remains empty after 15 second wait.",
+  "previousFixes": [
+    "Cycle 1: Added testId='artifact-editor' to ArtifactEditor in CenterPaneContainer.tsx",
+    "Cycle 2: Added waitForCondition for artifact-editor and design-tab in UJ-001 test, extended Remote UI timeout",
+    "Cycle 3: Added waitForSpecDetailReady(SPEC_NAME, 15000) call in before hook",
+    "Cycle 4: Modified selectSpecViaStore() helper to call loadSpecDetail(specId) after selectSpec()",
+    "Cycle 5: Confirmed loadSpecDetail fix applied - but underlying issue is that specs array is empty",
+    "Cycle 6: selectSpecViaStore now waits for specStore.specs to be populated (15s timeout) - still fails because specs never load"
+  ],
+  "environmentCheck": {
+    "electronStopped": true,
+    "port9222Available": true,
+    "buildComplete": true,
+    "lockAcquired": true,
+    "errors": []
+  },
+  "checks": [
+    {
+      "id": "e2e-before-hook",
+      "journeyId": null,
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "before all hook",
+      "status": "FAIL",
+      "failureType": "Critical",
+      "duration": 1300,
+      "error": "selectSpecViaStore returned false - specStore.specs remained empty after 15 second wait",
+      "evidence": {
+        "screenshot": null,
+        "consoleLogs": [
+          "[E2E] specs-array-loaded TIMEOUT after 30 iterations. Final state: isAutoExecuting=false, status=idle, phase=null",
+          "[E2E] Timeout waiting for specs to load",
+          "[E2E] selectSpecViaStore - Spec mermaid-feature not found: id: mermaid-feature Available:"
+        ],
+        "codeLocation": "auto-execution.helpers.ts:167-216 - selectSpecViaStore() with waitForCondition for specs.length > 0"
+      }
+    },
+    {
+      "id": "e2e-uj-001-display",
+      "journeyId": "UJ-001",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should display ArtifactEditor with design tab",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-001-render-svg",
+      "journeyId": "UJ-001",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should render Mermaid diagrams as SVG in preview mode",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-001-multiple-diagrams",
+      "journeyId": "UJ-001",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should render multiple Mermaid diagrams (Req 4.2)",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-001-non-mermaid-blocks",
+      "journeyId": "UJ-001",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should not affect non-Mermaid code blocks (Req 2.3)",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-002-realtime",
+      "journeyId": "UJ-002",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should update preview when Mermaid code is changed",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-003-error",
+      "journeyId": "UJ-003",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should display error message for invalid Mermaid syntax",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-005-connect",
+      "journeyId": "UJ-005",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should connect to Remote UI",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-005-speclist",
+      "journeyId": "UJ-005",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should display Spec list in Remote UI",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-005-select",
+      "journeyId": "UJ-005",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should select spec and display ArtifactEditor",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-uj-005-render",
+      "journeyId": "UJ-005",
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should render Mermaid diagrams in Remote UI preview",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-security-context-isolation",
+      "journeyId": null,
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should have contextIsolation enabled",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-security-node-integration",
+      "journeyId": null,
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should have nodeIntegration disabled",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    },
+    {
+      "id": "e2e-stability-no-crash",
+      "journeyId": null,
+      "testFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+      "testName": "should not crash during Mermaid rendering operations",
+      "status": "SKIP",
+      "failureType": null,
+      "duration": 0,
+      "error": "Skipped due to before hook failure"
+    }
+  ],
+  "stats": {
+    "total": 14,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 13,
+    "critical": 1,
+    "warning": 0,
+    "info": 0
+  },
+  "rootCauseAnalysis": {
+    "primaryIssue": "specStore.specs array never gets populated after project selection in E2E context",
+    "failureSequence": [
+      "1. selectProjectViaStore(FIXTURE_PROJECT_PATH) - SUCCESS (lastSelectResult.success = true)",
+      "2. waitForProjectUIReady(10000) - SUCCESS (docs-tabs visible)",
+      "3. selectSpecViaStore wait for specs - TIMEOUT after 15 seconds (30 iterations x 500ms)",
+      "4. selectSpecViaStore find spec - FAIL (specs array is empty)",
+      "5. Test assertion fails: expect(specSelected).toBe(true)"
+    ],
+    "observations": [
+      "The fix from cycle 5 (wait for specs.length > 0) is now in place",
+      "Wait loop ran 30 iterations at 500ms intervals = 15 seconds",
+      "specs array remained empty throughout the entire 15 second wait",
+      "This indicates specs loading never triggers, not just that it's slow",
+      "selectProject IPC succeeds but does not trigger spec scanning"
+    ],
+    "keyInsight": "The spec loading mechanism is not triggered when project is selected via store.selectProject(). The UI docs-tabs appear but specs array stays empty. This suggests spec scanning requires a trigger that is missing in the E2E store-based project selection flow.",
+    "possibleCauses": [
+      "Spec scanning may be triggered by React useEffect hooks in UI components that don't run when using direct store manipulation",
+      "The IPC handler for selectProject may not call the spec scanning function",
+      "There may be a subscription mechanism that is not properly initialized in E2E context"
+    ],
+    "codeEvidence": {
+      "selectSpecViaStore": "waitForCondition(() => specStore.specs.length > 0, 15000, 500, 'specs-array-loaded')",
+      "errorLog": "[E2E] specs-array-loaded TIMEOUT after 30 iterations"
+    },
+    "suggestedFixes": [
+      {
+        "priority": 1,
+        "location": "mermaid-preview.e2e.spec.ts before hook",
+        "change": "Explicitly call specStore.refreshSpecs() after project selection",
+        "implementation": "Add browser.execute(() => stores.spec.getState().refreshSpecs()) after waitForProjectUIReady"
+      },
+      {
+        "priority": 2,
+        "location": "auto-execution.helpers.ts - selectProjectViaStore",
+        "change": "Trigger spec refresh after successful project selection",
+        "implementation": "Call specStore.refreshSpecs() or specStore.loadSpecs(projectPath) after selectProject succeeds"
+      },
+      {
+        "priority": 3,
+        "location": "Application code - projectStore.selectProject",
+        "change": "Ensure spec scanning is triggered when project is selected programmatically",
+        "implementation": "Add specStore.refreshSpecs() call in selectProject action"
+      }
+    ]
+  }
+}

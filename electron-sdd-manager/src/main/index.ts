@@ -8,7 +8,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { registerIpcHandlers, setProjectPath, setInitialProjectPath } from './ipc/handlers';
+import { registerIpcHandlers, setInitialProjectPath, selectProject } from './ipc/handlers';
 import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
@@ -264,6 +264,7 @@ app.whenReady().then(async () => {
   await initializeMcpServer(() => configStore.getMcpSettings());
 
   // Initialize with project path from command line if provided
+  // Main process owns project selection - Renderer should not call selectProject again
   if (initialProjectPath) {
     logger.info('[main] Initial project path from command line', { initialProjectPath });
 
@@ -271,15 +272,26 @@ app.whenReady().then(async () => {
     if (existsSync(initialProjectPath)) {
       try {
         // Set the initial project path for IPC queries from renderer
+        // This allows Renderer to know the initial path without calling selectProject
         setInitialProjectPath(initialProjectPath);
 
-        // setProjectPath initializes AgentRecordService and AgentLifecycleManager
-        await setProjectPath(initialProjectPath);
-        logger.info('[main] SpecManagerService initialized with project path', { initialProjectPath });
-
-        // Add to recent projects
-        const configStore = getConfigStore();
-        configStore.addRecentProject(initialProjectPath);
+        // selectProject handles full initialization including:
+        // - setProjectPath (AgentRecordService, AgentLifecycleManager)
+        // - Loading specs, bugs, validation
+        // - Adding to recent projects
+        const result = await selectProject(initialProjectPath);
+        if (result.success) {
+          logger.info('[main] Initial project selected successfully', {
+            initialProjectPath,
+            specsCount: result.specs.length,
+            bugsCount: result.bugs.length,
+          });
+        } else {
+          logger.error('[main] Failed to select initial project', {
+            initialProjectPath,
+            error: result.error,
+          });
+        }
       } catch (error) {
         logger.error('[main] Failed to initialize with project path', { error, initialProjectPath });
       }

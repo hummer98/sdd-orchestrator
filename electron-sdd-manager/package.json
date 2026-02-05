@@ -40,6 +40,7 @@
     "electron-store": "^8.2.0",
     "express": "^5.1.0",
     "lucide-react": "^0.554.0",
+    "mermaid": "^11.12.2",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-diff-view": "^3.3.2",

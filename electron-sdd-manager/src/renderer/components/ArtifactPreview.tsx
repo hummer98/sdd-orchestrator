@@ -10,6 +10,7 @@ import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import type { ArtifactInfo } from '../types';
 import { REQUIRED_ARTIFACT_TABS } from '../../shared/constants/artifacts';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 // ============================================================
 // Task 6.1: ArtifactPreview Types
@@ -123,7 +124,12 @@ function ArtifactItem({ name, artifact, isExpanded, onToggle }: ArtifactItemProp
           className="border-t border-gray-200 dark:border-gray-700"
         >
           <div className="p-4 max-h-96 overflow-y-auto" data-color-mode="dark">
-            <MDEditor.Markdown source={content} />
+            <MDEditor.Markdown
+              source={content}
+              components={{
+                code: MermaidCodeRenderer,
+              }}
+            />
           </div>
         </div>
       )}

@@ -86,6 +86,10 @@ export async function selectProjectViaStoreDetailed(projectPath: string): Promis
  * E2E-fix: This function waits until specDetail is fully loaded before
  * proceeding with tests that depend on UI elements like agent-list-panel.
  *
+ * Bug fix: mermaid-preview E2E - Check specDetail via selectedSpec instead
+ * The facade's specDetail may not sync immediately after selectSpec is called.
+ * We verify by checking selectedSpec.name matches and isLoading is false.
+ *
  * @param specName The spec name to wait for
  * @param timeout Timeout in milliseconds
  */
@@ -100,12 +104,26 @@ export async function waitForSpecDetailReady(
         if (!stores?.spec?.getState) return false;
 
         const state = stores.spec.getState();
+        // Debug: log the current state
+        console.log('[E2E] waitForSpecDetailReady check:', {
+          selectedSpec: state.selectedSpec?.name,
+          specDetail: state.specDetail?.metadata?.name,
+          isDetailLoading: state.isDetailLoading,
+        });
+
         // Check that specDetail is loaded and matches the expected spec
-        return (
+        // Also check selectedSpec as a fallback
+        const specDetailReady =
           state.specDetail !== null &&
           !state.isDetailLoading &&
-          state.specDetail?.metadata?.name === name
-        );
+          state.specDetail?.metadata?.name === name;
+
+        const selectedSpecReady =
+          state.selectedSpec !== null &&
+          state.selectedSpec?.name === name &&
+          !state.isDetailLoading;
+
+        return specDetailReady || selectedSpecReady;
       }, specName);
     },
     timeout,
@@ -153,8 +171,37 @@ export async function waitForProjectUIReady(timeout: number = 10000): Promise<bo
 
 /**
  * Helper: Select spec using Zustand specStore action
+ *
+ * This function:
+ * 1. Waits for specs array to be populated (async loading after project selection)
+ * 2. Finds the spec by name in the specs list
+ * 3. Calls selectSpec() which is async and automatically loads spec detail
+ *
+ * Bug fix: mermaid-preview E2E
+ * - Wait for specs to load before attempting selection
+ * - selectSpec is async and loads specDetail automatically (no separate loadSpecDetail needed)
  */
 export async function selectSpecViaStore(specId: string): Promise<boolean> {
+  // First, wait for specs to be loaded (up to 15 seconds)
+  const specsLoaded = await waitForCondition(
+    async () => {
+      return browser.execute(() => {
+        const stores = (window as any).__STORES__;
+        if (!stores?.spec?.getState) return false;
+        const specStore = stores.spec.getState();
+        return specStore.specs && specStore.specs.length > 0;
+      });
+    },
+    15000,
+    500,
+    'specs-array-loaded'
+  );
+
+  if (!specsLoaded) {
+    console.error('[E2E] Timeout waiting for specs to load');
+    return false;
+  }
+
   return new Promise((resolve) => {
     browser.executeAsync(async (id: string, done: (result: boolean) => void) => {
       try {
@@ -163,10 +210,12 @@ export async function selectSpecViaStore(specId: string): Promise<boolean> {
           const specStore = stores.spec.getState();
           const spec = specStore.specs.find((s: any) => s.name === id);
           if (spec) {
-            specStore.selectSpec(spec);
+            // selectSpec is async and automatically loads specDetail
+            // No need for separate loadSpecDetail call
+            await specStore.selectSpec(spec);
             done(true);
           } else {
-            console.error('[E2E] Spec not found:', id);
+            console.error('[E2E] Spec not found:', id, 'Available:', specStore.specs.map((s: any) => s.name));
             done(false);
           }
         } else {

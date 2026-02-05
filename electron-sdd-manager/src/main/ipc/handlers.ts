@@ -57,7 +57,7 @@ import { registerMetricsHandlers } from './metricsHandlers';
 import { registerMcpHandlers } from './mcpHandlers';
 import { registerScheduleTaskHandlers, initScheduleTaskCoordinator } from './scheduleTaskHandlers';
 import { registerCloudflareHandlers } from './cloudflareHandlers';
-import { registerConfigHandlers, registerEngineConfigHandlers } from './configHandlers';
+import { registerConfigHandlers, registerEngineConfigHandlers, registerToolPathHandlers } from './configHandlers';
 import { registerInstallHandlers } from './installHandlers';
 import { registerFileHandlers } from './fileHandlers';
 import { registerClipboardHandlers } from './clipboardHandlers';
@@ -448,6 +448,8 @@ export function registerIpcHandlers(): void {
   registerConfigHandlers({ configStore, layoutConfigService });
   // LLM Engine Config handlers (llm-engine-abstraction feature)
   registerEngineConfigHandlers();
+  // Tool Path handlers (well-known-tool-paths feature)
+  registerToolPathHandlers();
   registerInstallHandlers({
     commandInstallerService,
     projectChecker,

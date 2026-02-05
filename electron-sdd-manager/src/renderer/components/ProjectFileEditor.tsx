@@ -17,6 +17,7 @@ import MDEditor from '@uiw/react-md-editor';
 import { clsx } from 'clsx';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import { useNotificationStore } from '@shared/stores/notificationStore';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 export interface ProjectFileEditorProps {
   /** Callback to handle save (receives apiClient internally) */
@@ -170,6 +171,11 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
           preview={mode}
           height="100%"
           hideToolbar={mode === 'preview'}
+          previewOptions={{
+            components: {
+              code: MermaidCodeRenderer,
+            },
+          }}
         />
       </div>
     </div>

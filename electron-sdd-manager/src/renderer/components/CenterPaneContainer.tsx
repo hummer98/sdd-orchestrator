@@ -113,6 +113,7 @@ export function CenterPaneContainer({
             dynamicTabs={dynamicTabs}
             artifacts={artifacts}
             entityType={entityType}
+            testId="artifact-editor"
           />
         ) : (
           <GitView workingPath={worktreePath} />

@@ -1,0 +1,23 @@
+{
+  "feature_name": "mermaid-feature",
+  "name": "mermaid-feature",
+  "description": "Mermaid preview E2E test feature",
+  "phase": "design-approved",
+  "language": "ja",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "createdAt": "2026-02-01T00:00:00.000Z",
+  "updatedAt": "2026-02-01T00:00:00.000Z"
+}

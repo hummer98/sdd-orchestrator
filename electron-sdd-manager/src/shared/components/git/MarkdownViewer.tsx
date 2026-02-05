@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import { Eye, Code } from 'lucide-react';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 export interface MarkdownViewerProps {
   /** Markdown content to display */
@@ -100,7 +101,12 @@ export function MarkdownViewer({
         ) : (
           // Rendered markdown view
           <div className="p-4" data-color-mode="light">
-            <MDEditor.Markdown source={content} />
+            <MDEditor.Markdown
+              source={content}
+              components={{
+                code: MermaidCodeRenderer,
+              }}
+            />
           </div>
         )}
       </div>

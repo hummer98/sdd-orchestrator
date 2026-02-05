@@ -92,7 +92,7 @@ const DEFAULT_LAYOUT = {
 };
 
 export function App() {
-  const { currentProject, kiroValidation, loadInitialProject, loadRecentProjects, selectProject, checkSpecManagerFiles, installedProfile } = useProjectStore();
+  const { currentProject, kiroValidation, loadRecentProjects, selectProject, checkSpecManagerFiles, installedProfile } = useProjectStore();
   const { specDetail } = useSpecStore();
   const { isDirty } = useEditorStore();
   // bugs-view-unification Task 6.1: Use shared bugStore
@@ -233,22 +233,20 @@ export function App() {
     }
   }, []);
 
-  // Load initial project from command line argument and recent projects on mount
-  const initialProjectLoaded = useRef(false);
+  // Load recent projects and layout config on mount
+  // Note: Initial project selection is handled by Main process (via SDD_PROJECT_PATH or CLI args)
+  const initialLoadDone = useRef(false);
   useEffect(() => {
-    if (initialProjectLoaded.current) {
+    if (initialLoadDone.current) {
       return;
     }
-    initialProjectLoaded.current = true;
+    initialLoadDone.current = true;
 
-    // Load recent projects first, then check for initial project
-    // Also load app-wide layout config
+    // Load recent projects and app-wide layout config
     loadRecentProjects().then(async () => {
-      await loadInitialProject();
-      // Load app-wide layout config (no longer project-specific)
       await loadLayout();
     });
-  }, [loadRecentProjects, loadInitialProject, loadLayout]);
+  }, [loadRecentProjects, loadLayout]);
 
   // Setup agent event listeners on mount
   // useRefを使用してStrictModeでの二重実行を防止

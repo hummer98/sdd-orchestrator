@@ -17,6 +17,7 @@ import { Save, AlertCircle, Edit, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import type { ApiClient, ProjectFileInfo } from '@shared/api/types';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 // =============================================================================
 // Types
@@ -213,6 +214,11 @@ export function RemoteProjectEditor({
           hideToolbar={mode === 'preview'}
           enableScroll={true}
           visibleDragbar={false}
+          previewOptions={{
+            components: {
+              code: MermaidCodeRenderer,
+            },
+          }}
         />
       </div>
     </div>

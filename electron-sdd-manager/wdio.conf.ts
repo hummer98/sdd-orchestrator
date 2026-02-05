@@ -65,6 +65,9 @@ export const config: Options.Testrunner = {
           E2E_MOCK_CLAUDE_DELAY: process.env.E2E_MOCK_CLAUDE_DELAY || '0.1',
           E2E_MOCK_DOC_REVIEW_RESULT: process.env.E2E_MOCK_DOC_REVIEW_RESULT || '',
           E2E_MOCK_TASKS_COMPLETE: process.env.E2E_MOCK_TASKS_COMPLETE || 'false',
+          // Allow setting initial project path via environment variable
+          // Usage: SDD_PROJECT_PATH=/path/to/project npm run test:e2e -- --spec ...
+          ...(process.env.SDD_PROJECT_PATH ? { SDD_PROJECT_PATH: process.env.SDD_PROJECT_PATH } : {}),
         },
       },
     },

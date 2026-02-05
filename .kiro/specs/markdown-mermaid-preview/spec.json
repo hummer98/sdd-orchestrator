@@ -1,0 +1,60 @@
+{
+  "feature_name": "markdown-mermaid-preview",
+  "created_at": "2026-02-05T08:30:00Z",
+  "updated_at": "2026-02-05T06:45:15Z",
+  "language": "ja",
+  "phase": "deploy-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "documentReview": {
+    "status": "approved",
+    "roundDetails": [
+      {
+        "roundNumber": 1,
+        "status": "reply_complete",
+        "fixRequired": 1,
+        "needsDiscussion": 0,
+        "fixStatus": "applied"
+      },
+      {
+        "roundNumber": 2,
+        "status": "reply_complete",
+        "fixRequired": 0,
+        "needsDiscussion": 0,
+        "fixStatus": "not_required"
+      }
+    ]
+  },
+  "inspection": {
+    "rounds": [
+      {
+        "number": 1,
+        "result": "nogo",
+        "inspectedAt": "2026-02-05T04:54:04Z"
+      },
+      {
+        "number": 2,
+        "result": "nogo",
+        "inspectedAt": "2026-02-05T05:19:52Z",
+        "fixedAt": "2026-02-05T05:19:52Z"
+      },
+      {
+        "number": 3,
+        "result": "go",
+        "inspectedAt": "2026-02-05T06:43:29Z"
+      }
+    ]
+  }
+}

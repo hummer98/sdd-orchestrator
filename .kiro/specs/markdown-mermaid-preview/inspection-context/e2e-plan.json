@@ -1,0 +1,102 @@
+{
+  "feature": "markdown-mermaid-preview",
+  "generatedAt": "2026-02-05T09:15:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "flow": "ArtifactEditorでMermaid図を含むdesign.mdを開き、プレビューモードに切り替える",
+      "expectedResult": "Mermaid図がSVGとしてレンダリングされる",
+      "e2eRequired": true,
+      "decision": "Execute",
+      "reason": "Covered by existing test suite 'UJ-001: Mermaid SVG rendering in ArtifactEditor' with tests: display ArtifactEditor with design tab, render Mermaid diagrams as SVG in preview mode, render multiple Mermaid diagrams (Req 4.2), not affect non-Mermaid code blocks (Req 2.3)",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts"
+      ],
+      "testDescriptions": [
+        "should display ArtifactEditor with design tab",
+        "should render Mermaid diagrams as SVG in preview mode",
+        "should render multiple Mermaid diagrams (Req 4.2)",
+        "should not affect non-Mermaid code blocks (Req 2.3)"
+      ]
+    },
+    {
+      "journeyId": "UJ-002",
+      "flow": "編集モードでMermaidコードを変更し、プレビューモードで確認する",
+      "expectedResult": "変更がリアルタイムで反映される",
+      "e2eRequired": true,
+      "decision": "Execute",
+      "reason": "Covered by existing test suite 'UJ-002: Real-time preview update' with test: should update preview when Mermaid code is changed",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts"
+      ],
+      "testDescriptions": [
+        "should update preview when Mermaid code is changed"
+      ]
+    },
+    {
+      "journeyId": "UJ-003",
+      "flow": "不正なMermaid構文を入力し、プレビューを確認する",
+      "expectedResult": "エラーメッセージと生コードが表示される",
+      "e2eRequired": true,
+      "decision": "Execute",
+      "reason": "Covered by existing test suite 'UJ-003: Error handling for invalid Mermaid syntax' with test: should display error message for invalid Mermaid syntax. Verifies both error message (Req 2.1) and raw code display (Req 2.2)",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts"
+      ],
+      "testDescriptions": [
+        "should display error message for invalid Mermaid syntax"
+      ]
+    },
+    {
+      "journeyId": "UJ-004",
+      "flow": "複数のMermaidブロックを含むドキュメントをプレビューする",
+      "expectedResult": "すべての図が正しくレンダリングされる",
+      "e2eRequired": false,
+      "decision": "Defer",
+      "reason": "E2E not required per Verification Contract. Functionality is indirectly covered by UJ-001 test 'should render multiple Mermaid diagrams (Req 4.2)' which verifies multiple diagram rendering",
+      "targetTests": [],
+      "testDescriptions": []
+    },
+    {
+      "journeyId": "UJ-005",
+      "flow": "Remote UI版ArtifactEditorでMermaid図をプレビューする",
+      "expectedResult": "Electron版と同様にレンダリングされる",
+      "e2eRequired": true,
+      "decision": "Execute",
+      "reason": "Covered by existing test suite 'UJ-005: Remote UI Mermaid preview' with tests: connect to Remote UI, display Spec list, select spec and display ArtifactEditor, render Mermaid diagrams in Remote UI preview",
+      "targetTests": [
+        "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts"
+      ],
+      "testDescriptions": [
+        "should connect to Remote UI",
+        "should display Spec list in Remote UI",
+        "should select spec and display ArtifactEditor",
+        "should render Mermaid diagrams in Remote UI preview"
+      ]
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "execute": 4,
+    "create": 0,
+    "defer": 1
+  },
+  "testExecution": {
+    "targetFile": "electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+    "absolutePath": "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/markdown-mermaid-preview/electron-sdd-manager/e2e-wdio/mermaid-preview.e2e.spec.ts",
+    "testSuites": [
+      "UJ-001: Mermaid SVG rendering in ArtifactEditor",
+      "UJ-002: Real-time preview update",
+      "UJ-003: Error handling for invalid Mermaid syntax",
+      "UJ-005: Remote UI Mermaid preview",
+      "Security and Stability"
+    ],
+    "requirements": ["1.1", "1.3", "2.1", "2.2", "3.1", "3.5"]
+  },
+  "coverageAnalysis": {
+    "existingTestFile": "mermaid-preview.e2e.spec.ts",
+    "createdForFeature": true,
+    "explicitJourneyMapping": true,
+    "notes": "The E2E test file was created specifically for this feature (Task 5.3) and explicitly maps to User Journeys UJ-001, UJ-002, UJ-003, and UJ-005 as documented in the file header comment"
+  }
+}

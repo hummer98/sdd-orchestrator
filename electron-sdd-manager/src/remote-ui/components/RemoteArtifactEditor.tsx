@@ -22,6 +22,7 @@ import type {
 } from '@shared/api/types';
 import { normalizeInspectionState } from '@renderer/types/inspection';
 import { SPEC_ARTIFACT_TABS } from '@shared/constants/artifacts';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 // =============================================================================
 // Types
@@ -392,6 +393,11 @@ export function RemoteArtifactEditor({
             textareaProps={{
               style: {
                 fontFamily: '"Noto Sans Mono CJK JP", "Noto Sans Mono", "Source Han Code JP", "BIZ UDGothic", "Osaka-Mono", "MS Gothic", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              },
+            }}
+            previewOptions={{
+              components: {
+                code: MermaidCodeRenderer,
               },
             }}
           />

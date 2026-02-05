@@ -19,6 +19,7 @@ import { useTextSearch } from '../hooks/useTextSearch';
 import { useSearchKeyboard } from '../hooks/useSearchKeyboard';
 import { useHumanActivity } from '../hooks/useHumanActivity';
 import { throttle } from '@shared/utils';
+import { MermaidCodeRenderer } from '@shared/components/markdown';
 
 /** Tab configuration for artifact editor */
 export interface TabInfo {
@@ -320,6 +321,11 @@ export function ArtifactEditor({
           textareaProps={{
             style: {
               fontFamily: '"Noto Sans Mono CJK JP", "Noto Sans Mono", "Source Han Code JP", "BIZ UDGothic", "Osaka-Mono", "MS Gothic", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            },
+          }}
+          previewOptions={{
+            components: {
+              code: MermaidCodeRenderer,
             },
           }}
         />

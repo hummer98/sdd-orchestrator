@@ -1,0 +1,187 @@
+{
+  "spec_overview": "SDD OrchestratorのMarkdownプレビュー機能にMermaid図表レンダリングサポートを追加し、design.md等に記述されたフローチャート、シーケンス図、状態遷移図などを視覚的に確認できるようにする。",
+  "key_components": [
+    {
+      "name": "MermaidService",
+      "type": "service",
+      "path": "src/shared/services/mermaidService.ts",
+      "requirements": ["1.1", "1.2", "2.1"]
+    },
+    {
+      "name": "MermaidCodeRenderer",
+      "type": "component",
+      "path": "src/shared/components/markdown/MermaidCodeRenderer.tsx",
+      "requirements": ["1.1", "1.3", "2.1", "2.2", "2.3", "4.1", "4.2"]
+    },
+    {
+      "name": "ArtifactEditor",
+      "type": "component",
+      "path": "src/renderer/components/ArtifactEditor.tsx",
+      "requirements": ["3.1"]
+    },
+    {
+      "name": "ArtifactPreview",
+      "type": "component",
+      "path": "src/renderer/components/ArtifactPreview.tsx",
+      "requirements": ["3.2"]
+    },
+    {
+      "name": "ProjectFileEditor",
+      "type": "component",
+      "path": "src/renderer/components/ProjectFileEditor.tsx",
+      "requirements": ["3.3"]
+    },
+    {
+      "name": "MarkdownViewer",
+      "type": "component",
+      "path": "src/shared/components/git/MarkdownViewer.tsx",
+      "requirements": ["3.4"]
+    },
+    {
+      "name": "RemoteArtifactEditor",
+      "type": "component",
+      "path": "src/remote-ui/components/RemoteArtifactEditor.tsx",
+      "requirements": ["3.5"]
+    },
+    {
+      "name": "RemoteBugArtifactEditor",
+      "type": "component",
+      "path": "src/remote-ui/components/RemoteBugArtifactEditor.tsx",
+      "requirements": ["3.5"]
+    },
+    {
+      "name": "RemoteProjectEditor",
+      "type": "component",
+      "path": "src/remote-ui/components/RemoteProjectEditor.tsx",
+      "requirements": ["3.5"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "ArtifactEditor",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "ArtifactPreview",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "ProjectFileEditor",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "MarkdownViewer",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "RemoteArtifactEditor",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "RemoteBugArtifactEditor",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "RemoteProjectEditor",
+      "target": "MermaidCodeRenderer",
+      "type": "import"
+    },
+    {
+      "source": "MermaidCodeRenderer",
+      "target": "MermaidService",
+      "type": "call"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/package.json",
+      "action": "UPDATE",
+      "reason": "mermaid依存追加"
+    },
+    {
+      "target": "src/shared/services/mermaidService.ts",
+      "action": "CREATE",
+      "reason": "Mermaidレンダリングサービス"
+    },
+    {
+      "target": "src/shared/components/markdown/MermaidCodeRenderer.tsx",
+      "action": "CREATE",
+      "reason": "カスタムコードレンダラー"
+    },
+    {
+      "target": "src/shared/components/markdown/index.ts",
+      "action": "CREATE",
+      "reason": "バレルエクスポート"
+    },
+    {
+      "target": "src/renderer/components/ArtifactEditor.tsx",
+      "action": "UPDATE",
+      "reason": "previewOptions.components.code設定追加"
+    },
+    {
+      "target": "src/renderer/components/ArtifactPreview.tsx",
+      "action": "UPDATE",
+      "reason": "MDEditor.Markdownにcomponents.code設定追加"
+    },
+    {
+      "target": "src/renderer/components/ProjectFileEditor.tsx",
+      "action": "UPDATE",
+      "reason": "previewOptions.components.code設定追加"
+    },
+    {
+      "target": "src/shared/components/git/MarkdownViewer.tsx",
+      "action": "UPDATE",
+      "reason": "MDEditor.Markdownにcomponents.code設定追加"
+    },
+    {
+      "target": "src/remote-ui/components/RemoteArtifactEditor.tsx",
+      "action": "UPDATE",
+      "reason": "previewOptions.components.code設定追加"
+    },
+    {
+      "target": "src/remote-ui/components/RemoteBugArtifactEditor.tsx",
+      "action": "UPDATE",
+      "reason": "previewOptions.components.code設定追加"
+    },
+    {
+      "target": "src/remote-ui/components/RemoteProjectEditor.tsx",
+      "action": "UPDATE",
+      "reason": "previewOptions.components.code設定追加"
+    }
+  ],
+  "requirements_count": 12,
+  "tasks_count": 15,
+  "user_journeys": [
+    {
+      "id": "UJ-001",
+      "description": "ArtifactEditorでMermaid図を含むdesign.mdを開き、プレビューモードに切り替える",
+      "e2e_required": true
+    },
+    {
+      "id": "UJ-002",
+      "description": "編集モードでMermaidコードを変更し、プレビューモードで確認する",
+      "e2e_required": true
+    },
+    {
+      "id": "UJ-003",
+      "description": "不正なMermaid構文を入力し、プレビューを確認する",
+      "e2e_required": true
+    },
+    {
+      "id": "UJ-004",
+      "description": "複数のMermaidブロックを含むドキュメントをプレビューする",
+      "e2e_required": false
+    },
+    {
+      "id": "UJ-005",
+      "description": "Remote UI版ArtifactEditorでMermaid図をプレビューする",
+      "e2e_required": true
+    }
+  ]
+}

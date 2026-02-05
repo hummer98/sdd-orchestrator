@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ja" data-source="steering">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDD Orchestrator - Steering Overview</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --fg: #333333;
+      --fg-muted: #6c757d;
+      --border: #e0e0e0;
+      --accent: #3498DB;
+      --entry: #9B59B6;
+      --core: #2980B9;
+      --extended: #27AE60;
+      --keyword: #F39C12;
+      --shadow: rgba(0,0,0,0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --bg-secondary: #16213e;
+        --fg: #eaeaea;
+        --fg-muted: #a0a0a0;
+        --border: #404060;
+        --accent: #5dade2;
+        --entry: #BB8FCE;
+        --core: #5DADE2;
+        --extended: #58D68D;
+        --keyword: #F5B041;
+        --shadow: rgba(0,0,0,0.3);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    header h1::before {
+      content: '';
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, var(--entry) 0%, var(--core) 50%, var(--extended) 100%);
+      border-radius: 6px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls input[type="text"] {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 14px;
+      width: 200px;
+    }
+    .controls input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+    }
+    .controls button {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    }
+    .controls button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .controls button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Filter chips */
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .chip {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .chip.entry { background: var(--entry); color: white; }
+    .chip.core { background: var(--core); color: white; }
+    .chip.extended { background: var(--extended); color: white; }
+    .chip.keyword { background: var(--keyword); color: white; }
+    .chip.inactive {
+      opacity: 0.4;
+      border-color: var(--border);
+    }
+
+    /* Graph container */
+    #cy {
+      flex: 1;
+      width: 100%;
+      background: var(--bg);
+    }
+
+    /* Legend */
+    #legend {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px var(--shadow);
+      max-width: 280px;
+    }
+    #legend h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--fg-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .legend-label {
+      font-size: 13px;
+    }
+    .legend-label small {
+      display: block;
+      color: var(--fg-muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      max-width: 350px;
+      box-shadow: 0 8px 30px var(--shadow);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #tooltip h3 .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    #tooltip p {
+      line-height: 1.6;
+      color: var(--fg-muted);
+    }
+    #tooltip .size-info {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    /* Instructions */
+    #instructions {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      max-width: 220px;
+    }
+    #instructions strong {
+      color: var(--fg);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Steering Overview</h1>
+    <div class="controls">
+      <input type="text" id="search" placeholder="ファイル名で検索...">
+      <button onclick="resetView()">リセット</button>
+      <button onclick="toggleLayout()">レイアウト切替</button>
+      <button onclick="exportPNG()">PNG出力</button>
+    </div>
+    <div class="filter-chips">
+      <span class="chip entry" data-group="entry" onclick="toggleFilter('entry')">Entry</span>
+      <span class="chip core" data-group="core" onclick="toggleFilter('core')">Core</span>
+      <span class="chip extended" data-group="extended" onclick="toggleFilter('extended')">Extended</span>
+      <span class="chip keyword" data-group="keyword" onclick="toggleFilter('keyword')">Keyword</span>
+    </div>
+  </header>
+
+  <div id="cy"></div>
+
+  <div id="legend">
+    <h3>Steering階層構造</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--entry)"></div>
+      <div class="legend-label">
+        Entry Point
+        <small>CLAUDE.md - ポインタとして機能</small>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--core)"></div>
+      <div class="legend-label">
+        Core Steering
+        <small>常時読み込み（4ファイル）</small>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--extended)"></div>
+      <div class="legend-label">
+        Extended Steering
+        <small>キーワードで動的読み込み</small>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--keyword)"></div>
+      <div class="legend-label">
+        Trigger Keyword
+        <small>読み込みトリガーとなるキーワード</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip">
+    <h3><span id="tooltip-title"></span><span class="badge" id="tooltip-badge"></span></h3>
+    <p id="tooltip-content"></p>
+    <div class="size-info" id="tooltip-size"></div>
+  </div>
+
+  <div id="instructions">
+    <strong>操作方法</strong><br>
+    ・クリック: 関連要素をハイライト<br>
+    ・ホイール: ズーム<br>
+    ・ドラッグ: 移動<br>
+    ・検索: ファイル名で絞り込み
+  </div>
+
+  <script>
+    // Steering data extracted from project
+    const elements = [
+      // Entry point
+      {
+        data: {
+          id: 'claude-md',
+          label: 'CLAUDE.md',
+          group: 'entry',
+          description: 'プロジェクト実行ガイド。Steeringへのポインタを提供し、どのファイルを読むべきかを案内する。',
+          size: '4KB'
+        }
+      },
+
+      // Core steering (常時読み込み)
+      {
+        data: {
+          id: 'product',
+          label: 'product.md',
+          group: 'core',
+          description: 'プロダクト概要、コア機能、価値提案。SDDフェーズとワークフローパターンを定義。',
+          size: '2KB',
+          updateFreq: '低（半年ごと）'
+        }
+      },
+      {
+        data: {
+          id: 'tech',
+          label: 'tech.md',
+          group: 'core',
+          description: '技術スタック（Electron, React, TypeScript）、開発基準、検証コマンド、Remote UIアーキテクチャ。',
+          size: '7KB',
+          updateFreq: '中（機能追加時）'
+        }
+      },
+      {
+        data: {
+          id: 'design-principles',
+          label: 'design-principles.md',
+          group: 'core',
+          description: 'AI設計判断の基本原則（DRY, KISS, YAGNI）。禁止事項と評価基準を明記。',
+          size: '3KB',
+          updateFreq: '低（年ごと）'
+        }
+      },
+      {
+        data: {
+          id: 'structure',
+          label: 'structure.md',
+          group: 'core',
+          description: 'ディレクトリ構造、State管理ルール（SSOT）、Process Boundary Rules、コンポーネント組織。',
+          size: '11KB',
+          updateFreq: '中（新パターン確立時）'
+        }
+      },
+
+      // Extended steering (動的読み込み)
+      {
+        data: {
+          id: 'operations',
+          label: 'operations.md',
+          group: 'extended',
+          description: 'Electron MCP操作マニュアル、UI要素testid命名規則。動作確認・UI検証タスクで使用。',
+          size: '10KB',
+          trigger: '動作確認, UI確認, MCP'
+        }
+      },
+      {
+        data: {
+          id: 'debugging',
+          label: 'debugging.md',
+          group: 'extended',
+          description: 'ログファイル場所、トラブルシューティング、ログ解析手順。デバッグ・エラー調査タスクで使用。',
+          size: '12KB',
+          trigger: 'デバッグ, ログ, エラー'
+        }
+      },
+      {
+        data: {
+          id: 'e2e-testing',
+          label: 'e2e-testing.md',
+          group: 'extended',
+          description: 'WebdriverIO + wdio-electron-service アーキテクチャ。E2Eテスト作成・実行タスクで使用。',
+          size: '30KB',
+          trigger: 'E2Eテスト, wdio'
+        }
+      },
+      {
+        data: {
+          id: 'web-e2e-testing',
+          label: 'web-e2e-testing.md',
+          group: 'extended',
+          description: 'Playwright Web E2Eテスト設定・実行ガイド。Web E2E実装タスクで使用。',
+          size: '9KB',
+          trigger: 'Web E2E, Playwright'
+        }
+      },
+      {
+        data: {
+          id: 'symbol-semantic-map',
+          label: 'symbol-semantic-map.md',
+          group: 'extended',
+          description: 'ドメイン概念とコードシンボルの対応表。用語確認・設計検討時に使用。',
+          size: '10KB',
+          trigger: '用語, シンボル'
+        }
+      },
+      {
+        data: {
+          id: 'skill-reference',
+          label: 'skill-reference.md',
+          group: 'extended',
+          description: 'プロファイル（cc-sdd, cc-sdd-agent, spec-manager）仕様。',
+          size: '17KB',
+          trigger: 'プロファイル'
+        }
+      },
+      {
+        data: {
+          id: 'logging',
+          label: 'logging.md',
+          group: 'extended',
+          description: 'ロギングガイドライン、レベル定義。ログ実装タスクで使用。',
+          size: '3KB',
+          trigger: 'ログ実装'
+        }
+      },
+      {
+        data: {
+          id: 'verification-commands',
+          label: 'verification-commands.md',
+          group: 'extended',
+          description: 'spec-inspection実行時の検証コマンド定義。',
+          size: '1KB',
+          trigger: '検証, Inspection'
+        }
+      },
+
+      // Trigger keywords
+      {
+        data: {
+          id: 'kw-operation',
+          label: '動作確認\nUI確認\nMCP',
+          group: 'keyword'
+        }
+      },
+      {
+        data: {
+          id: 'kw-debug',
+          label: 'デバッグ\nログ\nエラー',
+          group: 'keyword'
+        }
+      },
+      {
+        data: {
+          id: 'kw-e2e',
+          label: 'E2Eテスト\nwdio',
+          group: 'keyword'
+        }
+      },
+      {
+        data: {
+          id: 'kw-web-e2e',
+          label: 'Web E2E\nPlaywright',
+          group: 'keyword'
+        }
+      },
+      {
+        data: {
+          id: 'kw-term',
+          label: '用語\nシンボル',
+          group: 'keyword'
+        }
+      },
+
+      // Edges: Entry -> Core (常時参照)
+      { data: { source: 'claude-md', target: 'product', label: '常時参照', type: 'always' } },
+      { data: { source: 'claude-md', target: 'tech', label: '常時参照', type: 'always' } },
+      { data: { source: 'claude-md', target: 'design-principles', label: '常時参照', type: 'always' } },
+      { data: { source: 'claude-md', target: 'structure', label: '常時参照', type: 'always' } },
+
+      // Edges: Keywords -> Extended (条件付き読み込み)
+      { data: { source: 'kw-operation', target: 'operations', label: '', type: 'conditional' } },
+      { data: { source: 'kw-operation', target: 'debugging', label: '', type: 'conditional' } },
+      { data: { source: 'kw-debug', target: 'debugging', label: '', type: 'conditional' } },
+      { data: { source: 'kw-e2e', target: 'e2e-testing', label: '', type: 'conditional' } },
+      { data: { source: 'kw-web-e2e', target: 'web-e2e-testing', label: '', type: 'conditional' } },
+      { data: { source: 'kw-term', target: 'symbol-semantic-map', label: '', type: 'conditional' } }
+    ];
+
+    // Color mapping
+    const colors = {
+      entry: { bg: '#9B59B6', border: '#7D3C98' },
+      core: { bg: '#2980B9', border: '#1F618D' },
+      extended: { bg: '#27AE60', border: '#1E8449' },
+      keyword: { bg: '#F39C12', border: '#D68910' }
+    };
+
+    // Check dark mode
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (isDark) {
+      colors.entry = { bg: '#BB8FCE', border: '#9B59B6' };
+      colors.core = { bg: '#5DADE2', border: '#2980B9' };
+      colors.extended = { bg: '#58D68D', border: '#27AE60' };
+      colors.keyword = { bg: '#F5B041', border: '#F39C12' };
+    }
+
+    // Initialize Cytoscape
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'text-max-width': '120px',
+            'font-size': '12px',
+            'font-weight': '500',
+            'color': '#ffffff',
+            'text-outline-color': 'data(bgColor)',
+            'text-outline-width': 2,
+            'background-color': 'data(bgColor)',
+            'border-color': 'data(borderColor)',
+            'border-width': 3,
+            'width': 'mapData(sizeNum, 1, 30, 60, 140)',
+            'height': 'mapData(sizeNum, 1, 30, 60, 140)',
+            'shape': 'ellipse',
+            'transition-property': 'opacity, background-color, border-color',
+            'transition-duration': '0.2s'
+          }
+        },
+        {
+          selector: 'node[group="entry"]',
+          style: {
+            'shape': 'diamond',
+            'width': 100,
+            'height': 100
+          }
+        },
+        {
+          selector: 'node[group="keyword"]',
+          style: {
+            'shape': 'round-rectangle',
+            'width': 100,
+            'height': 60,
+            'font-size': '10px'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#95a5a6',
+            'target-arrow-color': '#95a5a6',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '10px',
+            'text-rotation': 'autorotate',
+            'text-margin-y': -10,
+            'color': isDark ? '#a0a0a0' : '#6c757d',
+            'transition-property': 'opacity, line-color',
+            'transition-duration': '0.2s'
+          }
+        },
+        {
+          selector: 'edge[type="always"]',
+          style: {
+            'line-color': colors.core.bg,
+            'target-arrow-color': colors.core.bg,
+            'width': 3
+          }
+        },
+        {
+          selector: 'edge[type="conditional"]',
+          style: {
+            'line-style': 'dashed',
+            'line-color': colors.keyword.bg,
+            'target-arrow-color': colors.keyword.bg
+          }
+        },
+        {
+          selector: '.dimmed',
+          style: {
+            'opacity': 0.15
+          }
+        },
+        {
+          selector: '.highlighted',
+          style: {
+            'border-width': 5,
+            'border-color': '#E74C3C',
+            'z-index': 999
+          }
+        }
+      ],
+      layout: {
+        name: 'cose',
+        animate: true,
+        animationDuration: 500,
+        nodeRepulsion: 12000,
+        idealEdgeLength: 150,
+        edgeElasticity: 100,
+        gravity: 0.3,
+        numIter: 1000,
+        padding: 50
+      }
+    });
+
+    // Add computed properties to nodes
+    cy.nodes().forEach(node => {
+      const group = node.data('group');
+      const size = node.data('size');
+      node.data('bgColor', colors[group].bg);
+      node.data('borderColor', colors[group].border);
+      // Parse size for mapping
+      const sizeNum = size ? parseInt(size.replace('KB', '')) : 5;
+      node.data('sizeNum', sizeNum);
+    });
+
+    // Re-run layout after data update
+    cy.layout({
+      name: 'cose',
+      animate: false,
+      nodeRepulsion: 12000,
+      idealEdgeLength: 150,
+      gravity: 0.3,
+      padding: 50
+    }).run();
+
+    // Neighborhood highlight on click
+    cy.on('tap', 'node', function(evt) {
+      const node = evt.target;
+      const neighborhood = node.closedNeighborhood();
+      cy.elements().addClass('dimmed');
+      neighborhood.removeClass('dimmed');
+      node.addClass('highlighted');
+    });
+
+    cy.on('tap', function(evt) {
+      if (evt.target === cy) {
+        cy.elements().removeClass('dimmed highlighted');
+      }
+    });
+
+    // Tooltip
+    const tooltip = document.getElementById('tooltip');
+    const tooltipTitle = document.getElementById('tooltip-title');
+    const tooltipBadge = document.getElementById('tooltip-badge');
+    const tooltipContent = document.getElementById('tooltip-content');
+    const tooltipSize = document.getElementById('tooltip-size');
+
+    cy.on('mouseover', 'node', function(evt) {
+      const node = evt.target;
+      const data = node.data();
+
+      tooltipTitle.textContent = data.label.replace(/\n/g, ' / ');
+      tooltipBadge.textContent = data.group.toUpperCase();
+      tooltipBadge.style.background = colors[data.group].bg;
+      tooltipContent.textContent = data.description || '';
+
+      let sizeInfo = '';
+      if (data.size) sizeInfo += `サイズ: ${data.size}`;
+      if (data.updateFreq) sizeInfo += ` | 更新頻度: ${data.updateFreq}`;
+      if (data.trigger) sizeInfo += `トリガー: ${data.trigger}`;
+      tooltipSize.textContent = sizeInfo;
+      tooltipSize.style.display = sizeInfo ? 'block' : 'none';
+
+      const pos = evt.renderedPosition;
+      tooltip.style.left = Math.min(pos.x + 20, window.innerWidth - 370) + 'px';
+      tooltip.style.top = Math.min(pos.y + 20, window.innerHeight - 200) + 'px';
+      tooltip.classList.add('visible');
+    });
+
+    cy.on('mouseout', 'node', function() {
+      tooltip.classList.remove('visible');
+    });
+
+    // Search
+    document.getElementById('search').addEventListener('input', function(e) {
+      const query = e.target.value.toLowerCase();
+      if (!query) {
+        cy.elements().removeClass('dimmed highlighted');
+        return;
+      }
+      cy.nodes().forEach(node => {
+        const label = (node.data('label') || '').toLowerCase();
+        const desc = (node.data('description') || '').toLowerCase();
+        if (label.includes(query) || desc.includes(query)) {
+          node.removeClass('dimmed');
+          node.addClass('highlighted');
+        } else {
+          node.addClass('dimmed');
+          node.removeClass('highlighted');
+        }
+      });
+      cy.edges().addClass('dimmed');
+    });
+
+    // Filter by group
+    const activeFilters = new Set(['entry', 'core', 'extended', 'keyword']);
+
+    function toggleFilter(group) {
+      const chip = document.querySelector(`.chip[data-group="${group}"]`);
+      if (activeFilters.has(group)) {
+        activeFilters.delete(group);
+        chip.classList.add('inactive');
+      } else {
+        activeFilters.add(group);
+        chip.classList.remove('inactive');
+      }
+      applyFilters();
+    }
+
+    function applyFilters() {
+      cy.nodes().forEach(node => {
+        const group = node.data('group');
+        if (activeFilters.has(group)) {
+          node.removeClass('dimmed');
+        } else {
+          node.addClass('dimmed');
+        }
+      });
+      cy.edges().forEach(edge => {
+        const sourceGroup = cy.getElementById(edge.data('source')).data('group');
+        const targetGroup = cy.getElementById(edge.data('target')).data('group');
+        if (activeFilters.has(sourceGroup) && activeFilters.has(targetGroup)) {
+          edge.removeClass('dimmed');
+        } else {
+          edge.addClass('dimmed');
+        }
+      });
+    }
+
+    // Reset view
+    function resetView() {
+      cy.elements().removeClass('dimmed highlighted');
+      document.getElementById('search').value = '';
+      activeFilters.clear();
+      ['entry', 'core', 'extended', 'keyword'].forEach(g => {
+        activeFilters.add(g);
+        document.querySelector(`.chip[data-group="${g}"]`).classList.remove('inactive');
+      });
+      cy.fit(50);
+    }
+
+    // Toggle layout
+    let currentLayout = 'cose';
+    function toggleLayout() {
+      currentLayout = currentLayout === 'cose' ? 'circle' : 'cose';
+      cy.layout({
+        name: currentLayout,
+        animate: true,
+        animationDuration: 500,
+        padding: 50,
+        ...(currentLayout === 'cose' ? { nodeRepulsion: 12000, idealEdgeLength: 150, gravity: 0.3 } : {})
+      }).run();
+    }
+
+    // Export PNG
+    function exportPNG() {
+      const png = cy.png({ full: true, scale: 2, bg: isDark ? '#1a1a2e' : '#ffffff' });
+      const link = document.createElement('a');
+      link.download = 'steering_overview.png';
+      link.href = png;
+      link.click();
+    }
+  </script>
+</body>
+</html>

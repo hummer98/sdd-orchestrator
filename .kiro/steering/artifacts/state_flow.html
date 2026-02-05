@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ja" data-source="steering">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDD Orchestrator - State Flow Animation</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-tertiary: #e9ecef;
+      --fg: #333333;
+      --fg-muted: #6c757d;
+      --border: #e0e0e0;
+      --accent: #3498DB;
+      --main: #E74C3C;
+      --renderer: #3498DB;
+      --remote: #1ABC9C;
+      --success: #27AE60;
+      --warning: #F39C12;
+      --danger: #E74C3C;
+      --shadow: rgba(0,0,0,0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-tertiary: #0f3460;
+        --fg: #eaeaea;
+        --fg-muted: #a0a0a0;
+        --border: #404060;
+        --accent: #5DADE2;
+        --main: #E74C3C;
+        --renderer: #5DADE2;
+        --remote: #58D68D;
+        --shadow: rgba(0,0,0,0.4);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 18px; font-weight: 600; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .controls button {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .controls button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .controls button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 20px;
+    }
+    .speed-control label {
+      font-size: 13px;
+      color: var(--fg-muted);
+    }
+    .speed-control input[type="range"] {
+      width: 100px;
+    }
+
+    .scenario-select {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .scenario-select button.active {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    #cy { flex: 1; width: 100%; }
+
+    /* Step indicator */
+    #step-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 24px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-width: 500px;
+    }
+    #step-indicator {
+      display: flex;
+      gap: 8px;
+    }
+    .step-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: all 0.3s;
+    }
+    .step-dot.active {
+      background: var(--accent);
+      transform: scale(1.3);
+    }
+    .step-dot.completed {
+      background: var(--success);
+    }
+    #step-label {
+      font-size: 14px;
+      font-weight: 500;
+      flex: 1;
+    }
+    #step-description {
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin-top: 4px;
+    }
+
+    /* Legend */
+    #legend {
+      position: fixed;
+      top: 80px;
+      left: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    #legend h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--fg-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+    }
+
+    /* Anti-pattern panel */
+    #antipattern-panel {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 300px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--danger);
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px var(--shadow);
+      display: none;
+    }
+    #antipattern-panel.visible { display: block; }
+    #antipattern-panel h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--danger);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #antipattern-panel p {
+      line-height: 1.6;
+      color: var(--fg-muted);
+      margin-bottom: 12px;
+    }
+    #antipattern-panel code {
+      display: block;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: pre-wrap;
+      font-family: 'SF Mono', Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>State Flow Animation</h1>
+    <div class="controls">
+      <button id="btn-play" onclick="togglePlay()">
+        <span id="play-icon">▶</span> 再生
+      </button>
+      <button onclick="stepForward()">⏭ 次へ</button>
+      <button onclick="stepBackward()">⏮ 前へ</button>
+      <button onclick="resetAnimation()">↺ リセット</button>
+    </div>
+    <div class="speed-control">
+      <label>速度:</label>
+      <input type="range" id="speed" min="500" max="3000" value="1500" step="250">
+      <span id="speed-label">1.5s</span>
+    </div>
+    <div class="scenario-select">
+      <button id="btn-correct" class="active" onclick="setScenario('correct')">正しいパターン</button>
+      <button id="btn-anti" onclick="setScenario('anti')">アンチパターン</button>
+    </div>
+  </header>
+
+  <div id="cy"></div>
+
+  <div id="legend">
+    <h3>State Flow</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--renderer)"></div>
+      <span>Renderer Process</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--main)"></div>
+      <span>Main Process</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--remote)"></div>
+      <span>Remote UI</span>
+    </div>
+    <div class="legend-item" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+      <div style="width: 20px; height: 3px; background: var(--success);"></div>
+      <span>データフロー</span>
+    </div>
+  </div>
+
+  <div id="step-panel">
+    <div id="step-indicator"></div>
+    <div>
+      <div id="step-label">-</div>
+      <div id="step-description"></div>
+    </div>
+  </div>
+
+  <div id="antipattern-panel">
+    <h3>⚠️ アンチパターン</h3>
+    <p id="antipattern-description"></p>
+    <code id="antipattern-code"></code>
+  </div>
+
+  <script>
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Correct flow scenario
+    const correctFlow = {
+      name: 'correct',
+      elements: [
+        // Nodes
+        { data: { id: 'user', label: 'User Action', group: 'renderer', x: 100, y: 100 } },
+        { data: { id: 'renderer-store', label: 'Renderer Store\n(Cache)', group: 'renderer', x: 100, y: 250 } },
+        { data: { id: 'ipc-request', label: 'IPC Request', group: 'ipc', x: 300, y: 175 } },
+        { data: { id: 'main-handler', label: 'IPC Handler', group: 'main', x: 500, y: 100 } },
+        { data: { id: 'main-state', label: 'Main State\n(SSOT)', group: 'main', x: 500, y: 250 } },
+        { data: { id: 'broadcast', label: 'Broadcast', group: 'ipc', x: 700, y: 175 } },
+        { data: { id: 'renderer-sync', label: 'Renderer\nSync', group: 'renderer', x: 900, y: 100 } },
+        { data: { id: 'remote-sync', label: 'Remote UI\nSync', group: 'remote', x: 900, y: 250 } },
+
+        // Edges
+        { data: { id: 'e1', source: 'user', target: 'ipc-request' } },
+        { data: { id: 'e2', source: 'ipc-request', target: 'main-handler' } },
+        { data: { id: 'e3', source: 'main-handler', target: 'main-state' } },
+        { data: { id: 'e4', source: 'main-state', target: 'broadcast' } },
+        { data: { id: 'e5', source: 'broadcast', target: 'renderer-sync' } },
+        { data: { id: 'e6', source: 'broadcast', target: 'remote-sync' } },
+        { data: { id: 'e7', source: 'renderer-sync', target: 'renderer-store' } }
+      ],
+      steps: [
+        {
+          highlight: ['user'],
+          edges: [],
+          label: '1. ユーザーアクション',
+          description: 'Rendererでボタンクリック等のアクションが発生'
+        },
+        {
+          highlight: ['user', 'ipc-request'],
+          edges: ['e1'],
+          label: '2. IPC経由でMainに依頼',
+          description: 'window.electronAPI.xxx() でMainプロセスに処理を依頼'
+        },
+        {
+          highlight: ['main-handler'],
+          edges: ['e2'],
+          label: '3. Main Handlerで受信',
+          description: 'IPCハンドラが処理を受け取り、サービスを呼び出し'
+        },
+        {
+          highlight: ['main-handler', 'main-state'],
+          edges: ['e3'],
+          label: '4. Main Stateを更新',
+          description: 'Mainプロセスが正の情報源として状態を更新'
+        },
+        {
+          highlight: ['main-state', 'broadcast'],
+          edges: ['e4'],
+          label: '5. ブロードキャスト準備',
+          description: '全Renderer/Remote UIへの通知を準備'
+        },
+        {
+          highlight: ['broadcast', 'renderer-sync', 'remote-sync'],
+          edges: ['e5', 'e6'],
+          label: '6. 全クライアントに同期',
+          description: 'Renderer（IPC）とRemote UI（WebSocket）に同時通知'
+        },
+        {
+          highlight: ['renderer-sync', 'renderer-store'],
+          edges: ['e7'],
+          label: '7. Rendererキャッシュ更新',
+          description: 'RendererのStoreはMainからの通知で更新（読み取り専用キャッシュ）'
+        }
+      ]
+    };
+
+    // Anti-pattern scenario
+    const antiPattern = {
+      name: 'anti',
+      elements: [
+        { data: { id: 'user', label: 'User Action', group: 'renderer', x: 100, y: 175 } },
+        { data: { id: 'renderer-store', label: 'Renderer Store\n(直接更新)', group: 'danger', x: 300, y: 175 } },
+        { data: { id: 'ipc-request', label: 'IPC Request\n(後から)', group: 'ipc', x: 500, y: 175 } },
+        { data: { id: 'main-handler', label: 'Main Handler', group: 'main', x: 700, y: 175 } },
+
+        { data: { id: 'e1', source: 'user', target: 'renderer-store' } },
+        { data: { id: 'e2', source: 'renderer-store', target: 'ipc-request' } },
+        { data: { id: 'e3', source: 'ipc-request', target: 'main-handler' } }
+      ],
+      steps: [
+        {
+          highlight: ['user'],
+          edges: [],
+          label: '❌ 1. ユーザーアクション',
+          description: 'Rendererでアクション発生'
+        },
+        {
+          highlight: ['user', 'renderer-store'],
+          edges: ['e1'],
+          label: '❌ 2. Renderer内で直接更新',
+          description: '問題: Mainを経由せずにRendererで状態を更新'
+        },
+        {
+          highlight: ['renderer-store', 'ipc-request'],
+          edges: ['e2'],
+          label: '❌ 3. 後からIPCを呼ぶ',
+          description: '問題: 状態更新後にIPCを呼ぶと、Main/Renderer間で不整合発生'
+        },
+        {
+          highlight: ['main-handler'],
+          edges: ['e3'],
+          label: '❌ 4. Mainが正確な状態を知れない',
+          description: '結果: Mainとの不整合、再起動時の復元不可、Remote UIとの同期失敗'
+        }
+      ],
+      antipatternInfo: {
+        description: 'RendererでAgent状態を管理（Mainが知らない状態が生まれる）',
+        code: `// ❌ NG: RendererでAgent状態を管理
+const useAgentStore = create((set) => ({
+  runningAgents: [],
+  startAgent: (config) => {
+    // Renderer内で状態を更新してからIPCを呼ぶ
+    set({ runningAgents: [...] });
+    window.electronAPI.startAgent(config);
+  }
+}));`
+      }
+    };
+
+    let currentScenario = correctFlow;
+    let currentStep = -1;
+    let isPlaying = false;
+    let playInterval = null;
+    let speed = 1500;
+
+    const colors = {
+      renderer: { bg: isDark ? '#1B4F72' : '#D4E6F1', border: isDark ? '#5DADE2' : '#3498DB' },
+      main: { bg: isDark ? '#512E2E' : '#FADBD8', border: '#E74C3C' },
+      remote: { bg: isDark ? '#1D4F3E' : '#D1F2EB', border: isDark ? '#58D68D' : '#1ABC9C' },
+      ipc: { bg: isDark ? '#2C3E50' : '#EAECEE', border: '#95A5A6' },
+      danger: { bg: isDark ? '#641E16' : '#FADBD8', border: '#C0392B' }
+    };
+
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: currentScenario.elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'font-size': '12px',
+            'font-weight': '500',
+            'color': isDark ? '#eaeaea' : '#333',
+            'background-color': 'data(bgColor)',
+            'border-color': 'data(borderColor)',
+            'border-width': 3,
+            'width': 120,
+            'height': 60,
+            'shape': 'round-rectangle',
+            'transition-property': 'border-color, border-width, background-color',
+            'transition-duration': '0.3s'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 3,
+            'line-color': '#95a5a6',
+            'target-arrow-color': '#95a5a6',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'opacity': 0.3,
+            'transition-property': 'opacity, line-color, width',
+            'transition-duration': '0.3s'
+          }
+        },
+        {
+          selector: '.highlighted',
+          style: {
+            'border-width': 5,
+            'border-color': '#27AE60',
+            'z-index': 999
+          }
+        },
+        {
+          selector: '.highlighted-edge',
+          style: {
+            'opacity': 1,
+            'line-color': '#27AE60',
+            'target-arrow-color': '#27AE60',
+            'width': 5
+          }
+        },
+        {
+          selector: '.completed',
+          style: {
+            'background-color': isDark ? '#1E8449' : '#D5F5E3',
+            'border-color': '#27AE60'
+          }
+        },
+        {
+          selector: '.dimmed',
+          style: {
+            'opacity': 0.3
+          }
+        }
+      ],
+      layout: {
+        name: 'preset',
+        padding: 50
+      },
+      userZoomingEnabled: true,
+      userPanningEnabled: true
+    });
+
+    function initializeGraph() {
+      cy.elements().remove();
+      cy.add(currentScenario.elements);
+
+      cy.nodes().forEach(node => {
+        const group = node.data('group');
+        if (colors[group]) {
+          node.data('bgColor', colors[group].bg);
+          node.data('borderColor', colors[group].border);
+        }
+        // Set position
+        if (node.data('x') && node.data('y')) {
+          node.position({ x: node.data('x'), y: node.data('y') });
+        }
+      });
+
+      cy.fit(50);
+      initStepIndicator();
+    }
+
+    function initStepIndicator() {
+      const indicator = document.getElementById('step-indicator');
+      indicator.innerHTML = '';
+      currentScenario.steps.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'step-dot';
+        dot.onclick = () => goToStep(i);
+        indicator.appendChild(dot);
+      });
+    }
+
+    function updateStepIndicator() {
+      const dots = document.querySelectorAll('.step-dot');
+      dots.forEach((dot, i) => {
+        dot.classList.remove('active', 'completed');
+        if (i < currentStep) dot.classList.add('completed');
+        if (i === currentStep) dot.classList.add('active');
+      });
+
+      const step = currentScenario.steps[currentStep];
+      if (step) {
+        document.getElementById('step-label').textContent = step.label;
+        document.getElementById('step-description').textContent = step.description;
+      } else {
+        document.getElementById('step-label').textContent = '-';
+        document.getElementById('step-description').textContent = '';
+      }
+    }
+
+    function highlightStep(stepIndex) {
+      cy.elements().removeClass('highlighted highlighted-edge completed dimmed');
+
+      if (stepIndex < 0) return;
+
+      const step = currentScenario.steps[stepIndex];
+
+      // Mark previous steps as completed
+      for (let i = 0; i < stepIndex; i++) {
+        const prevStep = currentScenario.steps[i];
+        prevStep.highlight.forEach(id => {
+          cy.getElementById(id).addClass('completed');
+        });
+      }
+
+      // Highlight current step
+      step.highlight.forEach(id => {
+        cy.getElementById(id).addClass('highlighted');
+      });
+
+      step.edges.forEach(id => {
+        cy.getElementById(id).addClass('highlighted-edge');
+      });
+
+      // Show antipattern info if applicable
+      if (currentScenario.name === 'anti' && stepIndex === currentScenario.steps.length - 1) {
+        const panel = document.getElementById('antipattern-panel');
+        document.getElementById('antipattern-description').textContent = currentScenario.antipatternInfo.description;
+        document.getElementById('antipattern-code').textContent = currentScenario.antipatternInfo.code;
+        panel.classList.add('visible');
+      }
+    }
+
+    function goToStep(stepIndex) {
+      currentStep = Math.max(-1, Math.min(stepIndex, currentScenario.steps.length - 1));
+      highlightStep(currentStep);
+      updateStepIndicator();
+    }
+
+    function stepForward() {
+      goToStep(currentStep + 1);
+    }
+
+    function stepBackward() {
+      goToStep(currentStep - 1);
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById('play-icon').textContent = isPlaying ? '⏸' : '▶';
+      document.getElementById('btn-play').classList.toggle('active', isPlaying);
+
+      if (isPlaying) {
+        if (currentStep >= currentScenario.steps.length - 1) {
+          currentStep = -1;
+        }
+        play();
+      } else {
+        clearInterval(playInterval);
+      }
+    }
+
+    function play() {
+      if (!isPlaying) return;
+
+      stepForward();
+
+      if (currentStep >= currentScenario.steps.length - 1) {
+        isPlaying = false;
+        document.getElementById('play-icon').textContent = '▶';
+        document.getElementById('btn-play').classList.remove('active');
+        return;
+      }
+
+      playInterval = setTimeout(play, speed);
+    }
+
+    function resetAnimation() {
+      isPlaying = false;
+      document.getElementById('play-icon').textContent = '▶';
+      document.getElementById('btn-play').classList.remove('active');
+      clearInterval(playInterval);
+      currentStep = -1;
+      cy.elements().removeClass('highlighted highlighted-edge completed dimmed');
+      updateStepIndicator();
+      document.getElementById('antipattern-panel').classList.remove('visible');
+    }
+
+    function setScenario(name) {
+      resetAnimation();
+      currentScenario = name === 'correct' ? correctFlow : antiPattern;
+      document.getElementById('btn-correct').classList.toggle('active', name === 'correct');
+      document.getElementById('btn-anti').classList.toggle('active', name === 'anti');
+      initializeGraph();
+    }
+
+    // Speed control
+    document.getElementById('speed').addEventListener('input', function(e) {
+      speed = parseInt(e.target.value);
+      document.getElementById('speed-label').textContent = (speed / 1000).toFixed(1) + 's';
+    });
+
+    // Initialize
+    initializeGraph();
+  </script>
+</body>
+</html>

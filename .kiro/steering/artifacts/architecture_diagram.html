@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja" data-source="steering">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDD Orchestrator - Architecture Diagram</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --fg: #333333;
+      --fg-muted: #6c757d;
+      --border: #e0e0e0;
+      --main: #E74C3C;
+      --main-light: #FADBD8;
+      --renderer: #3498DB;
+      --renderer-light: #D4E6F1;
+      --remote: #1ABC9C;
+      --remote-light: #D1F2EB;
+      --shared: #9B59B6;
+      --shared-light: #E8DAEF;
+      --ipc: #95A5A6;
+      --shadow: rgba(0,0,0,0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a2e;
+        --bg-secondary: #16213e;
+        --fg: #eaeaea;
+        --fg-muted: #a0a0a0;
+        --border: #404060;
+        --main: #E74C3C;
+        --main-light: #512E2E;
+        --renderer: #5DADE2;
+        --renderer-light: #1B4F72;
+        --remote: #58D68D;
+        --remote-light: #1D4F3E;
+        --shared: #BB8FCE;
+        --shared-light: #4A235A;
+        --ipc: #7F8C8D;
+        --shadow: rgba(0,0,0,0.4);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .controls input {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 14px;
+      width: 180px;
+    }
+    .controls button {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .controls button:hover {
+      background: var(--renderer);
+      border-color: var(--renderer);
+      color: white;
+    }
+
+    .detail-toggle {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .detail-toggle button.active {
+      background: var(--renderer);
+      border-color: var(--renderer);
+      color: white;
+    }
+
+    #cy { flex: 1; width: 100%; }
+
+    #legend {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    #legend h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--fg-muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+    }
+
+    #tooltip {
+      position: fixed;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      max-width: 350px;
+      box-shadow: 0 8px 30px var(--shadow);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    #tooltip p { line-height: 1.6; color: var(--fg-muted); }
+    #tooltip ul {
+      margin-top: 10px;
+      padding-left: 18px;
+      color: var(--fg-muted);
+      font-size: 12px;
+    }
+
+    #process-info {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 280px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px var(--shadow);
+      display: none;
+    }
+    #process-info.visible { display: block; }
+    #process-info h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #process-info h3 .badge {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+    }
+    #process-info .section {
+      margin: 12px 0;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    #process-info .section h4 {
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin-bottom: 8px;
+    }
+    #process-info ul {
+      padding-left: 16px;
+      font-size: 12px;
+    }
+    #process-info li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Architecture Diagram</h1>
+    <div class="controls">
+      <input type="text" id="search" placeholder="コンポーネント検索...">
+      <button onclick="resetView()">リセット</button>
+      <button onclick="exportPNG()">PNG出力</button>
+    </div>
+    <div class="detail-toggle">
+      <button id="btn-overview" class="active" onclick="setDetailLevel(0)">概要</button>
+      <button id="btn-detail" onclick="setDetailLevel(1)">詳細</button>
+    </div>
+  </header>
+
+  <div id="cy"></div>
+
+  <div id="legend">
+    <h3>Process Boundaries</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--main)"></div>
+      <span>Main Process</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--renderer)"></div>
+      <span>Renderer Process</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--remote)"></div>
+      <span>Remote UI</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--shared)"></div>
+      <span>Shared Code</span>
+    </div>
+    <div class="legend-item" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+      <div style="width: 20px; height: 2px; background: var(--ipc);"></div>
+      <span>IPC / WebSocket</span>
+    </div>
+  </div>
+
+  <div id="tooltip">
+    <h3 id="tooltip-title"></h3>
+    <p id="tooltip-content"></p>
+    <ul id="tooltip-details"></ul>
+  </div>
+
+  <div id="process-info">
+    <h3><span class="badge" id="pi-badge"></span><span id="pi-title"></span></h3>
+    <p id="pi-description"></p>
+    <div class="section">
+      <h4>責務</h4>
+      <ul id="pi-responsibilities"></ul>
+    </div>
+    <div class="section">
+      <h4>保持すべきステート</h4>
+      <ul id="pi-state"></ul>
+    </div>
+  </div>
+
+  <script>
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Architecture data from structure.md
+    const elements = [
+      // Process boundary nodes (compound parents)
+      {
+        data: {
+          id: 'main-process',
+          label: 'Main Process',
+          group: 'main',
+          isParent: true,
+          description: 'Electronのメインプロセス。Node.js API、ファイル操作、プロセス管理を担当。',
+          responsibilities: [
+            'セッション状態の保持',
+            'プロセス/ファイル監視の管理',
+            'IPCハンドラでステート変更を受付',
+            'ステート変更時にRendererへブロードキャスト'
+          ],
+          state: [
+            '選択中プロジェクトパス',
+            '認証状態',
+            '起動中Agent',
+            'chokidar watcherインスタンス',
+            '永続設定（electron-store）',
+            'WebSocket接続、Remote UIセッション'
+          ]
+        }
+      },
+      {
+        data: {
+          id: 'renderer-process',
+          label: 'Renderer Process',
+          group: 'renderer',
+          isParent: true,
+          description: 'Electron Renderer（React + Vite）。UIレンダリングとユーザーインタラクションを担当。',
+          responsibilities: [
+            'UIステート（表示制御、フォーム入力中の値）',
+            'Main Processステートの読み取り専用キャッシュ',
+            'ステート変更はIPC経由でMainに依頼'
+          ],
+          state: [
+            'editorStore（スクロール位置）',
+            'modalStore（ダイアログ開閉）',
+            '表示中のタブ、選択中の項目'
+          ]
+        }
+      },
+      {
+        data: {
+          id: 'remote-ui',
+          label: 'Remote UI',
+          group: 'remote',
+          isParent: true,
+          description: 'ブラウザベースのリモートアクセスUI。WebSocket経由でMainと通信。',
+          responsibilities: [
+            'ワークフロー表示・操作',
+            'Spec/Bug一覧と詳細表示',
+            'Agent実行状態の監視・制御'
+          ],
+          state: [
+            'shared/storesと同期（WebSocketApiClient経由）',
+            'UIのみのローカルステート'
+          ]
+        }
+      },
+      {
+        data: {
+          id: 'shared-code',
+          label: 'Shared Code',
+          group: 'shared',
+          isParent: true,
+          description: 'Electron版とRemote UI版で85%以上共有されるコード。',
+          responsibilities: [
+            'ApiClient抽象化層',
+            '共有UIコンポーネント',
+            'Domain State (SSOT) stores'
+          ],
+          state: []
+        }
+      },
+
+      // Main Process components
+      { data: { id: 'services', label: 'Services', parent: 'main-process', group: 'main', level: 1, details: ['specManagerService', 'bugService', 'agentProcess', 'fileService'] } },
+      { data: { id: 'ipc-handlers', label: 'IPC Handlers', parent: 'main-process', group: 'main', level: 1, details: ['channels.ts', 'handlers.ts', 'sshHandlers.ts'] } },
+      { data: { id: 'mcp-server', label: 'MCP Server', parent: 'main-process', group: 'main', level: 1, details: ['mcpServerService', 'mcpToolRegistry'] } },
+      { data: { id: 'file-watcher', label: 'File Watcher', parent: 'main-process', group: 'main', level: 1, details: ['chokidar', 'specsWatcherService'] } },
+      { data: { id: 'ws-server', label: 'WebSocket Server', parent: 'main-process', group: 'main', level: 1, details: ['remoteAccessServer', 'webSocketHandler'] } },
+
+      // Renderer components
+      { data: { id: 'react-app', label: 'React App', parent: 'renderer-process', group: 'renderer', level: 1, details: ['App.tsx', 'components/'] } },
+      { data: { id: 'preload', label: 'Preload Bridge', parent: 'renderer-process', group: 'renderer', level: 1, details: ['contextBridge', 'electronAPI'] } },
+      { data: { id: 'ui-stores', label: 'UI Stores', parent: 'renderer-process', group: 'renderer', level: 1, details: ['editorStore', 'modalStore'] } },
+
+      // Remote UI components
+      { data: { id: 'remote-app', label: 'React SPA', parent: 'remote-ui', group: 'remote', level: 1, details: ['main.tsx', 'MobileLayout', 'DesktopLayout'] } },
+      { data: { id: 'ws-client', label: 'WebSocket Client', parent: 'remote-ui', group: 'remote', level: 1, details: ['WebSocketApiClient'] } },
+
+      // Shared components
+      { data: { id: 'api-client', label: 'ApiClient', parent: 'shared-code', group: 'shared', level: 1, details: ['IpcApiClient', 'WebSocketApiClient'] } },
+      { data: { id: 'shared-stores', label: 'Domain Stores (SSOT)', parent: 'shared-code', group: 'shared', level: 1, details: ['agentStore', 'bugStore', 'specStore', 'scheduleTaskStore'] } },
+      { data: { id: 'shared-components', label: 'UI Components', parent: 'shared-code', group: 'shared', level: 1, details: ['spec/', 'bug/', 'workflow/', 'review/'] } },
+
+      // Communication edges
+      { data: { source: 'react-app', target: 'preload', label: '', type: 'internal' } },
+      { data: { source: 'preload', target: 'ipc-handlers', label: 'IPC', type: 'ipc' } },
+      { data: { source: 'ipc-handlers', target: 'services', label: '', type: 'internal' } },
+      { data: { source: 'services', target: 'file-watcher', label: '', type: 'internal' } },
+      { data: { source: 'ipc-handlers', target: 'preload', label: 'Broadcast', type: 'broadcast', classes: 'broadcast' } },
+
+      { data: { source: 'remote-app', target: 'ws-client', label: '', type: 'internal' } },
+      { data: { source: 'ws-client', target: 'ws-server', label: 'WebSocket', type: 'websocket' } },
+      { data: { source: 'ws-server', target: 'services', label: '', type: 'internal' } },
+
+      { data: { source: 'react-app', target: 'api-client', label: '', type: 'use' } },
+      { data: { source: 'remote-app', target: 'api-client', label: '', type: 'use' } },
+      { data: { source: 'react-app', target: 'shared-stores', label: '', type: 'use' } },
+      { data: { source: 'remote-app', target: 'shared-stores', label: '', type: 'use' } },
+      { data: { source: 'react-app', target: 'shared-components', label: '', type: 'use' } },
+      { data: { source: 'remote-app', target: 'shared-components', label: '', type: 'use' } }
+    ];
+
+    const colors = {
+      main: { bg: isDark ? '#512E2E' : '#FADBD8', border: '#E74C3C' },
+      renderer: { bg: isDark ? '#1B4F72' : '#D4E6F1', border: isDark ? '#5DADE2' : '#3498DB' },
+      remote: { bg: isDark ? '#1D4F3E' : '#D1F2EB', border: isDark ? '#58D68D' : '#1ABC9C' },
+      shared: { bg: isDark ? '#4A235A' : '#E8DAEF', border: isDark ? '#BB8FCE' : '#9B59B6' }
+    };
+
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: elements,
+      style: [
+        {
+          selector: 'node[isParent]',
+          style: {
+            'label': 'data(label)',
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'text-margin-y': 15,
+            'font-size': '14px',
+            'font-weight': '600',
+            'background-color': 'data(bgColor)',
+            'border-color': 'data(borderColor)',
+            'border-width': 3,
+            'shape': 'round-rectangle',
+            'padding': 30
+          }
+        },
+        {
+          selector: 'node[!isParent]',
+          style: {
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': '11px',
+            'font-weight': '500',
+            'color': isDark ? '#eaeaea' : '#333',
+            'background-color': 'data(bgColor)',
+            'border-color': 'data(borderColor)',
+            'border-width': 2,
+            'width': 100,
+            'height': 40,
+            'shape': 'round-rectangle'
+          }
+        },
+        {
+          selector: 'node[level=1]',
+          style: {
+            'opacity': 1
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 2,
+            'line-color': '#95a5a6',
+            'target-arrow-color': '#95a5a6',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '10px',
+            'text-background-color': isDark ? '#1a1a2e' : '#fff',
+            'text-background-opacity': 1,
+            'text-background-padding': '3px'
+          }
+        },
+        {
+          selector: 'edge[type="ipc"]',
+          style: {
+            'line-color': '#3498DB',
+            'target-arrow-color': '#3498DB',
+            'width': 3
+          }
+        },
+        {
+          selector: 'edge[type="websocket"]',
+          style: {
+            'line-color': '#1ABC9C',
+            'target-arrow-color': '#1ABC9C',
+            'width': 3
+          }
+        },
+        {
+          selector: 'edge[type="broadcast"]',
+          style: {
+            'line-style': 'dashed',
+            'line-color': '#E74C3C',
+            'target-arrow-color': '#E74C3C'
+          }
+        },
+        {
+          selector: 'edge[type="use"]',
+          style: {
+            'line-style': 'dotted',
+            'line-color': '#9B59B6',
+            'target-arrow-color': '#9B59B6'
+          }
+        },
+        {
+          selector: '.dimmed',
+          style: { 'opacity': 0.15 }
+        },
+        {
+          selector: '.highlighted',
+          style: {
+            'border-width': 4,
+            'border-color': '#F39C12',
+            'z-index': 999
+          }
+        },
+        {
+          selector: '.hidden',
+          style: { 'display': 'none' }
+        }
+      ],
+      layout: {
+        name: 'cose',
+        animate: false,
+        nodeRepulsion: 10000,
+        idealEdgeLength: 80,
+        padding: 50
+      }
+    });
+
+    // Set colors
+    cy.nodes().forEach(node => {
+      const group = node.data('group');
+      if (colors[group]) {
+        node.data('bgColor', colors[group].bg);
+        node.data('borderColor', colors[group].border);
+      }
+    });
+
+    // Run layout
+    cy.layout({
+      name: 'cose',
+      animate: true,
+      animationDuration: 500,
+      nodeRepulsion: 10000,
+      idealEdgeLength: 80,
+      padding: 50
+    }).run();
+
+    // Click handlers
+    cy.on('tap', 'node', function(evt) {
+      const node = evt.target;
+      const data = node.data();
+
+      cy.elements().addClass('dimmed');
+      node.closedNeighborhood().removeClass('dimmed');
+      node.addClass('highlighted');
+
+      // Show process info for parent nodes
+      if (data.isParent) {
+        showProcessInfo(data);
+      }
+    });
+
+    cy.on('tap', function(evt) {
+      if (evt.target === cy) {
+        cy.elements().removeClass('dimmed highlighted');
+        document.getElementById('process-info').classList.remove('visible');
+      }
+    });
+
+    function showProcessInfo(data) {
+      const pi = document.getElementById('process-info');
+      document.getElementById('pi-badge').style.background = colors[data.group].border;
+      document.getElementById('pi-title').textContent = data.label;
+      document.getElementById('pi-description').textContent = data.description || '';
+
+      const respList = document.getElementById('pi-responsibilities');
+      respList.innerHTML = '';
+      (data.responsibilities || []).forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        respList.appendChild(li);
+      });
+
+      const stateList = document.getElementById('pi-state');
+      stateList.innerHTML = '';
+      (data.state || []).forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = s;
+        stateList.appendChild(li);
+      });
+
+      pi.classList.add('visible');
+    }
+
+    // Tooltip
+    const tooltip = document.getElementById('tooltip');
+    cy.on('mouseover', 'node[!isParent]', function(evt) {
+      const node = evt.target;
+      const data = node.data();
+
+      document.getElementById('tooltip-title').textContent = data.label;
+      document.getElementById('tooltip-content').textContent = data.parent ? `Parent: ${data.parent}` : '';
+
+      const detailsList = document.getElementById('tooltip-details');
+      detailsList.innerHTML = '';
+      (data.details || []).forEach(d => {
+        const li = document.createElement('li');
+        li.textContent = d;
+        detailsList.appendChild(li);
+      });
+
+      const pos = evt.renderedPosition;
+      tooltip.style.left = Math.min(pos.x + 20, window.innerWidth - 370) + 'px';
+      tooltip.style.top = Math.min(pos.y + 20, window.innerHeight - 200) + 'px';
+      tooltip.classList.add('visible');
+    });
+
+    cy.on('mouseout', 'node', function() {
+      tooltip.classList.remove('visible');
+    });
+
+    // Search
+    document.getElementById('search').addEventListener('input', function(e) {
+      const query = e.target.value.toLowerCase();
+      if (!query) {
+        cy.elements().removeClass('dimmed highlighted');
+        return;
+      }
+      cy.nodes().forEach(node => {
+        const label = (node.data('label') || '').toLowerCase();
+        const details = (node.data('details') || []).join(' ').toLowerCase();
+        if (label.includes(query) || details.includes(query)) {
+          node.removeClass('dimmed').addClass('highlighted');
+        } else {
+          node.addClass('dimmed').removeClass('highlighted');
+        }
+      });
+    });
+
+    // Detail level
+    let detailLevel = 0;
+    function setDetailLevel(level) {
+      detailLevel = level;
+      document.getElementById('btn-overview').classList.toggle('active', level === 0);
+      document.getElementById('btn-detail').classList.toggle('active', level === 1);
+
+      cy.nodes('[level=1]').forEach(node => {
+        if (level === 0) {
+          node.addClass('hidden');
+        } else {
+          node.removeClass('hidden');
+        }
+      });
+
+      cy.edges().forEach(edge => {
+        const source = cy.getElementById(edge.data('source'));
+        const target = cy.getElementById(edge.data('target'));
+        if (source.hasClass('hidden') || target.hasClass('hidden')) {
+          edge.addClass('hidden');
+        } else {
+          edge.removeClass('hidden');
+        }
+      });
+
+      setTimeout(() => {
+        cy.layout({
+          name: 'cose',
+          animate: true,
+          animationDuration: 300,
+          nodeRepulsion: 10000,
+          padding: 50
+        }).run();
+      }, 100);
+    }
+
+    // Initialize with detail view
+    setDetailLevel(1);
+
+    function resetView() {
+      cy.elements().removeClass('dimmed highlighted');
+      document.getElementById('search').value = '';
+      document.getElementById('process-info').classList.remove('visible');
+      cy.fit(50);
+    }
+
+    function exportPNG() {
+      const png = cy.png({ full: true, scale: 2, bg: isDark ? '#1a1a2e' : '#ffffff' });
+      const link = document.createElement('a');
+      link.download = 'architecture_diagram.png';
+      link.href = png;
+      link.click();
+    }
+  </script>
+</body>
+</html>

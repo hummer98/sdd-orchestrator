@@ -708,6 +708,17 @@ export interface ElectronAPI {
     callback: (data: { agentId: string; specId: string; error: import('@shared/types/agentStartError').AgentStartError }) => void
   ): () => void;
 
+  /**
+   * startup-project-selection-fix: Subscribe to project selected events
+   * Called when Main process broadcasts selectProject result after startup
+   * Requirements: 1.3
+   * @param callback Function called when project is selected at startup
+   * @returns Cleanup function to unsubscribe
+   */
+  onProjectSelected(
+    callback: (result: SelectProjectResult) => void
+  ): () => void;
+
   // Config
   getRecentProjects(): Promise<string[]>;
   addRecentProject(path: string): Promise<void>;

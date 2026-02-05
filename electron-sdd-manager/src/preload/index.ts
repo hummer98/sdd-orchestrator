@@ -356,6 +356,30 @@ const electronAPI = {
     };
   },
 
+  /**
+   * startup-project-selection-fix: Subscribe to project selected events
+   * Called when Main process broadcasts selectProject result after startup
+   * Requirements: 1.3
+   * @param callback Function called when project is selected at startup
+   * @returns Cleanup function to unsubscribe
+   */
+  onProjectSelected: (
+    callback: (result: SelectProjectResult) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      result: SelectProjectResult
+    ) => {
+      callback(result);
+    };
+    ipcRenderer.on(IPC_CHANNELS.PROJECT_SELECTED, handler);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.PROJECT_SELECTED, handler);
+    };
+  },
+
   // Config
   getRecentProjects: () => ipcRenderer.invoke(IPC_CHANNELS.GET_RECENT_PROJECTS),
 

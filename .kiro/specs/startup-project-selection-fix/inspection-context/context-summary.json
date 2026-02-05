@@ -1,0 +1,111 @@
+{
+  "spec_overview": "環境変数やCLI引数で指定されたプロジェクトパスをMain processで処理し、その結果をRendererにブロードキャストすることで、起動時に正しいプロジェクト選択状態でUIを表示する修正",
+  "key_components": [
+    {
+      "name": "initialSelectResult cache",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/ipc/handlers.ts",
+      "requirements": ["1.1"]
+    },
+    {
+      "name": "PROJECT_SELECTED channel",
+      "type": "type",
+      "path": "electron-sdd-manager/src/main/ipc/channels.ts",
+      "requirements": ["1.2"]
+    },
+    {
+      "name": "onProjectSelected preload API",
+      "type": "component",
+      "path": "electron-sdd-manager/src/preload/index.ts",
+      "requirements": ["1.3"]
+    },
+    {
+      "name": "applySelectProjectResult action",
+      "type": "service",
+      "path": "electron-sdd-manager/src/renderer/stores/projectStore.ts",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "3.3"]
+    },
+    {
+      "name": "Main process broadcast",
+      "type": "component",
+      "path": "electron-sdd-manager/src/main/index.ts",
+      "requirements": ["1.2", "4.1", "4.3"]
+    },
+    {
+      "name": "App.tsx event listener",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/App.tsx",
+      "requirements": ["1.3", "1.4", "2.2"]
+    },
+    {
+      "name": "electronAPI type definition",
+      "type": "type",
+      "path": "electron-sdd-manager/src/renderer/types/electron.d.ts",
+      "requirements": ["1.3"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "handlers.ts (setInitialSelectResult)",
+      "target": "index.ts (getInitialSelectResult)",
+      "type": "call"
+    },
+    {
+      "source": "index.ts (webContents.send)",
+      "target": "preload/index.ts (ipcRenderer.on)",
+      "type": "ipc"
+    },
+    {
+      "source": "preload/index.ts (onProjectSelected)",
+      "target": "App.tsx (listener callback)",
+      "type": "event"
+    },
+    {
+      "source": "App.tsx (callback)",
+      "target": "projectStore.ts (applySelectProjectResult)",
+      "type": "call"
+    },
+    {
+      "source": "projectStore.selectProject",
+      "target": "projectStore.applySelectProjectResult",
+      "type": "call"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/index.ts",
+      "action": "UPDATE",
+      "reason": "起動時ブロードキャスト追加（ready-to-show後にwebContents.send）"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/ipc/handlers.ts",
+      "action": "UPDATE",
+      "reason": "initialSelectResultキャッシュ変数と管理関数を追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/ipc/channels.ts",
+      "action": "UPDATE",
+      "reason": "PROJECT_SELECTEDチャネル定義追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/preload/index.ts",
+      "action": "UPDATE",
+      "reason": "onProjectSelected API追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/stores/projectStore.ts",
+      "action": "UPDATE",
+      "reason": "applySelectProjectResult抽出、selectProjectリファクタリング"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "onProjectSelectedリスナー登録追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/types/electron.d.ts",
+      "action": "UPDATE",
+      "reason": "onProjectSelected型定義追加"
+    }
+  ]
+}

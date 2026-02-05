@@ -116,6 +116,9 @@ export interface AddPermissionsResult {
 
 interface ProjectActions {
   selectProject: (path: string) => Promise<void>;
+  // startup-project-selection-fix Task 3.1: Unified result application
+  // Requirements: 2.1, 2.4
+  applySelectProjectResult: (result: SelectProjectResult) => Promise<void>;
   loadRecentProjects: () => Promise<void>;
   clearProject: () => void;
   clearError: () => void;
@@ -206,57 +209,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Use new unified selectProject IPC
       const result = await window.electronAPI.selectProject(path);
 
+      // startup-project-selection-fix Task 3.2: Use unified applySelectProjectResult
+      // Requirements: 2.3, 3.3 - Same update logic for UI selection and startup broadcast
+      await get().applySelectProjectResult(result);
+
+      // If selection failed, applySelectProjectResult already set error state
       if (!result.success) {
-        // Convert error to user-friendly message
-        let errorMessage = 'プロジェクトの選択に失敗しました';
-        if (result.error) {
-          switch (result.error.type) {
-            case 'PATH_NOT_EXISTS':
-              errorMessage = `パスが存在しません: ${result.error.path}`;
-              break;
-            case 'NOT_A_DIRECTORY':
-              errorMessage = `ディレクトリではありません: ${result.error.path}`;
-              break;
-            case 'PERMISSION_DENIED':
-              errorMessage = `アクセス権限がありません: ${result.error.path}`;
-              break;
-            case 'SELECTION_IN_PROGRESS':
-              errorMessage = '別のプロジェクト選択が進行中です';
-              break;
-            case 'INTERNAL_ERROR':
-              errorMessage = result.error.message;
-              break;
-          }
-        }
-
-        set({
-          error: errorMessage,
-          isLoading: false,
-          lastSelectResult: result,
-        });
         return;
-      }
-
-      // Success: update store with results
-      // Note: specs/bugs are delegated to specStore/bugStore (SSOT)
-      set({
-        currentProject: result.projectPath,
-        kiroValidation: result.kiroValidation,
-        isLoading: false,
-        lastSelectResult: result,
-      });
-
-      // Sync specs/bugs to their dedicated stores (unified-project-selection: Task 4.1)
-      // This ensures specStore and bugStore are updated for components that use them
-      if (result.specs) {
-        useSpecStore.getState().setSpecs(result.specs);
-        // spec-metadata-ssot-refactor: Set specJsonMap from selectProject result
-        // Main process already read all specJsons, no need for separate IPC calls
-        useSpecStore.getState().setSpecJsonMap(result.specJsonMap);
-      }
-      // bugs-view-unification Task 6.1: Use shared bugStore
-      if (result.bugs) {
-        useSharedBugStore.getState().updateBugs(result.bugs);
       }
 
       // Bug fix: empty bug directory handling - show warning toast for skipped directories
@@ -418,6 +377,66 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         error: error instanceof Error ? error.message : 'プロジェクトの選択に失敗しました',
         isLoading: false,
       });
+    }
+  },
+
+  // ============================================================
+  // startup-project-selection-fix Task 3.1: Unified Result Application
+  // Requirements: 2.1, 2.4
+  // ============================================================
+  /**
+   * Apply SelectProjectResult to store (for startup broadcast and direct selection)
+   * This is the shared logic for updating store state from SelectProjectResult
+   * @param result - The SelectProjectResult from Main process
+   */
+  applySelectProjectResult: async (result: SelectProjectResult) => {
+    if (!result.success) {
+      // Convert error to user-friendly message
+      let errorMessage = 'プロジェクトの選択に失敗しました';
+      if (result.error) {
+        switch (result.error.type) {
+          case 'PATH_NOT_EXISTS':
+            errorMessage = `パスが存在しません: ${result.error.path}`;
+            break;
+          case 'NOT_A_DIRECTORY':
+            errorMessage = `ディレクトリではありません: ${result.error.path}`;
+            break;
+          case 'PERMISSION_DENIED':
+            errorMessage = `アクセス権限がありません: ${result.error.path}`;
+            break;
+          case 'SELECTION_IN_PROGRESS':
+            errorMessage = '別のプロジェクト選択が進行中です';
+            break;
+          case 'INTERNAL_ERROR':
+            errorMessage = result.error.message;
+            break;
+        }
+      }
+
+      set({
+        error: errorMessage,
+        isLoading: false,
+        lastSelectResult: result,
+        currentProject: null,
+      });
+      return;
+    }
+
+    // Success: update store with results
+    set({
+      currentProject: result.projectPath,
+      kiroValidation: result.kiroValidation,
+      isLoading: false,
+      lastSelectResult: result,
+    });
+
+    // Sync specs/bugs to their dedicated stores (unified-project-selection: Task 4.1)
+    if (result.specs) {
+      useSpecStore.getState().setSpecs(result.specs);
+      useSpecStore.getState().setSpecJsonMap(result.specJsonMap);
+    }
+    if (result.bugs) {
+      useSharedBugStore.getState().updateBugs(result.bugs);
     }
   },
 

@@ -357,6 +357,28 @@ export function App() {
     };
   }, []);
 
+  // startup-project-selection-fix Task 5.1: Register onProjectSelected listener
+  // Requirements: 1.3, 1.4, 2.2 - Receive startup broadcast and apply to store
+  const { applySelectProjectResult } = useProjectStore();
+  const projectSelectedListenerSetup = useRef(false);
+  useEffect(() => {
+    if (projectSelectedListenerSetup.current) {
+      return;
+    }
+    projectSelectedListenerSetup.current = true;
+
+    // Register listener for PROJECT_SELECTED broadcast from Main process
+    const cleanupProjectSelected = window.electronAPI.onProjectSelected(async (result) => {
+      console.log('[App] Received PROJECT_SELECTED broadcast', { projectPath: result.projectPath });
+      await applySelectProjectResult(result);
+    });
+
+    return () => {
+      projectSelectedListenerSetup.current = false;
+      cleanupProjectSelected();
+    };
+  }, [applySelectProjectResult]);
+
   // Setup menu event listeners
   const menuListenersSetup = useRef(false);
   useEffect(() => {

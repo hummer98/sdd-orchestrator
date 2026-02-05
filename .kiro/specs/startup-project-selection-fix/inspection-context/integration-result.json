@@ -1,0 +1,294 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T06:30:00Z",
+  "checks": [
+    {
+      "checkId": "INT-001",
+      "category": "task",
+      "item": "Task 1 - Main Process: selectProject結果キャッシュ管理",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:5",
+      "details": "タスク1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-002",
+      "category": "task",
+      "item": "Task 1.1 - 結果キャッシュ変数と管理関数を追加",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:6-14",
+      "details": "タスク1.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-003",
+      "category": "task",
+      "item": "Task 2 - IPC/Preload: PROJECT_SELECTEDチャネル追加",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:16",
+      "details": "タスク2が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-004",
+      "category": "task",
+      "item": "Task 2.1 - IPCチャネル定義を追加",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:17-20",
+      "details": "タスク2.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-005",
+      "category": "task",
+      "item": "Task 2.2 - onProjectSelectedリスナーAPIをpreloadに追加",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:22-29",
+      "details": "タスク2.2が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-006",
+      "category": "task",
+      "item": "Task 2.3 - electronAPI型定義を更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:31-36",
+      "details": "タスク2.3が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-007",
+      "category": "task",
+      "item": "Task 3 - Renderer Store: 統一結果適用処理の実装",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:38",
+      "details": "タスク3が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-008",
+      "category": "task",
+      "item": "Task 3.1 - applySelectProjectResultアクションをprojectStoreに追加",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:39-45",
+      "details": "タスク3.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-009",
+      "category": "task",
+      "item": "Task 3.2 - 既存のselectProjectアクションをリファクタリング",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:47-53",
+      "details": "タスク3.2が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-010",
+      "category": "task",
+      "item": "Task 4 - Main Process: 起動時ブロードキャスト実装",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:55",
+      "details": "タスク4が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-011",
+      "category": "task",
+      "item": "Task 4.1 - ウィンドウready-to-show後にブロードキャストを送信",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:56-65",
+      "details": "タスク4.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-012",
+      "category": "task",
+      "item": "Task 5 - Renderer: 起動時リスナー登録",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:67",
+      "details": "タスク5が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-013",
+      "category": "task",
+      "item": "Task 5.1 - App.tsxにonProjectSelectedリスナーを登録",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:68-76",
+      "details": "タスク5.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-014",
+      "category": "task",
+      "item": "Task 6 - テスト実装",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:78",
+      "details": "タスク6が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-015",
+      "category": "task",
+      "item": "Task 6.1 - handlers.tsキャッシュ管理のユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:79-83",
+      "details": "タスク6.1が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-016",
+      "category": "task",
+      "item": "Task 6.2 - applySelectProjectResultのユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:85-88",
+      "details": "タスク6.2が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-017",
+      "category": "task",
+      "item": "Task 6.3 - E2Eテストで起動時フローを検証",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "tasks.md:90-95",
+      "details": "タスク6.3が[x]でマークされています"
+    },
+    {
+      "checkId": "INT-018",
+      "category": "integration",
+      "item": "initialSelectResult cache (handlers.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:113,157-178",
+      "details": "initialSelectResult変数とsetInitialSelectResult/getInitialSelectResult/clearInitialSelectResult関数が実装されています"
+    },
+    {
+      "checkId": "INT-019",
+      "category": "integration",
+      "item": "PROJECT_SELECTED channel (channels.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/channels.ts:53",
+      "details": "PROJECT_SELECTED: 'ipc:project-selected'が定義されています"
+    },
+    {
+      "checkId": "INT-020",
+      "category": "integration",
+      "item": "onProjectSelected preload API (preload/index.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/preload/index.ts:366-380",
+      "details": "onProjectSelected関数がpreload APIとして実装されています"
+    },
+    {
+      "checkId": "INT-021",
+      "category": "integration",
+      "item": "applySelectProjectResult action (projectStore.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:121,392",
+      "details": "applySelectProjectResultアクションが定義・実装されています"
+    },
+    {
+      "checkId": "INT-022",
+      "category": "integration",
+      "item": "Main process broadcast (index.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:169-196,231",
+      "details": "broadcastInitialProjectSelection関数とready-to-showイベントハンドラーが実装されています"
+    },
+    {
+      "checkId": "INT-023",
+      "category": "integration",
+      "item": "App.tsx event listener",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/App.tsx:360-380",
+      "details": "onProjectSelectedリスナーがuseEffect内で登録され、applySelectProjectResultを呼び出しています"
+    },
+    {
+      "checkId": "INT-024",
+      "category": "integration",
+      "item": "electronAPI type definition (electron.d.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/types/electron.d.ts:718-720",
+      "details": "onProjectSelected型定義が追加されています"
+    },
+    {
+      "checkId": "INT-025",
+      "category": "placeholder",
+      "item": "startup-project-selection-fix関連のTODOコメント",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "Grep検索結果",
+      "details": "startup-project-selection-fix関連のTODO/FIXME/PLACEHOLDERコメントは見つかりませんでした"
+    },
+    {
+      "checkId": "INT-026",
+      "category": "test",
+      "item": "handlers.tsキャッシュ管理のユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/initialSelectResult.test.ts",
+      "details": "setInitialSelectResult/getInitialSelectResult/clearInitialSelectResultのテストが実装されています"
+    },
+    {
+      "checkId": "INT-027",
+      "category": "test",
+      "item": "channels.ts PROJECT_SELECTEDのユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/channels.test.ts:99-114",
+      "details": "PROJECT_SELECTEDチャネル定義のテストが実装されています"
+    },
+    {
+      "checkId": "INT-028",
+      "category": "test",
+      "item": "preload/index.ts onProjectSelectedのユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/preload/index.test.ts:1228-1310",
+      "details": "onProjectSelected APIのテストが実装されています"
+    },
+    {
+      "checkId": "INT-029",
+      "category": "test",
+      "item": "projectStore.ts applySelectProjectResultのユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.test.ts:937-1075",
+      "details": "applySelectProjectResultアクションとselectProjectリファクタリングのテストが実装されています"
+    },
+    {
+      "checkId": "INT-030",
+      "category": "test",
+      "item": "index.ts broadcastInitialProjectSelectionのユニットテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.test.ts:299-394",
+      "details": "broadcastInitialProjectSelection関数のテストが実装されています"
+    },
+    {
+      "checkId": "INT-031",
+      "category": "test",
+      "item": "E2Eテスト",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts",
+      "details": "SDD_PROJECT_PATH環境変数による起動時プロジェクト選択のE2Eテストが実装されています"
+    }
+  ],
+  "summary": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 31
+  }
+}

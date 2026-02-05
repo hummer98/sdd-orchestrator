@@ -48,6 +48,9 @@ export const IPC_CHANNELS = {
 
   // Project
   SET_PROJECT_PATH: 'ipc:set-project-path',
+  // startup-project-selection-fix: Broadcast selectProject result to Renderer
+  // Requirements: 1.2
+  PROJECT_SELECTED: 'ipc:project-selected',
 
   // Config
   GET_RECENT_PROJECTS: 'ipc:get-recent-projects',

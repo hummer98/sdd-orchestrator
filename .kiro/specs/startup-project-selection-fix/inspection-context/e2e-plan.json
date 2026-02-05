@@ -1,0 +1,61 @@
+{
+  "feature": "startup-project-selection-fix",
+  "generatedAt": "2026-02-05T10:00:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "description": "環境変数SDD_PROJECT_PATHを設定してアプリ起動し、指定プロジェクトが選択された状態でUI表示",
+      "decision": "Existing",
+      "reason": "startup-project-selection.e2e.spec.tsがSDD_PROJECT_PATH環境変数での起動をテストしている。テストでは起動後にcurrentProjectが設定されていること、spec listが表示されていること、kiroValidationが取得されていることを検証する。",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts",
+      "testCoverage": "環境変数での自動プロジェクト選択、ストア状態の検証（currentProject, specs, kiroValidation）、applySelectProjectResult関数の存在確認、onProjectSelected APIの存在確認"
+    },
+    {
+      "journeyId": "UJ-002",
+      "description": "CLI引数--projectでプロジェクト指定して起動し、指定プロジェクトが選択された状態でUI表示",
+      "decision": "Skip",
+      "reason": "CLI引数--projectの起動テストはE2Eテストフレームワーク（wdio-electron-service）の制約上、環境変数テストと同等の内部パスを通る。design.mdの実装ではgetInitialProjectPathFromConfig()が環境変数とCLI引数の両方を処理し、同じブロードキャスト機構を使用するため、UJ-001のテストでカバレッジ十分。",
+      "existingTestPath": null,
+      "testCoverage": "UJ-001のテストで起動時ブロードキャスト機構全体をカバー。CLI引数の解析はユニットテストでカバー予定。"
+    },
+    {
+      "journeyId": "UJ-003",
+      "description": "起動後にUIからプロジェクト選択し、選択したプロジェクトが正しく表示される",
+      "decision": "Existing",
+      "reason": "複数の既存E2EテストがselectProjectViaStoreを使用してUIからのプロジェクト選択をテストしている。project-agent-startup.e2e.spec.tsはプロジェクト選択後のエージェント起動、workflow-integration.e2e.spec.tsはプロジェクト選択後のワークフロー実行を検証している。これらは既存のUIフロー（applySelectProjectResultを使用）を通る。",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-agent-startup.e2e.spec.ts",
+      "testCoverage": "UIからのプロジェクト選択、ストア状態の更新、spec/bugリストの同期、エージェント起動可能性"
+    }
+  ],
+  "executionScope": {
+    "total": 3,
+    "existing": 2,
+    "create": 0,
+    "skip": 1
+  },
+  "generatedTests": [],
+  "additionalNotes": {
+    "relatedTestFiles": [
+      {
+        "path": "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts",
+        "status": "new",
+        "coverageAreas": ["UJ-001", "統一処理検証", "セキュリティ設定"]
+      },
+      {
+        "path": "electron-sdd-manager/e2e-wdio/project-agent-startup.e2e.spec.ts",
+        "status": "existing",
+        "coverageAreas": ["UJ-003", "プロジェクト選択後の動作"]
+      },
+      {
+        "path": "electron-sdd-manager/e2e-wdio/workflow-integration.e2e.spec.ts",
+        "status": "existing",
+        "coverageAreas": ["UJ-003", "プロジェクト選択後のワークフロー"]
+      }
+    ],
+    "testInfrastructure": {
+      "framework": "WebdriverIO + wdio-electron-service",
+      "mockSetup": "E2E_MOCK_CLAUDE_COMMAND環境変数でモックCLI使用",
+      "helpers": "electron-sdd-manager/e2e-wdio/helpers/auto-execution.helpers.ts"
+    }
+  }
+}

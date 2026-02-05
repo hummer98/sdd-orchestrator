@@ -8,7 +8,8 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { registerIpcHandlers, setInitialProjectPath, selectProject } from './ipc/handlers';
+import { registerIpcHandlers, setInitialProjectPath, selectProject, setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult } from './ipc/handlers';
+import { IPC_CHANNELS } from './ipc/channels';
 import { registerRemoteAccessHandlers, setupStatusNotifications, getRemoteAccessServer } from './ipc/remoteAccessHandlers';
 import { registerSSHHandlers, setupSSHStatusNotifications } from './ipc/sshHandlers';
 import { registerWorktreeHandlers } from './ipc/worktreeHandlers';
@@ -164,6 +165,40 @@ async function resolveToolPathsAtStartup(): Promise<void> {
   }
 }
 
+/**
+ * startup-project-selection-fix Task 4.1: Broadcast initial project selection to Renderer
+ * Requirements: 1.2, 4.1, 4.3
+ *
+ * Broadcasts the cached selectProject result to Renderer via PROJECT_SELECTED channel.
+ * This is called on window ready-to-show event to ensure Renderer receives the initial
+ * project selection result that Main process completed before window was ready.
+ *
+ * @param window - The BrowserWindow to broadcast to
+ */
+export async function broadcastInitialProjectSelection(window: BrowserWindow): Promise<void> {
+  const cachedResult = getInitialSelectResult();
+
+  if (!cachedResult) {
+    logger.debug('[main] No cached initial select result to broadcast');
+    return;
+  }
+
+  // Safety check: window may have been destroyed
+  if (window.isDestroyed()) {
+    logger.warn('[main] Window destroyed, cannot broadcast initial project selection');
+    return;
+  }
+
+  // Broadcast to Renderer
+  window.webContents.send(IPC_CHANNELS.PROJECT_SELECTED, cachedResult);
+  logger.info('[main] Broadcasted initial project selection to Renderer', {
+    projectPath: cachedResult.projectPath,
+  });
+
+  // Clear cache after successful broadcast
+  clearInitialSelectResult();
+}
+
 function createWindow(): void {
   const isDev = !app.isPackaged && !isE2ETest;
   const configStore = getConfigStore();
@@ -191,9 +226,15 @@ function createWindow(): void {
   });
 
   // Show window when ready (unless headless mode)
-  mainWindow.once('ready-to-show', () => {
+  // startup-project-selection-fix Task 4.1: Broadcast initial project selection
+  // Requirements: 1.2, 4.1
+  mainWindow.once('ready-to-show', async () => {
     if (!isHeadless) {
       mainWindow?.show();
+    }
+    // Broadcast cached initial project selection to Renderer
+    if (mainWindow) {
+      await broadcastInitialProjectSelection(mainWindow);
     }
   });
 
@@ -286,6 +327,9 @@ app.whenReady().then(async () => {
             specsCount: result.specs.length,
             bugsCount: result.bugs.length,
           });
+          // startup-project-selection-fix Task 4.1: Cache result for later broadcast
+          // Requirements: 1.1, 1.2
+          setInitialSelectResult(result);
         } else {
           logger.error('[main] Failed to select initial project', {
             initialProjectPath,

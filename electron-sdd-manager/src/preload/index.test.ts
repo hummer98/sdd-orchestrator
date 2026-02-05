@@ -76,6 +76,8 @@ vi.mock('../main/ipc/channels', () => ({
     // auto-execution-projectpath-fix: Auto Execution channels
     AUTO_EXECUTION_START: 'auto-execution:start',
     BUG_AUTO_EXECUTION_START: 'bug-auto-execution:start',
+    // startup-project-selection-fix: Project selection broadcast
+    PROJECT_SELECTED: 'ipc:project-selected',
   },
 }));
 
@@ -1218,6 +1220,86 @@ describe('Preload API - Task 7.1: Idle Time Sync', () => {
       const result = await (exposedAPI.reportIdleTime as Function)(Date.now());
 
       expect(result).toBeUndefined();
+    });
+  });
+});
+
+// ============================================================
+// startup-project-selection-fix: onProjectSelected API
+// Task 2.2: Preload API for PROJECT_SELECTED listener
+// Requirements: 1.3
+// ============================================================
+
+describe('Preload API - startup-project-selection-fix: onProjectSelected', () => {
+  let exposedAPI: Record<string, unknown>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Import preload to trigger contextBridge.exposeInMainWorld
+    await import('./index');
+
+    // Get the exposed API from the mock call
+    const exposeCall = mockContextBridge.exposeInMainWorld.mock.calls[0];
+    expect(exposeCall).toBeDefined();
+    expect(exposeCall[0]).toBe('electronAPI');
+    exposedAPI = exposeCall[1];
+  });
+
+  describe('onProjectSelected', () => {
+    it('should expose onProjectSelected function', () => {
+      expect(typeof exposedAPI.onProjectSelected).toBe('function');
+    });
+
+    it('should register listener for ipc:project-selected', () => {
+      const callback = vi.fn();
+
+      (exposedAPI.onProjectSelected as Function)(callback);
+
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        'ipc:project-selected',
+        expect.any(Function)
+      );
+    });
+
+    it('should return cleanup function that removes listener', () => {
+      const callback = vi.fn();
+
+      const cleanup = (exposedAPI.onProjectSelected as Function)(callback);
+
+      expect(typeof cleanup).toBe('function');
+
+      cleanup();
+
+      expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
+        'ipc:project-selected',
+        expect.any(Function)
+      );
+    });
+
+    it('should call callback with SelectProjectResult', () => {
+      const callback = vi.fn();
+      let registeredHandler: Function;
+
+      mockIpcRenderer.on.mockImplementation((_channel, handler) => {
+        registeredHandler = handler;
+      });
+
+      (exposedAPI.onProjectSelected as Function)(callback);
+
+      // Simulate IPC event with SelectProjectResult
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      };
+      registeredHandler!({}, mockResult);
+
+      expect(callback).toHaveBeenCalledWith(mockResult);
     });
   });
 });

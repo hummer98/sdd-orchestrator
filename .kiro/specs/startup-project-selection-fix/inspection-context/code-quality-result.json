@@ -1,0 +1,195 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "checkId": "CQ-001",
+      "category": "dry",
+      "item": "applySelectProjectResult統一処理",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "projectStore.ts:392-441",
+      "details": "selectProjectアクションとonProjectSelectedリスナーの両方が同じapplySelectProjectResult関数を使用しており、DRY原則に準拠している。"
+    },
+    {
+      "checkId": "CQ-002",
+      "category": "dry",
+      "item": "initialSelectResultキャッシュ管理",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "handlers.ts:147-178",
+      "details": "setInitialSelectResult/getInitialSelectResult/clearInitialSelectResultの3つの関数でキャッシュ管理が一元化されている。コード重複なし。"
+    },
+    {
+      "checkId": "CQ-003",
+      "category": "ssot",
+      "item": "Main Processがセッション状態のSSOT",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "handlers.ts:113, index.ts:178-200, structure.md:70-77",
+      "details": "selectProject結果はMain Processでキャッシュされ、Rendererにブロードキャストされる。structure.mdの「Main Processがセッション状態を保持」「Main→Rendererへのブロードキャスト」パターンに準拠。"
+    },
+    {
+      "checkId": "CQ-004",
+      "category": "ssot",
+      "item": "RendererストアはMainのキャッシュ",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "projectStore.ts:392-441, App.tsx:360-380",
+      "details": "Rendererのprojectストアは、Main ProcessからのPROJECT_SELECTEDイベントを受信してapplySelectProjectResultで更新される。Rendererが独自にプロジェクト選択状態を保持していない。"
+    },
+    {
+      "checkId": "CQ-005",
+      "category": "kiss",
+      "item": "broadcastInitialProjectSelection実装",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "index.ts:178-200",
+      "details": "シンプルな実装。キャッシュ確認→ウィンドウ破棄チェック→webContents.send→キャッシュクリアの明確なフロー。不要な抽象化なし。"
+    },
+    {
+      "checkId": "CQ-006",
+      "category": "kiss",
+      "item": "IPCチャネル定義",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "channels.ts:51-53",
+      "details": "PROJECT_SELECTEDチャネルは既存のIPC_CHANNELS定数に追加されており、既存パターンを踏襲。シンプルで一貫性がある。"
+    },
+    {
+      "checkId": "CQ-007",
+      "category": "yagni",
+      "item": "新規コンポーネントの必要性",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "design.md, context-summary.json",
+      "details": "新規コンポーネントはすべて要件に基づいて追加されている。不要な機能や過度な一般化なし。"
+    },
+    {
+      "checkId": "CQ-008",
+      "category": "dead-code",
+      "item": "applySelectProjectResult使用状況",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "projectStore.ts, projectStore.test.ts, App.tsx",
+      "details": "applySelectProjectResultは以下で使用されている: (1) selectProjectアクション内(projectStore.ts:214)、(2) onProjectSelectedリスナー(App.tsx:373)、(3) テスト(projectStore.test.ts)。デッドコードなし。"
+    },
+    {
+      "checkId": "CQ-009",
+      "category": "dead-code",
+      "item": "setInitialSelectResult使用状況",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "handlers.ts, index.ts, initialSelectResult.test.ts",
+      "details": "setInitialSelectResultは以下で使用されている: (1) index.ts:332でselectProject成功時にキャッシュ、(2) initialSelectResult.test.tsでテスト。デッドコードなし。"
+    },
+    {
+      "checkId": "CQ-010",
+      "category": "dead-code",
+      "item": "broadcastInitialProjectSelection使用状況",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "index.ts:237, index.test.ts",
+      "details": "broadcastInitialProjectSelectionはready-to-showイベント内(index.ts:237)とテスト(index.test.ts)で使用されている。エクスポートも適切。"
+    },
+    {
+      "checkId": "CQ-011",
+      "category": "impact",
+      "item": "handlers.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "handlers.ts:110-178",
+      "details": "Impact Analysis通り、initialSelectResultキャッシュ変数と管理関数(setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult)が追加されている。"
+    },
+    {
+      "checkId": "CQ-012",
+      "category": "impact",
+      "item": "channels.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "channels.ts:51-53",
+      "details": "Impact Analysis通り、PROJECT_SELECTEDチャネル定義が追加されている。コメントにRequirement 1.2への参照あり。"
+    },
+    {
+      "checkId": "CQ-013",
+      "category": "impact",
+      "item": "preload/index.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "preload/index.ts:366-381",
+      "details": "Impact Analysis通り、onProjectSelected APIが追加されている。既存のonAgentStatusChange等と同様のパターン。"
+    },
+    {
+      "checkId": "CQ-014",
+      "category": "impact",
+      "item": "projectStore.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "projectStore.ts:121, 383-441",
+      "details": "Impact Analysis通り、applySelectProjectResult抽出が完了。ProjectActionsインターフェースに追加され、selectProjectからも使用されている。"
+    },
+    {
+      "checkId": "CQ-015",
+      "category": "impact",
+      "item": "App.tsx更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "App.tsx:360-380",
+      "details": "Impact Analysis通り、onProjectSelectedリスナー登録が追加されている。StrictMode対策のuseRefパターンも適用。"
+    },
+    {
+      "checkId": "CQ-016",
+      "category": "impact",
+      "item": "electron.d.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron.d.ts:711-720",
+      "details": "Impact Analysis通り、onProjectSelected型定義が追加されている。JSDOCコメントにRequirement 1.3への参照あり。"
+    },
+    {
+      "checkId": "CQ-017",
+      "category": "impact",
+      "item": "index.ts更新",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "index.ts:11-12, 168-200, 229-239, 330-332",
+      "details": "Impact Analysis通り、起動時ブロードキャスト機能が追加されている: (1) import追加、(2) broadcastInitialProjectSelection関数、(3) ready-to-showでのブロードキャスト呼び出し、(4) setInitialSelectResult呼び出し。"
+    },
+    {
+      "checkId": "CQ-018",
+      "category": "logging",
+      "item": "Main Process ロギング",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "index.ts:183-196, handlers.ts:159,177",
+      "details": "projectLogger(logging.md推奨のlogger)を使用。適切なログレベル(debug, info, warn)で、コンテキスト情報(projectPath等)を含めている。"
+    },
+    {
+      "checkId": "CQ-019",
+      "category": "logging",
+      "item": "Renderer Process ロギング",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "App.tsx:372",
+      "details": "console.logを使用しているが、Rendererでの一時的なデバッグログとして許容範囲。重要な情報はMain Process側でloggerを使用して記録している。"
+    },
+    {
+      "checkId": "CQ-020",
+      "category": "logging",
+      "item": "ループ内過剰ログなし",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "handlers.ts, index.ts",
+      "details": "ループ内での過剰なログ出力なし。ブロードキャストは1回のみ実行され、適切なタイミングでログ出力している。"
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 20
+  }
+}

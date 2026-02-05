@@ -1,0 +1,127 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-05T00:00:00Z",
+  "checks": [
+    {
+      "checkId": "REQ-1.1",
+      "criterion": "環境変数`SDD_PROJECT_PATH`でプロジェクトパスが指定された時, Main processは`selectProject`を実行し、結果をキャッシュする",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:323-332, electron-sdd-manager/src/main/ipc/handlers.ts:113,157-159",
+      "details": "Main processのindex.tsで、initialProjectPath存在時にselectProjectを呼び出し、成功時にsetInitialSelectResult(result)でキャッシュする実装を確認。handlers.tsにinitialSelectResult変数とset/get/clear関数が実装されている。テストはinitialSelectResult.test.tsで網羅。"
+    },
+    {
+      "checkId": "REQ-1.2",
+      "criterion": "Main processがウィンドウを作成した後, Main processはキャッシュされた`selectProject`結果をRendererにブロードキャストする",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:178-200,231-238, electron-sdd-manager/src/main/ipc/channels.ts:53",
+      "details": "broadcastInitialProjectSelection関数がready-to-showイベントで呼び出され、webContents.send(IPC_CHANNELS.PROJECT_SELECTED, cachedResult)でRendererにブロードキャストする実装を確認。PROJECT_SELECTEDチャネルがchannels.tsに定義されている。"
+    },
+    {
+      "checkId": "REQ-1.3",
+      "criterion": "Rendererがブロードキャストを受信した時, Rendererは受信した結果でZustandストアを更新する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/preload/index.ts:366-381, electron-sdd-manager/src/renderer/App.tsx:360-377, electron-sdd-manager/src/renderer/types/electron.d.ts:718-720",
+      "details": "preload/index.tsにonProjectSelected APIを実装、App.tsxでuseEffect内でlistenerを登録しapplySelectProjectResultを呼び出す。型定義もelectron.d.tsに追加されている。テストはpreload/index.test.ts:1233-1299で網羅。"
+    },
+    {
+      "checkId": "REQ-1.4",
+      "criterion": "ストア更新が完了した時, UIは選択されたプロジェクトの情報（Spec一覧、Bug一覧等）を表示する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:392-441, electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts:52-68",
+      "details": "applySelectProjectResult関数がspecs/bugsをそれぞれのストアに同期する実装を確認。E2Eテストでspec-listの表示を検証。"
+    },
+    {
+      "checkId": "REQ-2.1",
+      "criterion": "SDD Managerは`SelectProjectResult`を受け取ってストアを更新する単一の処理を持つ",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:121,392-441",
+      "details": "applySelectProjectResult関数が単一のストア更新処理として定義されている。ProjectActionsインターフェースにも定義あり。"
+    },
+    {
+      "checkId": "REQ-2.2",
+      "criterion": "起動時ブロードキャストを受信した時, Rendererはこの統一処理でストアを更新する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/App.tsx:371-373",
+      "details": "App.tsxのonProjectSelectedコールバック内でapplySelectProjectResult(result)を呼び出し、起動時ブロードキャストにも統一処理を使用。"
+    },
+    {
+      "checkId": "REQ-2.3",
+      "criterion": "UIからプロジェクトを選択した時, Rendererは同じ統一処理でストアを更新する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:212-214, electron-sdd-manager/src/renderer/stores/projectStore.test.ts:1027-1077",
+      "details": "selectProjectアクションがget().applySelectProjectResult(result)を呼び出し、UIからの選択でも同じ処理を使用。テストで検証済み。"
+    },
+    {
+      "checkId": "REQ-2.4",
+      "criterion": "統一処理は specs/bugsストアの更新、ファイルウォッチャー登録、各種設定ロードを行う",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:434-440,240-363",
+      "details": "applySelectProjectResultがspecs/bugsをストアに同期。selectProjectがさらにファイルウォッチャー登録(startWatching)、permissions/profile/steering/releaseチェック、jj確認、project defaults読み込みを実行。"
+    },
+    {
+      "checkId": "REQ-3.1",
+      "criterion": "E2Eテストが`SDD_PROJECT_PATH`環境変数を設定して起動した時, プロジェクトが正しく選択される",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts:24-50",
+      "details": "E2EテストでcurrentProjectがtruthyであることを検証。テストはSDD_PROJECT_PATHが設定されている場合に自動選択されることをテスト。"
+    },
+    {
+      "checkId": "REQ-3.2",
+      "criterion": "E2Eテストが`selectProjectViaStore`ヘルパーを使用した時, プロジェクトが正しく選択される",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/e2e-wdio/permission-control.e2e.spec.ts:32, electron-sdd-manager/e2e-wdio/auto-execution-intermediate-artifacts.e2e.spec.ts:97",
+      "details": "selectProjectViaStoreヘルパー関数が複数のE2Eテストファイルで使用されており、既存のUIからの選択フローは維持されている。"
+    },
+    {
+      "checkId": "REQ-3.3",
+      "criterion": "SDD Managerは起動時ブロードキャストとUIからの選択の両方で、同じ最終状態を保証する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:212-214,371-373, electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts:118-136",
+      "details": "両方のコードパスがapplySelectProjectResultを使用して同一の更新処理を実行。E2EテストでelectronAPIにonProjectSelectedとstore.applySelectProjectResultの両方が存在することを検証。"
+    },
+    {
+      "checkId": "REQ-4.1",
+      "criterion": "起動時ブロードキャストはElectron Renderer processのみを対象とする",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:193",
+      "details": "broadcastInitialProjectSelection関数はBrowserWindowのwebContents.sendを使用し、Electron Rendererのみにブロードキャストする。WebSocketへの送信は含まれていない。"
+    },
+    {
+      "checkId": "REQ-4.2",
+      "criterion": "Remote UIは従来通りWebSocket経由でプロジェクト情報を取得する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/remoteAccessHandlers.ts, electron-sdd-manager/src/main/services/webSocketHandler.ts",
+      "details": "Remote UIの既存WebSocketハンドラーは変更なし。プロジェクト情報取得の既存フローは維持されている。broadcastInitialProjectSelectionはElectron Rendererのみに送信。"
+    },
+    {
+      "checkId": "REQ-4.3",
+      "criterion": "SDD Managerは起動時ブロードキャストとRemote UI向けWebSocket通信を独立して処理する",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:178-200, electron-sdd-manager/src/main/ipc/handlers.ts:1248-1289",
+      "details": "起動時ブロードキャストはindex.tsの専用関数で処理。Agent出力等のWebSocket通信はhandlers.tsのregisterEventCallbacksで別途処理。両者は独立したコードパス。"
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 14
+  }
+}

@@ -94,3 +94,23 @@ describe('IPC_CHANNELS - MCP Server', () => {
     });
   });
 });
+
+// ============================================================
+// startup-project-selection-fix: PROJECT_SELECTED Channel
+// Task 2.1: IPC channel for broadcasting project selection to Renderer
+// Requirements: 1.2
+// ============================================================
+
+describe('IPC_CHANNELS - Startup Project Selection', () => {
+  describe('PROJECT_SELECTED channel (startup-project-selection-fix Task 2.1)', () => {
+    it('should define PROJECT_SELECTED channel for broadcasting selectProject result to Renderer', () => {
+      // Requirement 1.2: Main process broadcasts selectProject result after window ready
+      expect(IPC_CHANNELS.PROJECT_SELECTED).toBe('ipc:project-selected');
+    });
+
+    it('should use ipc: prefix for consistency with other project channels', () => {
+      // Verify naming convention consistency with existing project channels
+      expect(IPC_CHANNELS.PROJECT_SELECTED).toMatch(/^ipc:/);
+    });
+  });
+});

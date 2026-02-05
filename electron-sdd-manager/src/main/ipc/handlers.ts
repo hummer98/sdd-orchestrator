@@ -107,6 +107,10 @@ let migrationService: MigrationService | null = null;
 let eventCallbacksRegistered = false;
 let initialProjectPath: string | null = null;
 let currentProjectPath: string | null = null;
+// startup-project-selection-fix: Cache for selectProject result at startup
+// Used to broadcast to Renderer after window is ready
+// Requirements: 1.1
+let initialSelectResult: SelectProjectResult | null = null;
 
 // ============================================================
 // Public Functions
@@ -138,6 +142,39 @@ export function setInitialProjectPath(path: string | null): void {
 
 export function getInitialProjectPath(): string | null {
   return initialProjectPath;
+}
+
+// ============================================================
+// startup-project-selection-fix: Initial SelectProject Result Cache
+// Requirements: 1.1
+// ============================================================
+
+/**
+ * Cache the selectProject result for startup broadcast
+ * Called by Main process after selectProject completes on startup
+ * @param result The SelectProjectResult to cache
+ */
+export function setInitialSelectResult(result: SelectProjectResult): void {
+  initialSelectResult = result;
+  logger.debug('[handlers] setInitialSelectResult cached result', { projectPath: result.projectPath });
+}
+
+/**
+ * Get the cached selectProject result
+ * Used to broadcast to Renderer after window is ready
+ * @returns The cached SelectProjectResult or null if not set
+ */
+export function getInitialSelectResult(): SelectProjectResult | null {
+  return initialSelectResult;
+}
+
+/**
+ * Clear the cached selectProject result
+ * Called after broadcast to Renderer is complete
+ */
+export function clearInitialSelectResult(): void {
+  initialSelectResult = null;
+  logger.debug('[handlers] clearInitialSelectResult cache cleared');
 }
 
 // Re-exports from projectHandlers.ts for backward compatibility

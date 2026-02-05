@@ -113,6 +113,12 @@ vi.mock('./services/logger', () => ({
 }));
 
 vi.mock('./services/projectLogger', () => ({
+  projectLogger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+  },
   getProjectLogger: vi.fn(() => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -124,10 +130,6 @@ vi.mock('./services/projectLogger', () => ({
 vi.mock('./menu', () => ({
   createMenu: vi.fn(),
   setMenuRemoteServerStatus: vi.fn(),
-}));
-
-vi.mock('./ipc/handlers', () => ({
-  registerHandlers: vi.fn(),
 }));
 
 vi.mock('./ipc/sshHandlers', () => ({
@@ -160,6 +162,26 @@ vi.mock('./ipc/installHandlers', () => ({
 
 vi.mock('./ipc/convertWorktreeHandlers', () => ({
   registerConvertWorktreeHandlers: vi.fn(),
+}));
+
+// startup-project-selection-fix: Mock handlers for cache management
+const mockGetInitialSelectResult = vi.fn();
+const mockClearInitialSelectResult = vi.fn();
+const mockSetInitialSelectResult = vi.fn();
+vi.mock('./ipc/handlers', () => ({
+  registerIpcHandlers: vi.fn(),
+  setInitialProjectPath: vi.fn(),
+  selectProject: vi.fn(),
+  getInitialSelectResult: mockGetInitialSelectResult,
+  clearInitialSelectResult: mockClearInitialSelectResult,
+  setInitialSelectResult: mockSetInitialSelectResult,
+}));
+
+// startup-project-selection-fix: Mock channels
+vi.mock('./ipc/channels', () => ({
+  IPC_CHANNELS: {
+    PROJECT_SELECTED: 'ipc:project-selected',
+  },
 }));
 
 describe('Main Process Lifecycle', () => {
@@ -228,7 +250,7 @@ describe('Main Process Lifecycle', () => {
     it('should handle remote UI server stop error gracefully', async () => {
       // Import the cleanup function
       const { cleanupOnQuit } = await import('./index');
-      const { logger } = await import('./services/logger');
+      const { projectLogger: logger } = await import('./services/projectLogger');
 
       // Mock server as running
       mockRemoteAccessServerGetStatus.mockReturnValue({
@@ -256,7 +278,7 @@ describe('Main Process Lifecycle', () => {
     it('should handle agent watchdog stop error gracefully', async () => {
       // Import the cleanup function
       const { cleanupOnQuit } = await import('./index');
-      const { logger } = await import('./services/logger');
+      const { projectLogger: logger } = await import('./services/projectLogger');
 
       // Mock watchdog stop to throw error
       mockAgentWatchdogStop.mockImplementation(() => {
@@ -271,6 +293,103 @@ describe('Main Process Lifecycle', () => {
         '[main] Error stopping agent watchdog',
         expect.objectContaining({ error: expect.any(Error) })
       );
+    });
+  });
+
+  // ============================================================
+  // startup-project-selection-fix Task 4.1: Broadcast on ready-to-show
+  // Requirements: 1.2, 4.1, 4.3
+  // ============================================================
+
+  describe('startup project broadcast', () => {
+    it('should broadcast PROJECT_SELECTED on ready-to-show when cached result exists', async () => {
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      };
+
+      // Mock cached result
+      mockGetInitialSelectResult.mockReturnValue(mockResult);
+
+      // Import to trigger module execution
+      const { broadcastInitialProjectSelection } = await import('./index');
+
+      // Create mock window with webContents
+      const mockWebContents = { send: vi.fn() };
+      const mockWindow = {
+        isDestroyed: vi.fn().mockReturnValue(false),
+        webContents: mockWebContents,
+      };
+
+      // Call broadcast function
+      await broadcastInitialProjectSelection(mockWindow as any);
+
+      // Verify webContents.send was called with PROJECT_SELECTED channel
+      expect(mockWebContents.send).toHaveBeenCalledWith(
+        'ipc:project-selected',
+        mockResult
+      );
+
+      // Verify cache was cleared after broadcast
+      expect(mockClearInitialSelectResult).toHaveBeenCalled();
+    });
+
+    it('should not broadcast when no cached result exists', async () => {
+      // Mock no cached result
+      mockGetInitialSelectResult.mockReturnValue(null);
+
+      // Import function
+      const { broadcastInitialProjectSelection } = await import('./index');
+
+      // Create mock window
+      const mockWebContents = { send: vi.fn() };
+      const mockWindow = {
+        isDestroyed: vi.fn().mockReturnValue(false),
+        webContents: mockWebContents,
+      };
+
+      // Call broadcast function
+      await broadcastInitialProjectSelection(mockWindow as any);
+
+      // Verify webContents.send was not called
+      expect(mockWebContents.send).not.toHaveBeenCalled();
+
+      // Verify cache clear was not called
+      expect(mockClearInitialSelectResult).not.toHaveBeenCalled();
+    });
+
+    it('should not broadcast when window is destroyed', async () => {
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      };
+
+      // Mock cached result
+      mockGetInitialSelectResult.mockReturnValue(mockResult);
+
+      // Import function
+      const { broadcastInitialProjectSelection } = await import('./index');
+
+      // Create mock window that is destroyed
+      const mockWebContents = { send: vi.fn() };
+      const mockWindow = {
+        isDestroyed: vi.fn().mockReturnValue(true),
+        webContents: mockWebContents,
+      };
+
+      // Call broadcast function
+      await broadcastInitialProjectSelection(mockWindow as any);
+
+      // Verify webContents.send was not called
+      expect(mockWebContents.send).not.toHaveBeenCalled();
     });
   });
 });

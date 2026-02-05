@@ -932,4 +932,151 @@ describe('useProjectStore', () => {
       expect(startServerSpy).not.toHaveBeenCalled();
     });
   });
+
+  // ============================================================
+  // startup-project-selection-fix: applySelectProjectResult
+  // Task 3.1: Unified result application for startup broadcast
+  // Requirements: 2.1, 2.4
+  // ============================================================
+
+  describe('applySelectProjectResult', () => {
+    it('should expose applySelectProjectResult action', () => {
+      expect(typeof useProjectStore.getState().applySelectProjectResult).toBe('function');
+    });
+
+    it('should update store on successful result', async () => {
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [{ name: 'test-spec', path: '/test/spec' }],
+        bugs: [{ name: 'test-bug', path: '/test/bug', phase: 'reported', updatedAt: '2024-01-01' }],
+        specJsonMap: {
+          'test-spec': {
+            feature_name: 'test-spec',
+            phase: 'design-generated',
+            updated_at: '2024-01-01T00:00:00Z',
+            approvals: {
+              requirements: { generated: true, approved: true },
+              design: { generated: true, approved: false },
+              tasks: { generated: false, approved: false },
+            },
+          },
+        },
+      };
+
+      await useProjectStore.getState().applySelectProjectResult(mockResult);
+
+      const state = useProjectStore.getState();
+      expect(state.currentProject).toBe('/test/project');
+      expect(state.kiroValidation).toEqual(mockResult.kiroValidation);
+      expect(state.lastSelectResult).toEqual(mockResult);
+
+      // Verify specs/bugs are synced to their stores
+      expect(useSpecStore.getState().specs).toEqual(mockResult.specs);
+      expect(useSharedBugStore.getState().bugs).toEqual(mockResult.bugs);
+
+      // Verify specJsonMap is synced
+      const specJsonMap = useSpecStore.getState().specJsonMap;
+      expect(specJsonMap.get('test-spec')).toEqual(mockResult.specJsonMap['test-spec']);
+    });
+
+    it('should set error state on failed result', async () => {
+      const mockResult = {
+        success: false,
+        projectPath: '/invalid/path',
+        kiroValidation: { exists: false, hasSpecs: false, hasSteering: false },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+        error: { type: 'PATH_NOT_EXISTS' as const, path: '/invalid/path' },
+      };
+
+      await useProjectStore.getState().applySelectProjectResult(mockResult);
+
+      const state = useProjectStore.getState();
+      expect(state.error).toBeTruthy();
+      expect(state.currentProject).toBeNull();
+    });
+
+    it('should clear loading state after application', async () => {
+      const mockResult = {
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+        specs: [],
+        bugs: [],
+        specJsonMap: {},
+      };
+
+      // Set loading state before
+      useProjectStore.setState({ isLoading: true });
+
+      await useProjectStore.getState().applySelectProjectResult(mockResult);
+
+      expect(useProjectStore.getState().isLoading).toBe(false);
+    });
+  });
+
+  // ============================================================
+  // startup-project-selection-fix: selectProject refactoring
+  // Task 3.2: Verify selectProject uses applySelectProjectResult
+  // Requirements: 2.3, 3.3
+  // ============================================================
+
+  describe('selectProject with applySelectProjectResult', () => {
+    it('should call applySelectProjectResult internally for store updates', async () => {
+      const mockValidation = { exists: true, hasSpecs: true, hasSteering: true };
+      const mockSpecs = [{ name: 'test-spec', path: '/test/spec' }];
+      const mockSpecJsonMap = {
+        'test-spec': {
+          feature_name: 'test-spec',
+          phase: 'design-generated',
+          updated_at: '2024-01-01T00:00:00Z',
+          approvals: {
+            requirements: { generated: true, approved: true },
+            design: { generated: true, approved: false },
+            tasks: { generated: false, approved: false },
+          },
+        },
+      };
+
+      window.electronAPI.selectProject = vi.fn().mockResolvedValue({
+        success: true,
+        projectPath: '/test/project',
+        kiroValidation: mockValidation,
+        specs: mockSpecs,
+        bugs: [],
+        specJsonMap: mockSpecJsonMap,
+      });
+      window.electronAPI.getRecentProjects = vi.fn().mockResolvedValue([]);
+      window.electronAPI.checkSpecManagerFiles = vi.fn().mockResolvedValue({
+        commands: { allPresent: true, missing: [], present: [] },
+        settings: { allPresent: true, missing: [], present: [] },
+        allPresent: true,
+      });
+      window.electronAPI.checkRequiredPermissions = vi.fn().mockResolvedValue({
+        allPresent: true,
+        missing: [],
+        present: [],
+      });
+
+      // Spy on applySelectProjectResult
+      const applyResultSpy = vi.spyOn(useProjectStore.getState(), 'applySelectProjectResult');
+
+      await useProjectStore.getState().selectProject('/test/project');
+
+      // Verify applySelectProjectResult was called with the IPC result
+      expect(applyResultSpy).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        projectPath: '/test/project',
+      }));
+
+      // Verify store state is correct (same behavior as before)
+      const state = useProjectStore.getState();
+      expect(state.currentProject).toBe('/test/project');
+      expect(state.kiroValidation).toEqual(mockValidation);
+      expect(useSpecStore.getState().specs).toEqual(mockSpecs);
+    });
+  });
 });

@@ -1,0 +1,213 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-05T09:30:00Z",
+  "checks": [
+    {
+      "checkId": "DES-001",
+      "category": "component",
+      "item": "initialSelectResult cache (handlers.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:113",
+      "details": "initialSelectResult変数と管理関数(setInitialSelectResult, getInitialSelectResult, clearInitialSelectResult)が設計どおり実装されている"
+    },
+    {
+      "checkId": "DES-002",
+      "category": "interface",
+      "item": "setInitialSelectResult signature",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:157-159",
+      "details": "設計: function setInitialSelectResult(result: SelectProjectResult): void; 実装: export function setInitialSelectResult(result: SelectProjectResult): void - 一致"
+    },
+    {
+      "checkId": "DES-003",
+      "category": "interface",
+      "item": "getInitialSelectResult signature",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:167-169",
+      "details": "設計: function getInitialSelectResult(): SelectProjectResult | null; 実装: export function getInitialSelectResult(): SelectProjectResult | null - 一致"
+    },
+    {
+      "checkId": "DES-004",
+      "category": "interface",
+      "item": "clearInitialSelectResult signature",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:175-178",
+      "details": "設計: function clearInitialSelectResult(): void; 実装: export function clearInitialSelectResult(): void - 一致"
+    },
+    {
+      "checkId": "DES-005",
+      "category": "component",
+      "item": "PROJECT_SELECTED channel (channels.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/channels.ts:53",
+      "details": "PROJECT_SELECTED: 'ipc:project-selected'チャネルが設計どおり定義されている"
+    },
+    {
+      "checkId": "DES-006",
+      "category": "component",
+      "item": "onProjectSelected preload API (preload/index.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/preload/index.ts:366-376",
+      "details": "onProjectSelected APIがpreloadで公開されており、IPC_CHANNELS.PROJECT_SELECTEDをリッスンしている"
+    },
+    {
+      "checkId": "DES-007",
+      "category": "interface",
+      "item": "onProjectSelected signature (preload)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/preload/index.ts:366-376",
+      "details": "設計: onProjectSelected: (callback: (result: SelectProjectResult) => void) => () => void; 実装: 一致（クリーンアップ関数を返す）"
+    },
+    {
+      "checkId": "DES-008",
+      "category": "component",
+      "item": "applySelectProjectResult action (projectStore.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:392-441",
+      "details": "applySelectProjectResult関数が設計どおり実装されており、specs/bugs/specJsonMap/kiroValidationの更新を行う"
+    },
+    {
+      "checkId": "DES-009",
+      "category": "interface",
+      "item": "applySelectProjectResult signature (projectStore)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:121,392",
+      "details": "設計: applySelectProjectResult: (result: SelectProjectResult) => Promise<void>; 実装: async (result: SelectProjectResult) => ... - 一致"
+    },
+    {
+      "checkId": "DES-010",
+      "category": "component",
+      "item": "Main process broadcast (index.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:178-200,231-238",
+      "details": "broadcastInitialProjectSelection関数が実装され、ready-to-showイベント後にwebContents.sendでブロードキャストしている"
+    },
+    {
+      "checkId": "DES-011",
+      "category": "component",
+      "item": "setInitialSelectResult call in startup flow",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:332",
+      "details": "起動時のselectProject完了後にsetInitialSelectResultでキャッシュしている"
+    },
+    {
+      "checkId": "DES-012",
+      "category": "component",
+      "item": "App.tsx event listener registration",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/App.tsx:360-380",
+      "details": "App.tsxでuseEffect内でonProjectSelectedリスナーを登録し、受信時にapplySelectProjectResultを呼び出している"
+    },
+    {
+      "checkId": "DES-013",
+      "category": "component",
+      "item": "electronAPI type definition (electron.d.ts)",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/types/electron.d.ts:718-720",
+      "details": "onProjectSelected型定義が追加されている: onProjectSelected(callback: (result: SelectProjectResult) => void): () => void;"
+    },
+    {
+      "checkId": "DES-014",
+      "category": "interface",
+      "item": "selectProject uses applySelectProjectResult internally",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:214",
+      "details": "設計どおり、selectProjectアクション内でapplySelectProjectResultを呼び出している（DRY原則準拠）"
+    },
+    {
+      "checkId": "DES-015",
+      "category": "steering",
+      "item": "structure.md - Main Process SSOT compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/handlers.ts:113, electron-sdd-manager/src/main/index.ts:178-200",
+      "details": "structure.md「セッション状態はMain processが保持」に準拠。initialSelectResultキャッシュはMain processで管理し、RendererはIPCブロードキャスト経由で受信"
+    },
+    {
+      "checkId": "DES-016",
+      "category": "steering",
+      "item": "structure.md - Main→Renderer broadcast pattern",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/index.ts:193",
+      "details": "structure.md「Main → Rendererへのブロードキャスト」パターンに準拠。webContents.send(IPC_CHANNELS.PROJECT_SELECTED, cachedResult)を使用"
+    },
+    {
+      "checkId": "DES-017",
+      "category": "steering",
+      "item": "tech.md - IPC設計パターン compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/channels.ts:53, electron-sdd-manager/src/preload/index.ts:366-376",
+      "details": "tech.md「channels.ts: チャンネル名定義（型安全）」「preload経由でrendererに公開」に準拠"
+    },
+    {
+      "checkId": "DES-018",
+      "category": "steering",
+      "item": "design-principles.md - DRY compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.ts:214,392-441",
+      "details": "DRY原則に準拠。applySelectProjectResultを抽出し、起動時ブロードキャストとUI選択の両方で同じ処理を使用"
+    },
+    {
+      "checkId": "DES-019",
+      "category": "steering",
+      "item": "product.md - Feature alignment",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "design.md Overview section",
+      "details": "product.md「SDD Orchestratorを環境変数やCLI引数経由で起動するユーザー、E2Eテスト」ユースケースに対応"
+    },
+    {
+      "checkId": "DES-020",
+      "category": "component",
+      "item": "Unit tests - initialSelectResult cache",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/main/ipc/initialSelectResult.test.ts",
+      "details": "設計Testing Strategyに従い、handlers.tsのキャッシュ管理関数のユニットテストが実装されている"
+    },
+    {
+      "checkId": "DES-021",
+      "category": "component",
+      "item": "Unit tests - applySelectProjectResult",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/src/renderer/stores/projectStore.test.ts:942-1018",
+      "details": "設計Testing Strategyに従い、applySelectProjectResultの成功/失敗ケースのテストが実装されている"
+    },
+    {
+      "checkId": "DES-022",
+      "category": "component",
+      "item": "E2E tests - startup flow",
+      "status": "PASS",
+      "severity": "Info",
+      "evidence": "electron-sdd-manager/e2e-wdio/startup-project-selection.e2e.spec.ts",
+      "details": "設計Testing StrategyのE2E要件に従い、起動時フローの統合テストが実装されている"
+    }
+  ],
+  "summary": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 22
+  }
+}

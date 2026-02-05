@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.70.0] - 2026-02-06
+
+### Added
+- merge from worktree branch feature/project-docs-viewer
+- package.jsonの追加と@wdio/cliのdevDependenciesに追加
+- アイドル検出説明ダイアログとロジック改善
+- 失敗原因調査の強化とレポート出力オプション追加
+- 起動時プロジェクト選択初期化遅延問題の修正
+
+### Fixed
+- Electronモック・handlersRegistered・API移行の一括修正
+- AgentInfoのid→agentId移行とonAgentLogモック追加
+- テスト失敗の修正（フック順序、モック不整合、型不一致）
+- 追加markdownファイルタブで.md二重付加バグを修正
+
+### Changed
+- chore: validate-* コマンド/エージェントの削除
+- test(e2e): 追加markdownファイル表示のE2Eテストを追加
+
+
 ## [0.69.0] - 2026-02-05
 
 ### Added

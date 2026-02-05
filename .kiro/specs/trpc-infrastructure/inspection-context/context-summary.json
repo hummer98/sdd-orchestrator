@@ -1,0 +1,173 @@
+{
+  "spec_overview": "electron-sdd-managerにtRPC基盤を構築し、型安全なIPC通信インフラストラクチャを提供する。electron-trpc v0.7.1（tRPC v10系）を使用し、Main Process（Router/Procedure）からRenderer（React Hooks）まで完全な型安全性を実現する。healthCheck APIによる動作検証可能な最小構成を提供する。",
+  "key_components": [
+    {
+      "name": "TRPCInit",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/trpc.ts",
+      "requirements": ["2.1"]
+    },
+    {
+      "name": "TRPCContext",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/context.ts",
+      "requirements": ["2.4"]
+    },
+    {
+      "name": "RootRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/router.ts",
+      "requirements": ["2.2", "2.3", "2.5"]
+    },
+    {
+      "name": "SystemRouter",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/routers/system.ts",
+      "requirements": ["6.1", "6.2", "6.3", "6.4"]
+    },
+    {
+      "name": "TRPCPreload",
+      "type": "service",
+      "path": "electron-sdd-manager/src/preload/trpc.ts",
+      "requirements": ["3.1", "3.2", "3.3", "3.4"]
+    },
+    {
+      "name": "TRPCClient",
+      "type": "service",
+      "path": "electron-sdd-manager/src/shared/trpc/client.ts",
+      "requirements": ["4.1", "4.2"]
+    },
+    {
+      "name": "TRPCProvider",
+      "type": "component",
+      "path": "electron-sdd-manager/src/shared/trpc/provider.tsx",
+      "requirements": ["4.3", "4.4", "4.5", "4.6"]
+    },
+    {
+      "name": "MainIntegration",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/index.ts",
+      "requirements": ["8.1", "8.2", "8.3", "8.4", "8.5"]
+    },
+    {
+      "name": "RouterTest",
+      "type": "service",
+      "path": "electron-sdd-manager/src/main/trpc/__tests__/router.test.ts",
+      "requirements": ["7.1", "7.2", "7.3", "7.4", "7.5"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "TRPCInit",
+      "target": "TRPCContext",
+      "type": "import"
+    },
+    {
+      "source": "RootRouter",
+      "target": "TRPCInit",
+      "type": "import"
+    },
+    {
+      "source": "RootRouter",
+      "target": "SystemRouter",
+      "type": "import"
+    },
+    {
+      "source": "TRPCClient",
+      "target": "RootRouter",
+      "type": "import"
+    },
+    {
+      "source": "TRPCProvider",
+      "target": "TRPCClient",
+      "type": "import"
+    },
+    {
+      "source": "MainIntegration",
+      "target": "RootRouter",
+      "type": "call"
+    },
+    {
+      "source": "renderer/App.tsx",
+      "target": "TRPCProvider",
+      "type": "import"
+    },
+    {
+      "source": "remote-ui/App.tsx",
+      "target": "TRPCProvider",
+      "type": "import"
+    },
+    {
+      "source": "preload/index.ts",
+      "target": "TRPCPreload",
+      "type": "import"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/main/trpc/trpc.ts",
+      "action": "CREATE",
+      "reason": "tRPCインスタンス定義"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/context.ts",
+      "action": "CREATE",
+      "reason": "Context型定義"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/router.ts",
+      "action": "CREATE",
+      "reason": "Root Router定義"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/routers/system.ts",
+      "action": "CREATE",
+      "reason": "system router（healthCheck）"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/trpc/__tests__/router.test.ts",
+      "action": "CREATE",
+      "reason": "統合テスト"
+    },
+    {
+      "target": "electron-sdd-manager/src/preload/trpc.ts",
+      "action": "CREATE",
+      "reason": "tRPC Preload設定"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/trpc/client.ts",
+      "action": "CREATE",
+      "reason": "tRPCクライアント設定"
+    },
+    {
+      "target": "electron-sdd-manager/src/shared/trpc/provider.tsx",
+      "action": "CREATE",
+      "reason": "TRPCProviderコンポーネント"
+    },
+    {
+      "target": "electron-sdd-manager/src/main/index.ts",
+      "action": "UPDATE",
+      "reason": "createIPCHandler呼び出し追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "TRPCProviderでラップ"
+    },
+    {
+      "target": "electron-sdd-manager/src/remote-ui/App.tsx",
+      "action": "UPDATE",
+      "reason": "TRPCProviderでラップ"
+    },
+    {
+      "target": "electron-sdd-manager/src/preload/index.ts",
+      "action": "UPDATE",
+      "reason": "import './trpc'追加"
+    },
+    {
+      "target": "electron-sdd-manager/package.json",
+      "action": "UPDATE",
+      "reason": "tRPC関連パッケージ追加"
+    }
+  ]
+}

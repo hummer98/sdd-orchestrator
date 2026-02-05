@@ -1,0 +1,389 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-06T12:00:00Z",
+  "checks": [
+    {
+      "id": "DSN-001",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCInit component exists at expected path with correct exports (router, publicProcedure)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/trpc.ts",
+        "exports: router (t.router), publicProcedure (t.procedure)",
+        "initTRPC.context<Context>().create() matches design"
+      ]
+    },
+    {
+      "id": "DSN-002",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCContext component exists at expected path with correct exports (Context interface, createContext function)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/context.ts",
+        "exports: Context (empty interface), createContext() returning {}",
+        "Matches design: initially empty, extensible"
+      ]
+    },
+    {
+      "id": "DSN-003",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "RootRouter component exists at expected path with correct exports (appRouter, AppRouter, RouterInputs, RouterOutputs)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/router.ts",
+        "exports: appRouter, AppRouter type, RouterInputs, RouterOutputs",
+        "Uses router() from trpc.ts and systemRouter from routers/system.ts"
+      ]
+    },
+    {
+      "id": "DSN-004",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "SystemRouter component exists at expected path with healthCheck procedure and Zod schema",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/routers/system.ts",
+        "exports: systemRouter, healthCheckOutputSchema, HealthCheckOutput type",
+        "healthCheck returns { status: 'ok', timestamp: string, version: string }"
+      ]
+    },
+    {
+      "id": "DSN-005",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCPreload component exists at expected path with exposeElectronTRPC in process.once('loaded')",
+      "evidence": [
+        "electron-sdd-manager/src/preload/trpc.ts",
+        "import { exposeElectronTRPC } from 'electron-trpc/main'",
+        "process.once('loaded', () => { exposeElectronTRPC(); })"
+      ]
+    },
+    {
+      "id": "DSN-006",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCClient component exists at expected path (shared/trpc/client.ts) with createTRPCReact<AppRouter>()",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/client.ts",
+        "import type { AppRouter } from '../../main/trpc/router' (type-only import)",
+        "export const trpc = createTRPCReact<AppRouter>()"
+      ]
+    },
+    {
+      "id": "DSN-007",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCProvider component exists at expected path with TRPCProviderProps interface and graceful Remote UI fallback",
+      "evidence": [
+        "electron-sdd-manager/src/shared/trpc/provider.tsx",
+        "interface TRPCProviderProps { children: ReactNode }",
+        "export function TRPCProvider({ children }: TRPCProviderProps): JSX.Element",
+        "Graceful fallback for Remote UI (ipcLink not available)"
+      ]
+    },
+    {
+      "id": "DSN-008",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "MainIntegration implemented as separate handler.ts module imported by index.ts (better separation of concerns than direct embedding)",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/handler.ts: export function setupTRPCHandler(window: Electron.BrowserWindow): void",
+        "electron-sdd-manager/src/main/index.ts line 31: import { setupTRPCHandler } from './trpc/handler'",
+        "electron-sdd-manager/src/main/index.ts line 232: setupTRPCHandler(mainWindow) called after BrowserWindow creation in createWindow()"
+      ]
+    },
+    {
+      "id": "DSN-009",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCInit interface matches design: router (typeof t.router), publicProcedure (typeof t.procedure) exported",
+      "evidence": [
+        "Design: export declare const router: typeof t.router; export declare const publicProcedure: typeof t.procedure",
+        "Actual: export const router = t.router; export const publicProcedure = t.procedure"
+      ]
+    },
+    {
+      "id": "DSN-010",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCContext interface matches design: empty Context interface and createContext() function",
+      "evidence": [
+        "Design: export interface Context {}; export declare function createContext(): Context",
+        "Actual: export interface Context {}; export function createContext(): Context { return {}; }"
+      ]
+    },
+    {
+      "id": "DSN-011",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "RootRouter interface matches design: appRouter, AppRouter type, RouterInputs, RouterOutputs exported",
+      "evidence": [
+        "Design: export declare const appRouter; export type AppRouter; export type RouterInputs; export type RouterOutputs",
+        "Actual: export const appRouter = router({ system: systemRouter }); export type AppRouter = typeof appRouter; export type RouterInputs = inferRouterInputs<AppRouter>; export type RouterOutputs = inferRouterOutputs<AppRouter>"
+      ]
+    },
+    {
+      "id": "DSN-012",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "SystemRouter interface matches design: healthCheckOutputSchema with z.literal('ok'), z.string() for timestamp/version",
+      "evidence": [
+        "Design: z.ZodObject<{ status: z.ZodLiteral<'ok'>; timestamp: z.ZodString; version: z.ZodString }>",
+        "Actual: z.object({ status: z.literal('ok'), timestamp: z.string(), version: z.string() })"
+      ]
+    },
+    {
+      "id": "DSN-013",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCClient interface matches design: trpc = createTRPCReact<AppRouter>()",
+      "evidence": [
+        "Design: export declare const trpc: ReturnType<typeof createTRPCReact<AppRouter>>",
+        "Actual: export const trpc = createTRPCReact<AppRouter>()"
+      ]
+    },
+    {
+      "id": "DSN-014",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "TRPCProvider interface matches design: TRPCProviderProps with children: ReactNode",
+      "evidence": [
+        "Design: interface TRPCProviderProps { children: ReactNode }; export declare function TRPCProvider(props: TRPCProviderProps): JSX.Element",
+        "Actual: interface TRPCProviderProps { children: ReactNode }; export function TRPCProvider({ children }: TRPCProviderProps)"
+      ]
+    },
+    {
+      "id": "DSN-015",
+      "category": "interface",
+      "status": "pass",
+      "severity": "info",
+      "details": "MainIntegration interface matches design: setupTRPCHandler(window: BrowserWindow) with createIPCHandler call",
+      "evidence": [
+        "Design: declare function setupTRPCHandler(window: BrowserWindow): void",
+        "Actual: export function setupTRPCHandler(window: Electron.BrowserWindow): void { createIPCHandler({ router: appRouter, windows: [window] }) }"
+      ]
+    },
+    {
+      "id": "DSN-016",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "Integration: preload/index.ts includes 'import ./trpc' as first import (DD-002 compliant)",
+      "evidence": [
+        "electron-sdd-manager/src/preload/index.ts line 8: import './trpc'"
+      ]
+    },
+    {
+      "id": "DSN-017",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "Integration: renderer/App.tsx wraps component tree with <TRPCProvider> (Req 4.5)",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx line 70: import { TRPCProvider } from '../shared/trpc/provider'",
+        "electron-sdd-manager/src/renderer/App.tsx line 616: <TRPCProvider> wrapping NotificationProvider"
+      ]
+    },
+    {
+      "id": "DSN-018",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "Integration: remote-ui/App.tsx wraps component tree with <TRPCProvider> (Req 4.6)",
+      "evidence": [
+        "electron-sdd-manager/src/remote-ui/App.tsx line 44: import { TRPCProvider } from '../shared/trpc/provider'",
+        "electron-sdd-manager/src/remote-ui/App.tsx line 1129: <TRPCProvider> wrapping AppContent"
+      ]
+    },
+    {
+      "id": "DSN-019",
+      "category": "component",
+      "status": "pass",
+      "severity": "info",
+      "details": "RouterTest (integration tests) exist with caller pattern (DD-004), covering healthCheck, type safety, and Zod validation",
+      "evidence": [
+        "electron-sdd-manager/src/main/trpc/__tests__/router.test.ts (root router integration)",
+        "electron-sdd-manager/src/main/trpc/__tests__/system-router.test.ts (system router + Zod schema)",
+        "electron-sdd-manager/src/main/trpc/__tests__/trpc-init.test.ts (tRPC instance + context)",
+        "electron-sdd-manager/src/main/trpc/__tests__/main-integration.test.ts (handler setup + error logging)",
+        "electron-sdd-manager/src/preload/__tests__/trpc-preload.test.ts (preload module)"
+      ]
+    },
+    {
+      "id": "DSN-020",
+      "category": "decision",
+      "status": "pass",
+      "severity": "info",
+      "details": "DD-001: electron-trpc v0.7.1 / tRPC v10 adopted correctly",
+      "evidence": [
+        "package.json devDependencies: electron-trpc ^0.7.1",
+        "package.json dependencies: @trpc/server ^10.45.4, @trpc/client ^10.45.4, @trpc/react-query ^10.45.4",
+        "@tanstack/react-query ^4.43.0 (v4 for tRPC v10 compatibility)"
+      ]
+    },
+    {
+      "id": "DSN-021",
+      "category": "decision",
+      "status": "pass",
+      "severity": "info",
+      "details": "DD-002: Preload integration via separate module + import pattern",
+      "evidence": [
+        "preload/trpc.ts created as separate module",
+        "preload/index.ts has 'import ./trpc' at line 8 (first import)",
+        "Single preload file constraint maintained (webPreferences.preload points to index.js)"
+      ]
+    },
+    {
+      "id": "DSN-022",
+      "category": "decision",
+      "status": "pass",
+      "severity": "info",
+      "details": "DD-003: tRPC client placed in shared/trpc/ for SSOT compliance",
+      "evidence": [
+        "shared/trpc/client.ts (tRPC React hooks)",
+        "shared/trpc/provider.tsx (TRPCProvider)",
+        "Both renderer/App.tsx and remote-ui/App.tsx import from shared/trpc/"
+      ]
+    },
+    {
+      "id": "DSN-023",
+      "category": "decision",
+      "status": "pass",
+      "severity": "info",
+      "details": "DD-004: Integration tests use tRPC caller pattern (createCallerFactory) without Electron process",
+      "evidence": [
+        "router.test.ts uses createCallerFactory()(appRouter) for direct procedure invocation",
+        "system-router.test.ts uses caller pattern for healthCheck validation",
+        "No Electron process dependency in tests (Vitest only)"
+      ]
+    },
+    {
+      "id": "DSN-024",
+      "category": "decision",
+      "status": "pass",
+      "severity": "info",
+      "details": "DD-005: createIPCHandler called after BrowserWindow creation in createWindow()",
+      "evidence": [
+        "main/index.ts line 232: setupTRPCHandler(mainWindow) called inside createWindow() after new BrowserWindow()",
+        "Comment: 'Must be called after BrowserWindow creation'"
+      ]
+    },
+    {
+      "id": "DSN-025",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "DRY compliance: tRPC Router definition eliminates 3-way manual sync (channels.ts + handlers.ts + preload/index.ts)",
+      "evidence": [
+        "Type information auto-propagates from Router to Client via AppRouter type",
+        "No manual channel name definitions for tRPC procedures"
+      ]
+    },
+    {
+      "id": "DSN-026",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "SSOT compliance: Domain state in shared/, tRPC client code in shared/trpc/ per structure.md",
+      "evidence": [
+        "shared/trpc/client.ts and shared/trpc/provider.tsx in correct location",
+        "Both Electron and Remote UI reference shared/trpc/ (no duplication)"
+      ]
+    },
+    {
+      "id": "DSN-027",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "KISS/YAGNI compliance: Minimal healthCheck-only initial implementation, no premature abstractions",
+      "evidence": [
+        "Single systemRouter with one healthCheck procedure",
+        "No auth/rate-limiting/error-handling frameworks (Non-Goals respected)",
+        "Context is empty (extensible but not over-engineered)"
+      ]
+    },
+    {
+      "id": "DSN-028",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "Separation of concerns: tRPC code isolated in src/main/trpc/, separate from existing src/main/ipc/",
+      "evidence": [
+        "main/trpc/trpc.ts (instance), main/trpc/context.ts (context), main/trpc/router.ts (root router)",
+        "main/trpc/routers/system.ts (domain router), main/trpc/handler.ts (IPC handler setup)",
+        "Existing ipc/ directory unchanged"
+      ]
+    },
+    {
+      "id": "DSN-029",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "Naming conventions comply with structure.md: camelCase for services, PascalCase for React components",
+      "evidence": [
+        "trpc.ts, context.ts, router.ts, handler.ts (camelCase service files)",
+        "TRPCProvider (PascalCase React component)",
+        "Tests co-located in __tests__/ directory with .test.ts extension"
+      ]
+    },
+    {
+      "id": "DSN-030",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "Electron process boundary rules followed: tRPC Router/procedures run in Main process, client in Renderer via IPC",
+      "evidence": [
+        "Main process: trpc/router.ts, trpc/routers/system.ts, trpc/handler.ts (createIPCHandler)",
+        "Renderer process: shared/trpc/client.ts (createTRPCReact), shared/trpc/provider.tsx",
+        "Communication: electron-trpc IPC channel (ipcLink -> createIPCHandler)"
+      ]
+    },
+    {
+      "id": "DSN-031",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "Product alignment: tRPC infrastructure serves product goal of maintaining and extending IPC communication layer",
+      "evidence": [
+        "Addresses preload.ts code complexity (2,771 lines) per design overview",
+        "Enables type-safe IPC communication without manual channel synchronization",
+        "Coexists with existing IPC handlers (no breaking changes)"
+      ]
+    },
+    {
+      "id": "DSN-032",
+      "category": "steering",
+      "status": "pass",
+      "severity": "info",
+      "details": "Tech stack compliance: Uses correct frameworks per tech.md (TypeScript, React, Vite, Zod, Vitest)",
+      "evidence": [
+        "tRPC v10 with TypeScript strict mode",
+        "Zod for schema validation (existing dependency reused)",
+        "Vitest for testing (caller pattern, no Electron dependency)",
+        "@tanstack/react-query v4 (compatible with tRPC v10 per tech stack table)"
+      ]
+    }
+  ],
+  "summary": {
+    "total": 32,
+    "passed": 32,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 32
+  }
+}

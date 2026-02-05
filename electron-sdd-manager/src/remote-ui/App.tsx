@@ -40,6 +40,8 @@ import type { SpecMetadataWithPath, SpecDetail, BugMetadataWithPath, AutoExecuti
 // mobile-agent-log-fullscreen: Re-export for local use
 type AgentInfo = SharedAgentInfo;
 import { initBugAutoExecutionWebSocketListeners } from '../shared/stores/bugAutoExecutionStore';
+// trpc-infrastructure: TRPCProvider for tRPC React hooks structure (Requirements 4.6)
+import { TRPCProvider } from '../shared/trpc/provider';
 import { useNavigationStack } from './hooks/useNavigationStack';
 import { useAgentStoreInit } from './hooks/useAgentStoreInit';
 // agent-log-store-unification Task 3.1: Shared log subscription hook
@@ -1124,9 +1126,11 @@ export default function App() {
   return (
     <ApiClientProvider>
       <PlatformProvider>
-        <AppContent />
-        {/* Task 1.2: ToastContainer for displaying notifications */}
-        <ToastContainer />
+        <TRPCProvider>
+          <AppContent />
+          {/* Task 1.2: ToastContainer for displaying notifications */}
+          <ToastContainer />
+        </TRPCProvider>
       </PlatformProvider>
     </ApiClientProvider>
   );

@@ -66,6 +66,8 @@ import type { ProjectFilesState } from '../shared/api/types';
 // idle-time-project-level-reporting Task 4.1: Idle time sync hook
 // Requirements: 1.1, 1.2, 1.3 - プロジェクト選択時にアイドル時間報告を開始
 import { useIdleTimeSync } from './hooks/useIdleTimeSync';
+// trpc-infrastructure: TRPCProvider for tRPC React hooks integration (Requirements 4.5)
+import { TRPCProvider } from '../shared/trpc/provider';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -607,9 +609,11 @@ export function App() {
 
   // Task 8.2: Wrap with ApiClientProvider and PlatformProvider
   // These providers enable shared components to use abstract API and platform capabilities
+  // trpc-infrastructure: TRPCProvider enables tRPC React hooks (Requirements 4.5)
   return (
     <ApiClientProvider>
       <PlatformProvider>
+        <TRPCProvider>
         <NotificationProvider>
           <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
             {/* Header - draggable for window movement on macOS */}
@@ -902,6 +906,7 @@ export function App() {
         />
           </div>
         </NotificationProvider>
+        </TRPCProvider>
       </PlatformProvider>
     </ApiClientProvider>
   );

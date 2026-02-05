@@ -4,6 +4,9 @@
  * Requirements: 11.2, 13.1-13.3, 5.1-5.8, 9.1-9.10, 10.1-10.3
  */
 
+// trpc-infrastructure: Load tRPC preload module (DD-002)
+import './trpc';
+
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from '../main/ipc/channels';
 import type { Phase, SelectProjectResult } from '../renderer/types';

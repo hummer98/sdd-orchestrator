@@ -27,6 +27,8 @@ import { initializeMcpServer, getMcpServerService } from './services/mcp/mcpAuto
 import { setupMcpStatusBroadcast } from './services/mcp/mcpStatusBroadcast';
 // Task 7.4: Agent Lifecycle Management (agent-lifecycle-management feature)
 import { getAgentWatchdog } from './services/agentLifecycleSetup';
+// trpc-infrastructure: tRPC IPC handler setup (Requirements 8.1-8.5)
+import { setupTRPCHandler } from './trpc/handler';
 
 // Prevent EPIPE/EIO errors from crashing the app
 // These occur when stdout/stderr streams are closed (common in packaged Electron apps)
@@ -224,6 +226,10 @@ function createWindow(): void {
     show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
   });
+
+  // trpc-infrastructure: Register tRPC IPC handler (DD-005)
+  // Must be called after BrowserWindow creation
+  setupTRPCHandler(mainWindow);
 
   // Show window when ready (unless headless mode)
   // startup-project-selection-fix Task 4.1: Broadcast initial project selection

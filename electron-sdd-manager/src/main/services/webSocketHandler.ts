@@ -289,7 +289,7 @@ export interface WorkflowController {
 
   // Inspection workflow methods (inspection-workflow-ui feature)
   // Requirements: 6.1, 6.4 (Task 6.2)
-  /** Execute inspection (validate-impl) */
+  /** Execute inspection */
   executeInspection?(specId: string, featureName: string): Promise<WorkflowResult<AgentInfo>>;
   /** Execute inspection fix */
   executeInspectionFix?(specId: string, featureName: string, roundNumber: number): Promise<WorkflowResult<AgentInfo>>;

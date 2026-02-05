@@ -115,7 +115,6 @@ Protocol description.
       // Note: Bug commands are NOT included in cc-sdd validation (separate commandset)
       const commands = [
         'spec-init', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status',
-        'validate-gap', 'validate-design', 'validate-impl',
         'spec-inspection',
         'document-review', 'document-review-reply',
         'steering', 'steering-custom',
@@ -124,13 +123,14 @@ Protocol description.
         await createValidCommandFile(cmd);
       }
 
-      // Create all required agent files (must match CC_SDD_AGENTS)
+      // Create all required agent files (must match CC_SDD_AGENTS - 14 types)
       const agents = [
         'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
         'steering', 'steering-custom', 'steering-verification',
-        'generate-release',  // Added: generate-release-command feature
-        'validate-design', 'validate-gap', 'validate-impl',
+        'generate-release',
         'spec-inspection',
+        // E2E Agents (5)
+        'e2e-planner', 'e2e-creator', 'e2e-validator', 'e2e-runner', 'generate-inspection-e2e',
       ];
       for (const agent of agents) {
         await createValidAgentFile(agent);
@@ -155,6 +155,8 @@ Protocol description.
         'templates/steering-custom/testing.md',
         // Bug templates
         'templates/bugs/report.md', 'templates/bugs/analysis.md', 'templates/bugs/fix.md', 'templates/bugs/verification.md',
+        // E2E templates
+        'templates/specs/e2e-report.md', 'templates/specs/e2e-test.spec.ts',
       ];
       for (const setting of settings) {
         await createValidSettingFile(setting);

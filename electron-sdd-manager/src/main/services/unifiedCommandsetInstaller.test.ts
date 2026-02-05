@@ -61,10 +61,11 @@ describe('UnifiedCommandsetInstaller', () => {
    * Helper to create template files
    */
   async function createTemplateFiles(): Promise<void> {
-    // CC-SDD commands (directory-based)
+    // CC-SDD commands (directory-based) - must match CC_SDD_COMMANDS minus bug/document-review
     const ccSddCommands = [
-      'spec-design', 'spec-impl', 'spec-init', 'spec-requirements', 'spec-status', 'spec-tasks',
-      'steering', 'steering-custom', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl'
+      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
+      'project-ask', 'spec-ask', 'spec-merge', 'spec-inspection',
+      'steering', 'steering-custom', 'generate-release'
     ];
     for (const cmd of ccSddCommands) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd', `${cmd}.md`);
@@ -72,10 +73,11 @@ describe('UnifiedCommandsetInstaller', () => {
       await fs.writeFile(filePath, `# Template for ${cmd}`, 'utf-8');
     }
 
-    // CC-SDD-Agent commands (directory-based)
+    // CC-SDD-Agent commands (directory-based) - same as cc-sdd but used for agent profile
     const ccSddAgentCommands = [
-      'spec-design', 'spec-impl', 'spec-init', 'spec-quick', 'spec-requirements', 'spec-status', 'spec-tasks',
-      'steering', 'steering-custom', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl'
+      'spec-init', 'spec-plan', 'spec-requirements', 'spec-design', 'spec-tasks', 'spec-impl', 'spec-status', 'spec-quick',
+      'project-ask', 'spec-ask', 'spec-merge', 'spec-inspection',
+      'steering', 'steering-custom', 'generate-release'
     ];
     for (const cmd of ccSddAgentCommands) {
       const filePath = path.join(templateDir, 'commands', 'cc-sdd-agent', `${cmd}.md`);
@@ -109,8 +111,14 @@ describe('UnifiedCommandsetInstaller', () => {
       await fs.writeFile(filePath, `# Template for ${cmd}`, 'utf-8');
     }
 
-    // Agents
-    const agents = ['spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks', 'steering', 'steering-custom', 'steering-verification', 'generate-release', 'validate-design', 'validate-gap', 'validate-impl', 'spec-inspection'];
+    // Agents (14 types - must match CC_SDD_AGENTS)
+    const agents = [
+      'spec-design', 'spec-impl', 'spec-requirements', 'spec-tasks',
+      'steering', 'steering-custom', 'steering-verification',
+      'generate-release', 'spec-inspection',
+      // E2E Agents (5)
+      'e2e-planner', 'e2e-creator', 'e2e-validator', 'e2e-runner', 'generate-inspection-e2e'
+    ];
     for (const agent of agents) {
       const filePath = path.join(templateDir, 'agents', 'kiro', `${agent}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -157,6 +165,9 @@ describe('UnifiedCommandsetInstaller', () => {
       'templates/bugs/fix.md',
       'templates/bugs/verification.md',
       'templates/bugs/bug.json',
+      // E2E templates
+      'templates/specs/e2e-report.md',
+      'templates/specs/e2e-test.spec.ts',
     ];
     for (const setting of settings) {
       const filePath = path.join(templateDir, 'settings', setting);

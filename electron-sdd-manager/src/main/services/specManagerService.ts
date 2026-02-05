@@ -289,9 +289,6 @@ const PHASE_ALLOWED_TOOLS: Record<string, string[]> = {
   'impl': ['Read', 'Task'],
   'spec-manager-impl': ['Read', 'Write', 'Edit', 'Glob', 'Bash'],
   'inspection': ['Read', 'Task'],
-  'validate-gap': ['Read', 'Task'],
-  'validate-design': ['Read', 'Task'],
-  'validate-impl': ['Read', 'Task'],
   'status': ['Bash', 'Read', 'Glob', 'Write', 'Edit', 'MultiEdit', 'Update'],
   // document-review系
   'document-review': ['Read', 'Write', 'Glob', 'Grep'],

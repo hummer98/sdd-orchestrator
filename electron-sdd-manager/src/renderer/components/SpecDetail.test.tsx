@@ -15,6 +15,7 @@ import type { WorktreeConfig } from '../types/worktree';
 // Mock the store
 vi.mock('../stores', () => ({
   useSpecStore: vi.fn(),
+  useProjectStore: vi.fn(() => ({ currentProject: '/test/project' })),
 }));
 
 const createMockSpecJson = (overrides: Partial<SpecJson> = {}): SpecJson => ({

@@ -16,6 +16,7 @@ vi.mock('../stores/agentStore');
 // zustand-agent-selector-hooks: Mock useAgentsBySpec hook
 vi.mock('@shared/hooks', () => ({
   useAgentsBySpec: vi.fn(),
+  useSubmitShortcut: vi.fn(() => ({ handleKeyDown: vi.fn() })),
 }));
 
 import { useAgentsBySpec } from '@shared/hooks';

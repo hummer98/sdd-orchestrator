@@ -52,6 +52,7 @@ describe('autoExecutionHandlers', () => {
   });
 
   afterEach(() => {
+    unregisterAutoExecutionHandlers();
     coordinator.dispose();
     vi.clearAllMocks();
     mockHandlers.clear();

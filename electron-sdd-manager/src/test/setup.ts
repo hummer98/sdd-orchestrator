@@ -31,6 +31,7 @@ vi.mock('../main/ipc/sshHandlers', () => ({
 // Mock main worktree handlers
 vi.mock('../main/ipc/worktreeHandlers', () => ({
   registerWorktreeHandlers: vi.fn(),
+  handleWorktreeRebaseFromMain: vi.fn(),
 }));
 
 // Mock main bug worktree handlers
@@ -195,6 +196,9 @@ const mockElectronAPI = {
   readBugJson: vi.fn().mockResolvedValue({}),
   // parallel-task-impl: Task 10.1 - Parse tasks.md for parallel execution
   parseTasksForParallel: vi.fn().mockResolvedValue(null),
+  // Cloudflare settings
+  getCloudflareSettings: vi.fn().mockResolvedValue({ enabled: false, token: '', tunnelName: '' }),
+  saveCloudflareSettings: vi.fn().mockResolvedValue(undefined),
 };
 
 Object.defineProperty(window, 'electronAPI', {

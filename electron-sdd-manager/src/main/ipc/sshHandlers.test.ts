@@ -13,7 +13,7 @@ import { SSH_IPC_CHANNELS } from './sshChannels';
 // Unmock this module to test the actual implementation
 vi.unmock('./sshHandlers');
 
-// Mock electron
+// Mock electron with app for projectLogger
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
@@ -22,6 +22,10 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => []),
     fromWebContents: vi.fn(),
+  },
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
   },
 }));
 

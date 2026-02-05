@@ -168,6 +168,7 @@ describe('IPC Handlers - Agent Events (Task 27.2)', () => {
 describe('IPC Handlers - Configuration (Task 27.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   describe('get-hang-threshold channel', () => {
@@ -374,6 +375,7 @@ describe('Exclusive Control (Task 1.5)', () => {
 describe('IPC Handlers - Auto Execution Integration (Task 11.1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   describe('Auto Execution handler registration', () => {
@@ -470,6 +472,7 @@ describe('Auto Execution Coordinator Instance (Task 11.2)', () => {
 describe('IPC Handlers - setProjectPath Regression (Task 1.1, 6.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   describe('setProjectPath should not install commit.md', () => {

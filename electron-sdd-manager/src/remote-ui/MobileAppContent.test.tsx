@@ -62,6 +62,7 @@ const mockApiClient = {
   onAgentOutput: () => () => {},
   onAgentStatusChange: () => () => {},
   onAutoExecutionStatusChanged: () => () => {},
+  onAgentLog: () => () => {},
   startAutoExecution: () => Promise.resolve({ ok: true, value: {} }),
   stopAutoExecution: () => Promise.resolve({ ok: true, value: undefined }),
   executeAskProject: () => Promise.resolve({ ok: true, value: {} }),

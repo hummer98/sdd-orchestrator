@@ -49,21 +49,34 @@ vi.mock('../services/fileService', () => ({
   FileService: vi.fn(() => mockFileService),
 }));
 
-// Mock fs/promises (used by ConvertWorktreeService)
-vi.mock('fs/promises', () => ({
-  access: vi.fn().mockResolvedValue(undefined),
-  mkdir: vi.fn().mockResolvedValue(undefined),
-  cp: vi.fn().mockResolvedValue(undefined),
-  rm: vi.fn().mockResolvedValue(undefined),
-  readFile: vi.fn().mockResolvedValue('{}'),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-}));
+// Mock fs/promises (used by ConvertWorktreeService and logRotationManager)
+// Use importOriginal pattern to preserve default export
+vi.mock('fs/promises', async (importOriginal) => {
+  const original = await importOriginal<typeof import('fs/promises')>();
+  return {
+    ...original,
+    access: vi.fn().mockResolvedValue(undefined),
+    mkdir: vi.fn().mockResolvedValue(undefined),
+    cp: vi.fn().mockResolvedValue(undefined),
+    rm: vi.fn().mockResolvedValue(undefined),
+    readFile: vi.fn().mockResolvedValue('{}'),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+    // logRotationManager requires these
+    rename: vi.fn().mockResolvedValue(undefined),
+    readdir: vi.fn().mockResolvedValue([]),
+    unlink: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
-// Mock electron
+// Mock electron with app for projectLogger
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
     removeHandler: vi.fn(),
+  },
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
   },
 }));
 

@@ -7,6 +7,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Unmock worktreeHandlers (globally mocked in setup.ts) to test real implementation
+vi.unmock('./worktreeHandlers');
+
 import { handleWorktreeRebaseFromMain } from './worktreeHandlers';
 
 // Mock WorktreeService
@@ -18,9 +22,18 @@ vi.mock('../services/worktreeService', () => ({
   })),
 }));
 
-// Mock logger
-vi.mock('../services/logger', () => ({
-  logger: {
+// Mock electron (needed by projectLogger)
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
+  },
+  ipcMain: { handle: vi.fn() },
+}));
+
+// Mock projectLogger (migrated from logger)
+vi.mock('../services/projectLogger', () => ({
+  projectLogger: {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),

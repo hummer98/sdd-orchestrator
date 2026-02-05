@@ -131,10 +131,10 @@ describe('BugActionButtons', () => {
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-analyze', // phase
-          'claude', // command (normalized)
           ['/kiro:bug-analyze test-bug'], // args: full command (base flags added by service)
           undefined, // group
-          undefined // sessionId
+          undefined, // sessionId
+          'claude' // engineId
         );
       });
     });
@@ -151,10 +151,10 @@ describe('BugActionButtons', () => {
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-fix',
-          'claude', // command (normalized)
           ['/kiro:bug-fix test-bug'], // args: full command (base flags added by service)
           undefined,
-          undefined
+          undefined,
+          'claude' // engineId
         );
       });
     });
@@ -171,10 +171,10 @@ describe('BugActionButtons', () => {
         expect(mockStartAgent).toHaveBeenCalledWith(
           'bug:test-bug', // specId (bug:{name} format)
           'bug-verify',
-          'claude', // command (normalized)
           ['/kiro:bug-verify test-bug'], // args: full command (base flags added by service)
           undefined,
-          undefined
+          undefined,
+          'claude' // engineId
         );
       });
     });

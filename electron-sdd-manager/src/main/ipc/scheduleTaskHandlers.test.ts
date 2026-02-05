@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain, BrowserWindow } from 'electron';
 
-// Mock electron modules
+// Mock electron modules with app for projectLogger
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
@@ -20,6 +20,10 @@ vi.mock('electron', () => ({
   },
   BrowserWindow: {
     getAllWindows: vi.fn(() => []),
+  },
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
   },
 }));
 

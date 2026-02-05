@@ -59,6 +59,10 @@ vi.mock('../services/logger', () => ({
 const mockGetProjectLogPath = vi.fn().mockReturnValue('/test/project/.kiro/logs/main.log');
 vi.mock('../services/projectLogger', () => ({
   projectLogger: {
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
     getProjectLogPath: mockGetProjectLogPath,
   },
 }));
@@ -679,11 +683,49 @@ describe('agent-stale-recovery: Task 14.1 - OrphanDetector integration', () => {
   let mockOrphanDetector: {
     detectOrphans: ReturnType<typeof vi.fn>;
   };
+  let mockFileService: { validateKiroDirectory: ReturnType<typeof vi.fn> };
+  let mockConfigStore: { getRecentProjects: ReturnType<typeof vi.fn>; addRecentProject: ReturnType<typeof vi.fn> };
+  let mockGetCurrentProjectPath: ReturnType<typeof vi.fn>;
+  let mockSetProjectPath: ReturnType<typeof vi.fn>;
+  let mockSelectProject: ReturnType<typeof vi.fn>;
+  let mockGetInitialProjectPath: ReturnType<typeof vi.fn>;
+  let mockStartSpecsWatcher: ReturnType<typeof vi.fn>;
+  let mockStartAgentRecordWatcher: ReturnType<typeof vi.fn>;
+  let mockStartBugsWatcher: ReturnType<typeof vi.fn>;
+  const registeredHandlers: Map<string, (...args: unknown[]) => Promise<unknown>> = new Map();
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    registeredHandlers.clear();
+    vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (...args: unknown[]) => Promise<unknown>) => {
+      registeredHandlers.set(channel, handler);
+      return undefined as unknown as Electron.IpcMain;
+    });
     mockOrphanDetector = {
       detectOrphans: vi.fn().mockResolvedValue(undefined),
     };
+    mockFileService = {
+      validateKiroDirectory: vi.fn().mockResolvedValue({ exists: true, hasSpecs: true, hasSteering: true }),
+    };
+    mockConfigStore = {
+      getRecentProjects: vi.fn().mockReturnValue([]),
+      addRecentProject: vi.fn(),
+    };
+    mockGetCurrentProjectPath = vi.fn().mockReturnValue('/test/project');
+    mockSetProjectPath = vi.fn().mockResolvedValue(undefined);
+    mockSelectProject = vi.fn().mockResolvedValue({
+      success: true,
+      projectPath: '/test/project',
+      kiroValidation: { exists: true, hasSpecs: true, hasSteering: true },
+      specs: [],
+      bugs: [],
+      specJsonMap: {},
+    });
+    mockGetInitialProjectPath = vi.fn().mockReturnValue('/initial/project');
+    mockStartSpecsWatcher = vi.fn().mockResolvedValue(undefined);
+    mockStartAgentRecordWatcher = vi.fn();
+    mockStartBugsWatcher = vi.fn().mockResolvedValue(undefined);
   });
 
   it('should call OrphanDetector.detectOrphans after successful project selection', async () => {

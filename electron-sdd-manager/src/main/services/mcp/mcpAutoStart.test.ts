@@ -10,9 +10,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { McpSettings } from '../configStore';
 
-// Mock logger
-vi.mock('../logger', () => ({
-  logger: {
+// Mock projectLogger (migrated from logger)
+vi.mock('../projectLogger', () => ({
+  projectLogger: {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -105,7 +105,7 @@ describe('MCP Auto-Start', () => {
     });
 
     it('should log when MCP server starts successfully', async () => {
-      const { logger } = await import('../logger');
+      const { projectLogger: logger } = await import('../projectLogger');
       mockGetMcpSettings.mockReturnValue({ enabled: true, port: 3001 });
 
       await initializeMcpServer(mockGetMcpSettings);
@@ -117,7 +117,7 @@ describe('MCP Auto-Start', () => {
     });
 
     it('should log when MCP server is disabled', async () => {
-      const { logger } = await import('../logger');
+      const { projectLogger: logger } = await import('../projectLogger');
       mockGetMcpSettings.mockReturnValue({ enabled: false, port: 3001 });
 
       await initializeMcpServer(mockGetMcpSettings);

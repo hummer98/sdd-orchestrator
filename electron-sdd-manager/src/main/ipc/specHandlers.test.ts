@@ -16,7 +16,7 @@ import {
 } from './specHandlers';
 import { IPC_CHANNELS } from './channels';
 
-// Mock electron
+// Mock electron with app for projectLogger
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
@@ -24,6 +24,10 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     fromWebContents: vi.fn(),
     getAllWindows: vi.fn(() => []),
+  },
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
   },
 }));
 

@@ -18,10 +18,14 @@ import { IPC_CHANNELS } from './channels';
 // Unmock this module to test the actual implementation
 vi.unmock('./bugWorktreeHandlers');
 
-// Mock electron
+// Mock electron with app for projectLogger
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
+  },
+  app: {
+    isPackaged: false,
+    getPath: vi.fn(() => '/tmp'),
   },
 }));
 

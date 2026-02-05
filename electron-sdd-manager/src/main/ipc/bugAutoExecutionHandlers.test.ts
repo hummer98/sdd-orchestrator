@@ -73,6 +73,10 @@ const { mockIpcMain, mockIpcHandlers, mockWebContents, mockWindow, mockElectron,
       BrowserWindow: {
         getAllWindows: vi.fn(() => [mockWindow]),
       },
+      app: {
+        isPackaged: false,
+        getPath: vi.fn(() => '/tmp'),
+      },
     },
     mockLogger: {
       info: vi.fn(),

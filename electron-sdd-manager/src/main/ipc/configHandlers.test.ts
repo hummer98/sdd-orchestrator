@@ -61,6 +61,8 @@ describe('configHandlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset module state (handlersRegistered flag) before each test
+    vi.resetModules();
 
     // Reset handlers map
     registeredHandlers.clear();

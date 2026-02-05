@@ -24,10 +24,14 @@ const mockSpecManagerService = {
   execute: vi.fn(),
 };
 
-vi.mock('fs/promises', () => ({
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-}));
+vi.mock('fs/promises', async (importOriginal) => {
+  const original = await importOriginal<typeof import('fs/promises')>();
+  return {
+    ...original,
+    readFile: (...args: unknown[]) => mockReadFile(...args),
+    writeFile: (...args: unknown[]) => mockWriteFile(...args),
+  };
+});
 
 vi.mock('../services/worktreeService', () => ({
   WorktreeService: vi.fn().mockImplementation(() => mockWorktreeService),

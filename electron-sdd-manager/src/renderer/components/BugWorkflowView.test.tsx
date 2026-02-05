@@ -13,9 +13,11 @@ import { useWorkflowStore } from '../stores/workflowStore';
 import type { BugDetail, BugMetadata } from '../types/bug';
 
 // bugs-view-unification Task 6.1: Mock shared bugStore
-vi.mock('../../shared/stores/bugStore', () => ({
-  useSharedBugStore: vi.fn(),
-}));
+vi.mock('../../shared/stores/bugStore', () => {
+  const fn = vi.fn();
+  fn.getState = vi.fn();
+  return { useSharedBugStore: fn };
+});
 
 // bugs-view-unification Task 6.1: Mock ApiClientProvider
 const mockApiClient = {
@@ -31,6 +33,7 @@ import { useSharedBugStore } from '../../shared/stores/bugStore';
 // zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of useAgentStore
 vi.mock('@shared/hooks', () => ({
   useAgentsBySpec: vi.fn(),
+  useSubmitShortcut: vi.fn(() => ({ handleKeyDown: vi.fn() })),
 }));
 
 import { useAgentsBySpec } from '@shared/hooks';
@@ -115,13 +118,17 @@ describe('BugWorkflowView', () => {
     vi.clearAllMocks();
 
     // bugs-view-unification Task 6.1: Use selectedBugId and bugs array
-    mockUseSharedBugStore.mockReturnValue({
+    const bugStoreValue = {
       bugs: [mockBugMetadata],
       selectedBugId: 'test-bug',
       bugDetail: mockBugDetail,
       useWorktree: false,
       setUseWorktree: vi.fn(),
-    });
+      selectBug: vi.fn(),
+      isRebasing: false,
+    };
+    mockUseSharedBugStore.mockReturnValue(bugStoreValue);
+    (mockUseSharedBugStore as any).getState.mockReturnValue(bugStoreValue);
 
     // zustand-agent-selector-hooks: Mock useAgentsBySpec hook instead of useAgentStore
     // The hook returns an array of agents for the given specId

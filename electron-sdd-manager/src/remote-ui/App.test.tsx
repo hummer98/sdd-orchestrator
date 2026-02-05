@@ -43,6 +43,7 @@ vi.mock('../shared', async () => {
     onAgentOutput: () => () => {},
     onAgentStatusChange: () => () => {},
     onAutoExecutionStatusChanged: () => () => {},
+    onAgentLog: () => () => {},
   };
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) =>

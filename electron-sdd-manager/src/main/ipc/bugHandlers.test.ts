@@ -359,7 +359,7 @@ describe('bugHandlers', () => {
         expect.objectContaining({
           specId: '',
           phase: 'bug-create',
-          command: 'claude',
+          engineId: 'claude',
           group: 'doc',
         })
       );

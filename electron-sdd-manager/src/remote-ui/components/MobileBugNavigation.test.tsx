@@ -149,6 +149,7 @@ vi.mock('../../shared', () => {
     onAgentStatusChange: () => () => {},
     onSpecsUpdated: () => () => {},
     onBugsUpdated: () => () => {},
+    onAgentLog: () => () => {},
   };
 
   return {

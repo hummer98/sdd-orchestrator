@@ -98,6 +98,8 @@ describe('installHandlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset module state (handlersRegistered flag) before each test
+    vi.resetModules();
 
     // Reset handlers map
     registeredHandlers.clear();
@@ -494,7 +496,7 @@ describe('installHandlers', () => {
       expect(mockSpecManagerService.startAgent).toHaveBeenCalledWith({
         specId: '',
         phase: 'claudemd-merge',
-        command: 'claude',
+        engineId: 'claude',
         args: ['/internal:claudemd-merge'],
         group: 'doc',
       });

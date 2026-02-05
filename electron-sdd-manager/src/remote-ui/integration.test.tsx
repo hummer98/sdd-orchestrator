@@ -45,6 +45,7 @@ vi.mock('../shared', async () => {
     onAutoExecutionStatusChanged: innerVi.fn().mockImplementation(() => noopUnsubscribe),
     onBugAutoExecutionStatusChanged: innerVi.fn().mockImplementation(() => noopUnsubscribe),
     onAgentDeleted: innerVi.fn().mockImplementation(() => noopUnsubscribe),
+    onAgentLog: innerVi.fn().mockImplementation(() => noopUnsubscribe),
   };
   return {
     ApiClientProvider: ({ children }: { children: React.ReactNode }) =>

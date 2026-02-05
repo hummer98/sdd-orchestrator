@@ -63,6 +63,9 @@ import { IpcApiClient } from '../shared/api/IpcApiClient';
 // project-config-editor Task 4.2: Project editor store for tab switching cleanup
 import { useProjectEditorStore } from '../shared/stores/projectEditorStore';
 import type { ProjectFilesState } from '../shared/api/types';
+// idle-time-project-level-reporting Task 4.1: Idle time sync hook
+// Requirements: 1.1, 1.2, 1.3 - プロジェクト選択時にアイドル時間報告を開始
+import { useIdleTimeSync } from './hooks/useIdleTimeSync';
 
 // ペイン幅の制限値
 const LEFT_PANE_MIN = 200;
@@ -320,6 +323,11 @@ export function App() {
   // Requirements: 2.4 - Use shared useAgentLogSubscription hook for log events
   const ipcApiClient = useMemo(() => new IpcApiClient(), []);
   useAgentLogSubscription(ipcApiClient);
+
+  // idle-time-project-level-reporting Task 4.1: Idle time sync for schedule task support
+  // Requirements: 1.1, 1.2, 1.3 - プロジェクト選択時にアイドル時間報告を開始
+  // projectPathがnullの場合は報告スキップ、選択時は自動開始
+  useIdleTimeSync({ projectPath: currentProject });
 
   // Initialize auto-execution IPC listeners on mount
   // This enables specStore to receive state updates from Main Process (bug fix: auto-execution-state-sync)

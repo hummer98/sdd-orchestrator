@@ -1,0 +1,195 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-05T10:00:00Z",
+  "checks": [
+    {
+      "id": "design-component-useWindowFocusTracker",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useWindowFocusTracker hook found at expected path",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.ts"
+      ]
+    },
+    {
+      "id": "design-interface-useWindowFocusTracker-getLastActivityTime",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "getLastActivityTime(): number | null - signature matches design",
+      "evidence": [
+        "Design: getLastActivityTime(): number | null",
+        "Actual: getLastActivityTime(): number | null (line 119)"
+      ]
+    },
+    {
+      "id": "design-interface-useWindowFocusTracker-isFocused",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "isFocused(): boolean - signature matches design",
+      "evidence": [
+        "Design: isFocused(): boolean",
+        "Actual: isFocused(): boolean (line 126)"
+      ]
+    },
+    {
+      "id": "design-component-useIdleTimeSync",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync hook found at expected path with extended interface",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.ts"
+      ]
+    },
+    {
+      "id": "design-interface-UseIdleTimeSyncOptions",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "UseIdleTimeSyncOptions interface with projectPath: string | null matches design",
+      "evidence": [
+        "Design: interface UseIdleTimeSyncOptions { projectPath: string | null; }",
+        "Actual: interface UseIdleTimeSyncOptions { projectPath: string | null; } (lines 35-38)"
+      ]
+    },
+    {
+      "id": "design-interface-useIdleTimeSync-signature",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync(options: UseIdleTimeSyncOptions): void - signature matches design",
+      "evidence": [
+        "Design: function useIdleTimeSync(options: UseIdleTimeSyncOptions): void",
+        "Actual: function useIdleTimeSync(options: UseIdleTimeSyncOptions): void (line 52)"
+      ]
+    },
+    {
+      "id": "design-component-App-integration",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx properly imports and calls useIdleTimeSync with projectPath option",
+      "evidence": [
+        "Import: import { useIdleTimeSync } from './hooks/useIdleTimeSync'; (line 68)",
+        "Call: useIdleTimeSync({ projectPath: currentProject }); (line 330)"
+      ]
+    },
+    {
+      "id": "design-component-hooks-index-export",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "hooks/index.ts exports useWindowFocusTracker and useIdleTimeSync",
+      "evidence": [
+        "export { useWindowFocusTracker } from './useWindowFocusTracker';",
+        "export type { UseWindowFocusTrackerReturn } from './useWindowFocusTracker';",
+        "export { useIdleTimeSync } from './useIdleTimeSync';",
+        "export type { UseIdleTimeSyncOptions } from './useIdleTimeSync';"
+      ]
+    },
+    {
+      "id": "design-test-useWindowFocusTracker",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Unit test file for useWindowFocusTracker exists with comprehensive coverage",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.test.ts",
+        "Tests: focus gain (Req 2.1), focus loss (Req 2.2), periodic update (Req 2.3), background idle (Req 2.4)"
+      ]
+    },
+    {
+      "id": "design-test-useIdleTimeSync",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Unit test file for useIdleTimeSync exists with extended test cases",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.test.ts",
+        "Tests: periodic sync, projectPath handling (Req 1.2, 5.3), Spec tracking priority (Req 3.1, 3.2, 5.1), Spec selection switching (Req 3.3, 3.4)"
+      ]
+    },
+    {
+      "id": "steering-design-principles-dry",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DRY principle followed - useWindowFocusTracker is a separate reusable hook called by useIdleTimeSync",
+      "evidence": [
+        "useWindowFocusTracker encapsulates focus tracking logic",
+        "useIdleTimeSync uses useWindowFocusTracker as fallback via composition"
+      ]
+    },
+    {
+      "id": "steering-design-principles-ssot",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "SSOT principle followed - Activity time is tracked in single locations (HAT for Spec, FocusTracker for project-level)",
+      "evidence": [
+        "HumanActivityTracker: Spec-level activity (existing)",
+        "useWindowFocusTracker: Project-level activity (new)",
+        "useIdleTimeSync: Priority control, single point of reporting to Main Process"
+      ]
+    },
+    {
+      "id": "steering-design-principles-kiss",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "KISS principle followed - Simple focus/blur event handling for activity detection",
+      "evidence": [
+        "Design Decision DD-001: Window focus state used instead of complex mouse/keyboard tracking",
+        "Simple priority logic: HAT > FocusTracker > skip"
+      ]
+    },
+    {
+      "id": "steering-structure-file-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Files placed in correct directories per structure.md",
+      "evidence": [
+        "Hooks: src/renderer/hooks/ (correct for Electron-specific hooks)",
+        "Tests: Co-located with implementation files (*.test.ts)",
+        "Barrel export: hooks/index.ts updated"
+      ]
+    },
+    {
+      "id": "steering-structure-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "State management follows structure.md rules - UI state in Renderer, activity reporting via IPC to Main",
+      "evidence": [
+        "Focus state: Renderer-local useState (UI state)",
+        "Activity time reporting: IPC to Main Process IdleTimeTracker (correct boundary)",
+        "No domain state duplicated in Renderer"
+      ]
+    },
+    {
+      "id": "steering-tech-stack",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation uses correct technology stack per tech.md",
+      "evidence": [
+        "React hooks: useState, useEffect, useCallback, useRef",
+        "TypeScript: Proper interface definitions",
+        "Testing: Vitest with @testing-library/react"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 16
+  }
+}

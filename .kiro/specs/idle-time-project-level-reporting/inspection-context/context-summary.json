@@ -1,0 +1,100 @@
+{
+  "spec_overview": "プロジェクト選択時にウィンドウフォーカス状態に基づくアイドル時間報告を実現し、Spec未選択時でもwaitForIdle:trueのスケジュールタスクが正しく動作するようにする",
+  "key_components": [
+    {
+      "name": "useWindowFocusTracker",
+      "type": "hook",
+      "path": "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.ts",
+      "requirements": ["2.1", "2.2", "2.3", "2.4"]
+    },
+    {
+      "name": "useIdleTimeSync",
+      "type": "hook",
+      "path": "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.ts",
+      "requirements": ["1.1", "1.2", "1.3", "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3"]
+    },
+    {
+      "name": "App.tsx",
+      "type": "component",
+      "path": "electron-sdd-manager/src/renderer/App.tsx",
+      "requirements": ["1.1", "1.2", "1.3"]
+    },
+    {
+      "name": "hooks/index.ts",
+      "type": "module",
+      "path": "electron-sdd-manager/src/renderer/hooks/index.ts",
+      "requirements": ["2.1"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "App.tsx",
+      "target": "useIdleTimeSync",
+      "type": "import"
+    },
+    {
+      "source": "useIdleTimeSync",
+      "target": "useWindowFocusTracker",
+      "type": "call"
+    },
+    {
+      "source": "useIdleTimeSync",
+      "target": "HumanActivityTracker",
+      "type": "call"
+    },
+    {
+      "source": "useIdleTimeSync",
+      "target": "IPC:SCHEDULE_TASK_REPORT_IDLE_TIME",
+      "type": "ipc"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.ts",
+      "action": "UPDATE",
+      "reason": "optionsパラメータ追加、優先度制御ロジック追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.ts",
+      "action": "CREATE",
+      "reason": "新規フック"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.test.ts",
+      "action": "CREATE",
+      "reason": "新規テスト"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.test.ts",
+      "action": "UPDATE",
+      "reason": "新規テストケース追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/hooks/index.ts",
+      "action": "UPDATE",
+      "reason": "useWindowFocusTrackerエクスポート追加"
+    },
+    {
+      "target": "electron-sdd-manager/src/renderer/App.tsx",
+      "action": "UPDATE",
+      "reason": "useIdleTimeSync呼び出し追加"
+    }
+  ],
+  "test_files": [
+    {
+      "path": "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.test.ts",
+      "type": "unit",
+      "requirements": ["5.2"]
+    },
+    {
+      "path": "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.test.ts",
+      "type": "unit",
+      "requirements": ["5.1", "5.3"]
+    },
+    {
+      "path": "electron-sdd-manager/src/main/services/idleTimeIntegration.test.ts",
+      "type": "integration",
+      "requirements": ["5.4"]
+    }
+  ]
+}

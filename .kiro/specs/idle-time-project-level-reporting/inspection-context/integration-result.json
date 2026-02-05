@@ -1,0 +1,174 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-05T00:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 marked as complete - useWindowFocusTracker hook implemented"
+    },
+    {
+      "id": "task-1.2",
+      "checkType": "task-completion",
+      "target": "1.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.2 marked as complete - useWindowFocusTracker unit tests created"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 marked as complete - UseIdleTimeSyncOptions interface added with projectPath parameter"
+    },
+    {
+      "id": "task-2.2",
+      "checkType": "task-completion",
+      "target": "2.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.2 marked as complete - Spec tracking and focus tracking priority control implemented"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 marked as complete - useIdleTimeSync test cases added"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 marked as complete - useIdleTimeSync integrated in App.tsx"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 marked as complete - useWindowFocusTracker exported from hooks/index.ts"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 marked as complete (optional) - Integration test for idle time calculation created"
+    },
+    {
+      "id": "import-useWindowFocusTracker",
+      "checkType": "import",
+      "target": "useWindowFocusTracker",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useWindowFocusTracker is imported in 3 files",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.ts",
+        "electron-sdd-manager/src/renderer/hooks/useWindowFocusTracker.test.ts",
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.test.ts"
+      ]
+    },
+    {
+      "id": "import-useIdleTimeSync",
+      "checkType": "import",
+      "target": "useIdleTimeSync",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx",
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.test.ts"
+      ]
+    },
+    {
+      "id": "usage-useWindowFocusTracker",
+      "checkType": "usage",
+      "target": "useWindowFocusTracker",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useWindowFocusTracker is called in useIdleTimeSync.ts and test files",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/hooks/useIdleTimeSync.ts:57 - const focusTracker = useWindowFocusTracker()"
+      ]
+    },
+    {
+      "id": "usage-useIdleTimeSync",
+      "checkType": "usage",
+      "target": "useIdleTimeSync",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync is called in App.tsx with projectPath option",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/App.tsx:330 - useIdleTimeSync({ projectPath: currentProject })"
+      ]
+    },
+    {
+      "id": "wiring-App-useIdleTimeSync",
+      "checkType": "wiring",
+      "target": "App.tsx -> useIdleTimeSync",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "App.tsx correctly imports and calls useIdleTimeSync with projectPath from currentProject"
+    },
+    {
+      "id": "wiring-useIdleTimeSync-useWindowFocusTracker",
+      "checkType": "wiring",
+      "target": "useIdleTimeSync -> useWindowFocusTracker",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync correctly imports and calls useWindowFocusTracker as fallback"
+    },
+    {
+      "id": "wiring-useIdleTimeSync-HumanActivityTracker",
+      "checkType": "wiring",
+      "target": "useIdleTimeSync -> HumanActivityTracker",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync correctly imports getHumanActivityTracker and uses tracker.isActive for priority control"
+    },
+    {
+      "id": "wiring-useIdleTimeSync-IPC",
+      "checkType": "wiring",
+      "target": "useIdleTimeSync -> IPC:SCHEDULE_TASK_REPORT_IDLE_TIME",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "useIdleTimeSync correctly calls window.electronAPI.reportIdleTime which invokes SCHEDULE_TASK_REPORT_IDLE_TIME IPC channel"
+    },
+    {
+      "id": "export-hooks-index",
+      "checkType": "wiring",
+      "target": "hooks/index.ts exports",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "hooks/index.ts correctly exports useWindowFocusTracker, UseWindowFocusTrackerReturn, FOCUS_ACTIVITY_UPDATE_INTERVAL_MS, useIdleTimeSync, UseIdleTimeSyncOptions, IDLE_SYNC_INTERVAL_MS"
+    },
+    {
+      "id": "placeholder-none-found",
+      "checkType": "placeholder",
+      "target": "implementation files",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No spec-related placeholder comments found in implementation files. Task references are documentation only."
+    }
+  ],
+  "stats": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 18
+  }
+}

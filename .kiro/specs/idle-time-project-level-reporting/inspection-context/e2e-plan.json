@@ -1,0 +1,36 @@
+{
+  "feature": "idle-time-project-level-reporting",
+  "createdAt": "2026-02-05T07:24:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "description": "プロジェクト選択 -> Spec未選択 -> 10秒待機",
+      "expectedResult": "Main ProcessでアイドルTimeが報告される",
+      "e2eRequired": false,
+      "decision": "Skip",
+      "reason": "Design specifies E2E Required: No - covered by unit/integration tests"
+    },
+    {
+      "journeyId": "UJ-002",
+      "description": "Spec選択 -> アクティビティ発生 -> Spec解除",
+      "expectedResult": "フォーカス追跡に切り替わる",
+      "e2eRequired": false,
+      "decision": "Skip",
+      "reason": "Design specifies E2E Required: No - covered by unit/integration tests"
+    }
+  ],
+  "coverageAnalysis": {
+    "unitTests": [
+      "useWindowFocusTracker.test.ts - 12 tests (focus/blur events, activity time updates)",
+      "useIdleTimeSync.test.ts - 13 tests (priority logic, IPC calls, project path conditions)"
+    ],
+    "integrationTests": [
+      "idleTimeIntegration.test.ts - 7 tests (Main-Renderer communication)"
+    ],
+    "totalTests": 32,
+    "passed": 32,
+    "failed": 0
+  },
+  "decision": "Skip E2E Pipeline",
+  "rationale": "All User Journeys explicitly marked E2E Required: No in design.md. Requirements are fully covered by 32 passing unit and integration tests."
+}

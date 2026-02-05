@@ -1,0 +1,46 @@
+{
+  "feature": "idle-time-project-level-reporting",
+  "executedAt": "2026-02-05T07:24:00Z",
+  "mode": "skip",
+  "reason": "All User Journeys marked E2E Required: No in design.md",
+  "alternativeCoverage": {
+    "unitTests": {
+      "files": 3,
+      "tests": 32,
+      "passed": 32,
+      "failed": 0
+    },
+    "typecheck": {
+      "status": "pass",
+      "errors": 0
+    }
+  },
+  "journeyResults": [
+    {
+      "journeyId": "UJ-001",
+      "status": "covered_by_unit_tests",
+      "testEvidence": [
+        "useIdleTimeSync.test.ts: reports idle time when project selected",
+        "useWindowFocusTracker.test.ts: updates lastActivityTime on focus",
+        "idleTimeIntegration.test.ts: IPC communication verified"
+      ]
+    },
+    {
+      "journeyId": "UJ-002",
+      "status": "covered_by_unit_tests",
+      "testEvidence": [
+        "useIdleTimeSync.test.ts: uses HAT when isActive=true",
+        "useIdleTimeSync.test.ts: falls back to focus tracker when HAT inactive",
+        "useIdleTimeSync.test.ts: switches to focus tracking on spec deselection"
+      ]
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "warning": 0,
+    "info": 1
+  },
+  "info": [
+    "E2E skipped per design specification - requirements verified via unit/integration tests"
+  ]
+}

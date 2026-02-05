@@ -192,21 +192,19 @@ e2e-wdio/fixtures/test-project/
 
 テスト内でプロジェクトを開く：
 
+**推奨: `SDD_PROJECT_PATH` 環境変数**（後述）を使用すること。
+
 ```typescript
-const FIXTURE_PROJECT_PATH = path.resolve(__dirname, 'fixtures/test-project');
+// ❌ deprecated: selectProjectViaStore は Renderer→IPC→Main 経路で不安定
+// import { selectProjectViaStore } from './helpers/auto-execution.helpers';
+// await selectProjectViaStore(FIXTURE_PROJECT_PATH);
 
-// Zustandストア経由でプロジェクトを開く（推奨）
-const stores = (window as any).__STORES__;
-await stores.projectStore.getState().selectProject(FIXTURE_PROJECT_PATH);
-
-// または共通ヘルパー関数を使用
-import { selectProjectViaStore } from './helpers/auto-execution.helpers';
-await selectProjectViaStore(FIXTURE_PROJECT_PATH);
+// ✅ 推奨: SDD_PROJECT_PATH 環境変数（下記参照）
 ```
 
-**理由**: UIダイアログやメニューバー経由のプロジェクト選択は不安定なため、Zustandストア経由でのプログラマティック選択を推奨。
+**理由**: UIダイアログやメニューバー経由のプロジェクト選択は不安定。`selectProjectViaStore()` もRenderer→IPC→Main経路で同様に不安定なため deprecated。Main processで直接処理される `SDD_PROJECT_PATH` 環境変数を使用すること。
 
-### SDD_PROJECT_PATH環境変数によるプロジェクト自動選択
+### SDD_PROJECT_PATH環境変数によるプロジェクト自動選択（推奨）
 
 E2Eテスト起動時に特定のプロジェクトを自動的に選択した状態で開始できます：
 
@@ -671,7 +669,7 @@ import {
 
 | 関数 | 説明 |
 |-----|------|
-| `selectProjectViaStore(path)` | Zustand store経由でプロジェクトを選択（推奨：UIダイアログやメニューバーは不安定） |
+| `selectProjectViaStore(path)` | **deprecated** - `SDD_PROJECT_PATH` 環境変数を使用すること |
 | `selectSpecViaStore(specId)` | Zustand store経由でSpecを選択 |
 | `setAutoExecutionPermissions(permissions)` | 自動実行許可設定を更新 |
 | `getAutoExecutionStatus()` | 現在選択中のSpecの自動実行状態を取得 |

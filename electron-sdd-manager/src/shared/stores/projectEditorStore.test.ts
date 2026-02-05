@@ -208,6 +208,28 @@ describe('projectEditorStore', () => {
       expect(state.error).toBe('File not found');
       expect(state.content).toBe('');
     });
+
+    // project-docs-viewer Task 8.1: Clear selection when file doesn't exist
+    // Requirement 4.3
+    it('should clear selection when file read fails', async () => {
+      const mockApiClient = createMockApiClient({
+        readProjectFile: vi.fn().mockResolvedValue({
+          ok: false,
+          error: { type: 'READ_ERROR', message: 'File not found' },
+        }),
+      });
+
+      await getProjectEditorStore().loadFile(
+        mockApiClient,
+        '/path/to/missing.md',
+        'missing.md'
+      );
+
+      const state = getProjectEditorStore();
+      // File path and name should be cleared (requirement 4.3)
+      expect(state.currentFilePath).toBeNull();
+      expect(state.currentFileName).toBeNull();
+    });
   });
 
   describe('setContent action', () => {

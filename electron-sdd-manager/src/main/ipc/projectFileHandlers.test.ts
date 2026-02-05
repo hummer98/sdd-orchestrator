@@ -112,12 +112,19 @@ describe('projectFileHandlers', () => {
 
     it('should return steering files list', async () => {
       (fs.access as any).mockResolvedValue(undefined);
-      (fs.readdir as any).mockResolvedValue([
-        { name: 'product.md', isFile: () => true },
-        { name: 'tech.md', isFile: () => true },
-        { name: '.hidden', isFile: () => true },
-        { name: 'readme.txt', isFile: () => true },
-      ]);
+      // project-docs-viewer: Mock steering files and empty docs
+      (fs.readdir as any).mockImplementation(async (dirPath: string) => {
+        if (dirPath.endsWith('/docs')) {
+          return [];
+        }
+        // Steering files
+        return [
+          { name: 'product.md', isFile: () => true, isDirectory: () => false },
+          { name: 'tech.md', isFile: () => true, isDirectory: () => false },
+          { name: '.hidden', isFile: () => true, isDirectory: () => false },
+          { name: 'readme.txt', isFile: () => true, isDirectory: () => false },
+        ];
+      });
 
       const handler = registeredHandlers.get(IPC_CHANNELS.PROJECT_FILE_LIST);
       const result = await handler!({});
@@ -130,12 +137,14 @@ describe('projectFileHandlers', () => {
 
     it('should return empty steering files when directory does not exist', async () => {
       (fs.access as any).mockRejectedValue(new Error('ENOENT'));
-      (fs.readdir as any).mockRejectedValue(new Error('ENOENT'));
+      // project-docs-viewer: Both steering and docs directories don't exist
+      (fs.readdir as any).mockRejectedValue({ code: 'ENOENT' });
 
       const handler = registeredHandlers.get(IPC_CHANNELS.PROJECT_FILE_LIST);
       const result = await handler!({});
 
       expect(result.steeringFiles).toEqual([]);
+      expect(result.docsTree).toEqual([]);
     });
 
     it('should throw error when no project is selected', async () => {
@@ -143,6 +152,28 @@ describe('projectFileHandlers', () => {
 
       const handler = registeredHandlers.get(IPC_CHANNELS.PROJECT_FILE_LIST);
       await expect(handler!({})).rejects.toThrow('Project not selected');
+    });
+
+    // project-docs-viewer Task 3.2: Integration test for docsTree
+    it('should return docsTree when docs folder exists', async () => {
+      (fs.access as any).mockResolvedValue(undefined);
+      (fs.readdir as any).mockImplementation(async (dirPath: string) => {
+        if (dirPath.endsWith('/docs')) {
+          return [
+            { name: 'readme.md', isFile: () => true, isDirectory: () => false },
+            { name: 'manual.pdf', isFile: () => true, isDirectory: () => false },
+          ];
+        }
+        // Steering files - empty
+        return [];
+      });
+
+      const handler = registeredHandlers.get(IPC_CHANNELS.PROJECT_FILE_LIST);
+      const result = await handler!({});
+
+      expect(result.docsTree).toHaveLength(2);
+      expect(result.docsTree[0].name).toBe('manual.pdf');
+      expect(result.docsTree[1].name).toBe('readme.md');
     });
   });
 

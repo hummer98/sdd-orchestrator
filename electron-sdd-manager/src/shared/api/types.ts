@@ -912,14 +912,46 @@ export interface ProjectFileInfo {
  * Project files state
  * project-config-editor Task 1.1
  * Requirements: 2.1, 2.4, 2.5
+ * project-docs-viewer Task 1.1: docsTree フィールド追加
  */
 export interface ProjectFilesState {
   /** CLAUDE.md file info (null if not exists) */
   claudeMd: ProjectFileInfo | null;
   /** Steering files list */
   steeringFiles: ProjectFileInfo[];
+  /** docs/ folder tree structure (project-docs-viewer) */
+  docsTree: DocsTreeNode[];
   /** Whether loading */
   isLoading: boolean;
   /** Error message (if any) */
   error: string | null;
+}
+
+// =============================================================================
+// Docs Tree Types (project-docs-viewer feature)
+// Requirements: 1.1
+// =============================================================================
+
+/**
+ * File extension types supported in docs folder
+ * project-docs-viewer Task 1.1
+ */
+export type DocsFileExtension = 'md' | 'pdf' | 'html';
+
+/**
+ * Docs tree node representing a file or directory
+ * project-docs-viewer Task 1.1
+ * Requirements: 1.1
+ */
+export interface DocsTreeNode {
+  /** Node name (file name or folder name) */
+  name: string;
+  /** Relative path from docs/ folder */
+  relativePath: string;
+  /** Node type */
+  type: 'file' | 'directory';
+  /** File extension (file type only) */
+  extension?: DocsFileExtension;
+  /** Child nodes (directory type only) */
+  children?: DocsTreeNode[];
 }

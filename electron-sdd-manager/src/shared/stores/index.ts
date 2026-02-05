@@ -87,3 +87,17 @@ export type {
   ProjectEditorStore,
 } from './projectEditorStore';
 
+// Docs Tree Expanded store (project-docs-viewer feature)
+// Task 2.1: docs/ ツリー展開状態管理ストア
+// Requirements: 3.1, 3.2, 3.3, 3.4
+export {
+  useDocsTreeExpandedStore,
+  resetDocsTreeExpandedStore,
+  getDocsTreeExpandedStore,
+} from './docsTreeExpandedStore';
+export type {
+  DocsTreeExpandedState,
+  DocsTreeExpandedActions,
+  DocsTreeExpandedStore,
+} from './docsTreeExpandedStore';
+

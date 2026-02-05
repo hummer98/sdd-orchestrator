@@ -1,0 +1,321 @@
+{
+  "agent": "design-checker",
+  "timestamp": "2026-02-06T06:00:00Z",
+  "checks": [
+    {
+      "id": "design-component-DocsTreeNode",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeNode type found at expected path",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/api/types.ts"]
+    },
+    {
+      "id": "design-component-docsTreeExpandedStore",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore found at expected path",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.ts"]
+    },
+    {
+      "id": "design-component-DocsTreeSection",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection component found at expected path",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx"]
+    },
+    {
+      "id": "design-component-PdfViewer",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer component found at expected path",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/PdfViewer.tsx"]
+    },
+    {
+      "id": "design-component-HtmlViewer",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer component found at expected path",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/HtmlViewer.tsx"]
+    },
+    {
+      "id": "design-component-listDocsFilesCore",
+      "category": "component-existence",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "listDocsFilesCore function found in projectFileHandlers.ts",
+      "evidence": ["/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts"]
+    },
+    {
+      "id": "design-interface-DocsTreeNode",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeNode interface matches design specification: name: string, relativePath: string, type: 'file' | 'directory', extension?: DocsFileExtension, children?: DocsTreeNode[]",
+      "evidence": [
+        "Design: interface DocsTreeNode { name: string; relativePath: string; type: 'file' | 'directory'; extension?: 'md' | 'pdf' | 'html'; children?: DocsTreeNode[]; }",
+        "Implementation: export interface DocsTreeNode { name: string; relativePath: string; type: 'file' | 'directory'; extension?: DocsFileExtension; children?: DocsTreeNode[]; }"
+      ]
+    },
+    {
+      "id": "design-interface-DocsTreeSectionProps",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSectionProps interface matches design specification",
+      "evidence": [
+        "Design: interface DocsTreeSectionProps { docsTree: DocsTreeNode[]; projectPath: string; selectedFilePath: string | null; onSelectFile: (filePath: string, fileName: string) => void; }",
+        "Implementation: export interface DocsTreeSectionProps { docsTree: DocsTreeNode[]; projectPath: string; selectedFilePath: string | null; onSelectFile: (filePath: string, fileName: string) => void; }"
+      ]
+    },
+    {
+      "id": "design-interface-DocsTreeExpandedState",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeExpandedState interface matches design specification",
+      "evidence": [
+        "Design: interface DocsTreeExpandedState { expandedDirs: Map<string, boolean>; }",
+        "Implementation: export interface DocsTreeExpandedState { expandedDirs: Map<string, boolean>; }"
+      ]
+    },
+    {
+      "id": "design-interface-DocsTreeExpandedActions",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeExpandedActions interface matches design specification with additional helper method (isExpanded)",
+      "evidence": [
+        "Design: interface DocsTreeExpandedActions { toggleDir: (dirPath: string) => void; reset: () => void; }",
+        "Implementation: export interface DocsTreeExpandedActions { toggleDir: (dirPath: string) => void; reset: () => void; isExpanded: (dirPath: string) => boolean; }",
+        "Note: isExpanded is an additional convenience method (enhancement)"
+      ]
+    },
+    {
+      "id": "design-interface-listDocsFilesCore",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "listDocsFilesCore function signature matches design specification",
+      "evidence": [
+        "Design: function listDocsFilesCore(projectPath: string): Promise<DocsTreeNode[]>;",
+        "Implementation: export async function listDocsFilesCore(projectPath: string): Promise<DocsTreeNode[]>"
+      ]
+    },
+    {
+      "id": "design-interface-ProjectFilesState-docsTree",
+      "category": "interface-match",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFilesState extended with docsTree field as specified",
+      "evidence": [
+        "Design: interface ProjectFilesState { claudeMd: ProjectFileInfo | null; steeringFiles: ProjectFileInfo[]; docsTree: DocsTreeNode[]; isLoading: boolean; error: string | null; }",
+        "Implementation includes docsTree: DocsTreeNode[] field in ProjectFilesState"
+      ]
+    },
+    {
+      "id": "design-architecture-main-process-tree-build",
+      "category": "architecture-alignment",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tree structure is built in Main Process as per design (DD-005)",
+      "evidence": [
+        "listDocsFilesCore is implemented in src/main/ipc/projectFileHandlers.ts (Main Process)",
+        "Renderer receives pre-built DocsTreeNode[] via IPC"
+      ]
+    },
+    {
+      "id": "design-integration-ProjectFileList-DocsTreeSection",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileList imports and renders DocsTreeSection component",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileList.tsx imports DocsTreeSection from @shared/components/project"
+      ]
+    },
+    {
+      "id": "design-integration-DocsTreeSection-docsTreeExpandedStore",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection uses docsTreeExpandedStore for expand/collapse state",
+      "evidence": [
+        "DocsTreeSection.tsx imports useDocsTreeExpandedStore from @shared/stores/docsTreeExpandedStore",
+        "DirectoryNode component calls isExpanded and toggleDir"
+      ]
+    },
+    {
+      "id": "design-integration-ProjectFileEditor-PdfViewer",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor imports and renders PdfViewer for PDF files",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx imports PdfViewer from @shared/components/project"
+      ]
+    },
+    {
+      "id": "design-integration-ProjectFileEditor-HtmlViewer",
+      "category": "integration-point",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "ProjectFileEditor imports and renders HtmlViewer for HTML files",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx imports HtmlViewer from @shared/components/project"
+      ]
+    },
+    {
+      "id": "design-export-docsTreeExpandedStore",
+      "category": "export-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore exported from src/shared/stores/index.ts",
+      "evidence": [
+        "src/shared/stores/index.ts exports useDocsTreeExpandedStore, resetDocsTreeExpandedStore, getDocsTreeExpandedStore"
+      ]
+    },
+    {
+      "id": "design-export-DocsTreeSection",
+      "category": "export-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection exported from src/shared/components/project/index.ts",
+      "evidence": [
+        "src/shared/components/project/index.ts exports DocsTreeSection and DocsTreeSectionProps"
+      ]
+    },
+    {
+      "id": "design-export-PdfViewer",
+      "category": "export-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer exported from src/shared/components/project/index.ts",
+      "evidence": [
+        "src/shared/components/project/index.ts exports PdfViewer and PdfViewerProps"
+      ]
+    },
+    {
+      "id": "design-export-HtmlViewer",
+      "category": "export-verification",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer exported from src/shared/components/project/index.ts",
+      "evidence": [
+        "src/shared/components/project/index.ts exports HtmlViewer and HtmlViewerProps"
+      ]
+    },
+    {
+      "id": "steering-structure-store-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore placed in src/shared/stores/ as per structure.md Domain State SSOT rule",
+      "evidence": [
+        "structure.md: 'Location: src/shared/stores/', 'Content: ビジネスロジック、データモデル、APIレスポンス'",
+        "docsTreeExpandedStore.ts is in src/shared/stores/"
+      ]
+    },
+    {
+      "id": "steering-structure-component-location",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "UI components placed in src/shared/components/project/ as per structure.md Shared Components rule",
+      "evidence": [
+        "structure.md: 'Location: src/shared/components/', 'Content: Electron版とRemote UI版で共有するUIコンポーネント'",
+        "DocsTreeSection.tsx, PdfViewer.tsx, HtmlViewer.tsx are in src/shared/components/project/"
+      ]
+    },
+    {
+      "id": "steering-tech-state-management",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Zustand used for state management as per tech.md",
+      "evidence": [
+        "tech.md: 'Zustand: 軽量ステート管理（stores/に配置）'",
+        "docsTreeExpandedStore.ts uses create from 'zustand'"
+      ]
+    },
+    {
+      "id": "steering-tech-ui-library",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Lucide React used for icons as per tech.md",
+      "evidence": [
+        "tech.md: 'Lucide React: アイコンライブラリ'",
+        "DocsTreeSection.tsx imports icons from 'lucide-react'"
+      ]
+    },
+    {
+      "id": "steering-design-principles-dry",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DRY principle followed - existing projectEditorStore reused for file selection (DD-001)",
+      "evidence": [
+        "design.md DD-001: 'Decision: 既存の projectEditorStore を再利用する'",
+        "DocsTreeSection calls onSelectFile callback which uses projectEditorStore.loadFile"
+      ]
+    },
+    {
+      "id": "steering-design-principles-separation-of-concerns",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Separation of concerns followed - dedicated store for tree state (DD-002)",
+      "evidence": [
+        "design.md DD-002: 'Decision: 新規 docsTreeExpandedStore を shared/stores/ に作成'",
+        "Rationale: '既存ストアに適切な場所がなく、Remote UI 対応を見据えて shared に配置'"
+      ]
+    },
+    {
+      "id": "steering-product-alignment",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Feature aligns with product goals - extends existing Projectsタブのファイル閲覧機能",
+      "evidence": [
+        "product.md capability: 'Spec ライフサイクル管理'",
+        "design.md Non-Goals properly scoped: 'ファイルの新規作成・削除・編集機能' excluded"
+      ]
+    },
+    {
+      "id": "steering-structure-naming-convention",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Naming conventions followed as per structure.md",
+      "evidence": [
+        "structure.md: 'Components: PascalCase', 'Stores: camelCase'",
+        "DocsTreeSection.tsx (PascalCase), docsTreeExpandedStore.ts (camelCase)"
+      ]
+    },
+    {
+      "id": "steering-tech-testing",
+      "category": "steering-compliance",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Test files follow *.test.ts(x) naming convention and co-location pattern",
+      "evidence": [
+        "tech.md: 'テストファイルは *.test.ts(x) 命名（実装と同ディレクトリ）'",
+        "Found: DocsTreeSection.test.tsx, docsTreeExpandedStore.test.ts, listDocsFilesCore.test.ts"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 29
+  }
+}

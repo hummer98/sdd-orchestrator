@@ -1,0 +1,301 @@
+{
+  "agent": "code-quality-checker",
+  "timestamp": "2026-02-06T09:15:00Z",
+  "checks": [
+    {
+      "id": "principle-dry-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No significant code duplication found. Section header CSS pattern is duplicated between ProjectFileList.tsx and DocsTreeSection.tsx but this is acceptable as they are in different components with slightly different contexts.",
+      "evidence": [
+        "Section header CSS class 'flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500' appears in both files",
+        "This is intentional pattern reuse rather than problematic duplication - both components need consistent styling"
+      ]
+    },
+    {
+      "id": "principle-dry-2",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Tree expansion state management follows consistent pattern but is correctly separated by feature",
+      "evidence": [
+        "docsTreeExpandedStore handles docs tree state",
+        "gitViewStore handles git file tree state",
+        "Separation is intentional per separation of concerns principle"
+      ]
+    },
+    {
+      "id": "principle-ssot-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Single source of truth maintained for all state management",
+      "evidence": [
+        "docsTreeExpandedStore is the single source for docs tree expansion state (Req 3.1-3.4)",
+        "projectEditorStore is the single source for file selection state (Req 4.1-4.4)",
+        "DocsTreeNode type is defined once in src/shared/api/types.ts and imported elsewhere"
+      ]
+    },
+    {
+      "id": "principle-kiss-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Implementation follows simple, straightforward patterns",
+      "evidence": [
+        "PdfViewer is a simple iframe wrapper (12 lines of code)",
+        "HtmlViewer uses sandbox iframe with minimal configuration (17 lines)",
+        "docsTreeExpandedStore has minimal state (expandedDirs Map only)",
+        "No over-engineering detected"
+      ]
+    },
+    {
+      "id": "principle-yagni-1",
+      "category": "principle",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unused features or premature generalizations found",
+      "evidence": [
+        "All new components (DocsTreeSection, PdfViewer, HtmlViewer) are imported and used",
+        "docsTreeExpandedStore exports are consumed by DocsTreeSection",
+        "listDocsFilesCore is called by listProjectFilesCore",
+        "No dead code or unused exports detected"
+      ]
+    },
+    {
+      "id": "impact-types-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/api/types.ts UPDATE verified",
+      "evidence": [
+        "DocsTreeNode type added (lines 946-957)",
+        "DocsFileExtension type added (line 939)",
+        "ProjectFilesState.docsTree field added (line 923)"
+      ]
+    },
+    {
+      "id": "impact-handlers-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/main/ipc/projectFileHandlers.ts UPDATE verified",
+      "evidence": [
+        "listDocsFilesCore function added (lines 86-98)",
+        "buildTreeRecursive helper added (lines 103-162)",
+        "listProjectFilesCore now populates docsTree (line 178)"
+      ]
+    },
+    {
+      "id": "impact-filelist-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/ProjectFileList.tsx UPDATE verified",
+      "evidence": [
+        "DocsTreeSection imported (line 17)",
+        "Docs section rendered after Steering Files (lines 153-160)"
+      ]
+    },
+    {
+      "id": "impact-editor-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/renderer/components/ProjectFileEditor.tsx UPDATE verified",
+      "evidence": [
+        "PdfViewer and HtmlViewer imported (line 24)",
+        "detectFileType function added (lines 36-51)",
+        "PDF rendering logic added (lines 122-137)",
+        "HTML rendering logic added (lines 139-154)"
+      ]
+    },
+    {
+      "id": "impact-store-create",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/stores/docsTreeExpandedStore.ts CREATE verified",
+      "evidence": [
+        "File exists with 92 lines",
+        "Implements toggleDir, reset, isExpanded actions",
+        "Uses Map<string, boolean> for expandedDirs state"
+      ]
+    },
+    {
+      "id": "impact-docstree-create",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/project/DocsTreeSection.tsx CREATE verified",
+      "evidence": [
+        "File exists with 270 lines",
+        "Implements FileTypeIcon, FileNode, DirectoryNode, TreeNodes components",
+        "Uses docsTreeExpandedStore for state management"
+      ]
+    },
+    {
+      "id": "impact-pdfviewer-create",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/project/PdfViewer.tsx CREATE verified",
+      "evidence": [
+        "File exists with 48 lines",
+        "Simple iframe-based PDF display using file:// protocol"
+      ]
+    },
+    {
+      "id": "impact-htmlviewer-create",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/project/HtmlViewer.tsx CREATE verified",
+      "evidence": [
+        "File exists with 52 lines",
+        "Sandboxed iframe with allow-same-origin only",
+        "Uses srcdoc attribute for content display"
+      ]
+    },
+    {
+      "id": "impact-stores-index-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/stores/index.ts UPDATE verified",
+      "evidence": [
+        "docsTreeExpandedStore exports added (lines 93-102)",
+        "Includes useDocsTreeExpandedStore, resetDocsTreeExpandedStore, getDocsTreeExpandedStore",
+        "Type exports: DocsTreeExpandedState, DocsTreeExpandedActions, DocsTreeExpandedStore"
+      ]
+    },
+    {
+      "id": "impact-components-index-update",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "src/shared/components/project/index.ts UPDATE verified",
+      "evidence": [
+        "DocsTreeSection export added (lines 19-20)",
+        "PdfViewer export added (lines 23-24)",
+        "HtmlViewer export added (lines 27-28)"
+      ]
+    },
+    {
+      "id": "dead-code-docstreesection",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection is consumed by application code",
+      "evidence": [
+        "Imported by src/renderer/components/ProjectFileList.tsx",
+        "Exported via src/shared/components/project/index.ts"
+      ]
+    },
+    {
+      "id": "dead-code-pdfviewer",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer is consumed by application code",
+      "evidence": [
+        "Imported by src/renderer/components/ProjectFileEditor.tsx",
+        "Exported via src/shared/components/project/index.ts"
+      ]
+    },
+    {
+      "id": "dead-code-htmlviewer",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer is consumed by application code",
+      "evidence": [
+        "Imported by src/renderer/components/ProjectFileEditor.tsx",
+        "Exported via src/shared/components/project/index.ts"
+      ]
+    },
+    {
+      "id": "dead-code-store",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore is consumed by application code",
+      "evidence": [
+        "useDocsTreeExpandedStore imported by DocsTreeSection.tsx",
+        "Exported via src/shared/stores/index.ts"
+      ]
+    },
+    {
+      "id": "dead-code-listdocsfilescore",
+      "category": "dead-code",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "listDocsFilesCore is consumed by application code",
+      "evidence": [
+        "Called by listProjectFilesCore in projectFileHandlers.ts (line 178)",
+        "Exported for testing use"
+      ]
+    },
+    {
+      "id": "placeholder-check",
+      "category": "impact",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No placeholder comments found in new code",
+      "evidence": [
+        "No // TODO, // FIXME, // PLACEHOLDER found in DocsTreeSection.tsx",
+        "No // TODO, // FIXME, // PLACEHOLDER found in docsTreeExpandedStore.ts",
+        "No // TODO, // FIXME, // PLACEHOLDER found in PdfViewer.tsx",
+        "No // TODO, // FIXME, // PLACEHOLDER found in HtmlViewer.tsx",
+        "No // TODO, // FIXME, // PLACEHOLDER found in projectFileHandlers.ts updates"
+      ]
+    },
+    {
+      "id": "logging-console-check",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No direct console.* usage in new code",
+      "evidence": [
+        "No console.log/warn/error/info found in DocsTreeSection.tsx",
+        "No console.log/warn/error/info found in docsTreeExpandedStore.ts",
+        "No console.log/warn/error/info found in PdfViewer.tsx",
+        "No console.log/warn/error/info found in HtmlViewer.tsx"
+      ]
+    },
+    {
+      "id": "logging-main-process",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Main process code uses proper logger",
+      "evidence": [
+        "projectFileHandlers.ts imports projectLogger as logger (line 23)",
+        "Uses logger.debug for debug messages (lines 260, 276, 284, 298, 316)",
+        "Uses logger.info for important events (lines 242, 338, 347)"
+      ]
+    },
+    {
+      "id": "logging-format",
+      "category": "logging",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Logging follows steering/logging.md guidelines",
+      "evidence": [
+        "Consistent [component] prefix format used: [projectFileHandlers]",
+        "Contextual data included in log calls (filePath, projectPath, etc.)",
+        "Appropriate log levels: debug for trace, info for events"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 24
+  }
+}

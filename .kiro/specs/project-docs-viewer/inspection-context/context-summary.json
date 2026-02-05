@@ -1,0 +1,181 @@
+{
+  "spec_overview": "ProjectsタブにDocs（docs/フォルダ）セクションを追加し、.md/.pdf/.htmlファイルをツリー構造で閲覧可能にする機能",
+  "key_components": [
+    {
+      "name": "DocsTreeNode",
+      "type": "type",
+      "path": "src/shared/api/types.ts",
+      "requirements": ["1.1"]
+    },
+    {
+      "name": "docsTreeExpandedStore",
+      "type": "store",
+      "path": "src/shared/stores/docsTreeExpandedStore.ts",
+      "requirements": ["3.1", "3.2", "3.3", "3.4"]
+    },
+    {
+      "name": "listDocsFilesCore",
+      "type": "service",
+      "path": "src/main/ipc/projectFileHandlers.ts",
+      "requirements": ["1.1", "1.2", "1.3", "1.4"]
+    },
+    {
+      "name": "DocsTreeSection",
+      "type": "component",
+      "path": "src/shared/components/project/DocsTreeSection.tsx",
+      "requirements": ["2.1", "2.2", "2.3", "2.4", "2.5", "5.3", "6.4"]
+    },
+    {
+      "name": "PdfViewer",
+      "type": "component",
+      "path": "src/shared/components/project/PdfViewer.tsx",
+      "requirements": ["6.2"]
+    },
+    {
+      "name": "HtmlViewer",
+      "type": "component",
+      "path": "src/shared/components/project/HtmlViewer.tsx",
+      "requirements": ["6.3"]
+    },
+    {
+      "name": "ProjectFileList",
+      "type": "component",
+      "path": "src/renderer/components/ProjectFileList.tsx",
+      "requirements": ["5.1", "5.2", "2.3"]
+    },
+    {
+      "name": "ProjectFileEditor",
+      "type": "component",
+      "path": "src/renderer/components/ProjectFileEditor.tsx",
+      "requirements": ["6.1", "6.2", "6.3"]
+    },
+    {
+      "name": "projectEditorStore",
+      "type": "store",
+      "path": "src/shared/stores/projectEditorStore.ts",
+      "requirements": ["4.1", "4.2", "4.3", "4.4"]
+    }
+  ],
+  "integration_points": [
+    {
+      "source": "ProjectFileList",
+      "target": "DocsTreeSection",
+      "type": "import"
+    },
+    {
+      "source": "DocsTreeSection",
+      "target": "docsTreeExpandedStore",
+      "type": "call"
+    },
+    {
+      "source": "DocsTreeSection",
+      "target": "projectEditorStore",
+      "type": "call"
+    },
+    {
+      "source": "ProjectFileEditor",
+      "target": "PdfViewer",
+      "type": "import"
+    },
+    {
+      "source": "ProjectFileEditor",
+      "target": "HtmlViewer",
+      "type": "import"
+    },
+    {
+      "source": "Renderer",
+      "target": "projectFileHandlers (IPC)",
+      "type": "ipc"
+    }
+  ],
+  "impact_analysis": [
+    {
+      "target": "src/shared/api/types.ts",
+      "action": "UPDATE",
+      "reason": "DocsTreeNode型とProjectFilesStateにdocsTreeフィールドを追加"
+    },
+    {
+      "target": "src/main/ipc/projectFileHandlers.ts",
+      "action": "UPDATE",
+      "reason": "listDocsFilesCore関数を追加し、PROJECT_FILE_LISTハンドラを拡張"
+    },
+    {
+      "target": "src/renderer/components/ProjectFileList.tsx",
+      "action": "UPDATE",
+      "reason": "Docsセクションを追加"
+    },
+    {
+      "target": "src/renderer/components/ProjectFileEditor.tsx",
+      "action": "UPDATE",
+      "reason": "PDF/HTMLビューア切替ロジックを追加"
+    },
+    {
+      "target": "src/shared/stores/docsTreeExpandedStore.ts",
+      "action": "CREATE",
+      "reason": "ツリー展開状態管理ストアを新規作成"
+    },
+    {
+      "target": "src/shared/components/project/DocsTreeSection.tsx",
+      "action": "CREATE",
+      "reason": "ツリー表示コンポーネントを新規作成"
+    },
+    {
+      "target": "src/shared/components/project/PdfViewer.tsx",
+      "action": "CREATE",
+      "reason": "PDF表示コンポーネントを新規作成"
+    },
+    {
+      "target": "src/shared/components/project/HtmlViewer.tsx",
+      "action": "CREATE",
+      "reason": "HTML表示コンポーネントを新規作成"
+    },
+    {
+      "target": "src/shared/stores/index.ts",
+      "action": "UPDATE",
+      "reason": "docsTreeExpandedStoreエクスポート追加"
+    },
+    {
+      "target": "src/shared/components/project/index.ts",
+      "action": "UPDATE",
+      "reason": "新規コンポーネントエクスポート追加"
+    }
+  ],
+  "requirements_summary": {
+    "total": 20,
+    "categories": {
+      "docs_folder_listing": ["1.1", "1.2", "1.3", "1.4"],
+      "tree_ui": ["2.1", "2.2", "2.3", "2.4", "2.5"],
+      "tree_state_management": ["3.1", "3.2", "3.3", "3.4"],
+      "file_selection_state": ["4.1", "4.2", "4.3", "4.4"],
+      "section_display_order": ["5.1", "5.2", "5.3"],
+      "file_viewer_support": ["6.1", "6.2", "6.3", "6.4"]
+    }
+  },
+  "user_journeys": [
+    {
+      "id": "UJ-001",
+      "description": "Project選択 -> Projectタブ -> Docsセクション確認",
+      "expected": "docs/ツリーが表示される"
+    },
+    {
+      "id": "UJ-002",
+      "description": "Docsセクション -> フォルダクリック",
+      "expected": "フォルダが展開/折りたたみ"
+    },
+    {
+      "id": "UJ-003",
+      "description": "Docsセクション -> .mdファイル選択",
+      "expected": "エディタにMarkdown表示"
+    },
+    {
+      "id": "UJ-004",
+      "description": "Docsセクション -> .pdfファイル選択",
+      "expected": "iframeにPDF表示"
+    },
+    {
+      "id": "UJ-005",
+      "description": "タブ切替(Spec->Project)",
+      "expected": "以前の選択・展開状態が復元"
+    }
+  ]
+}

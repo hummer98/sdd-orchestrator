@@ -1,0 +1,99 @@
+{
+  "feature": "project-docs-viewer",
+  "generatedAt": "2026-02-06T00:00:00Z",
+  "journeys": [
+    {
+      "journeyId": "UJ-001",
+      "description": "Project選択 -> Projectタブ -> Docsセクション確認",
+      "expectedResult": "docs/ツリーが表示される",
+      "decision": "Use",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+      "testName": "UJ-001: Docs section display after project selection",
+      "reason": "Existing E2E test covers this journey with 6 test cases: Project tab existence, clicking shows file list, Docs section displayed, header shows 'Docs', files from docs/ displayed, directory nodes displayed"
+    },
+    {
+      "journeyId": "UJ-002",
+      "description": "Docsセクション -> フォルダクリック",
+      "expectedResult": "フォルダが展開/折りたたみ",
+      "decision": "Use",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+      "testName": "UJ-002: Folder expand/collapse functionality",
+      "reason": "Existing E2E test covers this journey with 5 test cases: collapsed icon initially, clicking expands, expanded shows children, clicking collapses, collapsed hides children"
+    },
+    {
+      "journeyId": "UJ-003",
+      "description": "Docsセクション -> .mdファイル選択",
+      "expectedResult": "エディタにMarkdown表示",
+      "decision": "Use",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+      "testName": "UJ-003: Markdown file selection and display",
+      "reason": "Existing E2E test covers this journey with 3 test cases: clicking selects file, displays in ProjectFileEditor, correct .md icon displayed"
+    },
+    {
+      "journeyId": "UJ-004",
+      "description": "Docsセクション -> .pdfファイル選択",
+      "expectedResult": "iframeにPDF表示",
+      "decision": "Use",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+      "testName": "UJ-004: PDF file selection and display",
+      "reason": "Existing E2E test covers this journey with 4 test cases: clicking selects file, displays PdfViewer component, contains iframe element, correct .pdf icon displayed"
+    },
+    {
+      "journeyId": "UJ-005",
+      "description": "タブ切替(Spec->Project)",
+      "expectedResult": "以前の選択・展開状態が復元",
+      "decision": "Use",
+      "existingTestPath": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+      "testName": "UJ-005: State restoration after tab switching",
+      "reason": "Existing E2E test covers this journey with 4 test cases: expand and select then switch tabs, returning restores expansion state, returning restores file selection, editor shows selected file content"
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "use": 5,
+    "defer": 0,
+    "total": 5
+  },
+  "existingTestCoverage": {
+    "testFile": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+    "totalTestCases": 27,
+    "testSuites": [
+      {
+        "name": "UJ-001: Docs section display after project selection",
+        "testCount": 6,
+        "requirements": ["2.1"]
+      },
+      {
+        "name": "UJ-002: Folder expand/collapse functionality",
+        "testCount": 5,
+        "requirements": ["2.2"]
+      },
+      {
+        "name": "UJ-003: Markdown file selection and display",
+        "testCount": 3,
+        "requirements": ["2.3", "6.1"]
+      },
+      {
+        "name": "UJ-004: PDF file selection and display",
+        "testCount": 4,
+        "requirements": ["6.2"]
+      },
+      {
+        "name": "UJ-004b: HTML file selection and display",
+        "testCount": 4,
+        "requirements": ["6.3"]
+      },
+      {
+        "name": "UJ-005: State restoration after tab switching",
+        "testCount": 4,
+        "requirements": ["3.2", "4.2"]
+      },
+      {
+        "name": "Security and Stability",
+        "testCount": 3,
+        "requirements": []
+      }
+    ],
+    "fixtureDirectory": "electron-sdd-manager/e2e-wdio/fixtures/docs-viewer-test"
+  }
+}

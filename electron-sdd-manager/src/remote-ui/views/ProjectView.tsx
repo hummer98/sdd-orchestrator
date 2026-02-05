@@ -48,6 +48,7 @@ export function ProjectView({
   const [files, setFiles] = useState<ProjectFilesState>({
     claudeMd: null,
     steeringFiles: [],
+    docsTree: [], // project-docs-viewer Task 1.1
     isLoading: true,
     error: null,
   });
@@ -65,6 +66,7 @@ export function ProjectView({
           setFiles({
             claudeMd: null,
             steeringFiles: [],
+            docsTree: [], // project-docs-viewer Task 1.1
             isLoading: false,
             error: 'listProjectFiles not available',
           });
@@ -86,6 +88,7 @@ export function ProjectView({
         setFiles({
           claudeMd: null,
           steeringFiles: [],
+          docsTree: [], // project-docs-viewer Task 1.1
           isLoading: false,
           error: result.error.message,
         });

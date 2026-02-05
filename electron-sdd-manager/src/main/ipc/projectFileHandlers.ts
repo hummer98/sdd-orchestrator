@@ -21,7 +21,7 @@ import * as fs from 'fs/promises';
 import { IPC_CHANNELS } from './channels';
 import { ProjectFileWatcherService } from '../services/ProjectFileWatcherService';
 import { projectLogger as logger } from '../services/projectLogger';
-import type { ProjectFilesState } from '../../shared/api/types';
+import type { ProjectFilesState, DocsTreeNode, DocsFileExtension } from '../../shared/api/types';
 
 // =============================================================================
 // Dependencies
@@ -61,6 +61,106 @@ function validateFilePath(filePath: string, projectPath: string): boolean {
   return resolvedPath.startsWith(resolvedProject + path.sep) || resolvedPath === resolvedProject;
 }
 
+/** Supported file extensions for docs folder */
+const SUPPORTED_EXTENSIONS = new Set(['md', 'pdf', 'html']);
+
+/**
+ * Check if a file has a supported extension for docs
+ */
+function getSupportedExtension(fileName: string): DocsFileExtension | null {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (ext && SUPPORTED_EXTENSIONS.has(ext)) {
+    return ext as DocsFileExtension;
+  }
+  return null;
+}
+
+/**
+ * List docs folder files recursively and build tree structure
+ * project-docs-viewer Task 3.1
+ * Requirements: 1.1, 1.2, 1.3, 1.4
+ *
+ * @param projectPath - Project root path
+ * @returns Array of DocsTreeNode representing the tree structure
+ */
+export async function listDocsFilesCore(projectPath: string): Promise<DocsTreeNode[]> {
+  const docsPath = path.join(projectPath, 'docs');
+
+  try {
+    return await buildTreeRecursive(docsPath, '');
+  } catch (error: any) {
+    // Requirement 1.2: Return empty array when docs/ doesn't exist
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Recursively build tree structure from directory
+ */
+async function buildTreeRecursive(dirPath: string, relativePath: string): Promise<DocsTreeNode[]> {
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+
+  const nodes: DocsTreeNode[] = [];
+
+  for (const entry of entries) {
+    // Requirement 1.4: Exclude hidden files/folders
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
+
+    const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      // Recursively process subdirectory
+      const children = await buildTreeRecursive(
+        path.join(dirPath, entry.name),
+        entryRelativePath
+      );
+
+      nodes.push({
+        name: entry.name,
+        relativePath: entryRelativePath,
+        type: 'directory',
+        children,
+      });
+    } else if (entry.isFile()) {
+      // Requirement 1.1: Only include .md, .pdf, .html files
+      const extension = getSupportedExtension(entry.name);
+      if (extension) {
+        nodes.push({
+          name: entry.name,
+          relativePath: entryRelativePath,
+          type: 'file',
+          extension,
+        });
+      }
+    }
+  }
+
+  // Requirement 1.3: Sort alphabetically (directories first, then files)
+  nodes.sort((a, b) => {
+    // Directories before files
+    if (a.type !== b.type) {
+      return a.type === 'directory' ? -1 : 1;
+    }
+    // Alphabetical within same type
+    return a.name.localeCompare(b.name);
+  });
+
+  return nodes;
+}
+
 /**
  * List project files (CLAUDE.md and steering files)
  * Exported as core function for WebSocket handler use
@@ -69,9 +169,13 @@ export async function listProjectFilesCore(projectPath: string): Promise<Project
   const result: ProjectFilesState = {
     claudeMd: null,
     steeringFiles: [],
+    docsTree: [], // project-docs-viewer Task 3.2: Populated by listDocsFilesCore
     isLoading: false,
     error: null,
   };
+
+  // project-docs-viewer Task 3.2: Get docs tree
+  result.docsTree = await listDocsFilesCore(projectPath);
 
   // Check CLAUDE.md
   const claudeMdPath = path.join(projectPath, 'CLAUDE.md');

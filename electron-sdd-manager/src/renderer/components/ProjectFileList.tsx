@@ -3,9 +3,10 @@
  *
  * project-config-editor Task 3.1: Project file list display
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.2
+ * project-docs-viewer Task 6.1: Docs セクション追加
  *
  * Features:
- * - Two sections: CLAUDE.md and Steering Files
+ * - Three sections: CLAUDE.md, Steering Files, Docs (project-docs-viewer)
  * - Selected file highlighting
  * - Empty state handling
  */
@@ -13,6 +14,7 @@
 import { FileText, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProjectFilesState, ProjectFileInfo } from '@shared/api/types';
+import { DocsTreeSection } from '@shared/components/project';
 
 export interface ProjectFileListProps {
   /** Project files state */
@@ -128,7 +130,7 @@ export function ProjectFileList({
       )}
 
       {/* Steering Files Section */}
-      <div>
+      <div className="mb-4">
         <SectionHeader title="Steering Files" icon={<FolderOpen className="w-3 h-3" />} />
         <div className="px-1">
           {steeringFiles.length > 0 ? (
@@ -147,6 +149,15 @@ export function ProjectFileList({
           )}
         </div>
       </div>
+
+      {/* Docs Section - project-docs-viewer Task 6.1 */}
+      {/* Requirement 5.1: Section order is CLAUDE.md -> Steering Files -> Docs */}
+      <DocsTreeSection
+        docsTree={files.docsTree}
+        projectPath={projectPath}
+        selectedFilePath={selectedFilePath}
+        onSelectFile={onSelectFile}
+      />
     </div>
   );
 }

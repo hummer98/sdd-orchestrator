@@ -159,9 +159,11 @@ export const useProjectEditorStore = create<ProjectEditorStore>((set, get) => ({
         error: null,
       });
     } else {
+      // project-docs-viewer Task 8.1: Clear selection when file doesn't exist
+      // Requirement 4.3: If selected file no longer exists, clear selection
       set({
-        currentFilePath: filePath,
-        currentFileName: fileName,
+        currentFilePath: null,
+        currentFileName: null,
         content: '',
         originalContent: '',
         isDirty: false,

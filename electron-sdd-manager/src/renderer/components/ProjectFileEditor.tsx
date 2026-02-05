@@ -2,22 +2,53 @@
  * ProjectFileEditor Component
  *
  * project-config-editor Task 3.2: Project file markdown editor
- * Requirements: 3.4, 4.1, 4.2, 4.3, 4.4
+ * project-docs-viewer Task 7.1: PDF/HTML ビューア切替追加
+ * Requirements: 3.4, 4.1, 4.2, 4.3, 4.4, 6.1, 6.2, 6.3
  *
  * Features:
- * - Markdown editing with MDEditor
- * - Cmd+S/Ctrl+S save shortcut
- * - Dirty indicator
- * - Edit/Preview mode toggle
+ * - Markdown editing with MDEditor (.md files)
+ * - PDF viewing with PdfViewer (.pdf files) - project-docs-viewer
+ * - HTML preview with HtmlViewer (.html files) - project-docs-viewer
+ * - Cmd+S/Ctrl+S save shortcut (md only)
+ * - Dirty indicator (md only)
+ * - Edit/Preview mode toggle (md only)
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { Save, Eye, Edit, Circle, Loader2 } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import { clsx } from 'clsx';
 import { useProjectEditorStore } from '@shared/stores/projectEditorStore';
 import { useNotificationStore } from '@shared/stores/notificationStore';
 import { MermaidCodeRenderer } from '@shared/components/markdown';
+import { PdfViewer, HtmlViewer } from '@shared/components/project';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+type FileType = 'md' | 'pdf' | 'html' | 'unknown';
+
+/**
+ * Detect file type from file path
+ * project-docs-viewer Task 7.1
+ */
+function detectFileType(filePath: string | null): FileType {
+  if (!filePath) return 'unknown';
+
+  const extension = filePath.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'md':
+      return 'md';
+    case 'pdf':
+      return 'pdf';
+    case 'html':
+    case 'htm':
+      return 'html';
+    default:
+      return 'unknown';
+  }
+}
 
 export interface ProjectFileEditorProps {
   /** Callback to handle save (receives apiClient internally) */
@@ -25,7 +56,8 @@ export interface ProjectFileEditorProps {
 }
 
 /**
- * ProjectFileEditor - Markdown editor for project configuration files
+ * ProjectFileEditor - Editor for project configuration files
+ * Supports .md (editable), .pdf (view only), .html (view only)
  */
 export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
   const {
@@ -41,6 +73,9 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
   } = useProjectEditorStore();
 
   const { showNotification } = useNotificationStore();
+
+  // project-docs-viewer Task 7.1: Detect file type for viewer switching
+  const fileType = useMemo(() => detectFileType(currentFilePath), [currentFilePath]);
 
   // Handle save with notification
   const handleSave = useCallback(async () => {
@@ -84,6 +119,41 @@ export function ProjectFileEditor({ onSave }: ProjectFileEditorProps) {
     );
   }
 
+  // project-docs-viewer Task 7.1: PDF Viewer (Requirement 6.2)
+  if (fileType === 'pdf') {
+    return (
+      <div className="flex flex-col h-full bg-white dark:bg-gray-950" data-testid="project-file-editor">
+        {/* Simple header for PDF files */}
+        <div className="flex items-center px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentFileName}
+          </span>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <PdfViewer filePath={currentFilePath} />
+        </div>
+      </div>
+    );
+  }
+
+  // project-docs-viewer Task 7.1: HTML Viewer (Requirement 6.3)
+  if (fileType === 'html') {
+    return (
+      <div className="flex flex-col h-full bg-white dark:bg-gray-950" data-testid="project-file-editor">
+        {/* Simple header for HTML files */}
+        <div className="flex items-center px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentFileName}
+          </span>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <HtmlViewer content={content} />
+        </div>
+      </div>
+    );
+  }
+
+  // Default: Markdown Editor (Requirement 6.1)
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-950" data-testid="project-file-editor">
       {/* Header */}

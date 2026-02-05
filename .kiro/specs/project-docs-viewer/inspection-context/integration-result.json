@@ -1,0 +1,314 @@
+{
+  "agent": "integration-checker",
+  "timestamp": "2026-02-06T06:00:00Z",
+  "checks": [
+    {
+      "id": "task-1.1",
+      "checkType": "task-completion",
+      "target": "1.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 1.1 (DocsTreeNode type and ProjectFilesState extension) marked as complete"
+    },
+    {
+      "id": "task-2.1",
+      "checkType": "task-completion",
+      "target": "2.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 2.1 (docsTreeExpandedStore creation) marked as complete"
+    },
+    {
+      "id": "task-3.1",
+      "checkType": "task-completion",
+      "target": "3.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.1 (listDocsFilesCore implementation) marked as complete"
+    },
+    {
+      "id": "task-3.2",
+      "checkType": "task-completion",
+      "target": "3.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 3.2 (PROJECT_FILE_LIST handler extension) marked as complete"
+    },
+    {
+      "id": "task-4.1",
+      "checkType": "task-completion",
+      "target": "4.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 4.1 (DocsTreeSection component) marked as complete"
+    },
+    {
+      "id": "task-5.1",
+      "checkType": "task-completion",
+      "target": "5.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.1 (PdfViewer component) marked as complete"
+    },
+    {
+      "id": "task-5.2",
+      "checkType": "task-completion",
+      "target": "5.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 5.2 (HtmlViewer component) marked as complete"
+    },
+    {
+      "id": "task-6.1",
+      "checkType": "task-completion",
+      "target": "6.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 6.1 (ProjectFileList Docs section integration) marked as complete"
+    },
+    {
+      "id": "task-7.1",
+      "checkType": "task-completion",
+      "target": "7.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 7.1 (ProjectFileEditor PDF/HTML viewer switching) marked as complete"
+    },
+    {
+      "id": "task-8.1",
+      "checkType": "task-completion",
+      "target": "8.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 8.1 (projectEditorStore file existence check) marked as complete"
+    },
+    {
+      "id": "task-9.1",
+      "checkType": "task-completion",
+      "target": "9.1",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.1 (docsTreeExpandedStore unit test) marked as complete"
+    },
+    {
+      "id": "task-9.2",
+      "checkType": "task-completion",
+      "target": "9.2",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.2 (listDocsFilesCore unit test) marked as complete"
+    },
+    {
+      "id": "task-9.3",
+      "checkType": "task-completion",
+      "target": "9.3",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.3 (DocsTreeSection rendering test) marked as complete"
+    },
+    {
+      "id": "task-9.4",
+      "checkType": "task-completion",
+      "target": "9.4",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.4 (PdfViewer/HtmlViewer rendering test) marked as complete"
+    },
+    {
+      "id": "task-9.5",
+      "checkType": "task-completion",
+      "target": "9.5",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.5 (Integration test) marked as complete"
+    },
+    {
+      "id": "task-9.6",
+      "checkType": "task-completion",
+      "target": "9.6",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Task 9.6 (E2E test) marked as complete"
+    },
+    {
+      "id": "import-DocsTreeSection",
+      "checkType": "import",
+      "target": "DocsTreeSection",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectFileList.tsx"
+      ]
+    },
+    {
+      "id": "import-PdfViewer",
+      "checkType": "import",
+      "target": "PdfViewer",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/PdfViewer.test.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx"
+      ]
+    },
+    {
+      "id": "import-HtmlViewer",
+      "checkType": "import",
+      "target": "HtmlViewer",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/HtmlViewer.test.tsx",
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx"
+      ]
+    },
+    {
+      "id": "import-docsTreeExpandedStore",
+      "checkType": "import",
+      "target": "docsTreeExpandedStore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore is imported in 2 files",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx",
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx"
+      ]
+    },
+    {
+      "id": "import-DocsTreeNode",
+      "checkType": "import",
+      "target": "DocsTreeNode",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeNode type is used in multiple files",
+      "evidence": [
+        "electron-sdd-manager/src/shared/api/types.ts",
+        "electron-sdd-manager/src/main/ipc/projectFileHandlers.ts",
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx",
+        "electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx"
+      ]
+    },
+    {
+      "id": "import-listDocsFilesCore",
+      "checkType": "import",
+      "target": "listDocsFilesCore",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "listDocsFilesCore is defined and used",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/projectFileHandlers.ts (definition and usage)",
+        "electron-sdd-manager/src/main/ipc/listDocsFilesCore.test.ts (test)"
+      ]
+    },
+    {
+      "id": "usage-DocsTreeSection",
+      "checkType": "usage",
+      "target": "DocsTreeSection",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection is used as JSX in ProjectFileList.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectFileList.tsx:155 - <DocsTreeSection docsTree={files.docsTree}..."
+      ]
+    },
+    {
+      "id": "usage-PdfViewer",
+      "checkType": "usage",
+      "target": "PdfViewer",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer is used as JSX in ProjectFileEditor.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:133 - <PdfViewer filePath={currentFilePath} />"
+      ]
+    },
+    {
+      "id": "usage-HtmlViewer",
+      "checkType": "usage",
+      "target": "HtmlViewer",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer is used as JSX in ProjectFileEditor.tsx",
+      "evidence": [
+        "electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:150 - <HtmlViewer content={content} />"
+      ]
+    },
+    {
+      "id": "export-docsTreeExpandedStore",
+      "checkType": "wiring",
+      "target": "docsTreeExpandedStore export from shared/stores/index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "docsTreeExpandedStore is properly exported from shared/stores/index.ts",
+      "evidence": [
+        "electron-sdd-manager/src/shared/stores/index.ts:93-102"
+      ]
+    },
+    {
+      "id": "export-DocsTreeSection",
+      "checkType": "wiring",
+      "target": "DocsTreeSection export from shared/components/project/index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "DocsTreeSection is properly exported from shared/components/project/index.ts",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/index.ts:19-20"
+      ]
+    },
+    {
+      "id": "export-PdfViewer",
+      "checkType": "wiring",
+      "target": "PdfViewer export from shared/components/project/index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "PdfViewer is properly exported from shared/components/project/index.ts",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/index.ts:23-24"
+      ]
+    },
+    {
+      "id": "export-HtmlViewer",
+      "checkType": "wiring",
+      "target": "HtmlViewer export from shared/components/project/index.ts",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "HtmlViewer is properly exported from shared/components/project/index.ts",
+      "evidence": [
+        "electron-sdd-manager/src/shared/components/project/index.ts:27-28"
+      ]
+    },
+    {
+      "id": "wiring-docsTree-ipc",
+      "checkType": "wiring",
+      "target": "docsTree field in IPC response",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "listProjectFilesCore populates docsTree by calling listDocsFilesCore",
+      "evidence": [
+        "electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:172 - docsTree initialized",
+        "electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:178 - docsTree populated from listDocsFilesCore"
+      ]
+    },
+    {
+      "id": "placeholder-check",
+      "checkType": "placeholder",
+      "target": "project-docs-viewer related files",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "No unresolved placeholders found in project-docs-viewer related files. Existing TODOs are unrelated to this feature."
+    }
+  ],
+  "stats": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 31
+  }
+}

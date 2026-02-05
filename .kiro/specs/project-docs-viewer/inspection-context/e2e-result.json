@@ -1,0 +1,150 @@
+{
+  "executed": true,
+  "timestamp": "2026-02-05T20:04:40Z",
+  "testFile": "electron-sdd-manager/e2e-wdio/project-docs-viewer.e2e.spec.ts",
+  "totalTests": 27,
+  "passed": 0,
+  "failed": 27,
+  "duration": "10.4s",
+  "hookFailure": true,
+  "environmentCheck": {
+    "electronStopped": true,
+    "port9222Available": true,
+    "buildComplete": true,
+    "lockAcquired": true
+  },
+  "failures": [
+    {
+      "testName": "before all hook: navigateToProjectTab - tab-project not clickable after 10000ms",
+      "suite": "Project Docs Viewer E2E (top-level before all)",
+      "journeyId": "UJ-001",
+      "severity": "critical",
+      "error": "element (\"[data-testid=\"tab-project\"]\") still not clickable after 10000ms. The before all hook failed in navigateToProjectTab(), preventing all 27 test cases from executing.",
+      "errorType": "InteractabilityError",
+      "testsBlocked": 27
+    },
+    {
+      "testName": "UJ-001 suite blocked (6 tests)",
+      "suite": "UJ-001: Docs section display after project selection",
+      "journeyId": "UJ-001",
+      "severity": "critical",
+      "error": "All 6 tests blocked by before all hook failure",
+      "errorType": "HookFailure",
+      "testsBlocked": 6
+    },
+    {
+      "testName": "UJ-002 suite blocked (5 tests)",
+      "suite": "UJ-002: Folder expand/collapse functionality",
+      "journeyId": "UJ-002",
+      "severity": "critical",
+      "error": "All 5 tests blocked by before all hook failure",
+      "errorType": "HookFailure",
+      "testsBlocked": 5
+    },
+    {
+      "testName": "UJ-003 suite blocked (3 tests)",
+      "suite": "UJ-003: Markdown file selection and display",
+      "journeyId": "UJ-003",
+      "severity": "critical",
+      "error": "All 3 tests blocked by before all hook failure",
+      "errorType": "HookFailure",
+      "testsBlocked": 3
+    },
+    {
+      "testName": "UJ-004 suite blocked (4 tests)",
+      "suite": "UJ-004: PDF file selection and display",
+      "journeyId": "UJ-004",
+      "severity": "critical",
+      "error": "All 4 tests blocked by before all hook failure",
+      "errorType": "HookFailure",
+      "testsBlocked": 4
+    },
+    {
+      "testName": "UJ-004b suite blocked (4 tests)",
+      "suite": "UJ-004b: HTML file selection and display",
+      "journeyId": null,
+      "severity": "warning",
+      "error": "All 4 tests blocked by before all hook failure. UJ-004b is not in the core journey set (UJ-001 through UJ-005).",
+      "errorType": "HookFailure",
+      "testsBlocked": 4
+    },
+    {
+      "testName": "UJ-005 suite blocked (4 tests)",
+      "suite": "UJ-005: State restoration after tab switching",
+      "journeyId": "UJ-005",
+      "severity": "critical",
+      "error": "All 4 tests blocked by before all hook failure",
+      "errorType": "HookFailure",
+      "testsBlocked": 4
+    },
+    {
+      "testName": "Security and Stability suite blocked (3 tests)",
+      "suite": "Security and Stability",
+      "journeyId": null,
+      "severity": "warning",
+      "error": "All 3 tests blocked by before all hook failure. Infrastructure tests not linked to specific user journeys.",
+      "errorType": "HookFailure",
+      "testsBlocked": 3
+    }
+  ],
+  "stats": {
+    "total": 27,
+    "passed": 0,
+    "failed": 27,
+    "critical": 5,
+    "warning": 2,
+    "info": 0
+  },
+  "journeyCoverage": {
+    "UJ-001": {
+      "totalTests": 6,
+      "passed": 0,
+      "failed": 6,
+      "status": "FAIL"
+    },
+    "UJ-002": {
+      "totalTests": 5,
+      "passed": 0,
+      "failed": 5,
+      "status": "FAIL"
+    },
+    "UJ-003": {
+      "totalTests": 3,
+      "passed": 0,
+      "failed": 3,
+      "status": "FAIL"
+    },
+    "UJ-004": {
+      "totalTests": 4,
+      "passed": 0,
+      "failed": 4,
+      "status": "FAIL"
+    },
+    "UJ-005": {
+      "totalTests": 4,
+      "passed": 0,
+      "failed": 4,
+      "status": "FAIL"
+    }
+  },
+  "rootCause": {
+    "location": "before all hook in top-level describe('Project Docs Viewer E2E')",
+    "function": "navigateToProjectTab()",
+    "element": "[data-testid=\"tab-project\"]",
+    "issue": "Element existed in DOM but waitForClickable timed out after 10000ms. isElementClickable returned false, suggesting the element was covered by another element or was otherwise not interactable.",
+    "possibleCauses": [
+      "Project tab may be hidden behind an overlay or dialog after project selection",
+      "CSS layout issue preventing the tab from being clickable (display, visibility, z-index)",
+      "selectProjectViaStore succeeded but the UI did not fully render the project tab in an interactable state",
+      "waitForProjectUIReady(15000) may have resolved before the tab became truly clickable"
+    ]
+  },
+  "comparison": {
+    "previousRun": "e2e-report-1 (2026-02-05T19:52:51Z)",
+    "previousPassed": 17,
+    "previousFailed": 12,
+    "currentPassed": 0,
+    "currentFailed": 27,
+    "regression": "Complete regression - before all hook failure blocks all tests. Previous run had partial success with individual test-level failures."
+  }
+}

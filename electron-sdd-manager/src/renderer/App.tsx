@@ -138,6 +138,7 @@ export function App() {
   const [projectFiles, setProjectFiles] = useState<ProjectFilesState>({
     claudeMd: null,
     steeringFiles: [],
+    docsTree: [], // project-docs-viewer Task 1.1
     isLoading: false,
     error: null,
   });

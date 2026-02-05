@@ -1,0 +1,282 @@
+{
+  "agent": "requirements-checker",
+  "timestamp": "2026-02-06T10:35:00Z",
+  "checks": [
+    {
+      "id": "req-1.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.1: docs/ folder recursive file retrieval with .md/.pdf/.html filtering implemented in listDocsFilesCore function",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:86-98 (listDocsFilesCore function)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:138-147 (getSupportedExtension file filtering)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/listDocsFilesCore.test.ts:51-77 (test coverage)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/api/types.ts:946-957 (DocsTreeNode type definition)"
+      ]
+    },
+    {
+      "id": "req-1.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.2: Return empty array when docs/ folder doesn't exist - ENOENT handling implemented",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:91-97 (ENOENT error handling)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/listDocsFilesCore.test.ts:40-48 (test for non-existent docs/)"
+      ]
+    },
+    {
+      "id": "req-1.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.3: Alphabetical sorting within folders implemented with directories before files",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:151-159 (sorting logic)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/listDocsFilesCore.test.ts:179-226 (alphabetical sorting tests)"
+      ]
+    },
+    {
+      "id": "req-1.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 1.4: Hidden files/folders exclusion (starting with .) implemented",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/projectFileHandlers.ts:117-120 (hidden file exclusion)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/main/ipc/listDocsFilesCore.test.ts:133-177 (hidden file/folder tests)"
+      ]
+    },
+    {
+      "id": "req-2.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.1: Tree structure display with folder/file node distinction implemented in DocsTreeSection",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:176-215 (TreeNodes recursive renderer)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:45-77 (tree rendering tests)"
+      ]
+    },
+    {
+      "id": "req-2.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.2: Folder expand/collapse on click implemented via DirectoryNode component",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:115-163 (DirectoryNode with toggle)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:79-108 (expand/collapse tests)"
+      ]
+    },
+    {
+      "id": "req-2.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.3: File click triggers editor display via onSelectFile callback",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:76-101 (FileNode with click handler)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:134-170 (file selection tests)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileList.tsx:155-160 (DocsTreeSection integration)"
+      ]
+    },
+    {
+      "id": "req-2.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.4: Folder icons (FolderOpen/Folder) for expanded/collapsed states implemented",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:143-147 (FolderOpen/Folder icons)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:110-131 (icon tests)"
+      ]
+    },
+    {
+      "id": "req-2.5",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 2.5: Indentation by nesting level implemented via paddingLeft calculation",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:24-27 (BASE_PADDING, INDENT_INCREMENT constants)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:82 (paddingLeft calculation)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:173-195 (indentation test)"
+      ]
+    },
+    {
+      "id": "req-3.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.1: Folder expand/collapse state stored in on-memory Zustand store (docsTreeExpandedStore)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.ts:50-71 (Zustand store with expandedDirs Map)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.test.ts:35-73 (toggleDir tests)"
+      ]
+    },
+    {
+      "id": "req-3.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.2: Tab switching preserves expand state (on-memory Zustand store persists across renders)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.ts:50-71 (Zustand store singleton)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.test.ts:126-141 (persistence test)"
+      ]
+    },
+    {
+      "id": "req-3.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.3: App restart resets expand state (no persistence, reset() action available)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.ts:64-66 (reset action)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.test.ts:97-123 (reset tests)"
+      ]
+    },
+    {
+      "id": "req-3.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 3.4: Initial state has all folders collapsed (empty Map)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.ts:42-44 (initialState with empty Map)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/docsTreeExpandedStore.test.ts:27-32 (initial state test)"
+      ]
+    },
+    {
+      "id": "req-4.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.1: Selected file path stored on-memory in projectEditorStore",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/projectEditorStore.ts:36-37 (currentFilePath, currentFileName state)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/projectEditorStore.ts:132-174 (loadFile action)"
+      ]
+    },
+    {
+      "id": "req-4.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.2: Tab switching preserves selected file (projectEditorStore persists)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/projectEditorStore.ts:127-239 (Zustand store maintains state across renders)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:62-73 (useProjectEditorStore usage)"
+      ]
+    },
+    {
+      "id": "req-4.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.3: Clear selection when file no longer exists - error handling in loadFile",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/projectEditorStore.ts:162-173 (loadFile error handling clears selection)"
+      ]
+    },
+    {
+      "id": "req-4.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 4.4: Leverages existing projectEditorStore for file selection",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:21 (import useProjectEditorStore)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/stores/projectEditorStore.ts:1-17 (store documentation)"
+      ]
+    },
+    {
+      "id": "req-5.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.1: Section order: CLAUDE.md -> Steering Files -> Docs implemented in ProjectFileList",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileList.tsx:117-161 (section order: CLAUDE.md, Steering Files, DocsTreeSection)"
+      ]
+    },
+    {
+      "id": "req-5.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.2: Section headers with title and icon displayed",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:234-237 (Docs section header with BookOpen icon)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:266-277 (section header test)"
+      ]
+    },
+    {
+      "id": "req-5.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 5.3: Empty/non-existent docs folder shows 'no files' state",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:231-244 (empty state with 'ファイルなし' message)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:36-42 (empty state test)"
+      ]
+    },
+    {
+      "id": "req-6.1",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.1: .md files display with existing editor (MDEditor)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:156-252 (default MDEditor for md files)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:36-51 (detectFileType function)"
+      ]
+    },
+    {
+      "id": "req-6.2",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.2: .pdf files display with PdfViewer (iframe)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/PdfViewer.tsx:28-45 (PdfViewer with iframe)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:122-137 (PDF viewer rendering)"
+      ]
+    },
+    {
+      "id": "req-6.3",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.3: .html files display with HtmlViewer (sandboxed iframe)",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/HtmlViewer.tsx:34-48 (HtmlViewer with sandboxed iframe)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/renderer/components/ProjectFileEditor.tsx:139-154 (HTML viewer rendering)"
+      ]
+    },
+    {
+      "id": "req-6.4",
+      "category": "requirements-coverage",
+      "status": "PASS",
+      "severity": "Info",
+      "details": "Requirement 6.4: File type-specific icons in tree view",
+      "evidence": [
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.tsx:52-63 (FileTypeIcon component with md/pdf/html icons)",
+        "/Users/yamamoto/git/sdd-orchestrator/.kiro/worktrees/specs/project-docs-viewer/electron-sdd-manager/src/shared/components/project/DocsTreeSection.test.tsx:198-228 (icon tests)"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "partial": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 20
+  }
+}

@@ -413,8 +413,8 @@ describe('BugDetailPage', () => {
 
     it('should display agents from the bug (Req 4.2)', () => {
       setupMockAgents([
-        { id: 'agent-1', phase: 'bug-analyze', status: 'completed' },
-        { id: 'agent-2', phase: 'bug-fix', status: 'running' },
+        { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
+        { agentId: 'agent-2', phase: 'bug-fix', status: 'running' },
       ]);
 
       render(
@@ -446,7 +446,7 @@ describe('BugDetailPage', () => {
 
     it('should open AgentDetailDrawer when agent is tapped (Req 4.4)', async () => {
       setupMockAgents([
-        { id: 'agent-1', phase: 'bug-analyze', status: 'completed' },
+        { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
       ]);
 
       render(
@@ -471,7 +471,7 @@ describe('BugDetailPage', () => {
 
     it('should close AgentDetailDrawer when onClose is called (Req 4.4)', async () => {
       setupMockAgents([
-        { id: 'agent-1', phase: 'bug-analyze', status: 'completed' },
+        { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
       ]);
 
       render(
@@ -505,7 +505,7 @@ describe('BugDetailPage', () => {
 
     it('should call apiClient.stopAgent when stop is clicked in AgentList', async () => {
       setupMockAgents([
-        { id: 'agent-1', phase: 'bug-analyze', status: 'running' },
+        { agentId: 'agent-1', phase: 'bug-analyze', status: 'running' },
       ]);
 
       render(
@@ -528,8 +528,8 @@ describe('BugDetailPage', () => {
 
     it('should show AgentList with header displaying agent count (Req 4.2)', () => {
       setupMockAgents([
-        { id: 'agent-1', phase: 'bug-analyze', status: 'completed' },
-        { id: 'agent-2', phase: 'bug-fix', status: 'running' },
+        { agentId: 'agent-1', phase: 'bug-analyze', status: 'completed' },
+        { agentId: 'agent-2', phase: 'bug-fix', status: 'running' },
       ]);
 
       render(

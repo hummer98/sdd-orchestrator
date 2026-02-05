@@ -69,14 +69,14 @@ function createMockApiClient(overrides: Partial<ApiClient> = {}): ApiClient {
 function createMockAgents(): AgentInfo[] {
   return [
     {
-      id: 'agent-1',
+      agentId: 'agent-1',
       specId: 'test-spec',
       phase: 'requirements',
       status: 'running',
       startedAt: '2026-01-25T10:00:00Z',
     },
     {
-      id: 'agent-2',
+      agentId: 'agent-2',
       specId: '',
       phase: 'project',
       status: 'completed',

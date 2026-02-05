@@ -1511,7 +1511,7 @@ describe('ScheduleTaskCoordinator', () => {
 
       it('should pass task info to agent start', async () => {
         const task = createMockTask({
-          id: 'agent-info-task',
+          agentId: 'agent-info-task',
           name: 'my-task',
           workflow: { enabled: false },
           prompts: [{ order: 0, content: '/kiro:steering' }],
@@ -1680,7 +1680,7 @@ describe('ScheduleTaskCoordinator', () => {
     describe('error handling', () => {
       it('should return AGENT_START_FAILED error when agent start fails', async () => {
         const task = createMockTask({
-          id: 'agent-fail-task',
+          agentId: 'agent-fail-task',
           name: 'test-task',
           workflow: { enabled: false },
           prompts: [{ order: 0, content: '/kiro:steering' }],
@@ -2397,7 +2397,7 @@ describe('ScheduleTaskCoordinator', () => {
       it('should execute complete agent startup flow from schedule detection to agent start (Req 5.4)', async () => {
         const now = Date.now();
         const task = createMockTask({
-          id: 'agent-flow-task',
+          agentId: 'agent-flow-task',
           name: 'Integration Test Task',
           schedule: {
             type: 'interval',
@@ -2645,7 +2645,7 @@ describe('ScheduleTaskCoordinator', () => {
 
       it('should handle agent start failure gracefully', async () => {
         const task = createMockTask({
-          id: 'agent-fail-integration-task',
+          agentId: 'agent-fail-integration-task',
           prompts: [
             { order: 0, content: '/kiro:first' },
             { order: 1, content: '/kiro:second' },

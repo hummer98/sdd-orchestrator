@@ -3448,7 +3448,7 @@ describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons
       // Set state provider with agents that have command field
       const mockAgents = [
         {
-          id: 'agent-1',
+          agentId: 'agent-1',
           status: 'running',
           phase: 'ask',
           specId: '',
@@ -3457,7 +3457,7 @@ describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons
           sessionId: 'session-123',
         },
         {
-          id: 'agent-2',
+          agentId: 'agent-2',
           status: 'completed',
           phase: 'requirements',
           specId: 'my-spec',
@@ -3500,7 +3500,7 @@ describe('WebSocketHandler - EXECUTE_SPEC_PLAN Handler (remote-ui-create-buttons
 
       const mockAgents = [
         {
-          id: 'agent-1',
+          agentId: 'agent-1',
           status: 'running',
           phase: 'ask',
           specId: '',

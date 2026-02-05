@@ -70,7 +70,7 @@ const mockBugDetail: BugDetail = {
 };
 
 const mockAgentInfo: AgentInfo = {
-  id: 'agent-123',
+  agentId: 'agent-123',
   specId: 'login-timeout-bug',
   phase: 'fix',
   status: 'running',
@@ -106,6 +106,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };

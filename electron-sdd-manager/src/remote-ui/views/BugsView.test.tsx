@@ -73,25 +73,25 @@ const mockBugs: BugMetadata[] = [
 
 const mockAgents: AgentInfo[] = [
   {
-    id: 'agent-1',
-    type: 'kiro',
+    agentId: 'agent-1',
+    phase: 'kiro',
     status: 'running',
     specId: 'bug:login-timeout-bug',
     startedAt: '2026-01-10T10:00:00Z',
     lastActivityAt: '2026-01-10T10:05:00Z',
   },
   {
-    id: 'agent-2',
-    type: 'kiro',
+    agentId: 'agent-2',
+    phase: 'kiro',
     status: 'running',
     specId: 'bug:login-timeout-bug',
     startedAt: '2026-01-10T10:01:00Z',
     lastActivityAt: '2026-01-10T10:06:00Z',
   },
   {
-    id: 'agent-3',
-    type: 'kiro',
-    status: 'stopped',
+    agentId: 'agent-3',
+    phase: 'kiro',
+    status: 'completed',
     specId: 'bug:api-error-handling',
     startedAt: '2026-01-10T09:00:00Z',
     lastActivityAt: '2026-01-10T09:30:00Z',
@@ -127,6 +127,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     // bugs-view-unification Task 8.1: Additional ApiClient methods for watching
     // Note: switchAgentWatchScope removed (remove-redundant-agent-watchers feature)

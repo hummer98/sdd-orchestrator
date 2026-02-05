@@ -38,12 +38,12 @@ vi.mock('@renderer/types/worktree', () => ({
 const createMockApiClient = (specDetail?: SpecDetail | null): ApiClient => ({
   listSpecs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
   getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: specDetail }),
-  executePhase: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-1' } }),
+  executePhase: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-1' } }),
   updateApproval: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
   startAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: { status: 'running' } }),
   stopAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-  executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-1' } }),
-  executeInspection: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-1' } }),
+  executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-1' } }),
+  executeInspection: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-1' } }),
   // Bug-related methods
   listBugs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
   getBugDetail: vi.fn().mockResolvedValue({ ok: true, value: null }),

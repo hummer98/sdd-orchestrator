@@ -61,7 +61,7 @@ describe('bugStore - createBug', () => {
 
   it('should create bug successfully via ApiClient', async () => {
     const mockAgentInfo: AgentInfo = {
-      id: 'agent-1',
+      agentId: 'agent-1',
       specId: 'test-bug',
       phase: 'bug-create',
       status: 'running',
@@ -122,7 +122,7 @@ describe('bugStore - createBug', () => {
     expect(useSharedBugStore.getState().isCreating).toBe(true);
 
     // Resolve the promise
-    resolvePromise!({ ok: true, value: { id: 'agent-1' } as AgentInfo });
+    resolvePromise!({ ok: true, value: { agentId: 'agent-1' } as AgentInfo });
     await createPromise;
 
     // Check isCreating is false after completion

@@ -107,7 +107,7 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
         // zustand-agent-selector-hooks: Components now use useAgentsBySpec hook
         const sharedAgents = new Map();
         sharedAgents.set('test-spec', [{
-          id: 'agent-1',
+          agentId: 'agent-1',
           specId: 'test-spec',
           phase: 'design',
           sessionId: 'session-1',
@@ -147,7 +147,7 @@ describe('useSpecStore - spec-manager Extensions (execution-store-consolidation)
         // Add a completed agent to sharedAgentStore (SSOT)
         const sharedAgents = new Map();
         sharedAgents.set('test-spec', [{
-          id: 'agent-1',
+          agentId: 'agent-1',
           specId: 'test-spec',
           phase: 'impl',
           sessionId: 'session-1',

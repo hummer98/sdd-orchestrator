@@ -55,6 +55,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   } as ApiClient;
@@ -65,7 +66,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
  */
 function createMockAgent(overrides?: Partial<AgentInfo>): AgentInfo {
   return {
-    id: 'test-agent-1',
+    agentId: 'test-agent-1',
     specId: '', // Empty string for project-level agents
     phase: 'spec-plan',
     status: 'running',
@@ -135,8 +136,8 @@ describe('AgentsTabView', () => {
     it('renders AgentList component with project agents', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', phase: 'spec-plan', status: 'running' }),
-        createMockAgent({ id: 'agent-2', phase: 'ask-project', status: 'completed' }),
+        createMockAgent({ agentId: 'agent-1', phase: 'spec-plan', status: 'running' }),
+        createMockAgent({ agentId: 'agent-2', phase: 'ask-project', status: 'completed' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -181,8 +182,8 @@ describe('AgentsTabView', () => {
     it('displays agent header with Bot icon and count', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1' }),
-        createMockAgent({ id: 'agent-2' }),
+        createMockAgent({ agentId: 'agent-1' }),
+        createMockAgent({ agentId: 'agent-2' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -232,9 +233,9 @@ describe('AgentsTabView', () => {
     it('displays running agent count badge when there are running agents', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', status: 'running' }),
-        createMockAgent({ id: 'agent-2', status: 'running' }),
-        createMockAgent({ id: 'agent-3', status: 'completed' }),
+        createMockAgent({ agentId: 'agent-1', status: 'running' }),
+        createMockAgent({ agentId: 'agent-2', status: 'running' }),
+        createMockAgent({ agentId: 'agent-3', status: 'completed' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -250,8 +251,8 @@ describe('AgentsTabView', () => {
     it('does not display running count badge when no agents are running', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', status: 'completed' }),
-        createMockAgent({ id: 'agent-2', status: 'failed' }),
+        createMockAgent({ agentId: 'agent-1', status: 'completed' }),
+        createMockAgent({ agentId: 'agent-2', status: 'failed' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -266,9 +267,9 @@ describe('AgentsTabView', () => {
     it('displays running count of 1 when single agent is running', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', status: 'running' }),
-        createMockAgent({ id: 'agent-2', status: 'completed' }),
-        createMockAgent({ id: 'agent-3', status: 'failed' }),
+        createMockAgent({ agentId: 'agent-1', status: 'running' }),
+        createMockAgent({ agentId: 'agent-2', status: 'completed' }),
+        createMockAgent({ agentId: 'agent-3', status: 'failed' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -284,8 +285,8 @@ describe('AgentsTabView', () => {
     it('updates running count when agent status changes', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', status: 'running' }),
-        createMockAgent({ id: 'agent-2', status: 'completed' }),
+        createMockAgent({ agentId: 'agent-1', status: 'running' }),
+        createMockAgent({ agentId: 'agent-2', status: 'completed' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -297,8 +298,8 @@ describe('AgentsTabView', () => {
 
       // Update the store state to simulate agent status change
       const updatedAgents = [
-        createMockAgent({ id: 'agent-1', status: 'running' }),
-        createMockAgent({ id: 'agent-2', status: 'running' }), // Now running
+        createMockAgent({ agentId: 'agent-1', status: 'running' }),
+        createMockAgent({ agentId: 'agent-2', status: 'running' }), // Now running
       ];
       setupAgentStore(updatedAgents);
 
@@ -312,7 +313,7 @@ describe('AgentsTabView', () => {
     it('displays running count badge with appropriate styling', () => {
       // Arrange
       const projectAgents = [
-        createMockAgent({ id: 'agent-1', status: 'running' }),
+        createMockAgent({ agentId: 'agent-1', status: 'running' }),
       ];
       setupAgentStore(projectAgents);
 
@@ -334,7 +335,7 @@ describe('AgentsTabView', () => {
   describe('Requirement 5.2: AgentListItemタップでDrawer表示', () => {
     it('opens AgentDetailDrawer when agent is selected', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', phase: 'spec-plan' });
+      const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan' });
       setupAgentStore([agent]);
 
       // Act
@@ -352,7 +353,7 @@ describe('AgentsTabView', () => {
 
     it('displays selected agent in AgentDetailDrawer', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', phase: 'spec-plan', status: 'running' });
+      const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan', status: 'running' });
       const logs = new Map<string, LogEntry[]>();
       logs.set('agent-1', [createMockLogEntry({ data: 'Test log' })]);
       setupAgentStore([agent], logs);
@@ -372,7 +373,7 @@ describe('AgentsTabView', () => {
 
     it('closes AgentDetailDrawer when close is triggered', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', phase: 'spec-plan' });
+      const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan' });
       setupAgentStore([agent]);
 
       // Act
@@ -399,7 +400,7 @@ describe('AgentsTabView', () => {
 
     it('sends instruction through AgentDetailDrawer', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', phase: 'spec-plan', status: 'interrupted' });
+      const agent = createMockAgent({ agentId: 'agent-1', phase: 'spec-plan', status: 'interrupted' });
       setupAgentStore([agent]);
 
       // Act
@@ -417,7 +418,7 @@ describe('AgentsTabView', () => {
   describe('Agent Actions', () => {
     it('calls apiClient.stopAgent when stop action is triggered', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', status: 'running' });
+      const agent = createMockAgent({ agentId: 'agent-1', status: 'running' });
       setupAgentStore([agent]);
 
       // Act
@@ -442,7 +443,7 @@ describe('AgentsTabView', () => {
 
     it('removes agent from store when remove action is triggered', async () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1', status: 'completed' });
+      const agent = createMockAgent({ agentId: 'agent-1', status: 'completed' });
       setupAgentStore([agent]);
 
       // Act
@@ -461,8 +462,8 @@ describe('AgentsTabView', () => {
     it('uses useSharedAgentStore to get project agents', () => {
       // Arrange
       const agents = [
-        createMockAgent({ id: 'agent-1', specId: '' }),
-        createMockAgent({ id: 'agent-2', specId: '' }),
+        createMockAgent({ agentId: 'agent-1', specId: '' }),
+        createMockAgent({ agentId: 'agent-2', specId: '' }),
       ];
       setupAgentStore(agents);
 
@@ -476,7 +477,7 @@ describe('AgentsTabView', () => {
 
     it('updates selectedAgentId when agent is selected', () => {
       // Arrange
-      const agent = createMockAgent({ id: 'agent-1' });
+      const agent = createMockAgent({ agentId: 'agent-1' });
       setupAgentStore([agent]);
 
       // Act

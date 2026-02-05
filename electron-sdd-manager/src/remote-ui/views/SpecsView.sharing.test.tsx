@@ -64,6 +64,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };

@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentView } from './AgentView';
-import type { ApiClient, AgentInfo, LogEntry } from '@shared/api/types';
+import type { ApiClient, AgentInfo, ParsedLogEntry } from '@shared/api/types';
 
 // =============================================================================
 // Mock Data
@@ -18,14 +18,14 @@ import type { ApiClient, AgentInfo, LogEntry } from '@shared/api/types';
 
 const mockAgents: AgentInfo[] = [
   {
-    id: 'agent-1',
+    agentId: 'agent-1',
     specId: 'user-authentication',
     phase: 'requirements',
     status: 'running',
     startedAt: '2026-01-10T10:00:00Z',
   },
   {
-    id: 'agent-2',
+    agentId: 'agent-2',
     specId: 'user-authentication',
     phase: 'design',
     status: 'completed',
@@ -34,18 +34,24 @@ const mockAgents: AgentInfo[] = [
   },
 ];
 
-const mockLogs: LogEntry[] = [
+const mockLogs: ParsedLogEntry[] = [
   {
     id: 'log-1',
+    type: 'text',
     timestamp: new Date('2026-01-10T10:00:00Z').getTime(),
-    stream: 'stdout',
-    data: 'Starting requirements generation...',
+    text: {
+      content: 'Starting requirements generation...',
+      role: 'assistant',
+    },
   },
   {
     id: 'log-2',
+    type: 'text',
     timestamp: new Date('2026-01-10T10:01:00Z').getTime(),
-    stream: 'stdout',
-    data: 'Processing requirements...',
+    text: {
+      content: 'Processing requirements...',
+      role: 'assistant',
+    },
   },
 ];
 
@@ -78,6 +84,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };
@@ -165,11 +172,11 @@ describe('AgentView', () => {
   });
 
   describe('Event Subscriptions', () => {
-    it('subscribes to agent output on mount', async () => {
+    it('subscribes to agent log on mount', async () => {
       render(<AgentView specId="user-authentication" apiClient={mockApiClient} />);
 
       await waitFor(() => {
-        expect(mockApiClient.onAgentOutput).toHaveBeenCalled();
+        expect(mockApiClient.onAgentLog).toHaveBeenCalled();
       });
     });
 
@@ -182,10 +189,10 @@ describe('AgentView', () => {
     });
 
     it('unsubscribes on unmount', async () => {
-      const unsubscribeOutput = vi.fn();
+      const unsubscribeLog = vi.fn();
       const unsubscribeStatus = vi.fn();
       const apiClient = createMockApiClient({
-        onAgentOutput: vi.fn().mockReturnValue(unsubscribeOutput),
+        onAgentLog: vi.fn().mockReturnValue(unsubscribeLog),
         onAgentStatusChange: vi.fn().mockReturnValue(unsubscribeStatus),
       });
 
@@ -194,12 +201,12 @@ describe('AgentView', () => {
       );
 
       await waitFor(() => {
-        expect(apiClient.onAgentOutput).toHaveBeenCalled();
+        expect(apiClient.onAgentLog).toHaveBeenCalled();
       });
 
       unmount();
 
-      expect(unsubscribeOutput).toHaveBeenCalled();
+      expect(unsubscribeLog).toHaveBeenCalled();
       expect(unsubscribeStatus).toHaveBeenCalled();
     });
   });

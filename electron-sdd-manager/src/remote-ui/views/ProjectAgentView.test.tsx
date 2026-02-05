@@ -20,7 +20,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
   return {
     getSpecs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
     getSpecDetail: vi.fn().mockResolvedValue({ ok: true, value: {} }),
-    executePhase: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-1', specId: 'global', phase: 'ask', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
+    executePhase: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-1', specId: 'global', phase: 'ask', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
     updateApproval: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getBugs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
     getBugDetail: vi.fn().mockResolvedValue({ ok: true, value: {} }),
@@ -41,6 +41,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };

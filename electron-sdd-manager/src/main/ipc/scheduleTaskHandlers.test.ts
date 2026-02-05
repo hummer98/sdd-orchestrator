@@ -320,7 +320,7 @@ describe('ScheduleTaskHandlers', () => {
     it('should call SpecManagerService.startAgent with correct parameters', async () => {
       const mockStartAgent = vi.fn().mockResolvedValue({
         ok: true,
-        value: { id: 'agent-123' },
+        value: { agentId: 'agent-123' },
       });
       const mockSpecManagerService = { startAgent: mockStartAgent };
       const projectPath = '/test/project';
@@ -357,7 +357,7 @@ describe('ScheduleTaskHandlers', () => {
     it('should pass worktreePath as worktreeCwd when provided', async () => {
       const mockStartAgent = vi.fn().mockResolvedValue({
         ok: true,
-        value: { id: 'agent-456' },
+        value: { agentId: 'agent-456' },
       });
       const mockSpecManagerService = { startAgent: mockStartAgent };
       const projectPath = '/test/project';

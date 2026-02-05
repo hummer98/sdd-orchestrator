@@ -370,7 +370,7 @@ describe('SpecDetailPage', () => {
             'test-feature',
             [
               {
-                id: 'agent-1',
+                agentId: 'agent-1',
                 specId: 'test-feature',
                 phase: 'spec-requirements',
                 status: 'completed',
@@ -420,7 +420,7 @@ describe('SpecDetailPage', () => {
             'test-feature',
             [
               {
-                id: 'agent-1',
+                agentId: 'agent-1',
                 specId: 'test-feature',
                 phase: 'spec-requirements',
                 status: 'running',
@@ -490,7 +490,7 @@ describe('SpecDetailPage', () => {
             'test-feature',
             [
               {
-                id: 'agent-1',
+                agentId: 'agent-1',
                 specId: 'test-feature',
                 phase: 'spec-requirements',
                 status: 'completed',
@@ -555,7 +555,7 @@ describe('SpecDetailPage', () => {
             'test-feature',
             [
               {
-                id: 'agent-1',
+                agentId: 'agent-1',
                 specId: 'test-feature',
                 phase: 'spec-requirements',
                 status: 'completed',
@@ -564,7 +564,7 @@ describe('SpecDetailPage', () => {
                 sessionId: 'session-1',
               },
               {
-                id: 'agent-2',
+                agentId: 'agent-2',
                 specId: 'test-feature',
                 phase: 'spec-design',
                 status: 'running',
@@ -578,7 +578,7 @@ describe('SpecDetailPage', () => {
             'other-feature',
             [
               {
-                id: 'agent-3',
+                agentId: 'agent-3',
                 specId: 'other-feature',
                 phase: 'spec-tasks',
                 status: 'completed',

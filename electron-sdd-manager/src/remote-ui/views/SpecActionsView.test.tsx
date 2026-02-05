@@ -80,8 +80,8 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     resumeAgent: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     sendAgentInput: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getAgentLogs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
-    executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-2', specId: 'user-authentication', phase: 'document-review', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
-    executeInspection: vi.fn().mockResolvedValue({ ok: true, value: { id: 'agent-3', specId: 'user-authentication', phase: 'inspection', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
+    executeDocumentReview: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-2', specId: 'user-authentication', phase: 'document-review', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
+    executeInspection: vi.fn().mockResolvedValue({ ok: true, value: { agentId: 'agent-3', specId: 'user-authentication', phase: 'inspection', status: 'running', startedAt: '2026-01-10T12:00:00Z' } }),
     startAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: {} }),
     stopAutoExecution: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getAutoExecutionStatus: vi.fn().mockResolvedValue({ ok: true, value: null }),
@@ -90,6 +90,7 @@ function createMockApiClient(overrides?: Partial<ApiClient>): ApiClient {
     onBugsUpdated: vi.fn().mockReturnValue(() => {}),
     onAgentOutput: vi.fn().mockReturnValue(() => {}),
     onAgentStatusChange: vi.fn().mockReturnValue(() => {}),
+    onAgentLog: vi.fn().mockReturnValue(() => {}),
     onAutoExecutionStatusChanged: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };

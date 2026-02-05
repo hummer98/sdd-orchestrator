@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useEditorStore } from './editorStore';
+import { useEditorStore, type ArtifactType } from './editorStore';
 
 describe('useEditorStore', () => {
   beforeEach(() => {
@@ -105,6 +105,32 @@ describe('useEditorStore', () => {
       expect(state.content).toBe('');
     });
 
+    // artifact-all-markdown-files: Test for .md suffix handling
+    it('should not double .md suffix for artifact names ending with .md', async () => {
+      const mockContent = '# E2E Report Content';
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue(mockContent);
+
+      // Additional markdown files have .md in their key (e.g., "e2e-report-1.md")
+      await useEditorStore.getState().loadArtifact('my-spec', 'e2e-report-1.md' as ArtifactType);
+
+      // Should call readArtifact with "e2e-report-1.md", not "e2e-report-1.md.md"
+      expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
+        'my-spec', 'e2e-report-1.md', 'spec'
+      );
+      expect(useEditorStore.getState().content).toBe(mockContent);
+    });
+
+    it('should add .md suffix for standard artifact types', async () => {
+      window.electronAPI.readArtifact = vi.fn().mockResolvedValue('content');
+
+      await useEditorStore.getState().loadArtifact('my-spec', 'requirements');
+
+      // Standard artifacts need .md appended
+      expect(window.electronAPI.readArtifact).toHaveBeenCalledWith(
+        'my-spec', 'requirements.md', 'spec'
+      );
+    });
+
     it('should clear content immediately when switching to a different file (Bug fix: spec-item-flash-wrong-content)', async () => {
       // Setup: load initial artifact
       window.electronAPI.readArtifact = vi.fn().mockResolvedValue('# Initial Content');
@@ -202,6 +228,27 @@ describe('useEditorStore', () => {
 
       expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
         'my-bug', 'analysis.md', 'bug fix content', 'bug'
+      );
+    });
+
+    // artifact-all-markdown-files: Test for .md suffix handling in save
+    it('should not double .md suffix when saving artifact with .md in name', async () => {
+      window.electronAPI.writeArtifact = vi.fn().mockResolvedValue(undefined);
+
+      useEditorStore.setState({
+        content: 'updated e2e report',
+        originalContent: 'old content',
+        isDirty: true,
+        activeTab: 'e2e-report-1.md' as ArtifactType,
+        currentPath: 'my-spec:e2e-report-1.md',
+        currentEntityType: 'spec',
+      });
+
+      await useEditorStore.getState().save();
+
+      // Should write to "e2e-report-1.md", not "e2e-report-1.md.md"
+      expect(window.electronAPI.writeArtifact).toHaveBeenCalledWith(
+        'my-spec', 'e2e-report-1.md', 'updated e2e report', 'spec'
       );
     });
   });

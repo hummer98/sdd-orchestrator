@@ -117,7 +117,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       // Parse currentPath (format: "name:artifact") to extract name
       // Use writeArtifact with path resolution instead of writeFile
       const [name] = currentPath.split(':');
-      const filename = `${activeTab}.md`;
+      // artifact-all-markdown-files: Handle artifacts that already have .md suffix
+      const filename = activeTab.endsWith('.md') ? activeTab : `${activeTab}.md`;
       await window.electronAPI.writeArtifact(name, filename, content, currentEntityType);
       set({
         originalContent: content,
@@ -183,7 +184,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     try {
       // spec-path-ssot-refactor: Use (name, filename) instead of full path
       // bug-artifact-content-not-displayed: Pass entityType to use correct path resolver
-      const content = await window.electronAPI.readArtifact(name, `${artifact}.md`, entityType);
+      // artifact-all-markdown-files: Handle artifacts that already have .md suffix
+      const filename = artifact.endsWith('.md') ? artifact : `${artifact}.md`;
+      const content = await window.electronAPI.readArtifact(name, filename, entityType);
       set({
         content,
         originalContent: content,

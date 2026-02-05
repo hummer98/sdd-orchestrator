@@ -63,23 +63,25 @@ await window.electronAPI.openLogInBrowser();
 [2026-01-07T10:15:35.100Z] [INFO] [/Users/yamamoto/git/myproject] [renderer] 自動実行完了: 3フェーズ (45秒) {"specId":"feature-auth"}
 ```
 
-### Rendererログ（renderer-error-logging機能）
+### Rendererログ（renderer-unified-logging）
 
-Rendererプロセス（UIフロントエンド）のログはIPCを経由してmainプロセスに送信され、プロジェクトログファイルに記録される。
+Rendererプロセス（UIフロントエンド）のログはIPCを経由してmainプロセスに送信され、プロジェクトログファイルに記録される。ロギングアーキテクチャの詳細は `.kiro/steering/logging.md` の「Rendererプロセスのロギングアーキテクチャ」セクションを参照。
 
-- **自動コンテキスト**: notify.*()呼び出し時に、現在選択中のspecId/bugNameを自動的に付与
+- **自動コンテキスト**: 現在選択中のspecId/bugNameを自動的に付与
 - **ファイル出力**: `{projectPath}/.kiro/logs/main.log`（グローバルログにも二重出力）
 - **ソース識別**: `[renderer]`タグで区別可能
 
 #### 何がログされるか
 
-| notify関数 | ログレベル | 用途 |
-|-----------|-----------|------|
-| `notify.error()` | ERROR | エラートースト（8秒表示） |
-| `notify.warning()` | WARN | 警告トースト |
-| `notify.info()` | INFO | 情報トースト |
-| `notify.success()` | INFO | 成功トースト |
-| `notify.showCompletionSummary()` | INFO/WARN | 自動実行完了サマリー |
+| ソース | ログレベル | 用途 | 有効環境 |
+|--------|-----------|------|----------|
+| `notify.error()` | ERROR | エラートースト（8秒表示） | 全環境 |
+| `notify.warning()` | WARN | 警告トースト | 全環境 |
+| `notify.info()` | INFO | 情報トースト | 全環境 |
+| `notify.success()` | INFO | 成功トースト | 全環境 |
+| `notify.showCompletionSummary()` | INFO/WARN | 自動実行完了サマリー | 全環境 |
+| `rendererLogger.*()` | 各レベル | 明示的ロガーAPI | 全環境 |
+| `console.*()` (consoleHook経由) | 各レベル | グローバルフック自動転送 | dev/e2eのみ |
 
 #### トラブルシューティング：rendererエラーの調査
 

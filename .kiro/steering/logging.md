@@ -109,6 +109,54 @@ AIアシスタントがログを正確に解析できるフォーマットを採
 - 処理対象のリソースID
 - エラー発生時のスタックトレース
 
+## Rendererプロセスのロギングアーキテクチャ（renderer-unified-logging）
+
+Rendererプロセス（UIフロントエンド）は直接ファイルにログを書けないため、IPCを経由してMainプロセスに送信し、ファイルに記録する。この仕組みは2つのレイヤーで構成される。
+
+### レイヤー構成
+
+| レイヤー | ファイル | 役割 | 有効環境 |
+|----------|----------|------|----------|
+| **consoleHook**（グローバルフック） | `renderer/utils/consoleHook.ts` | `console.*` を自動フック、IPC転送 | development, e2e のみ（**productionでは無効**） |
+| **rendererLogger**（明示的ロガー） | `renderer/utils/rendererLogger.ts` | `console.*` 互換API、IPC転送 | 全環境 |
+
+### consoleHook（グローバルフック）
+
+- `initializeConsoleHook()` でrendererの `console.log/info/warn/error/debug` をモンキーパッチ
+- フック後の `console.*` はオリジナルのconsole出力 + IPCでmainプロセスに送信
+- `shouldFilter()` でノイズメッセージ（Vite HMR等）を除外
+- **production環境では自動的に無効化**（`app.isPackaged` 判定ではなく、Viteの `import.meta.env.PROD` で判定）
+
+### rendererLogger（明示的ロガー）
+
+- `console.*` 互換のAPI（`rendererLogger.log/info/warn/error/debug`）
+- `window.electronAPI.logRenderer()` 経由でIPCでmainプロセスに送信
+- 自動コンテキスト付与: 現在のspecId/bugName、スタックトレースからのファイル名抽出
+- `import { rendererLogger as console }` でdrop-in置換可能
+
+### IPC経路
+
+```
+Renderer (console.* or rendererLogger)
+  → window.electronAPI.logRenderer(level, message, context)
+    → IPC: 'log:renderer'
+      → Main process ProjectLogger
+        → {projectPath}/.kiro/logs/main.log + グローバルログ
+```
+
+### 実装時の注意
+
+- Rendererでの新しいロギングには `rendererLogger` を使用すること（`console.*` ではなく）
+- `notify.*()` 呼び出しは内部的にrendererログも出力する（`debugging.md` のnotifyセクション参照）
+- consoleHookのproduction無効化は意図的な設計。本番環境では `rendererLogger` の明示的使用のみがログされる
+
+### 関連ソース
+
+- [consoleHook.ts](electron-sdd-manager/src/renderer/utils/consoleHook.ts) - グローバルフック
+- [rendererLogger.ts](electron-sdd-manager/src/renderer/utils/rendererLogger.ts) - 明示的ロガーAPI
+- [contextProvider.ts](electron-sdd-manager/src/renderer/utils/contextProvider.ts) - 自動コンテキスト取得
+- [noiseFilter.ts](electron-sdd-manager/src/renderer/utils/noiseFilter.ts) - ノイズフィルタリング
+
 ## 参照
 
 - **デバッグ手順**: `.kiro/steering/debugging.md`

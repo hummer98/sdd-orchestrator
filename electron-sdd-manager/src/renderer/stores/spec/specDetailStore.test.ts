@@ -629,6 +629,58 @@ describe('useSpecDetailStore', () => {
   // Verify that worktree field is properly loaded and preserved
   // ============================================================
 
+  // ============================================================
+  // artifact-all-markdown-files: markdownFiles loading tests
+  // Bug fix: 2026-02-05-markdown-files-electron-not-displayed
+  // ============================================================
+
+  describe('markdownFiles loading', () => {
+    it('should include markdownFiles in specDetail when selectSpec is called', async () => {
+      // Given: listMarkdownFilesInSpec returns additional markdown files
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockResolvedValue(['e2e-report-1.md', 'custom-note.md']);
+
+      // When: selectSpec is called
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      // Then: specDetail should include markdownFiles
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.markdownFiles).toEqual(['e2e-report-1.md', 'custom-note.md']);
+    });
+
+    it('should include empty markdownFiles array when no additional files exist', async () => {
+      // Given: listMarkdownFilesInSpec returns empty array
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockResolvedValue([]);
+
+      // When: selectSpec is called
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      // Then: specDetail should have empty markdownFiles
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.markdownFiles).toEqual([]);
+    });
+
+    it('should handle listMarkdownFilesInSpec error gracefully', async () => {
+      // Given: listMarkdownFilesInSpec fails
+      window.electronAPI.readSpecJson = vi.fn().mockResolvedValue(mockSpecJson);
+      window.electronAPI.readArtifact = vi.fn().mockRejectedValue(new Error('Not found'));
+      window.electronAPI.syncDocumentReview = vi.fn().mockResolvedValue(false);
+      window.electronAPI.listMarkdownFilesInSpec = vi.fn().mockRejectedValue(new Error('API error'));
+
+      // When: selectSpec is called
+      await useSpecDetailStore.getState().selectSpec(mockSpec);
+
+      // Then: specDetail should still load with empty markdownFiles (graceful degradation)
+      const state = useSpecDetailStore.getState();
+      expect(state.specDetail?.markdownFiles).toEqual([]);
+    });
+  });
+
   describe('worktree field loading', () => {
     it('should load specJson with worktree field when present', async () => {
       const specJsonWithWorktree = {

@@ -177,6 +177,16 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         console.log('[specDetailStore] Parallel task info calculated:', { spec: spec.name, parallelTaskInfo });
       }
 
+      // artifact-all-markdown-files: Get additional markdown files
+      // Bug fix: 2026-02-05-markdown-files-electron-not-displayed
+      let markdownFiles: string[] = [];
+      try {
+        markdownFiles = await window.electronAPI.listMarkdownFilesInSpec(spec.name, 'spec');
+      } catch (error) {
+        console.error('[specDetailStore] Failed to list markdown files:', error);
+        // Graceful degradation: continue with empty array
+      }
+
       // Auto-sync documentReview field with file system state
       // spec-path-ssot-refactor: Use spec.name instead of spec.path
       const t3 = performance.now();
@@ -205,6 +215,7 @@ export const useSpecDetailStore = create<SpecDetailStore>((set, get) => ({
         },
         taskProgress,
         parallelTaskInfo,
+        markdownFiles,
       };
 
       // Bug fix: auto-execution-flag-cross-spec-contamination
